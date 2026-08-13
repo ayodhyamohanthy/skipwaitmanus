@@ -35,3 +35,20 @@
 - [x] Implement AI referral matching that ranks available Referrers, explains the fit, and proposes an introduction strategy for a selected role.
 - [x] Generate proactive AI briefings from live messages, Referral Request status, and saved-role data rather than static dashboard copy.
 - [x] Re-verify the data-grounded AI-native experience and save a post-redesign checkpoint.
+- [x] Reduce the product prototype to a conversion-focused landing page, role onboarding, and AI-assisted referral flow.
+- [x] Create a premium MVP landing narrative with a clear paid value proposition and high-intent conversion calls to action.
+- [x] Rebuild onboarding as a fast role-and-goal setup that leads directly to a personalized referral pathway.
+- [x] Create a full-length AI-assisted referral journey from opportunity selection through matching, request drafting, review, and confirmation.
+- [x] Add an MVP monetization moment that clearly demonstrates paid value without interrupting the core referral experience.
+- [x] Validate the complete prototype journey at desktop and mobile breakpoints, then save the focused MVP checkpoint.
+- [x] Restrict public MVP navigation to landing, onboarding, referral path, and Referrer review while retaining only necessary hidden prototype routes.
+- [x] Persist the selected target role and company through onboarding into the personalized referral path.
+- [x] Replace the hardcoded opportunity handoff with an onboarding-driven referral route that carries matching, drafting, review, and confirmation context end to end.
+- [x] Re-verify the truly focused MVP experience and save the post-MVP checkpoint.
+- [x] Read the onboarding target and company route parameters throughout the Referral Request flow and its final confirmation.
+- [x] Connect the Referrer review prototype to the current referral path using selected-opportunity context rather than a hardcoded review route.
+- [x] Re-verify the finished context-driven MVP routes and save the final post-MVP checkpoint.
+- [x] Show the selected target and company in the Referral Request confirmation state.
+- [x] Replace remaining hardcoded review entry points with the active referral context handoff.
+- [x] Save a final checkpoint after the complete MVP handoff is verified.
+- [x] Replace the landing Referrer entry with the context-driven MVP review handoff and save the final checkpoint.

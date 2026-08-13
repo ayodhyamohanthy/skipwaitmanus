@@ -1,6 +1,6 @@
 import { ArrowLeft, BrainCircuit, Check, CheckCircle2, Loader2, MessageCircle, Sparkles, WandSparkles, X } from "lucide-react";
 import { useState } from "react";
-import { Link, useRoute } from "wouter";
+import { Link, useLocation, useRoute } from "wouter";
 import { Streamdown } from "streamdown";
 import DashboardLayout from "@/components/DashboardLayout";
 import AvatarMark from "@/components/AvatarMark";
@@ -9,8 +9,8 @@ import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 
 export default function ReferralReview() {
-  const [, params] = useRoute("/referral-review/:id"); const { isAuthenticated } = useAuth(); const [decision, setDecision] = useState<"" | "approved" | "declined">(""); const [message, setMessage] = useState("");
-  const requests = trpc.referrals.listMine.useQuery(); const liveRequest = requests.data?.find(item => String(item.id) === params?.id); const candidate = liveRequest ? "A Bridge Job Seeker" : "Avery Morgan"; const jobTitle = liveRequest?.jobTitle || "Senior Product Designer"; const company = liveRequest?.company || "Northstar"; const pitch = liveRequest?.personalPitch || "I’m drawn to Northstar’s focus on useful, considered software. I’ve spent the last six years working on complex workflows for B2B teams, and I’d love the chance to bring that mix of product craft and systems thinking to this role.";
+  const [location] = useLocation(); const [, params] = useRoute("/referral-review/:id"); const { isAuthenticated } = useAuth(); const [decision, setDecision] = useState<"" | "approved" | "declined">(""); const [message, setMessage] = useState(""); const handoff = new URLSearchParams(typeof window !== "undefined" ? window.location.search : location.split("?")[1] || "");
+  const requests = trpc.referrals.listMine.useQuery(); const liveRequest = requests.data?.find(item => String(item.id) === params?.id); const activeReferral = typeof window !== "undefined" ? JSON.parse(localStorage.getItem("bridge-active-referral") || "null") as { title?: string; company?: string; pitch?: string } | null : null; const candidate = liveRequest ? "A Bridge Job Seeker" : "Avery Morgan"; const jobTitle = liveRequest?.jobTitle || handoff.get("target") || activeReferral?.title || "Senior Product Designer"; const company = liveRequest?.company || handoff.get("company") || activeReferral?.company || "Northstar"; const pitch = liveRequest?.personalPitch || activeReferral?.pitch || `I’m interested in the ${jobTitle} opportunity at ${company} because the role is aligned with the way I approach complex product work and collaboration.`;
   const review = trpc.referrals.review.useMutation({ onSuccess: data => setDecision(data.status) }); const fitBrief = trpc.ai.referralFit.useMutation();
   const resolve = (kind: "approved" | "declined") => { if (!isAuthenticated) { startLogin(); return; } if (liveRequest) { review.mutate({ requestId: liveRequest.id, decision: kind, message: message || undefined }); return; } setDecision(kind); };
   const analyze = () => { if (!isAuthenticated) { startLogin(); return; } fitBrief.mutate({ candidateName: candidate, jobTitle, company, personalPitch: pitch }); };
