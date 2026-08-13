@@ -118,3 +118,4 @@
 - [x] Capture route-by-route desktop and mobile visual QA for /, /start, /request, /referrer, and /premium using the final enterprise design.
 - [x] Refactor ReferralRequest and Referrer with direct enterprise blue/slate card, button, heading, and panel classes instead of broad color remapping.
 - [x] Re-run desktop and mobile visual QA after the direct enterprise refactor of /request and /referrer.
+- [x] Refine mobile landing copy and first-screen role actions so Job Seekers and Referrers are more strongly encouraged to enter their flows.
