@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const aiMocks = vi.hoisted(() => ({ runCareerCopilot: vi.fn(), draftReferralPitch: vi.fn(), summarizeReferralFit: vi.fn() }));
+const aiMocks = vi.hoisted(() => ({ runCareerCopilot: vi.fn(), draftReferralPitch: vi.fn(), draftHiringManagerEmail: vi.fn(), summarizeReferralFit: vi.fn() }));
 const dbMocks = vi.hoisted(() => ({ getProfileByUserId: vi.fn(), getAiWorkspaceContext: vi.fn() }));
 
 vi.mock("./ai", () => aiMocks);
@@ -28,5 +28,12 @@ describe("Bridge AI contracts", () => {
     const caller = appRouter.createCaller(context());
     await expect(caller.ai.draftReferralPitch({ jobTitle: "Senior Product Designer", company: "Northstar", referrerName: "Mira Shah", notes: "I have workflow design experience." })).resolves.toEqual({ draft: "Hi Mira, I’m interested in the role because…" });
     expect(aiMocks.draftReferralPitch).toHaveBeenCalledWith(expect.objectContaining({ jobTitle: "Senior Product Designer", referrerName: "Mira Shah" }));
+  });
+
+  it("generates a Referrer-controlled hiring-manager email from supplied context only", async () => {
+    aiMocks.draftHiringManagerEmail.mockResolvedValue("Subject: Referral — Avery\n\nHi Hiring Manager,");
+    const caller = appRouter.createCaller(context());
+    await expect(caller.ai.draftHiringManagerEmail({ candidateName: "Avery", targetRoleUrl: "https://company.com/jobs/product-designer", accomplished: "improved activation", measuredBy: "24%", byDoing: "redesigning onboarding" })).resolves.toEqual({ draft: "Subject: Referral — Avery\n\nHi Hiring Manager," });
+    expect(aiMocks.draftHiringManagerEmail).toHaveBeenCalledWith({ candidateName: "Avery", targetRoleUrl: "https://company.com/jobs/product-designer", accomplished: "improved activation", measuredBy: "24%", byDoing: "redesigning onboarding" });
   });
 });

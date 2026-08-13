@@ -120,3 +120,4 @@
 - [x] Re-run desktop and mobile visual QA after the direct enterprise refactor of /request and /referrer.
 - [x] Refine mobile landing copy and first-screen role actions so Job Seekers and Referrers are more strongly encouraged to enter their flows.
 - [x] Remove nonessential mobile landing content so the first view presents only a concise referral promise and two role actions.
+- [x] Add an AI-assisted, editable hiring-manager email draft in Referrer review that uses only the supplied candidate, role, and accomplishment context.

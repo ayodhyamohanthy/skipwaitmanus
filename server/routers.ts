@@ -22,6 +22,7 @@ export const appRouter = router({
     briefing: protectedProcedure.query(async ({ ctx }) => ai.createProactiveBrief({ context: await db.getAiWorkspaceContext(ctx.user.id) })),
     matchReferrers: protectedProcedure.input(z.object({ jobTitle: z.string().min(1), company: z.string().min(1) })).mutation(async ({ ctx, input }) => ai.matchReferrers({ ...input, context: await db.getAiWorkspaceContext(ctx.user.id) })),
     draftReferralPitch: protectedProcedure.input(z.object({ jobTitle: z.string().min(1), company: z.string().min(1), referrerName: z.string().min(1), notes: z.string().min(1).max(2000) })).mutation(async ({ ctx, input }) => ({ draft: await ai.draftReferralPitch({ ...input, profile: await db.getProfileByUserId(ctx.user.id) }) })),
+    draftHiringManagerEmail: publicProcedure.input(z.object({ candidateName: z.string().min(1).max(120), targetRoleUrl: z.string().url().max(2048), accomplished: z.string().max(500).optional(), measuredBy: z.string().max(500).optional(), byDoing: z.string().max(500).optional() })).mutation(async ({ input }) => ({ draft: await ai.draftHiringManagerEmail(input) })),
     referralFit: protectedProcedure.input(z.object({ candidateName: z.string().min(1), jobTitle: z.string().min(1), company: z.string().min(1), personalPitch: z.string().min(1).max(4000) })).mutation(({ input }) => ai.summarizeReferralFit(input)),
   }),
 });
