@@ -100,3 +100,10 @@
 - [x] Reset the Job Seeker display to three included application tokens and clarify that extra requests cost $1 per added token.
 - [x] Rebalance the Job Seeker request interface to retain trust and guidance with less visual and copy density.
 - [x] Rebrand active UI and browser metadata from Bridge to skipwait.me.
+- [x] Add responsive PWA installability, offline resilience, device language defaults, and a privacy-safe persistent session experience.
+- [x] Add explicit privacy-safe PWA session continuity using the existing secure OAuth session and browser credential support where available.
+- [x] Preserve lightweight in-progress referral request state for offline recovery and show a clear offline fallback state.
+- [x] Add code-level tests for PWA device, session, and offline recovery behavior.
+- [x] Add credential-capability and secure-session restoration tests for the PWA fallback path.
+- [x] Add a user-triggered saved-device sign-in mediation path that falls back safely to OAuth without storing browser credentials.
+- [x] Test focus, online, and visibility-triggered secure-session restoration behavior.

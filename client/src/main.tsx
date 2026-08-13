@@ -4,11 +4,29 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
+import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import { startLogin } from "./const";
+import { resolveDeviceLocale } from "./lib/device";
 import "./index.css";
 
 const queryClient = new QueryClient();
+
+function initializeDeviceDefaults() {
+  if (typeof window === "undefined") return;
+  const locale = resolveDeviceLocale(navigator);
+  document.documentElement.lang = locale;
+  document.documentElement.dataset.deviceLocale = locale;
+}
+
+initializeDeviceDefaults();
+
+registerSW({
+  immediate: true,
+  onRegisterError(error) {
+    console.error("[PWA] Service worker registration failed", error);
+  },
+});
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
