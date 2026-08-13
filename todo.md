@@ -137,3 +137,5 @@
 - [x] Remove Referrer localStorage fallbacks so candidate context and documents are available only from claimed backend data.
 - [x] Reject consumer email domains before adding a verified employee to the hidden company pool.
 - [ ] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.
+- [x] Move the X+Y+Z hiring-manager email draft from Referrer review to the Job Seeker’s post-referral confirmation experience.
+- [x] Replace whole-page Referrer scrolling with independent, bounded review and wallet section scrolling on desktop while preserving mobile flow.

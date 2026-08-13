@@ -52,6 +52,8 @@ describe("token recovery routes", () => {
     expect(send.disabled).toBe(false);
     fireEvent.click(send);
     await waitFor(() => expect(screen.getByText("Your request is with verified employees.")).toBeTruthy());
+    expect(screen.getByText("Your hiring-manager referral email")).toBeTruthy();
+    expect(screen.getByLabelText("Hiring-manager referral email")).toBeTruthy();
   });
 
   it("takes a verified employee from a zero-balance block through purchase and back to a usable private-request approval", async () => {
@@ -77,6 +79,7 @@ describe("token recovery routes", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: /claim this request/i })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: /claim this request/i }));
     await waitFor(() => expect(screen.getByRole("button", { name: /use 1 token & approve/i })).toBeTruthy());
+    expect(screen.queryByRole("button", { name: /generate an editable draft/i })).toBeNull();
     const approve = screen.getByRole("button", { name: /use 1 token & approve/i }) as HTMLButtonElement;
     expect(approve.disabled).toBe(false);
     fireEvent.click(approve);
