@@ -2,31 +2,44 @@
 
 @theme inline {
   --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --color-background: #fbfbfe;
-  --color-foreground: #171526;
+  --color-background: #f7f7f5;
+  --color-foreground: #181818;
   --color-card: #ffffff;
-  --color-card-foreground: #171526;
+  --color-card-foreground: #181818;
   --color-popover: #ffffff;
-  --color-popover-foreground: #171526;
-  --color-primary: #6957e8;
+  --color-popover-foreground: #181818;
+  --color-primary: #181818;
   --color-primary-foreground: #ffffff;
-  --color-secondary: #f3f2fa;
-  --color-secondary-foreground: #27233d;
-  --color-muted: #f5f5f9;
-  --color-muted-foreground: #657080;
-  --color-accent: #f1efff;
-  --color-accent-foreground: #5141c5;
-  --color-border: #e7e7ee;
-  --color-input: #e7e7ee;
-  --color-ring: #8c7ffa;
+  --color-secondary: #f1f1ef;
+  --color-secondary-foreground: #303030;
+  --color-muted: #f2f2f0;
+  --color-muted-foreground: #6b6b67;
+  --color-accent: #ecece8;
+  --color-accent-foreground: #303030;
+  --color-border: #e5e5e1;
+  --color-input: #e5e5e1;
+  --color-ring: #2c2c2c;
   --radius: 0.75rem;
 }
 
 * { border-color: var(--color-border); }
 html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; background: #fbfbfe; color: #171526; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
+body { margin: 0; min-width: 320px; background: #f7f7f5; color: #181818; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
 button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-::selection { background: #ded9ff; color: #30266f; }
+::selection { background: #e5e5e1; color: #181818; }
 @media (prefers-reduced-motion: no-preference) { button, a { transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1); } }
+
+@layer utilities {
+  .bg-violet-500, .bg-violet-600 { background-color: #181818 !important; }
+  .hover\:bg-violet-700:hover { background-color: #303030 !important; }
+  .bg-violet-50, .bg-violet-50\/60 { background-color: #f2f2f0 !important; }
+  .text-violet-300 { color: #d6d3d1 !important; }
+  .text-violet-600, .text-violet-700, .text-violet-900, .text-violet-950 { color: #3f3f3a !important; }
+  .border-violet-100, .border-violet-200, .border-violet-300 { border-color: #dfdfda !important; }
+  .hover\:border-violet-200:hover { border-color: #bdbdb7 !important; }
+  .hover\:text-violet-700:hover { color: #181818 !important; }
+  .focus\:border-violet-500:focus { border-color: #181818 !important; }
+  .focus\:ring-violet-100:focus { --tw-ring-color: #e7e7e3 !important; }
+}
