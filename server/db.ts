@@ -1,6 +1,6 @@
-import { and, count, desc, eq, or } from "drizzle-orm";
+import { and, count, desc, eq, isNull, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { type InsertUser, jobs, messages, notifications, profiles, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { type InsertUser, jobs, messages, notifications, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -22,6 +22,27 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
+
+export function companyDomainFromTargetUrl(targetRoleUrl: string): string | undefined {
+  try {
+    const hostname = new URL(targetRoleUrl).hostname.toLowerCase().replace(/^www\./, "");
+    if (!hostname || hostname === "jobs.lever.co" || hostname.endsWith("greenhouse.io")) return undefined;
+    const labels = hostname.split(".");
+    return labels.length > 2 ? labels.slice(-2).join(".") : hostname;
+  } catch { return undefined; }
+}
+
+const consumerEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);
+export function isWorkEmailDomain(domain: string): boolean { return Boolean(domain) && !consumerEmailDomains.has(domain.trim().toLowerCase()); }
+
+export async function saveVerifiedWorkEmail(userId: number, email: string) {
+  const domain = email.trim().toLowerCase().split("@")[1];
+  if (!domain) throw new Error("A work email address is required");
+  if (!isWorkEmailDomain(domain)) throw new Error("Use a verified company email, not a personal email domain");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.insert(profiles).values({ userId, accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true } });
+  return getProfileByUserId(userId);
+}
 
 export async function saveProfile(userId: number, input: { accountType: "job_seeker" | "referrer"; headline?: string; location?: string; bio?: string; company?: string; currentTitle?: string; resumeUrl?: string; skills?: string; experience?: string; expertise?: string; referralCapacity?: number; }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -60,11 +81,70 @@ export async function listReferralRequests(userId: number) {
   return db.select({ id: referralRequests.id, jobId: jobs.id, jobTitle: jobs.title, company: jobs.company, jobLocation: jobs.location, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, personalPitch: referralRequests.personalPitch, status: referralRequests.status, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(or(eq(referralRequests.jobSeekerId, userId), eq(referralRequests.referrerId, userId))).orderBy(desc(referralRequests.updatedAt));
 }
 
-export async function createReferralRequest(userId: number, input: { jobId: number; referrerId: number; personalPitch: string }) {
+export async function createReferralRequest(userId: number, input: { jobId: number; referrerId: number; personalPitch: string; attachmentIds?: number[] }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const result = await db.insert(referralRequests).values({ jobId: input.jobId, jobSeekerId: userId, referrerId: input.referrerId, personalPitch: input.personalPitch });
+  const requestId = Number(result[0].insertId);
+  for (const attachmentId of input.attachmentIds ?? []) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
   await db.insert(notifications).values({ userId: input.referrerId, category: "referral", title: "New Referral Request", body: "A Job Seeker has shared a Referral Request for your review." });
-  return { id: Number(result[0].insertId) };
+  return { id: requestId };
+}
+
+export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) {
+  const companyDomain = companyDomainFromTargetUrl(input.targetRoleUrl);
+  if (!companyDomain) throw new Error("Use the employer’s direct careers URL so we can route this request privately");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
+  const jobId = Number(jobResult[0].insertId);
+  const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, personalPitch: input.personalPitch, status: "pending" });
+  const requestId = Number(requestResult[0].insertId);
+  for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
+  const eligible = await db.select({ userId: profiles.userId }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain)));
+  for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: "A private referral request is available", body: `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
+  return { requestId, companyDomain, notifiedEmployees: eligible.length };
+}
+
+export async function listCompanyReferralInbox(userId: number) {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) return [];
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobSeekerName: users.name, createdAt: referralRequests.createdAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequests.referrerId), eq(referralRequests.status, "pending"))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, users.name, referralRequests.createdAt).orderBy(desc(referralRequests.createdAt));
+}
+
+export async function claimCompanyReferralRequest(userId: number, requestId: number) {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before claiming referrals");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, company: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId))).limit(1);
+  if (!request[0] || request[0].company !== profile.workEmailDomain) throw new Error("This referral request is no longer available");
+  const update = await db.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, requestId), isNull(referralRequests.referrerId)));
+  if (Number(update[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
+  await db.insert(notifications).values({ userId: request[0].jobSeekerId, category: "status", title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." });
+  return { requestId, claimed: true };
+}
+
+export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const request = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, candidateName: users.name, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.referrerId, userId))).limit(1);
+  if (!request[0]) return undefined;
+  const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
+  return { ...request[0], attachments };
+}
+
+export async function createReferralAttachment(ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(referralAttachments).values({ ownerId, ...input });
+  return { id: Number(result[0].insertId), ...input };
+}
+
+export async function getAccessibleReferralAttachment(userId: number, attachmentId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const result = await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId }).from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id)).where(and(eq(referralAttachments.id, attachmentId), or(eq(referralAttachments.ownerId, userId), eq(referralRequests.referrerId, userId)))).limit(1);
+  return result[0];
+}
+
+export function canAccessReferralAttachment(actorUserId: number, attachment: { ownerId: number; referrerId?: number | null }): boolean {
+  return attachment.ownerId === actorUserId || attachment.referrerId === actorUserId;
 }
 
 export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) {

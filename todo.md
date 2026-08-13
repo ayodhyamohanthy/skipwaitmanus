@@ -65,7 +65,7 @@
 - [x] Add token balance and transaction records plus attachment metadata to the platform data model.
 - [x] Build a token purchase and balance experience for Job Seekers and Referrers.
 - [x] Require and deduct tokens for direct referral requests, with clear balance and insufficiency states.
-- [ ] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
+- [x] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
 - [ ] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
 - [x] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
 - [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
@@ -125,3 +125,15 @@
 - [x] Add an explicit insufficient-token explanation and $1-per-token repurchase action in the Referrer wallet.
 - [x] Verify the complete free-to-zero-to-purchase-to-usable-again transition for both roles.
 - [x] Add automated route-level coverage for the Job Seeker and Referrer zero-balance, top-up, and usable-again paths.
+- [x] Verify the existing Clerk configuration and integrate it as the secure sign-in authority for resume upload and Referrer review.
+- [x] Persist secure document ownership and referral linkage so only the Job Seeker and assigned Referrer can access a resume.
+- [x] Connect the active Job Seeker submit flow to backend referral creation with uploaded attachment identifiers.
+- [x] Load Referrer documents from the assigned backend referral request instead of local storage.
+- [ ] Add end-to-end coverage for Clerk-secured upload, referral linkage, authorized review, and unrelated-user denial.
+- [x] Verify employee work email domains and maintain a hidden eligible-employee pool by company.
+- [x] Route a Job Seeker’s Target Role URL request to the matching company’s eligible signed-in employees without exposing their identities.
+- [x] Notify eligible employees about matching company requests and let exactly one employee claim the referral request.
+- [x] Grant resume access only to the Job Seeker and the verified employee who claims the request.
+- [x] Remove Referrer localStorage fallbacks so candidate context and documents are available only from claimed backend data.
+- [x] Reject consumer email domains before adding a verified employee to the hidden company pool.
+- [ ] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.

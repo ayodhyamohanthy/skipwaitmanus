@@ -8,6 +8,10 @@ export function registerStorageProxy(app: Express) {
       res.status(400).send("Missing storage key");
       return;
     }
+    if (key.startsWith("skipwait/private-referrals/")) {
+      res.status(404).send("Document not found");
+      return;
+    }
 
     if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
       res.status(500).send("Storage proxy not configured");

@@ -32,6 +32,13 @@ describe("Referral platform backend contracts", () => {
     expect(dbMocks.createReferralRequest).toHaveBeenCalledWith(7, expect.objectContaining({ jobId: 4, referrerId: 9 }));
   });
 
+  it("links only the submitted attachment identifiers to the new Referral Request", async () => {
+    dbMocks.createReferralRequest.mockResolvedValue({ id: 23 });
+    const caller = appRouter.createCaller(context());
+    await expect(caller.referrals.create({ jobId: 4, referrerId: 9, personalPitch: "I would bring relevant product design experience and thoughtful systems thinking.", attachmentIds: [31, 32] })).resolves.toEqual({ id: 23 });
+    expect(dbMocks.createReferralRequest).toHaveBeenCalledWith(7, expect.objectContaining({ attachmentIds: [31, 32] }));
+  });
+
   it("records a Referrer decision and optional review message", async () => {
     dbMocks.reviewReferralRequest.mockResolvedValue({ status: "approved" });
     const caller = appRouter.createCaller(context());
