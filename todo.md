@@ -95,3 +95,4 @@
 - [x] Reduce Job Seeker onboarding to the essential fields and a single clear request action.
 - [x] Make Job Seeker entry job-link-first, defer nonessential context, and reduce the request path to the fewest decisions possible.
 - [x] Restore name-and-job-link onboarding with compact, credible trust cues while keeping the fast request path.
+- [x] Raise onboarding and post-request experiences to a premium, credible product standard without adding decision friction.
