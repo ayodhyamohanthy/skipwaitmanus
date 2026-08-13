@@ -96,3 +96,4 @@
 - [x] Make Job Seeker entry job-link-first, defer nonessential context, and reduce the request path to the fewest decisions possible.
 - [x] Restore name-and-job-link onboarding with compact, credible trust cues while keeping the fast request path.
 - [x] Raise onboarding and post-request experiences to a premium, credible product standard without adding decision friction.
+- [x] Require at least one resume or supporting document, support multiple Job Seeker uploads, and show an add-another-document action after attachment.

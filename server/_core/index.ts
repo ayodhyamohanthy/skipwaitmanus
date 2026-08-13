@@ -6,6 +6,8 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
+import { dataUrlToBuffer, sanitizeDocumentName } from "../documentUpload";
+import { storagePut } from "../storage";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 
@@ -36,6 +38,20 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
+  app.post("/api/documents", async (req, res) => {
+    try {
+      const { fileName, mimeType, dataUrl } = req.body as { fileName?: string; mimeType?: string; dataUrl?: string };
+      if (!fileName || !mimeType || !dataUrl) return res.status(400).json({ error: "Document details are required" });
+      const buffer = dataUrlToBuffer(dataUrl);
+      if (buffer.length === 0 || buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: "Documents must be smaller than 10 MB" });
+      const safeName = sanitizeDocumentName(fileName);
+      const { key, url } = await storagePut(`bridge/referral-documents/${Date.now()}-${safeName}`, buffer, mimeType);
+      res.status(201).json({ id: crypto.randomUUID(), fileName, mimeType, fileSize: buffer.length, key, url });
+    } catch (error) {
+      console.error("Document upload failed", error);
+      res.status(500).json({ error: "We could not upload that document. Please try again." });
+    }
+  });
   // tRPC API
   app.use(
     "/api/trpc",
