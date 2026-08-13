@@ -97,3 +97,4 @@
 - [x] Restore name-and-job-link onboarding with compact, credible trust cues while keeping the fast request path.
 - [x] Raise onboarding and post-request experiences to a premium, credible product standard without adding decision friction.
 - [x] Require at least one resume or supporting document, support multiple Job Seeker uploads, and show an add-another-document action after attachment.
+- [x] Reset the Job Seeker display to three included application tokens and clarify that extra requests cost $1 per added token.
