@@ -91,3 +91,4 @@
 - [x] Add an accomplishment prompt using the formula “accomplished X + measured by Y + by doing Z” to strengthen the employee referral email.
 - [x] Remove referral email drafting from the Job Seeker flow and show the exact referral email editor, including the accomplishment formula, within Referrer review.
 - [x] Remove the floating token purchase control and integrate the $1 top-up action within Job Seeker Application Tokens and Referrer Wallet panels.
+- [x] Simplify the Job Seeker onboarding helper copy about resume attachment and Referrer email ownership.
