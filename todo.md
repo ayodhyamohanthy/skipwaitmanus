@@ -67,7 +67,7 @@
 - [x] Require and deduct tokens for direct referral requests, with clear balance and insufficiency states.
 - [ ] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
 - [ ] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
-- [ ] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
+- [x] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
 - [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
 - [ ] Credit token balances only after verified provider payment events and expose the appropriate domestic or international checkout option.
 - [ ] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.

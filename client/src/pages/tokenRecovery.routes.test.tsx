@@ -36,7 +36,7 @@ describe("token recovery routes", () => {
     cleanup();
     visit("/premium");
     render(<Premium />);
-    fireEvent.click(screen.getByRole("button", { name: /simulate \$1 purchase/i }));
+    fireEvent.click(screen.getByRole("button", { name: /simulate \$1 checkout/i }));
     expect(localStorage.getItem("bridge-tokens")).toBe("1");
     expect(screen.getByRole("link", { name: "Continue" }).getAttribute("href")).toBe("/request");
 
@@ -60,7 +60,7 @@ describe("token recovery routes", () => {
     cleanup();
     visit("/premium?role=referrer");
     render(<Premium />);
-    fireEvent.click(screen.getByRole("button", { name: /simulate \$1 purchase/i }));
+    fireEvent.click(screen.getByRole("button", { name: /simulate \$1 checkout/i }));
     expect(localStorage.getItem("bridge-referrer-paid-tokens")).toBe("1");
     expect(screen.getByRole("link", { name: "Continue" }).getAttribute("href")).toBe("/referrer");
 
@@ -71,5 +71,17 @@ describe("token recovery routes", () => {
     expect(approve.disabled).toBe(false);
     fireEvent.click(approve);
     expect(screen.getByText("Referral approved.")).toBeTruthy();
+  });
+
+  it("offers the intended regional and billing provider routes in the simulated checkout", () => {
+    visit("/premium");
+    render(<Premium />);
+    expect(screen.getByRole("button", { name: /Razorpay/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /PayPal/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Chargebee/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Razorpay/i }));
+    expect(screen.getByText("India · Domestic checkout simulation")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Chargebee/i }));
+    expect(screen.getByText("Business billing · Billing checkout simulation")).toBeTruthy();
   });
 });
