@@ -86,6 +86,34 @@ export const notifications = mysqlTable("notifications", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("notifications_user_idx").on(table.userId)]);
 
+export const tokenBalances = mysqlTable("tokenBalances", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  balance: int("balance").default(0).notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("token_balances_user_unique").on(table.userId)]);
+
+export const tokenTransactions = mysqlTable("tokenTransactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenCount: int("tokenCount").notNull(),
+  kind: mysqlEnum("kind", ["purchase", "direct_request"]).notNull(),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("token_transactions_user_idx").on(table.userId)]);
+
+export const referralAttachments = mysqlTable("referralAttachments", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "cascade" }),
+  ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  fileKey: varchar("fileKey", { length: 1024 }).notNull(),
+  mimeType: varchar("mimeType", { length: 120 }).notNull(),
+  fileSize: int("fileSize").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Profile = typeof profiles.$inferSelect;

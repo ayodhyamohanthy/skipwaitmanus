@@ -60,3 +60,31 @@
 - [x] Build a focused Referrer review screen showing one incoming request, candidate context, and the selected opportunity.
 - [x] Add approve and decline actions with an optional response message and a clear decision confirmation state.
 - [x] Verify the Job Seeker and Referrer flows at desktop and mobile breakpoints, then save an updated checkpoint.
+- [ ] Define token packages, balance rules, and direct referral request pricing for the premium flow.
+- [ ] Enable secure payment checkout and document storage infrastructure.
+- [ ] Add token balance and transaction records plus attachment metadata to the platform data model.
+- [ ] Build a token purchase and balance experience for Job Seekers and Referrers.
+- [ ] Require and deduct tokens for direct referral requests, with clear balance and insufficiency states.
+- [ ] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
+- [ ] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
+- [ ] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
+- [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
+- [ ] Credit token balances only after verified provider payment events and expose the appropriate domestic or international checkout option.
+- [ ] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
+- [ ] Keep checkout simulated and present the premium token, direct-request, and document-attachment experience for design approval before enabling providers.
+- [ ] Replace token packs with a 3-free-token allowance and a simple $1-per-additional-token policy.
+- [ ] Show a clear free-token balance, 1-token application cost, and exhausted-balance repurchase state.
+- [ ] Verify the simplified free-to-paid token transition and present the updated design flow.
+- [x] Replace the applicant Target Role field with a Target Role URL input and preserve it through the direct referral request context.
+- [x] Add a visible Referrer token wallet, showing starting balance, earned tokens, and the reward rule.
+- [x] Credit the simulated Referrer wallet when an incoming direct referral request is approved and show a clear decision confirmation.
+- [x] Verify the Job Seeker spend and Referrer earn sides of the token system together.
+- [x] Give Referrers the same 3-free-token allowance, $1 repurchase path, and explicit 1-token direct-action cost as Job Seekers.
+- [x] Separate the Referrer wallet’s paid/free token balance from any referral-reward messaging.
+- [x] Verify both role-specific token purchase and exhaustion experiences together.
+- [x] Show the Referrer’s free token allowance and purchased token balance as distinct wallet categories, then re-verify its top-up flow.
+- [x] Carry the Job Seeker’s selected resume or document into the Referrer review experience with a visible file card and open action.
+- [x] Display attached resumes directly within the Referrer review and provide a separate download action for the original file.
+- [x] Restrict inline resume preview uploads to PDF and image formats, and provide a download-only fallback for other document formats.
+- [x] Keep a visible $1 token top-up control available in Job Seeker and Referrer wallets, including after a simulated purchase.
+- [x] Replace general referral-request copy with an editable, exact employee-to-hiring-manager referral email draft tied to the Target Role URL.
