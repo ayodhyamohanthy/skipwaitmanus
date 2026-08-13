@@ -92,3 +92,24 @@ export async function getDashboardStats(userId: number) {
   const [hires] = await db.select({ value: count() }).from(referralRequests).where(and(eq(referralRequests.referrerId, userId), eq(referralRequests.status, "offer")));
   return { savedRoles: Number(saved?.value ?? 0), activeReferralRequests: Number(active?.value ?? 0), incomingReferralRequests: Number(incoming?.value ?? 0), introductionsMade: Number(introductions?.value ?? 0), conversationsStarted: Number(conversations?.value ?? 0), peopleHired: Number(hires?.value ?? 0) };
 }
+
+export async function getAiWorkspaceContext(userId: number) {
+  const [profile, availableJobs, availableReferrers, saved, referrals, memberMessages, stats] = await Promise.all([
+    getProfileByUserId(userId),
+    listJobs({}),
+    listReferrers({}),
+    listSavedRoles(userId),
+    listReferralRequests(userId),
+    listMessages(userId),
+    getDashboardStats(userId),
+  ]);
+  return {
+    profile,
+    jobs: availableJobs.slice(0, 12).map(job => ({ id: job.id, title: job.title, company: job.company, location: job.location, seniority: job.seniority, workMode: job.workMode, description: job.description })),
+    referrers: availableReferrers.slice(0, 12).map(referrer => ({ userId: referrer.userId, name: referrer.name, company: referrer.company, title: referrer.title, expertise: referrer.expertise, capacity: referrer.capacity })),
+    savedRoles: saved.slice(0, 8).map(role => ({ title: role.title, company: role.company, seniority: role.seniority })),
+    referrals: referrals.slice(0, 8).map(referral => ({ jobTitle: referral.jobTitle, company: referral.company, status: referral.status, updatedAt: referral.updatedAt })),
+    recentMessageCount: memberMessages.length,
+    stats,
+  };
+}

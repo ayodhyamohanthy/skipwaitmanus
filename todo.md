@@ -24,3 +24,14 @@
 - [x] Add explicit query error states to Job Listings, Community and Explore, and both dashboards for failed live backend requests.
 - [x] Surface saved-role query and mutation failures directly in Job Listings.
 - [x] Surface Referral Request and saved-role query failures directly in both role-aware dashboards.
+- [x] Reframe Bridge around an AI-native career copilot rather than conventional dashboard navigation.
+- [x] Build a conversational AI workspace for Job Seekers with guided job discovery, opportunity reasoning, and career-planning prompts.
+- [x] Add AI-powered referral matching that explains fit, identifies the best Referrer, and proposes a respectful introduction strategy.
+- [x] Replace the static Referral Request experience with a guided AI drafting flow that adapts the personal pitch to the role and recipient.
+- [x] Add an AI-native Referrer workspace that summarizes candidate context, surfaces key fit signals, and supports thoughtful review decisions.
+- [x] Add proactive AI briefing cards for message preparation, application next steps, and referral-status changes.
+- [x] Verify the redesigned AI-native experience at desktop and mobile breakpoints, then save an updated checkpoint.
+- [x] Ground Copilot guidance in live Job Listings, available Referrers, profile context, and active Referral Request data.
+- [x] Implement AI referral matching that ranks available Referrers, explains the fit, and proposes an introduction strategy for a selected role.
+- [x] Generate proactive AI briefings from live messages, Referral Request status, and saved-role data rather than static dashboard copy.
+- [x] Re-verify the data-grounded AI-native experience and save a post-redesign checkpoint.
