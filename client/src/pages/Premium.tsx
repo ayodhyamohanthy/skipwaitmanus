@@ -1,18 +1,19 @@
 import { ArrowLeft, Check, CreditCard, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link } from "wouter";
 import { Brand } from "@/components/Brand";
-import { getJobSeekerTokens, setJobSeekerTokens } from "@/lib/tokens";
+import { addPurchasedTokens, getJobSeekerTokens, setJobSeekerTokens, tokenReturnPath, type TokenRole } from "@/lib/tokens";
 
 export default function Premium() {
-  const referrer = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer";
+  const role: TokenRole = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
+  const referrer = role === "referrer";
   const storageKey = referrer ? "bridge-referrer-paid-tokens" : "bridge-tokens";
   const label = referrer ? "referral action" : "direct application";
   const [count, setCount] = useState(1);
   const [paid, setPaid] = useState(false);
   const balance = referrer ? Number(localStorage.getItem(storageKey) || 0) : getJobSeekerTokens();
-  const finish = () => { const next = (referrer ? Number(localStorage.getItem(storageKey) || 0) : getJobSeekerTokens()) + count; if (referrer) localStorage.setItem(storageKey, String(next)); else setJobSeekerTokens(next); setPaid(true); };
-  const returnPath = referrer ? "/referrer" : "/request";
+  const finish = () => { const next = addPurchasedTokens(referrer ? Number(localStorage.getItem(storageKey) || 0) : getJobSeekerTokens(), count); if (referrer) localStorage.setItem(storageKey, String(next)); else setJobSeekerTokens(next); setPaid(true); };
+  const returnPath = tokenReturnPath(role);
 
   if (paid) return <main data-skipwait-screen="premium" className="min-h-screen bg-slate-50 px-6 py-6 text-slate-950"><div className="mx-auto max-w-xl"><Brand /><section className="mt-20 rounded-2xl border border-slate-200 bg-white p-9 text-center shadow-sm"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Check className="h-6 w-6" /></span><h1 className="mt-5 text-3xl font-semibold">{count} purchased token{count > 1 ? "s" : ""} added.</h1><p className="mt-3 text-sm leading-6 text-slate-600">Simulation complete. {referrer ? "Your Referrer wallet will show these separately from your free allowance." : "Your Application Tokens balance now includes your purchased tokens."}</p><Link href={returnPath} className="mt-8 inline-flex rounded-lg bg-[#0B57D0] px-5 py-3 text-sm font-semibold text-white hover:bg-[#0847AD]">Continue</Link></section></div></main>;
 

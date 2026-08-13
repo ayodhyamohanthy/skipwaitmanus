@@ -60,21 +60,21 @@
 - [x] Build a focused Referrer review screen showing one incoming request, candidate context, and the selected opportunity.
 - [x] Add approve and decline actions with an optional response message and a clear decision confirmation state.
 - [x] Verify the Job Seeker and Referrer flows at desktop and mobile breakpoints, then save an updated checkpoint.
-- [ ] Define token packages, balance rules, and direct referral request pricing for the premium flow.
+- [x] Define token packages, balance rules, and direct referral request pricing for the premium flow.
 - [ ] Enable secure payment checkout and document storage infrastructure.
-- [ ] Add token balance and transaction records plus attachment metadata to the platform data model.
-- [ ] Build a token purchase and balance experience for Job Seekers and Referrers.
-- [ ] Require and deduct tokens for direct referral requests, with clear balance and insufficiency states.
+- [x] Add token balance and transaction records plus attachment metadata to the platform data model.
+- [x] Build a token purchase and balance experience for Job Seekers and Referrers.
+- [x] Require and deduct tokens for direct referral requests, with clear balance and insufficiency states.
 - [ ] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
 - [ ] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
 - [ ] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
 - [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
 - [ ] Credit token balances only after verified provider payment events and expose the appropriate domestic or international checkout option.
 - [ ] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
-- [ ] Keep checkout simulated and present the premium token, direct-request, and document-attachment experience for design approval before enabling providers.
-- [ ] Replace token packs with a 3-free-token allowance and a simple $1-per-additional-token policy.
-- [ ] Show a clear free-token balance, 1-token application cost, and exhausted-balance repurchase state.
-- [ ] Verify the simplified free-to-paid token transition and present the updated design flow.
+- [x] Keep checkout simulated and present the premium token, direct-request, and document-attachment experience for design approval before enabling providers.
+- [x] Replace token packs with a 3-free-token allowance and a simple $1-per-additional-token policy.
+- [x] Show a clear free-token balance, 1-token application cost, and exhausted-balance repurchase state.
+- [x] Verify the simplified free-to-paid token transition and present the updated design flow.
 - [x] Replace the applicant Target Role field with a Target Role URL input and preserve it through the direct referral request context.
 - [x] Add a visible Referrer token wallet, showing starting balance, earned tokens, and the reward rule.
 - [x] Credit the simulated Referrer wallet when an incoming direct referral request is approved and show a clear decision confirmation.
@@ -121,3 +121,7 @@
 - [x] Refine mobile landing copy and first-screen role actions so Job Seekers and Referrers are more strongly encouraged to enter their flows.
 - [x] Remove nonessential mobile landing content so the first view presents only a concise referral promise and two role actions.
 - [x] Add an AI-assisted, editable hiring-manager email draft in Referrer review that uses only the supplied candidate, role, and accomplishment context.
+- [x] Add an explicit exhausted-token state with a visible $1-per-token repurchase action for Job Seekers.
+- [x] Add an explicit insufficient-token explanation and $1-per-token repurchase action in the Referrer wallet.
+- [x] Verify the complete free-to-zero-to-purchase-to-usable-again transition for both roles.
+- [x] Add automated route-level coverage for the Job Seeker and Referrer zero-balance, top-up, and usable-again paths.
