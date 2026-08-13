@@ -52,3 +52,7 @@
 - [x] Replace remaining hardcoded review entry points with the active referral context handoff.
 - [x] Save a final checkpoint after the complete MVP handoff is verified.
 - [x] Replace the landing Referrer entry with the context-driven MVP review handoff and save the final checkpoint.
+- [x] Remove all non-essential product screens, pricing concepts, AI briefing, review flows, and secondary navigation from the active prototype.
+- [x] Reduce onboarding to minimal name, target role, and company capture.
+- [x] Reduce the referral experience to one clear selected role, one suggested Referrer, an editable request, and a simple sent confirmation.
+- [x] Verify the three-screen minimal MVP at desktop and mobile breakpoints, then save a new checkpoint.
