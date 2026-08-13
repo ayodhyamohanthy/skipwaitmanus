@@ -89,3 +89,4 @@
 - [x] Keep a visible $1 token top-up control available in Job Seeker and Referrer wallets, including after a simulated purchase.
 - [x] Replace general referral-request copy with an editable, exact employee-to-hiring-manager referral email draft tied to the Target Role URL.
 - [x] Add an accomplishment prompt using the formula “accomplished X + measured by Y + by doing Z” to strengthen the employee referral email.
+- [x] Remove referral email drafting from the Job Seeker flow and show the exact referral email editor, including the accomplishment formula, within Referrer review.
