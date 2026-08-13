@@ -56,3 +56,7 @@
 - [x] Reduce onboarding to minimal name, target role, and company capture.
 - [x] Reduce the referral experience to one clear selected role, one suggested Referrer, an editable request, and a simple sent confirmation.
 - [x] Verify the three-screen minimal MVP at desktop and mobile breakpoints, then save a new checkpoint.
+- [x] Add a clear “I give referrals” entry point to the landing page.
+- [x] Build a focused Referrer review screen showing one incoming request, candidate context, and the selected opportunity.
+- [x] Add approve and decline actions with an optional response message and a clear decision confirmation state.
+- [x] Verify the Job Seeker and Referrer flows at desktop and mobile breakpoints, then save an updated checkpoint.
