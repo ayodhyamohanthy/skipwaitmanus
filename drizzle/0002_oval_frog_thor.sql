@@ -1,0 +1,2 @@
+ALTER TABLE `jobs` ADD `referrerId` int;--> statement-breakpoint
+ALTER TABLE `jobs` ADD CONSTRAINT `jobs_referrerId_users_id_fk` FOREIGN KEY (`referrerId`) REFERENCES `users`(`id`) ON DELETE set null ON UPDATE no action;

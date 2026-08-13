@@ -1,17 +1,7 @@
-import { int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
-/**
- * Core user table backing auth flow.
- * Extend this file with additional tables as your product grows.
- * Columns use camelCase to match both database fields and generated types.
- */
 export const users = mysqlTable("users", {
-  /**
-   * Surrogate primary key. Auto-incremented numeric value managed by the database.
-   * Use this for relations between tables.
-   */
   id: int("id").autoincrement().primaryKey(),
-  /** Manus OAuth identifier (openId) returned from the OAuth callback. Unique per user. */
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -22,7 +12,82 @@ export const users = mysqlTable("users", {
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
+export const profiles = mysqlTable("profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  accountType: mysqlEnum("accountType", ["job_seeker", "referrer"]),
+  headline: varchar("headline", { length: 180 }),
+  location: varchar("location", { length: 120 }),
+  bio: text("bio"),
+  company: varchar("company", { length: 160 }),
+  currentTitle: varchar("currentTitle", { length: 160 }),
+  resumeUrl: varchar("resumeUrl", { length: 1024 }),
+  skills: text("skills"),
+  experience: text("experience"),
+  expertise: text("expertise"),
+  referralCapacity: int("referralCapacity").default(3),
+  isOnboarded: boolean("isOnboarded").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("profiles_user_id_unique").on(table.userId)]);
+
+export const jobs = mysqlTable("jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 180 }).notNull(),
+  company: varchar("company", { length: 160 }).notNull(),
+  location: varchar("location", { length: 120 }).notNull(),
+  seniority: varchar("seniority", { length: 80 }).notNull(),
+  employmentType: varchar("employmentType", { length: 80 }).notNull(),
+  workMode: varchar("workMode", { length: 80 }).notNull(),
+  description: text("description").notNull(),
+  compatibilityHint: varchar("compatibilityHint", { length: 255 }),
+  referrerId: int("referrerId").references(() => users.id, { onDelete: "set null" }),
+  publishedAt: timestamp("publishedAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location)]);
+
+export const savedRoles = mysqlTable("savedRoles", {
+  id: int("id").autoincrement().primaryKey(),
+  jobSeekerId: int("jobSeekerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  jobId: int("jobId").notNull().references(() => jobs.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("saved_roles_unique").on(table.jobSeekerId, table.jobId)]);
+
+export const referralRequests = mysqlTable("referralRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  jobId: int("jobId").notNull().references(() => jobs.id, { onDelete: "cascade" }),
+  jobSeekerId: int("jobSeekerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  personalPitch: text("personalPitch").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed"]).default("pending").notNull(),
+  referrerMessage: text("referrerMessage"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status)]);
+
+export const messages = mysqlTable("messages", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "set null" }),
+  senderId: int("senderId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  recipientId: int("recipientId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId)]);
+
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  category: mysqlEnum("category", ["referral", "message", "status", "system"]).notNull(),
+  title: varchar("title", { length: 180 }).notNull(),
+  body: text("body").notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("notifications_user_idx").on(table.userId)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
-
-// TODO: Add your tables here
+export type Profile = typeof profiles.$inferSelect;
+export type Job = typeof jobs.$inferSelect;
+export type ReferralRequest = typeof referralRequests.$inferSelect;

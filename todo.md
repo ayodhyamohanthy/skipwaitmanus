@@ -1,0 +1,26 @@
+# Project TODO
+
+- [x] Define the role-aware data model for Job Seeker, Referrer, job listings, saved roles, Referral Request records, messages, notifications, and application status tracking.
+- [x] Implement authentication-aware onboarding with the exact role choices “Job Seeker” and “Referrer”.
+- [x] Build the public landing page with hero, how-it-works, dual calls-to-action, testimonials, and footer.
+- [x] Build the Job Listings browse and search page with role, company, location, seniority filters, and compatibility indicators.
+- [x] Build the Community and Explore page with available Referrers by company and role plus search and filtering.
+- [x] Build the Job Seeker dashboard with saved roles, active Referral Request items, and application status tracking.
+- [x] Build the Referrer dashboard with incoming Referral Request items, candidate profiles, and Referral Impact Metrics.
+- [x] Build the Referral Request creation flow with role selection, personal pitch, and referrer recipient.
+- [x] Build the Referrer review page with candidate profile, skills match, approve or decline actions, and optional message.
+- [x] Build distinct profile pages for Job Seekers (resume, skills, experience) and Referrers (company, expertise, referral capacity).
+- [x] Build the messaging and notifications center for referral status updates and direct communication.
+- [x] Apply a refined, professional, accessible visual system across every page and interaction.
+- [x] Add unit tests covering referral state behavior and key backend contracts.
+- [x] Verify all primary routes at desktop and mobile breakpoints, then save the completed project checkpoint.
+- [x] Persist authenticated onboarding, profile updates, saved roles, Referral Requests, referral reviews, messages, and notifications through the platform backend.
+- [x] Connect the Job Listings, Community and Explore, and both dashboards to live backend queries while retaining safe empty states.
+- [x] Add explicit role filters to Job Listings and Community and Explore, plus a verified-member community section on the landing page without fabricated testimonials.
+- [x] Extend tests for role-aware referral backend contracts and re-verify the completed platform before checkpointing.
+- [x] Persist saved-role actions from Job Listings and synchronize their state with the signed-in Job Seeker’s saved roles.
+- [x] Replace discovery and dashboard demo fallbacks with loading, error, and genuine empty states when live data is available.
+- [x] Restrict live dashboard Referral Request lists to the relevant Job Seeker or Referrer perspective.
+- [x] Add explicit query error states to Job Listings, Community and Explore, and both dashboards for failed live backend requests.
+- [x] Surface saved-role query and mutation failures directly in Job Listings.
+- [x] Surface Referral Request and saved-role query failures directly in both role-aware dashboards.

@@ -1,0 +1,3 @@
+import type { LucideIcon } from "lucide-react";
+
+export default function MetricCard({ label, value, detail, icon: Icon, accent = "text-violet-600 bg-violet-50" }: { label: string; value: string; detail: string; icon: LucideIcon; accent?: string }) { return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_14px_34px_rgba(28,25,55,0.045)]"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-2 text-3xl font-semibold tracking-[-0.05em] text-slate-950">{value}</p><p className="mt-2 text-xs font-medium text-slate-500">{detail}</p></div><span className={`grid h-10 w-10 place-items-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></span></div></div>; }
