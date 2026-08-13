@@ -107,3 +107,4 @@
 - [x] Add credential-capability and secure-session restoration tests for the PWA fallback path.
 - [x] Add a user-triggered saved-device sign-in mediation path that falls back safely to OAuth without storing browser credentials.
 - [x] Test focus, online, and visibility-triggered secure-session restoration behavior.
+- [x] Rewrite the landing page with compelling, credible conversion copy for both Job Seekers and Referrers.
