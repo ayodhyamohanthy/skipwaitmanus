@@ -109,3 +109,12 @@
 - [x] Test focus, online, and visibility-triggered secure-session restoration behavior.
 - [x] Rewrite the landing page with compelling, credible conversion copy for both Job Seekers and Referrers.
 - [x] Replace the violet-heavy visual treatment with a restrained, premium neutral system across active skipwait.me flows.
+- [x] Apply an original Sarvam-inspired warm editorial visual direction with saffron accents, rounded serif-led typography, and generous whitespace across active flows. Superseded by the later enterprise productivity direction.
+- [x] Apply the warm editorial typography, spacing, and premium hierarchy directly in Onboarding, ReferralRequest, Referrer, and Premium screens. Superseded by the later enterprise productivity direction.
+- [x] Verify the saffron accent system, serif-led headings, spacing, and responsive hierarchy on every active screen with visual QA evidence. Superseded by the later enterprise productivity direction.
+- [x] Redesign the mobile landing page around clear, touch-friendly Job Seeker and Referrer entry actions with concise motivating copy.
+- [x] Replace the warm editorial styling with an original enterprise productivity design system featuring clear action hierarchy, restrained surfaces, and role-specific referral conversion paths.
+- [x] Apply the final enterprise productivity hierarchy directly in Onboarding, ReferralRequest, Referrer, and Premium without depending primarily on global color remapping.
+- [x] Capture route-by-route desktop and mobile visual QA for /, /start, /request, /referrer, and /premium using the final enterprise design.
+- [x] Refactor ReferralRequest and Referrer with direct enterprise blue/slate card, button, heading, and panel classes instead of broad color remapping.
+- [x] Re-run desktop and mobile visual QA after the direct enterprise refactor of /request and /referrer.

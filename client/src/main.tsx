@@ -21,12 +21,20 @@ function initializeDeviceDefaults() {
 
 initializeDeviceDefaults();
 
-registerSW({
-  immediate: true,
-  onRegisterError(error) {
-    console.error("[PWA] Service worker registration failed", error);
-  },
-});
+if (import.meta.env.DEV) {
+  // Preview sessions may retain a service worker from a production build. Remove it
+  // here so Vite always renders the latest source during iterative design work.
+  navigator.serviceWorker?.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => { void registration.unregister(); });
+  });
+} else {
+  registerSW({
+    immediate: true,
+    onRegisterError(error) {
+      console.error("[PWA] Service worker registration failed", error);
+    },
+  });
+}
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
