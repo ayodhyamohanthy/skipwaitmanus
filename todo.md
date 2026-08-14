@@ -176,3 +176,4 @@
 - [x] Add a clear personal and work account switching flow with active-account status, sign-out, and preserved work-email OTP safeguards.
 - [x] Rename the remaining employee-shared openings mobile label to Internal Openings and verify consistent discovery terminology.
 - [x] Remove sign-in and account controls from the landing header, keeping authentication at protected Job Seeker and Referrer commitment steps.
+- [x] Add concise in-flow guidance to switch to a personal email for Job Seeker mode and to a verified work email for Referrer mode.
