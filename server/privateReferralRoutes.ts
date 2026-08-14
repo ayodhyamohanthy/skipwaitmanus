@@ -1,7 +1,8 @@
 import type { Express, Request } from "express";
 
 type Account = { id: number; openId: string };
-type Identity = { account: Account; primaryEmail?: { emailAddress: string; verification?: { status?: string } | null } | null };
+type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
+type Identity = { account: Account; primaryEmail?: EmailAddress | null; emailAddresses?: EmailAddress[] };
 type Attachment = { id: number; fileName: string; mimeType: string; fileSize: number; fileKey?: string };
 
 export type PrivateReferralRouteDeps = {
@@ -34,7 +35,6 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if ((kind !== "hiring_now" && kind !== "walk_in") || !roleTitle?.trim()) return res.status(400).json({ error: "Choose Hiring now or Walk-in and add the role" });
       const parseDate = (value?: string) => { if (!value) return undefined; const date = new Date(value); return Number.isNaN(date.getTime()) ? undefined : date; };
       if ((walkInAt && !parseDate(walkInAt)) || (walkInEndsAt && !parseDate(walkInEndsAt))) return res.status(400).json({ error: "Use valid walk-in dates" });
-      await deps.saveVerifiedWorkEmail(identity.account.id, identity.primaryEmail.emailAddress);
       const opportunity = await deps.publishCompanyOpportunity(identity.account.id, { kind, roleTitle, targetRoleUrl, location, walkInAt: parseDate(walkInAt), walkInEndsAt: parseDate(walkInEndsAt) });
       res.status(201).json({ opportunity });
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not publish that opportunity" }); }
@@ -59,7 +59,20 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch { res.status(502).send("We could not retrieve that document. Please try again."); }
   });
   app.post("/api/company-referrals/verify-work-email", async (req, res) => {
-    try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to verify a work email" }); if (!identity.primaryEmail || identity.primaryEmail.verification?.status !== "verified") return res.status(403).json({ error: "Verify your primary work email in Clerk before joining the private employee pool" }); const profile = await deps.saveVerifiedWorkEmail(identity.account.id, identity.primaryEmail.emailAddress); res.json({ verified: true, workEmailDomain: profile?.workEmailDomain }); } catch (error) { const message = error instanceof Error ? error.message : "We could not verify your work email"; const isValidationError = /personal email domain|work email address|required/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to verify a work email" });
+      if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
+      const verifiedEmail = identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
+      if (!verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
+      const profile = await deps.saveVerifiedWorkEmail(identity.account.id, verifiedEmail.emailAddress);
+      res.json({ verified: true, workEmailDomain: profile?.workEmailDomain });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not verify your work email";
+      const isValidationError = /personal email domain|work email address|required/i.test(message);
+      res.status(isValidationError ? 400 : 500).json({ error: message });
+    }
   });
   app.post("/api/company-referrals", async (req, res) => {
     try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk before sending a private company request" }); const { targetRoleUrl, attachmentIds } = req.body as { targetRoleUrl?: string; attachmentIds?: number[] }; if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" }); res.status(201).json(await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl, attachmentIds, personalPitch: "Private referral request submitted through skipwait.me." })); } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }

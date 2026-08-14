@@ -161,3 +161,4 @@
 - [x] Execute the authorized isolated Airtable referral-lifecycle verification without touching live application data or enabling payment providers.
 - [x] Fix the Referrer work-email verification action so a signed-in employee can continue into the private company inbox.
 - [x] Fix the Job Seeker resume-upload action so a signed-in user can attach the required resume and continue the private referral request.
+- [x] Replace Referrer work-email verification with a secure email-OTP flow that enrolls only verified company-email domains in the private employee pool.

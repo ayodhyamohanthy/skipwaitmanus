@@ -44,7 +44,7 @@ async function startServer() {
     const primaryEmail = clerkUser.primaryEmailAddress;
     await db.upsertUser({ openId: auth.userId, name: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null, email: primaryEmail?.emailAddress ?? null, loginMethod: "clerk" });
     const account = await db.getUserByOpenId(auth.userId);
-    return account ? { account, primaryEmail } : undefined;
+    return account ? { account, primaryEmail, emailAddresses: clerkUser.emailAddresses } : undefined;
   };
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
