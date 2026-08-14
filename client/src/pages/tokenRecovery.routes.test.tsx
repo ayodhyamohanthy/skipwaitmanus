@@ -100,6 +100,11 @@ describe("token recovery routes", () => {
   it("offers the intended regional and billing provider routes in the simulated checkout", () => {
     visit("/premium");
     render(<Premium />);
+    const brand = screen.getByRole("link", { name: "skipwait.me home" });
+    const back = screen.getByRole("link", { name: "Back" });
+    expect(back.getAttribute("href")).toBe("/request");
+    expect(brand.parentElement?.className).toContain("items-center");
+    expect(back.parentElement).not.toBe(brand.parentElement);
     expect(screen.getByRole("button", { name: /Razorpay/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /PayPal/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Chargebee/i })).toBeTruthy();
