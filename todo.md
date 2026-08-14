@@ -172,3 +172,4 @@
 - [x] Add a visible Clerk sign-out action to the account-status control so users can switch accounts.
 - [x] Rename opportunity discovery labels to make clear that the Wall contains privately shared employee-referral opportunities, not public career-page listings.
 - [x] Remove the separate saved-device sign-in control and restore supported browser credentials or active sessions automatically without disrupting sign-in fallback.
+- [x] Verify the requested Internal openings landing label, align test coverage, and save a checkpoint.
