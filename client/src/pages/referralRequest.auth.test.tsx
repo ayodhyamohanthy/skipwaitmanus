@@ -12,6 +12,7 @@ vi.mock("@/lib/trpc", () => ({
 
 vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
+  useUser: () => ({ isLoaded: true, user: null }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
 

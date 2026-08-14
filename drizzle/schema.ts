@@ -132,9 +132,22 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId)]);
 
+export const operationalActivityLogs = mysqlTable("operationalActivityLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  actorUserId: int("actorUserId").references(() => users.id, { onDelete: "set null" }),
+  action: varchar("action", { length: 100 }).notNull(),
+  outcome: mysqlEnum("outcome", ["success", "failure", "denied"]).notNull(),
+  resourceType: varchar("resourceType", { length: 80 }),
+  resourceId: varchar("resourceId", { length: 120 }),
+  companyDomain: varchar("companyDomain", { length: 255 }),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("operational_activity_created_idx").on(table.createdAt), index("operational_activity_actor_idx").on(table.actorUserId), index("operational_activity_action_idx").on(table.action)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Profile = typeof profiles.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
 export type CompanyOpportunity = typeof companyOpportunities.$inferSelect;
 export type ReferralRequest = typeof referralRequests.$inferSelect;
+export type OperationalActivityLog = typeof operationalActivityLogs.$inferSelect;

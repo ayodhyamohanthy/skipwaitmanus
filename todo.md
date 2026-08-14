@@ -163,3 +163,6 @@
 - [x] Fix the Job Seeker resume-upload action so a signed-in user can attach the required resume and continue the private referral request.
 - [x] Replace Referrer work-email verification with a secure email-OTP flow that enrolls only verified company-email domains in the private employee pool.
 - [x] Fix the Clerk security re-verification handoff required before sending a work-email OTP.
+- [x] Show clear signed-in account status and an account action in the active product header.
+- [x] Add privacy-safe operational activity logging for key Job Seeker and Referrer workflow events without recording document contents or authentication secrets.
+- [x] Build a protected administrator activity-log viewer with searchable diagnostic metadata and role-based access control.

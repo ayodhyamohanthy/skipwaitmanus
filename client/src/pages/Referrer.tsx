@@ -2,7 +2,7 @@ import { CheckCircle2, Copy, Download, ExternalLink, FileText, Mail, Paperclip, 
 import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { SignInButton, useAuth as useClerkAuth, useReverification, useUser } from "@clerk/react";
-import { Brand } from "@/components/Brand";
+import { AccountTopBar as Brand } from "@/components/AccountTopBar";
 import { CompanyInviteCard } from "@/components/CompanyInviteCard";
 import { canSpendToken, TOKEN_ACTION_COST } from "@/lib/tokens";
 

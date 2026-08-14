@@ -43,6 +43,13 @@
       "when": 1786669683097,
       "tag": "0005_nifty_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1786710772848,
+      "tag": "0006_outstanding_vivisector",
+      "breakpoints": true
     }
   ]
 }

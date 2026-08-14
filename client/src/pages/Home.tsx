@@ -2,6 +2,7 @@ import { ArrowRight, CheckCircle2, HeartHandshake, Sparkles } from "lucide-react
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { Brand } from "@/components/Brand";
+import { AccountStatus } from "@/components/AccountStatus";
 import { startLogin } from "@/const";
 import { requestSavedDeviceCredential, supportsBrowserCredentialMediation } from "@/lib/pwaContinuity";
 
@@ -12,7 +13,7 @@ export default function Home() {
   const useSavedDeviceSignIn = async () => { setDeviceSignIn(true); await requestSavedDeviceCredential(navigator.credentials); startLogin(); };
 
   return <main className="min-h-screen bg-slate-50 text-slate-950">
-    <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-6"><Brand /><div className="hidden items-center gap-5 sm:flex"><button onClick={() => go("/wall")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">Browse opportunities</button><button onClick={() => go("/referrer")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">I give referrals</button><button onClick={() => go("/start")} className="rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0847AD]">Request a referral</button></div></header>
+    <header className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-5 py-5 sm:px-6"><Brand /><div className="flex items-center gap-3 sm:gap-5"><div className="hidden items-center gap-5 sm:flex"><button onClick={() => go("/wall")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">Browse opportunities</button><button onClick={() => go("/referrer")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">I give referrals</button><button onClick={() => go("/start")} className="rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0847AD]">Request a referral</button></div><AccountStatus /></div></header>
     <section className="mx-auto grid max-w-6xl items-center gap-10 px-5 pb-12 pt-10 sm:px-6 sm:pt-12 lg:grid-cols-[1.08fr_.92fr] lg:gap-14 lg:pb-24 lg:pt-20">
       <div>
         <p className="hidden items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0B57D0] sm:inline-flex"><Sparkles className="h-3.5 w-3.5" />Referrals, without the runaround</p>
