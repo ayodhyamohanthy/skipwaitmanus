@@ -1,10 +1,7 @@
 // @vitest-environment jsdom
-import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Home from "./Home";
-
-vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: false }), useUser: () => ({ isLoaded: true, user: null }), SignInButton: ({ children }: { children: React.ReactNode }) => children }));
 
 afterEach(() => cleanup());
 
@@ -13,7 +10,7 @@ describe("landing discovery entry", () => {
     render(<Home />);
     expect(screen.getByRole("button", { name: /^Internal Openings$/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Internal openings$/ })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Sign in/i })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Sign in/i })).toBeNull();
     expect(screen.queryByText(/Use saved device sign-in/i)).toBeNull();
   });
 });
