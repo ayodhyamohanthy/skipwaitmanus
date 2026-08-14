@@ -1,6 +1,6 @@
 import { and, count, desc, eq, isNull, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { type InsertUser, jobs, messages, notifications, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { companyOpportunities, type InsertUser, jobs, messages, notifications, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -48,6 +48,26 @@ export async function saveProfile(userId: number, input: { accountType: "job_see
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   await db.insert(profiles).values({ userId, ...input, isOnboarded: true }).onDuplicateKeyUpdate({ set: { ...input, isOnboarded: true } });
   return getProfileByUserId(userId);
+}
+
+export type PublishCompanyOpportunityInput = { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; walkInAt?: Date; walkInEndsAt?: Date };
+
+export async function publishCompanyOpportunity(userId: number, input: PublishCompanyOpportunityInput) {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before publishing an opportunity");
+  const roleTitle = input.roleTitle.trim();
+  if (!roleTitle || roleTitle.length > 180) throw new Error("Add a role title before publishing");
+  if (input.targetRoleUrl) {
+    try { new URL(input.targetRoleUrl); } catch { throw new Error("Use a valid public job link or leave it blank"); }
+  }
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl: input.targetRoleUrl?.trim() || null, location: input.location?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true });
+  return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle };
+}
+
+export async function listPublicCompanyOpportunities() {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
 }
 
 export async function listJobs(input: { query?: string; company?: string; location?: string; seniority?: string }) {

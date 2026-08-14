@@ -150,3 +150,5 @@
 - [x] Move the X+Y+Z hiring-manager email draft from Referrer review to the Job Seeker’s post-referral confirmation experience.
 - [x] Replace whole-page Referrer scrolling with independent, bounded review and wallet section scrolling on desktop while preserving mobile flow.
 - [x] Create rendered design previews for an anonymized Opportunity Wall, a 20-second employee opportunity post, and a post-request company share card before enabling any of the three features.
+- [x] Implement the approved public Opportunity Wall with anonymous company-level opportunity cards and a progressive-sign-in referral handoff.
+- [x] Implement the approved verified-employee Hiring Now and Walk-in opportunity post composer with work-email verification at publish.

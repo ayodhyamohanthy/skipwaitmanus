@@ -50,6 +50,21 @@ export const jobs = mysqlTable("jobs", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location)]);
 
+export const companyOpportunities = mysqlTable("companyOpportunities", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
+  kind: mysqlEnum("kind", ["hiring_now", "walk_in"]).notNull(),
+  roleTitle: varchar("roleTitle", { length: 180 }).notNull(),
+  targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }),
+  location: varchar("location", { length: 180 }),
+  walkInAt: timestamp("walkInAt"),
+  walkInEndsAt: timestamp("walkInEndsAt"),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("company_opportunities_public_idx").on(table.isActive, table.createdAt), index("company_opportunities_domain_idx").on(table.companyDomain), index("company_opportunities_owner_idx").on(table.ownerId)]);
+
 export const savedRoles = mysqlTable("savedRoles", {
   id: int("id").autoincrement().primaryKey(),
   jobSeekerId: int("jobSeekerId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -121,4 +136,5 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Profile = typeof profiles.$inferSelect;
 export type Job = typeof jobs.$inferSelect;
+export type CompanyOpportunity = typeof companyOpportunities.$inferSelect;
 export type ReferralRequest = typeof referralRequests.$inferSelect;
