@@ -5,13 +5,18 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AccountMenu } from "./AccountMenu";
 
 const signOut = vi.fn().mockResolvedValue(undefined);
-vi.mock("@clerk/react", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, signOut }) }));
+const openUserProfile = vi.fn();
+vi.mock("@clerk/react", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, signOut }), useClerk: () => ({ openUserProfile }) }));
 
 describe("AccountMenu", () => {
-  afterEach(() => { cleanup(); signOut.mockClear(); });
+  afterEach(() => { cleanup(); signOut.mockClear(); openUserProfile.mockClear(); });
 
-  it("keeps account identity hidden and exposes sign out from the user-icon dropdown", async () => {
+  it("keeps account identity hidden and exposes Settings above Sign out from the user-icon dropdown", async () => {
     render(<AccountMenu />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Settings" }));
+    expect(openUserProfile).toHaveBeenCalledTimes(1);
+
     fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);

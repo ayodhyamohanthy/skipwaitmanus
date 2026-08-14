@@ -11,6 +11,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
+  useClerk: () => ({ openUserProfile: vi.fn() }),
   useUser: () => ({ isLoaded: true, user: { emailAddresses: [], createEmailAddress: vi.fn(), reload: vi.fn() } }),
   useReverification: (action: (...args: any[]) => unknown) => action,
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
