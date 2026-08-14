@@ -47,10 +47,8 @@ export default function Referrer() {
     try {
       const created = await createWorkEmailAddress(normalizedEmail);
       if (!created) return;
-      await user.reload();
-      const emailAddress = user.emailAddresses.find(address => address.id === created.id);
-      if (!emailAddress) throw new Error("We could not prepare that work email. Try again.");
-      await emailAddress.prepareVerification({ strategy: "email_code" });
+      if (created.emailAddress.trim().toLowerCase() !== normalizedEmail) throw new Error("We could not prepare the company email you entered. Please try again.");
+      await created.prepareVerification({ strategy: "email_code" });
       setWorkEmail(normalizedEmail); setWorkEmailStep("code");
     } catch (error) { setWorkEmailError(error instanceof Error ? error.message : "We could not send your work-email code"); }
     finally { setVerifyingWorkEmail(false); }

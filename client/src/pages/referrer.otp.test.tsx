@@ -45,6 +45,7 @@ describe("Referrer work-email OTP verification", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy());
     fireEvent.change(screen.getByLabelText("Company email"), { target: { value: "employee@acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send code" }));
+    await waitFor(() => expect(clerkState.createEmailAddress).toHaveBeenCalledWith({ email: "employee@acme.com" }));
     await waitFor(() => expect(clerkState.emailAddress.prepareVerification).toHaveBeenCalledWith({ strategy: "email_code" }));
     fireEvent.change(screen.getByLabelText("One-time code"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify code" }));

@@ -180,3 +180,4 @@
 - [x] Remove visible personal/work email switching labels and the signed-in email address from active flow headers to reduce UI overload.
 - [x] Remove the remaining signed-in status, account-switch, and sign-out icons from active Job Seeker and Referrer headers.
 - [x] Add a compact user-icon dropdown in active headers and place Sign out inside it without showing account identity.
+- [x] Diagnose and fix work-email OTP delivery when a code is routed to the personal sign-in email instead of the entered company email.
