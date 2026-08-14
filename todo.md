@@ -142,5 +142,6 @@
 - [x] Apply the supplied Clerk test-instance configuration and validate protected private-referral authentication at the middleware boundary.
 - [ ] Use an isolated Airtable test ledger to verify referral linkage, exclusive claim, and document-access authorization without touching live application data.
 - [x] Create a dedicated disposable Airtable base for private-referral authorization verification.
+- [ ] Defer live Razorpay, PayPal, and Chargebee provider activation; retain the reviewed simulation until the user explicitly reopens live payments.
 - [x] Move the X+Y+Z hiring-manager email draft from Referrer review to the Job Seeker’s post-referral confirmation experience.
 - [x] Replace whole-page Referrer scrolling with independent, bounded review and wallet section scrolling on desktop while preserving mobile flow.
