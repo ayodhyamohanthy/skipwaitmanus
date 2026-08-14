@@ -181,3 +181,4 @@
 - [x] Remove the remaining signed-in status, account-switch, and sign-out icons from active Job Seeker and Referrer headers.
 - [x] Add a compact user-icon dropdown in active headers and place Sign out inside it without showing account identity.
 - [x] Diagnose and fix work-email OTP delivery when a code is routed to the personal sign-in email instead of the entered company email.
+- [x] Require Target Role URL to be a valid HTTP or HTTPS web link before continuing or creating a private referral request.

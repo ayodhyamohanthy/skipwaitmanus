@@ -29,6 +29,8 @@ describe("private referral HTTP routes", () => {
 
     const upload = await request(app).post("/api/documents").set("x-test-user", "seeker").send({ fileName: "resume.pdf", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,cGRm" });
     expect(upload.status).toBe(201); expect(upload.body.url).toBe("/api/documents/77");
+    const malformed = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "acme product designer", attachmentIds: [77] });
+    expect(malformed.status).toBe(400); expect(malformed.body.error).toMatch(/complete job link/i);
     const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77] });
     expect(created.status).toBe(201); expect(created.body.companyDomain).toBe("acme.com");
     expect((await request(app).get("/api/documents/77").set("x-test-user", "outsider")).status).toBe(404);
