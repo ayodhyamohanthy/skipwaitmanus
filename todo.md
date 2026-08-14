@@ -174,3 +174,4 @@
 - [x] Remove the separate saved-device sign-in control and restore supported browser credentials or active sessions automatically without disrupting sign-in fallback.
 - [x] Verify the requested Internal openings landing label, align test coverage, and save a checkpoint.
 - [x] Add a clear personal and work account switching flow with active-account status, sign-out, and preserved work-email OTP safeguards.
+- [x] Rename the remaining employee-shared openings mobile label to Internal Openings and verify consistent discovery terminology.
