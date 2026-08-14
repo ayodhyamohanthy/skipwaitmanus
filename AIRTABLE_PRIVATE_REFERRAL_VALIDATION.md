@@ -19,3 +19,9 @@
 ## Boundary of this result
 
 This confirms the HTTP authorization contract and keeps a traceable record in a disposable Airtable base. It does **not** replace the remaining production-middleware exercise or a test-database run against real persistence. Those require a staging database and Clerk-compatible production boundary setup, and remain separately tracked.
+
+## Live middleware-boundary check
+
+The development deployment was also exercised through the existing Clerk-authenticated browser session with a read-only request to an unassigned referral identifier. The private route returned only the generic unassigned-request error and did not expose candidate data, request metadata, attachment URLs, or signed document access. The isolated ledger records this non-destructive check as `recyKjGboOMuxj6ZG`.
+
+This validates the mounted route and `getAuth()` boundary for the current development deployment. It is not a substitute for the still-pending test-database lifecycle run.

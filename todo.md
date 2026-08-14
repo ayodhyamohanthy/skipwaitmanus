@@ -137,7 +137,7 @@
 - [x] Remove Referrer localStorage fallbacks so candidate context and documents are available only from claimed backend data.
 - [x] Reject consumer email domains before adding a verified employee to the hidden company pool.
 - [x] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.
-- [ ] Exercise the production private-referral route wiring with Clerk-compatible middleware-boundary authentication.
+- [x] Exercise the production private-referral route wiring with Clerk-compatible middleware-boundary authentication.
 - [ ] Exercise upload, referral linkage, exclusive claim, and signed document access against a test database instead of mocked persistence.
 - [x] Apply the supplied Clerk test-instance configuration and validate protected private-referral authentication at the middleware boundary.
 - [x] Use an isolated Airtable test ledger to verify referral linkage, exclusive claim, and document-access authorization without touching live application data.
