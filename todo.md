@@ -160,3 +160,4 @@
 - [x] Add automated coverage for growth-sharing actions and token monetization states, then validate desktop and mobile performance.
 - [x] Execute the authorized isolated Airtable referral-lifecycle verification without touching live application data or enabling payment providers.
 - [x] Fix the Referrer work-email verification action so a signed-in employee can continue into the private company inbox.
+- [x] Fix the Job Seeker resume-upload action so a signed-in user can attach the required resume and continue the private referral request.
