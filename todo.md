@@ -185,3 +185,4 @@
 - [x] Add a Settings action above Sign out in the compact user-icon dropdown.
 - [x] Diagnose and fix the Add your resume control when it does not open secure sign-in or the authenticated file chooser.
 - [x] Complete a comprehensive evidence-based review of global platform growth playbooks and provide prioritised skipwait.me recommendations without implementing changes.
+- [x] Remove the separate unsigned sign-in control and make Add your resume open secure sign-in directly.

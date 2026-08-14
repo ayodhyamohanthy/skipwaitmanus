@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import ReferralRequest from "./ReferralRequest";
 
-const authState = vi.hoisted(() => ({ signedIn: false }));
+const authState = vi.hoisted(() => ({ signedIn: false, openSignIn: vi.fn() }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: { ai: { draftHiringManagerEmail: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } } },
@@ -14,7 +14,7 @@ vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
   useClerk: () => ({ openUserProfile: vi.fn() }),
   useUser: () => ({ isLoaded: true, user: null }),
-  SignInButton: ({ children }: { children: React.ReactNode }) => children,
+  SignInButton: ({ children }: { children: React.ReactNode }) => <span onClick={authState.openSignIn}>{children}</span>,
 }));
 
 describe("ReferralRequest secure resume handoff", () => {
@@ -23,15 +23,17 @@ describe("ReferralRequest secure resume handoff", () => {
     localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
     localStorage.setItem("bridge-tokens", "3");
     authState.signedIn = false;
+    authState.openSignIn.mockReset();
   });
 
   afterEach(() => cleanup());
 
-  it("opens the secure sign-in handoff from the resume action when authentication is required", () => {
+  it("opens secure sign-in from the single resume action when authentication is required", () => {
     render(<ReferralRequest />);
 
-    expect(screen.getByRole("button", { name: /add your resume securely/i })).toBeTruthy();
-    expect(screen.getByText(/continue with sign-in, then choose your required resume/i)).toBeTruthy();
+    fireEvent.click(screen.getByText("Add your resume").closest("button") as HTMLButtonElement);
+    expect(authState.openSignIn).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: /secure sign in/i })).toBeNull();
     expect(screen.getByRole("button", { name: /send private referral request/i })).toHaveProperty("disabled", true);
     expect(document.querySelector('input[type="file"]')).toBeNull();
   });
