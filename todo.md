@@ -149,3 +149,4 @@
 - [x] Design a progressive sign-in model and low-friction verified employee hiring and walk-in opportunity sharing flow.
 - [x] Move the X+Y+Z hiring-manager email draft from Referrer review to the Job Seeker’s post-referral confirmation experience.
 - [x] Replace whole-page Referrer scrolling with independent, bounded review and wallet section scrolling on desktop while preserving mobile flow.
+- [x] Create rendered design previews for an anonymized Opportunity Wall, a 20-second employee opportunity post, and a post-request company share card before enabling any of the three features.
