@@ -13,16 +13,12 @@ vi.mock("@clerk/react", () => ({
 
 describe("AccountStatus", () => {
   afterEach(() => { cleanup(); signOut.mockClear(); });
-  it("shows the signed-in identity, mode-aware switching label, and sign-out", () => {
-    render(<AccountStatus mode="job-seeker" />);
-    expect(screen.getByText(/Active: ayodhya@skipwait.me/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Switch to personal email" })).toBeTruthy();
+  it("shows only compact essential account actions without exposing the active email", () => {
+    render(<AccountStatus />);
+    expect(screen.getByLabelText("Signed-in account")).toBeTruthy();
+    expect(screen.queryByText(/ayodhya@skipwait.me/i)).toBeNull();
+    expect(screen.getByRole("button", { name: "Switch account" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
-  });
-
-  it("shows a work-email switch in Referrer mode", () => {
-    render(<AccountStatus mode="referrer" />);
-    expect(screen.getByRole("button", { name: "Switch to work email" })).toBeTruthy();
   });
 });
