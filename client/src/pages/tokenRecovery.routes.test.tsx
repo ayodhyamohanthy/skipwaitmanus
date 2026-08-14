@@ -47,6 +47,8 @@ describe("token recovery routes", () => {
     cleanup();
     visit("/request");
     render(<ReferralRequest />);
+    expect(screen.getAllByText("Supporting documents").length).toBeGreaterThan(1);
+    expect(screen.getByText("Optional")).toBeTruthy();
     localStorage.setItem("bridge-target-url", "https://careers.acme.com/jobs/product-designer");
     const send = screen.getByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
     expect(send.disabled).toBe(false);
