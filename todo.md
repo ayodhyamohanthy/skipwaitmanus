@@ -166,3 +166,7 @@
 - [x] Show clear signed-in account status and an account action in the active product header.
 - [x] Add privacy-safe operational activity logging for key Job Seeker and Referrer workflow events without recording document contents or authentication secrets.
 - [x] Build a protected administrator activity-log viewer with searchable diagnostic metadata and role-based access control.
+- [ ] Promote the explicitly confirmed account that received the protected-route denial to administrator and verify access to the activity log.
+- [ ] Repair the Clerk-to-application administrator authorization bridge for the explicitly promoted account.
+- [ ] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through Clerk sign-in synchronization.
+- [x] Add a visible Clerk sign-out action to the account-status control so users can switch accounts.

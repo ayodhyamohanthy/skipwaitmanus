@@ -12,11 +12,17 @@ export async function getDb() {
   return _db;
 }
 
+export function resolveSyncedUserRole(input: { openId: string; requestedRole?: "user" | "admin"; existingRole?: "user" | "admin" }) {
+  return input.requestedRole ?? input.existingRole ?? (input.openId === ENV.ownerOpenId ? "admin" : "user");
+}
+
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
   if (!db) return;
-  const values: InsertUser = { openId: user.openId, name: user.name ?? null, email: user.email ?? null, loginMethod: user.loginMethod ?? null, lastSignedIn: user.lastSignedIn ?? new Date(), role: user.role ?? (user.openId === ENV.ownerOpenId ? "admin" : "user") };
+  const current = await db.select({ role: users.role }).from(users).where(eq(users.openId, user.openId)).limit(1);
+  const role = resolveSyncedUserRole({ openId: user.openId, requestedRole: user.role, existingRole: current[0]?.role });
+  const values: InsertUser = { openId: user.openId, name: user.name ?? null, email: user.email ?? null, loginMethod: user.loginMethod ?? null, lastSignedIn: user.lastSignedIn ?? new Date(), role };
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: { name: values.name, email: values.email, loginMethod: values.loginMethod, lastSignedIn: values.lastSignedIn, role: values.role } });
 }
 
