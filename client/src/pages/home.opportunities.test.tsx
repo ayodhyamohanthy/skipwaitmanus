@@ -4,7 +4,6 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Home from "./Home";
 
-vi.mock("@/lib/pwaContinuity", () => ({ requestSavedDeviceCredential: vi.fn(), supportsBrowserCredentialMediation: () => false }));
 vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: false }), useUser: () => ({ isLoaded: true, user: null }), SignInButton: ({ children }: { children: React.ReactNode }) => children }));
 
 afterEach(() => cleanup());
@@ -15,5 +14,6 @@ describe("landing discovery entry", () => {
     expect(screen.getByRole("button", { name: /^Explore employee-shared openings$/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /^Employee-shared openings$/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Sign in/i })).toBeTruthy();
+    expect(screen.queryByText(/Use saved device sign-in/i)).toBeNull();
   });
 });

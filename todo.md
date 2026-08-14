@@ -171,3 +171,4 @@
 - [ ] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through Clerk sign-in synchronization.
 - [x] Add a visible Clerk sign-out action to the account-status control so users can switch accounts.
 - [x] Rename opportunity discovery labels to make clear that the Wall contains privately shared employee-referral opportunities, not public career-page listings.
+- [x] Remove the separate saved-device sign-in control and restore supported browser credentials or active sessions automatically without disrupting sign-in fallback.
