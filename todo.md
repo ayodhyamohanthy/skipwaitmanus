@@ -136,11 +136,11 @@
 - [x] Grant resume access only to the Job Seeker and the verified employee who claims the request.
 - [x] Remove Referrer localStorage fallbacks so candidate context and documents are available only from claimed backend data.
 - [x] Reject consumer email domains before adding a verified employee to the hidden company pool.
-- [ ] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.
+- [x] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.
 - [ ] Exercise the production private-referral route wiring with Clerk-compatible middleware-boundary authentication.
 - [ ] Exercise upload, referral linkage, exclusive claim, and signed document access against a test database instead of mocked persistence.
 - [x] Apply the supplied Clerk test-instance configuration and validate protected private-referral authentication at the middleware boundary.
-- [ ] Use an isolated Airtable test ledger to verify referral linkage, exclusive claim, and document-access authorization without touching live application data.
+- [x] Use an isolated Airtable test ledger to verify referral linkage, exclusive claim, and document-access authorization without touching live application data.
 - [x] Create a dedicated disposable Airtable base for private-referral authorization verification.
 - [x] Defer live Razorpay, PayPal, and Chargebee provider activation; retain the reviewed simulation until the user explicitly reopens live payments.
 - [x] Update landing workflow language so it correctly assigns the post-submission hiring-manager email draft to the Job Seeker.
@@ -158,3 +158,4 @@
 - [x] Add contextual, truthful opportunity and referral-sharing prompts only after meaningful user success moments, without blocking the core task path.
 - [x] Improve monetization clarity and conversion within the existing token balance panels while retaining three free tokens and simulated checkout.
 - [x] Add automated coverage for growth-sharing actions and token monetization states, then validate desktop and mobile performance.
+- [x] Execute the authorized isolated Airtable referral-lifecycle verification without touching live application data or enabling payment providers.
