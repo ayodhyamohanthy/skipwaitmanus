@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Link } from "wouter";
 import { SignInButton, useAuth as useClerkAuth } from "@clerk/react";
 import { Brand } from "@/components/Brand";
+import { AccountMenu } from "@/components/AccountMenu";
 import { CompanyInviteCard } from "@/components/CompanyInviteCard";
 import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, spendToken, TOKEN_ACTION_COST } from "@/lib/tokens";
 import { clearReferralDraft } from "@/lib/pwaContinuity";
@@ -13,7 +14,7 @@ const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,appli
 function getSavedAttachments(): Attachment[] { try { return JSON.parse(localStorage.getItem("bridge-seeker-attachments") || "[]") as Attachment[]; } catch { return []; } }
 function readFile(file: File): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); }); }
 
-function Shell({ children, tokens, label }: { children: React.ReactNode; tokens: number; label: string }) { return <main data-skipwait-screen="request" className="min-h-screen bg-slate-50 px-6 py-6 text-slate-950"><div className="mx-auto max-w-3xl"><div className="flex items-center justify-between gap-3"><Brand /><span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 sm:inline">{tokens} {label}</span></div>{children}</div></main>; }
+function Shell({ children, tokens, label }: { children: React.ReactNode; tokens: number; label: string }) { return <main data-skipwait-screen="request" className="min-h-screen bg-slate-50 px-6 py-6 text-slate-950"><div className="mx-auto max-w-3xl"><div className="flex items-center justify-between gap-3"><Brand /><div className="flex items-center gap-2"><span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 sm:inline">{tokens} {label}</span><AccountMenu /></div></div>{children}</div></main>; }
 function Status({ title, body }: { title: string; body: string }) { return <div className="rounded-xl border border-slate-200 bg-white p-5"><p className="text-sm font-semibold text-slate-900">{title}</p><p className="mt-1 text-xs leading-5 text-slate-500">{body}</p></div>; }
 function initialHiringManagerEmail(candidate: string, targetRoleUrl: string) { return `Subject: Referral — ${candidate} for this role\n\nHi [Hiring Manager Name],\n\nI’d like to recommend ${candidate} for this opportunity: ${targetRoleUrl}\n\n${candidate} [accomplished X], measured by [Y], by [doing Z].\n\nI’ve attached their supporting documents for your review and am happy to share more context if helpful.\n\nBest,\n[Your Name]`; }
 

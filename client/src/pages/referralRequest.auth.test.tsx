@@ -11,7 +11,7 @@ vi.mock("@/lib/trpc", () => ({
 }));
 
 vi.mock("@clerk/react", () => ({
-  useAuth: () => ({ isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
   useUser: () => ({ isLoaded: true, user: null }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -42,6 +42,6 @@ describe("ReferralRequest secure resume handoff", () => {
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
     expect(fileInput).not.toBeNull();
     expect(fileInput?.disabled).toBe(false);
-    expect(screen.queryByLabelText("Signed-in account")).toBeNull();
+    expect(screen.getByRole("button", { name: "Account menu" })).toBeTruthy();
   });
 });
