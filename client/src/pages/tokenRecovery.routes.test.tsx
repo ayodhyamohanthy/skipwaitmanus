@@ -56,6 +56,10 @@ describe("token recovery routes", () => {
     await waitFor(() => expect(screen.getByText("Your request is with verified employees.")).toBeTruthy());
     expect(screen.getByText("Your hiring-manager referral email")).toBeTruthy();
     expect(screen.getByLabelText("Hiring-manager referral email")).toBeTruthy();
+    expect(screen.getByText("Private company invitation")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "WhatsApp" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "LinkedIn" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Email" })).toBeTruthy();
   });
 
   it("takes a verified employee from a zero-balance block through purchase and back to a usable private-request approval", async () => {
@@ -86,6 +90,8 @@ describe("token recovery routes", () => {
     expect(approve.disabled).toBe(false);
     fireEvent.click(approve);
     expect(screen.getByText("Referral approved.")).toBeTruthy();
+    expect(screen.getByText("Private company invitation")).toBeTruthy();
+    expect(screen.getByText("Keep acme.com covered")).toBeTruthy();
   });
 
   it("offers the intended regional and billing provider routes in the simulated checkout", () => {

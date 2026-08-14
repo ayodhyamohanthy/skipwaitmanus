@@ -153,3 +153,8 @@
 - [x] Implement the approved public Opportunity Wall with anonymous company-level opportunity cards and a progressive-sign-in referral handoff.
 - [x] Implement the approved verified-employee Hiring Now and Walk-in opportunity post composer with work-email verification at publish.
 - [x] Add a concise landing-page entry to the approved public Opportunity Wall.
+- [x] Audit the existing viral-growth playbook, live referral funnels, sharing surfaces, and $1 token model against the zero-friction and privacy constraints.
+- [x] Implement a post-request, company-specific share loop with copy, WhatsApp, LinkedIn, and email handoffs that never reveals an employee identity.
+- [x] Add contextual, truthful opportunity and referral-sharing prompts only after meaningful user success moments, without blocking the core task path.
+- [x] Improve monetization clarity and conversion within the existing token balance panels while retaining three free tokens and simulated checkout.
+- [x] Add automated coverage for growth-sharing actions and token monetization states, then validate desktop and mobile performance.
