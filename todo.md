@@ -184,3 +184,4 @@
 - [x] Require Target Role URL to be a valid HTTP or HTTPS web link before continuing or creating a private referral request.
 - [x] Add a Settings action above Sign out in the compact user-icon dropdown.
 - [x] Diagnose and fix the Add your resume control when it does not open secure sign-in or the authenticated file chooser.
+- [x] Complete a comprehensive evidence-based review of global platform growth playbooks and provide prioritised skipwait.me recommendations without implementing changes.
