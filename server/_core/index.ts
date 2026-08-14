@@ -12,6 +12,7 @@ import { storageGetSignedUrl, storagePut } from "../storage";
 import * as db from "../db";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -50,87 +51,7 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   registerStorageProxy(app);
   registerOAuthRoutes(app);
-  app.post("/api/documents", async (req, res) => {
-    try {
-      const identity = await resolveClerkAccount(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
-      const { fileName, mimeType, dataUrl } = req.body as { fileName?: string; mimeType?: string; dataUrl?: string };
-      if (!fileName || !mimeType || !dataUrl) return res.status(400).json({ error: "Document details are required" });
-      const buffer = dataUrlToBuffer(dataUrl);
-      if (buffer.length === 0 || buffer.length > 10 * 1024 * 1024) return res.status(400).json({ error: "Documents must be smaller than 10 MB" });
-      const safeName = sanitizeDocumentName(fileName);
-      const { key } = await storagePut(`skipwait/private-referrals/${identity.account.openId}/${Date.now()}-${safeName}`, buffer, mimeType);
-      const attachment = await db.createReferralAttachment(identity.account.id, { fileName, fileKey: key, mimeType, fileSize: buffer.length });
-      res.status(201).json({ id: attachment.id, fileName, mimeType, fileSize: buffer.length, url: `/api/documents/${attachment.id}` });
-    } catch (error) {
-      console.error("Document upload failed", error);
-      res.status(500).json({ error: "We could not upload that document. Please try again." });
-    }
-  });
-  app.get("/api/documents/:attachmentId", async (req, res) => {
-    try {
-      const auth = getAuth(req);
-      const attachmentId = Number(req.params.attachmentId);
-      if (!auth.isAuthenticated || !auth.userId) return res.status(401).send("Sign in with Clerk to view this document");
-      if (!Number.isInteger(attachmentId) || attachmentId <= 0) return res.status(400).send("Invalid document reference");
-      const viewer = await db.getUserByOpenId(auth.userId);
-      if (!viewer) return res.status(403).send("Document access is not available for this account");
-      const attachment = await db.getAccessibleReferralAttachment(viewer.id, attachmentId);
-      if (!attachment) return res.status(404).send("Document not found");
-      const url = await storageGetSignedUrl(attachment.fileKey);
-      res.set("Cache-Control", "private, no-store");
-      res.redirect(307, url);
-    } catch (error) {
-      console.error("Secure document access failed", error);
-      res.status(502).send("We could not retrieve that document. Please try again.");
-    }
-  });
-  app.post("/api/company-referrals/verify-work-email", async (req, res) => {
-    try {
-      const identity = await resolveClerkAccount(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to verify a work email" });
-      if (!identity.primaryEmail || identity.primaryEmail.verification?.status !== "verified") return res.status(403).json({ error: "Verify your primary work email in Clerk before joining the private employee pool" });
-      const profile = await db.saveVerifiedWorkEmail(identity.account.id, identity.primaryEmail.emailAddress);
-      res.json({ verified: true, workEmailDomain: profile?.workEmailDomain });
-    } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : "We could not verify your work email" }); }
-  });
-  app.post("/api/company-referrals", async (req, res) => {
-    try {
-      const identity = await resolveClerkAccount(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk before sending a private company request" });
-      const { targetRoleUrl, attachmentIds } = req.body as { targetRoleUrl?: string; attachmentIds?: number[] };
-      if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
-      const request = await db.createCompanyReferralRequest(identity.account.id, { targetRoleUrl, attachmentIds, personalPitch: "Private referral request submitted through skipwait.me." });
-      res.status(201).json(request);
-    } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
-  });
-  app.get("/api/company-referrals/inbox", async (req, res) => {
-    try {
-      const identity = await resolveClerkAccount(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view employee requests" });
-      res.json({ requests: await db.listCompanyReferralInbox(identity.account.id) });
-    } catch { res.status(500).json({ error: "We could not load private company requests" }); }
-  });
-  app.get("/api/company-referrals/:requestId", async (req, res) => {
-    try {
-      const identity = await resolveClerkAccount(req);
-      const requestId = Number(req.params.requestId);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view this request" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
-      const request = await db.getClaimedCompanyReferralDetail(identity.account.id, requestId);
-      if (!request) return res.status(404).json({ error: "This private request is not assigned to your verified employee account" });
-      res.json({ request: { ...request, attachments: request.attachments.map(attachment => ({ ...attachment, url: `/api/documents/${attachment.id}` })) } });
-    } catch { res.status(500).json({ error: "We could not load this private referral request" }); }
-  });
-  app.post("/api/company-referrals/:requestId/claim", async (req, res) => {
-    try {
-      const identity = await resolveClerkAccount(req);
-      const requestId = Number(req.params.requestId);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to claim a referral request" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
-      res.json(await db.claimCompanyReferralRequest(identity.account.id, requestId));
-    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); }
-  });
+  registerPrivateReferralRoutes(app, { resolveIdentity: resolveClerkAccount, dataUrlToBuffer, sanitizeDocumentName, storagePut, storageGetSignedUrl, createReferralAttachment: db.createReferralAttachment, getAccessibleReferralAttachment: db.getAccessibleReferralAttachment, saveVerifiedWorkEmail: db.saveVerifiedWorkEmail, createCompanyReferralRequest: db.createCompanyReferralRequest, listCompanyReferralInbox: db.listCompanyReferralInbox, claimCompanyReferralRequest: db.claimCompanyReferralRequest, getClaimedCompanyReferralDetail: db.getClaimedCompanyReferralDetail });
   // tRPC API
   app.use(
     "/api/trpc",
