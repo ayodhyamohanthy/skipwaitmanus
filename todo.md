@@ -159,3 +159,4 @@
 - [x] Improve monetization clarity and conversion within the existing token balance panels while retaining three free tokens and simulated checkout.
 - [x] Add automated coverage for growth-sharing actions and token monetization states, then validate desktop and mobile performance.
 - [x] Execute the authorized isolated Airtable referral-lifecycle verification without touching live application data or enabling payment providers.
+- [x] Fix the Referrer work-email verification action so a signed-in employee can continue into the private company inbox.
