@@ -28,14 +28,21 @@ describe("ReferralRequest secure resume handoff", () => {
 
   afterEach(() => cleanup());
 
-  it("opens secure sign-in from the single resume action when authentication is required", () => {
+  it("lets unsigned Job Seekers choose a resume before opening sign-in from Send", () => {
     render(<ReferralRequest />);
 
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(fileInput).toBeTruthy();
+    const openFileChooser = vi.spyOn(fileInput, "click");
     fireEvent.click(screen.getByText("Add your resume").closest("button") as HTMLButtonElement);
+    expect(openFileChooser).toHaveBeenCalledTimes(1);
+    fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
+    expect(screen.getByText("avery-resume.pdf")).toBeTruthy();
+    const send = screen.getByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
+    expect(send.disabled).toBe(false);
+    fireEvent.click(send);
     expect(authState.openSignIn).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("button", { name: /secure sign in/i })).toBeNull();
-    expect(screen.getByRole("button", { name: /send private referral request/i })).toHaveProperty("disabled", true);
-    expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 
   it("shows the real file chooser once the Job Seeker is signed in", () => {
@@ -47,7 +54,7 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(fileInput?.disabled).toBe(false);
     expect(screen.getByRole("button", { name: "Account menu" })).toBeTruthy();
     const openFileChooser = vi.spyOn(fileInput as HTMLInputElement, "click");
-    fireEvent.click(screen.getByRole("button", { name: "Add your resume" }));
+    fireEvent.click(screen.getByText("Add your resume").closest("button") as HTMLButtonElement);
     expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
 });
