@@ -1,7 +1,7 @@
 import { CheckCircle2, Copy, Download, ExternalLink, FileText, Mail, Paperclip, Plus, Send, Sparkles, XCircle } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { SignInButton, useAuth as useClerkAuth, useUser } from "@clerk/react";
+import { SignInButton, useAuth as useClerkAuth, useReverification, useUser } from "@clerk/react";
 import { Brand } from "@/components/Brand";
 import { CompanyInviteCard } from "@/components/CompanyInviteCard";
 import { canSpendToken, TOKEN_ACTION_COST } from "@/lib/tokens";
@@ -16,6 +16,7 @@ export default function Referrer() {
   const [activeDocument, setActiveDocument] = useState(0);
   const { isSignedIn, getToken } = useClerkAuth();
   const { user, isLoaded: isUserLoaded } = useUser();
+  const createWorkEmailAddress = useReverification(async (email: string) => user?.createEmailAddress({ email }));
   const inviteCompany = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("company")?.trim().toLowerCase() || "";
   const [inbox, setInbox] = useState<CompanyInboxItem[]>([]);
   const [inboxReady, setInboxReady] = useState(false);
@@ -44,7 +45,8 @@ export default function Referrer() {
     if (!user || !isUserLoaded) { setWorkEmailError("Your signed-in account is still loading. Please try again in a moment."); return; }
     setVerifyingWorkEmail(true); setWorkEmailError("");
     try {
-      const created = await user.createEmailAddress({ email: normalizedEmail });
+      const created = await createWorkEmailAddress(normalizedEmail);
+      if (!created) return;
       await user.reload();
       const emailAddress = user.emailAddresses.find(address => address.id === created.id);
       if (!emailAddress) throw new Error("We could not prepare that work email. Try again.");

@@ -162,3 +162,4 @@
 - [x] Fix the Referrer work-email verification action so a signed-in employee can continue into the private company inbox.
 - [x] Fix the Job Seeker resume-upload action so a signed-in user can attach the required resume and continue the private referral request.
 - [x] Replace Referrer work-email verification with a secure email-OTP flow that enrolls only verified company-email domains in the private employee pool.
+- [x] Fix the Clerk security re-verification handoff required before sending a work-email OTP.
