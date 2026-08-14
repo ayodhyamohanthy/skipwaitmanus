@@ -146,5 +146,6 @@
 - [x] Update landing workflow language so it correctly assigns the post-submission hiring-manager email draft to the Job Seeker.
 - [x] Present additional documents as an explicitly optional supporting-documents choice after the required resume is attached.
 - [x] Design a privacy-preserving viral growth loop that compounds verified employee participation and Job Seeker outcomes without exposing Referrer identities.
+- [x] Design a progressive sign-in model and low-friction verified employee hiring and walk-in opportunity sharing flow.
 - [x] Move the X+Y+Z hiring-manager email draft from Referrer review to the Job Seeker’s post-referral confirmation experience.
 - [x] Replace whole-page Referrer scrolling with independent, bounded review and wallet section scrolling on desktop while preserving mobile flow.
