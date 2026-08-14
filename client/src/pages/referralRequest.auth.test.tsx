@@ -42,5 +42,6 @@ describe("ReferralRequest secure resume handoff", () => {
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement | null;
     expect(fileInput).not.toBeNull();
     expect(fileInput?.disabled).toBe(false);
+    expect(screen.queryByLabelText("Signed-in account")).toBeNull();
   });
 });
