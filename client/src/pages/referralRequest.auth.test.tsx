@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import ReferralRequest from "./ReferralRequest";
 
 const authState = vi.hoisted(() => ({ signedIn: false }));
@@ -44,5 +44,8 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(fileInput).not.toBeNull();
     expect(fileInput?.disabled).toBe(false);
     expect(screen.getByRole("button", { name: "Account menu" })).toBeTruthy();
+    const openFileChooser = vi.spyOn(fileInput as HTMLInputElement, "click");
+    fireEvent.click(screen.getByRole("button", { name: "Add your resume" }));
+    expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
 });
