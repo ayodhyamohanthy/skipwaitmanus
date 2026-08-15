@@ -190,3 +190,4 @@
 - [x] Let Job Seekers select a resume before authentication and trigger secure sign-in only when Send private referral request is clicked.
 - [x] Show the signed-in user’s profile picture in the top-right account menu, with an accessible fallback avatar.
 - [x] Diagnose and fix attached resume visibility for authorized Referrers while preserving document-access controls.
+- [x] Add work-email management in Settings and show Switch to Job Referrer mode only after a verified work email is present.

@@ -63,6 +63,7 @@ export default function Referrer() {
       const attempt = await emailAddress.attemptVerification({ code: workEmailCode.trim() });
       if (attempt.verification?.status !== "verified") throw new Error("That code could not be verified. Check the latest code and try again.");
       await companyFetch("/api/company-referrals/verify-work-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: workEmail.trim().toLowerCase() }) });
+      window.dispatchEvent(new Event("skipwait:work-email-verified"));
       setInboxReady(false); const payload = await companyFetch("/api/company-referrals/inbox"); setInbox(payload.requests || []); setInboxReady(true); setWorkEmailCode(""); setWorkEmailStep("email");
     } catch (error) { setWorkEmailError(error instanceof Error ? error.message : "We could not verify your work-email code"); }
     finally { setVerifyingWorkEmail(false); }

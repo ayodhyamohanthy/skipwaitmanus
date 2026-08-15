@@ -1,0 +1,17 @@
+import { ArrowLeft, BriefcaseBusiness, MailPlus, ShieldCheck } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { SignInButton, useAuth as useClerkAuth } from "@clerk/react";
+import { AccountMenu } from "@/components/AccountMenu";
+import { Brand } from "@/components/Brand";
+import { trpc } from "@/lib/trpc";
+
+export default function Settings() {
+  const [, setLocation] = useLocation();
+  const { isSignedIn } = useClerkAuth();
+  const { data: profile, isLoading } = trpc.profile.mine.useQuery(undefined, { enabled: Boolean(isSignedIn) });
+  const hasVerifiedWorkEmail = Boolean(profile?.workEmailDomain && profile?.workEmailVerifiedAt);
+
+  if (!isSignedIn) return <main className="min-h-screen bg-slate-50 px-6 py-6 text-slate-950"><div className="mx-auto max-w-2xl"><Brand /><section className="mt-14 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm"><h1 className="text-3xl font-semibold tracking-[-.04em]">Settings</h1><p className="mt-3 text-sm leading-6 text-slate-600">Sign in to manage your work-email access.</p><SignInButton mode="modal"><button type="button" className="mt-6 rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white">Secure sign in</button></SignInButton></section></div></main>;
+
+  return <main data-skipwait-screen="settings" className="min-h-screen bg-slate-50 px-6 py-6 text-slate-950"><div className="mx-auto max-w-2xl"><div className="flex items-center justify-between gap-3"><Brand /><AccountMenu /></div><Link href="/" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-950"><ArrowLeft className="h-4 w-4" />Back</Link><section className="mt-6 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-9"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Account settings</p><h1 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Work email</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">Add and verify a company email to enable private Job Referrer access. Your work email is not shown to Job Seekers.</p>{isLoading ? <p className="mt-6 text-sm text-slate-500">Checking your work-email access…</p> : hasVerifiedWorkEmail ? <div className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-5"><div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-700" /><div><p className="text-sm font-semibold text-emerald-950">Work email verified</p><p className="mt-1 text-sm leading-6 text-emerald-800">Your account can receive private company referral requests.</p></div></div><button type="button" onClick={() => setLocation("/referrer")} className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white"><BriefcaseBusiness className="h-4 w-4" />Switch to Job Referrer mode</button></div> : <div className="mt-6 rounded-xl border border-blue-100 bg-blue-50 p-5"><div className="flex items-start gap-3"><MailPlus className="mt-0.5 h-5 w-5 text-[#0B57D0]" /><div><p className="text-sm font-semibold text-slate-900">No verified work email yet</p><p className="mt-1 text-sm leading-6 text-slate-600">Use a company email and confirm the one-time code to unlock Job Referrer mode.</p></div></div><Link href="/referrer?setup=work-email" className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white"><MailPlus className="h-4 w-4" />Add work email</Link></div>}</section></div></main>;
+}
