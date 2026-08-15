@@ -191,3 +191,4 @@
 - [x] Show the signed-in user’s profile picture in the top-right account menu, with an accessible fallback avatar.
 - [x] Diagnose and fix attached resume visibility for authorized Referrers while preserving document-access controls.
 - [x] Add work-email management in Settings and show Switch to Job Referrer mode only after a verified work email is present.
+- [x] Preserve a selected resume through Clerk sign-in so it is not discarded before secure upload and referral submission.

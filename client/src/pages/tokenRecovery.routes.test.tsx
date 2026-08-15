@@ -54,7 +54,7 @@ describe("token recovery routes", () => {
     expect(screen.getByText("Optional")).toBeTruthy();
     localStorage.setItem("bridge-target-url", "https://careers.acme.com/jobs/product-designer");
     const send = screen.getByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
-    expect(send.disabled).toBe(false);
+    await waitFor(() => expect(send.disabled).toBe(false));
     fireEvent.click(send);
     await waitFor(() => expect(screen.getByText("Your request is with verified employees.")).toBeTruthy());
     expect(screen.getByText("Your hiring-manager referral email")).toBeTruthy();

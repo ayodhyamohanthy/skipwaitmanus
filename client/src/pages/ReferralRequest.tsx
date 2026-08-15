@@ -1,16 +1,18 @@
 import { CheckCircle2, ChevronRight, Copy, FileText, LoaderCircle, Mail, Paperclip, Plus, Send, Sparkles, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { SignInButton, useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
 import { Brand } from "@/components/Brand";
 import { AccountMenu } from "@/components/AccountMenu";
 import { CompanyInviteCard } from "@/components/CompanyInviteCard";
 import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, spendToken, TOKEN_ACTION_COST } from "@/lib/tokens";
 import { clearReferralDraft } from "@/lib/pwaContinuity";
 import { trpc } from "@/lib/trpc";
+import { clearPendingResumeFiles, restorePendingResumeFiles, savePendingResumeFiles } from "@/lib/pendingResume";
 
 type Attachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
 const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
+const pendingResumeSubmissionKey = "skipwait-pending-resume-submit";
 
 function getSavedAttachments(): Attachment[] {
   try { return JSON.parse(localStorage.getItem("bridge-seeker-attachments") || "[]") as Attachment[]; } catch { return []; }
@@ -41,6 +43,7 @@ export default function ReferralRequest() {
   const [tokens, setTokens] = useState(getJobSeekerTokens);
   const [attachments, setAttachments] = useState<Attachment[]>(getSavedAttachments);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [pendingFilesRestored, setPendingFilesRestored] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -51,9 +54,15 @@ export default function ReferralRequest() {
   const [byDoing, setByDoing] = useState("");
   const [hiringManagerEmail, setHiringManagerEmail] = useState("");
   const { isSignedIn, getToken } = useClerkAuth();
+  const { openSignIn } = useClerk();
   const resumeInputRef = useRef<HTMLInputElement>(null);
-  const submitAfterSignInRef = useRef(false);
   const attachmentCount = attachments.length + pendingFiles.length;
+
+  useEffect(() => {
+    let active = true;
+    void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => current.length ? current : files); }).catch(() => undefined).finally(() => { if (active) setPendingFilesRestored(true); });
+    return () => { active = false; };
+  }, []);
 
   const uploadFiles = async (files: File[]) => {
     if (!files.length) return [] as Attachment[];
@@ -95,7 +104,11 @@ export default function ReferralRequest() {
       void uploadFiles(selected);
       return;
     }
-    setPendingFiles(current => [...current, ...selected]);
+    setPendingFiles(current => {
+      const next = [...current, ...selected];
+      void savePendingResumeFiles(next).catch(() => undefined);
+      return next;
+    });
   };
 
   const removeAttachment = (id: string) => setAttachments(current => {
@@ -103,7 +116,11 @@ export default function ReferralRequest() {
     localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next));
     return next;
   });
-  const removePendingFile = (index: number) => setPendingFiles(current => current.filter((_, currentIndex) => currentIndex !== index));
+  const removePendingFile = (index: number) => setPendingFiles(current => {
+    const next = current.filter((_, currentIndex) => currentIndex !== index);
+    void savePendingResumeFiles(next).catch(() => undefined);
+    return next;
+  });
 
   const generateEmail = trpc.ai.draftHiringManagerEmail.useMutation({ onSuccess: ({ draft }) => setHiringManagerEmail(draft) });
   const addEvidence = () => {
@@ -138,6 +155,8 @@ export default function ReferralRequest() {
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "We could not send this private referral request");
       setPendingFiles([]);
+      void clearPendingResumeFiles().catch(() => undefined);
+      sessionStorage.removeItem(pendingResumeSubmissionKey);
       const nextTokens = spendToken(tokens);
       setTokens(nextTokens);
       setJobSeekerTokens(nextTokens);
@@ -153,12 +172,22 @@ export default function ReferralRequest() {
     }
   };
 
-  useEffect(() => {
-    if (isSignedIn && submitAfterSignInRef.current) {
-      submitAfterSignInRef.current = false;
-      void send();
+  const handleSend = async () => {
+    if (!attachmentCount) { setError("Add your resume before sending this request."); return; }
+    if (!isSignedIn) {
+      sessionStorage.setItem(pendingResumeSubmissionKey, "true");
+      await savePendingResumeFiles(pendingFiles).catch(() => undefined);
+      openSignIn();
+      return;
     }
-  }, [isSignedIn]);
+    void send();
+  };
+
+  useEffect(() => {
+    if (!isSignedIn || !pendingFilesRestored || sessionStorage.getItem(pendingResumeSubmissionKey) !== "true") return;
+    sessionStorage.removeItem(pendingResumeSubmissionKey);
+    void send();
+  }, [isSignedIn, pendingFilesRestored]);
 
   if (submitted && hiringManagerEmail) return <Shell tokens={tokens} label="tokens left"><section className="mt-14 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-10"><div className="flex items-start gap-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><CheckCircle2 className="h-6 w-6" /></span><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Private request created</p><h1 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Your request is with verified employees.</h1><p className="mt-4 text-sm leading-6 text-slate-600">Eligible employees at <strong>{companyDomain}</strong> were notified privately. Their identities stay hidden until an employee claims your request.</p></div></div>{companyDomain && <div className="mt-7"><CompanyInviteCard companyDomain={companyDomain} placement="request" /></div>}<div className="mt-8 rounded-xl border border-blue-100 bg-blue-50 p-5"><div className="flex items-start gap-3"><Mail className="mt-0.5 h-5 w-5 text-[#0B57D0]" /><div><p className="text-sm font-semibold text-[#0B57D0]">Your hiring-manager referral email</p><p className="mt-1 text-xs leading-5 text-slate-600">Use specific evidence: <strong>accomplished X + measured by Y + by doing Z.</strong> This draft is yours to edit and send only after your referral request is applied.</p></div></div><div className="mt-4 grid gap-3 sm:grid-cols-3"><label className="text-xs font-semibold text-slate-700">Accomplished X<input value={accomplished} onChange={event => setAccomplished(event.target.value)} placeholder="improved activation" className="mt-1.5 w-full rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[#0B57D0]" /></label><label className="text-xs font-semibold text-slate-700">Measured by Y<input value={measuredBy} onChange={event => setMeasuredBy(event.target.value)} placeholder="24% in one quarter" className="mt-1.5 w-full rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[#0B57D0]" /></label><label className="text-xs font-semibold text-slate-700">By doing Z<input value={byDoing} onChange={event => setByDoing(event.target.value)} placeholder="redesigning onboarding" className="mt-1.5 w-full rounded-lg border border-blue-100 bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[#0B57D0]" /></label></div><div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={createAiDraft} disabled={generateEmail.isPending} className="inline-flex items-center gap-2 rounded-lg border border-[#0B57D0] bg-white px-3 py-2 text-xs font-semibold text-[#0B57D0] disabled:opacity-50"><Sparkles className="h-3.5 w-3.5" />{generateEmail.isPending ? "Drafting…" : "Generate an editable draft"}</button><button type="button" onClick={addEvidence} disabled={!accomplished || !measuredBy || !byDoing} className="inline-flex items-center gap-2 rounded-lg bg-[#0B57D0] px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"><Plus className="h-3.5 w-3.5" />Add evidence to email</button></div></div><textarea aria-label="Hiring-manager referral email" value={hiringManagerEmail} onChange={event => setHiringManagerEmail(event.target.value)} className="mt-5 min-h-72 w-full rounded-xl border border-slate-200 bg-white p-4 font-mono text-sm leading-6 text-slate-800 outline-none focus:border-[#0B57D0]" /><button type="button" onClick={() => navigator.clipboard?.writeText(hiringManagerEmail)} className="mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700"><Copy className="h-4 w-4" />Copy email</button><div className="mt-7 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4"><div><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Application tokens</p><p className="mt-1 text-xl font-semibold text-slate-900">{tokens} application token{tokens === 1 ? "" : "s"} left</p></div><Link href="/premium" className="rounded-lg bg-[#0B57D0] px-4 py-2.5 text-xs font-semibold text-white hover:bg-[#0847AD]">Add tokens · $1 each</Link></div></section></Shell>;
 
@@ -166,7 +195,7 @@ export default function ReferralRequest() {
 
   const resumePicker = <div className="mt-4"><input ref={resumeInputRef} type="file" multiple accept={acceptedDocuments} className="sr-only" disabled={uploading} onChange={(event) => { selectFiles(event.target.files); event.currentTarget.value = ""; }} /><button type="button" onClick={() => resumeInputRef.current?.click()} disabled={uploading} className={`flex w-full items-center gap-3 rounded-xl border ${attachmentCount ? "border-dashed border-blue-200 bg-blue-50/30" : "border-dashed border-slate-300 bg-slate-50"} p-4 text-left text-sm font-semibold text-slate-700 disabled:cursor-wait disabled:opacity-70`}><span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-[#0B57D0] shadow-sm">{uploading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : attachmentCount ? <Plus className="h-4 w-4" /> : <Paperclip className="h-4 w-4" />}</span>{uploading ? <span>Uploading documents…</span> : attachmentCount ? <span className="flex min-w-0 flex-col gap-0.5"><span>Supporting documents <span className="ml-1 rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-[.1em] text-[#0B57D0]">Optional</span></span><span className="text-xs font-normal leading-5 text-slate-500">Add context only if it strengthens your case.</span></span> : <span className="flex min-w-0 flex-col gap-0.5"><span>Add your resume</span><span className="text-xs font-normal leading-5 text-slate-500">You will sign in only when you send.</span></span>}</button></div>;
 
-  const sendButton = <button type="button" disabled={!attachmentCount || uploading || submitting} onClick={() => { if (!isSignedIn) submitAfterSignInRef.current = true; else void send(); }} className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#0847AD] disabled:opacity-40">{submitting ? "Sending private request…" : "Send private referral request"} <Send className="h-4 w-4" /></button>;
+  const sendButton = <button type="button" disabled={!attachmentCount || uploading || submitting || !pendingFilesRestored} onClick={() => { void handleSend(); }} className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#0847AD] disabled:opacity-40">{submitting ? "Sending private request…" : "Send private referral request"} <Send className="h-4 w-4" /></button>;
 
   return <Shell tokens={tokens} label="tokens available">
     <section className="mt-14 rounded-2xl border border-slate-200 bg-white p-7 shadow-sm sm:p-10">
@@ -179,7 +208,7 @@ export default function ReferralRequest() {
       {!canSpendToken(tokens) && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4"><p className="text-sm font-semibold text-amber-950">You’re out of application tokens.</p><p className="mt-1 text-sm leading-5 text-amber-800">Add one token for $1, then return here to send this request privately.</p><Link href="/premium" className="mt-3 inline-flex rounded-lg bg-[#0B57D0] px-3 py-2 text-xs font-semibold text-white">Add 1 token · $1</Link></div>}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500"><span>PDF, DOC, DOCX, PNG, or JPG · Up to 10 MB each</span><span>{TOKEN_ACTION_COST} token is used when you send</span></div>
       {error && <p className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-      {canSpendToken(tokens) ? (isSignedIn ? sendButton : <SignInButton mode="modal">{sendButton}</SignInButton>) : <Link href="/premium" className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#0847AD]">Add token to continue · $1 <ChevronRight className="h-4 w-4" /></Link>}
+      {canSpendToken(tokens) ? sendButton : <Link href="/premium" className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-5 py-3.5 text-sm font-semibold text-white transition hover:bg-[#0847AD]">Add token to continue · $1 <ChevronRight className="h-4 w-4" /></Link>}
     </section>
     <div className="mt-5 grid gap-3 sm:grid-cols-3"><Status title="Role" body="Matched privately from your Target Role URL." /><Status title="Resume" body="Visible only after a verified employee claims." /><Status title="Introduction" body="Written by the employee who chooses to help." /></div>
   </Shell>;
