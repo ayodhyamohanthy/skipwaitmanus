@@ -56,3 +56,11 @@ The Chargebee test webhook endpoint `whv2_16CRYhVSSWfBsH0V` was temporarily redi
 
 [1]: https://apidocs.chargebee.com/docs/api/events "Chargebee Events API — webhook retry and idempotency guidance"
 [2]: https://apidocs.chargebee.com/docs/api/hosted_pages "Chargebee Hosted Pages API — redirect and pass-through behavior"
+
+
+## Country and card test-matrix basis
+
+Chargebee’s Test Gateway documents the valid `4111 1111 1111 1111` Visa fixture as a successful transaction, `4119 8627 6033 8320` as a gateway verification failure, and `4005 5192 0000 0004` as an insufficient-funds failure. These fixtures simulate payment outcomes; they are not country-issued cards. Razorpay separately documents Indian and international test-card families and states that test cards are for test mode only, with no real money deducted. Therefore, this matrix will vary both billing country and currency route, while recording that the Chargebee fixture’s card country cannot be inferred from its number. [3] [4]
+
+[3]: https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/chargebee-test-gateway "Chargebee Test Gateway test-card outcomes"
+[4]: https://razorpay.com/docs/payments/payments/test-card-details/ "Razorpay test-card details for Indian and international payments"

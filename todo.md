@@ -251,3 +251,10 @@
 - [x] Add an optional test-only billing-address prefill to the Chargebee checkout helper so the controlled INR sandbox retry can avoid native dropdown automation limits.
 - [x] Adapt webhook processing to Chargebee v2 `payment_succeeded` payloads and retrieve the successful hosted page before reconciling the stored checkout intent.
 - [x] Redirect the Chargebee test webhook from the stale production path to the active verified receiver, then resend or retry the paid event.
+
+- [ ] Test India billing with the INR Razorpay Domestic route and an India billing address using the valid sandbox card fixture.
+- [ ] Test India billing with an intentionally mismatched international/USD route and confirm server/provider rejection without token credit.
+- [ ] Test eligible international billing with the USD Razorpay International/Export route and a non-India billing address using the valid sandbox card fixture.
+- [ ] Test international billing with an intentionally mismatched India/INR route and confirm server/provider rejection without token credit.
+- [ ] Verify Chargebee webhook delivery, hosted-page/pass-through reconciliation, idempotency, and token-credit outcomes for every approved scenario.
+- [ ] Document country/card matrix results and any production gateway or webhook limitations.
