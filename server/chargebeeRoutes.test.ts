@@ -91,4 +91,30 @@ describe("Chargebee webhook route", () => {
     expect(response.body.result.status).toBe("ignored");
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
+
+  it("resolves a Chargebee v2 payment event through a verified successful hosted page before fulfillment", async () => {
+    const app = express();
+    app.use(express.json());
+    const secret = "v2-flow-secret";
+    process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
+    let resolved = 0;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => undefined,
+      createPaymentIntent: async () => undefined,
+      resolveHostedPage: async input => {
+        resolved += 1;
+        expect(input).toEqual({ invoiceId: "inv_v2", amount: 9900, currency: "INR" });
+        return { hostedPageId: "hp_v2", invoiceId: "inv_v2", passThruContent: "intent_v2", amount: 9900, currency: "INR" };
+      },
+      fulfillPayment: async input => {
+        expect(input).toMatchObject({ eventId: "ev_v2", invoiceId: "inv_v2", hostedPageId: "hp_v2", passThruContent: "intent_v2", amount: 9900, currency: "INR" });
+        return { status: "credited", tokenCount: 1 };
+      },
+    });
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_v2", event_type: "payment_succeeded", api_version: "v2", content: { transaction: { amount: 9900, currency_code: "INR" }, invoice: { id: "inv_v2", total: 9900, currency_code: "INR" } } });
+    expect(response.status).toBe(200);
+    expect(response.body.result.status).toBe("credited");
+    expect(resolved).toBe(1);
+    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
+  });
 });

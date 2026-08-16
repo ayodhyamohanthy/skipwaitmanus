@@ -275,6 +275,12 @@ export async function createChargebeePaymentIntent(input: { hostedPageId: string
   return { id: Number(result[0].insertId), hostedPageId: input.hostedPageId };
 }
 
+export async function listPendingChargebeePaymentIntents(limit = 25) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.select({ hostedPageId: paymentFulfillments.providerHostedPageId }).from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), like(paymentFulfillments.providerEventId, "pending:%"))).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 25)));
+}
+
 export async function fulfillChargebeePayment(input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) {
   if (!input.hostedPageId) return { status: "ignored" as const, reason: "missing_hosted_page" };
   if (!input.passThruContent) return { status: "ignored" as const, reason: "missing_checkout_intent" };

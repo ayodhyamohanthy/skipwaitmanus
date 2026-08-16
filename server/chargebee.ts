@@ -9,6 +9,34 @@ export const CHARGEBEE_TOKEN_PACKS = {
 
 export type ChargebeeTokenPackId = keyof typeof CHARGEBEE_TOKEN_PACKS;
 
+export type ParsedPaidPaymentEvent = {
+  eventId: string;
+  invoiceId?: string;
+  hostedPageId?: string;
+  passThruContent?: string;
+  amount: number;
+  currency: string;
+};
+
+export type VerifiedChargebeeHostedPage = {
+  hostedPageId: string;
+  invoiceId?: string;
+  passThruContent?: string;
+  amount?: number;
+  currency?: string;
+};
+
+export type ChargebeeBillingAddress = {
+  firstName?: string;
+  lastName?: string;
+  line1?: string;
+  line2?: string;
+  city?: string;
+  zip?: string;
+  stateCode?: string;
+  country?: string;
+};
+
 export function isTokenPackId(value: unknown): value is ChargebeeTokenPackId {
   return typeof value === "string" && value in CHARGEBEE_TOKEN_PACKS;
 }
@@ -28,22 +56,51 @@ export function getChargebeeEventId(payload: any): string | undefined {
 
 export function parsePaidPaymentEvent(payload: any) {
   if (payload?.event_type !== "payment_succeeded") return undefined;
-  const payment = payload?.content?.payment;
+  const payment = payload?.content?.payment ?? payload?.content?.transaction;
+  const invoice = payload?.content?.invoice;
   if (!payment || typeof payment !== "object") return undefined;
-  const amount = Number(payment.amount);
-  const currency = String(payment.currency_code ?? payment.currency ?? "").toUpperCase();
+  const amount = Number(payment.amount ?? invoice?.amount_paid ?? invoice?.total);
+  const currency = String(payment.currency_code ?? payment.currency ?? invoice?.currency_code ?? invoice?.currency ?? "").toUpperCase();
   if (!Number.isInteger(amount) || amount <= 0 || !["INR", "USD"].includes(currency)) return undefined;
   const eventId = getChargebeeEventId(payload);
   if (!eventId) return undefined;
-  const invoiceId = typeof payment.invoice_id === "string" ? payment.invoice_id : undefined;
-  const hostedPageId = typeof payment.hosted_page_id === "string" ? payment.hosted_page_id : undefined;
-  const customerId = typeof payment.customer_id === "string" ? payment.customer_id : undefined;
+  const invoiceId = typeof payment.invoice_id === "string" ? payment.invoice_id : typeof invoice?.id === "string" ? invoice.id : undefined;
+  const hostedPageId = typeof payload?.content?.hosted_page?.id === "string" ? payload.content.hosted_page.id : typeof payment.hosted_page_id === "string" ? payment.hosted_page_id : undefined;
   const passThruContent = typeof payload?.content?.hosted_page?.pass_thru_content === "string"
     ? payload.content.hosted_page.pass_thru_content
     : typeof payment.pass_thru_content === "string"
       ? payment.pass_thru_content
       : undefined;
-  return { eventId, invoiceId, hostedPageId, customerId, passThruContent, amount, currency };
+  return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency } satisfies ParsedPaidPaymentEvent;
+}
+
+export async function retrieveChargebeeHostedPage(hostedPageId: string, input: { site?: string; apiKey?: string } = {}): Promise<VerifiedChargebeeHostedPage | undefined> {
+  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
+  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
+  if (!apiKey) throw new Error("Chargebee API key is not configured");
+  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/${encodeURIComponent(hostedPageId)}`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
+  });
+  if (!response.ok) return undefined;
+  const hostedPage = (await response.json().catch(() => ({})))?.hosted_page;
+  if (!hostedPage || hostedPage.id !== hostedPageId || hostedPage.state !== "succeeded") return undefined;
+  const invoice = hostedPage.content?.invoice;
+  return {
+    hostedPageId,
+    invoiceId: typeof invoice?.id === "string" ? invoice.id : undefined,
+    passThruContent: typeof hostedPage.pass_thru_content === "string" ? hostedPage.pass_thru_content : undefined,
+    amount: Number.isInteger(invoice?.total) ? invoice.total : undefined,
+    currency: typeof invoice?.currency_code === "string" ? invoice.currency_code.toUpperCase() : undefined,
+  };
+}
+
+export async function resolveChargebeeHostedPageForPayment(input: { invoiceId?: string; amount: number; currency: string; pendingHostedPageIds: string[] }) {
+  if (!input.invoiceId) return undefined;
+  for (const hostedPageId of input.pendingHostedPageIds.slice(0, 25)) {
+    const hostedPage = await retrieveChargebeeHostedPage(hostedPageId);
+    if (hostedPage?.invoiceId === input.invoiceId && hostedPage.amount === input.amount && hostedPage.currency === input.currency) return hostedPage;
+  }
+  return undefined;
 }
 
 export function tokenPackFromAmount(amount: number, currency: string): { tokenCount: number; itemPriceId: ChargebeeTokenPackId } | undefined {
@@ -51,7 +108,7 @@ export function tokenPackFromAmount(amount: number, currency: string): { tokenCo
   return match ? { itemPriceId: match[0] as ChargebeeTokenPackId, tokenCount: match[1].tokenCount } : undefined;
 }
 
-export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; email?: string; firstName?: string; lastName?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
+export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
   const form = new URLSearchParams();
   form.set("item_prices[item_price_id][0]", input.itemPriceId);
   form.set("item_prices[quantity][0]", "1");
@@ -59,13 +116,21 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; em
   if (input.email) form.set("customer[email]", input.email);
   if (input.firstName) form.set("customer[first_name]", input.firstName);
   if (input.lastName) form.set("customer[last_name]", input.lastName);
+  if (input.billingAddress?.firstName) form.set("billing_address[first_name]", input.billingAddress.firstName);
+  if (input.billingAddress?.lastName) form.set("billing_address[last_name]", input.billingAddress.lastName);
+  if (input.billingAddress?.line1) form.set("billing_address[line1]", input.billingAddress.line1);
+  if (input.billingAddress?.line2) form.set("billing_address[line2]", input.billingAddress.line2);
+  if (input.billingAddress?.city) form.set("billing_address[city]", input.billingAddress.city);
+  if (input.billingAddress?.zip) form.set("billing_address[zip]", input.billingAddress.zip);
+  if (input.billingAddress?.stateCode) form.set("billing_address[state_code]", input.billingAddress.stateCode);
+  if (input.billingAddress?.country) form.set("billing_address[country]", input.billingAddress.country);
   form.set("redirect_url", input.redirectUrl);
   form.set("cancel_url", input.cancelUrl);
   form.set("pass_thru_content", input.checkoutIntentId);
   return form;
 }
 
-export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTokenPackId; email?: string; firstName?: string; lastName?: string; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
+export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTokenPackId; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
   const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
   const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
   if (!apiKey) throw new Error("Chargebee API key is not configured");

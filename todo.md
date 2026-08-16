@@ -242,3 +242,12 @@
 - [x] Implement a server-validated currency selection in the checkout API and UI, rejecting unsupported currency/customer combinations.
 - [x] Add INR/USD checkout contract tests and run the full suite and production build.
 - [x] Document the invalid-request diagnosis, supported routes, and deferred PayPal path.
+
+- [x] Create a fresh ₹99 INR Chargebee checkout intent and complete one user-approved Razorpay test payment.
+- [x] Verify Chargebee webhook delivery, matching pass-through reconciliation, one purchase transaction, and exactly one token credit for each controlled paid event.
+
+- [x] Repeat the controlled ₹99 INR Razorpay test using Chargebee’s Valid Card fixture after the deliberate Verification Error Card response `(3009) Do not honour`.
+
+- [x] Add an optional test-only billing-address prefill to the Chargebee checkout helper so the controlled INR sandbox retry can avoid native dropdown automation limits.
+- [x] Adapt webhook processing to Chargebee v2 `payment_succeeded` payloads and retrieve the successful hosted page before reconciling the stored checkout intent.
+- [x] Redirect the Chargebee test webhook from the stale production path to the active verified receiver, then resend or retry the paid event.

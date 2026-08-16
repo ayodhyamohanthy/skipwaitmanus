@@ -36,3 +36,23 @@ The server requires both an allowlisted item-price ID and a matching billing rou
 
 Automated validation after this change: 70 tests passed, TypeScript passed, production build passed, and the currency-selector UI was visually reviewed for both Job Seeker and Referrer modes. No paid test transaction was submitted; real card and OTP entry remains user-controlled.
 
+## 2026-08-16: Controlled INR payment and webhook reconciliation finding
+
+The controlled ₹99.00 INR checkout `d1K4LmDBrcilga6NbE8iYLVbw1vi37y1` was created with persisted checkout intent `8296df8f-816c-4b78-b4a7-9ce749f5e432`, a prefilled India billing address, and Chargebee’s built-in valid `4111 1111 1111 1111` sandbox fixture. Chargebee redirected with `state=succeeded`, and its Events API reports the corresponding ₹99.00 INR `payment_succeeded` transaction with masked card ending `1111` and a paid invoice.
+
+The stored application row remains the pending checkout-intent placeholder (`providerEventId = pending:d1K4LmDBrcilga6NbE8iYLVbw1vi37y1`) rather than an event-id-backed fulfillment. Chargebee marks the event webhook status as `not_configured` and its listed webhook attempt as `re_scheduled`. This establishes that the provider-side payment succeeded, but the configured webhook did not produce the required server-side reconciliation and token credit. The next corrective step is to restore successful `payment_succeeded` webhook delivery, including a payload shape that supplies—or can securely resolve—the hosted-page and pass-through checkout intent before fulfillment.
+
+## 2026-08-16: Verified webhook recovery
+
+The investigation identified two independent causes. The test endpoint was configured to call `https://skipwait.me/api/chargebee/webhook`, but the public site currently returned HTTP 404 for that route. The active project preview accepted the same authenticated non-payment probe with HTTP 202. In addition, the test site sends API v2 `payment_succeeded` events with `transaction` and `invoice` content rather than the legacy `payment` object; the v2 event does not carry the hosted-page pass-through value directly.
+
+The server now parses both the legacy and v2 paid-event shapes. For v2 events, it restricts resolution to the 25 most recent pending Chargebee intents, retrieves each candidate hosted page server-to-server, and credits only when the hosted page is `succeeded` and its invoice ID, amount, currency, hosted-page ID, and opaque pass-through checkout intent all agree. This retains event-id idempotency and never credits from the browser redirect. Chargebee requires a 2XX webhook response for successful delivery and retries failed notifications, which is why the first valid-card transaction was credited once delivery was repaired. [1]
+
+The Chargebee test webhook endpoint `whv2_16CRYhVSSWfBsH0V` was temporarily redirected to the active project preview with Basic Auth and `payment_succeeded` as its only enabled event. The previously paid hosted page `d1K4LmDBrcilga6NbE8iYLVbw1vi37y1` reconciled to event `ev_Azq95gVSUn7Gz2dHe`. A fresh post-repair checkout `KcdiIqi8Nu6czcBlf42UgULXVtQeCvC6m` reconciled to event `ev_16CRYhVSUpfk2vEs`. Each distinct ₹99.00 INR payment added exactly one purchase transaction; the controlled Job Seeker wallet moved from its initial three tokens to five. Chargebee reports a successful webhook attempt for both events.
+
+> **Production requirement:** The preview URL is suitable only for test verification. Before publishing, the current project must be deployed to the custom `skipwait.me` domain (or another stable HTTPS receiver), and this Chargebee endpoint must be updated to that deployed `/api/chargebee/webhook` URL. Hosted pages redirect with their ID and state, but the server-side webhook remains the authoritative fulfillment mechanism. [2]
+
+## References
+
+[1]: https://apidocs.chargebee.com/docs/api/events "Chargebee Events API — webhook retry and idempotency guidance"
+[2]: https://apidocs.chargebee.com/docs/api/hosted_pages "Chargebee Hosted Pages API — redirect and pass-through behavior"
