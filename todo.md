@@ -70,7 +70,7 @@
 - [x] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
 - [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
 - [x] Credit token balances only after verified Chargebee payment events through the single USD hosted-checkout route; Razorpay and PayPal remain gateway options behind Chargebee rather than separate UI routes.
-- [ ] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
+- [x] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
 - [x] Keep checkout simulated and present the premium token, direct-request, and document-attachment experience for design approval before enabling providers.
 - [x] Replace token packs with a 3-free-token allowance and a simple $1-per-additional-token policy.
 - [x] Show a clear free-token balance, 1-token application cost, and exhausted-balance repurchase state.
@@ -208,3 +208,15 @@
 - [x] Add automated valid `payment_succeeded` webhook coverage proving wallet crediting and duplicate-event protection without using browser callbacks.
 - [x] Validate the complete checkout-intent → verified paid-event → wallet refresh path without inserting test data into the live database.
 - [x] Finalize the product decision that Chargebee is the single hosted checkout route for USD billing, with Razorpay and PayPal acting as configured gateway options behind Chargebee rather than separate UI checkout buttons.
+
+- [x] Use the connected Razorpay gateway for the current test checkout flow and defer PayPal routing until a PayPal sandbox account is connected.
+- [x] Verify the available Razorpay route for the hosted USD checkout without submitting a payment.
+- [x] Document that PayPal is not connected and no international PayPal routing is active.
+
+
+- [x] Apply the non-destructive migration adding the Chargebee checkout-intent reconciliation identifier and index.
+- [x] Include an opaque checkout intent in Chargebee `pass_thru_content` and persist it with the pending hosted-page payment intent.
+- [x] Require hosted-page ID plus pass-through checkout intent reconciliation before crediting a verified Chargebee payment event.
+- [x] Add regression coverage rejecting mismatched or absent checkout-intent reconciliation and preserving duplicate-event idempotency.
+- [x] Verify the published Chargebee one-time-payment capability and the Razorpay-1 Card → USD Smart Routing mapping with a non-payment hosted-checkout smoke test.
+- [x] Record that PayPal remains unconnected and deferred; no PayPal or international country-based routing is active.

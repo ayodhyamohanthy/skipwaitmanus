@@ -64,6 +64,13 @@
       "when": 1786877634281,
       "tag": "0008_melodic_doctor_faustus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1786885564957,
+      "tag": "0009_outstanding_richard_fisk",
+      "breakpoints": true
     }
   ]
 }
