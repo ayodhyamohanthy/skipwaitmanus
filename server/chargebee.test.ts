@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import { basicAuthMatches, buildCheckoutForm, CHARGEBEE_TOKEN_PACKS, parsePaidPaymentEvent, tokenPackFromAmount } from "./chargebee";
 
 describe("Chargebee payment contract", () => {
-  it("maps only the approved INR Razorpay token", () => {
+  it("maps only the supported INR and USD Razorpay token prices", () => {
     expect(CHARGEBEE_TOKEN_PACKS["skipwait_token_1-INR"]).toEqual({ tokenCount: 1, amount: 9900, currency: "INR" });
+    expect(CHARGEBEE_TOKEN_PACKS["skipwait_token_1-USD"]).toEqual({ tokenCount: 1, amount: 100, currency: "USD" });
     expect(tokenPackFromAmount(9900, "INR")).toEqual({ tokenCount: 1, itemPriceId: "skipwait_token_1-INR" });
-    expect(tokenPackFromAmount(999)).toBeUndefined();
+    expect(tokenPackFromAmount(100, "USD")).toEqual({ tokenCount: 1, itemPriceId: "skipwait_token_1-USD" });
+    expect(tokenPackFromAmount(100, "EUR")).toBeUndefined();
   });
 
   it("accepts the dedicated webhook Basic Auth and rejects other credentials", () => {
@@ -15,11 +17,12 @@ describe("Chargebee payment contract", () => {
     expect(basicAuthMatches(undefined, "test-webhook-secret")).toBe(false);
   });
 
-  it("accepts only paid INR events with a Chargebee event id", () => {
+  it("accepts only paid INR or USD events with a Chargebee event id", () => {
     const payload = { id: "ev_test_1", event_type: "payment_succeeded", content: { payment: { amount: 9900, currency_code: "INR", hosted_page_id: "hp_test", invoice_id: "inv_test" }, hosted_page: { pass_thru_content: "intent_test" } } };
     expect(parsePaidPaymentEvent(payload)).toEqual({ eventId: "ev_test_1", hostedPageId: "hp_test", invoiceId: "inv_test", customerId: undefined, passThruContent: "intent_test", amount: 9900, currency: "INR" });
     expect(parsePaidPaymentEvent({ ...payload, event_type: "invoice_generated" })).toBeUndefined();
-    expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, currency_code: "USD" } } })).toBeUndefined();
+    expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, currency_code: "EUR" } } })).toBeUndefined();
+    expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, amount: 100, currency_code: "USD" } } })).toMatchObject({ amount: 100, currency: "USD" });
   });
 
   it("builds a hosted one-time checkout form for the selected item price", () => {

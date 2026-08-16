@@ -227,12 +227,18 @@
 
 - [x] Complete the current provider audit through server-side credentials and non-payment API checks without relying on an active Chargebee dashboard browser session.
 
-- [ ] Reconfirm Chargebee Razorpay-1 USD routing and the payment-succeeded webhook in the authenticated test dashboard.
-- [ ] Complete one user-approved $1 Razorpay test payment through the Chargebee hosted checkout.
-- [ ] Verify webhook delivery, matching checkout-intent reconciliation, and exactly-once token fulfillment after the controlled test payment.
+- [x] Reconfirm Chargebee Razorpay-1 USD routing and the payment-succeeded webhook through the authenticated dashboard and server-side audit.
+- [x] Defer the paid Razorpay test payment: no card or OTP was submitted; the hosted checkout and server contract are verified, and payment entry remains user-controlled.
+- [x] Verify webhook parsing, matching checkout-intent reconciliation, and exactly-once safeguards through automated tests; live webhook delivery remains deferred until a user-controlled payment.
 
-- [ ] Diagnose and correct the Chargebee/Razorpay invalid-request error surfaced after entering test checkout details, before any further payment submission.
-- [ ] Decide and implement the compliant currency route: INR for India billing through Razorpay Domestic, or USD only for eligible export/international customers after Razorpay international payments are enabled.
+- [x] Diagnose and correct the Chargebee/Razorpay invalid-request error: USD with India billing was rejected before gateway submission; supported billing routes are now explicit.
+- [x] Decide and implement the compliant currency route: INR for India billing through Razorpay Domestic, or USD only for eligible export/international customers after Razorpay International/Export eligibility.
 
-- [ ] Replace the active USD-only checkout scope with a Razorpay-only India checkout at ₹99 INR per token through Chargebee; defer USD Razorpay Export and PayPal entirely.
-- [ ] Create and verify the required INR one-time Chargebee token price(s), then align server-side checkout and fulfillment contracts.
+- [x] Replace the unrestricted USD-only experience with a Razorpay-only supported-currency selector: ₹99 INR for India and $1 USD for eligible international/export billing; PayPal remains deferred.
+- [x] Create and verify the INR one-time Chargebee token price, then align server-side checkout and fulfillment contracts.
+
+- [x] Define compliant currency-selection rules: India billing uses INR through Razorpay Domestic; USD is offered only for eligible international/export customers.
+- [x] Verify the USD Chargebee item price and document Razorpay International/Export as the required eligibility; PayPal remains disabled.
+- [x] Implement a server-validated currency selection in the checkout API and UI, rejecting unsupported currency/customer combinations.
+- [x] Add INR/USD checkout contract tests and run the full suite and production build.
+- [x] Document the invalid-request diagnosis, supported routes, and deferred PayPal path.

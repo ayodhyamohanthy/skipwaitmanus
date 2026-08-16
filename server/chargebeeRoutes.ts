@@ -21,9 +21,14 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before purchasing tokens" });
       const itemPriceId = req.body?.itemPriceId;
-      if (!isTokenPackId(itemPriceId)) return res.status(400).json({ error: "Choose the valid ₹99 Razorpay token" });
+      if (!isTokenPackId(itemPriceId)) return res.status(400).json({ error: "Choose a supported token currency" });
+      const billingCountry = req.body?.billingCountry;
+      if (billingCountry !== "IN" && billingCountry !== "INTL") return res.status(400).json({ error: "Choose India or international billing" });
       const role = roleFromBody(req.body?.role);
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
+      if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
+        return res.status(400).json({ error: "That currency is not available for the selected billing route" });
+      }
       const origin = `${req.protocol}://${req.get("host")}`;
       const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,

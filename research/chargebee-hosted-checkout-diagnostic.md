@@ -27,3 +27,12 @@ The controlled $1 hosted page `ixWpkcwiLrcurIKfAYpgdPpflqDcXayTk` was created wi
 ## Root cause: Indian domestic billing versus USD presentment
 
 Chargebee's current Razorpay documentation states that a Domestic Razorpay customer in India is collected in INR, whereas non-INR presentment through Razorpay requires an Export-enabled Domestic account and customers outside India. The controlled hosted checkout used an India billing address with USD presentment, so it remained pre-gateway and returned the generic request-invalid message even after the built-in sandbox valid-card fixture was applied. The appropriate next test is either a compliant US billing address with Razorpay Export confirmed on the account, or an INR domestic checkout for an India billing address. The product cannot truthfully force USD Razorpay card billing for an India-based customer without satisfying that export eligibility condition.
+
+## 2026-08-16: Supported Razorpay currency selection
+
+The checkout now presents two allowlisted options rather than an unrestricted currency dropdown. India billing uses the active `skipwait_token_1-INR` Chargebee item price at ₹99.00 and the Razorpay Domestic route. International/export billing uses the active `skipwait_token_1-USD` item price at $1.00 and is exposed only as Razorpay International / Export. PayPal remains disconnected and is not used.
+
+The server requires both an allowlisted item-price ID and a matching billing route (`IN` with INR or `INTL` with USD) before creating a hosted page. Paid webhook parsing accepts only INR or USD amounts that match an active token price, and fulfillment continues to require the stored hosted-page and opaque pass-through checkout intent. Non-payment helper smoke tests created valid hosted pages for both item prices and preserved distinct checkout intent identifiers. The previous generic invalid-request error occurred before a Razorpay transaction because a USD hosted checkout was attempted with an India billing address; the supported route is now explicit in the UI and server contract.
+
+Automated validation after this change: 70 tests passed, TypeScript passed, production build passed, and the currency-selector UI was visually reviewed for both Job Seeker and Referrer modes. No paid test transaction was submitted; real card and OTP entry remains user-controlled.
+

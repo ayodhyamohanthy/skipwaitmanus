@@ -4,6 +4,7 @@ export type TokenRole = "job_seeker" | "referrer";
 
 export const CHARGEBEE_TOKEN_PACKS = {
   "skipwait_token_1-INR": { tokenCount: 1, amount: 9900, currency: "INR" },
+  "skipwait_token_1-USD": { tokenCount: 1, amount: 100, currency: "USD" },
 } as const;
 
 export type ChargebeeTokenPackId = keyof typeof CHARGEBEE_TOKEN_PACKS;
@@ -31,7 +32,7 @@ export function parsePaidPaymentEvent(payload: any) {
   if (!payment || typeof payment !== "object") return undefined;
   const amount = Number(payment.amount);
   const currency = String(payment.currency_code ?? payment.currency ?? "").toUpperCase();
-  if (!Number.isInteger(amount) || amount <= 0 || currency !== "INR") return undefined;
+  if (!Number.isInteger(amount) || amount <= 0 || !["INR", "USD"].includes(currency)) return undefined;
   const eventId = getChargebeeEventId(payload);
   if (!eventId) return undefined;
   const invoiceId = typeof payment.invoice_id === "string" ? payment.invoice_id : undefined;
@@ -45,7 +46,7 @@ export function parsePaidPaymentEvent(payload: any) {
   return { eventId, invoiceId, hostedPageId, customerId, passThruContent, amount, currency };
 }
 
-export function tokenPackFromAmount(amount: number, currency = "INR"): { tokenCount: number; itemPriceId: ChargebeeTokenPackId } | undefined {
+export function tokenPackFromAmount(amount: number, currency: string): { tokenCount: number; itemPriceId: ChargebeeTokenPackId } | undefined {
   const match = Object.entries(CHARGEBEE_TOKEN_PACKS).find(([, pack]) => pack.amount === amount && pack.currency === currency);
   return match ? { itemPriceId: match[0] as ChargebeeTokenPackId, tokenCount: match[1].tokenCount } : undefined;
 }

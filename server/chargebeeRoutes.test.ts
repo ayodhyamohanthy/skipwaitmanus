@@ -52,10 +52,14 @@ describe("Chargebee webhook route", () => {
       createPaymentIntent: async input => { intent = { hostedPageId: input.hostedPageId, checkoutIntentId: input.checkoutIntentId, tokenCount: input.tokenCount }; },
       fulfillPayment: async input => { if (intent?.hostedPageId !== input.hostedPageId || intent?.checkoutIntentId !== input.passThruContent) return { status: "ignored" }; wallet += intent.tokenCount; return { status: "credited", tokenCount: intent.tokenCount }; },
     });
-    const checkout = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", role: "job_seeker" });
+    const checkout = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker" });
+    const intlCheckout = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", billingCountry: "INTL", role: "job_seeker" });
     const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_flow", event_type: "payment_succeeded", content: { payment: { amount: 9900, currency_code: "INR", hosted_page_id: "hp_flow" }, hosted_page: { pass_thru_content: "intent_flow" } } });
     expect(checkout.status).toBe(200);
+    expect(intlCheckout.status).toBe(200);
     expect(checkout.body.checkoutUrl).toBe("https://chargebee.test/hp_flow");
+    const rejectedCurrency = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", billingCountry: "IN", role: "job_seeker" });
+    expect(rejectedCurrency.status).toBe(400);
     expect(webhook.status).toBe(200);
     expect(webhook.body.result.status).toBe("credited");
     expect(wallet).toBe(4);

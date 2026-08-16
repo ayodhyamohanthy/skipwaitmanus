@@ -45,9 +45,12 @@ describe("secure token checkout routes", () => {
     render(<Premium />);
     expect(screen.getByRole("link", { name: "skipwait.me home" }).parentElement?.className).toContain("items-center");
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/request");
-    expect(screen.getByText("1 token")).toBeTruthy();
+    expect(screen.getByText("1 action token")).toBeTruthy();
     expect(screen.getByText("Chargebee hosted checkout")).toBeTruthy();
-    expect(screen.getByText(/India billing · Razorpay-secured payment/i)).toBeTruthy();
+    expect(screen.getAllByText("₹99 INR").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("$1 USD").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Razorpay Domestic/i)).toBeTruthy();
+    expect(screen.getByText(/Razorpay International \/ Export/i)).toBeTruthy();
     expect(screen.queryByText(/PayPal/i)).toBeNull();
   });
 });
