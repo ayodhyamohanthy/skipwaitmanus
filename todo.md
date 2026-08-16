@@ -226,3 +226,13 @@
 - [x] Re-run non-payment checkout and server-side reconciliation safeguards, then record the final test-provider state.
 
 - [x] Complete the current provider audit through server-side credentials and non-payment API checks without relying on an active Chargebee dashboard browser session.
+
+- [ ] Reconfirm Chargebee Razorpay-1 USD routing and the payment-succeeded webhook in the authenticated test dashboard.
+- [ ] Complete one user-approved $1 Razorpay test payment through the Chargebee hosted checkout.
+- [ ] Verify webhook delivery, matching checkout-intent reconciliation, and exactly-once token fulfillment after the controlled test payment.
+
+- [ ] Diagnose and correct the Chargebee/Razorpay invalid-request error surfaced after entering test checkout details, before any further payment submission.
+- [ ] Decide and implement the compliant currency route: INR for India billing through Razorpay Domestic, or USD only for eligible export/international customers after Razorpay international payments are enabled.
+
+- [ ] Replace the active USD-only checkout scope with a Razorpay-only India checkout at ₹99 INR per token through Chargebee; defer USD Razorpay Export and PayPal entirely.
+- [ ] Create and verify the required INR one-time Chargebee token price(s), then align server-side checkout and fulfillment contracts.

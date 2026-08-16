@@ -21,7 +21,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before purchasing tokens" });
       const itemPriceId = req.body?.itemPriceId;
-      if (!isTokenPackId(itemPriceId)) return res.status(400).json({ error: "Choose a valid USD token pack" });
+      if (!isTokenPackId(itemPriceId)) return res.status(400).json({ error: "Choose the valid ₹99 Razorpay token" });
       const role = roleFromBody(req.body?.role);
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
       const origin = `${req.protocol}://${req.get("host")}`;
@@ -33,7 +33,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         redirectUrl: `${origin}/premium?role=${role}&payment=pending`,
         cancelUrl: `${origin}/premium?role=${role}&payment=cancelled`,
       });
-      await deps.createPaymentIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, tokenCount: pack.tokenCount, amount: pack.amount, currency: "USD" });
+      await deps.createPaymentIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, tokenCount: pack.tokenCount, amount: pack.amount, currency: pack.currency });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] checkout error", error);
@@ -46,7 +46,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     if (!secret || !basicAuthMatches(req.header("authorization"), secret)) return res.status(401).send("Unauthorized");
     const parsed = parsePaidPaymentEvent(req.body);
     if (!parsed) return res.status(202).json({ received: true, ignored: true });
-    if (!tokenPackFromAmount(parsed.amount)) return res.status(202).json({ received: true, ignored: true });
+    if (!tokenPackFromAmount(parsed.amount, parsed.currency)) return res.status(202).json({ received: true, ignored: true });
     try {
       const result = await deps.fulfillPayment(parsed);
       return res.status(200).json({ received: true, result });

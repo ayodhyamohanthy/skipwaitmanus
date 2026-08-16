@@ -3,9 +3,7 @@ import crypto from "node:crypto";
 export type TokenRole = "job_seeker" | "referrer";
 
 export const CHARGEBEE_TOKEN_PACKS = {
-  "skipwait_token_1-USD": { tokenCount: 1, amount: 100, currency: "USD" },
-  "skipwait_token_5-USD": { tokenCount: 5, amount: 500, currency: "USD" },
-  "skipwait_token_10-USD": { tokenCount: 10, amount: 1000, currency: "USD" },
+  "skipwait_token_1-INR": { tokenCount: 1, amount: 9900, currency: "INR" },
 } as const;
 
 export type ChargebeeTokenPackId = keyof typeof CHARGEBEE_TOKEN_PACKS;
@@ -33,7 +31,7 @@ export function parsePaidPaymentEvent(payload: any) {
   if (!payment || typeof payment !== "object") return undefined;
   const amount = Number(payment.amount);
   const currency = String(payment.currency_code ?? payment.currency ?? "").toUpperCase();
-  if (!Number.isInteger(amount) || amount <= 0 || currency !== "USD") return undefined;
+  if (!Number.isInteger(amount) || amount <= 0 || currency !== "INR") return undefined;
   const eventId = getChargebeeEventId(payload);
   if (!eventId) return undefined;
   const invoiceId = typeof payment.invoice_id === "string" ? payment.invoice_id : undefined;
@@ -47,8 +45,8 @@ export function parsePaidPaymentEvent(payload: any) {
   return { eventId, invoiceId, hostedPageId, customerId, passThruContent, amount, currency };
 }
 
-export function tokenPackFromAmount(amount: number): { tokenCount: number; itemPriceId: ChargebeeTokenPackId } | undefined {
-  const match = Object.entries(CHARGEBEE_TOKEN_PACKS).find(([, pack]) => pack.amount === amount);
+export function tokenPackFromAmount(amount: number, currency = "INR"): { tokenCount: number; itemPriceId: ChargebeeTokenPackId } | undefined {
+  const match = Object.entries(CHARGEBEE_TOKEN_PACKS).find(([, pack]) => pack.amount === amount && pack.currency === currency);
   return match ? { itemPriceId: match[0] as ChargebeeTokenPackId, tokenCount: match[1].tokenCount } : undefined;
 }
 
@@ -56,7 +54,7 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; em
   const form = new URLSearchParams();
   form.set("item_prices[item_price_id][0]", input.itemPriceId);
   form.set("item_prices[quantity][0]", "1");
-  form.set("currency_code", "USD");
+  form.set("currency_code", CHARGEBEE_TOKEN_PACKS[input.itemPriceId].currency);
   if (input.email) form.set("customer[email]", input.email);
   if (input.firstName) form.set("customer[first_name]", input.firstName);
   if (input.lastName) form.set("customer[last_name]", input.lastName);
