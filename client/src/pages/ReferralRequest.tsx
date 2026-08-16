@@ -5,7 +5,7 @@ import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
 import { Brand } from "@/components/Brand";
 import { AccountMenu } from "@/components/AccountMenu";
 import { CompanyInviteCard } from "@/components/CompanyInviteCard";
-import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, spendToken, TOKEN_ACTION_COST } from "@/lib/tokens";
+import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, TOKEN_ACTION_COST } from "@/lib/tokens";
 import { clearReferralDraft } from "@/lib/pwaContinuity";
 import { trpc } from "@/lib/trpc";
 import { clearPendingResumeFiles, restorePendingResumeFiles, savePendingResumeFiles } from "@/lib/pendingResume";
@@ -157,7 +157,8 @@ export default function ReferralRequest() {
       setPendingFiles([]);
       void clearPendingResumeFiles().catch(() => undefined);
       sessionStorage.removeItem(pendingResumeSubmissionKey);
-      const nextTokens = spendToken(tokens);
+      const serverTokens = Number(payload.remainingTokens);
+      const nextTokens = Number.isFinite(serverTokens) && serverTokens >= 0 ? serverTokens : tokens;
       setTokens(nextTokens);
       setJobSeekerTokens(nextTokens);
       setCompanyDomain(payload.companyDomain || "the target company");

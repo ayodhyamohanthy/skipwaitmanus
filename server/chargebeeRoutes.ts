@@ -6,6 +6,7 @@ export type ChargebeeIdentity = { account: { id: number; email?: string | null; 
 
 type Deps = {
   resolveIdentity: (req: Request) => Promise<ChargebeeIdentity | undefined>;
+  createCheckout?: typeof createChargebeeCheckout;
   createPaymentIntent: (input: { hostedPageId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
   fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; amount: number; currency: string }) => Promise<unknown>;
 };
@@ -24,7 +25,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const role = roleFromBody(req.body?.role);
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
       const origin = `${req.protocol}://${req.get("host")}`;
-      const checkout = await createChargebeeCheckout({
+      const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,
         email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined,
         firstName: identity.account.name?.split(" ")[0],

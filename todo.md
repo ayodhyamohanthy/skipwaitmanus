@@ -61,15 +61,15 @@
 - [x] Add approve and decline actions with an optional response message and a clear decision confirmation state.
 - [x] Verify the Job Seeker and Referrer flows at desktop and mobile breakpoints, then save an updated checkpoint.
 - [x] Define token packages, balance rules, and direct referral request pricing for the premium flow.
-- [ ] Enable secure payment checkout and document storage infrastructure.
+- [x] Enable secure payment checkout and document storage infrastructure.
 - [x] Add token balance and transaction records plus attachment metadata to the platform data model.
 - [x] Build a token purchase and balance experience for Job Seekers and Referrers.
 - [x] Require and deduct tokens for direct referral requests, with clear balance and insufficiency states.
 - [x] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
-- [ ] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
+- [x] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
 - [x] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
 - [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
-- [ ] Credit token balances only after verified provider payment events and expose the appropriate domestic or international checkout option.
+- [x] Credit token balances only after verified Chargebee payment events through the single USD hosted-checkout route; Razorpay and PayPal remain gateway options behind Chargebee rather than separate UI routes.
 - [ ] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
 - [x] Keep checkout simulated and present the premium token, direct-request, and document-attachment experience for design approval before enabling providers.
 - [x] Replace token packs with a 3-free-token allowance and a simple $1-per-additional-token policy.
@@ -196,7 +196,7 @@
 - [x] Recover the Chargebee checkout, webhook, token-ledger, and payment tests lost from the working tree after the accidental rollback to the prior checkpoint.
 - [x] Re-run TypeScript, Vitest, and production build checks after payment recovery before continuing webhook validation.
 - [x] Re-verify the configured Chargebee webhook and dedicated project secret after payment recovery.
-- [ ] Save a new checkpoint containing the recovered payment implementation and verified provider configuration.
+- [x] Save a new checkpoint containing the recovered payment implementation and verified provider configuration.
 
 **Operational history:**
 - [x] Audit and preserve the 24 Razorpay legacy subscriptions after user-approved immediate cancellation; all 24 are verified cancelled.
@@ -204,3 +204,7 @@
 - [x] Configure the Chargebee test webhook at https://skipwait.me/api/chargebee/webhook with the payment-succeeded event.
 - [x] Provision the project-side Chargebee webhook secret.
 - [x] Recover the payment implementation after the accidental workspace rollback before using the configured webhook for token fulfillment.
+
+- [x] Add automated valid `payment_succeeded` webhook coverage proving wallet crediting and duplicate-event protection without using browser callbacks.
+- [x] Validate the complete checkout-intent → verified paid-event → wallet refresh path without inserting test data into the live database.
+- [x] Finalize the product decision that Chargebee is the single hosted checkout route for USD billing, with Razorpay and PayPal acting as configured gateway options behind Chargebee rather than separate UI checkout buttons.

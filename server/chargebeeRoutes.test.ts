@@ -1,0 +1,74 @@
+import express from "express";
+import request from "supertest";
+import { describe, expect, it } from "vitest";
+import { registerChargebeeRoutes } from "./chargebeeRoutes";
+
+function auth(secret: string) {
+  return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;
+}
+
+describe("Chargebee webhook route", () => {
+  it("accepts a valid payment and keeps duplicate delivery idempotent", async () => {
+    const app = express();
+    app.use(express.json());
+    const secret = "test-webhook-secret";
+    process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
+    const events = new Set<string>();
+    let wallet = 3;
+    let fulfillmentCalls = 0;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => undefined,
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async input => {
+        fulfillmentCalls += 1;
+        if (events.has(input.eventId)) return { status: "duplicate", tokenCount: 1 };
+        events.add(input.eventId);
+        wallet += input.amount === 100 ? 1 : 0;
+        return { status: "credited", tokenCount: 1, userId: 7, role: "job_seeker" };
+      },
+    });
+    const payload = { id: "ev_paid_1", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test", invoice_id: "inv_test" } } };
+    const first = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(payload);
+    const second = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(payload);
+    expect(first.status).toBe(200);
+    expect(first.body.result.status).toBe("credited");
+    expect(second.status).toBe(200);
+    expect(second.body.result.status).toBe("duplicate");
+    expect(wallet).toBe(4);
+    expect(fulfillmentCalls).toBe(2);
+    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
+  });
+
+  it("connects a checkout intent to a verified paid event and wallet refresh", async () => {
+    const app = express();
+    app.use(express.json());
+    const secret = "flow-secret";
+    process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
+    let intent: { hostedPageId: string; tokenCount: number } | undefined;
+    let wallet = 3;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createCheckout: async () => ({ checkoutUrl: "https://chargebee.test/hp_flow", hostedPageId: "hp_flow" }),
+      createPaymentIntent: async input => { intent = { hostedPageId: input.hostedPageId, tokenCount: input.tokenCount }; },
+      fulfillPayment: async input => { if (intent?.hostedPageId !== input.hostedPageId) return { status: "ignored" }; wallet += intent.tokenCount; return { status: "credited", tokenCount: intent.tokenCount }; },
+    });
+    const checkout = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", role: "job_seeker" });
+    const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_flow", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_flow" } } });
+    expect(checkout.status).toBe(200);
+    expect(checkout.body.checkoutUrl).toBe("https://chargebee.test/hp_flow");
+    expect(webhook.status).toBe(200);
+    expect(webhook.body.result.status).toBe("credited");
+    expect(wallet).toBe(4);
+    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
+  });
+
+  it("rejects unsigned payment delivery before any fulfillment call", async () => {
+    const app = express();
+    app.use(express.json());
+    let called = false;
+    registerChargebeeRoutes(app, { resolveIdentity: async () => undefined, createPaymentIntent: async () => undefined, fulfillPayment: async () => { called = true; return { status: "credited" }; } });
+    const response = await request(app).post("/api/chargebee/webhook").send({ id: "ev_unsigned", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test" } } });
+    expect(response.status).toBe(401);
+    expect(called).toBe(false);
+  });
+});

@@ -48,6 +48,9 @@ describe("secure token checkout routes", () => {
     expect(screen.getByText("1 token")).toBeTruthy();
     expect(screen.getByText("5 tokens")).toBeTruthy();
     expect(screen.getByText("10 tokens")).toBeTruthy();
+    expect(screen.getByText("Chargebee hosted checkout")).toBeTruthy();
+    expect(screen.getByText(/USD billing/i)).toBeTruthy();
     expect(screen.queryByText(/Domestic checkout simulation/i)).toBeNull();
+    expect(screen.queryByText(/International checkout simulation/i)).toBeNull();
   });
 });
