@@ -64,3 +64,24 @@ Chargebee’s Test Gateway documents the valid `4111 1111 1111 1111` Visa fixtur
 
 [3]: https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/chargebee-test-gateway "Chargebee Test Gateway test-card outcomes"
 [4]: https://razorpay.com/docs/payments/payments/test-card-details/ "Razorpay test-card details for Indian and international payments"
+
+
+## 2026-08-16: India versus international payment matrix
+
+The supported route matrix was exercised without real money. The India path used INR, the `skipwait_token_1-INR` item price, India/Karnataka billing details, and Chargebee’s valid sandbox Visa fixture `4111 1111 1111 1111`. Two earlier controlled INR payments completed successfully through the configured Razorpay Domestic route; both produced successful Chargebee webhook delivery and exactly one token credit each.
+
+The international path used USD, the `skipwait_token_1-USD` item price, United States/New York billing details, and the international Chargebee sandbox fixture displayed as `5267 3181 8797 5449`. The checkout rendered at $1.00 and showed the non-India address correctly, but the submitted sandbox attempt returned `Your request is invalid. Review your details and try again.` No paid event, fulfillment, or token credit was created; the database retained only the pending checkout intent. This indicates the configured Razorpay international/export route or its test-site eligibility is not currently accepting this hosted-checkout scenario, rather than an application-side crediting issue.
+
+The route-level negative matrix is covered in automated tests. India billing with the USD item price is rejected with HTTP 400, and international billing with the INR item price is also rejected with HTTP 400. Neither mismatch reaches Chargebee checkout creation or token fulfillment. The Chargebee sandbox fixtures are outcome simulators rather than reliable country-of-issuance indicators; country behavior is therefore evaluated using the billing address and selected currency route, while card behavior is recorded separately. Razorpay documents separate Indian and international test-card families, but the current Chargebee-hosted international form exposed only its own configured fixture. [5] [6]
+
+| Scenario | Billing country | Item/currency | Sandbox card | Result | Token credit |
+|---|---|---|---|---|---|
+| India domestic success | India | INR / ₹99 | Chargebee valid `4111 1111 1111 1111` | Successful; webhook delivered | Exactly 1 per payment |
+| India billing with international item | India | USD / $1 | Not submitted | Application rejected with HTTP 400 | None |
+| International export attempt | United States | USD / $1 | Chargebee international fixture `5267 3181 8797 5449` | Hosted checkout rendered; provider returned invalid request | None |
+| International billing with domestic item | United States | INR / ₹99 | Not submitted | Application rejected with HTTP 400 | None |
+
+A true Razorpay-issued international-card comparison remains a provider-configuration test, not an application test. The current Chargebee sandbox did not expose a usable Razorpay international card fixture in this flow, and no real card was used. Before enabling international production billing, Razorpay International/Export eligibility, the Chargebee Smart Routing mapping, and a provider-supported international test card must be validated together.
+
+[5]: https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/chargebee-test-gateway "Chargebee Test Gateway test-card outcomes"
+[6]: https://razorpay.com/docs/payments/payments/test-card-details/ "Razorpay test-card details for Indian and international payments"

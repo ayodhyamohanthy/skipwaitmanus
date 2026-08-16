@@ -59,7 +59,9 @@ describe("Chargebee webhook route", () => {
     expect(intlCheckout.status).toBe(200);
     expect(checkout.body.checkoutUrl).toBe("https://chargebee.test/hp_flow");
     const rejectedCurrency = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", billingCountry: "IN", role: "job_seeker" });
+    const rejectedInternationalInr = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "INTL", role: "job_seeker" });
     expect(rejectedCurrency.status).toBe(400);
+    expect(rejectedInternationalInr.status).toBe(400);
     expect(webhook.status).toBe(200);
     expect(webhook.body.result.status).toBe("credited");
     expect(wallet).toBe(4);
