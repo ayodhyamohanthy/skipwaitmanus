@@ -1,6 +1,6 @@
 import { and, count, desc, eq, isNull, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { companyOpportunities, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { companyOpportunities, paymentFulfillments, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -132,6 +132,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
 export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) {
   const companyDomain = companyDomainFromTargetUrl(input.targetRoleUrl);
   if (!companyDomain) throw new Error("Use the employer’s direct careers URL so we can route this request privately");
+  const remaining = await spendToken(userId, "job_seeker");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
   const jobId = Number(jobResult[0].insertId);
@@ -140,7 +141,7 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
   const eligible = await db.select({ userId: profiles.userId }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain)));
   for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: "A private referral request is available", body: `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
-  return { requestId, companyDomain, notifiedEmployees: eligible.length };
+  return { requestId, companyDomain, notifiedEmployees: eligible.length, remainingTokens: remaining.balance };
 }
 
 export async function listCompanyReferralInbox(userId: number) {
@@ -231,4 +232,59 @@ export async function getAiWorkspaceContext(userId: number) {
     recentMessageCount: memberMessages.length,
     stats,
   };
+}
+
+
+export type WalletRole = "job_seeker" | "referrer";
+
+export async function ensureTokenWallet(userId: number, role: WalletRole) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const existing = await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(tokenBalances).values({ userId, role, balance: 3 });
+  return (await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
+}
+
+export async function getTokenWallet(userId: number, role: WalletRole) {
+  return ensureTokenWallet(userId, role);
+}
+
+export async function spendToken(userId: number, role: WalletRole) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await ensureTokenWallet(userId, role);
+  return db.transaction(async tx => {
+    const current = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
+    if (!current[0] || current[0].balance < 1) throw new Error("No referral token available");
+    const nextBalance = current[0].balance - 1;
+    await tx.update(tokenBalances).set({ balance: nextBalance }).where(eq(tokenBalances.id, current[0].id));
+    await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "direct_request" });
+    return { balance: nextBalance };
+  });
+}
+
+export async function createChargebeePaymentIntent(input: { hostedPageId: string; userId: number; role: WalletRole; tokenCount: number; amount: number; currency: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: `pending:${input.hostedPageId}`, providerHostedPageId: input.hostedPageId, userId: input.userId, role: input.role, tokenCount: input.tokenCount, amount: input.amount, currency: input.currency });
+  return { id: Number(result[0].insertId), hostedPageId: input.hostedPageId };
+}
+
+export async function fulfillChargebeePayment(input: { eventId: string; hostedPageId?: string; invoiceId?: string; amount: number; currency: string }) {
+  if (!input.hostedPageId) return { status: "ignored" as const, reason: "missing_hosted_page" };
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
+    const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`))).limit(1);
+    if (!intent[0]) return { status: "ignored" as const, reason: "unknown_checkout" };
+    await tx.update(paymentFulfillments).set({ providerEventId: input.eventId, providerInvoiceId: input.invoiceId ?? null }).where(eq(paymentFulfillments.id, intent[0].id));
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
+    if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + intent[0].tokenCount }).where(eq(tokenBalances.id, wallet[0].id));
+    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: 3 + intent[0].tokenCount });
+    await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase" });
+    return { status: "credited" as const, tokenCount: intent[0].tokenCount, userId: intent[0].userId, role: intent[0].role };
+  });
 }

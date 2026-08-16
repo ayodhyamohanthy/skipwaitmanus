@@ -1,38 +1,58 @@
 import { ArrowLeft, Check, CreditCard, ShieldCheck } from "lucide-react";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Brand } from "@/components/Brand";
-import { addPurchasedTokens, getJobSeekerTokens, setJobSeekerTokens, tokenReturnPath, type TokenRole } from "@/lib/tokens";
+import { startLogin } from "@/const";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
+import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 
-type PaymentProvider = "razorpay" | "paypal" | "chargebee";
-const providers: Array<{ id: PaymentProvider; name: string; label: string; description: string }> = [
-  { id: "razorpay", name: "Razorpay", label: "India", description: "Domestic checkout simulation" },
-  { id: "paypal", name: "PayPal", label: "International", description: "Global checkout simulation" },
-  { id: "chargebee", name: "Chargebee", label: "Business billing", description: "Billing checkout simulation" },
+type Pack = { id: "skipwait_token_1-USD" | "skipwait_token_5-USD" | "skipwait_token_10-USD"; tokens: number; price: number; label: string };
+const packs: Pack[] = [
+  { id: "skipwait_token_1-USD", tokens: 1, price: 1, label: "One action" },
+  { id: "skipwait_token_5-USD", tokens: 5, price: 5, label: "Starter pack" },
+  { id: "skipwait_token_10-USD", tokens: 10, price: 10, label: "Keep moving" },
 ];
+
+function readLocalBalance(role: TokenRole) {
+  if (typeof window === "undefined") return 0;
+  return Number(localStorage.getItem(role === "referrer" ? "bridge-referrer-paid-tokens" : "bridge-tokens") || 0);
+}
 
 export default function Premium() {
   const role: TokenRole = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
   const referrer = role === "referrer";
-  const storageKey = referrer ? "bridge-referrer-paid-tokens" : "bridge-tokens";
-  const label = referrer ? "referral action" : "direct application";
-  const [count, setCount] = useState(1);
-  const [provider, setProvider] = useState<PaymentProvider>("paypal");
-  const [paid, setPaid] = useState(false);
-  const balance = referrer ? Number(localStorage.getItem(storageKey) || 0) : getJobSeekerTokens();
-  const selectedProvider = providers.find(item => item.id === provider)!;
-  const finish = () => { const next = addPurchasedTokens(referrer ? Number(localStorage.getItem(storageKey) || 0) : getJobSeekerTokens(), count); if (referrer) localStorage.setItem(storageKey, String(next)); else setJobSeekerTokens(next); setPaid(true); };
+  const { isAuthenticated } = useAuth();
+  const [selectedId, setSelectedId] = useState<Pack["id"]>("skipwait_token_1-USD");
+  const [status, setStatus] = useState<"idle" | "launching" | "pending" | "error">(typeof window !== "undefined" && new URLSearchParams(window.location.search).get("payment") === "pending" ? "pending" : "idle");
+  const [error, setError] = useState("");
+  const selected = useMemo(() => packs.find(pack => pack.id === selectedId) ?? packs[0], [selectedId]);
   const returnPath = tokenReturnPath(role);
+  const balance = readLocalBalance(role);
 
-  if (paid) return (
+  const beginCheckout = async () => {
+    if (!isAuthenticated) { startLogin(); return; }
+    setError("");
+    setStatus("launching");
+    try {
+      const response = await fetch("/api/chargebee/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ itemPriceId: selected.id, role }) });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || typeof body.checkoutUrl !== "string") throw new Error(body.error || "Unable to open secure checkout");
+      openChargebeeCheckout(body.checkoutUrl);
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : "Unable to open secure checkout");
+      setStatus("error");
+    }
+  };
+
+  if (status === "pending") return (
     <main data-skipwait-screen="premium" className="min-h-screen bg-slate-50 px-6 py-6 text-slate-950">
-      <div className="mx-auto max-w-xl">
-        <div className="flex items-center"><Brand /></div>
+      <div className="mx-auto max-w-xl"><div className="flex items-center"><Brand /></div>
         <section className="mt-20 rounded-2xl border border-slate-200 bg-white p-9 text-center shadow-sm">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-emerald-50 text-emerald-700"><Check className="h-6 w-6" /></span>
-          <p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">{selectedProvider.name} simulation</p>
-          <h1 className="mt-3 text-3xl font-semibold">{count} purchased token{count > 1 ? "s" : ""} added.</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-600">No payment was processed. {referrer ? "Your Referrer wallet will show these separately from your free allowance." : "Your Application Tokens balance now includes your simulated purchase."}</p>
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-blue-50 text-[#0B57D0]"><Check className="h-6 w-6" /></span>
+          <p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Payment received for verification</p>
+          <h1 className="mt-3 text-3xl font-semibold">Your tokens will appear shortly.</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-600">Chargebee confirms payment to skipwait.me first. We add tokens only after the verified payment event reaches our server. Nothing is credited from this browser return.</p>
           <Link href={returnPath} className="mt-8 inline-flex rounded-lg bg-[#0B57D0] px-5 py-3 text-sm font-semibold text-white hover:bg-[#0847AD]">Continue</Link>
         </section>
       </div>
@@ -41,43 +61,19 @@ export default function Premium() {
 
   return (
     <main data-skipwait-screen="premium" className="min-h-screen bg-slate-50 px-6 py-6 text-slate-950">
-      <div className="mx-auto max-w-3xl">
-        {/* Brand anchored top-left on its own row */}
-        <div className="flex items-center"><Brand /></div>
-        {/* Back link on a separate row below the brand */}
-        <Link href={returnPath} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900">
-          <ArrowLeft className="h-4 w-4" />Back
-        </Link>
+      <div className="mx-auto max-w-3xl"><div className="flex items-center"><Brand /></div>
+        <Link href={returnPath} className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900"><ArrowLeft className="h-4 w-4" />Back</Link>
         <section className="mt-6 grid gap-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm lg:grid-cols-[1.1fr_.9fr]">
           <div>
             <p className="text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">More {referrer ? "Referrer" : "application"} tokens</p>
             <h1 className="mt-3 text-4xl font-semibold tracking-[-.055em]">Simple: $1 per action token.</h1>
-            <p className="mt-4 text-base leading-7 text-slate-600">You have <strong>{balance} {referrer ? "purchased" : "application"} token{balance === 1 ? "" : "s"}</strong> available. The first 3 {label}s are included. Add only the exact number you need after that—there is no plan commitment.</p>
-            <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700"><strong className="text-[#0B57D0]">What one token covers:</strong> {referrer ? "one approved referral action" : "one private referral request"}. Your top-up is available immediately in this design simulation.</div>
-            <div className="mt-8 flex items-center gap-4">
-              <button onClick={() => setCount(Math.max(1, count - 1))} className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 text-lg hover:bg-slate-50">−</button>
-              <div className="min-w-24 text-center"><p className="text-3xl font-semibold">{count}</p><p className="text-xs text-slate-500">tokens</p></div>
-              <button onClick={() => setCount(count + 1)} className="grid h-11 w-11 place-items-center rounded-full border border-slate-200 text-lg hover:bg-slate-50">+</button>
-            </div>
-            <fieldset className="mt-8">
-              <legend className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Checkout route</legend>
-              <div className="mt-3 grid gap-2">
-                {providers.map(item => (
-                  <button type="button" key={item.id} onClick={() => setProvider(item.id)} className={`flex items-center justify-between rounded-xl border p-3 text-left transition ${provider === item.id ? "border-blue-300 bg-blue-50" : "border-slate-200 hover:border-blue-200"}`}>
-                    <span><span className="block text-sm font-semibold text-slate-900">{item.name}</span><span className="mt-0.5 block text-xs text-slate-600">{item.description}</span></span>
-                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${provider === item.id ? "bg-white text-[#0B57D0]" : "bg-slate-100 text-slate-500"}`}>{item.label}</span>
-                  </button>
-                ))}
-              </div>
+            <p className="mt-4 text-base leading-7 text-slate-600">You have <strong>{balance} {referrer ? "purchased" : "application"} token{balance === 1 ? "" : "s"}</strong> available. Your first 3 actions are included; add only what you need after that.</p>
+            <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-6 text-slate-700"><strong className="text-[#0B57D0]">One token covers:</strong> {referrer ? "one approved referral action" : "one private referral request"}.</div>
+            <fieldset className="mt-8"><legend className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Choose a pack</legend>
+              <div className="mt-3 grid gap-2">{packs.map(pack => <button type="button" key={pack.id} onClick={() => setSelectedId(pack.id)} className={`flex items-center justify-between rounded-xl border p-4 text-left transition ${selected.id === pack.id ? "border-blue-300 bg-blue-50" : "border-slate-200 hover:border-blue-200"}`}><span><span className="block text-sm font-semibold text-slate-900">{pack.tokens} token{pack.tokens === 1 ? "" : "s"}</span><span className="mt-0.5 block text-xs text-slate-600">{pack.label}</span></span><strong className="text-sm text-slate-900">${pack.price}.00</strong></button>)}</div>
             </fieldset>
           </div>
-          <aside className="rounded-xl bg-slate-900 p-6 text-white">
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-blue-200">Checkout summary</p>
-            <div className="mt-6 flex justify-between text-sm"><span>{count} {label} token{count > 1 ? "s" : ""}</span><strong>${count}</strong></div>
-            <div className="mt-4 rounded-lg bg-white/10 p-3"><p className="text-sm font-semibold">{selectedProvider.name}</p><p className="mt-1 text-xs leading-5 text-slate-300">{selectedProvider.label} · {selectedProvider.description}</p></div>
-            <button onClick={finish} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-3 text-sm font-semibold hover:bg-[#0847AD]"><CreditCard className="h-4 w-4" />Simulate ${count} checkout</button>
-            <div className="mt-5 flex gap-2 text-xs leading-5 text-slate-400"><ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />Design simulation only. No payment is processed or promised.</div>
-          </aside>
+          <aside className="rounded-xl bg-slate-900 p-6 text-white"><p className="text-xs font-bold uppercase tracking-[.16em] text-blue-200">Secure checkout</p><div className="mt-6 flex justify-between text-sm"><span>{selected.tokens} action token{selected.tokens > 1 ? "s" : ""}</span><strong>${selected.price}.00 USD</strong></div><div className="mt-4 rounded-lg bg-white/10 p-3"><p className="text-sm font-semibold">Chargebee hosted checkout</p><p className="mt-1 text-xs leading-5 text-slate-300">USD billing · Razorpay / PayPal gateway availability is handled by Chargebee.</p></div><button disabled={status === "launching"} onClick={beginCheckout} className="mt-5 flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-3 text-sm font-semibold hover:bg-[#0847AD] disabled:cursor-wait disabled:opacity-70"><CreditCard className="h-4 w-4" />{status === "launching" ? "Opening secure checkout…" : isAuthenticated ? `Continue to $${selected.price}.00 checkout` : "Sign in to continue"}</button>{error && <p role="alert" className="mt-3 text-xs leading-5 text-red-300">{error}</p>}<div className="mt-5 flex gap-2 text-xs leading-5 text-slate-400"><ShieldCheck className="h-4 w-4 shrink-0 text-emerald-500" />Tokens are credited only after a verified Chargebee payment event.</div></aside>
         </section>
       </div>
     </main>

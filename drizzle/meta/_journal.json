@@ -50,6 +50,20 @@
       "when": 1786710772848,
       "tag": "0006_outstanding_vivisector",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1786877573952,
+      "tag": "0007_hesitant_gideon",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1786877634281,
+      "tag": "0008_melodic_doctor_faustus",
+      "breakpoints": true
     }
   ]
 }

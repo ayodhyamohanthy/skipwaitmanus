@@ -192,3 +192,15 @@
 - [x] Diagnose and fix attached resume visibility for authorized Referrers while preserving document-access controls.
 - [x] Add work-email management in Settings and show Switch to Job Referrer mode only after a verified work email is present.
 - [x] Preserve a selected resume through Clerk sign-in so it is not discarded before secure upload and referral submission.
+
+- [x] Recover the Chargebee checkout, webhook, token-ledger, and payment tests lost from the working tree after the accidental rollback to the prior checkpoint.
+- [x] Re-run TypeScript, Vitest, and production build checks after payment recovery before continuing webhook validation.
+- [x] Re-verify the configured Chargebee webhook and dedicated project secret after payment recovery.
+- [ ] Save a new checkpoint containing the recovered payment implementation and verified provider configuration.
+
+**Operational history:**
+- [x] Audit and preserve the 24 Razorpay legacy subscriptions after user-approved immediate cancellation; all 24 are verified cancelled.
+- [x] Create and verify Chargebee USD one-time token catalogue at $1, $5, and $10.
+- [x] Configure the Chargebee test webhook at https://skipwait.me/api/chargebee/webhook with the payment-succeeded event.
+- [x] Provision the project-side Chargebee webhook secret.
+- [x] Recover the payment implementation after the accidental workspace rollback before using the configured webhook for token fulfillment.

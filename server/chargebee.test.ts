@@ -1,0 +1,31 @@
+import { describe, expect, it } from "vitest";
+import { basicAuthMatches, buildCheckoutForm, CHARGEBEE_TOKEN_PACKS, parsePaidPaymentEvent, tokenPackFromAmount } from "./chargebee";
+
+describe("Chargebee payment contract", () => {
+  it("maps only the approved USD token packs", () => {
+    expect(CHARGEBEE_TOKEN_PACKS["skipwait_token_1-USD"]).toEqual({ tokenCount: 1, amount: 100, currency: "USD" });
+    expect(tokenPackFromAmount(500)).toEqual({ tokenCount: 5, itemPriceId: "skipwait_token_5-USD" });
+    expect(tokenPackFromAmount(999)).toBeUndefined();
+  });
+
+  it("accepts the dedicated webhook Basic Auth and rejects other credentials", () => {
+    const encoded = Buffer.from("skipwait:test-webhook-secret").toString("base64");
+    expect(basicAuthMatches(`Basic ${encoded}`, "test-webhook-secret")).toBe(true);
+    expect(basicAuthMatches(`Basic ${encoded}`, "different-secret")).toBe(false);
+    expect(basicAuthMatches(undefined, "test-webhook-secret")).toBe(false);
+  });
+
+  it("accepts only paid USD events with a Chargebee event id", () => {
+    const payload = { id: "ev_test_1", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test", invoice_id: "inv_test" } } };
+    expect(parsePaidPaymentEvent(payload)).toEqual({ eventId: "ev_test_1", hostedPageId: "hp_test", invoiceId: "inv_test", customerId: undefined, amount: 100, currency: "USD" });
+    expect(parsePaidPaymentEvent({ ...payload, event_type: "invoice_generated" })).toBeUndefined();
+    expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, currency_code: "INR" } } })).toBeUndefined();
+  });
+
+  it("builds a hosted one-time checkout form for the selected item price", () => {
+    const form = buildCheckoutForm({ itemPriceId: "skipwait_token_10-USD", email: "user@example.com", redirectUrl: "https://skipwait.me/premium?payment=pending", cancelUrl: "https://skipwait.me/premium?payment=cancelled" });
+    expect(form.get("item_price[item_price_id][0]")).toBe("skipwait_token_10-USD");
+    expect(form.get("item_price[quantity][0]")).toBe("1");
+    expect(form.get("customer[email]")).toBe("user@example.com");
+  });
+});
