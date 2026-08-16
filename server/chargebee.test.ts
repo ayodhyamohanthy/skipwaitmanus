@@ -16,16 +16,18 @@ describe("Chargebee payment contract", () => {
   });
 
   it("accepts only paid USD events with a Chargebee event id", () => {
-    const payload = { id: "ev_test_1", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test", invoice_id: "inv_test" } } };
-    expect(parsePaidPaymentEvent(payload)).toEqual({ eventId: "ev_test_1", hostedPageId: "hp_test", invoiceId: "inv_test", customerId: undefined, amount: 100, currency: "USD" });
+    const payload = { id: "ev_test_1", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test", invoice_id: "inv_test" }, hosted_page: { pass_thru_content: "intent_test" } } };
+    expect(parsePaidPaymentEvent(payload)).toEqual({ eventId: "ev_test_1", hostedPageId: "hp_test", invoiceId: "inv_test", customerId: undefined, passThruContent: "intent_test", amount: 100, currency: "USD" });
     expect(parsePaidPaymentEvent({ ...payload, event_type: "invoice_generated" })).toBeUndefined();
     expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, currency_code: "INR" } } })).toBeUndefined();
   });
 
   it("builds a hosted one-time checkout form for the selected item price", () => {
-    const form = buildCheckoutForm({ itemPriceId: "skipwait_token_10-USD", email: "user@example.com", redirectUrl: "https://skipwait.me/premium?payment=pending", cancelUrl: "https://skipwait.me/premium?payment=cancelled" });
-    expect(form.get("item_price[item_price_id][0]")).toBe("skipwait_token_10-USD");
-    expect(form.get("item_price[quantity][0]")).toBe("1");
+    const form = buildCheckoutForm({ itemPriceId: "skipwait_token_10-USD", email: "user@example.com", redirectUrl: "https://skipwait.me/premium?payment=pending", cancelUrl: "https://skipwait.me/premium?payment=cancelled", checkoutIntentId: "intent_test" });
+    expect(form.get("item_prices[item_price_id][0]")).toBe("skipwait_token_10-USD");
+    expect(form.get("item_prices[quantity][0]")).toBe("1");
+    expect(form.get("currency_code")).toBe("USD");
+    expect(form.get("pass_thru_content")).toBe("intent_test");
     expect(form.get("customer[email]")).toBe("user@example.com");
   });
 });

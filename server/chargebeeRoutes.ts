@@ -7,8 +7,8 @@ export type ChargebeeIdentity = { account: { id: number; email?: string | null; 
 type Deps = {
   resolveIdentity: (req: Request) => Promise<ChargebeeIdentity | undefined>;
   createCheckout?: typeof createChargebeeCheckout;
-  createPaymentIntent: (input: { hostedPageId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
-  fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; amount: number; currency: string }) => Promise<unknown>;
+  createPaymentIntent: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
+  fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) => Promise<unknown>;
 };
 
 function roleFromBody(value: unknown): TokenRole {
@@ -33,7 +33,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         redirectUrl: `${origin}/premium?role=${role}&payment=pending`,
         cancelUrl: `${origin}/premium?role=${role}&payment=cancelled`,
       });
-      await deps.createPaymentIntent({ hostedPageId: checkout.hostedPageId, userId: identity.account.id, role, tokenCount: pack.tokenCount, amount: pack.amount, currency: "USD" });
+      await deps.createPaymentIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, tokenCount: pack.tokenCount, amount: pack.amount, currency: "USD" });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] checkout error", error);

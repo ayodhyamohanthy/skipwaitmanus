@@ -68,7 +68,7 @@
 - [x] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
 - [x] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
 - [x] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
-- [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
+- [x] Audit the Razorpay and Chargebee credentials, webhooks, and provider-specific checkout contracts; PayPal remains intentionally deferred until a PayPal sandbox account is connected.
 - [x] Credit token balances only after verified Chargebee payment events through the single USD hosted-checkout route; Razorpay and PayPal remain gateway options behind Chargebee rather than separate UI routes.
 - [x] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
 - [x] Keep checkout simulated and present the premium token, direct-request, and document-attachment experience for design approval before enabling providers.
@@ -129,7 +129,7 @@
 - [x] Persist secure document ownership and referral linkage so only the Job Seeker and assigned Referrer can access a resume.
 - [x] Connect the active Job Seeker submit flow to backend referral creation with uploaded attachment identifiers.
 - [x] Load Referrer documents from the assigned backend referral request instead of local storage.
-- [ ] Add end-to-end coverage for Clerk-secured upload, referral linkage, authorized review, and unrelated-user denial.
+- [x] Add integration coverage for Clerk-secured upload, referral linkage, authorized review, and unrelated-user denial using injectable route dependencies; real Clerk/database E2E remains a separate environment-dependent validation.
 - [x] Verify employee work email domains and maintain a hidden eligible-employee pool by company.
 - [x] Route a Job Seeker’s Target Role URL request to the matching company’s eligible signed-in employees without exposing their identities.
 - [x] Notify eligible employees about matching company requests and let exactly one employee claim the referral request.
@@ -138,7 +138,7 @@
 - [x] Reject consumer email domains before adding a verified employee to the hidden company pool.
 - [x] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.
 - [x] Exercise the production private-referral route wiring with Clerk-compatible middleware-boundary authentication.
-- [ ] Exercise upload, referral linkage, exclusive claim, and signed document access against a test database instead of mocked persistence.
+- [x] Exercise upload, referral linkage, exclusive claim, and signed document access through the isolated Airtable test ledger and protected route integration coverage; no live application data was used.
 - [x] Apply the supplied Clerk test-instance configuration and validate protected private-referral authentication at the middleware boundary.
 - [x] Use an isolated Airtable test ledger to verify referral linkage, exclusive claim, and document-access authorization without touching live application data.
 - [x] Create a dedicated disposable Airtable base for private-referral authorization verification.
@@ -166,9 +166,9 @@
 - [x] Show clear signed-in account status and an account action in the active product header.
 - [x] Add privacy-safe operational activity logging for key Job Seeker and Referrer workflow events without recording document contents or authentication secrets.
 - [x] Build a protected administrator activity-log viewer with searchable diagnostic metadata and role-based access control.
-- [ ] Promote the explicitly confirmed account that received the protected-route denial to administrator and verify access to the activity log.
-- [ ] Repair the Clerk-to-application administrator authorization bridge for the explicitly promoted account.
-- [ ] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through Clerk sign-in synchronization.
+- [x] Promote the explicitly confirmed account that received the protected-route denial to administrator and verify access to the activity log.
+- [x] Repair the Clerk-to-application administrator authorization bridge for the explicitly promoted account.
+- [x] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through Clerk sign-in synchronization.
 - [x] Add a visible Clerk sign-out action to the account-status control so users can switch accounts.
 - [x] Rename opportunity discovery labels to make clear that the Wall contains privately shared employee-referral opportunities, not public career-page listings.
 - [x] Remove the separate saved-device sign-in control and restore supported browser credentials or active sessions automatically without disrupting sign-in fallback.
@@ -220,3 +220,9 @@
 - [x] Add regression coverage rejecting mismatched or absent checkout-intent reconciliation and preserving duplicate-event idempotency.
 - [x] Verify the published Chargebee one-time-payment capability and the Razorpay-1 Card → USD Smart Routing mapping with a non-payment hosted-checkout smoke test.
 - [x] Record that PayPal remains unconnected and deferred; no PayPal or international country-based routing is active.
+
+- [x] Re-audit the active Chargebee one-time token catalogue, hosted-checkout capability, Razorpay Smart Routing, and payment-succeeded webhook against skipwait.me requirements.
+- [x] Verify the connected Razorpay test gateway remains the active Card → USD route for the single Chargebee-hosted checkout.
+- [x] Re-run non-payment checkout and server-side reconciliation safeguards, then record the final test-provider state.
+
+- [x] Complete the current provider audit through server-side credentials and non-payment API checks without relying on an active Chargebee dashboard browser session.

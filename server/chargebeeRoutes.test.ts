@@ -27,7 +27,7 @@ describe("Chargebee webhook route", () => {
         return { status: "credited", tokenCount: 1, userId: 7, role: "job_seeker" };
       },
     });
-    const payload = { id: "ev_paid_1", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test", invoice_id: "inv_test" } } };
+    const payload = { id: "ev_paid_1", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test", invoice_id: "inv_test" }, hosted_page: { pass_thru_content: "intent_paid_1" } } };
     const first = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(payload);
     const second = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send(payload);
     expect(first.status).toBe(200);
@@ -44,16 +44,16 @@ describe("Chargebee webhook route", () => {
     app.use(express.json());
     const secret = "flow-secret";
     process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
-    let intent: { hostedPageId: string; tokenCount: number } | undefined;
+    let intent: { hostedPageId: string; checkoutIntentId: string; tokenCount: number } | undefined;
     let wallet = 3;
     registerChargebeeRoutes(app, {
       resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
-      createCheckout: async () => ({ checkoutUrl: "https://chargebee.test/hp_flow", hostedPageId: "hp_flow" }),
-      createPaymentIntent: async input => { intent = { hostedPageId: input.hostedPageId, tokenCount: input.tokenCount }; },
-      fulfillPayment: async input => { if (intent?.hostedPageId !== input.hostedPageId) return { status: "ignored" }; wallet += intent.tokenCount; return { status: "credited", tokenCount: intent.tokenCount }; },
+      createCheckout: async () => ({ checkoutUrl: "https://chargebee.test/hp_flow", hostedPageId: "hp_flow", checkoutIntentId: "intent_flow" }),
+      createPaymentIntent: async input => { intent = { hostedPageId: input.hostedPageId, checkoutIntentId: input.checkoutIntentId, tokenCount: input.tokenCount }; },
+      fulfillPayment: async input => { if (intent?.hostedPageId !== input.hostedPageId || intent?.checkoutIntentId !== input.passThruContent) return { status: "ignored" }; wallet += intent.tokenCount; return { status: "credited", tokenCount: intent.tokenCount }; },
     });
     const checkout = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-USD", role: "job_seeker" });
-    const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_flow", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_flow" } } });
+    const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_flow", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_flow" }, hosted_page: { pass_thru_content: "intent_flow" } } });
     expect(checkout.status).toBe(200);
     expect(checkout.body.checkoutUrl).toBe("https://chargebee.test/hp_flow");
     expect(webhook.status).toBe(200);
@@ -70,5 +70,21 @@ describe("Chargebee webhook route", () => {
     const response = await request(app).post("/api/chargebee/webhook").send({ id: "ev_unsigned", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test" } } });
     expect(response.status).toBe(401);
     expect(called).toBe(false);
+  });
+
+  it("does not credit a paid event when the hosted page matches but pass-through intent does not", async () => {
+    const app = express();
+    app.use(express.json());
+    const secret = "mismatch-secret";
+    process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => undefined,
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async input => input.passThruContent === "expected_intent" ? { status: "credited" } : { status: "ignored", reason: "unknown_checkout" },
+    });
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_mismatch", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test" }, hosted_page: { pass_thru_content: "wrong_intent" } } });
+    expect(response.status).toBe(200);
+    expect(response.body.result.status).toBe("ignored");
+    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 });
