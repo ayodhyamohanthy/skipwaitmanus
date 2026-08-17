@@ -277,3 +277,7 @@
 - [ ] Obtain or create a separate PayPal Sandbox Personal buyer account; the connected Business merchant cannot pay itself, and the PayPal Developer Dashboard is currently Cloudflare-blocked.
 
 - [ ] Repeat the controlled $1 USD PayPal checkout with the separate Personal buyer and verify successful Chargebee webhook reconciliation plus exactly-one token credit.
+
+- [x] Re-run the final route matrix: India/INR through Razorpay, global/USD through PayPal, and country/currency mismatch rejections without token credit.
+
+- [x] Inspect current payment records and fulfillment safeguards after the route matrix, confirming no duplicate or browser-return token credits.
