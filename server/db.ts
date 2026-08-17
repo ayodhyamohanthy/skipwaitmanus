@@ -149,10 +149,64 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
 }
 
 export async function listCompanyReferralInbox(userId: number) {
+  return listCompanyReferralInboxByState(userId, "new");
+}
+
+export type CompanyReferralInboxState = "new" | "saved" | "completed";
+
+export async function listCompanyReferralInboxByState(userId: number, state: CompanyReferralInboxState) {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) return [];
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobSeekerName: users.name, createdAt: referralRequests.createdAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequests.referrerId), eq(referralRequests.status, "pending"))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, users.name, referralRequests.createdAt).orderBy(desc(referralRequests.createdAt));
+  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, savedAt: referralRequests.savedAt, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(jobs.company, profile.workEmailDomain)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.savedAt, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
+  return rows.filter(row => {
+    if (state === "new") return row.status === "pending" && !row.referrerId && !row.savedAt;
+    if (state === "saved") return row.status === "pending" && (row.referrerId === userId || (!row.referrerId && Boolean(row.savedAt)));
+    return row.referrerId === userId && row.status !== "pending";
+  }).map(row => ({ ...row, inboxState: state, isClaimedByYou: row.referrerId === userId }));
+}
+
+export async function saveCompanyReferralRequest(userId: number, requestId: number, saved: boolean) {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before saving referrals");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const request = await db.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, requestId)).limit(1);
+  if (!request[0] || request[0].companyDomain !== profile.workEmailDomain || request[0].status !== "pending" || request[0].referrerId) throw new Error("This private referral request is no longer available to save");
+  await db.update(referralRequests).set({ savedAt: saved ? new Date() : null }).where(eq(referralRequests.id, requestId));
+  return { requestId, saved };
+}
+
+export async function listJobSeekerCompanyReferrals(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralRequests.jobSeekerId, userId)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
+}
+
+export async function getReferralFlowHealth() {
+  const db = await getDb();
+  if (!db) return { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
+  const [requests, verifiedProfiles, activities] = await Promise.all([
+    db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
+    db.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.accountType, "referrer")),
+    db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome }).from(operationalActivityLogs).orderBy(desc(operationalActivityLogs.createdAt)).limit(1000),
+  ]);
+  const coverageByCompany = new Map<string, number>();
+  for (const profile of verifiedProfiles) if (profile.workEmailDomain) coverageByCompany.set(profile.workEmailDomain, (coverageByCompany.get(profile.workEmailDomain) ?? 0) + 1);
+  const waitingByCompany = new Map<string, number>();
+  for (const request of requests) if (request.status === "pending" && !request.referrerId) waitingByCompany.set(request.companyDomain, (waitingByCompany.get(request.companyDomain) ?? 0) + 1);
+  const coverageGaps = Array.from(waitingByCompany.entries()).map(([companyDomain, waitingRequests]) => ({ companyDomain, waitingRequests, verifiedCoverage: coverageByCompany.get(companyDomain) ?? 0 })).filter(item => item.verifiedCoverage === 0).sort((a, b) => b.waitingRequests - a.waitingRequests).slice(0, 12);
+  return {
+    funnel: {
+      requestsCreated: requests.length,
+      requestsClaimed: requests.filter(request => Boolean(request.referrerId)).length,
+      decisionsRecorded: requests.filter(request => request.status !== "pending").length,
+      waitingForCoverage: requests.filter(request => request.status === "pending" && !request.referrerId).length,
+    },
+    coverageGaps,
+    instrumentation: {
+      uploadedDocuments: activities.filter(activity => activity.action === "document.uploaded" && activity.outcome === "success").length,
+      recordedFailures: activities.filter(activity => activity.outcome === "failure" || activity.outcome === "denied").length,
+    },
+  };
 }
 
 export async function claimCompanyReferralRequest(userId: number, requestId: number) {

@@ -22,3 +22,24 @@ export function getReferralProgress(status: ReferralStatus): number {
 export function canReviewReferral(status: ReferralStatus): boolean {
   return status === "pending";
 }
+
+export type JobSeekerReferralState = {
+  label: string;
+  title: string;
+  detail: string;
+  tone: "blue" | "amber" | "emerald" | "slate";
+};
+
+export function getJobSeekerReferralState(input: { status: ReferralStatus; referrerId?: number | null }): JobSeekerReferralState {
+  if (input.status === "pending" && input.referrerId) return { label: "Under review", title: "A verified employee is reviewing your request.", detail: "Their identity remains private. You will see a factual update when they make a decision.", tone: "blue" };
+  if (input.status === "pending") return { label: "Privately routed", title: "Your request is available to eligible employees.", detail: "It remains private while a verified employee decides whether to claim it.", tone: "amber" };
+  if (input.status === "approved") return { label: "Referral approved", title: "A verified employee approved your referral request.", detail: "Use the next-step email draft when you are ready to continue with the hiring process.", tone: "emerald" };
+  if (input.status === "declined") return { label: "Request closed", title: "This referral request was declined.", detail: "Your documents stay private. You can reuse your packet for another opportunity.", tone: "slate" };
+  return { label: referralStatusLabels[input.status], title: referralStatusLabels[input.status], detail: "This request has a verified status update.", tone: input.status === "offer" ? "emerald" : "blue" };
+}
+
+export function getReferrerInboxState(input: { status: ReferralStatus; referrerId?: number | null; savedAt?: Date | string | null }): "new" | "saved" | "completed" {
+  if (input.status !== "pending") return "completed";
+  if (input.referrerId || input.savedAt) return "saved";
+  return "new";
+}

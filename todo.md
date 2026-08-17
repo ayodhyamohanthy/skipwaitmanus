@@ -303,3 +303,8 @@
 - [x] Make the live Chargebee credential smoke test resilient to normal provider response latency so the full regression suite remains reliable.
 - [x] Audit the Job Seeker, Referrer, and Admin journeys from landing through return use; identify ethical psychological hooks, retention mechanics, and low-friction network-invitation loops before implementing changes.
 - [x] Refocus the active skipwait.me experience around one singular promise: the fastest trusted way to ask for or give a job referral, with all secondary features serving that core action.
+- [x] Define shared referral-status vocabulary, flow-health metrics, and privacy boundaries for the focused referral operating system.
+- [x] Build a Job Seeker My Requests home with factual status timelines and a clear next action.
+- [x] Build a Referrer My Company Inbox with new, saved-for-later, and completed private requests.
+- [x] Build an aggregate Admin Flow Health dashboard that surfaces funnel friction and company-coverage gaps without exposing private content or employee identities.
+- [x] Add regression coverage and visual verification for the new Job Seeker, Referrer, and Admin referral operating-system flows.

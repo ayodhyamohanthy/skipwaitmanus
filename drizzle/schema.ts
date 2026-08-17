@@ -80,9 +80,10 @@ export const referralRequests = mysqlTable("referralRequests", {
   personalPitch: text("personalPitch").notNull(),
   status: mysqlEnum("status", ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed"]).default("pending").notNull(),
   referrerMessage: text("referrerMessage"),
+  savedAt: timestamp("savedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt)]);
 
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),

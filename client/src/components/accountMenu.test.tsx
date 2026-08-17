@@ -26,19 +26,19 @@ describe("AccountMenu", () => {
     expect(screen.getByRole("button", { name: "Account menu" }).querySelector("img")).toBeNull();
   });
 
-  it("opens Settings and keeps Job Referrer mode hidden without a verified company email", async () => {
+  it("opens Settings and keeps My Company Inbox hidden without a verified company email", async () => {
     render(<AccountMenu />);
     fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
-    expect(screen.queryByRole("menuitem", { name: "Switch to Job Referrer mode" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "My Company Inbox" })).toBeNull();
     fireEvent.click(await screen.findByRole("menuitem", { name: "Settings" }));
     expect(window.location.pathname).toBe("/settings");
   });
 
-  it("shows Job Referrer mode only after a verified company email is present", async () => {
+  it("shows My Company Inbox only after a verified company email is present", async () => {
     clerkUser.workEmailVerified = true;
     render(<AccountMenu />);
     fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
-    expect(await screen.findByRole("menuitem", { name: "Switch to Job Referrer mode" })).toBeTruthy();
+    expect(await screen.findByRole("menuitem", { name: "My Company Inbox" })).toBeTruthy();
     fireEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
   });

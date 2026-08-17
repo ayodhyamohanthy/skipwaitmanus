@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canReviewReferral, getReferralProgress, referralStatusLabels } from "./referral";
+import { canReviewReferral, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, referralStatusLabels } from "./referral";
 
 describe("Referral Request state helpers", () => {
   it("provides the prescribed request state labels", () => {
@@ -17,5 +17,17 @@ describe("Referral Request state helpers", () => {
     expect(getReferralProgress("interview")).toBeGreaterThan(getReferralProgress("approved"));
     expect(getReferralProgress("offer")).toBeGreaterThan(getReferralProgress("interview"));
   });
-});
 
+  it("keeps Job Seeker status copy factual about routing, claim, and decision", () => {
+    expect(getJobSeekerReferralState({ status: "pending", referrerId: null })).toMatchObject({ label: "Privately routed", tone: "amber" });
+    expect(getJobSeekerReferralState({ status: "pending", referrerId: 4 })).toMatchObject({ label: "Under review", tone: "blue" });
+    expect(getJobSeekerReferralState({ status: "declined", referrerId: 4 })).toMatchObject({ label: "Request closed", tone: "slate" });
+  });
+
+  it("separates new, saved, and completed Referrer inbox work without fabricating activity", () => {
+    expect(getReferrerInboxState({ status: "pending", referrerId: null, savedAt: null })).toBe("new");
+    expect(getReferrerInboxState({ status: "pending", referrerId: null, savedAt: new Date() })).toBe("saved");
+    expect(getReferrerInboxState({ status: "pending", referrerId: 2, savedAt: null })).toBe("saved");
+    expect(getReferrerInboxState({ status: "approved", referrerId: 2, savedAt: null })).toBe("completed");
+  });
+});

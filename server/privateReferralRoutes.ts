@@ -16,12 +16,17 @@ export type PrivateReferralRouteDeps = {
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; remainingTokens?: number }>;
   listCompanyReferralInbox: (userId: number) => Promise<unknown[]>;
+  listCompanyReferralInboxByState?: (userId: number, state: "new" | "saved" | "completed") => Promise<unknown[]>;
+  listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
+  reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
   publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; walkInAt?: Date; walkInEndsAt?: Date }) => Promise<unknown>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   listOperationalActivity?: (input: { limit?: number; action?: string }) => Promise<unknown[]>;
+  getReferralFlowHealth?: () => Promise<unknown>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
@@ -93,7 +98,51 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(201).json(result);
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
   });
-  app.get("/api/company-referrals/inbox", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view employee requests" }); const requests = await deps.listCompanyReferralInbox(identity.account.id); record({ actorUserId: identity.account.id, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: requests.length } }); res.json({ requests }); } catch { res.status(500).json({ error: "We could not load private company requests" }); } });
+  app.get("/api/company-referrals/mine", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view your referral requests" });
+      const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id) ?? [];
+      record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length } });
+      res.json({ requests });
+    } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
+  });
+  app.get("/api/company-referrals/inbox", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view employee requests" });
+      const requestedScope = typeof req.query.scope === "string" ? req.query.scope : "new";
+      const scope = requestedScope === "saved" || requestedScope === "completed" ? requestedScope : "new";
+      const requests = deps.listCompanyReferralInboxByState ? await deps.listCompanyReferralInboxByState(identity.account.id, scope) : await deps.listCompanyReferralInbox(identity.account.id);
+      record({ actorUserId: identity.account.id, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: requests.length, scope } });
+      res.json({ requests, scope });
+    } catch { res.status(500).json({ error: "We could not load private company requests" }); }
+  });
+  app.post("/api/company-referrals/:requestId/save", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      const saved = req.body?.saved !== false;
+      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to save a private request" });
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!deps.saveCompanyReferralRequest) return res.status(501).json({ error: "Saving requests is not available yet" });
+      const result = await deps.saveCompanyReferralRequest(identity.account.id, requestId, saved);
+      record({ actorUserId: identity.account.id, action: saved ? "company_referral.saved" : "company_referral.unsaved", outcome: "success", resourceType: "referral_request", resourceId: requestId });
+      res.json(result);
+    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); }
+  });
+  app.post("/api/company-referrals/:requestId/review", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      const decision = req.body?.decision;
+      const message = typeof req.body?.message === "string" ? req.body.message.slice(0, 3000) : undefined;
+      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to review a private request" });
+      if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined")) return res.status(400).json({ error: "Choose approve or decline for this referral request" });
+      if (!deps.reviewReferralRequest) return res.status(501).json({ error: "Reviewing requests is not available yet" });
+      const result = await deps.reviewReferralRequest(identity.account.id, { requestId, decision, message });
+      record({ actorUserId: identity.account.id, action: `company_referral.${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId });
+      res.json(result);
+    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request can no longer be reviewed" }); }
+  });
   app.get("/api/company-referrals/:requestId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
@@ -117,5 +166,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals/:requestId/claim", async (req, res) => { try { const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to claim a referral request" }); if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" }); const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId); record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId }); res.json(result); } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); } });
   app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const events = await deps.listOperationalActivity?.({ limit, action }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
+  app.get("/api/admin/flow-health", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const health = await deps.getReferralFlowHealth?.() ?? { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
+      record({ actorUserId: identity.account.id, action: "admin.flow_health_viewed", outcome: "success", resourceType: "flow_health" });
+      res.json({ health });
+    } catch { res.status(500).json({ error: "We could not load referral flow health" }); }
+  });
 }
 import { isValidTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
