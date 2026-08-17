@@ -278,6 +278,14 @@
 
 - [ ] Repeat the controlled $1 USD PayPal checkout with the separate Personal buyer and verify successful Chargebee webhook reconciliation plus exactly-one token credit.
 
+- [ ] Sign in with the retrieved verified Sandbox Personal buyer account and complete the approved $1 USD PayPal checkout without storing its payment method.
+
+- [ ] Diagnose and correct the Chargebee Test PayPal merchant mapping after the controlled checkout returned PAYEE_ACCOUNT_INVALID before collecting payment.
+
+- [ ] Complete or explicitly defer the PayPal Sandbox Business merchant KYC requirement triggered during Chargebee PayPal reconnection; it requires business, personal, bank, and document verification outside the application.
+
+- [x] Audit current Razorpay, PayPal, Chargebee, Smart Routing, webhook, and fulfillment configuration; classify each item as verified, provider-blocked, or pending production deployment.
+
 - [x] Re-run the final route matrix: India/INR through Razorpay, global/USD through PayPal, and country/currency mismatch rejections without token credit.
 
 - [x] Inspect current payment records and fulfillment safeguards after the route matrix, confirming no duplicate or browser-return token credits.
