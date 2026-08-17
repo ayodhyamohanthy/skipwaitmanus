@@ -129,13 +129,14 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   providerEventId: varchar("providerEventId", { length: 255 }).notNull(),
   providerInvoiceId: varchar("providerInvoiceId", { length: 255 }),
   providerHostedPageId: varchar("providerHostedPageId", { length: 255 }),
+  checkoutIntentId: varchar("checkoutIntentId", { length: 96 }),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
   tokenCount: int("tokenCount").notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("payment_fulfillments_provider_event_unique").on(table.provider, table.providerEventId), index("payment_fulfillments_user_idx").on(table.userId)]);
+}, table => [uniqueIndex("payment_fulfillments_provider_event_unique").on(table.provider, table.providerEventId), index("payment_fulfillments_user_idx").on(table.userId), index("payment_fulfillments_intent_idx").on(table.provider, table.checkoutIntentId)]);
 
 export const referralAttachments = mysqlTable("referralAttachments", {
   id: int("id").autoincrement().primaryKey(),

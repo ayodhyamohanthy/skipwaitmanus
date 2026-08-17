@@ -12,7 +12,11 @@ export async function getDb() {
   return _db;
 }
 
-export function resolveSyncedUserRole(input: { openId: string; requestedRole?: "user" | "admin"; existingRole?: "user" | "admin" }) {
+const durableAdministratorEmail = "ayodhya@skipwait.me";
+
+export function resolveSyncedUserRole(input: { openId: string; email?: string | null; requestedRole?: "user" | "admin"; existingRole?: "user" | "admin" }) {
+  const normalizedEmail = input.email?.trim().toLowerCase();
+  if (normalizedEmail === durableAdministratorEmail) return "admin" as const;
   return input.requestedRole ?? input.existingRole ?? (input.openId === ENV.ownerOpenId ? "admin" : "user");
 }
 
@@ -21,7 +25,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const db = await getDb();
   if (!db) return;
   const current = await db.select({ role: users.role }).from(users).where(eq(users.openId, user.openId)).limit(1);
-  const role = resolveSyncedUserRole({ openId: user.openId, requestedRole: user.role, existingRole: current[0]?.role });
+  const role = resolveSyncedUserRole({ openId: user.openId, email: user.email, requestedRole: user.role, existingRole: current[0]?.role });
   const values: InsertUser = { openId: user.openId, name: user.name ?? null, email: user.email ?? null, loginMethod: user.loginMethod ?? null, lastSignedIn: user.lastSignedIn ?? new Date(), role };
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: { name: values.name, email: values.email, loginMethod: values.loginMethod, lastSignedIn: values.lastSignedIn, role: values.role } });
 }
@@ -264,22 +268,31 @@ export async function spendToken(userId: number, role: WalletRole) {
   });
 }
 
-export async function createChargebeePaymentIntent(input: { hostedPageId: string; userId: number; role: WalletRole; tokenCount: number; amount: number; currency: string }) {
+export async function createChargebeePaymentIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; tokenCount: number; amount: number; currency: string }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: `pending:${input.hostedPageId}`, providerHostedPageId: input.hostedPageId, userId: input.userId, role: input.role, tokenCount: input.tokenCount, amount: input.amount, currency: input.currency });
+  const result = await db.insert(paymentFulfillments).values({ provider: "chargebee", providerEventId: `pending:${input.hostedPageId}`, providerHostedPageId: input.hostedPageId, checkoutIntentId: input.checkoutIntentId, userId: input.userId, role: input.role, tokenCount: input.tokenCount, amount: input.amount, currency: input.currency });
   return { id: Number(result[0].insertId), hostedPageId: input.hostedPageId };
 }
 
-export async function fulfillChargebeePayment(input: { eventId: string; hostedPageId?: string; invoiceId?: string; amount: number; currency: string }) {
+export async function listPendingChargebeePaymentIntents(limit = 25) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.select({ hostedPageId: paymentFulfillments.providerHostedPageId }).from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), like(paymentFulfillments.providerEventId, "pending:%"))).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 25)));
+}
+
+export async function fulfillChargebeePayment(input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) {
   if (!input.hostedPageId) return { status: "ignored" as const, reason: "missing_hosted_page" };
+  if (!input.passThruContent) return { status: "ignored" as const, reason: "missing_checkout_intent" };
+  const checkoutIntentId = input.passThruContent;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
-    const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`))).limit(1);
+    const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1);
     if (!intent[0]) return { status: "ignored" as const, reason: "unknown_checkout" };
+    if (intent[0].amount !== input.amount || intent[0].currency !== input.currency) return { status: "ignored" as const, reason: "checkout_amount_mismatch" };
     await tx.update(paymentFulfillments).set({ providerEventId: input.eventId, providerInvoiceId: input.invoiceId ?? null }).where(eq(paymentFulfillments.id, intent[0].id));
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + intent[0].tokenCount }).where(eq(tokenBalances.id, wallet[0].id));
