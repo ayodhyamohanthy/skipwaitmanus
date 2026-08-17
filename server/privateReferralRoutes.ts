@@ -27,6 +27,9 @@ export type PrivateReferralRouteDeps = {
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   listOperationalActivity?: (input: { limit?: number; action?: string }) => Promise<unknown[]>;
   getReferralFlowHealth?: () => Promise<unknown>;
+  findUsersForTokenRecovery?: (query: string) => Promise<unknown[]>;
+  listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
+  grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
@@ -174,6 +177,39 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "admin.flow_health_viewed", outcome: "success", resourceType: "flow_health" });
       res.json({ health });
     } catch { res.status(500).json({ error: "We could not load referral flow health" }); }
+  });
+  app.get("/api/admin/token-recovery/users", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const query = typeof req.query.query === "string" ? req.query.query.trim() : "";
+      if (query.length < 2) return res.status(400).json({ error: "Enter at least two characters to find a user" });
+      const users = await deps.findUsersForTokenRecovery?.(query) ?? [];
+      record({ actorUserId: identity.account.id, action: "admin.token_recovery_search", outcome: "success", resourceType: "user_lookup", metadata: { resultCount: users.length } });
+      res.json({ users });
+    } catch { res.status(500).json({ error: "We could not find user accounts" }); }
+  });
+  app.get("/api/admin/token-recovery/adjustments", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const adjustments = await deps.listAdminTokenAdjustments?.(Number(req.query.limit) || 20) ?? [];
+      res.json({ adjustments });
+    } catch { res.status(500).json({ error: "We could not load token recovery history" }); }
+  });
+  app.post("/api/admin/token-recovery/grants", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      if (req.body?.confirmed !== true) return res.status(400).json({ error: "Confirm that you reviewed the payment or support issue before granting tokens" });
+      const recipientUserId = Number(req.body?.recipientUserId); const role = req.body?.role; const tokenCount = Number(req.body?.tokenCount);
+      const caseReference = typeof req.body?.caseReference === "string" ? req.body.caseReference : ""; const reason = typeof req.body?.reason === "string" ? req.body.reason : "";
+      if ((role !== "job_seeker" && role !== "referrer") || !Number.isInteger(recipientUserId) || !Number.isInteger(tokenCount)) return res.status(400).json({ error: "Choose a user, role, and whole token amount" });
+      if (!deps.grantAdminTokenAdjustment) return res.status(501).json({ error: "Token recovery is not available yet" });
+      const grant = await deps.grantAdminTokenAdjustment(identity.account.id, { recipientUserId, role, tokenCount, caseReference, reason });
+      record({ actorUserId: identity.account.id, action: "admin.token_recovery_granted", outcome: "success", resourceType: "token_adjustment", resourceId: grant.adjustmentId, metadata: { recipientUserId, role, tokenCount } });
+      res.status(201).json({ grant });
+    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "We could not create this token recovery grant" }); }
   });
 }
 import { isValidTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";

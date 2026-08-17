@@ -119,10 +119,21 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  kind: mysqlEnum("kind", ["purchase", "direct_request"]).notNull(),
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment"]).notNull(),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("token_transactions_user_idx").on(table.userId)]);
+
+export const adminTokenAdjustments = mysqlTable("adminTokenAdjustments", {
+  id: int("id").autoincrement().primaryKey(),
+  recipientUserId: int("recipientUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  adminUserId: int("adminUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
+  tokenCount: int("tokenCount").notNull(),
+  caseReference: varchar("caseReference", { length: 120 }).notNull(),
+  reason: varchar("reason", { length: 500 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("admin_token_adjustments_case_unique").on(table.recipientUserId, table.role, table.caseReference), index("admin_token_adjustments_recipient_idx").on(table.recipientUserId, table.createdAt), index("admin_token_adjustments_admin_idx").on(table.adminUserId, table.createdAt)]);
 
 export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   id: int("id").autoincrement().primaryKey(),
