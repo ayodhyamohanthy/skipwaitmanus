@@ -15,11 +15,11 @@ const clerkState = vi.hoisted(() => {
       return { verification: { status: "verified" } };
     }),
   };
-  return { emailAddress, createEmailAddress: vi.fn().mockResolvedValue(emailAddress), reload: vi.fn().mockResolvedValue(undefined) };
+  return { emailAddress, createEmailAddress: vi.fn().mockResolvedValue(emailAddress), reload: vi.fn().mockResolvedValue(undefined), isSignedIn: true };
 });
 
 vi.mock("@clerk/react", () => ({
-  useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
+  useAuth: () => ({ isSignedIn: clerkState.isSignedIn, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
   useClerk: () => ({ openUserProfile: vi.fn() }),
   useUser: () => ({ isLoaded: true, user: { emailAddresses: [clerkState.emailAddress], createEmailAddress: clerkState.createEmailAddress, reload: clerkState.reload } }),
   useReverification: (action: (...args: any[]) => unknown) => action,
@@ -29,6 +29,7 @@ vi.mock("@clerk/react", () => ({
 describe("Referrer work-email OTP verification", () => {
   beforeEach(() => {
     localStorage.clear();
+    clerkState.isSignedIn = true;
     clerkState.emailAddress.verification.status = "unverified";
     clerkState.createEmailAddress.mockClear(); clerkState.reload.mockClear(); clerkState.emailAddress.prepareVerification.mockClear(); clerkState.emailAddress.attemptVerification.mockClear();
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
@@ -52,5 +53,13 @@ describe("Referrer work-email OTP verification", () => {
     fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
     await waitFor(() => expect(clerkState.emailAddress.attemptVerification).toHaveBeenCalledWith({ code: "123456" }));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url).endsWith("/verify-work-email") && String(init?.body).includes("employee@acme.com"))).toBe(true));
+  });
+
+  it("sets the passwordless email-code and magic-link expectation before secure employee sign-in", () => {
+    clerkState.isSignedIn = false;
+    render(<Referrer />);
+    expect(screen.getByText(/one-time code or secure magic link/i)).toBeTruthy();
+    expect(screen.getByText(/no password required/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Secure employee sign in" })).toBeTruthy();
   });
 });
