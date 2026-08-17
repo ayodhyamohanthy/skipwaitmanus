@@ -18,12 +18,23 @@ const clerkState = vi.hoisted(() => {
   return { emailAddress, createEmailAddress: vi.fn().mockResolvedValue(emailAddress), reload: vi.fn().mockResolvedValue(undefined), isSignedIn: true };
 });
 
+const employeeSignInState = vi.hoisted(() => ({
+  signIn: { create: vi.fn(), prepareFirstFactor: vi.fn(), attemptFirstFactor: vi.fn() },
+  signUp: { create: vi.fn(), prepareEmailAddressVerification: vi.fn(), attemptEmailAddressVerification: vi.fn(), createEmailLinkFlow: vi.fn() },
+  setActive: vi.fn(),
+}));
+
 vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isSignedIn: clerkState.isSignedIn, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
   useClerk: () => ({ openUserProfile: vi.fn() }),
   useUser: () => ({ isLoaded: true, user: { emailAddresses: [clerkState.emailAddress], createEmailAddress: clerkState.createEmailAddress, reload: clerkState.reload } }),
   useReverification: (action: (...args: any[]) => unknown) => action,
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock("@clerk/react/legacy", () => ({
+  useSignIn: () => ({ isLoaded: true, signIn: employeeSignInState.signIn, setActive: employeeSignInState.setActive }),
+  useSignUp: () => ({ isLoaded: true, signUp: employeeSignInState.signUp, setActive: employeeSignInState.setActive }),
 }));
 
 describe("Referrer work-email OTP verification", () => {
@@ -55,11 +66,20 @@ describe("Referrer work-email OTP verification", () => {
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url).endsWith("/verify-work-email") && String(init?.body).includes("employee@acme.com"))).toBe(true));
   });
 
-  it("sets the passwordless email-code and magic-link expectation before secure employee sign-in", () => {
+  it("offers a work-email-only passwordless entry before secure employee sign-in", () => {
     clerkState.isSignedIn = false;
     render(<Referrer />);
     expect(screen.getByText(/one-time code or secure magic link/i)).toBeTruthy();
-    expect(screen.getByText(/no password required/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Secure employee sign in" })).toBeTruthy();
+    expect(screen.getByText(/no password, social sign-in, or personal email access/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Continue with work email" })).toBeTruthy();
+  });
+
+  it("rejects a personal email before initiating private Referrer authentication", () => {
+    clerkState.isSignedIn = false;
+    render(<Referrer />);
+    fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "person@gmail.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue with work email" }));
+    expect(screen.getByText(/personal email providers cannot access private referral requests/i)).toBeTruthy();
+    expect(employeeSignInState.signIn.create).not.toHaveBeenCalled();
   });
 });

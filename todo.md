@@ -312,3 +312,4 @@
 - [x] Add a protected, reasoned, and auditable Admin recovery workflow for legitimate token-credit issues without bypassing the verified payment record.
 - [x] Add one-click $5 and $10 token options alongside the existing custom quantity selector, preserving currency-aware checkout and verified fulfillment.
 - [x] Replace password-based secure employee sign-in with same-email OTP and magic-link entry while retaining verified-work-email and private-referral protections.
+- [x] Replace the generic Referrer sign-in modal with a custom company-email-only OTP-or-magic-link flow that rejects personal domains while preserving Job Seeker sign-in.

@@ -4,7 +4,9 @@ Clerk’s current authentication documentation states that email OTP and email-l
 
 For skipwait.me, the required production configuration is: enable both **Email verification code** and **Email verification link** for email sign-in, enable the matching verification strategies at sign-up, and disable the password strategy. The existing in-app work-email OTP remains a separate verified-email-enrollment step after authentication and must not be removed.
 
-The authenticated Clerk Dashboard has been opened at the SkipWait Production instance. The application uses the generic `SignInButton` modal for the employee entry point, so it will automatically stop showing password once the instance-level strategies are updated. A custom UI is unnecessary unless the product later needs to present its own OTP and magic-link chooser.
+The authenticated Clerk Dashboard has been opened at the SkipWait Production instance. The application uses the generic `SignInButton` modal for the employee entry point, and the production instance now has both password strategies disabled while email code and email link are enabled. The generic modal correctly begins with an email identifier and no password field.
+
+The generic Clerk modal still permits personal email identifiers and social options, however. A **Referrer-only** work-email restriction therefore needs a custom sign-in surface: validate the address against the existing consumer-domain blocklist before calling Clerk, then let the employee choose either an email code or an email link for that same approved company email. This restriction must remain route-specific so Job Seekers can continue using their normal sign-in path.
 
 ## Sources
 
