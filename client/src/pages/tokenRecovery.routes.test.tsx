@@ -40,7 +40,7 @@ describe("secure token checkout routes", () => {
     expect(openCheckout).toHaveBeenCalled();
   });
 
-  it("offers the approved Razorpay INR token and keeps the brand/back-link layout", () => {
+  it("offers Razorpay Domestic for INR and PayPal for international USD while keeping the brand/back-link layout", () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
     expect(screen.getByRole("link", { name: "skipwait.me home" }).parentElement?.className).toContain("items-center");
@@ -49,8 +49,8 @@ describe("secure token checkout routes", () => {
     expect(screen.getByText("Chargebee hosted checkout")).toBeTruthy();
     expect(screen.getAllByText("₹99 INR").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("$1 USD").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/Razorpay Domestic/i)).toBeTruthy();
-    expect(screen.getByText(/Razorpay International \/ Export/i)).toBeTruthy();
-    expect(screen.queryByText(/PayPal/i)).toBeNull();
+    expect(screen.getAllByText(/Razorpay Domestic/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/PayPal/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText(/Razorpay International \/ Export/i)).toBeNull();
   });
 });

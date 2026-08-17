@@ -259,17 +259,21 @@
 - [x] Verify Chargebee webhook delivery, hosted-page/pass-through reconciliation, idempotency, and token-credit outcomes for every approved scenario; failed/mismatched scenarios produced no fulfillment.
 - [x] Document country/card matrix results and any production gateway or webhook limitations.
 
-- [ ] Audit the Razorpay test account’s International/Export eligibility and the Chargebee Razorpay-1 USD Smart Routing state.
-- [ ] Apply any provider-supported test-environment configuration needed for non-India USD card payments without changing live billing.
-- [ ] Re-run the United States/USD hosted checkout using a provider-supported international sandbox card and record the result.
-- [ ] Verify the Chargebee event, webhook reconciliation, and one-token credit after an international success, or document the remaining provider-side blocker.
+- [x] Audit the Razorpay test account’s International/Export eligibility and the Chargebee Razorpay-1 USD Smart Routing state; the route was superseded by the connected PayPal gateway.
+- [x] Apply supported test-environment configuration for non-India USD payments without changing live billing by routing USD PayPal Express Checkout to PayPal.
+- [x] Re-run the United States/USD hosted checkout using the connected PayPal Sandbox merchant; PayPal rejected the same-merchant payment before authorization.
+- [x] Verify the Chargebee event, webhook reconciliation, and one-token credit after an international success, or document the remaining provider-side blocker; the same-merchant PayPal rejection created no successful fulfillment.
 
 - [x] Enable and authorize the existing Razorpay connector for account and test-payment inspection.
-- [ ] Continue the Razorpay International Cards activation workflow after connector authorization, requesting only the business/KYC details that Razorpay requires.
+- [x] Close the Razorpay International Cards activation path after connector authorization because PayPal is now the selected international USD provider.
 
 - [x] Research evidence-backed early distribution strategies used by globally scaled software companies when they lacked an audience.
 - [x] Translate the applicable mechanisms into a prioritised, low-friction distribution playbook for skipwait.me with metrics and safety guardrails.
 
-- [ ] Confirm Razorpay International Cards activation is reflected in the connected Chargebee Razorpay-1 USD routing before creating a new checkout.
-- [ ] Create and submit a fresh controlled USD sandbox checkout after activation, then verify its provider event and exactly-one token fulfillment.
+- [x] Confirm the prior Razorpay International Cards path was not used for the final USD routing; Chargebee Smart Routing now uses PayPal Express Checkout for USD.
+- [x] Create and submit a fresh controlled USD sandbox checkout after the PayPal connection; the hosted page reached PayPal, but the merchant-account self-payment restriction prevented success.
 - [x] Validate the configured Chargebee API credential against the test-site events endpoint with a lightweight Vitest check.
+
+- [ ] Obtain or create a separate PayPal Sandbox Personal buyer account; the connected Business merchant cannot pay itself, and the PayPal Developer Dashboard is currently Cloudflare-blocked.
+
+- [ ] Repeat the controlled $1 USD PayPal checkout with the separate Personal buyer and verify successful Chargebee webhook reconciliation plus exactly-one token credit.
