@@ -12,5 +12,5 @@ describe("configured Chargebee credentials", () => {
     );
 
     expect(response.status).toBe(200);
-  });
+  }, 15_000);
 });

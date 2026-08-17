@@ -274,18 +274,30 @@
 - [x] Create and submit a fresh controlled USD sandbox checkout after the PayPal connection; the hosted page reached PayPal, but the merchant-account self-payment restriction prevented success.
 - [x] Validate the configured Chargebee API credential against the test-site events endpoint with a lightweight Vitest check.
 
-- [ ] Obtain or create a separate PayPal Sandbox Personal buyer account; the connected Business merchant cannot pay itself, and the PayPal Developer Dashboard is currently Cloudflare-blocked.
+- [x] Obtain or create a separate PayPal Sandbox Personal buyer account; the connected Business merchant cannot pay itself, and the PayPal Developer Dashboard is currently Cloudflare-blocked.
 
 - [ ] Repeat the controlled $1 USD PayPal checkout with the separate Personal buyer and verify successful Chargebee webhook reconciliation plus exactly-one token credit.
 
 - [ ] Sign in with the retrieved verified Sandbox Personal buyer account and complete the approved $1 USD PayPal checkout without storing its payment method.
 
-- [ ] Diagnose and correct the Chargebee Test PayPal merchant mapping after the controlled checkout returned PAYEE_ACCOUNT_INVALID before collecting payment.
+- [x] Diagnose and correct the Chargebee Test PayPal merchant mapping after the controlled checkout returned PAYEE_ACCOUNT_INVALID before collecting payment.
 
-- [ ] Complete or explicitly defer the PayPal Sandbox Business merchant KYC requirement triggered during Chargebee PayPal reconnection; it requires business, personal, bank, and document verification outside the application.
+- [x] Complete or explicitly defer the PayPal Sandbox Business merchant KYC requirement triggered during Chargebee PayPal reconnection; it requires business, personal, bank, and document verification outside the application.
+
+- [x] Confirm that the newly reauthorized US Sandbox Business merchant resolves the prior PAYEE_ACCOUNT_INVALID condition before completing the Personal-buyer USD test.
+
+- [ ] Enable and use a sandbox-capable browser session for the final PayPal button authorization because the connected personal browser does not expose the embedded control to automation.
+
+- [ ] Diagnose and implement a supported recovery for the inaccessible embedded PayPal button without bypassing Chargebee checkout or fabricating fulfillment events.
+
+- [x] Reconcile and correct all safe Chargebee Test, Razorpay Test, and PayPal Sandbox configuration mismatches for India/INR and global/USD checkout paths.
+
+- [x] Assess Chargebee Payment Components for compatibility with the existing one-time token checkout, PayPal USD routing, and verified webhook-only token fulfillment before replacing the hosted checkout handoff; it would still use a cross-origin payment iframe and require a separate payment-intent plus order-creation architecture, so it does not resolve the current automation limitation.
 
 - [x] Audit current Razorpay, PayPal, Chargebee, Smart Routing, webhook, and fulfillment configuration; classify each item as verified, provider-blocked, or pending production deployment.
 
 - [x] Re-run the final route matrix: India/INR through Razorpay, global/USD through PayPal, and country/currency mismatch rejections without token credit.
 
 - [x] Inspect current payment records and fulfillment safeguards after the route matrix, confirming no duplicate or browser-return token credits.
+- [x] Investigate payment-fulfillment rows labelled `pending:` and ensure no pending hosted checkout can ever create a token credit.
+- [x] Make the live Chargebee credential smoke test resilient to normal provider response latency so the full regression suite remains reliable.
