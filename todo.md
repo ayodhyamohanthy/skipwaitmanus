@@ -258,3 +258,14 @@
 - [x] Test international billing with an intentionally mismatched India/INR route and confirm server/provider rejection without token credit.
 - [x] Verify Chargebee webhook delivery, hosted-page/pass-through reconciliation, idempotency, and token-credit outcomes for every approved scenario; failed/mismatched scenarios produced no fulfillment.
 - [x] Document country/card matrix results and any production gateway or webhook limitations.
+
+- [ ] Audit the Razorpay test account’s International/Export eligibility and the Chargebee Razorpay-1 USD Smart Routing state.
+- [ ] Apply any provider-supported test-environment configuration needed for non-India USD card payments without changing live billing.
+- [ ] Re-run the United States/USD hosted checkout using a provider-supported international sandbox card and record the result.
+- [ ] Verify the Chargebee event, webhook reconciliation, and one-token credit after an international success, or document the remaining provider-side blocker.
+
+- [ ] Enable and authorize the existing Razorpay connector for account and test-payment inspection.
+- [ ] Continue the Razorpay International Cards activation workflow after connector authorization, requesting only the business/KYC details that Razorpay requires.
+
+- [x] Research evidence-backed early distribution strategies used by globally scaled software companies when they lacked an audience.
+- [x] Translate the applicable mechanisms into a prioritised, low-friction distribution playbook for skipwait.me with metrics and safety guardrails.

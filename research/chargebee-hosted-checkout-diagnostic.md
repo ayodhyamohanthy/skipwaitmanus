@@ -83,5 +83,15 @@ The route-level negative matrix is covered in automated tests. India billing wit
 
 A true Razorpay-issued international-card comparison remains a provider-configuration test, not an application test. The current Chargebee sandbox did not expose a usable Razorpay international card fixture in this flow, and no real card was used. Before enabling international production billing, Razorpay International/Export eligibility, the Chargebee Smart Routing mapping, and a provider-supported international test card must be validated together.
 
+## 2026-08-17: Razorpay International/Export audit
+
+The signed-in Razorpay dashboard is in **Test** mode. Its home-page update presents an **“Enabled: International payments request”** card with the supporting text beginning “You can accept now International…”. This is evidence that International/Export capability is not silently available through the application’s API keys alone and must be confirmed or completed within the Razorpay account before a Chargebee-hosted USD card payment can be expected to succeed. The app’s USD checkout contract, US billing prefill, and Chargebee Card → USD mapping are already present; the observed failure is therefore consistent with an unresolved gateway-side international-payment state rather than client or token-credit logic.
+
+Razorpay’s current documentation confirms that existing Indian merchants must activate **International Cards** from **Account & Settings → International payments** and complete any further requested information. The feature depends on banking-partner approval and requires an active KYC-verified account plus a public website that clearly exposes Terms and Conditions, Privacy Policy, Refund and Cancellation Policy, and Shipping Policy. This project’s test dashboard exposes International payment reporting but the Account & Settings deep link redirected back to the home view, so there is no verified dashboard control available to submit this activation automatically. The necessary business/KYC documentation must be supplied through Razorpay’s own activation workflow. [7] [8] [9]
+
+[7]: https://razorpay.com/docs/payments/international-payments/ "Razorpay International Payments — existing-business activation steps"
+[8]: https://razorpay.com/docs/payments/international-payments/international-debit-credit-cards/ "Razorpay International Debit and Credit Cards — eligibility and application requirements"
+[9]: https://razorpay.com/docs/payments/dashboard/test-live-modes/ "Razorpay Test and Live Modes"
+
 [5]: https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/chargebee-test-gateway "Chargebee Test Gateway test-card outcomes"
 [6]: https://razorpay.com/docs/payments/payments/test-card-details/ "Razorpay test-card details for Indian and international payments"
