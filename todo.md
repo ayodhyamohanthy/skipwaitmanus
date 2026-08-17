@@ -310,3 +310,4 @@
 - [x] Add regression coverage and visual verification for the new Job Seeker, Referrer, and Admin referral operating-system flows.
 - [x] Let users choose and purchase multiple referral tokens in a single low-friction checkout while preserving exact server-side token fulfillment.
 - [x] Add a protected, reasoned, and auditable Admin recovery workflow for legitimate token-credit issues without bypassing the verified payment record.
+- [x] Add one-click $5 and $10 token options alongside the existing custom quantity selector, preserving currency-aware checkout and verified fulfillment.

@@ -58,4 +58,17 @@ describe("secure token checkout routes", () => {
     expect(screen.getAllByText(/PayPal/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/Razorpay International \/ Export/i)).toBeNull();
   });
+
+  it("offers one-click 5 and 10 token packs alongside the custom quantity control", () => {
+    window.history.pushState({}, "", "/premium");
+    render(<Premium />);
+    fireEvent.click(screen.getByRole("button", { name: /5 tokens.*₹495 INR/i }));
+    expect((screen.getByRole("spinbutton", { name: "Number of tokens to add" }) as HTMLInputElement).value).toBe("5");
+    expect(screen.getByRole("button", { name: /continue to ₹495 INR checkout/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /\$1 USD per token/i }));
+    expect(screen.getByRole("button", { name: /10 tokens.*\$10 USD/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /10 tokens.*\$10 USD/i }));
+    expect(screen.getByText("10 action tokens")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /continue to \$10 USD checkout/i })).toBeTruthy();
+  });
 });
