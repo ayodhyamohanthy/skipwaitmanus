@@ -89,6 +89,10 @@ The signed-in Razorpay dashboard is in **Test** mode. Its home-page update prese
 
 Razorpay’s current documentation confirms that existing Indian merchants must activate **International Cards** from **Account & Settings → International payments** and complete any further requested information. The feature depends on banking-partner approval and requires an active KYC-verified account plus a public website that clearly exposes Terms and Conditions, Privacy Policy, Refund and Cancellation Policy, and Shipping Policy. This project’s test dashboard exposes International payment reporting but the Account & Settings deep link redirected back to the home view, so there is no verified dashboard control available to submit this activation automatically. The necessary business/KYC documentation must be supplied through Razorpay’s own activation workflow. [7] [8] [9]
 
+### Connector and dashboard follow-up
+
+The existing Razorpay MCP connector was enabled and its OAuth status now reports **Authenticated**. Its tool-discovery command did not return before the available timeout, so it has not yet been used for any payment operation. The signed-in Razorpay dashboard does load the Account & Settings overview and lists International payment settings, but the browser automation extension subsequently timed out while waiting for the page to render again. No International Cards activation request was submitted, no provider setting was changed, and no USD payment was retried during this follow-up.
+
 [7]: https://razorpay.com/docs/payments/international-payments/ "Razorpay International Payments — existing-business activation steps"
 [8]: https://razorpay.com/docs/payments/international-payments/international-debit-credit-cards/ "Razorpay International Debit and Credit Cards — eligibility and application requirements"
 [9]: https://razorpay.com/docs/payments/dashboard/test-live-modes/ "Razorpay Test and Live Modes"

@@ -264,8 +264,12 @@
 - [ ] Re-run the United States/USD hosted checkout using a provider-supported international sandbox card and record the result.
 - [ ] Verify the Chargebee event, webhook reconciliation, and one-token credit after an international success, or document the remaining provider-side blocker.
 
-- [ ] Enable and authorize the existing Razorpay connector for account and test-payment inspection.
+- [x] Enable and authorize the existing Razorpay connector for account and test-payment inspection.
 - [ ] Continue the Razorpay International Cards activation workflow after connector authorization, requesting only the business/KYC details that Razorpay requires.
 
 - [x] Research evidence-backed early distribution strategies used by globally scaled software companies when they lacked an audience.
 - [x] Translate the applicable mechanisms into a prioritised, low-friction distribution playbook for skipwait.me with metrics and safety guardrails.
+
+- [ ] Confirm Razorpay International Cards activation is reflected in the connected Chargebee Razorpay-1 USD routing before creating a new checkout.
+- [ ] Create and submit a fresh controlled USD sandbox checkout after activation, then verify its provider event and exactly-one token fulfillment.
+- [x] Validate the configured Chargebee API credential against the test-site events endpoint with a lightweight Vitest check.
