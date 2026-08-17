@@ -302,3 +302,4 @@
 - [x] Investigate payment-fulfillment rows labelled `pending:` and ensure no pending hosted checkout can ever create a token credit.
 - [x] Make the live Chargebee credential smoke test resilient to normal provider response latency so the full regression suite remains reliable.
 - [x] Audit the Job Seeker, Referrer, and Admin journeys from landing through return use; identify ethical psychological hooks, retention mechanics, and low-friction network-invitation loops before implementing changes.
+- [x] Refocus the active skipwait.me experience around one singular promise: the fastest trusted way to ask for or give a job referral, with all secondary features serving that core action.
