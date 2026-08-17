@@ -14,7 +14,6 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
-import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -54,15 +53,7 @@ async function startServer() {
   registerStorageProxy(app);
   registerOAuthRoutes(app);
   registerPrivateReferralRoutes(app, { resolveIdentity: resolveClerkAccount, dataUrlToBuffer, sanitizeDocumentName, storagePut, storageGetSignedUrl, createReferralAttachment: db.createReferralAttachment, getAccessibleReferralAttachment: db.getAccessibleReferralAttachment, saveVerifiedWorkEmail: db.saveVerifiedWorkEmail, createCompanyReferralRequest: db.createCompanyReferralRequest, listCompanyReferralInbox: db.listCompanyReferralInbox, claimCompanyReferralRequest: db.claimCompanyReferralRequest, getClaimedCompanyReferralDetail: db.getClaimedCompanyReferralDetail, listPublicCompanyOpportunities: db.listPublicCompanyOpportunities, publishCompanyOpportunity: db.publishCompanyOpportunity, recordActivity: db.recordOperationalActivity, listOperationalActivity: db.listOperationalActivity });
-  registerChargebeeRoutes(app, {
-    resolveIdentity: resolveClerkAccount,
-    createPaymentIntent: db.createChargebeePaymentIntent,
-    fulfillPayment: db.fulfillChargebeePayment,
-    resolveHostedPage: async input => {
-      const pending = await db.listPendingChargebeePaymentIntents();
-      return resolveChargebeeHostedPageForPayment({ ...input, pendingHostedPageIds: pending.flatMap(row => row.hostedPageId ? [row.hostedPageId] : []) });
-    },
-  });
+  registerChargebeeRoutes(app, { resolveIdentity: resolveClerkAccount, createPaymentIntent: db.createChargebeePaymentIntent, fulfillPayment: db.fulfillChargebeePayment });
   // tRPC API
   app.use(
     "/api/trpc",

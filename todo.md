@@ -68,9 +68,9 @@
 - [x] Add secure resume and document attachment upload, display, and access controls to referral request workflows.
 - [x] Test payment-ready token, direct-request, and document attachment flows, then save an updated checkpoint.
 - [x] Replace the Stripe-specific token purchase plan with Razorpay, Chargebee, and PayPal provider roles.
-- [x] Audit the Razorpay and Chargebee credentials, webhooks, and provider-specific checkout contracts; PayPal remains intentionally deferred until a PayPal sandbox account is connected.
+- [ ] Configure Razorpay, Chargebee, and PayPal credentials, webhooks, and provider-specific checkout contracts.
 - [x] Credit token balances only after verified Chargebee payment events through the single USD hosted-checkout route; Razorpay and PayPal remain gateway options behind Chargebee rather than separate UI routes.
-- [x] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
+- [ ] Configure and consult the supplied Chargebee knowledge endpoint before implementing the Chargebee token-purchase contract.
 - [x] Keep checkout simulated and present the premium token, direct-request, and document-attachment experience for design approval before enabling providers.
 - [x] Replace token packs with a 3-free-token allowance and a simple $1-per-additional-token policy.
 - [x] Show a clear free-token balance, 1-token application cost, and exhausted-balance repurchase state.
@@ -129,7 +129,7 @@
 - [x] Persist secure document ownership and referral linkage so only the Job Seeker and assigned Referrer can access a resume.
 - [x] Connect the active Job Seeker submit flow to backend referral creation with uploaded attachment identifiers.
 - [x] Load Referrer documents from the assigned backend referral request instead of local storage.
-- [x] Add integration coverage for Clerk-secured upload, referral linkage, authorized review, and unrelated-user denial using injectable route dependencies; real Clerk/database E2E remains a separate environment-dependent validation.
+- [ ] Add end-to-end coverage for Clerk-secured upload, referral linkage, authorized review, and unrelated-user denial.
 - [x] Verify employee work email domains and maintain a hidden eligible-employee pool by company.
 - [x] Route a Job Seeker’s Target Role URL request to the matching company’s eligible signed-in employees without exposing their identities.
 - [x] Notify eligible employees about matching company requests and let exactly one employee claim the referral request.
@@ -138,7 +138,7 @@
 - [x] Reject consumer email domains before adding a verified employee to the hidden company pool.
 - [x] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.
 - [x] Exercise the production private-referral route wiring with Clerk-compatible middleware-boundary authentication.
-- [x] Exercise upload, referral linkage, exclusive claim, and signed document access through the isolated Airtable test ledger and protected route integration coverage; no live application data was used.
+- [ ] Exercise upload, referral linkage, exclusive claim, and signed document access against a test database instead of mocked persistence.
 - [x] Apply the supplied Clerk test-instance configuration and validate protected private-referral authentication at the middleware boundary.
 - [x] Use an isolated Airtable test ledger to verify referral linkage, exclusive claim, and document-access authorization without touching live application data.
 - [x] Create a dedicated disposable Airtable base for private-referral authorization verification.
@@ -166,9 +166,9 @@
 - [x] Show clear signed-in account status and an account action in the active product header.
 - [x] Add privacy-safe operational activity logging for key Job Seeker and Referrer workflow events without recording document contents or authentication secrets.
 - [x] Build a protected administrator activity-log viewer with searchable diagnostic metadata and role-based access control.
-- [x] Promote the explicitly confirmed account that received the protected-route denial to administrator and verify access to the activity log.
-- [x] Repair the Clerk-to-application administrator authorization bridge for the explicitly promoted account.
-- [x] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through Clerk sign-in synchronization.
+- [ ] Promote the explicitly confirmed account that received the protected-route denial to administrator and verify access to the activity log.
+- [ ] Repair the Clerk-to-application administrator authorization bridge for the explicitly promoted account.
+- [ ] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through Clerk sign-in synchronization.
 - [x] Add a visible Clerk sign-out action to the account-status control so users can switch accounts.
 - [x] Rename opportunity discovery labels to make clear that the Wall contains privately shared employee-referral opportunities, not public career-page listings.
 - [x] Remove the separate saved-device sign-in control and restore supported browser credentials or active sessions automatically without disrupting sign-in fallback.
@@ -208,68 +208,3 @@
 - [x] Add automated valid `payment_succeeded` webhook coverage proving wallet crediting and duplicate-event protection without using browser callbacks.
 - [x] Validate the complete checkout-intent → verified paid-event → wallet refresh path without inserting test data into the live database.
 - [x] Finalize the product decision that Chargebee is the single hosted checkout route for USD billing, with Razorpay and PayPal acting as configured gateway options behind Chargebee rather than separate UI checkout buttons.
-
-- [x] Use the connected Razorpay gateway for the current test checkout flow and defer PayPal routing until a PayPal sandbox account is connected.
-- [x] Verify the available Razorpay route for the hosted USD checkout without submitting a payment.
-- [x] Document that PayPal is not connected and no international PayPal routing is active.
-
-
-- [x] Apply the non-destructive migration adding the Chargebee checkout-intent reconciliation identifier and index.
-- [x] Include an opaque checkout intent in Chargebee `pass_thru_content` and persist it with the pending hosted-page payment intent.
-- [x] Require hosted-page ID plus pass-through checkout intent reconciliation before crediting a verified Chargebee payment event.
-- [x] Add regression coverage rejecting mismatched or absent checkout-intent reconciliation and preserving duplicate-event idempotency.
-- [x] Verify the published Chargebee one-time-payment capability and the Razorpay-1 Card → USD Smart Routing mapping with a non-payment hosted-checkout smoke test.
-- [x] Record that PayPal remains unconnected and deferred; no PayPal or international country-based routing is active.
-
-- [x] Re-audit the active Chargebee one-time token catalogue, hosted-checkout capability, Razorpay Smart Routing, and payment-succeeded webhook against skipwait.me requirements.
-- [x] Verify the connected Razorpay test gateway remains the active Card → USD route for the single Chargebee-hosted checkout.
-- [x] Re-run non-payment checkout and server-side reconciliation safeguards, then record the final test-provider state.
-
-- [x] Complete the current provider audit through server-side credentials and non-payment API checks without relying on an active Chargebee dashboard browser session.
-
-- [x] Reconfirm Chargebee Razorpay-1 USD routing and the payment-succeeded webhook through the authenticated dashboard and server-side audit.
-- [x] Defer the paid Razorpay test payment: no card or OTP was submitted; the hosted checkout and server contract are verified, and payment entry remains user-controlled.
-- [x] Verify webhook parsing, matching checkout-intent reconciliation, and exactly-once safeguards through automated tests; live webhook delivery remains deferred until a user-controlled payment.
-
-- [x] Diagnose and correct the Chargebee/Razorpay invalid-request error: USD with India billing was rejected before gateway submission; supported billing routes are now explicit.
-- [x] Decide and implement the compliant currency route: INR for India billing through Razorpay Domestic, or USD only for eligible export/international customers after Razorpay International/Export eligibility.
-
-- [x] Replace the unrestricted USD-only experience with a Razorpay-only supported-currency selector: ₹99 INR for India and $1 USD for eligible international/export billing; PayPal remains deferred.
-- [x] Create and verify the INR one-time Chargebee token price, then align server-side checkout and fulfillment contracts.
-
-- [x] Define compliant currency-selection rules: India billing uses INR through Razorpay Domestic; USD is offered only for eligible international/export customers.
-- [x] Verify the USD Chargebee item price and document Razorpay International/Export as the required eligibility; PayPal remains disabled.
-- [x] Implement a server-validated currency selection in the checkout API and UI, rejecting unsupported currency/customer combinations.
-- [x] Add INR/USD checkout contract tests and run the full suite and production build.
-- [x] Document the invalid-request diagnosis, supported routes, and deferred PayPal path.
-
-- [x] Create a fresh ₹99 INR Chargebee checkout intent and complete one user-approved Razorpay test payment.
-- [x] Verify Chargebee webhook delivery, matching pass-through reconciliation, one purchase transaction, and exactly one token credit for each controlled paid event.
-
-- [x] Repeat the controlled ₹99 INR Razorpay test using Chargebee’s Valid Card fixture after the deliberate Verification Error Card response `(3009) Do not honour`.
-
-- [x] Add an optional test-only billing-address prefill to the Chargebee checkout helper so the controlled INR sandbox retry can avoid native dropdown automation limits.
-- [x] Adapt webhook processing to Chargebee v2 `payment_succeeded` payloads and retrieve the successful hosted page before reconciling the stored checkout intent.
-- [x] Redirect the Chargebee test webhook from the stale production path to the active verified receiver, then resend or retry the paid event.
-
-- [x] Test India billing with the INR Razorpay Domestic route and an India billing address using the valid sandbox card fixture.
-- [x] Test India billing with an intentionally mismatched international/USD route and confirm server/provider rejection without token credit.
-- [x] Test eligible international billing with the USD Razorpay International/Export route and a non-India billing address using the valid sandbox card fixture; provider returned an invalid-request response and no credit was issued.
-- [x] Test international billing with an intentionally mismatched India/INR route and confirm server/provider rejection without token credit.
-- [x] Verify Chargebee webhook delivery, hosted-page/pass-through reconciliation, idempotency, and token-credit outcomes for every approved scenario; failed/mismatched scenarios produced no fulfillment.
-- [x] Document country/card matrix results and any production gateway or webhook limitations.
-
-- [ ] Audit the Razorpay test account’s International/Export eligibility and the Chargebee Razorpay-1 USD Smart Routing state.
-- [ ] Apply any provider-supported test-environment configuration needed for non-India USD card payments without changing live billing.
-- [ ] Re-run the United States/USD hosted checkout using a provider-supported international sandbox card and record the result.
-- [ ] Verify the Chargebee event, webhook reconciliation, and one-token credit after an international success, or document the remaining provider-side blocker.
-
-- [x] Enable and authorize the existing Razorpay connector for account and test-payment inspection.
-- [ ] Continue the Razorpay International Cards activation workflow after connector authorization, requesting only the business/KYC details that Razorpay requires.
-
-- [x] Research evidence-backed early distribution strategies used by globally scaled software companies when they lacked an audience.
-- [x] Translate the applicable mechanisms into a prioritised, low-friction distribution playbook for skipwait.me with metrics and safety guardrails.
-
-- [ ] Confirm Razorpay International Cards activation is reflected in the connected Chargebee Razorpay-1 USD routing before creating a new checkout.
-- [ ] Create and submit a fresh controlled USD sandbox checkout after activation, then verify its provider event and exactly-one token fulfillment.
-- [x] Validate the configured Chargebee API credential against the test-site events endpoint with a lightweight Vitest check.

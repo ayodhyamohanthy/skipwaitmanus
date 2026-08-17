@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import { basicAuthMatches, buildCheckoutForm, CHARGEBEE_TOKEN_PACKS, parsePaidPaymentEvent, tokenPackFromAmount } from "./chargebee";
 
 describe("Chargebee payment contract", () => {
-  it("maps only the supported INR and USD Razorpay token prices", () => {
-    expect(CHARGEBEE_TOKEN_PACKS["skipwait_token_1-INR"]).toEqual({ tokenCount: 1, amount: 9900, currency: "INR" });
+  it("maps only the approved USD token packs", () => {
     expect(CHARGEBEE_TOKEN_PACKS["skipwait_token_1-USD"]).toEqual({ tokenCount: 1, amount: 100, currency: "USD" });
-    expect(tokenPackFromAmount(9900, "INR")).toEqual({ tokenCount: 1, itemPriceId: "skipwait_token_1-INR" });
-    expect(tokenPackFromAmount(100, "USD")).toEqual({ tokenCount: 1, itemPriceId: "skipwait_token_1-USD" });
-    expect(tokenPackFromAmount(100, "EUR")).toBeUndefined();
+    expect(tokenPackFromAmount(500)).toEqual({ tokenCount: 5, itemPriceId: "skipwait_token_5-USD" });
+    expect(tokenPackFromAmount(999)).toBeUndefined();
   });
 
   it("accepts the dedicated webhook Basic Auth and rejects other credentials", () => {
@@ -17,24 +15,17 @@ describe("Chargebee payment contract", () => {
     expect(basicAuthMatches(undefined, "test-webhook-secret")).toBe(false);
   });
 
-  it("accepts only paid INR or USD events with a Chargebee event id", () => {
-    const payload = { id: "ev_test_1", event_type: "payment_succeeded", content: { payment: { amount: 9900, currency_code: "INR", hosted_page_id: "hp_test", invoice_id: "inv_test" }, hosted_page: { pass_thru_content: "intent_test" } } };
-    expect(parsePaidPaymentEvent(payload)).toEqual({ eventId: "ev_test_1", hostedPageId: "hp_test", invoiceId: "inv_test", passThruContent: "intent_test", amount: 9900, currency: "INR" });
+  it("accepts only paid USD events with a Chargebee event id", () => {
+    const payload = { id: "ev_test_1", event_type: "payment_succeeded", content: { payment: { amount: 100, currency_code: "USD", hosted_page_id: "hp_test", invoice_id: "inv_test" } } };
+    expect(parsePaidPaymentEvent(payload)).toEqual({ eventId: "ev_test_1", hostedPageId: "hp_test", invoiceId: "inv_test", customerId: undefined, amount: 100, currency: "USD" });
     expect(parsePaidPaymentEvent({ ...payload, event_type: "invoice_generated" })).toBeUndefined();
-    expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, currency_code: "EUR" } } })).toBeUndefined();
-    expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, amount: 100, currency_code: "USD" } } })).toMatchObject({ amount: 100, currency: "USD" });
-    expect(parsePaidPaymentEvent({ id: "ev_v2", event_type: "payment_succeeded", api_version: "v2", content: { transaction: { amount: 9900, currency_code: "INR" }, invoice: { id: "inv_v2", total: 9900, currency_code: "INR" } } })).toEqual({ eventId: "ev_v2", invoiceId: "inv_v2", hostedPageId: undefined, passThruContent: undefined, amount: 9900, currency: "INR" });
+    expect(parsePaidPaymentEvent({ ...payload, content: { payment: { ...payload.content.payment, currency_code: "INR" } } })).toBeUndefined();
   });
 
   it("builds a hosted one-time checkout form for the selected item price", () => {
-    const form = buildCheckoutForm({ itemPriceId: "skipwait_token_1-INR", email: "user@example.com", billingAddress: { firstName: "Test", lastName: "Customer", line1: "1 Test Street", city: "Bengaluru", stateCode: "KA", country: "IN" }, redirectUrl: "https://skipwait.me/premium?payment=pending", cancelUrl: "https://skipwait.me/premium?payment=cancelled", checkoutIntentId: "intent_test" });
-    expect(form.get("item_prices[item_price_id][0]")).toBe("skipwait_token_1-INR");
-    expect(form.get("item_prices[quantity][0]")).toBe("1");
-    expect(form.get("currency_code")).toBe("INR");
-    expect(form.get("pass_thru_content")).toBe("intent_test");
+    const form = buildCheckoutForm({ itemPriceId: "skipwait_token_10-USD", email: "user@example.com", redirectUrl: "https://skipwait.me/premium?payment=pending", cancelUrl: "https://skipwait.me/premium?payment=cancelled" });
+    expect(form.get("item_price[item_price_id][0]")).toBe("skipwait_token_10-USD");
+    expect(form.get("item_price[quantity][0]")).toBe("1");
     expect(form.get("customer[email]")).toBe("user@example.com");
-    expect(form.get("billing_address[country]")).toBe("IN");
-    expect(form.get("billing_address[state_code]")).toBe("KA");
-    expect(form.get("billing_address[city]")).toBe("Bengaluru");
   });
 });
