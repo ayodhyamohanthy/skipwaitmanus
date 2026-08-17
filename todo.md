@@ -308,3 +308,4 @@
 - [x] Build a Referrer My Company Inbox with new, saved-for-later, and completed private requests.
 - [x] Build an aggregate Admin Flow Health dashboard that surfaces funnel friction and company-coverage gaps without exposing private content or employee identities.
 - [x] Add regression coverage and visual verification for the new Job Seeker, Referrer, and Admin referral operating-system flows.
+- [x] Let users choose and purchase multiple referral tokens in a single low-friction checkout while preserving exact server-side token fulfillment.

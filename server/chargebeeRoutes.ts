@@ -1,5 +1,5 @@
 import type { Express, Request } from "express";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, parsePaidPaymentEvent, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parsePaidPaymentEvent, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
@@ -26,6 +26,8 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const billingCountry = req.body?.billingCountry;
       if (billingCountry !== "IN" && billingCountry !== "INTL") return res.status(400).json({ error: "Choose India or international billing" });
       const role = roleFromBody(req.body?.role);
+      const quantity = req.body?.quantity ?? 1;
+      if (!isTokenQuantity(quantity)) return res.status(400).json({ error: "Choose a whole number of tokens between 1 and 1,000" });
       const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
@@ -33,13 +35,14 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const origin = `${req.protocol}://${req.get("host")}`;
       const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,
+        quantity,
         email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined,
         firstName: identity.account.name?.split(" ")[0],
         lastName: identity.account.name?.split(" ").slice(1).join(" "),
         redirectUrl: `${origin}/premium?role=${role}&payment=pending`,
         cancelUrl: `${origin}/premium?role=${role}&payment=cancelled`,
       });
-      await deps.createPaymentIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, tokenCount: pack.tokenCount, amount: pack.amount, currency: pack.currency });
+      await deps.createPaymentIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, tokenCount: pack.tokenCount * quantity, amount: pack.amount * quantity, currency: pack.currency });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] checkout error", error);

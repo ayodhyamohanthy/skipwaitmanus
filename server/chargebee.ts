@@ -7,6 +7,8 @@ export const CHARGEBEE_TOKEN_PACKS = {
   "skipwait_token_1-USD": { tokenCount: 1, amount: 100, currency: "USD" },
 } as const;
 
+export const MAX_TOKEN_QUANTITY = 1000;
+
 export type ChargebeeTokenPackId = keyof typeof CHARGEBEE_TOKEN_PACKS;
 
 export type ParsedPaidPaymentEvent = {
@@ -39,6 +41,10 @@ export type ChargebeeBillingAddress = {
 
 export function isTokenPackId(value: unknown): value is ChargebeeTokenPackId {
   return typeof value === "string" && value in CHARGEBEE_TOKEN_PACKS;
+}
+
+export function isTokenQuantity(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 1 && value <= MAX_TOKEN_QUANTITY;
 }
 
 export function basicAuthMatches(authorization: string | undefined, password: string): boolean {
@@ -104,14 +110,16 @@ export async function resolveChargebeeHostedPageForPayment(input: { invoiceId?: 
 }
 
 export function tokenPackFromAmount(amount: number, currency: string): { tokenCount: number; itemPriceId: ChargebeeTokenPackId } | undefined {
-  const match = Object.entries(CHARGEBEE_TOKEN_PACKS).find(([, pack]) => pack.amount === amount && pack.currency === currency);
-  return match ? { itemPriceId: match[0] as ChargebeeTokenPackId, tokenCount: match[1].tokenCount } : undefined;
+  const match = Object.entries(CHARGEBEE_TOKEN_PACKS).find(([, pack]) => pack.currency === currency && amount >= pack.amount && amount % pack.amount === 0);
+  if (!match) return undefined;
+  const tokenCount = amount / match[1].amount;
+  return isTokenQuantity(tokenCount) ? { itemPriceId: match[0] as ChargebeeTokenPackId, tokenCount } : undefined;
 }
 
-export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
+export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; quantity?: number; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
   const form = new URLSearchParams();
   form.set("item_prices[item_price_id][0]", input.itemPriceId);
-  form.set("item_prices[quantity][0]", "1");
+  form.set("item_prices[quantity][0]", String(input.quantity ?? 1));
   form.set("currency_code", CHARGEBEE_TOKEN_PACKS[input.itemPriceId].currency);
   if (input.email) form.set("customer[email]", input.email);
   if (input.firstName) form.set("customer[first_name]", input.firstName);
@@ -130,7 +138,7 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; em
   return form;
 }
 
-export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTokenPackId; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
+export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTokenPackId; quantity?: number; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
   const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
   const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
   if (!apiKey) throw new Error("Chargebee API key is not configured");

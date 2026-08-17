@@ -22,11 +22,15 @@ describe("secure token checkout routes", () => {
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); openCheckout.mockReset(); });
 
-  it("starts a Job Seeker Chargebee checkout without mutating the browser token balance", async () => {
+  it("starts a multi-token Job Seeker Chargebee checkout without mutating the browser token balance", async () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
-    fireEvent.click(screen.getByRole("button", { name: /continue to ₹99 checkout/i }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ method: "POST" })));
+    fireEvent.click(screen.getByRole("button", { name: "Add one token" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add one token" }));
+    expect(screen.getByDisplayValue("3")).toBeTruthy();
+    expect(screen.getByText("3 action tokens")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /continue to ₹297 inr checkout/i }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ method: "POST", body: expect.stringContaining('"quantity":3') })));
     expect(localStorage.getItem("bridge-tokens")).toBe("0");
     expect(openCheckout).toHaveBeenCalledWith("https://skipwait-test.chargebee.com/hosted_pages/test");
   });
@@ -34,7 +38,7 @@ describe("secure token checkout routes", () => {
   it("starts a Referrer Chargebee checkout without mutating the purchased wallet", async () => {
     window.history.pushState({}, "", "/premium?role=referrer");
     render(<Premium />);
-    fireEvent.click(screen.getByRole("button", { name: /continue to ₹99 checkout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue to ₹99 inr checkout/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ body: expect.stringContaining('"role":"referrer"') })));
     expect(localStorage.getItem("bridge-referrer-paid-tokens")).toBeNull();
     expect(openCheckout).toHaveBeenCalled();
@@ -46,9 +50,10 @@ describe("secure token checkout routes", () => {
     expect(screen.getByRole("link", { name: "skipwait.me home" }).parentElement?.className).toContain("items-center");
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/request");
     expect(screen.getByText("1 action token")).toBeTruthy();
+    expect((screen.getByRole("spinbutton", { name: "Number of tokens to add" }) as HTMLInputElement).value).toBe("1");
     expect(screen.getByText("Chargebee hosted checkout")).toBeTruthy();
     expect(screen.getAllByText("₹99 INR").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("$1 USD").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("$1 USD per token").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/Razorpay Domestic/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/PayPal/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText(/Razorpay International \/ Export/i)).toBeNull();

@@ -68,6 +68,25 @@ describe("Chargebee webhook route", () => {
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 
+  it("persists the requested whole-token quantity and rejects an invalid quantity before checkout", async () => {
+    const app = express();
+    app.use(express.json());
+    let checkoutQuantity = 0;
+    let paymentIntent: { tokenCount: number; amount: number; currency: string } | undefined;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createCheckout: async input => { checkoutQuantity = input.quantity ?? 1; return { checkoutUrl: "https://chargebee.test/hp_quantity", hostedPageId: "hp_quantity", checkoutIntentId: "intent_quantity" }; },
+      createPaymentIntent: async input => { paymentIntent = { tokenCount: input.tokenCount, amount: input.amount, currency: input.currency }; },
+      fulfillPayment: async () => ({ status: "credited" }),
+    });
+    const checkout = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", role: "job_seeker", quantity: 4 });
+    expect(checkout.status).toBe(200);
+    expect(checkoutQuantity).toBe(4);
+    expect(paymentIntent).toEqual({ tokenCount: 4, amount: 39_600, currency: "INR" });
+    expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1.5 })).status).toBe(400);
+    expect((await request(app).post("/api/chargebee/checkout").send({ itemPriceId: "skipwait_token_1-INR", billingCountry: "IN", quantity: 1001 })).status).toBe(400);
+  });
+
   it("rejects unsigned payment delivery before any fulfillment call", async () => {
     const app = express();
     app.use(express.json());
