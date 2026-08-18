@@ -78,4 +78,23 @@ describe("ReferralRequest secure resume handoff", () => {
     fireEvent.click(screen.getByText("Add your resume").closest("button") as HTMLButtonElement);
     expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps credits intact and offers one private coverage invite when no verified employee exists at the employer", async () => {
+    authState.signedIn = true;
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (String(input).includes("/api/documents")) return { ok: true, json: async () => ({ id: "72", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/72", url: "/api/documents/72" }) };
+      if (String(input).includes("/api/company-referrals")) return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "waiting_for_company_coverage", remainingTokens: 3, creditSummary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
+      return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
+    }));
+    render(<ReferralRequest />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
+    const sendButton = screen.getByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
+    await waitFor(() => expect(sendButton.disabled).toBe(false));
+    fireEvent.click(sendButton);
+    await waitFor(() => expect(screen.getByText("We are building coverage at acme.com.")).toBeTruthy());
+    expect(screen.getByText(/did not use a credit/i)).toBeTruthy();
+    expect(screen.getByRole("button", { name: /invite one employee/i })).toBeTruthy();
+    vi.unstubAllGlobals();
+  });
 });

@@ -84,12 +84,22 @@ export function isVerifiedEmployeeOfCompany(profile: { accountType?: string | nu
   return profile.accountType === "referrer" && Boolean(profile.workEmailVerifiedAt) && profile.workEmailDomain?.trim().toLowerCase() === companyDomain.trim().toLowerCase();
 }
 
+export function companyCoverageStatus(eligibleEmployeeCount: number) {
+  return eligibleEmployeeCount > 0 ? "covered" as const : "waiting_for_company_coverage" as const;
+}
+
 export async function saveVerifiedWorkEmail(userId: number, email: string) {
   const domain = email.trim().toLowerCase().split("@")[1];
   if (!domain) throw new Error("A work email address is required");
   if (!isWorkEmailDomain(domain)) throw new Error("Use a verified company email, not a personal email domain");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const previous = await db.select({ workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(eq(profiles.userId, userId)).limit(1);
   await db.insert(profiles).values({ userId, accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true } });
+  const newlyVerifiedForDomain = previous[0]?.workEmailDomain !== domain || !previous[0]?.workEmailVerifiedAt;
+  if (newlyVerifiedForDomain) {
+    const waitingRequests = await db.select({ requestId: referralRequests.id }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, domain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
+    for (const request of waitingRequests) await db.insert(notifications).values({ userId, category: "referral", title: "A private referral request is waiting", body: `A candidate has asked for help at ${domain}. Review it only if you choose to help.` });
+  }
   return getProfileByUserId(userId);
 }
 
@@ -162,17 +172,18 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
 export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) {
   const companyDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
   if (!companyDomain) throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
-  const remaining = await spendToken(userId, "job_seeker");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const eligibleCandidates = await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const eligible = eligibleCandidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
+  const coverageStatus = companyCoverageStatus(eligible.length);
+  const remaining = coverageStatus === "covered" ? await spendToken(userId, "job_seeker") : await getTokenWallet(userId, "job_seeker");
   const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
   const jobId = Number(jobResult[0].insertId);
   const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, personalPitch: input.personalPitch, status: "pending" });
   const requestId = Number(requestResult[0].insertId);
   for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
-  const eligibleCandidates = await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
-  const eligible = eligibleCandidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
   for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: "A private referral request is available", body: `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
-  return { requestId, companyDomain, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining };
+  return { requestId, companyDomain, coverageStatus, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining };
 }
 
 export async function listCompanyReferralInbox(userId: number) {

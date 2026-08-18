@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
-import { ArrowRight, CheckCircle2, LoaderCircle, Paperclip, Plus } from "lucide-react";
+import { ArrowRight, CheckCircle2, LoaderCircle, Paperclip, Plus, UsersRound } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { AccountMenu } from "@/components/AccountMenu";
 import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, TOKEN_ACTION_COST } from "@/lib/tokens";
@@ -48,6 +48,8 @@ export default function ReferralRequest() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [companyDomain, setCompanyDomain] = useState("");
+  const [coveragePending, setCoveragePending] = useState(false);
+  const [coverageInviteStatus, setCoverageInviteStatus] = useState("");
   const { isSignedIn, getToken } = useClerkAuth();
   const { openSignIn } = useClerk();
   const resumeInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +115,7 @@ export default function ReferralRequest() {
       const nextSummary = isCreditSummary(payload.creditSummary) ? payload.creditSummary : fallbackSummary(Number.isFinite(Number(payload.remainingTokens)) ? Number(payload.remainingTokens) : Math.max(0, summary.totalAvailable - TOKEN_ACTION_COST));
       setCreditSummary(nextSummary); setTokens(nextSummary.totalAvailable); setJobSeekerTokens(nextSummary.totalAvailable);
       setPendingFiles([]); void clearPendingResumeFiles().catch(() => undefined); sessionStorage.removeItem(pendingResumeSubmissionKey);
+      setCoveragePending(payload.coverageStatus === "waiting_for_company_coverage");
       setCompanyDomain(payload.companyDomain || "the target company"); clearReferralDraft(); localStorage.setItem("bridge-request-sent", "true"); setSubmitted(true);
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "We could not send this private referral request"); } finally { setSubmitting(false); }
   };
@@ -121,6 +124,17 @@ export default function ReferralRequest() {
   useEffect(() => { if (!isSignedIn || !pendingFilesRestored || sessionStorage.getItem(pendingResumeSubmissionKey) !== "true") return; sessionStorage.removeItem(pendingResumeSubmissionKey); void send(); }, [isSignedIn, pendingFilesRestored]);
 
   if (submitted) {
+    if (coveragePending) {
+      const inviteLink = `${window.location.origin}/referrer?company=${encodeURIComponent(companyDomain)}&source=coverage`;
+      const inviteText = `I’m building private referral coverage for ${companyDomain} on skipwait.me. If you work there, verify a matching work email to choose whether you want to help. Your identity stays hidden from Job Seekers.\n\n${inviteLink}`;
+      const inviteEmployee = async () => {
+        try {
+          if (navigator.share) { await navigator.share({ title: `Private company coverage at ${companyDomain}`, text: inviteText, url: inviteLink }); return; }
+          await navigator.clipboard.writeText(inviteText); setCoverageInviteStatus("Invite copied. Send it to one trusted employee at this company.");
+        } catch { setCoverageInviteStatus("You can share this page with one employee at the company when ready."); }
+      };
+      return <Shell tokens={summary.totalAvailable} label="credits available"><section className="flex min-h-0 flex-1 flex-col"><div className="flex flex-1 flex-col justify-center"><span className="grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-[#0B57D0]"><UsersRound className="h-6 w-6" /></span><p className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Private request saved</p><h1 className="mt-3 text-[2.35rem] font-semibold leading-[.96] tracking-[-.06em]">We are building coverage at {companyDomain}.</h1><p className="mt-4 text-sm leading-6 text-slate-600">No verified employee is connected there yet, so we did not use a credit. Your request stays private until coverage arrives.</p><div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/70 p-4"><p className="text-sm font-semibold text-slate-900">One useful next step</p><p className="mt-1 text-sm leading-5 text-slate-600">Invite one trusted employee at {companyDomain}. They decide whether to verify a work email and help. Your name, request, and documents are never included.</p></div>{coverageInviteStatus && <p className="mt-3 text-sm font-medium text-emerald-700">{coverageInviteStatus}</p>}</div><footer className="shrink-0 border-t border-slate-200 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4"><button type="button" onClick={() => { void inviteEmployee(); }} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-5 py-3.5 text-sm font-semibold text-white">Invite one employee <ArrowRight className="h-4 w-4" /></button><Link href="/requests" className="mt-3 block text-center text-sm font-semibold text-slate-600">View my request</Link></footer></section></Shell>;
+    }
     const used = Math.max(0, summary.monthlyAllowance - summary.monthlyCreditsRemaining);
     const exhausted = summary.totalAvailable === 0;
     const isFree = summary.plan === "free";
