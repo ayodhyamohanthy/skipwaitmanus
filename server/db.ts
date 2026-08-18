@@ -1,8 +1,9 @@
-import { and, count, desc, eq, isNull, like, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { adminTokenAdjustments, companyOpportunities, paymentFulfillments, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
+import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, verifiedEmployerDomainFromCandidates } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -48,12 +49,32 @@ export async function listOperationalActivity(input: { limit?: number; action?: 
 }
 
 export function companyDomainFromTargetUrl(targetRoleUrl: string): string | undefined {
+  return directEmployerDomainFromTargetUrl(targetRoleUrl);
+}
+
+async function employerPageCandidates(targetRoleUrl: string) {
   try {
-    const hostname = new URL(targetRoleUrl).hostname.toLowerCase().replace(/^www\./, "");
-    if (!hostname || hostname === "jobs.lever.co" || hostname.endsWith("greenhouse.io")) return undefined;
-    const labels = hostname.split(".");
-    return labels.length > 2 ? labels.slice(-2).join(".") : hostname;
-  } catch { return undefined; }
+    const url = new URL(targetRoleUrl);
+    if (!isHostedJobPlatform(url.hostname)) return [];
+    const response = await fetch(url, { headers: { "User-Agent": "skipwait.me employer routing" }, redirect: "manual", signal: AbortSignal.timeout(4_000) });
+    if (!response.ok) return [];
+    return employerCandidatesFromJobPageHtml((await response.text()).slice(0, 512_000));
+  } catch {
+    return [];
+  }
+}
+
+export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) {
+  const directDomain = companyDomainFromTargetUrl(targetRoleUrl);
+  if (directDomain) return directDomain;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const verifiedDomains = await db.select({ domain: profiles.workEmailDomain }).from(profiles).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt)));
+  const urlCandidates = hostedEmployerCandidatesFromTargetUrl(targetRoleUrl);
+  const matchedFromUrl = verifiedEmployerDomainFromCandidates(urlCandidates, verifiedDomains.map(row => row.domain));
+  if (matchedFromUrl) return matchedFromUrl;
+  const pageCandidates = await employerPageCandidates(targetRoleUrl);
+  return verifiedEmployerDomainFromCandidates(pageCandidates, verifiedDomains.map(row => row.domain));
 }
 
 const consumerEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);
@@ -135,8 +156,8 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
 }
 
 export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) {
-  const companyDomain = companyDomainFromTargetUrl(input.targetRoleUrl);
-  if (!companyDomain) throw new Error("Use the employer’s direct careers URL so we can route this request privately");
+  const companyDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+  if (!companyDomain) throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
   const remaining = await spendToken(userId, "job_seeker");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
