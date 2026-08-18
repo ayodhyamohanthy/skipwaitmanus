@@ -18,10 +18,13 @@ describe("Onboarding Target Role URL", () => {
     fireEvent.change(input, { target: { value: "product designer at Example" } });
     expect(screen.getByRole("alert").textContent).toMatch(/complete job link/i);
     expect(continueButton).toHaveProperty("disabled", true);
+    expect(screen.getByText("Fix the link above to continue")).toBeTruthy();
+    expect(continueButton.getAttribute("aria-describedby")).toBe("continue-hint");
 
     fireEvent.change(input, { target: { value: "https://careers.example.com/jobs/product-designer" } });
     expect(screen.queryByRole("alert")).toBeNull();
     expect(continueButton).toHaveProperty("disabled", false);
+    expect(screen.queryByText("Fix the link above to continue")).toBeNull();
   });
 
   it("restores the included balance when a legacy reset marker exists without a stored token balance", () => {

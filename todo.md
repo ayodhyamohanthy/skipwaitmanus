@@ -349,3 +349,4 @@
 - [x] Fix the target-role URL field so pasting a valid HTTP or HTTPS job link immediately exposes and enables the mobile continue action.
 - [x] Fix the mobile “I give referrals” entry so the Referrer page opens reliably with a clear first action.
 - [x] Ensure a valid pasted job URL enables Continue even when the user's current credit balance is zero; defer credit handling until after URL progression.
+- [x] Show a concise inline URL error and a directional hint beside the disabled Continue action when the pasted link is incomplete or invalid.
