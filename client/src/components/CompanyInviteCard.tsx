@@ -46,6 +46,7 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
     void copyText(inviteText, "Invite copied. Paste it into a LinkedIn message.");
     openShareUrl("https://www.linkedin.com/messaging/");
   };
+  const shareToX = () => openShareUrl(`https://x.com/intent/post?text=${encodeURIComponent(inviteText)}`);
   const shareMore = () => {
     if (navigator.share) {
       void navigator.share({ title: `Private company coverage at ${companyDomain}`, text: inviteText, url: inviteLink }).catch(() => undefined);
@@ -71,7 +72,7 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
       <button type="button" onClick={shareToWhatsApp} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><MessageCircleMore className="h-4 w-4 text-[#0B57D0]" />WhatsApp</button>
       <button type="button" onClick={shareToLinkedIn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><Linkedin className="h-4 w-4 text-[#0B57D0]" />LinkedIn</button>
       <button type="button" onClick={shareToEmail} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><Mail className="h-4 w-4 text-[#0B57D0]" />Email</button>
-      {!compact && <button type="button" onClick={shareMore} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><MoreHorizontal className="h-4 w-4 text-[#0B57D0]" />More apps</button>}
+      {!compact && <><button type="button" onClick={shareToX} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]">X</button><button type="button" onClick={shareMore} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><MoreHorizontal className="h-4 w-4 text-[#0B57D0]" />More apps</button></>}
     </div>
     <p className="mt-4 text-xs leading-5 text-slate-500">This invitation only asks someone to verify a matching work email. It never includes a candidate name, role link, request state, or document.</p>
   </section>;
