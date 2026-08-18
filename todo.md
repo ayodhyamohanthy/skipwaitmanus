@@ -354,3 +354,4 @@
 - [x] Add consistent back navigation across the Job Seeker and Referrer flows, and refine visual sample-request and network-sharing CTAs with concise recipient-benefiting microcopy.
 - [x] Align Back-enabled mobile headers to the conventional left-side Back-plus-brand pattern instead of centering the brand between controls.
 - [x] Remove the brand mark from in-flow screens and hide referral-credit counts until a signed-in account balance has been verified server-side.
+- [x] Clear the pasted job URL, attached resume metadata, and pending referral draft from browser storage whenever a user signs out.
