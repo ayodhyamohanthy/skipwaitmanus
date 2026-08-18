@@ -22,7 +22,7 @@ describe("ZeroActivityShareCard", () => {
 
   it("gives a Referrer one visual availability handoff without promising a referral", () => {
     render(<ZeroActivityShareCard audience="referrer" />);
-    expect(screen.getByRole("button", { name: "Share with someone looking for work" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
     expect(screen.queryByText(/always choose/i)).toBeNull();
     expect(screen.getAllByRole("button")).toHaveLength(1);
   });

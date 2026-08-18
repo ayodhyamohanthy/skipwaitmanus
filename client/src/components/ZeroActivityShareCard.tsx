@@ -14,7 +14,7 @@ export function ZeroActivityShareCard({ audience }: ZeroActivityShareCardProps) 
   const text = isJobSeeker
     ? `Know someone who can help with a referral? Send them this. A real job link becomes a private request on skipwait.me.\n\n${link}`
     : `Know someone looking for a referral? Send them this. They can make a private request from a real job link on skipwait.me.\n\n${link}`;
-  const label = isJobSeeker ? "Share with someone who can help" : "Share with someone looking for work";
+  const label = isJobSeeker ? "Share with someone who can help" : "Share with a job seeker";
   const share = async () => {
     const nativeShare = (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share;
     if (nativeShare) return nativeShare.call(navigator, { title: "skipwait.me", text, url: link }).catch(() => undefined);

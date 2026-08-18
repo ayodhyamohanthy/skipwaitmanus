@@ -366,3 +366,4 @@
 - [x] Add a visible “Verify your work email” title and concise personal-email guidance to the Referrer entry screen.
 - [x] Reset all account purchased-credit balances to 0 and restore each account’s fresh monthly allowance to 3 credits without changing subscriptions or payment records.
 - [x] Unify the Referrer entry, inbox, empty, and review screens around the shared mobile-first header, spacing, typography, and action hierarchy.
+- [x] Replace “Share with someone looking for work” with clearer, more natural Referrer sharing microcopy.

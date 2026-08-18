@@ -36,7 +36,7 @@ describe("My Company Inbox employee access", () => {
     render(<MyCompanyInbox />);
     await waitFor(() => expect(document.querySelector('[aria-label="No private referral requests"]')).toBeTruthy());
     expect(document.querySelector('[data-skipwait-zero-action="referrer"]')).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share with someone looking for work" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
     expect(screen.queryByText("No new requests.")).toBeNull();
   });
 });

@@ -87,7 +87,7 @@ describe("Referrer work-email OTP verification", () => {
     sessionStorage.setItem("skipwait:employee-sign-in-email", "employee@acme.com");
     render(<Referrer />);
     await waitFor(() => expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Share with someone looking for work" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
     expect(screen.queryByText(/Here is how a request will arrive/i)).toBeNull();
     expect(screen.queryByText(/Example only/i)).toBeNull();
