@@ -1,5 +1,5 @@
 import type { Express, Request } from "express";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, isTokenPackId, isTokenQuantity, parsePaidPaymentEvent, parseSubscriptionEvent, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, isTokenPackId, isTokenQuantity, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 
@@ -17,6 +17,10 @@ type Deps = {
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
   cancelSubscription?: typeof scheduleChargebeeSubscriptionCancellation;
   resolveHostedPage?: (input: { invoiceId?: string; amount: number; currency: string }) => Promise<{ hostedPageId: string; invoiceId?: string; passThruContent?: string; amount?: number; currency?: string } | undefined>;
+  getPaymentRecovery?: (userId: number, role: TokenRole, hostedPageId: string) => Promise<{ id: number; status: "pending" | "credited" | "requires_review"; hostedPageId: string | null; checkoutIntentId: string | null; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null } | undefined>;
+  markPaymentForReview?: (paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected") => Promise<unknown>;
+  retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
+  getCreditSummary?: (userId: number, role: TokenRole) => Promise<unknown>;
 };
 
 function roleFromBody(value: unknown): TokenRole {
@@ -103,6 +107,40 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     } catch (error) {
       console.error("[Chargebee] subscription cancellation error", error);
       return res.status(502).json({ error: "We could not schedule your cancellation. Please try again." });
+    }
+  });
+
+  app.post("/api/chargebee/credit-recovery", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to confirm your referral credits" });
+      const role = roleFromBody(req.body?.role);
+      const hostedPageId = typeof req.body?.hostedPageId === "string" ? req.body.hostedPageId.trim() : "";
+      if (!hostedPageId || hostedPageId.length > 255) return res.status(400).json({ error: "Your secure payment reference is unavailable. Your credits will still appear after provider verification." });
+      if (!deps.getPaymentRecovery) return res.status(503).json({ error: "Payment confirmation is temporarily unavailable" });
+      const payment = await deps.getPaymentRecovery(identity.account.id, role, hostedPageId);
+      if (!payment) return res.status(404).json({ error: "We could not find this payment for your account" });
+      const summary = async () => deps.getCreditSummary ? await deps.getCreditSummary(identity.account.id, role) : undefined;
+      if (payment.status === "credited") return res.json({ status: "credited", tokenCount: payment.tokenCount, summary: await summary() });
+      if (payment.status === "requires_review") return res.json({ status: "requires_review", summary: await summary() });
+
+      const hostedPage = await (deps.retrieveHostedPage ?? retrieveChargebeeHostedPage)(hostedPageId);
+      if (!hostedPage) return res.json({ status: "pending", summary: await summary() });
+      if (!hostedPage.passThruContent || !Number.isInteger(hostedPage.amount) || !hostedPage.currency) {
+        await deps.markPaymentForReview?.(payment.id, "provider_page_incomplete");
+        return res.json({ status: "requires_review", summary: await summary() });
+      }
+      if (hostedPage.passThruContent !== payment.checkoutIntentId || hostedPage.amount !== payment.amount || hostedPage.currency !== payment.currency) {
+        await deps.markPaymentForReview?.(payment.id, "provider_page_mismatch");
+        return res.json({ status: "requires_review", summary: await summary() });
+      }
+      const result = await deps.fulfillPayment({ eventId: `hosted_page:${hostedPage.hostedPageId}`, hostedPageId: hostedPage.hostedPageId, invoiceId: hostedPage.invoiceId, passThruContent: hostedPage.passThruContent, amount: hostedPage.amount, currency: hostedPage.currency });
+      if ((result as { status?: string }).status === "credited" || (result as { status?: string }).status === "duplicate") return res.json({ status: "credited", tokenCount: payment.tokenCount, summary: await summary() });
+      await deps.markPaymentForReview?.(payment.id, "reconciliation_rejected");
+      return res.json({ status: "requires_review", summary: await summary() });
+    } catch (error) {
+      console.error("[Chargebee] payment recovery error", error);
+      return res.status(502).json({ error: "We are still securely confirming this payment. No action is needed from you." });
     }
   });
 

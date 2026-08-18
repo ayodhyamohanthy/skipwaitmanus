@@ -133,6 +133,7 @@ export async function retrieveChargebeeHostedPage(hostedPageId: string, input: {
   if (!apiKey) throw new Error("Chargebee API key is not configured");
   const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/${encodeURIComponent(hostedPageId)}`, {
     headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
+    signal: AbortSignal.timeout(8_000),
   });
   if (!response.ok) return undefined;
   const hostedPage = (await response.json().catch(() => ({})))?.hosted_page;

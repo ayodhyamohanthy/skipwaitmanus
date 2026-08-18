@@ -332,3 +332,4 @@
 - [x] Show eligible local PPP pricing with an honest reference price, visible discount percentage, and a frictionless billing-country correction path.
 - [x] Update Pro to $10 globally and ₹599 in India, and Max to $20 globally and ₹1,299 in India, with verified Chargebee catalog consistency.
 - [x] Audit and prioritize low-friction, user-benefiting micro-tweaks for trusted sharing, word of mouth, and paid continuation without compromising Referrer privacy or core referral flow.
+- [x] Audit and harden the verified payment-to-credit path against delayed webhooks, duplicate events, mismatched checkout state, provider outages, and user-return recovery without browser-side crediting.

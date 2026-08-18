@@ -157,8 +157,12 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   tokenCount: int("tokenCount").notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
+  status: mysqlEnum("status", ["pending", "credited", "requires_review"]).default("pending").notNull(),
+  reconciliationReason: varchar("reconciliationReason", { length: 120 }),
+  lastCheckedAt: timestamp("lastCheckedAt"),
+  creditedAt: timestamp("creditedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("payment_fulfillments_provider_event_unique").on(table.provider, table.providerEventId), index("payment_fulfillments_user_idx").on(table.userId), index("payment_fulfillments_intent_idx").on(table.provider, table.checkoutIntentId)]);
+}, table => [uniqueIndex("payment_fulfillments_provider_event_unique").on(table.provider, table.providerEventId), index("payment_fulfillments_user_idx").on(table.userId), index("payment_fulfillments_user_status_idx").on(table.userId, table.role, table.status), index("payment_fulfillments_intent_idx").on(table.provider, table.checkoutIntentId)]);
 
 export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutIntents", {
   id: int("id").autoincrement().primaryKey(),

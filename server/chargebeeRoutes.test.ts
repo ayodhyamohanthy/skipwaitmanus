@@ -139,6 +139,30 @@ describe("Chargebee webhook route", () => {
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 
+  it("reconciles a returning account’s own succeeded hosted page server-side and refuses a mismatched provider record", async () => {
+    const app = express();
+    app.use(express.json());
+    const reviewReasons: string[] = [];
+    let fulfilled = 0;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async input => { fulfilled += 1; expect(input).toMatchObject({ eventId: "hosted_page:hp_recovery", hostedPageId: "hp_recovery", passThruContent: "intent_recovery", amount: 9900, currency: "INR" }); return { status: "credited", tokenCount: 1 }; },
+      getPaymentRecovery: async (_userId, _role, hostedPageId) => hostedPageId === "hp_recovery" ? { id: 41, status: "pending", hostedPageId, checkoutIntentId: "intent_recovery", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null } : { id: 42, status: "pending", hostedPageId, checkoutIntentId: "intent_expected", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null },
+      retrieveHostedPage: async hostedPageId => hostedPageId === "hp_recovery" ? { hostedPageId, invoiceId: "inv_recovery", passThruContent: "intent_recovery", amount: 9900, currency: "INR" } : { hostedPageId, invoiceId: "inv_mismatch", passThruContent: "wrong_intent", amount: 9900, currency: "INR" },
+      markPaymentForReview: async (_paymentId, reason) => { reviewReasons.push(reason); },
+      getCreditSummary: async () => ({ totalAvailable: 4 }),
+    });
+    const recovered = await request(app).post("/api/chargebee/credit-recovery").send({ role: "job_seeker", hostedPageId: "hp_recovery" });
+    const mismatched = await request(app).post("/api/chargebee/credit-recovery").send({ role: "job_seeker", hostedPageId: "hp_mismatch" });
+    expect(recovered.status).toBe(200);
+    expect(recovered.body).toMatchObject({ status: "credited", tokenCount: 1, summary: { totalAvailable: 4 } });
+    expect(mismatched.status).toBe(200);
+    expect(mismatched.body.status).toBe("requires_review");
+    expect(fulfilled).toBe(1);
+    expect(reviewReasons).toEqual(["provider_page_mismatch"]);
+  });
+
   it("creates a Pro subscription checkout with the approved INR plan price and synchronizes its verified lifecycle event", async () => {
     const app = express();
     app.use(express.json());

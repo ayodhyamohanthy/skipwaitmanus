@@ -62,6 +62,9 @@ async function startServer() {
     applySubscriptionEvent: db.applyChargebeeSubscriptionEvent,
     getUserSubscription: db.getUserSubscription,
     markSubscriptionNonRenewing: db.markSubscriptionNonRenewing,
+    getPaymentRecovery: db.getChargebeePaymentRecovery,
+    markPaymentForReview: db.markChargebeePaymentForReview,
+    getCreditSummary: db.getTokenWallet,
     resolveHostedPage: async input => {
       const pending = await db.listPendingChargebeePaymentIntents();
       return resolveChargebeeHostedPageForPayment({ ...input, pendingHostedPageIds: pending.flatMap(row => row.hostedPageId ? [row.hostedPageId] : []) });
