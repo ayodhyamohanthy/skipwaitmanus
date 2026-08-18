@@ -30,4 +30,12 @@ describe("Onboarding Target Role URL", () => {
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
     expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
   });
+
+  it("allows URL progression even when the current local credit balance is explicitly zero", () => {
+    localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
+    localStorage.setItem("bridge-tokens", "0");
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+  });
 });
