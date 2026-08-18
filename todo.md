@@ -328,3 +328,6 @@
 - [x] Enable Chargebee subscription lifecycle events on the existing Test webhook while preserving verified payment-success delivery.
 - [x] Detect the likely India or international payment route from privacy-minimized locale and network signals, show one local amount by default, and preserve a quiet correction path when detection is wrong.
 - [x] Remove manual INR/USD choices from credit-pack and Pro/Max checkout surfaces while retaining server-side route validation and accessible payment disclosure.
+- [x] Recommend a user-centered Referrer pricing policy and contextual upgrade guardrails that preserve zero-friction referral participation.
+- [x] Show eligible local PPP pricing with an honest reference price, visible discount percentage, and a frictionless billing-country correction path.
+- [x] Update Pro to $10 globally and ₹599 in India, and Max to $20 globally and ₹1,299 in India, with verified Chargebee catalog consistency.

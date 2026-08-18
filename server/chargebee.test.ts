@@ -50,7 +50,8 @@ describe("Chargebee payment contract", () => {
     expect(SUBSCRIPTION_PLANS.pro.monthlyAllowance).toBe(10);
     expect(SUBSCRIPTION_PLANS.max.monthlyAllowance).toBe(30);
     expect(subscriptionPlanFromItemPrice("skipwait_pro_monthly-INR")).toEqual({ plan: "pro", currency: "INR", amount: 59_900 });
-    expect(subscriptionPlanFromItemPrice("skipwait_max_monthly-USD")).toEqual({ plan: "max", currency: "USD", amount: 1_500 });
+    expect(subscriptionPlanFromItemPrice("skipwait_pro_monthly-USD")).toEqual({ plan: "pro", currency: "USD", amount: 1_000 });
+    expect(subscriptionPlanFromItemPrice("skipwait_max_monthly-USD")).toEqual({ plan: "max", currency: "USD", amount: 2_000 });
     expect(subscriptionPlanFromItemPrice("skipwait_token_1-INR")).toBeUndefined();
     expect(currentMonthlyCycleKey(new Date("2026-08-31T23:00:00.000Z"))).toBe("2026-08");
     expect(currentMonthlyCycleKey(new Date("2026-09-01T00:00:00.000Z"))).toBe("2026-09");
