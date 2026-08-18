@@ -62,6 +62,8 @@ describe("Referrer work-email OTP verification", () => {
   it("opens directly to one compact company-email OTP action before secure employee sign-in", () => {
     clerkState.isSignedIn = false;
     render(<Referrer />);
+    expect(screen.getByText("Verify your work email")).toBeTruthy();
+    expect(screen.getByText("Personal emails aren’t accepted.")).toBeTruthy();
     expect(screen.getByLabelText("Company email for secure employee sign in").parentElement?.className).not.toContain("sr-only");
     expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();

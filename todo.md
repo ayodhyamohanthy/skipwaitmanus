@@ -363,3 +363,4 @@
 - [x] Show the remaining monthly referral credits with allowance context, such as 0/3 monthly credits left, in the exhausted Job Seeker flow.
 - [x] Default Add credits to an editable ten-credit quantity and remove the separate 1, 5, and 10 credit preset buttons.
 - [x] Remove the “Use a different company email” button from the company-email verification flow while preserving Continue.
+- [x] Add a visible “Verify your work email” title and concise personal-email guidance to the Referrer entry screen.
