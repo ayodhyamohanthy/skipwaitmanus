@@ -66,7 +66,9 @@ describe("Referrer work-email OTP verification", () => {
     expect(screen.getByText("Personal emails aren’t accepted.")).toBeTruthy();
     expect(screen.getByLabelText("Company email for secure employee sign in").parentElement?.className).not.toContain("sr-only");
     expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
+    expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("h-dvh");
+    expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("overflow-hidden");
     expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeNull();
     expect(screen.queryByText("skipwait.me")).toBeNull();
     expect(screen.queryByText(/no password, social sign-in, or personal email access/i)).toBeNull();
