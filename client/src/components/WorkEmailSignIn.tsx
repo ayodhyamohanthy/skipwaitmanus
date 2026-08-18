@@ -50,7 +50,7 @@ export function WorkEmailSignIn({ inviteCode }: { inviteCode?: string }) {
 
   const startExistingSignIn = async () => {
     if (!signIn) throw new Error("Secure employee sign-in is still loading. Try again in a moment.");
-    const result = await signIn.create({ identifier: normalizedEmail, strategy: "email_code", transfer: false });
+    const result = await signIn.create({ identifier: normalizedEmail, strategy: "email_code" });
     setAttemptKind("signIn");
     rememberCompanyEmail();
     if (result.status === "complete") {

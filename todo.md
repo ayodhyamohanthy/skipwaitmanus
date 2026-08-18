@@ -341,3 +341,4 @@
 - [x] Strengthen voluntary sharing with recipient-benefiting psychological hooks, explicit WhatsApp Status copy, one-person messages, email, and social-native wording while prohibiting fabricated social proof, false scarcity, and contact harvesting.
 - [x] Ensure Referrer work-email OTP is sent only to the entered company address and existing company-email accounts always sign in without an email-taken error or personal-email fallback.
 - [x] Make the mobile Referrer entry opened by “I give referrals” a fixed single-viewport company-email sign-in with no page scrolling.
+- [x] Remove the invalid boolean transfer parameter from Referrer work-email OTP sign-in so the authentication provider accepts the request.
