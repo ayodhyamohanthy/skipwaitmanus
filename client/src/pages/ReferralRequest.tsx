@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
-import { ArrowRight, CheckCircle2, LoaderCircle, Paperclip, Plus, Share2, UsersRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, LoaderCircle, Paperclip, Plus, Share2, UsersRound } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { AccountMenu } from "@/components/AccountMenu";
 import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, TOKEN_ACTION_COST } from "@/lib/tokens";
@@ -25,6 +25,7 @@ function Shell({ children, tokens, label }: { children: React.ReactNode; tokens:
     <main data-skipwait-screen="request" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950">
       <div className="mx-auto flex h-full max-w-xl flex-col">
         <header className="flex h-10 shrink-0 items-center justify-between gap-3">
+          <Link href="/start" className="inline-flex items-center gap-1 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />Back</Link>
           <Brand />
           <div className="flex items-center gap-2">
             <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 sm:inline">{tokens} {label}</span>

@@ -64,6 +64,7 @@ describe("Referrer work-email OTP verification", () => {
     render(<Referrer />);
     expect(screen.getByLabelText("Company email for secure employee sign in").parentElement?.className).not.toContain("sr-only");
     expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(screen.queryByText(/no password, social sign-in, or personal email access/i)).toBeNull();
   });
 
@@ -80,7 +81,8 @@ describe("Referrer work-email OTP verification", () => {
     sessionStorage.setItem("skipwait:employee-sign-in-email", "employee@acme.com");
     render(<Referrer />);
     await waitFor(() => expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Share private referral availability" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share with someone looking for work" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
     expect(screen.queryByText(/Here is how a request will arrive/i)).toBeNull();
     expect(screen.queryByText(/Example only/i)).toBeNull();
   });

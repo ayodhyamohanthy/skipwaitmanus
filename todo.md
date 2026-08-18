@@ -351,3 +351,4 @@
 - [x] Ensure a valid pasted job URL enables Continue even when the user's current credit balance is zero; defer credit handling until after URL progression.
 - [x] Show a concise inline URL error and a directional hint beside the disabled Continue action when the pasted link is incomplete or invalid.
 - [x] Replace the uncovered-employer confirmation copy with a visual-first company-coverage invite action that keeps only the essential privacy-safe sharing control.
+- [x] Add consistent back navigation across the Job Seeker and Referrer flows, and refine visual sample-request and network-sharing CTAs with concise recipient-benefiting microcopy.

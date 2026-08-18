@@ -12,8 +12,9 @@ export function ZeroActivityShareCard({ audience }: ZeroActivityShareCardProps) 
   const isJobSeeker = audience === "job_seeker";
   const link = isJobSeeker ? `${origin}/start` : `${origin}/referrer`;
   const text = isJobSeeker
-    ? `I’m looking for a referral for a role that fits. If your company is hiring or you know of a real job link, please send it to me. I can prepare a private referral request through skipwait.me.\n\n${link}`
-    : `I can consider private referral requests for suitable roles at my company. If you have a real job link that may fit, skipwait.me helps you prepare a private request. I decide whether I can help.\n\n${link}`;
+    ? `Know someone who can help with a referral? Send them this. A real job link becomes a private request on skipwait.me.\n\n${link}`
+    : `Know someone looking for a referral? Send them this. They can make a private request from a real job link on skipwait.me.\n\n${link}`;
+  const label = isJobSeeker ? "Share with someone who can help" : "Share with someone looking for work";
   const share = async () => {
     const nativeShare = (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share;
     if (nativeShare) return nativeShare.call(navigator, { title: "skipwait.me", text, url: link }).catch(() => undefined);
@@ -25,5 +26,5 @@ export function ZeroActivityShareCard({ audience }: ZeroActivityShareCardProps) 
     }
   };
 
-  return <button data-skipwait-zero-action={audience} aria-label={`Share ${audience} zero-activity message`} onClick={() => { void share(); }} className="mt-6 grid h-14 w-14 place-items-center rounded-2xl border border-blue-100 bg-blue-50 text-[#0B57D0] transition active:scale-[.97]"><Share2 className="h-5 w-5" /></button>;
+  return <button data-skipwait-zero-action={audience} aria-label={label} onClick={() => { void share(); }} className="mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-blue-100 bg-blue-50 px-4 text-sm font-bold text-[#0B57D0] transition active:scale-[.97]"><Share2 className="h-4 w-4" />{label}</button>;
 }

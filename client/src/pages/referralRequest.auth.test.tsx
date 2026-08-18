@@ -40,6 +40,7 @@ describe("ReferralRequest secure resume handoff", () => {
 
   it("persists an unsigned resume through sign-in and continues secure upload", async () => {
     render(<ReferralRequest />);
+    expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();

@@ -12,6 +12,7 @@ describe("Onboarding Target Role URL", () => {
 
   it("blocks arbitrary text and enables continue only for a complete HTTP(S) job link", () => {
     render(<Onboarding />);
+    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     const input = screen.getByLabelText("Target Role URL");
     const continueButton = screen.getByRole("button", { name: "Continue" });
 

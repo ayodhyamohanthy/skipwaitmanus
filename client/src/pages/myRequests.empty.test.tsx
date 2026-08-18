@@ -22,6 +22,9 @@ describe("My Requests empty state", () => {
     render(<MyRequests />);
     await waitFor(() => expect(document.querySelector('[aria-label="No referral requests"]')).toBeTruthy());
     expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
+    expect(document.querySelector('[data-skipwait-empty-preview="job-seeker"]')).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share with someone who can help" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(screen.queryByText("No requests yet.")).toBeNull();
     expect(screen.getByRole("button", { name: "Request a referral" })).toBeTruthy();
   });
