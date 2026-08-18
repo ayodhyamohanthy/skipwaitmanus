@@ -35,4 +35,12 @@ describe("Opportunity Wall", () => {
     expect(payload.text).not.toContain("Product Designer");
     expect(payload.url).toContain("/referrer?company=acme.com");
   });
+
+  it("keeps Job Seekers moving with a shareable next action when no internal openings are live", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [] }) })));
+    render(<OpportunityWall />);
+    await waitFor(() => expect(screen.getByText("No openings yet.")).toBeTruthy());
+    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Request a referral" })).toBeTruthy();
+  });
 });
