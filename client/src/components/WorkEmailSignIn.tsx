@@ -13,7 +13,13 @@ function isMissingIdentifier(error: unknown) {
   return entries.some(entry => entry.code === "form_identifier_not_found");
 }
 
+function isExistingIdentifier(error: unknown) {
+  const entries = (error as { errors?: Array<{ code?: string }> })?.errors ?? [];
+  return entries.some(entry => entry.code === "form_identifier_exists");
+}
+
 function displayError(error: unknown, fallback: string) {
+  if (isExistingIdentifier(error)) return "This company email already has a secure profile. We will sign you in with a new code sent only to that address.";
   const entries = (error as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors ?? [];
   return entries[0]?.longMessage || entries[0]?.message || (error instanceof Error ? error.message : fallback);
 }
@@ -42,9 +48,32 @@ export function WorkEmailSignIn({ inviteCode }: { inviteCode?: string }) {
     await setActive({ session: result.createdSessionId });
   };
 
+  const startExistingSignIn = async () => {
+    if (!signIn) throw new Error("Secure employee sign-in is still loading. Try again in a moment.");
+    const result = await signIn.create({ identifier: normalizedEmail, strategy: "email_code", transfer: false });
+    setAttemptKind("signIn");
+    rememberCompanyEmail();
+    if (result.status === "complete") {
+      await completeSession(result, setActiveSignIn as (params: { session: string }) => Promise<unknown>);
+      return;
+    }
+    const factor = result.supportedFirstFactors?.find((candidate: { strategy?: string; emailAddressId?: string; safeIdentifier?: string }) => {
+      if (candidate.strategy !== "email_code" || !candidate.emailAddressId) return false;
+      return !candidate.safeIdentifier || candidate.safeIdentifier.trim().toLowerCase() === normalizedEmail;
+    }) as { emailAddressId?: string } | undefined;
+    if (!factor?.emailAddressId) throw new Error("For your privacy, we will not send a code to a different email on this account. Sign in with the company email that owns this private Referrer profile.");
+    await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: factor.emailAddressId });
+    setFlow("code");
+  };
+
   const startSignUp = async () => {
     if (!signUp) throw new Error("Secure employee sign-in is still loading. Try again in a moment.");
-    const result = await signUp.create({ emailAddress: normalizedEmail });
+    let result;
+    try { result = await signUp.create({ emailAddress: normalizedEmail }); }
+    catch (error) {
+      if (isExistingIdentifier(error)) { await startExistingSignIn(); return; }
+      throw error;
+    }
     setAttemptKind("signUp");
     rememberCompanyEmail();
     if (result.status === "complete") {
@@ -61,17 +90,7 @@ export function WorkEmailSignIn({ inviteCode }: { inviteCode?: string }) {
     if (!signInLoaded || !signUpLoaded || !signIn) { setError("Secure employee sign-in is still loading. Try again in a moment."); return; }
     setBusy(true); setError("");
     try {
-      const result = await signIn.create({ identifier: normalizedEmail, transfer: false });
-      setAttemptKind("signIn");
-      rememberCompanyEmail();
-      if (result.status === "complete") {
-        await completeSession(result, setActiveSignIn as (params: { session: string }) => Promise<unknown>);
-        return;
-      }
-      const factor = result.supportedFirstFactors?.find((candidate: { strategy?: string }) => candidate.strategy === "email_code") as { emailAddressId?: string } | undefined;
-      if (!factor?.emailAddressId) throw new Error("This company email is not set up for secure code sign-in.");
-      await signIn.prepareFirstFactor({ strategy: "email_code", emailAddressId: factor.emailAddressId });
-      setFlow("code");
+      await startExistingSignIn();
     } catch (caught) {
       if (isMissingIdentifier(caught)) {
         try { await startSignUp(); }

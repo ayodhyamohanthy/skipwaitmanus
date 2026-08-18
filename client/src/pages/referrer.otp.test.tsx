@@ -53,17 +53,10 @@ describe("Referrer work-email OTP verification", () => {
 
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-  it("sends a code, verifies it with Clerk, then enrolls only the verified company email", async () => {
+  it("asks a signed-in personal account to switch to the dedicated work-email sign-in instead of adding a potentially taken company address", async () => {
     render(<Referrer />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy());
-    fireEvent.change(screen.getByLabelText("Company email"), { target: { value: "employee@acme.com" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
-    await waitFor(() => expect(clerkState.createEmailAddress).toHaveBeenCalledWith({ email: "employee@acme.com" }));
-    await waitFor(() => expect(clerkState.emailAddress.prepareVerification).toHaveBeenCalledWith({ strategy: "email_code" }));
-    fireEvent.change(screen.getByLabelText("One-time code"), { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
-    await waitFor(() => expect(clerkState.emailAddress.attemptVerification).toHaveBeenCalledWith({ code: "123456" }));
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url).endsWith("/verify-work-email") && String(init?.body).includes("employee@acme.com"))).toBe(true));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue with work email" })).toBeTruthy());
+    expect(clerkState.createEmailAddress).not.toHaveBeenCalled();
   });
 
   it("offers a direct work-email OTP entry before secure employee sign-in", () => {
