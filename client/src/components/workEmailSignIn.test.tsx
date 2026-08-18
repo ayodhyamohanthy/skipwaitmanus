@@ -36,6 +36,7 @@ describe("WorkEmailSignIn", () => {
     await waitFor(() => expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "work-id" }));
     expect(clerk.signIn.prepareFirstFactor).not.toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "personal-id" });
     expect(screen.getByText("Code sent to employee@acme.com")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use a different company email" })).toBeNull();
   });
 
   it("turns an existing-email sign-up collision into a provider-valid company-email sign-in without showing an email-taken message", async () => {
@@ -50,5 +51,6 @@ describe("WorkEmailSignIn", () => {
     await waitFor(() => expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "work-id" }));
     expect(screen.queryByText(/That email address is taken/i)).toBeNull();
     expect(screen.getByText("Code sent to employee@acme.com")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Use a different company email" })).toBeNull();
   });
 });
