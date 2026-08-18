@@ -6,6 +6,7 @@ import Premium from "./Premium";
 
 vi.mock("@/lib/trpc", () => ({ trpc: { ai: { draftHiringManagerEmail: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } } } }));
 vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ isAuthenticated: true, isLoading: false, user: { id: 1 }, refresh: vi.fn(), logout: vi.fn() }) }));
+vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-clerk-token") }), useClerk: () => ({ openSignIn: vi.fn() }) }));
 const openCheckout = vi.fn();
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: (...args: unknown[]) => openCheckout(...args) }));
 
@@ -25,12 +26,13 @@ describe("secure token checkout routes", () => {
   it("starts a multi-token Job Seeker Chargebee checkout without mutating the browser token balance", async () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
+    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
     fireEvent.click(screen.getByRole("button", { name: "Choose a custom quantity" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add one token" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add one token" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add one credit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add one credit" }));
     expect(screen.getByDisplayValue("3")).toBeTruthy();
-    expect(screen.getByText("3 action tokens")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /continue to ₹297 inr checkout/i }));
+    expect(screen.getByText("3 referral credits")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /continue to pay ₹297 inr/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ method: "POST", body: expect.stringContaining('"quantity":3') })));
     expect(localStorage.getItem("bridge-tokens")).toBe("0");
     expect(openCheckout).toHaveBeenCalledWith("https://skipwait-test.chargebee.com/hosted_pages/test");
@@ -39,39 +41,42 @@ describe("secure token checkout routes", () => {
   it("starts a Referrer Chargebee checkout without mutating the purchased wallet", async () => {
     window.history.pushState({}, "", "/premium?role=referrer");
     render(<Premium />);
-    fireEvent.click(screen.getByRole("button", { name: /continue to ₹99 inr checkout/i }));
+    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue to pay ₹99 inr/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ body: expect.stringContaining('"role":"referrer"') })));
     expect(localStorage.getItem("bridge-referrer-paid-tokens")).toBeNull();
     expect(openCheckout).toHaveBeenCalled();
   });
 
-  it("offers Razorpay Domestic for INR and PayPal for international USD while keeping the brand/back-link layout", () => {
+  it("shows one detected local route first, with a quiet correction path for another billing country", () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
     expect(screen.getByRole("link", { name: "skipwait.me home" }).parentElement?.className).toContain("items-center");
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/request");
-    expect(screen.getByText("1 action token")).toBeTruthy();
+    expect(screen.getByText("Pay $1")).toBeTruthy();
+    expect(screen.getByText(/PayPal/)).toBeTruthy();
+    expect(screen.queryByText("India · INR")).toBeNull();
+    expect(screen.queryByText("Outside India · USD")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
+    expect(screen.getByText("Pay ₹99")).toBeTruthy();
+    expect(screen.getByText(/Razorpay Domestic/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Choose a custom quantity" }));
-    expect((screen.getByRole("spinbutton", { name: "Number of tokens to add" }) as HTMLInputElement).value).toBe("1");
-    expect(screen.getByText(/tokens are added only after verified payment/i)).toBeTruthy();
-    expect(screen.getByText("India · INR")).toBeTruthy();
-    expect(screen.getByText("Outside India · USD")).toBeTruthy();
-    expect(screen.getAllByText(/Razorpay Domestic/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/PayPal/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText(/Razorpay International \/ Export/i)).toBeNull();
+    expect((screen.getByRole("spinbutton", { name: "Number of credits to add" }) as HTMLInputElement).value).toBe("1");
+    expect(screen.getByText(/credits are added only after verified payment/i)).toBeTruthy();
   });
 
   it("offers one-click 5 and 10 token packs alongside the custom quantity control", () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
-    fireEvent.click(screen.getByRole("button", { name: /5 tokens.*₹495/i }));
+    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
+    fireEvent.click(screen.getByRole("button", { name: /5 credits.*₹495/i }));
     fireEvent.click(screen.getByRole("button", { name: "Choose a custom quantity" }));
-    expect((screen.getByRole("spinbutton", { name: "Number of tokens to add" }) as HTMLInputElement).value).toBe("5");
-    expect(screen.getByRole("button", { name: /continue to ₹495 INR checkout/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Outside India.*USD/i }));
-    expect(screen.getByRole("button", { name: /10 tokens.*\$10/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /10 tokens.*\$10/i }));
-    expect(screen.getByText("10 action tokens")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /continue to \$10 USD checkout/i })).toBeTruthy();
+    expect((screen.getByRole("spinbutton", { name: "Number of credits to add" }) as HTMLInputElement).value).toBe("5");
+    expect(screen.getByRole("button", { name: /continue to pay ₹495 INR/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use international payment/i }));
+    expect(screen.getByRole("button", { name: /10 credits.*\$10/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /10 credits.*\$10/i }));
+    expect(screen.getByText("10 referral credits")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /continue to pay \$10 USD/i })).toBeTruthy();
   });
 });

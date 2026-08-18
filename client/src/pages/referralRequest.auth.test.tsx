@@ -61,8 +61,8 @@ describe("ReferralRequest secure resume handoff", () => {
     render(<ReferralRequest />);
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/api/documents"))).toBe(true));
     await waitFor(() => expect(pendingResume.clear).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.getByText("1 of 3 used")).toBeTruthy());
-    expect(screen.getByRole("link", { name: "Add 1, 5, or 10 credits" }).getAttribute("href")).toBe("/premium?role=job_seeker");
+    await waitFor(() => expect(screen.getByText("1 of 3 free credits used this month.")).toBeTruthy());
+    expect(screen.getByRole("link", { name: "Request another referral" }).getAttribute("href")).toBe("/start");
     vi.unstubAllGlobals();
   });
 

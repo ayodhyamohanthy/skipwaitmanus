@@ -138,4 +138,47 @@ describe("Chargebee webhook route", () => {
     expect(resolved).toBe(1);
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
+
+  it("creates a Pro subscription checkout with the approved INR plan price and synchronizes its verified lifecycle event", async () => {
+    const app = express();
+    app.use(express.json());
+    const secret = "subscription-flow-secret";
+    process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
+    let storedIntent: Record<string, unknown> | undefined;
+    let appliedEvent: Record<string, unknown> | undefined;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "credited" }),
+      createSubscriptionCheckout: async input => { expect(input.plan).toBe("pro"); expect(input.currency).toBe("INR"); return { checkoutUrl: "https://chargebee.test/hp_pro", hostedPageId: "hp_pro", checkoutIntentId: "intent_pro" }; },
+      createSubscriptionIntent: async input => { storedIntent = input; },
+      applySubscriptionEvent: async input => { appliedEvent = input; return { status: "applied", plan: "pro" }; },
+    });
+    const checkout = await request(app).post("/api/chargebee/subscription-checkout").send({ plan: "pro", currency: "INR", billingCountry: "IN", role: "job_seeker" });
+    const webhook = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_pro_active", event_type: "subscription_created", content: { hosted_page: { id: "hp_pro", pass_thru_content: "intent_pro" }, subscription: { id: "sub_pro_1", status: "active", currency_code: "INR", resource_version: 10, current_term_start: 1_786_900_000, current_term_end: 1_789_500_000, subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] } } });
+    expect(checkout.status).toBe(200);
+    expect(storedIntent).toMatchObject({ hostedPageId: "hp_pro", checkoutIntentId: "intent_pro", plan: "pro", itemPriceId: "skipwait_pro_monthly-INR", amount: 59_900, currency: "INR" });
+    expect(webhook.status).toBe(200);
+    expect(webhook.body.result).toMatchObject({ status: "applied", plan: "pro" });
+    expect(appliedEvent).toMatchObject({ subscriptionId: "sub_pro_1", plan: "pro", status: "active", currency: "INR" });
+    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
+  });
+
+  it("only schedules end-of-term cancellation for the signed-in account’s own subscription", async () => {
+    const app = express();
+    app.use(express.json());
+    let persisted: Record<string, unknown> | undefined;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "credited" }),
+      getUserSubscription: async (userId, role) => { expect(userId).toBe(7); expect(role).toBe("job_seeker"); return { subscriptionId: "sub_owned", status: "active" }; },
+      cancelSubscription: async input => { expect(input.subscriptionId).toBe("sub_owned"); return { status: "non_renewing", currentTermEnd: new Date("2026-09-18T00:00:00.000Z") }; },
+      markSubscriptionNonRenewing: async (userId, role, subscriptionId) => { persisted = { userId, role, subscriptionId }; return { status: "non_renewing" }; },
+    });
+    const response = await request(app).post("/api/chargebee/subscription-cancel").send({ role: "job_seeker" });
+    expect(response.status).toBe(200);
+    expect(response.body.status).toBe("non_renewing");
+    expect(persisted).toEqual({ userId: 7, role: "job_seeker", subscriptionId: "sub_owned" });
+  });
 });

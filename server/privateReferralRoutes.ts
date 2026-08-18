@@ -30,6 +30,7 @@ export type PrivateReferralRouteDeps = {
   findUsersForTokenRecovery?: (query: string) => Promise<unknown[]>;
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
   grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
+  getCreditSummary?: (userId: number, role: "job_seeker" | "referrer") => Promise<unknown>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
@@ -100,6 +101,16 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees } });
       res.status(201).json(result);
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
+  });
+  app.get("/api/credits/summary", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your referral credits" });
+      const role = req.query.role === "referrer" ? "referrer" : "job_seeker";
+      const summary = await deps.getCreditSummary?.(identity.account.id, role);
+      if (!summary) return res.status(500).json({ error: "We could not load your referral credits" });
+      res.json({ summary });
+    } catch { res.status(500).json({ error: "We could not load your referral credits" }); }
   });
   app.get("/api/company-referrals/mine", async (req, res) => {
     try {

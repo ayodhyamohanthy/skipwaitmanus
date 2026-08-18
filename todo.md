@@ -321,3 +321,10 @@
 - [x] Remove or contain the non-operational scrolling request-share preview route so it cannot present as an active user flow.
 - [x] Remove legacy Bridge wording from the Not Found recovery screen.
 - [x] Show clear included-credit progress after a successful referral request and provide an optional low-pressure 1/5/10 credit top-up entry.
+- [x] Define and implement a transparent free plan with three referral-request credits per monthly cycle, optional 1/5/10 credit packs, and Pro/Max subscription entitlements.
+- [x] Design request continuation and post-exhaustion upgrade moments so payment choices appear only when they are useful and never obscure the primary referral task.
+- [x] Implement the approved Pro plan at 10 monthly requests for ₹599/$7 and Max plan at 30 monthly requests for ₹1,299/$15, with cancellation and verified server-side entitlement handling.
+- [x] Preserve non-expiring one-time 1/5/10 credit packs alongside monthly plan allowances and reset only monthly entitlements at the correct cycle boundary.
+- [x] Enable Chargebee subscription lifecycle events on the existing Test webhook while preserving verified payment-success delivery.
+- [x] Detect the likely India or international payment route from privacy-minimized locale and network signals, show one local amount by default, and preserve a quiet correction path when detection is wrong.
+- [x] Remove manual INR/USD choices from credit-pack and Pro/Max checkout surfaces while retaining server-side route validation and accessible payment disclosure.

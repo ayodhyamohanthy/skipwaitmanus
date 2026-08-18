@@ -1,7 +1,8 @@
 import { and, count, desc, eq, isNull, like, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyOpportunities, paymentFulfillments, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyOpportunities, paymentFulfillments, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { ENV } from "./_core/env";
+import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -145,7 +146,7 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
   const eligible = await db.select({ userId: profiles.userId }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain)));
   for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: "A private referral request is available", body: `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
-  return { requestId, companyDomain, notifiedEmployees: eligible.length, remainingTokens: remaining.balance };
+  return { requestId, companyDomain, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining };
 }
 
 export async function listCompanyReferralInbox(userId: number) {
@@ -294,7 +295,55 @@ export async function getAiWorkspaceContext(userId: number) {
 
 
 export type WalletRole = "job_seeker" | "referrer";
+export type CreditSummary = {
+  plan: SubscriptionPlan;
+  monthlyAllowance: number;
+  monthlyCreditsRemaining: number;
+  purchasedCreditsRemaining: number;
+  totalAvailable: number;
+  cycleKey: string;
+  subscriptionStatus: string | null;
+  subscriptionCurrentTermEnd: Date | null;
+};
 export const MAX_ADMIN_TOKEN_ADJUSTMENT = 1000;
+
+function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect): CreditSummary {
+  return {
+    plan: wallet.plan,
+    monthlyAllowance: wallet.monthlyAllowance,
+    monthlyCreditsRemaining: wallet.monthlyCreditsRemaining,
+    purchasedCreditsRemaining: wallet.balance,
+    totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance,
+    cycleKey: wallet.monthlyCycleKey,
+    subscriptionStatus: wallet.subscriptionStatus ?? null,
+    subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
+  };
+}
+
+function normalizedWalletState(wallet: typeof tokenBalances.$inferSelect, now: Date = new Date()) {
+  const cycleKey = currentMonthlyCycleKey(now);
+  const subscriptionActive = wallet.plan !== "free" && (wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing") && Boolean(wallet.subscriptionCurrentTermEnd && wallet.subscriptionCurrentTermEnd > now);
+  if (subscriptionActive) return { changed: false, patch: {} };
+  if (wallet.plan !== "free") return {
+    changed: true,
+    patch: {
+      plan: "free" as const,
+      monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
+      monthlyCreditsRemaining: wallet.monthlyCycleKey === cycleKey ? wallet.monthlyCreditsRemaining : FREE_MONTHLY_ALLOWANCE,
+      monthlyCycleKey: cycleKey,
+      subscriptionStatus: "cancelled",
+    },
+  };
+  if (wallet.monthlyCycleKey !== cycleKey) return {
+    changed: true,
+    patch: {
+      monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
+      monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE,
+      monthlyCycleKey: cycleKey,
+    },
+  };
+  return { changed: false, patch: {} };
+}
 
 export async function findUsersForTokenRecovery(query: string) {
   const db = await getDb(); if (!db) return [];
@@ -321,9 +370,9 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
     const duplicate = await tx.select({ id: adminTokenAdjustments.id }).from(adminTokenAdjustments).where(and(eq(adminTokenAdjustments.recipientUserId, input.recipientUserId), eq(adminTokenAdjustments.role, input.role), eq(adminTokenAdjustments.caseReference, caseReference))).limit(1);
     if (duplicate[0]) throw new Error("A recovery grant already exists for this user, role, and support reference");
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1);
-    const newBalance = (wallet[0]?.balance ?? 3) + input.tokenCount;
+    const newBalance = (wallet[0]?.balance ?? 0) + input.tokenCount;
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: newBalance }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: newBalance });
+    else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: newBalance, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
     const adjustment = await tx.insert(adminTokenAdjustments).values({ recipientUserId: input.recipientUserId, adminUserId, role: input.role, tokenCount: input.tokenCount, caseReference, reason });
     await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment" });
     await tx.insert(notifications).values({ userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.` });
@@ -335,13 +384,34 @@ export async function ensureTokenWallet(userId: number, role: WalletRole) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const existing = await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
-  if (existing[0]) return existing[0];
-  await db.insert(tokenBalances).values({ userId, role, balance: 3 });
+  if (existing[0]) {
+    const normalized = normalizedWalletState(existing[0]);
+    if (normalized.changed) {
+      await db.update(tokenBalances).set(normalized.patch).where(eq(tokenBalances.id, existing[0].id));
+      return { ...existing[0], ...normalized.patch };
+    }
+    return existing[0];
+  }
+  await db.insert(tokenBalances).values({ userId, role, balance: 0, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
   return (await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
 }
 
 export async function getTokenWallet(userId: number, role: WalletRole) {
-  return ensureTokenWallet(userId, role);
+  return creditSummaryFromWallet(await ensureTokenWallet(userId, role));
+}
+
+export async function getUserSubscription(userId: number, role: WalletRole) {
+  const wallet = await ensureTokenWallet(userId, role);
+  if (!wallet.subscriptionId || wallet.plan === "free" || (wallet.subscriptionStatus !== "active" && wallet.subscriptionStatus !== "non_renewing")) return undefined;
+  return { subscriptionId: wallet.subscriptionId, status: wallet.subscriptionStatus, currentTermEnd: wallet.subscriptionCurrentTermEnd ?? undefined };
+}
+
+export async function markSubscriptionNonRenewing(userId: number, role: WalletRole, subscriptionId: string, currentTermEnd?: Date) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.update(tokenBalances).set({ subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: currentTermEnd ?? null }).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role), eq(tokenBalances.subscriptionId, subscriptionId)));
+  if (!result[0]?.affectedRows) throw new Error("Subscription ownership could not be confirmed");
+  return { subscriptionId, status: "non_renewing" as const, currentTermEnd };
 }
 
 export async function spendToken(userId: number, role: WalletRole) {
@@ -350,11 +420,17 @@ export async function spendToken(userId: number, role: WalletRole) {
   await ensureTokenWallet(userId, role);
   return db.transaction(async tx => {
     const current = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
-    if (!current[0] || current[0].balance < 1) throw new Error("No referral token available");
-    const nextBalance = current[0].balance - 1;
-    await tx.update(tokenBalances).set({ balance: nextBalance }).where(eq(tokenBalances.id, current[0].id));
+    if (!current[0]) throw new Error("No referral credit available");
+    const normalized = normalizedWalletState(current[0]);
+    const effective = { ...current[0], ...normalized.patch };
+    if (effective.monthlyCreditsRemaining + effective.balance < 1) throw new Error("You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.");
+    const usesMonthlyCredit = effective.monthlyCreditsRemaining > 0;
+    const nextMonthlyCredits = usesMonthlyCredit ? effective.monthlyCreditsRemaining - 1 : effective.monthlyCreditsRemaining;
+    const nextBalance = usesMonthlyCredit ? effective.balance : effective.balance - 1;
+    const patch = { ...normalized.patch, monthlyCreditsRemaining: nextMonthlyCredits, balance: nextBalance };
+    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, current[0].id));
     await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "direct_request" });
-    return { balance: nextBalance };
+    return creditSummaryFromWallet({ ...effective, ...patch });
   });
 }
 
@@ -386,8 +462,83 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     await tx.update(paymentFulfillments).set({ providerEventId: input.eventId, providerInvoiceId: input.invoiceId ?? null }).where(eq(paymentFulfillments.id, intent[0].id));
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + intent[0].tokenCount }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: 3 + intent[0].tokenCount });
+    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase" });
     return { status: "credited" as const, tokenCount: intent[0].tokenCount, userId: intent[0].userId, role: intent[0].role };
+  });
+}
+
+export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: PaidSubscriptionPlan; itemPriceId: string; amount: number; currency: "INR" | "USD" }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(subscriptionCheckoutIntents).values({ ...input, status: "pending" });
+  return { id: Number(result[0].insertId), hostedPageId: input.hostedPageId };
+}
+
+export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: PaidSubscriptionPlan; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select().from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const };
+
+    const intent = input.hostedPageId && input.passThruContent
+      ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1))[0]
+      : undefined;
+    const walletBySubscription = await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1);
+    const wallet = walletBySubscription[0];
+    const expectedPlan = intent?.plan ?? input.plan ?? (wallet?.plan !== "free" ? wallet?.plan : undefined);
+    if (!wallet && !intent) {
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      return { status: "ignored" as const, reason: "unknown_subscription" };
+    }
+    if (intent && input.plan && input.plan !== intent.plan) {
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      return { status: "ignored" as const, reason: "plan_mismatch" };
+    }
+    if (!expectedPlan || !isPaidSubscriptionPlan(expectedPlan)) {
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      return { status: "ignored" as const, reason: "unsupported_plan" };
+    }
+    if (wallet?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= wallet.subscriptionResourceVersion) {
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      return { status: "stale" as const };
+    }
+
+    const allowance = SUBSCRIPTION_PLANS[expectedPlan].monthlyAllowance;
+    const retainsAccess = input.status === "active" || input.status === "non_renewing";
+    const startsNewTerm = !wallet?.subscriptionCurrentTermStart || (input.currentTermStart && wallet.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
+    const patch = retainsAccess
+      ? {
+          plan: expectedPlan,
+          monthlyAllowance: allowance,
+          monthlyCreditsRemaining: startsNewTerm ? allowance : (wallet?.monthlyCreditsRemaining ?? allowance),
+          monthlyCycleKey: input.currentTermStart ? currentMonthlyCycleKey(input.currentTermStart) : currentMonthlyCycleKey(),
+          subscriptionId: input.subscriptionId,
+          subscriptionStatus: input.status,
+          subscriptionCurrency: input.currency ?? wallet?.subscriptionCurrency ?? null,
+          subscriptionCurrentTermStart: input.currentTermStart ?? wallet?.subscriptionCurrentTermStart ?? null,
+          subscriptionCurrentTermEnd: input.currentTermEnd ?? wallet?.subscriptionCurrentTermEnd ?? null,
+          subscriptionResourceVersion: input.resourceVersion ?? wallet?.subscriptionResourceVersion ?? null,
+        }
+      : {
+          plan: "free" as const,
+          monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
+          monthlyCreditsRemaining: Math.min(wallet?.monthlyCreditsRemaining ?? FREE_MONTHLY_ALLOWANCE, FREE_MONTHLY_ALLOWANCE),
+          monthlyCycleKey: currentMonthlyCycleKey(),
+          subscriptionId: input.subscriptionId,
+          subscriptionStatus: input.status,
+          subscriptionCurrency: input.currency ?? wallet?.subscriptionCurrency ?? null,
+          subscriptionCurrentTermStart: input.currentTermStart ?? wallet?.subscriptionCurrentTermStart ?? null,
+          subscriptionCurrentTermEnd: input.currentTermEnd ?? wallet?.subscriptionCurrentTermEnd ?? null,
+          subscriptionResourceVersion: input.resourceVersion ?? wallet?.subscriptionResourceVersion ?? null,
+        };
+    const userId = wallet?.userId ?? intent!.userId;
+    const role = wallet?.role ?? intent!.role;
+    if (wallet) await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet.id));
+    else await tx.insert(tokenBalances).values({ userId, role, balance: 0, ...patch });
+    if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
+    await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+    return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, stripeCustomerId: null, id: 0, updatedAt: new Date() }), ...patch }) };
   });
 }

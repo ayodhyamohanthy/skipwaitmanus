@@ -1,4 +1,4 @@
-import { boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -110,9 +110,19 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   balance: int("balance").default(0).notNull(),
+  monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
+  monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
+  monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
+  plan: mysqlEnum("plan", ["free", "pro", "max"]).default("free").notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
+  subscriptionCurrency: varchar("subscriptionCurrency", { length: 3 }),
+  subscriptionCurrentTermStart: timestamp("subscriptionCurrentTermStart"),
+  subscriptionCurrentTermEnd: timestamp("subscriptionCurrentTermEnd"),
+  subscriptionResourceVersion: bigint("subscriptionResourceVersion", { mode: "number" }),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("token_balances_user_idx").on(table.userId), uniqueIndex("token_balances_user_role_unique").on(table.userId, table.role)]);
+}, table => [index("token_balances_user_idx").on(table.userId), uniqueIndex("token_balances_user_role_unique").on(table.userId, table.role), uniqueIndex("token_balances_subscription_unique").on(table.subscriptionId)]);
 
 export const tokenTransactions = mysqlTable("tokenTransactions", {
   id: int("id").autoincrement().primaryKey(),
@@ -149,6 +159,30 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   currency: varchar("currency", { length: 3 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("payment_fulfillments_provider_event_unique").on(table.provider, table.providerEventId), index("payment_fulfillments_user_idx").on(table.userId), index("payment_fulfillments_intent_idx").on(table.provider, table.checkoutIntentId)]);
+
+export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutIntents", {
+  id: int("id").autoincrement().primaryKey(),
+  hostedPageId: varchar("hostedPageId", { length: 80 }).notNull(),
+  checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
+  plan: mysqlEnum("plan", ["pro", "max"]).notNull(),
+  itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
+  amount: int("amount").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  status: mysqlEnum("status", ["pending", "activated", "cancelled"]).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("subscription_checkout_hosted_page_unique").on(table.hostedPageId), uniqueIndex("subscription_checkout_intent_unique").on(table.checkoutIntentId), index("subscription_checkout_user_idx").on(table.userId)]);
+
+export const subscriptionEvents = mysqlTable("subscriptionEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 32 }).notNull(),
+  providerEventId: varchar("providerEventId", { length: 80 }).notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  resourceVersion: bigint("resourceVersion", { mode: "number" }),
+  eventType: varchar("eventType", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("subscription_events_provider_event_unique").on(table.provider, table.providerEventId), index("subscription_events_subscription_idx").on(table.subscriptionId)]);
 
 export const referralAttachments = mysqlTable("referralAttachments", {
   id: int("id").autoincrement().primaryKey(),
