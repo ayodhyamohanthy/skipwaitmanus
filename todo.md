@@ -358,3 +358,4 @@
 - [x] Add only the compact skipwait.me logo mark beside Back in core flow headers, without the wordmark.
 - [x] Make exhausted-credit states explicitly confirm that all available referral credits have been used before presenting optional purchase actions.
 - [x] Replace mobile public navigation with a compact hamburger menu while retaining the existing desktop navigation.
+- [x] Remove the compact logo mark from every Job Seeker and Referrer in-flow header, leaving only Back and necessary account controls.

@@ -3,7 +3,6 @@ import { Link } from "wouter";
 import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
 import { ArrowLeft, ArrowRight, CheckCircle2, LoaderCircle, Paperclip, Plus, Share2, UsersRound } from "lucide-react";
 import { AccountMenu } from "@/components/AccountMenu";
-import { LogoMark } from "@/components/Brand";
 import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, TOKEN_ACTION_COST } from "@/lib/tokens";
 import { clearReferralDraft } from "@/lib/pwaContinuity";
 import { clearPendingResumeFiles, restorePendingResumeFiles, savePendingResumeFiles } from "@/lib/pendingResume";
@@ -25,7 +24,7 @@ function Shell({ children, tokens, label }: { children: React.ReactNode; tokens:
     <main data-skipwait-screen="request" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950">
       <div className="mx-auto flex h-full max-w-xl flex-col">
         <header className="flex h-10 shrink-0 items-center justify-between gap-3">
-          <div className="flex items-center gap-3"><Link href="/start" className="inline-flex items-center gap-1 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />Back</Link><LogoMark /></div>
+          <Link href="/start" className="inline-flex items-center gap-1 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />Back</Link>
           <div className="flex items-center gap-2">
             <AccountMenu />
           </div>

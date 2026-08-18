@@ -9,3 +9,5 @@ After the in-flow simplification, the same 375×812 Job Seeker and Referrer entr
 After the compact-logo refinement, both 375×812 flow entries place Back and the standalone blue logo mark together at top-left. No wordmark appears inside the flow, and the primary input/action hierarchy remains unchanged.
 
 Landing navigation validation: at 375×812, public navigation is reduced to a single hamburger trigger while the two role cards remain the primary choices. At 1280×720, Internal openings, I give referrals, and Request a referral remain directly visible in the header.
+
+Logo-free flow validation: at 375×812, both the Job Seeker URL step and Referrer company-email entry show only Back in their headers. Neither the skipwait.me wordmark nor the compact logo mark is present.

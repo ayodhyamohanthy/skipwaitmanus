@@ -65,7 +65,7 @@ describe("Referrer work-email OTP verification", () => {
     expect(screen.getByLabelText("Company email for secure employee sign in").parentElement?.className).not.toContain("sr-only");
     expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
-    expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeTruthy();
+    expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeNull();
     expect(screen.queryByText("skipwait.me")).toBeNull();
     expect(screen.queryByText(/no password, social sign-in, or personal email access/i)).toBeNull();
   });
