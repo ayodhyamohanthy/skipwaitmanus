@@ -36,11 +36,12 @@ describe("Opportunity Wall", () => {
     expect(payload.url).toContain("/referrer?company=acme.com");
   });
 
-  it("keeps Job Seekers moving with a shareable next action when no internal openings are live", async () => {
+  it("uses a visual no-opening state with one share action when no internal openings are live", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [] }) })));
     render(<OpportunityWall />);
-    await waitFor(() => expect(screen.getByText("No openings yet.")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector('[aria-label="No internal openings"]')).toBeTruthy());
     expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
+    expect(screen.queryByText("No openings yet.")).toBeNull();
     expect(screen.getByRole("button", { name: "Request a referral" })).toBeTruthy();
   });
 });

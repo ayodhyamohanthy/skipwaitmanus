@@ -18,10 +18,11 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("My Requests empty state", () => {
-  it("keeps a Job Seeker moving with a shareable, recipient-relevant next action", async () => {
+  it("keeps a Job Seeker moving with a visual action state instead of empty-state text", async () => {
     render(<MyRequests />);
-    await waitFor(() => expect(screen.getByText("No requests yet.")).toBeTruthy());
+    await waitFor(() => expect(document.querySelector('[aria-label="No referral requests"]')).toBeTruthy());
     expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
+    expect(screen.queryByText("No requests yet.")).toBeNull();
     expect(screen.getByRole("button", { name: "Request a referral" })).toBeTruthy();
   });
 });

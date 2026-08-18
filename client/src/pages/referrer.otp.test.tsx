@@ -76,16 +76,12 @@ describe("Referrer work-email OTP verification", () => {
     expect(employeeSignInState.signIn.create).not.toHaveBeenCalled();
   });
 
-  it("shows a clearly instructional request preview and voluntary referral-availability sharing only after company-email enrollment", async () => {
+  it("shows an icon-first request mockup and one voluntary share action only after company-email enrollment", async () => {
     sessionStorage.setItem("skipwait:employee-sign-in-email", "employee@acme.com");
     render(<Referrer />);
-    await waitFor(() => expect(screen.getByText(/Here is how a request will arrive/i)).toBeTruthy());
-    expect(screen.getByText(/Example only · private request/i)).toBeTruthy();
-    expect(screen.getByText(/not a real candidate request/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share private referral availability on WhatsApp" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share private referral availability by email" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share private referral availability on LinkedIn" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share private referral availability on X" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share a real internal opening" })).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Share private referral availability" })).toBeTruthy();
+    expect(screen.queryByText(/Here is how a request will arrive/i)).toBeNull();
+    expect(screen.queryByText(/Example only/i)).toBeNull();
   });
 });
