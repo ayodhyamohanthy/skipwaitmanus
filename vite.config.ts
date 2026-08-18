@@ -160,17 +160,22 @@ const plugins = [
   VitePWA({
     registerType: "autoUpdate",
     includeAssets: ["skipwait-icon.svg"],
-    manifest: {
-      name: "skipwait.me",
-      short_name: "skipwait",
-      description: "Thoughtful job referrals without the awkwardness.",
-      theme_color: "#0B57D0",
-      background_color: "#F8FAFC",
-      display: "standalone",
-      start_url: "/",
-      scope: "/",
-      lang: "en",
-      icons: [
+      manifest: {
+        name: "skipwait.me",
+        short_name: "skipwait",
+        description: "Thoughtful job referrals without the awkwardness.",
+        theme_color: "#0B57D0",
+        background_color: "#F8FAFC",
+        display: "standalone",
+        display_override: ["standalone", "minimal-ui", "browser"],
+        start_url: "/",
+        scope: "/",
+        lang: "en",
+        shortcuts: [
+          { name: "Request a referral", short_name: "Request", url: "/start" },
+          { name: "Give referrals", short_name: "Give", url: "/referrer" },
+        ],
+        icons: [
         {
           src: "/skipwait-icon.svg",
           sizes: "any",

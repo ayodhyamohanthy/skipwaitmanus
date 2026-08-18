@@ -51,7 +51,7 @@ describe("secure token checkout routes", () => {
   it("shows one detected local route first, with a quiet correction path for another billing country", () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
-    expect(screen.getByRole("link", { name: "skipwait.me home" }).parentElement?.className).toContain("items-center");
+    expect(screen.queryByRole("link", { name: "skipwait.me home" })).toBeNull();
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/request");
     expect(screen.getByText("Pay $1")).toBeTruthy();
     expect(screen.getByText(/PayPal/)).toBeTruthy();

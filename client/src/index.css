@@ -24,10 +24,12 @@
 }
 
 * { border-color: var(--color-border); }
-html { scroll-behavior: smooth; }
-body { margin: 0; min-width: 320px; background: #f8fafc; color: #0f172a; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; }
+html { scroll-behavior: smooth; background: #f8fafc; }
+body { margin: 0; min-width: 320px; background: #f8fafc; color: #0f172a; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; overscroll-behavior-y: contain; }
 h1, h2 { font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; font-weight: 650; letter-spacing: -0.045em; }
 button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
+button, a { touch-action: manipulation; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 ::selection { background: #dbeafe; color: #0b57d0; }

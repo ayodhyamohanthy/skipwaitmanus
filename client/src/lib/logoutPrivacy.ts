@@ -11,7 +11,7 @@ const referralLocalStorageKeys = [
   "manus-runtime-user-info",
 ] as const;
 
-const referralSessionStorageKeys = ["skipwait-pending-resume-submit"] as const;
+const referralSessionStorageKeys = ["skipwait-pending-resume-submit", "skipwait:employee-sign-in-email", "skipwait:company-coverage-invite"] as const;
 
 /** Removes browser-side artifacts that must never cross a signed-out boundary. */
 export async function clearPrivateReferralBrowserData(): Promise<void> {
