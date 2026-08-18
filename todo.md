@@ -340,3 +340,4 @@
 - [x] Add role-aware daily usefulness for Job Seekers and Referrers plus voluntary, recipient-benefiting sharing through WhatsApp, email, LinkedIn, X, and native device share without contact scraping or reward spam.
 - [x] Strengthen voluntary sharing with recipient-benefiting psychological hooks, explicit WhatsApp Status copy, one-person messages, email, and social-native wording while prohibiting fabricated social proof, false scarcity, and contact harvesting.
 - [x] Ensure Referrer work-email OTP is sent only to the entered company address and existing company-email accounts always sign in without an email-taken error or personal-email fallback.
+- [x] Make the mobile Referrer entry opened by “I give referrals” a fixed single-viewport company-email sign-in with no page scrolling.
