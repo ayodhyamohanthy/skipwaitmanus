@@ -26,7 +26,12 @@ export function getJobSeekerTokens(): number {
     localStorage.setItem("bridge-tokens", "3");
     localStorage.setItem(JOB_SEEKER_TOKEN_RESET, "complete");
   }
-  const value = Number(localStorage.getItem("bridge-tokens"));
+  const storedBalance = localStorage.getItem("bridge-tokens");
+  if (storedBalance === null) {
+    localStorage.setItem("bridge-tokens", "3");
+    return 3;
+  }
+  const value = Number(storedBalance);
   return Number.isFinite(value) && value >= 0 ? value : 3;
 }
 

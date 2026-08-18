@@ -23,4 +23,11 @@ describe("Onboarding Target Role URL", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect(continueButton).toHaveProperty("disabled", false);
   });
+
+  it("restores the included balance when a legacy reset marker exists without a stored token balance", () => {
+    localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+  });
 });
