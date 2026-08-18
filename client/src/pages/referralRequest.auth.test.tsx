@@ -79,7 +79,7 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
 
-  it("keeps credits intact and offers one private coverage invite when no verified employee exists at the employer", async () => {
+  it("keeps credits intact and presents one visual coverage invite action when no verified employee exists at the employer", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
       if (String(input).includes("/api/documents")) return { ok: true, json: async () => ({ id: "72", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/72", url: "/api/documents/72" }) };
@@ -92,10 +92,10 @@ describe("ReferralRequest secure resume handoff", () => {
     const sendButton = screen.getByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
     await waitFor(() => expect(sendButton.disabled).toBe(false));
     fireEvent.click(sendButton);
-    await waitFor(() => expect(screen.getByText("We are building coverage at acme.com.")).toBeTruthy());
-    expect(screen.getByText(/did not use a credit/i)).toBeTruthy();
-    expect(screen.getByText(/you each receive one referral credit/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /invite one employee/i })).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('[data-skipwait-coverage-invite="true"]')).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Invite one employee at acme.com" })).toBeTruthy();
+    expect(screen.queryByText(/We are building coverage/i)).toBeNull();
+    expect(screen.queryByText(/did not use a credit/i)).toBeNull();
     vi.unstubAllGlobals();
   });
 });
