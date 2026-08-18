@@ -5,3 +5,5 @@ The 375×812 mobile Job Seeker URL-entry and Referrer company-email entry screen
 After header refinement, both screens place Back and the skipwait.me brand together on the left. This removes the prior misleading centered-brand appearance while preserving the primary input and action within the mobile viewport.
 
 After the in-flow simplification, the same 375×812 Job Seeker and Referrer entry screens retain only the Back control at the top. The brand is absent, while the primary field and action remain visible in one viewport.
+
+After the compact-logo refinement, both 375×812 flow entries place Back and the standalone blue logo mark together at top-left. No wordmark appears inside the flow, and the primary input/action hierarchy remains unchanged.

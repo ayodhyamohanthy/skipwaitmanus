@@ -9,7 +9,7 @@ const { go } = vi.hoisted(() => ({ go: vi.fn() }));
 vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }) }));
 vi.mock("wouter", () => ({ useLocation: () => ["/requests", go] }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
-vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
+vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div data-skipwait-logo-mark="true" /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
 beforeEach(() => {
