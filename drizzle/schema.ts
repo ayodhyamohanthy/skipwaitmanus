@@ -129,10 +129,30 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment"]).notNull(),
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward"]).notNull(),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("token_transactions_user_idx").on(table.userId)]);
+
+export const companyCoverageInvitations = mysqlTable("companyCoverageInvitations", {
+  id: int("id").autoincrement().primaryKey(),
+  inviteCode: varchar("inviteCode", { length: 64 }).notNull(),
+  inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
+  status: mysqlEnum("status", ["active", "completed", "ineligible"]).default("active").notNull(),
+  joinerUserId: int("joinerUserId").references(() => users.id, { onDelete: "set null" }),
+  completedAt: timestamp("completedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("coverage_invite_code_unique").on(table.inviteCode), index("coverage_invite_inviter_idx").on(table.inviterUserId), index("coverage_invite_company_status_idx").on(table.companyDomain, table.status)]);
+
+export const companyCoverageRewards = mysqlTable("companyCoverageRewards", {
+  id: int("id").autoincrement().primaryKey(),
+  invitationId: int("invitationId").notNull().references(() => companyCoverageInvitations.id, { onDelete: "cascade" }),
+  inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  joinerUserId: int("joinerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  tokenCount: int("tokenCount").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("coverage_reward_invitation_unique").on(table.invitationId), uniqueIndex("coverage_reward_joiner_unique").on(table.joinerUserId), index("coverage_reward_inviter_idx").on(table.inviterUserId)]);
 
 export const adminTokenAdjustments = mysqlTable("adminTokenAdjustments", {
   id: int("id").autoincrement().primaryKey(),

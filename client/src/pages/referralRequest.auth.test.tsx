@@ -94,6 +94,7 @@ describe("ReferralRequest secure resume handoff", () => {
     fireEvent.click(sendButton);
     await waitFor(() => expect(screen.getByText("We are building coverage at acme.com.")).toBeTruthy());
     expect(screen.getByText(/did not use a credit/i)).toBeTruthy();
+    expect(screen.getByText(/you each receive one referral credit/i)).toBeTruthy();
     expect(screen.getByRole("button", { name: /invite one employee/i })).toBeTruthy();
     vi.unstubAllGlobals();
   });

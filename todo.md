@@ -336,3 +336,4 @@
 - [x] Infer the actual employer from LinkedIn, Indeed, Glassdoor, ATS, and other hosted job links so private referral requests notify only matching verified company employees.
 - [x] Enforce and regression-test that only verified Referrer profiles whose work-email domain exactly matches the resolved employer receive or can view a private referral request.
 - [x] Keep an uncovered-company referral request private without spending a credit, then surface one voluntary, privacy-safe company-coverage invitation that converts a real employee into verified supply.
+- [x] Reward both the trusted inviter and the newly verified matching employee only after a private company-coverage invitation converts, with durable attribution, one-time fulfillment, and no reward for spam or self-invites.

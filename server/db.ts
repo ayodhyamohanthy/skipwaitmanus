@@ -1,6 +1,7 @@
 import { and, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyOpportunities, paymentFulfillments, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, verifiedEmployerDomainFromCandidates } from "./employerRouting";
@@ -86,6 +87,13 @@ export function isVerifiedEmployeeOfCompany(profile: { accountType?: string | nu
 
 export function companyCoverageStatus(eligibleEmployeeCount: number) {
   return eligibleEmployeeCount > 0 ? "covered" as const : "waiting_for_company_coverage" as const;
+}
+
+export async function createCompanyCoverageInvitation(inviterUserId: number, companyDomain: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const inviteCode = randomUUID().replace(/-/g, "");
+  await db.insert(companyCoverageInvitations).values({ inviteCode, inviterUserId, companyDomain: companyDomain.trim().toLowerCase() });
+  return { inviteCode };
 }
 
 export async function saveVerifiedWorkEmail(userId: number, email: string) {
@@ -183,7 +191,8 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   const requestId = Number(requestResult[0].insertId);
   for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
   for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: "A private referral request is available", body: `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
-  return { requestId, companyDomain, coverageStatus, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining };
+  const coverageInvite = coverageStatus === "waiting_for_company_coverage" ? await createCompanyCoverageInvitation(userId, companyDomain) : undefined;
+  return { requestId, companyDomain, coverageStatus, coverageInviteCode: coverageInvite?.inviteCode, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining };
 }
 
 export async function listCompanyReferralInbox(userId: number) {
@@ -343,6 +352,40 @@ export type CreditSummary = {
   subscriptionCurrentTermEnd: Date | null;
 };
 export const MAX_ADMIN_TOKEN_ADJUSTMENT = 1000;
+export const COMPANY_COVERAGE_REWARD_TOKENS = 1;
+
+async function addCoverageRewardCredit(tx: any, userId: number, role: WalletRole) {
+  const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
+  if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + COMPANY_COVERAGE_REWARD_TOKENS }).where(eq(tokenBalances.id, wallet[0].id));
+  else await tx.insert(tokenBalances).values({ userId, role, balance: COMPANY_COVERAGE_REWARD_TOKENS, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+}
+
+export async function fulfillCompanyCoverageInvitation(joinerUserId: number, input: { inviteCode: string; workEmailDomain: string }) {
+  const inviteCode = input.inviteCode.trim(); const workEmailDomain = input.workEmailDomain.trim().toLowerCase();
+  if (!inviteCode || !workEmailDomain) return { rewarded: false as const, reason: "missing" as const };
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const invitation = (await tx.select().from(companyCoverageInvitations).where(eq(companyCoverageInvitations.inviteCode, inviteCode)).limit(1))[0];
+    if (!invitation || invitation.status !== "active") return { rewarded: false as const, reason: "unavailable" as const };
+    if (invitation.inviterUserId === joinerUserId || invitation.companyDomain !== workEmailDomain) {
+      await tx.update(companyCoverageInvitations).set({ status: "ineligible" }).where(eq(companyCoverageInvitations.id, invitation.id));
+      return { rewarded: false as const, reason: "ineligible" as const };
+    }
+    const priorForInviter = await tx.select({ id: companyCoverageRewards.id }).from(companyCoverageRewards).where(eq(companyCoverageRewards.inviterUserId, invitation.inviterUserId)).limit(1);
+    const priorForJoiner = await tx.select({ id: companyCoverageRewards.id }).from(companyCoverageRewards).where(eq(companyCoverageRewards.joinerUserId, joinerUserId)).limit(1);
+    if (priorForInviter[0] || priorForJoiner[0]) {
+      await tx.update(companyCoverageInvitations).set({ status: "ineligible", joinerUserId }).where(eq(companyCoverageInvitations.id, invitation.id));
+      return { rewarded: false as const, reason: "reward_limit" as const };
+    }
+    await tx.insert(companyCoverageRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS });
+    await addCoverageRewardCredit(tx, invitation.inviterUserId, "job_seeker");
+    await addCoverageRewardCredit(tx, joinerUserId, "referrer");
+    await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "company_coverage_reward" }, { userId: joinerUserId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "company_coverage_reward" }]);
+    await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage reward added", body: "A matching employee verified their work email. One referral credit was added to your account." }, { userId: joinerUserId, category: "system", title: "Welcome credit added", body: "You joined private company coverage with a verified work email. One referral credit was added." }]);
+    await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId, completedAt: new Date() }).where(eq(companyCoverageInvitations.id, invitation.id));
+    return { rewarded: true as const, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
+  });
+}
 
 function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect): CreditSummary {
   return {

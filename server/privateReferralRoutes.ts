@@ -14,7 +14,8 @@ export type PrivateReferralRouteDeps = {
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
-  createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; remainingTokens?: number }>;
+  createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; remainingTokens?: number; coverageInviteCode?: string }>;
+  fulfillCompanyCoverageInvitation?: (joinerUserId: number, input: { inviteCode: string; workEmailDomain: string }) => Promise<{ rewarded: boolean; tokenCount?: number }>;
   listCompanyReferralInbox: (userId: number) => Promise<unknown[]>;
   listCompanyReferralInboxByState?: (userId: number, state: "new" | "saved" | "completed") => Promise<unknown[]>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
@@ -82,8 +83,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const verifiedEmail = identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
       if (!verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
       const profile = await deps.saveVerifiedWorkEmail(identity.account.id, verifiedEmail.emailAddress);
+      const inviteCode = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
+      const reward = inviteCode && profile?.workEmailDomain && deps.fulfillCompanyCoverageInvitation ? await deps.fulfillCompanyCoverageInvitation(identity.account.id, { inviteCode, workEmailDomain: profile.workEmailDomain }) : { rewarded: false };
       record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: profile?.workEmailDomain ?? undefined, metadata: { verification: "email_code" } });
-      res.json({ verified: true, workEmailDomain: profile?.workEmailDomain });
+      if (reward.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: profile?.workEmailDomain ?? undefined, metadata: { tokenCount: reward.tokenCount ?? 0 } });
+      res.json({ verified: true, workEmailDomain: profile?.workEmailDomain, reward });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not verify your work email";
       const isValidationError = /personal email domain|work email address|required/i.test(message);

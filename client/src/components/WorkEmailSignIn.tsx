@@ -6,6 +6,7 @@ type Flow = "email" | "code";
 type AttemptKind = "signIn" | "signUp";
 
 const employeeEmailKey = "skipwait:employee-sign-in-email";
+export const coverageInviteSessionKey = "skipwait:company-coverage-invite";
 
 function isMissingIdentifier(error: unknown) {
   const entries = (error as { errors?: Array<{ code?: string }> })?.errors ?? [];
@@ -17,7 +18,7 @@ function displayError(error: unknown, fallback: string) {
   return entries[0]?.longMessage || entries[0]?.message || (error instanceof Error ? error.message : fallback);
 }
 
-export function WorkEmailSignIn() {
+export function WorkEmailSignIn({ inviteCode }: { inviteCode?: string }) {
   const { isLoaded: signInLoaded, signIn, setActive: setActiveSignIn } = useSignIn();
   const { isLoaded: signUpLoaded, signUp, setActive: setActiveSignUp } = useSignUp();
   const [email, setEmail] = useState("");
@@ -29,7 +30,10 @@ export function WorkEmailSignIn() {
   const normalizedEmail = normalizeWorkEmail(email);
 
   const rememberCompanyEmail = () => {
-    if (typeof window !== "undefined") window.sessionStorage.setItem(employeeEmailKey, normalizedEmail);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem(employeeEmailKey, normalizedEmail);
+      if (inviteCode) window.sessionStorage.setItem(coverageInviteSessionKey, inviteCode);
+    }
   };
 
   const completeSession = async (result: { status?: string | null; createdSessionId?: string | null }, setActive: (params: { session: string }) => Promise<unknown>) => {
