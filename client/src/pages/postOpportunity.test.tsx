@@ -15,6 +15,7 @@ describe("verified employee opportunity post", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<PostOpportunity />);
     fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Product Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByLabelText(/Public job link/i), { target: { value: "https://careers.acme.com/jobs/design" } });
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
@@ -27,8 +28,10 @@ describe("verified employee opportunity post", () => {
   it("requires a start time when the employee selects a Walk-in", () => {
     render(<PostOpportunity />);
     fireEvent.click(screen.getByRole("button", { name: "Walk-in" }));
+    fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Walk-in hiring" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("Starts at")).toBeTruthy();
-    const publish = screen.getByRole("button", { name: "Publish privately" }) as HTMLButtonElement;
-    expect(publish.disabled).toBe(true);
+    const continueButton = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
+    expect(continueButton.disabled).toBe(true);
   });
 });

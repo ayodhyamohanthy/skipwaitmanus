@@ -315,3 +315,5 @@
 - [x] Replace the generic Referrer sign-in modal with a custom company-email-only OTP-or-magic-link flow that rejects personal domains while preserving Job Seeker sign-in.
 - [x] Pause the live landing-to-onboarding design review after presenting the landing page; resume the onboarding review when the user requests it.
 - [x] Remove the Referrer OTP-versus-magic-link choice so valid company emails receive an OTP immediately and continue directly to code entry.
+- [x] Refactor active skipwait.me flows into mobile-first fixed-viewport guided screens with one clear forward action and no long-page scrolling.
+- [x] Route the signed-out My Company Inbox employee entry through the custom work-email-only OTP flow instead of a generic sign-in modal.
