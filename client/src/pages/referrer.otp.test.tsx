@@ -59,12 +59,12 @@ describe("Referrer work-email OTP verification", () => {
     expect(clerkState.createEmailAddress).not.toHaveBeenCalled();
   });
 
-  it("offers a direct work-email OTP entry before secure employee sign-in", () => {
+  it("opens directly to one compact company-email OTP action before secure employee sign-in", () => {
     clerkState.isSignedIn = false;
     render(<Referrer />);
-    expect(screen.getByText(/we’ll send a one-time code directly/i)).toBeTruthy();
-    expect(screen.getByText(/no password, social sign-in, or personal email access/i)).toBeTruthy();
+    expect(screen.getByLabelText("Company email for secure employee sign in").parentElement?.className).not.toContain("sr-only");
     expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
+    expect(screen.queryByText(/no password, social sign-in, or personal email access/i)).toBeNull();
   });
 
   it("rejects a personal email before initiating private Referrer authentication", () => {

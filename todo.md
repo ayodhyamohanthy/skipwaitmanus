@@ -347,3 +347,4 @@
 - [x] Simplify zero-activity mobile screens to minimal copy and a single clear action, replacing competing in-place sharing controls with a focused sharing handoff.
 - [x] Replace copy-heavy no-request states with a primarily visual, mobile-first interface that shows only one self-evident action.
 - [x] Fix the target-role URL field so pasting a valid HTTP or HTTPS job link immediately exposes and enables the mobile continue action.
+- [x] Fix the mobile “I give referrals” entry so the Referrer page opens reliably with a clear first action.
