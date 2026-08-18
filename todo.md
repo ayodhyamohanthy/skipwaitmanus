@@ -320,3 +320,4 @@
 - [x] Route signed-out employee opportunity posting through the company-email-only OTP enrollment before allowing publish.
 - [x] Remove or contain the non-operational scrolling request-share preview route so it cannot present as an active user flow.
 - [x] Remove legacy Bridge wording from the Not Found recovery screen.
+- [x] Show clear included-credit progress after a successful referral request and provide an optional low-pressure 1/5/10 credit top-up entry.

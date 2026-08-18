@@ -57,10 +57,12 @@ describe("ReferralRequest secure resume handoff", () => {
 
     cleanup();
     authState.signedIn = true;
-    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : { ok: true, json: async () => ({ companyDomain: "acme.com" }) }));
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2 }) }));
     render(<ReferralRequest />);
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/api/documents"))).toBe(true));
     await waitFor(() => expect(pendingResume.clear).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText("1 of 3 used")).toBeTruthy());
+    expect(screen.getByRole("link", { name: "Add 1, 5, or 10 credits" }).getAttribute("href")).toBe("/premium?role=job_seeker");
     vi.unstubAllGlobals();
   });
 
