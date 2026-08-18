@@ -364,3 +364,4 @@
 - [x] Default Add credits to an editable ten-credit quantity and remove the separate 1, 5, and 10 credit preset buttons.
 - [x] Remove the “Use a different company email” button from the company-email verification flow while preserving Continue.
 - [x] Add a visible “Verify your work email” title and concise personal-email guidance to the Referrer entry screen.
+- [x] Reset all account purchased-credit balances to 0 and restore each account’s fresh monthly allowance to 3 credits without changing subscriptions or payment records.
