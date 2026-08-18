@@ -36,6 +36,6 @@ describe("My Company Inbox employee access", () => {
     render(<MyCompanyInbox />);
     await waitFor(() => expect(screen.getByText("No new requests.")).toBeTruthy());
     expect(document.querySelector('[data-skipwait-zero-action="referrer"]')).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share an opportunity" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share referrer zero-activity message" })).toBeTruthy();
   });
 });

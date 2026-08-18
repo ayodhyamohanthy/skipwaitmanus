@@ -344,3 +344,4 @@
 - [x] Remove the invalid boolean transfer parameter from Referrer work-email OTP sign-in so the authentication provider accepts the request.
 - [x] Replace the empty Referrer inbox copy with a clearly instructional private-request preview, visible claim/review/approve-or-decline workflow, and voluntary multi-channel sharing for a real employee’s internal opening.
 - [x] Replace every active Job Seeker and Referrer zero-activity dead end with one role-relevant, truthful next action, including an optional sharing card where sharing benefits a specific recipient.
+- [x] Simplify zero-activity mobile screens to minimal copy and a single clear action, replacing competing in-place sharing controls with a focused sharing handoff.
