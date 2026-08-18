@@ -356,3 +356,4 @@
 - [x] Remove the brand mark from in-flow screens and hide referral-credit counts until a signed-in account balance has been verified server-side.
 - [x] Clear the pasted job URL, attached resume metadata, and pending referral draft from browser storage whenever a user signs out.
 - [x] Add only the compact skipwait.me logo mark beside Back in core flow headers, without the wordmark.
+- [x] Make exhausted-credit states explicitly confirm that all available referral credits have been used before presenting optional purchase actions.

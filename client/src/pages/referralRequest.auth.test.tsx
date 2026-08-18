@@ -88,6 +88,15 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
 
+  it("confirms that all available credits are used before showing the optional purchase action", async () => {
+    authState.signedIn = true;
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 0, purchasedCreditsRemaining: 0, totalAvailable: 0, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) })));
+    render(<ReferralRequest />);
+
+    await waitFor(() => expect(screen.getByText("You have used all available referral credits.")).toBeTruthy());
+    expect(screen.getByRole("link", { name: "Add credits" })).toBeTruthy();
+  });
+
   it("keeps credits intact and presents one visual coverage invite action when no verified employee exists at the employer", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
