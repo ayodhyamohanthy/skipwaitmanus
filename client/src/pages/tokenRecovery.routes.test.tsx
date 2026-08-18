@@ -23,13 +23,11 @@ describe("secure token checkout routes", () => {
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.restoreAllMocks(); openCheckout.mockReset(); });
 
-  it("starts a multi-token Job Seeker Chargebee checkout without mutating the browser token balance", async () => {
+  it("starts an editable multi-token Job Seeker Chargebee checkout without mutating the browser token balance", async () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Choose a custom quantity" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add one credit" }));
-    fireEvent.click(screen.getByRole("button", { name: "Add one credit" }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Number of credits to add" }), { target: { value: "3" } });
     expect(screen.getByDisplayValue("3")).toBeTruthy();
     expect(screen.getByText("3 referral credits")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /continue to pay ₹297 inr/i }));
@@ -42,7 +40,7 @@ describe("secure token checkout routes", () => {
     window.history.pushState({}, "", "/premium?role=referrer");
     render(<Premium />);
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
-    fireEvent.click(screen.getByRole("button", { name: /continue to pay ₹99 inr/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue to pay ₹990 inr/i }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ body: expect.stringContaining('"role":"referrer"') })));
     expect(localStorage.getItem("bridge-referrer-paid-tokens")).toBeNull();
     expect(openCheckout).toHaveBeenCalled();
@@ -60,23 +58,20 @@ describe("secure token checkout routes", () => {
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
     expect(screen.getByText("Pay ₹99")).toBeTruthy();
     expect(screen.getByText(/Razorpay Domestic/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Choose a custom quantity" }));
-    expect((screen.getByRole("spinbutton", { name: "Number of credits to add" }) as HTMLInputElement).value).toBe("1");
+    expect((screen.getByRole("spinbutton", { name: "Number of credits to add" }) as HTMLInputElement).value).toBe("10");
     expect(screen.getByText(/credits are added only after verified payment/i)).toBeTruthy();
   });
 
-  it("offers one-click 5 and 10 token packs alongside the custom quantity control", () => {
+  it("defaults to an editable ten-credit quantity without preset pack buttons", () => {
     window.history.pushState({}, "", "/premium");
     render(<Premium />);
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
-    fireEvent.click(screen.getByRole("button", { name: /5 credits.*₹495/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Choose a custom quantity" }));
-    expect((screen.getByRole("spinbutton", { name: "Number of credits to add" }) as HTMLInputElement).value).toBe("5");
+    expect((screen.getByRole("spinbutton", { name: "Number of credits to add" }) as HTMLInputElement).value).toBe("10");
+    expect(screen.queryByText("Credit packs")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Choose a custom quantity" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /5 credits/i })).toBeNull();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Number of credits to add" }), { target: { value: "5" } });
+    expect(screen.getByText("5 referral credits")).toBeTruthy();
     expect(screen.getByRole("button", { name: /continue to pay ₹495 INR/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use international payment/i }));
-    expect(screen.getByRole("button", { name: /10 credits.*\$10/i })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /10 credits.*\$10/i }));
-    expect(screen.getByText("10 referral credits")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /continue to pay \$10 USD/i })).toBeTruthy();
   });
 });
