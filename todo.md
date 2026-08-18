@@ -338,3 +338,4 @@
 - [x] Keep an uncovered-company referral request private without spending a credit, then surface one voluntary, privacy-safe company-coverage invitation that converts a real employee into verified supply.
 - [x] Reward both the trusted inviter and the newly verified matching employee only after a private company-coverage invitation converts, with durable attribution, one-time fulfillment, and no reward for spam or self-invites.
 - [x] Add role-aware daily usefulness for Job Seekers and Referrers plus voluntary, recipient-benefiting sharing through WhatsApp, email, LinkedIn, X, and native device share without contact scraping or reward spam.
+- [x] Strengthen voluntary sharing with recipient-benefiting psychological hooks, explicit WhatsApp Status copy, one-person messages, email, and social-native wording while prohibiting fabricated social proof, false scarcity, and contact harvesting.

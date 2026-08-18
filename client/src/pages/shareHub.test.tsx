@@ -16,9 +16,12 @@ describe("ShareHub", () => {
     expect(screen.getByText("Their benefit: 3 included referral requests")).toBeTruthy();
     expect(screen.getByText("Their benefit: a private company inbox")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share job_seeker invite on WhatsApp" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Copy job_seeker invite for WhatsApp Status" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share job_seeker invite by email" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share referrer invite on LinkedIn" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share referrer invite on X" })).toBeTruthy();
     expect(screen.getByText(/No contact imports/i)).toBeTruthy();
+    expect(screen.getByText(/Best shared with one person who is actively exploring a role/i)).toBeTruthy();
+    expect(screen.getByText(/Best shared with one colleague who may want to help thoughtfully/i)).toBeTruthy();
   });
 });
