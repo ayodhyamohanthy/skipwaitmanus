@@ -66,19 +66,19 @@ describe("Referrer work-email OTP verification", () => {
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url).endsWith("/verify-work-email") && String(init?.body).includes("employee@acme.com"))).toBe(true));
   });
 
-  it("offers a work-email-only passwordless entry before secure employee sign-in", () => {
+  it("offers a direct work-email OTP entry before secure employee sign-in", () => {
     clerkState.isSignedIn = false;
     render(<Referrer />);
-    expect(screen.getByText(/one-time code or secure magic link/i)).toBeTruthy();
+    expect(screen.getByText(/we’ll send a one-time code directly/i)).toBeTruthy();
     expect(screen.getByText(/no password, social sign-in, or personal email access/i)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Continue with work email" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
   });
 
   it("rejects a personal email before initiating private Referrer authentication", () => {
     clerkState.isSignedIn = false;
     render(<Referrer />);
     fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "person@gmail.com" } });
-    fireEvent.click(screen.getByRole("button", { name: "Continue with work email" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
     expect(screen.getByText(/personal email providers cannot access private referral requests/i)).toBeTruthy();
     expect(employeeSignInState.signIn.create).not.toHaveBeenCalled();
   });
