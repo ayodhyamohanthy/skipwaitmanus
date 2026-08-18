@@ -41,6 +41,7 @@ describe("ReferralRequest secure resume handoff", () => {
   it("persists an unsigned resume through sign-in and continues secure upload", async () => {
     render(<ReferralRequest />);
     expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
+    expect(screen.queryByText(/monthly credit/i)).toBeNull();
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
@@ -65,6 +66,13 @@ describe("ReferralRequest secure resume handoff", () => {
     await waitFor(() => expect(screen.getByText("1 of 3 free credits used this month.")).toBeTruthy());
     expect(screen.getByRole("link", { name: "Request another referral" }).getAttribute("href")).toBe("/start");
     vi.unstubAllGlobals();
+  });
+
+  it("does not reveal a cached credit count before the Job Seeker signs in", () => {
+    localStorage.setItem("bridge-tokens", "5");
+    render(<ReferralRequest />);
+    expect(screen.queryByText(/5 credits available/i)).toBeNull();
+    expect(screen.queryByText(/monthly credit/i)).toBeNull();
   });
 
   it("shows the real file chooser once the Job Seeker is signed in", () => {
