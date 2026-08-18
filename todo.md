@@ -334,3 +334,4 @@
 - [x] Audit and prioritize low-friction, user-benefiting micro-tweaks for trusted sharing, word of mouth, and paid continuation without compromising Referrer privacy or core referral flow.
 - [x] Audit and harden the verified payment-to-credit path against delayed webhooks, duplicate events, mismatched checkout state, provider outages, and user-return recovery without browser-side crediting.
 - [x] Infer the actual employer from LinkedIn, Indeed, Glassdoor, ATS, and other hosted job links so private referral requests notify only matching verified company employees.
+- [x] Enforce and regression-test that only verified Referrer profiles whose work-email domain exactly matches the resolved employer receive or can view a private referral request.
