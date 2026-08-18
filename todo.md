@@ -360,3 +360,4 @@
 - [x] Replace mobile public navigation with a compact hamburger menu while retaining the existing desktop navigation.
 - [x] Remove the compact logo mark from every Job Seeker and Referrer in-flow header, leaving only Back and necessary account controls.
 - [x] Conduct a comprehensive evidence-informed audit of skipwait.me against leading mobile-PWA practices and implement the highest-impact low-friction improvements across core Job Seeker and Referrer journeys.
+- [x] Show the remaining monthly referral credits with allowance context, such as 0/3 monthly credits left, in the exhausted Job Seeker flow.
