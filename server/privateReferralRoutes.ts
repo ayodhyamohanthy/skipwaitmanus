@@ -1,3 +1,4 @@
+import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 
@@ -53,13 +54,23 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   const privateDocumentMimeTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
   const parseRawPrivateDocument = express.raw({ type: privateDocumentMimeTypes, limit: "10mb" });
-  const persistPrivateDocument = async (identity: Identity, fileName: string, mimeType: string, buffer: Buffer) => {
+  const privateDocumentPrefix = (identity: Identity) => `skipwait/private-referrals/${identity.account.openId}/`;
+  const opaqueDocumentBuffer = (input: { encryptedContent?: string; encryptionKey?: string; initializationVector?: string }) => {
+    if (!input.encryptedContent || !input.encryptionKey || !input.initializationVector) throw new Error("Resume upload data is incomplete");
+    const encrypted = Buffer.from(input.encryptedContent, "base64"); const key = Buffer.from(input.encryptionKey, "base64"); const iv = Buffer.from(input.initializationVector, "base64");
+    if (key.length !== 32 || iv.length !== 12 || encrypted.length <= 16) throw new Error("Resume upload data is invalid");
+    const decipher = createDecipheriv("aes-256-gcm", key, iv); decipher.setAuthTag(encrypted.subarray(-16));
+    return Buffer.concat([decipher.update(encrypted.subarray(0, -16)), decipher.final()]);
+  };
+  const createPrivateAttachment = async (identity: Identity, fileName: string, mimeType: string, buffer: Buffer, fileKey?: string) => {
     const validated = validatePrivateDocument({ fileName, mimeType, buffer });
-    const safeName = deps.sanitizeDocumentName(validated.fileName);
-    const { key } = await deps.storagePut(`skipwait/private-referrals/${identity.account.openId}/${Date.now()}-${safeName}`, buffer, validated.mimeType);
+    const key = fileKey || (await deps.storagePut(`${privateDocumentPrefix(identity)}${Date.now()}-${deps.sanitizeDocumentName(validated.fileName)}`, buffer, validated.mimeType)).key;
     const attachment = await deps.createReferralAttachment(identity.account.id, { fileName: validated.fileName, fileKey: key, mimeType: validated.mimeType, fileSize: validated.fileSize });
     record({ actorUserId: identity.account.id, action: "document.uploaded", outcome: "success", resourceType: "attachment", resourceId: attachment.id, metadata: { mimeType: validated.mimeType, fileSize: validated.fileSize } });
     return { id: attachment.id, fileName: validated.fileName, mimeType: validated.mimeType, fileSize: validated.fileSize, url: `/api/documents/${attachment.id}` };
+  };
+  const persistPrivateDocument = async (identity: Identity, fileName: string, mimeType: string, buffer: Buffer) => {
+    return createPrivateAttachment(identity, fileName, mimeType, buffer);
   };
   const workflowPrefixes = ["/api/company-referrals", "/api/documents", "/api/opportunities", "/api/personal-invites", "/api/credits", "/api/notifications"];
   const normalizedWorkflowRoute = (path: string) => path.replace(/\/\d+(?=\/|$)/g, "/:id").slice(0, 160);
@@ -133,6 +144,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!fileName || !privateDocumentMimeTypes.includes(mimeType) || !Buffer.isBuffer(req.body)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, req.body));
     } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+  });
+  app.post("/api/documents/opaque", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
+      const { fileName, mimeType, encryptedContent, encryptionKey, initializationVector } = req.body as { fileName?: string; mimeType?: string; encryptedContent?: string; encryptionKey?: string; initializationVector?: string };
+      if (!fileName || !mimeType || !privateDocumentMimeTypes.includes(mimeType)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
+      res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector })));
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
   });
   app.get("/api/documents/:attachmentId", async (req, res) => {
     try {

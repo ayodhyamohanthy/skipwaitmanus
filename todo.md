@@ -416,3 +416,4 @@
 - [x] Add a private in-website notification center for meaningful Job Seeker and Referrer referral events, with unread state and direct next actions.
 - [x] Create an implementation-ready Markdown handoff for rebuilding skipwait.me in VibeCodingApp.
 - [x] Diagnose and repair the Job Seeker resume-upload failure while preserving private-document validation and authorization.
+- [x] Diagnose and repair the repeated live raw resume-upload failure after the first gateway transport change.

@@ -59,11 +59,13 @@ describe("ReferralRequest secure resume handoff", () => {
 
     cleanup();
     authState.signedIn = true;
-    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) }));
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents/opaque") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) }));
     render(<ReferralRequest />);
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/api/documents"))).toBe(true));
-    const rawUploadCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/api/documents/raw"));
-    expect(rawUploadCall?.[1]).toMatchObject({ method: "POST", body: expect.any(File), headers: expect.objectContaining({ "Content-Type": "application/pdf", "X-Resume-Filename": "avery-resume.pdf", Authorization: "Bearer test-clerk-token" }) });
+    const opaqueUploadCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/api/documents/opaque"));
+    expect(opaqueUploadCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ "Content-Type": "application/json", Authorization: "Bearer test-clerk-token" }) });
+    const opaqueBody = JSON.parse(String(opaqueUploadCall?.[1]?.body));
+    expect(opaqueBody).toMatchObject({ fileName: "avery-resume.pdf", mimeType: "application/pdf", encryptedContent: expect.any(String), encryptionKey: expect.any(String), initializationVector: expect.any(String) });
     await waitFor(() => expect(pendingResume.clear).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText("1 of 3 free credits used this month.")).toBeTruthy());
     expect(screen.getByLabelText("Referral request milestone").textContent).toContain("Your 1st referral request is now active.");
@@ -113,7 +115,7 @@ describe("ReferralRequest secure resume handoff", () => {
 
   it("offers an optional note for the exact-company Referrer once a resume is attached", async () => {
     authState.signedIn = true;
-    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents") ? { ok: true, json: async () => ({ id: "73", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/73", url: "/api/documents/73" }) } : { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) }));
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents/opaque") ? { ok: true, json: async () => ({ id: "73", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/73", url: "/api/documents/73" }) } : { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) }));
     render(<ReferralRequest />);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
@@ -138,7 +140,7 @@ describe("ReferralRequest secure resume handoff", () => {
   it("keeps credits intact and presents one visual coverage invite action when no verified employee exists at the employer", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
-      if (String(input).includes("/api/documents")) return { ok: true, json: async () => ({ id: "72", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/72", url: "/api/documents/72" }) };
+      if (String(input).includes("/api/documents/opaque")) return { ok: true, json: async () => ({ id: "72", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/72", url: "/api/documents/72" }) };
       if (String(input).includes("/api/company-referrals")) return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "waiting_for_company_coverage", remainingTokens: 3, creditSummary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
       return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
     }));

@@ -22,6 +22,15 @@ function acceptedDocumentMime(file: File) {
   if (!expectedMimeType || (file.type && file.type !== expectedMimeType)) return null;
   return expectedMimeType;
 }
+function bytesToBase64(bytes: Uint8Array) { let output = ""; for (let index = 0; index < bytes.length; index += 1) output += String.fromCharCode(bytes[index] || 0); return btoa(output); }
+async function encryptResumeForTransport(file: File) {
+  if (!crypto?.subtle) throw new Error("Your browser cannot securely prepare this resume upload. Please update it and try again.");
+  const key = crypto.getRandomValues(new Uint8Array(32)); const iv = crypto.getRandomValues(new Uint8Array(12));
+  const cryptoKey = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["encrypt"]);
+  const source = new Uint8Array(await file.arrayBuffer()); const plaintext = new Uint8Array(source.length); plaintext.set(source);
+  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, plaintext);
+  return { encryptedContent: bytesToBase64(new Uint8Array(encrypted)), encryptionKey: bytesToBase64(key), initializationVector: bytesToBase64(iv) };
+}
 
 function getSavedAttachments(): Attachment[] { try { return JSON.parse(localStorage.getItem("bridge-seeker-attachments") || "[]") as Attachment[]; } catch { return []; } }
 function fallbackSummary(total: number): CreditSummary { const safe = Math.max(0, total); return { plan: "free", monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCreditsRemaining: Math.min(safe, FREE_MONTHLY_ALLOWANCE), purchasedCreditsRemaining: Math.max(0, safe - FREE_MONTHLY_ALLOWANCE), totalAvailable: safe, cycleKey: "", subscriptionStatus: null, subscriptionCurrentTermEnd: null }; }
@@ -106,7 +115,9 @@ export default function ReferralRequest() {
       const clerkToken = await getToken();
       const uploaded = await Promise.all(files.map(async file => {
         const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
-        const response = await fetch("/api/documents/raw", { method: "POST", headers: { "Content-Type": mimeType, "X-Resume-Filename": encodeURIComponent(file.name), ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: file });
+        const headers = { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) };
+        const encrypted = await encryptResumeForTransport(file);
+        const response = await fetch("/api/documents/opaque", { method: "POST", headers, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType, ...encrypted }) });
         const payload = await readApiJson<Attachment & { error?: string }>(response, "We could not upload your resume. Please try again."); if (!response.ok) throw new Error(payload.error || "We could not upload your resume. Please try again."); return payload;
       }));
       setAttachments(current => { const next = [...current, ...uploaded]; localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
@@ -116,7 +127,7 @@ export default function ReferralRequest() {
 
   const selectFiles = (files: FileList | null) => {
     const selected = Array.from(files || []); if (!selected.length) return; const unsupported = selected.find(file => !acceptedDocumentMime(file)); if (unsupported) { setError("Use a PDF, Word document, PNG, or JPEG resume."); return; } setError("");
-    if (isSignedIn) { void uploadFiles(selected); return; }
+    if (isSignedIn) { void uploadFiles(selected).catch(() => undefined); return; }
     setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
   };
   const removeAttachment = (id: string) => setAttachments(current => { const next = current.filter(attachment => attachment.id !== id); localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
