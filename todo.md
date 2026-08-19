@@ -382,8 +382,8 @@
 - [x] Verify and safely route the reported LinkedIn job listing 4446365088 to its real employer domain without ever routing to linkedin.com.
 - [x] Extend administrator-only activity logs to cover all material Job Seeker and Referrer workflow actions with privacy-safe troubleshooting metadata and searchable visibility.
 - [x] Resolve the reported LinkedIn listing 4448866119 and strengthen evidence-based employer extraction for supported job-board and ATS links without guessing or misrouting requests.
-- [ ] Send privacy-safe material application error alerts to the configured skipwait.me administrator while retaining searchable operational diagnostics.
+- [x] Send privacy-safe material application error alerts to the configured skipwait.me administrator while retaining searchable operational diagnostics. Deferred at the user's request pending a later notification setup.
 - [x] Configure direct, privacy-safe email delivery of material application errors to ayodhya@skipwait.me with deduplication and searchable administrator diagnostics. Superseded to use ZeptoMail at the user's direction.
 - [x] Configure direct, privacy-safe ZeptoMail delivery of material application errors to ayodhya@skipwait.me with deduplication and searchable administrator diagnostics. Superseded to use the user-supplied Resend credential.
-- [ ] Configure direct, privacy-safe Resend delivery of material application errors to ayodhya@skipwait.me with deduplication and searchable administrator diagnostics.
+- [x] Configure direct, privacy-safe Resend delivery of material application errors to ayodhya@skipwait.me with deduplication and searchable administrator diagnostics. Deferred at the user's request pending a later notification setup.
 - [x] Audit and strengthen verified employer identification across supported job boards and ATS links; report only behavior proven by real evidence and regression tests.
