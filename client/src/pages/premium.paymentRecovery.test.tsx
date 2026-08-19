@@ -20,7 +20,7 @@ describe("Premium payment return recovery", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Premium />);
     expect(await screen.findByText("5 referral credits are ready.")).toBeTruthy();
-    expect(screen.getByText("Your verified payment is complete and your available credits are updated.")).toBeTruthy();
+    expect(await screen.findByText("Your verified payment is complete and your available credits are updated.")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/credit-recovery", expect.objectContaining({ method: "POST" }));
   });
 });

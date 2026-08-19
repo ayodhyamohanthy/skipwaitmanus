@@ -409,3 +409,4 @@
 - [x] Harden private resume uploads with server-side business allowlists, binary signature validation, and protective response headers.
 - [x] Add a public Privacy & Trust hub with accessible, plain-language explanations of private referral routing, documents, payments, and user controls.
 - [x] Add authenticated data export and deletion-request initiation with a privacy-request record and administrator review queue.
+- [x] Replace the Internal Openings generic share prompt with one-tap WhatsApp, email, and social sharing actions using concise recipient-benefiting copy.

@@ -83,11 +83,12 @@ describe("Referrer work-email OTP verification", () => {
     expect(employeeSignInState.signIn.create).not.toHaveBeenCalled();
   });
 
-  it("shows an icon-first request mockup and one voluntary share action only after company-email enrollment", async () => {
+  it("shows an icon-first request mockup and direct voluntary share channels only after company-email enrollment", async () => {
     sessionStorage.setItem("skipwait:employee-sign-in-email", "employee@acme.com");
     render(<Referrer />);
     await waitFor(() => expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Share on WhatsApp" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Share by email" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
     expect(screen.queryByText(/Here is how a request will arrive/i)).toBeNull();
     expect(screen.queryByText(/Example only/i)).toBeNull();

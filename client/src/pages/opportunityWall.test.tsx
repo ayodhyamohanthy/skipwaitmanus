@@ -21,19 +21,17 @@ describe("Opportunity Wall", () => {
     expect(JSON.parse(localStorage.getItem("skipwait-pwa-referral-draft") || "{}").targetUrl).toBe("https://careers.acme.com/jobs/design");
   });
 
-  it("shares a company-specific coverage invite without exposing an employee or candidate", async () => {
-    const share = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+  it("offers direct opening shares without exposing a Referrer or candidate", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14" }] }) })));
     render(<OpportunityWall />);
     await waitFor(() => expect(screen.getByText("Product Designer")).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: /help build private coverage/i }));
-    await waitFor(() => expect(share).toHaveBeenCalled());
-    const payload = share.mock.calls[0]?.[0] as { text?: string; url?: string };
-    expect(payload.text).toContain("acme.com");
-    expect(payload.text).not.toContain("employee@");
-    expect(payload.text).not.toContain("Product Designer");
-    expect(payload.url).toContain("/referrer?company=acme.com");
+    const whatsApp = screen.getByRole("link", { name: "Share on WhatsApp" }).getAttribute("href") || "";
+    const email = screen.getByRole("link", { name: "Share by email" }).getAttribute("href") || "";
+    expect(whatsApp).toContain("wa.me/?text="); expect(whatsApp).toContain(encodeURIComponent("Product Designer"));
+    expect(email).toContain("mailto:"); expect(email).toContain(encodeURIComponent("acme.com"));
+    expect(screen.getByRole("link", { name: "Share on LinkedIn" }).getAttribute("href")).toContain("linkedin.com/sharing");
+    expect(screen.getByRole("link", { name: "Share on X" }).getAttribute("href")).toContain("x.com/intent/post");
+    expect(whatsApp).not.toContain("employee%40");
   });
 
   it("uses a visual no-opening state with one share action when no internal openings are live", async () => {

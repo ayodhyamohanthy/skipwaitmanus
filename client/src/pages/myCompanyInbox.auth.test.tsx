@@ -30,13 +30,14 @@ describe("My Company Inbox employee access", () => {
     expect(go).toHaveBeenCalledWith("/referrer");
   });
 
-  it("gives a verified employee a visual no-request state with one availability action", async () => {
+  it("gives a verified employee a visual no-request state with direct availability share channels", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) })));
     render(<MyCompanyInbox />);
     await waitFor(() => expect(document.querySelector('[aria-label="No private referral requests"]')).toBeTruthy());
     expect(document.querySelector('[data-skipwait-zero-action="referrer"]')).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Share on WhatsApp" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Share by email" })).toBeTruthy();
     expect(screen.queryByText("No new requests.")).toBeNull();
   });
 

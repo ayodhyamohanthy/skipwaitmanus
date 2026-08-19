@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ZeroActivityShareCard } from "./ZeroActivityShareCard";
 
@@ -9,25 +9,17 @@ vi.mock("sonner", () => ({ toast: vi.fn() }));
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe("ZeroActivityShareCard", () => {
-  it("gives a Job Seeker one visual sharing handoff instead of empty-state copy", async () => {
-    const share = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+  it("gives a Job Seeker direct WhatsApp, email, and social sharing links instead of a generic empty-state prompt", () => {
     render(<ZeroActivityShareCard audience="job_seeker" />);
-    expect(screen.getByRole("button", { name: "Share with someone who can help" })).toBeTruthy();
-    expect(screen.queryByText(/trusted person/i)).toBeNull();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Share with someone who can help" }));
-    await waitFor(() => expect(share).toHaveBeenCalled());
+    expect(screen.getByRole("link", { name: "Share on WhatsApp" }).getAttribute("href")).toContain("wa.me/?text=");
+    expect(screen.getByRole("link", { name: "Share by email" }).getAttribute("href")).toContain("mailto:");
+    expect(screen.getByRole("link", { name: "Share on LinkedIn" }).getAttribute("href")).toContain("linkedin.com/sharing");
+    expect(screen.getByRole("link", { name: "Share on X" }).getAttribute("href")).toContain("x.com/intent/post");
   });
 
-  it("gives a Referrer one visual availability handoff with a concise mobile share message", async () => {
-    const share = vi.fn().mockResolvedValue(undefined);
-    Object.defineProperty(navigator, "share", { configurable: true, value: share });
+  it("keeps the Referrer sharing handoff concise and channel-specific", () => {
     render(<ZeroActivityShareCard audience="referrer" />);
-    expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
-    expect(screen.queryByText(/always choose/i)).toBeNull();
-    expect(screen.getAllByRole("button")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "Share with a job seeker" }));
-    await waitFor(() => expect(share).toHaveBeenCalledWith(expect.objectContaining({ text: `Looking for a referral? Start here: ${window.location.origin}/referrer` })));
+    expect(screen.getByText("Share this useful next step")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Share by email" }).getAttribute("href")).toContain(encodeURIComponent(`${window.location.origin}/referrer`));
   });
 });
