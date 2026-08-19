@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { companyDomainFromTargetUrl, isWorkEmailDomain, resolveEmployerDomainFromTargetUrl } from "./db";
+import { companyDomainFromTargetUrl, isVerifiedEmployeeOfCompany, isWorkEmailDomain, resolveEmployerDomainFromTargetUrl } from "./db";
 import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 describe("company routing from Target Role URLs", () => {
@@ -77,5 +77,13 @@ describe("company routing from Target Role URLs", () => {
     expect(isWorkEmailDomain("acme.com")).toBe(true);
     expect(isWorkEmailDomain("gmail.com")).toBe(false);
     expect(isWorkEmailDomain("outlook.com")).toBe(false);
+  });
+
+  it("requires a verified Referrer work-email domain to exactly match the resolved employer", () => {
+    const verifiedAcmeReferrer = { accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date() };
+    expect(isVerifiedEmployeeOfCompany(verifiedAcmeReferrer, "acme.com")).toBe(true);
+    expect(isVerifiedEmployeeOfCompany(verifiedAcmeReferrer, "other.com")).toBe(false);
+    expect(isVerifiedEmployeeOfCompany({ ...verifiedAcmeReferrer, accountType: "job_seeker" }, "acme.com")).toBe(false);
+    expect(isVerifiedEmployeeOfCompany({ ...verifiedAcmeReferrer, workEmailVerifiedAt: null }, "acme.com")).toBe(false);
   });
 });

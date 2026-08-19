@@ -389,4 +389,5 @@
 - [x] Resume direct, privacy-safe Resend error alerts to ayodhya@skipwait.me using noreply@skipwait.me as the verified sender, with deduplication and searchable diagnostics. Completed with the updated verified `noreply@updates.skipwait.me` sender.
 - [x] Revalidate the upgraded full-access Resend credential before enabling direct administrator error alerts.
 - [x] Update Resend error-alert delivery to noreply@updates.skipwait.me and verify live minimized alert delivery to ayodhya@skipwait.me.
+- [x] Verify and reinforce that an unclaimed referral request is shown on launch only to verified Referrers whose exact work-email domain matches the Job Seeker’s resolved employer; hide it after one Referrer claims it.
 - [x] Audit and strengthen verified employer identification across supported job boards and ATS links; report only behavior proven by real evidence and regression tests.

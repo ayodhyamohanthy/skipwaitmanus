@@ -46,6 +46,32 @@ describe("private referral HTTP routes", () => {
     expect(JSON.stringify(activity)).not.toContain("resume.pdf");
   });
 
+  it("loads each matching employee's unclaimed request on inbox launch, then removes it after the first claim", async () => {
+    const app = express(); app.use(express.json());
+    let claimedBy: number | undefined;
+    const identities = new Map([
+      ["employee-a", { account: { id: 2, openId: "clerk-employee-a" }, primaryEmail: { emailAddress: "a@acme.com", verification: { status: "verified" } } }],
+      ["employee-b", { account: { id: 3, openId: "clerk-employee-b" }, primaryEmail: { emailAddress: "b@acme.com", verification: { status: "verified" } } }],
+      ["outsider", { account: { id: 4, openId: "clerk-outsider" }, primaryEmail: { emailAddress: "employee@other.com", verification: { status: "verified" } } }],
+    ]);
+    const unclaimedRequest = { id: 701, companyDomain: "acme.com", status: "pending", referrerId: null };
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 701, companyDomain: "acme.com", notifiedEmployees: 2 }),
+      listCompanyReferralInbox: async () => [], listCompanyReferralInboxByState: async (userId, scope) => scope === "new" && (userId === 2 || userId === 3) && !claimedBy ? [unclaimedRequest] : [],
+      claimCompanyReferralRequest: async (userId, requestId) => { if (requestId !== 701 || claimedBy) throw new Error("Another verified employee already claimed this request"); claimedBy = userId; return { requestId, claimed: true }; },
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-a")).body).toMatchObject({ scope: "new", requests: [unclaimedRequest] });
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([unclaimedRequest]);
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "outsider")).body.requests).toEqual([]);
+    expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a")).status).toBe(200);
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([]);
+    expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-b")).status).toBe(409);
+  });
+
   it("lists anonymous opportunities publicly but only lets a verified employee publish one", async () => {
     const app = express();
     app.use(express.json());

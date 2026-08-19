@@ -217,11 +217,11 @@ export type CompanyReferralInboxState = "new" | "saved" | "completed";
 
 export async function listCompanyReferralInboxByState(userId: number, state: CompanyReferralInboxState) {
   const profile = await getProfileByUserId(userId);
-  if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) return [];
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return [];
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, savedAt: referralRequests.savedAt, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(jobs.company, profile.workEmailDomain)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.savedAt, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
   return rows.filter(row => {
-    if (state === "new") return row.status === "pending" && !row.referrerId && !row.savedAt;
+    if (state === "new") return row.status === "pending" && !row.referrerId;
     if (state === "saved") return row.status === "pending" && (row.referrerId === userId || (!row.referrerId && Boolean(row.savedAt)));
     return row.referrerId === userId && row.status !== "pending";
   }).map(row => ({ ...row, inboxState: state, isClaimedByYou: row.referrerId === userId }));
@@ -275,7 +275,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before claiming referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, company: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId))).limit(1);
-  if (!request[0] || request[0].company !== profile.workEmailDomain) throw new Error("This referral request is no longer available");
+  if (!request[0] || !isVerifiedEmployeeOfCompany(profile, request[0].company)) throw new Error("This referral request is no longer available");
   const update = await db.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, requestId), isNull(referralRequests.referrerId)));
   if (Number(update[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
   await db.insert(notifications).values({ userId: request[0].jobSeekerId, category: "status", title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." });
