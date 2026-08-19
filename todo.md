@@ -392,3 +392,4 @@
 - [x] Verify and reinforce that an unclaimed referral request is shown on launch only to verified Referrers whose exact work-email domain matches the Job Seeker’s resolved employer; hide it after one Referrer claims it.
 - [x] Audit and strengthen verified employer identification across supported job boards and ATS links; report only behavior proven by real evidence and regression tests.
 - [x] Add a privacy-safe unread-count badge for each verified Referrer’s exact-company, unclaimed New referral inbox items.
+- [x] Repair the email-invite action so it opens a valid prefilled recipient email handoff from every referral-sharing surface.
