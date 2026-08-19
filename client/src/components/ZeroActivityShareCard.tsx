@@ -13,7 +13,7 @@ export function ZeroActivityShareCard({ audience }: ZeroActivityShareCardProps) 
   const link = isJobSeeker ? `${origin}/start` : `${origin}/referrer`;
   const text = isJobSeeker
     ? `Know someone who can help with a referral? Send them this. A real job link becomes a private request on skipwait.me.\n\n${link}`
-    : `Know someone looking for a referral? Send them this. They can make a private request from a real job link on skipwait.me.\n\n${link}`;
+    : `Looking for a referral? Start here: ${link}`;
   const label = isJobSeeker ? "Share with someone who can help" : "Share with a job seeker";
   const share = async () => {
     const nativeShare = (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share;

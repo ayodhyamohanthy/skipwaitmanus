@@ -20,10 +20,14 @@ describe("ZeroActivityShareCard", () => {
     await waitFor(() => expect(share).toHaveBeenCalled());
   });
 
-  it("gives a Referrer one visual availability handoff without promising a referral", () => {
+  it("gives a Referrer one visual availability handoff with a concise mobile share message", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { configurable: true, value: share });
     render(<ZeroActivityShareCard audience="referrer" />);
     expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
     expect(screen.queryByText(/always choose/i)).toBeNull();
     expect(screen.getAllByRole("button")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Share with a job seeker" }));
+    await waitFor(() => expect(share).toHaveBeenCalledWith(expect.objectContaining({ text: `Looking for a referral? Start here: ${window.location.origin}/referrer` })));
   });
 });
