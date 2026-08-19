@@ -31,6 +31,10 @@ describe("ShareHub personal invites", () => {
     expect(screen.getByRole("button", { name: "Share invite on LinkedIn" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share invite on Medium" })).toBeTruthy();
     expect(screen.getByText(/Self-invites and duplicate accounts are not eligible/i)).toBeTruthy();
+    const content = document.querySelector('[data-skipwait-share-content="true"]');
+    expect(content?.className).toContain("min-h-0");
+    expect(content?.className).not.toContain("overflow-y-auto");
+    expect(document.querySelector('[data-skipwait-screen="share-hub"]')?.className).toContain("overflow-hidden");
   });
 
   it("opens a native prefilled mailto invite only after a valid recipient email is entered", async () => {
