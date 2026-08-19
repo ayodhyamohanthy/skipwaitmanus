@@ -372,3 +372,4 @@
 - [x] Resolve the actual employer for Wellfound job URLs so requests do not incorrectly fall back to a careers-page prompt.
 - [x] Build a concise personal-invite sharing experience with a referral link, copy, email, and social actions while retaining reward-abuse safeguards.
 - [x] Implement personal referral-link rewards: grant one extra credit to both inviter and newly joined user, preserve the joiner’s three free monthly credits, and enforce server-side self-invite and duplicate-account protection.
+- [x] Diagnose and correct the live fallback shown for the reported Wellfound Account Executive link.

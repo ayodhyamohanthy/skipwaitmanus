@@ -40,6 +40,7 @@ describe("company routing from Target Role URLs", () => {
 
   it("uses a reviewed exact fallback for the reported Cloudflare-protected Wellfound listing without routing any other Wellfound URL", async () => {
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive")).toBe("chatfin.ai");
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive/?source=mobile")).toBe("chatfin.ai");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4322255-software-engineer-intern-freshers")).toBeUndefined();
     await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/3971835-account-executive")).resolves.toBe("chatfin.ai");
   });
