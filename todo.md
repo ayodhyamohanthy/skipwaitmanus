@@ -369,6 +369,6 @@
 - [x] Replace “Share with someone looking for work” with clearer, more natural Referrer sharing microcopy.
 - [x] Provide a verified Markdown status document explaining when monthly referral credits refresh.
 - [x] Shorten the Referrer mobile share payload to one clear invitation line plus the referral link.
-- [ ] Resolve the actual employer for Wellfound job URLs so requests do not incorrectly fall back to a careers-page prompt.
+- [x] Resolve the actual employer for Wellfound job URLs so requests do not incorrectly fall back to a careers-page prompt.
 - [x] Build a concise personal-invite sharing experience with a referral link, copy, email, and social actions while retaining reward-abuse safeguards.
 - [x] Implement personal referral-link rewards: grant one extra credit to both inviter and newly joined user, preserve the joiner’s three free monthly credits, and enforce server-side self-invite and duplicate-account protection.

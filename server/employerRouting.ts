@@ -8,6 +8,12 @@ const hostedJobPlatforms = [
   "snagajob.com", "cutshort.io", "instahyre.com", "hirist.com", "timesjobs.com",
 ];
 
+// Only add an entry after manually verifying the public listing and the employer's official domain.
+// This protects known Cloudflare-blocked listings without ever treating Wellfound itself as the employer.
+const verifiedProtectedHostedListings = new Map<string, string>([
+  ["wellfound.com/jobs/3971835-account-executive", "chatfin.ai"],
+]);
+
 const legalSuffixes = /\b(incorporated|inc|llc|ltd|limited|corp|corporation|company|co|plc|gmbh|pte|private)\b/gi;
 
 function normalizedHost(value: string) { return value.trim().toLowerCase().replace(/^www\./, ""); }
@@ -28,6 +34,15 @@ export function directEmployerDomainFromTargetUrl(targetRoleUrl: string): string
     if (!hostname || isHostedJobPlatform(hostname)) return undefined;
     const labels = hostname.split(".");
     return labels.length > 2 ? labels.slice(-2).join(".") : hostname;
+  } catch {
+    return undefined;
+  }
+}
+
+export function verifiedEmployerDomainFromProtectedHostedListing(targetRoleUrl: string) {
+  try {
+    const url = new URL(targetRoleUrl);
+    return verifiedProtectedHostedListings.get(`${normalizedHost(url.hostname)}${url.pathname.replace(/\/$/, "")}`);
   } catch {
     return undefined;
   }

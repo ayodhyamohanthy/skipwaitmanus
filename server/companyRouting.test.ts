@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { companyDomainFromTargetUrl, isWorkEmailDomain } from "./db";
-import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, verifiedEmployerDomainFromCandidates } from "./employerRouting";
+import { companyDomainFromTargetUrl, isWorkEmailDomain, resolveEmployerDomainFromTargetUrl } from "./db";
+import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 describe("company routing from Target Role URLs", () => {
   it("uses a direct employer careers hostname as the hidden company key", () => {
@@ -36,6 +36,12 @@ describe("company routing from Target Role URLs", () => {
     const candidates = employerCandidatesFromJobPageHtml('<meta property="og:title" content="Product Designer at Acme, Inc. | LinkedIn">');
     expect(candidates).toEqual(["acme"]);
     expect(verifiedEmployerDomainFromCandidates(candidates, ["acme.com", "linkedin.com"])).toBe("acme.com");
+  });
+
+  it("uses a reviewed exact fallback for the reported Cloudflare-protected Wellfound listing without routing any other Wellfound URL", async () => {
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive")).toBe("chatfin.ai");
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4322255-software-engineer-intern-freshers")).toBeUndefined();
+    await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/3971835-account-executive")).resolves.toBe("chatfin.ai");
   });
 
   it("allows verified company domains while rejecting common consumer email domains", () => {

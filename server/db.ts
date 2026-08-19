@@ -4,7 +4,7 @@ import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewar
 import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
-import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, verifiedEmployerDomainFromCandidates } from "./employerRouting";
+import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -68,6 +68,8 @@ async function employerPageCandidates(targetRoleUrl: string) {
 export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) {
   const directDomain = companyDomainFromTargetUrl(targetRoleUrl);
   if (directDomain) return directDomain;
+  const protectedHostedDomain = verifiedEmployerDomainFromProtectedHostedListing(targetRoleUrl);
+  if (protectedHostedDomain) return protectedHostedDomain;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const verifiedDomains = await db.select({ domain: profiles.workEmailDomain }).from(profiles).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt)));
