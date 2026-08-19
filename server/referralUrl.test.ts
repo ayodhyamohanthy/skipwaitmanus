@@ -12,11 +12,18 @@ describe("isValidTargetRoleUrl", () => {
 
   it("canonicalizes Wellfound mobile tracking, hash, www, and trailing-slash variants before routing", () => {
     expect(normalizeTargetRoleUrl("https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile#details")).toBe("https://wellfound.com/jobs/3971835-account-executive");
+    expect(normalizeTargetRoleUrl("https://www.linkedin.com/jobs/view/4446365088/?trackingId=example#details")).toBe("https://linkedin.com/jobs/view/4446365088");
   });
 
   it("recognizes only the independently reviewed Check listing and its canonical mobile variant", () => {
     expect(reviewedEmployerFromTargetRoleUrl("https://wellfound.com/jobs/4220336-senior-product-designer")).toEqual({ name: "Check", domain: "checkhq.com" });
     expect(reviewedEmployerFromTargetRoleUrl("https://www.wellfound.com/jobs/4220336-senior-product-designer/?source=mobile#details")).toEqual({ name: "Check", domain: "checkhq.com" });
     expect(reviewedEmployerFromTargetRoleUrl("https://wellfound.com/jobs/4220337-product-designer")).toBeUndefined();
+  });
+
+  it("recognizes only the independently reviewed LinkedIn Ethos listing and canonical URL variants", () => {
+    expect(reviewedEmployerFromTargetRoleUrl("https://www.linkedin.com/jobs/view/4446365088/")).toEqual({ name: "Ethos", domain: "ethos.com" });
+    expect(reviewedEmployerFromTargetRoleUrl("https://linkedin.com/jobs/view/4446365088?trackingId=example#details")).toEqual({ name: "Ethos", domain: "ethos.com" });
+    expect(reviewedEmployerFromTargetRoleUrl("https://www.linkedin.com/jobs/view/4446365089/")).toBeUndefined();
   });
 });

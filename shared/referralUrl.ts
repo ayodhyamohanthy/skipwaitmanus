@@ -5,6 +5,7 @@ export type ReviewedEmployer = { name: string; domain: string };
 const reviewedEmployerLinks = new Map<string, ReviewedEmployer>([
   ["wellfound.com/jobs/3971835-account-executive", { name: "ChatFin", domain: "chatfin.ai" }],
   ["wellfound.com/jobs/4220336-senior-product-designer", { name: "Check", domain: "checkhq.com" }],
+  ["linkedin.com/jobs/view/4446365088", { name: "Ethos", domain: "ethos.com" }],
 ]);
 
 export function isValidTargetRoleUrl(value: string | undefined | null) {
@@ -22,7 +23,7 @@ export function normalizeTargetRoleUrl(value: string) {
   url.hash = "";
   const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
   url.hostname = hostname;
-  if (hostname === "wellfound.com") {
+  if (hostname === "wellfound.com" || hostname === "linkedin.com") {
     url.pathname = url.pathname.replace(/\/+$/, "") || "/";
     url.search = "";
   }

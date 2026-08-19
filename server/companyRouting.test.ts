@@ -43,9 +43,12 @@ describe("company routing from Target Role URLs", () => {
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive/?source=mobile")).toBe("chatfin.ai");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4220336-senior-product-designer")).toBe("checkhq.com");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.wellfound.com/jobs/4220336-senior-product-designer/?source=mobile#details")).toBe("checkhq.com");
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.linkedin.com/jobs/view/4446365088/?trackingId=example#details")).toBe("ethos.com");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4322255-software-engineer-intern-freshers")).toBeUndefined();
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.linkedin.com/jobs/view/4446365089/")).toBeUndefined();
     await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/3971835-account-executive")).resolves.toBe("chatfin.ai");
     await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/4220336-senior-product-designer")).resolves.toBe("checkhq.com");
+    await expect(resolveEmployerDomainFromTargetUrl("https://www.linkedin.com/jobs/view/4446365088/")).resolves.toBe("ethos.com");
   });
 
   it("allows verified company domains while rejecting common consumer email domains", () => {
