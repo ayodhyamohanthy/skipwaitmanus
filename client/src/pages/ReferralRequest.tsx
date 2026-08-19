@@ -6,9 +6,11 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, TOKEN_ACTION_COST } from "@/lib/tokens";
 import { clearReferralDraft } from "@/lib/pwaContinuity";
 import { clearPendingResumeFiles, restorePendingResumeFiles, savePendingResumeFiles } from "@/lib/pendingResume";
+import { readApiJson } from "@/lib/apiResponse";
 
 type Attachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
 type CreditSummary = { plan: "free" | "pro" | "max"; monthlyAllowance: number; monthlyCreditsRemaining: number; purchasedCreditsRemaining: number; totalAvailable: number; cycleKey: string; subscriptionStatus: string | null; subscriptionCurrentTermEnd: string | null };
+type ReferralSubmissionResponse = { error?: string; creditSummary?: unknown; remainingTokens?: unknown; coverageStatus?: string; coverageInviteCode?: string | null; companyDomain?: string; lifetimeRequestCount?: number };
 
 const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
 const pendingResumeSubmissionKey = "skipwait-pending-resume-submit";
@@ -107,7 +109,7 @@ export default function ReferralRequest() {
         const dataUrl = await readFile(file);
         const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
         const response = await fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType, dataUrl }) });
-        const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Upload failed"); return payload as Attachment;
+        const payload = await readApiJson<Attachment & { error?: string }>(response, "Upload failed"); if (!response.ok) throw new Error(payload.error || "Upload failed"); return payload;
       }));
       setAttachments(current => { const next = [...current, ...uploaded]; localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
       return uploaded;
@@ -134,13 +136,13 @@ export default function ReferralRequest() {
       const allAttachments = [...attachments, ...newlyUploaded];
       const clerkToken = await getToken();
       const response = await fetch("/api/company-referrals", { method: "POST", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: JSON.stringify({ targetRoleUrl, attachmentIds: allAttachments.map(attachment => Number(attachment.id)).filter(Number.isInteger), candidateMessage: candidateMessage.trim() }) });
-      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "We could not send this private referral request");
+      const payload = await readApiJson<ReferralSubmissionResponse>(response, "We could not send this private referral request"); if (!response.ok) throw new Error(payload.error || "We could not send this private referral request");
       const nextSummary = isCreditSummary(payload.creditSummary) ? payload.creditSummary : fallbackSummary(Number.isFinite(Number(payload.remainingTokens)) ? Number(payload.remainingTokens) : Math.max(0, summary.totalAvailable - TOKEN_ACTION_COST));
       setCreditSummary(nextSummary); setTokens(nextSummary.totalAvailable); setJobSeekerTokens(nextSummary.totalAvailable);
       setPendingFiles([]); void clearPendingResumeFiles().catch(() => undefined); sessionStorage.removeItem(pendingResumeSubmissionKey);
       setCoveragePending(payload.coverageStatus === "waiting_for_company_coverage");
       setCoverageInviteCode(typeof payload.coverageInviteCode === "string" ? payload.coverageInviteCode : "");
-      setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.setItem("bridge-request-sent", "true"); setSubmitted(true);
+      setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(typeof payload.lifetimeRequestCount === "number" && Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.setItem("bridge-request-sent", "true"); setSubmitted(true);
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "We could not send this private referral request"); } finally { setSubmitting(false); }
   };
 

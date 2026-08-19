@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, BadgeCheck, BriefcaseBusiness, CalendarDays, Che
 import { FormEvent, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Brand } from "@/components/Brand";
+import { readApiJson } from "@/lib/apiResponse";
 
 type OpportunityMode = "hiring_now" | "walk_in";
 type CompanyAccessState = "checking" | "ready" | "needs_work_email";
@@ -33,7 +34,7 @@ export default function PostOpportunity() {
       try {
         const token = await getToken();
         const response = await fetch("/api/company-referrals/access", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        const payload = await response.json();
+        const payload = await readApiJson<{ verifiedCompanyAccess?: boolean; error?: string }>(response, "Company-email access is unavailable");
         if (!response.ok) throw new Error(payload.error || "Company-email access is unavailable");
         if (active) setCompanyAccess(payload.verifiedCompanyAccess ? "ready" : "needs_work_email");
       } catch { if (active) setCompanyAccess("needs_work_email"); }
@@ -45,7 +46,7 @@ export default function PostOpportunity() {
     event?.preventDefault();
     if (!canProceed || !isSignedIn) return;
     setPublishing(true); setError("");
-    try { const token = await getToken(); const response = await fetch("/api/opportunities", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ kind: mode, roleTitle, targetRoleUrl: targetRoleUrl || undefined, location: location || undefined, walkInAt: localInputToIso(walkInAt), walkInEndsAt: localInputToIso(walkInEndsAt) }) }); const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "We could not publish that opportunity"); setPublished(payload.opportunity); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not publish that opportunity"); } finally { setPublishing(false); }
+    try { const token = await getToken(); const response = await fetch("/api/opportunities", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ kind: mode, roleTitle, targetRoleUrl: targetRoleUrl || undefined, location: location || undefined, walkInAt: localInputToIso(walkInAt), walkInEndsAt: localInputToIso(walkInEndsAt) }) }); const payload = await readApiJson<{ opportunity?: { companyDomain: string; roleTitle: string }; error?: string }>(response, "We could not publish that opportunity"); if (!response.ok || !payload.opportunity) throw new Error(payload.error || "We could not publish that opportunity"); setPublished(payload.opportunity); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not publish that opportunity"); } finally { setPublishing(false); }
   };
   const continueFlow = () => { if (!canProceed) return; if (step < totalSteps) setStep(current => current + 1); else void publish(); };
 

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
 import { startLogin } from "@/const";
+import { readApiJson } from "@/lib/apiResponse";
 
 function open(url: string) { window.open(url, "_blank", "noopener,noreferrer"); }
 
@@ -18,7 +19,7 @@ export default function ShareHub() {
   const message = useMemo(() => link ? `You found an opportunity! Now help your friends do the same.\n\nJoin skipwait.me with my link. We each get 1 extra referral credit when you join.\n\n${link}` : "", [link]);
   const emailInviteHref = useMemo(() => { const recipient = email.trim(); if (!link || !/^\S+@\S+\.\S+$/.test(recipient)) return ""; return `mailto:${recipient}?subject=${encodeURIComponent("You found an opportunity. Help a friend do the same.")}&body=${encodeURIComponent(message)}`; }, [email, link, message]);
 
-  useEffect(() => { if (!isLoaded || !isSignedIn) return; setLoading(true); void fetch("/api/personal-invites/me", { credentials: "include" }).then(async response => response.ok ? response.json() : Promise.reject(new Error("Invite unavailable"))).then(data => setInviteCode(data.invite?.inviteCode ?? "")).catch(() => toast("We could not create your personal link. Try again.")).finally(() => setLoading(false)); }, [isLoaded, isSignedIn]);
+  useEffect(() => { if (!isLoaded || !isSignedIn) return; setLoading(true); void fetch("/api/personal-invites/me", { credentials: "include" }).then(async response => { if (!response.ok) throw new Error("Invite unavailable"); return readApiJson<{ invite?: { inviteCode?: string } }>(response, "Your personal invite link is temporarily unavailable. Please try again."); }).then(data => setInviteCode(data.invite?.inviteCode ?? "")).catch((reason: Error) => toast(reason.message || "We could not create your personal link. Try again.")).finally(() => setLoading(false)); }, [isLoaded, isSignedIn]);
   const copyLink = async () => { if (!link) return; try { await navigator.clipboard.writeText(link); toast("Personal link copied."); } catch { toast("Copy is unavailable in this browser."); } };
   const share = (channel: "x" | "facebook" | "linkedin" | "medium") => { if (!link) return; if (channel === "x") return open(`https://x.com/intent/post?text=${encodeURIComponent(message)}`); if (channel === "facebook") return open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`); if (channel === "linkedin") return open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`); void navigator.clipboard.writeText(message).then(() => toast("Invite copied. Paste it into a Medium story."), () => toast("Copy the personal link and paste it into Medium.")); open("https://medium.com/new-story"); };
 

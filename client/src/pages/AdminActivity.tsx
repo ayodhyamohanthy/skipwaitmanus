@@ -2,6 +2,7 @@ import { Activity, AlertCircle, BarChart3, LoaderCircle, Search, ShieldCheck } f
 import React, { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@clerk/react";
 import { Brand } from "@/components/Brand";
+import { readApiJson } from "@/lib/apiResponse";
 
 type ActivityEvent = { id: number; action: string; outcome: "success" | "failure" | "denied"; resourceType: string | null; resourceId: string | null; companyDomain: string | null; metadata: string | null; createdAt: string | Date; actorName: string | null; actorEmail: string | null };
 
@@ -20,7 +21,7 @@ export default function AdminActivity() {
       const token = await getToken();
       const params = new URLSearchParams({ limit: "250" }); if (query.trim()) params.set("query", query.trim()); if (requestedOutcome) params.set("outcome", requestedOutcome);
       const response = await fetch(`/api/admin/activity?${params.toString()}`, { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: "include" });
-      const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "We could not load operational activity");
+      const payload = await readApiJson<{ events?: ActivityEvent[]; error?: string }>(response, "We could not load operational activity"); if (!response.ok) throw new Error(payload.error || "We could not load operational activity");
       setEvents(payload.events || []);
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "We could not load operational activity"); }
     finally { setLoading(false); }

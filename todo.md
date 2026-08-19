@@ -412,3 +412,5 @@
 - [x] Replace the Internal Openings generic share prompt with one-tap WhatsApp, email, and social sharing actions using concise recipient-benefiting copy.
 - [x] Fix the Internal Openings response parser so HTML or other non-JSON responses produce a readable recovery state instead of a raw JSON syntax error.
 - [x] Fix the Share skipwait.me screen so all mobile sharing actions fit in the fixed viewport without page scrolling.
+- [x] Locate and guard every active client request path that can surface an HTML-as-JSON parser error, using uniform user-safe recovery messages.
+- [x] Add a private in-website notification center for meaningful Job Seeker and Referrer referral events, with unread state and direct next actions.

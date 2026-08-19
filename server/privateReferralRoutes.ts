@@ -5,6 +5,7 @@ type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
 type Identity = { account: Account; primaryEmail?: EmailAddress | null; emailAddresses?: EmailAddress[] };
 type Attachment = { id: number; fileName: string; mimeType: string; fileSize: number; fileKey?: string };
+type PrivateNotification = { id: number; category: "referral" | "message" | "status" | "system"; title: string; body: string; readAt: Date | null; createdAt: Date };
 
 export type PrivateReferralRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
@@ -44,11 +45,13 @@ export type PrivateReferralRouteDeps = {
   createPrivacyErasureRequest?: (userId: number) => Promise<{ id: number; kind: "erasure"; status: string; createdAt: Date; alreadyRequested: boolean }>;
   listAdminPrivacyRequests?: (limit?: number) => Promise<unknown[]>;
   reviewPrivacyRequest?: (adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) => Promise<unknown>;
+  listNotifications?: (userId: number) => Promise<PrivateNotification[]>;
+  markNotificationRead?: (userId: number, notificationId: number) => Promise<{ success: boolean }>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
-  const workflowPrefixes = ["/api/company-referrals", "/api/documents", "/api/opportunities", "/api/personal-invites", "/api/credits"];
+  const workflowPrefixes = ["/api/company-referrals", "/api/documents", "/api/opportunities", "/api/personal-invites", "/api/credits", "/api/notifications"];
   const normalizedWorkflowRoute = (path: string) => path.replace(/\/\d+(?=\/|$)/g, "/:id").slice(0, 160);
   app.use(async (req, res, next) => {
     if (!workflowPrefixes.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`))) return next();
@@ -64,6 +67,29 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/opportunities", async (_req, res) => {
     try { res.json({ opportunities: await deps.listPublicCompanyOpportunities() }); } catch { res.status(500).json({ error: "We could not load opportunities right now" }); }
+  });
+  app.get("/api/notifications", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your private updates" });
+      if (!deps.listNotifications) return res.status(503).json({ error: "Your updates are unavailable right now" });
+      res.set("Cache-Control", "private, no-store");
+      const notifications = await deps.listNotifications(identity.account.id);
+      res.json({ notifications: notifications.map(({ id, category, title, body, readAt, createdAt }) => ({ id, category, title, body, readAt, createdAt })) });
+    } catch { res.status(500).json({ error: "We could not load your private updates" }); }
+  });
+  app.post("/api/notifications/:notificationId/read", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const notificationId = Number(req.params.notificationId);
+      if (!identity) return res.status(401).json({ error: "Sign in to update your private notifications" });
+      if (!Number.isInteger(notificationId) || notificationId <= 0) return res.status(400).json({ error: "Invalid notification reference" });
+      if (!deps.markNotificationRead) return res.status(503).json({ error: "Notifications are unavailable right now" });
+      await deps.markNotificationRead(identity.account.id, notificationId);
+      record({ actorUserId: identity.account.id, action: "notification.read", outcome: "success", resourceType: "notification", resourceId: notificationId });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ success: true });
+    } catch { res.status(500).json({ error: "We could not update that notification" }); }
   });
   app.post("/api/opportunities", async (req, res) => {
     try {

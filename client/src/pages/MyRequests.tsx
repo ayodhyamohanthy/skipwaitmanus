@@ -5,6 +5,7 @@ import { useLocation } from "wouter";
 import { AccountMenu } from "@/components/AccountMenu";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { getJobSeekerReferralState, type ReferralStatus } from "@shared/referral";
+import { readApiJson } from "@/lib/apiResponse";
 
 type ReferralRequest = { id: number; targetRoleUrl: string | null; companyDomain: string; status: ReferralStatus; referrerId: number | null; referrerMessage: string | null; unreadMessageCount: number; createdAt: string; updatedAt: string; attachmentCount: number };
 
@@ -38,7 +39,7 @@ export default function MyRequests() {
       try {
         const token = await getToken();
         const response = await fetch("/api/company-referrals/mine", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        const payload = await response.json();
+        const payload = await readApiJson<{ requests?: ReferralRequest[]; error?: string }>(response, "We could not load your referral requests");
         if (!response.ok) throw new Error(payload.error || "We could not load your referral requests");
         if (active) { setRequests(payload.requests || []); setActiveIndex(0); }
       } catch (reason) { if (active) setError(reason instanceof Error ? reason.message : "We could not load your referral requests"); }

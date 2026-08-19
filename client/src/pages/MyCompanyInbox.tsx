@@ -6,6 +6,7 @@ import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { referralStatusLabels, type ReferralStatus } from "@shared/referral";
+import { readApiJson } from "@/lib/apiResponse";
 
 type InboxScope = "new" | "saved" | "completed";
 type Attachment = { id: number; fileName: string; mimeType: string; fileSize: number; url: string };
@@ -28,10 +29,10 @@ export default function MyCompanyInbox() {
   const [activeIndex, setActiveIndex] = useState(0);
   const hasVerifiedWorkEmail = Boolean(user?.emailAddresses.some(address => { const domain = address.emailAddress.trim().toLowerCase().split("@")[1]; return address.verification?.status === "verified" && domain && !personalEmailDomains.has(domain); }));
 
-  const companyFetch = async (path: string, init?: RequestInit) => {
+  const companyFetch = async <T extends object>(path: string, init?: RequestInit): Promise<T & { error?: string }> => {
     const token = await getToken();
     const response = await fetch(path, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-    const payload = await response.json();
+    const payload = await readApiJson<T & { error?: string }>(response, "We could not complete that private company request");
     if (!response.ok) throw new Error(payload.error || "We could not complete that private company request");
     return payload;
   };
@@ -39,11 +40,11 @@ export default function MyCompanyInbox() {
     if (!isSignedIn) return;
     setLoading(true); setError("");
     try {
-      const payload = await companyFetch(`/api/company-referrals/inbox?scope=${nextScope}`);
+      const payload = await companyFetch<{ requests?: CompanyInboxItem[] }>(`/api/company-referrals/inbox?scope=${nextScope}`);
       setRequests(payload.requests || []);
       if (nextScope === "new") setNewRequestCount((payload.requests || []).length);
       else {
-        const newPayload = await companyFetch("/api/company-referrals/inbox?scope=new");
+        const newPayload = await companyFetch<{ requests?: CompanyInboxItem[] }>("/api/company-referrals/inbox?scope=new");
         setNewRequestCount((newPayload.requests || []).length);
       }
       setActiveIndex(0);
@@ -52,7 +53,7 @@ export default function MyCompanyInbox() {
   };
   useEffect(() => { void loadInbox(scope); }, [isSignedIn, scope]);
   const save = async (requestId: number, saved: boolean) => { setWorkingId(requestId); setError(""); try { await companyFetch(`/api/company-referrals/${requestId}/save`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ saved }) }); await loadInbox(scope); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not update this private request"); } finally { setWorkingId(null); } };
-  const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
+  const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
   const claim = async (requestId: number) => { setWorkingId(requestId); setError(""); try { await companyFetch(`/api/company-referrals/${requestId}/claim`, { method: "POST" }); go(`/referrer?request=${requestId}`); } catch (reason) { setError(reason instanceof Error ? reason.message : "This request is no longer available"); } finally { setWorkingId(null); } };
   const selectScope = (nextScope: InboxScope) => { setPreview(null); setScope(nextScope); setActiveIndex(0); };
 

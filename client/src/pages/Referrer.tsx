@@ -5,10 +5,12 @@ import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Download, External
 import { WorkEmailSignIn, coverageInviteSessionKey } from "@/components/WorkEmailSignIn";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { AccountMenu } from "@/components/AccountMenu";
+import { readApiJson } from "@/lib/apiResponse";
 
 type Attachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
 type CompanyInboxItem = { id: number; targetRoleUrl: string; companyDomain: string; createdAt: string; attachmentCount: number };
 type ClaimedCompanyRequest = { id: number; targetRoleUrl: string; companyDomain: string; candidateName: string | null; attachments: Attachment[] };
+type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; request?: ClaimedCompanyRequest; requests?: CompanyInboxItem[] };
 
 function ReferrerFlowHeader({ backHref = "/", right }: { backHref?: string; right?: React.ReactNode }) {
   return <header className="flex h-10 shrink-0 items-center justify-between gap-3"><Link href={backHref} className="inline-flex items-center gap-1 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />Back</Link>{right ? <div className="shrink-0">{right}</div> : <AccountMenu />}</header>;
@@ -44,7 +46,7 @@ export default function Referrer() {
   const companyFetch = async (path: string, init?: RequestInit) => {
     const token = await getToken();
     const response = await fetch(path, { ...init, headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, credentials: "include" });
-    const payload = await response.json();
+    const payload = await readApiJson<CompanyResponse>(response, "We could not complete that private company request");
     if (!response.ok) throw new Error(payload.error || "We could not complete that private company request");
     return payload;
   };
@@ -70,7 +72,7 @@ export default function Referrer() {
     const path = Number.isInteger(claimedRequestId) && claimedRequestId > 0 ? `/api/company-referrals/${claimedRequestId}` : "/api/company-referrals/inbox";
     void companyFetch(path).then(payload => {
       if (!active) return;
-      if (claimedRequestId > 0) { setClaimedRequest(payload.request); setActiveDocument(0); }
+      if (claimedRequestId > 0) { setClaimedRequest(payload.request || null); setActiveDocument(0); }
       else setInbox(payload.requests || []);
     }).catch(() => { if (active) setInboxError(claimedRequestId > 0 ? "This private request is not available to your verified employee account." : "Verify your work email to view private company requests."); }).finally(() => { if (active) setInboxReady(true); });
     return () => { active = false; };
