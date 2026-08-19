@@ -24,6 +24,8 @@ export type PrivateReferralRouteDeps = {
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
+  listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
+  sendReferralConversationMessage?: (userId: number, requestId: number, body: string) => Promise<{ id: number }>;
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
   publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; walkInAt?: Date; walkInEndsAt?: Date }) => Promise<unknown>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
@@ -203,6 +205,46 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: `company_referral.${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId });
       res.json(result);
     } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request can no longer be reviewed" }); }
+  });
+  app.get("/api/company-referrals/:requestId/conversation", async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to open this private conversation" });
+      actorUserId = identity.account.id;
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!deps.listReferralConversation) return res.status(503).json({ error: "Private conversations are not available yet" });
+      const messages = await deps.listReferralConversation(actorUserId, requestId);
+      record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "success", resourceType: "referral_conversation", resourceId: requestId, metadata: { messageCount: messages.length } });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ messages });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not open this private conversation";
+      record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      res.status(/only available after the referral is accepted/i.test(message) ? 409 : 403).json({ error: message });
+    }
+  });
+  app.post("/api/company-referrals/:requestId/conversation", async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to send a private message" });
+      actorUserId = identity.account.id;
+      const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!body) return res.status(400).json({ error: "Write a message before sending" });
+      if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
+      if (!deps.sendReferralConversationMessage) return res.status(503).json({ error: "Private conversations are not available yet" });
+      const message = await deps.sendReferralConversationMessage(actorUserId, requestId, body);
+      record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "success", resourceType: "referral_conversation", resourceId: requestId, metadata: { bodyLength: body.length } });
+      res.status(201).json({ message });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not send this private message";
+      record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      res.status(/only available after the referral is accepted/i.test(message) ? 409 : 403).json({ error: message });
+    }
   });
   app.get("/api/company-referrals/:requestId/preview", async (req, res) => {
     try {

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createHash, randomUUID } from "node:crypto";
@@ -324,6 +324,36 @@ export async function reviewReferralRequest(userId: number, input: { requestId: 
   await db.update(referralRequests).set({ status: input.decision, referrerMessage: input.message ?? null }).where(eq(referralRequests.id, input.requestId));
   await db.insert(notifications).values({ userId: existing[0].jobSeekerId, category: "status", title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: input.message || "Your Referrer has reviewed your Referral Request." });
   return { status: input.decision };
+}
+
+export function authorizeApprovedReferralConversation(userId: number, request: { jobSeekerId: number; referrerId: number | null; status: string } | undefined) {
+  if (!request || (request.jobSeekerId !== userId && request.referrerId !== userId)) throw new Error("This conversation is not available to you");
+  if (request.status !== "approved" || !request.referrerId) throw new Error("Conversation is only available after the referral is accepted");
+  return { jobSeekerId: request.jobSeekerId, referrerId: request.referrerId, recipientId: userId === request.jobSeekerId ? request.referrerId : request.jobSeekerId };
+}
+
+async function getApprovedReferralConversationParticipants(userId: number, requestId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
+  return { db, ...authorizeApprovedReferralConversation(userId, request[0]) };
+}
+
+export type ReferralConversationMessage = { id: number; body: string; createdAt: Date; isMine: boolean };
+
+export async function listReferralConversation(userId: number, requestId: number): Promise<ReferralConversationMessage[]> {
+  const { db, jobSeekerId, referrerId } = await getApprovedReferralConversationParticipants(userId, requestId);
+  const rows = await db.select({ id: messages.id, body: messages.body, createdAt: messages.createdAt, senderId: messages.senderId }).from(messages).where(and(eq(messages.referralRequestId, requestId), or(and(eq(messages.senderId, jobSeekerId), eq(messages.recipientId, referrerId)), and(eq(messages.senderId, referrerId), eq(messages.recipientId, jobSeekerId))))).orderBy(asc(messages.createdAt), asc(messages.id));
+  return rows.map(row => ({ id: row.id, body: row.body, createdAt: row.createdAt, isMine: row.senderId === userId }));
+}
+
+export async function sendReferralConversationMessage(userId: number, requestId: number, body: string) {
+  const trimmedBody = body.trim();
+  if (!trimmedBody) throw new Error("Write a message before sending");
+  const { db, recipientId } = await getApprovedReferralConversationParticipants(userId, requestId);
+  const result = await db.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
+  await db.insert(notifications).values({ userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
+  return { id: Number(result[0].insertId) };
 }
 
 export async function listMessages(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(messages).where(or(eq(messages.senderId, userId), eq(messages.recipientId, userId))).orderBy(desc(messages.createdAt)); }
