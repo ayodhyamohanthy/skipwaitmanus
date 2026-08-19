@@ -91,6 +91,20 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
 
+  it("offers an optional note for the exact-company Referrer once a resume is attached", async () => {
+    authState.signedIn = true;
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents") ? { ok: true, json: async () => ({ id: "73", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/73", url: "/api/documents/73" }) } : { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) }));
+    render(<ReferralRequest />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
+    await waitFor(() => expect(screen.getByRole("button", { name: /add a note for the referrer/i })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /add a note for the referrer/i }));
+    const note = screen.getByLabelText(/note for the referrer/i) as HTMLTextAreaElement;
+    fireEvent.change(note, { target: { value: "I led a measurable product design launch." } });
+    expect(note.value).toBe("I led a measurable product design launch.");
+    vi.unstubAllGlobals();
+  });
+
   it("confirms that all available credits are used before showing the optional purchase action", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 0, purchasedCreditsRemaining: 0, totalAvailable: 0, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) })));

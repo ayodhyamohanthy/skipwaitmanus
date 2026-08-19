@@ -394,3 +394,4 @@
 - [x] Add a privacy-safe unread-count badge for each verified Referrer’s exact-company, unclaimed New referral inbox items.
 - [x] Repair the email-invite action so it opens a valid prefilled recipient email handoff from every referral-sharing surface.
 - [x] Let verified Referrers review the matching Job Seeker’s message, job URL, and resume before accepting an unclaimed referral request, while keeping previews unavailable to other companies.
+- [x] Audit the Job Seeker and Referrer journeys for user-back mobile friction, ethical retention, voluntary sharing, and organic growth; prioritize and implement only high-confidence low-friction improvements.
