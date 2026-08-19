@@ -42,4 +42,11 @@ describe("Opportunity Wall", () => {
     expect(screen.queryByText("No openings yet.")).toBeNull();
     expect(screen.getByRole("button", { name: "Request a referral" })).toBeTruthy();
   });
+
+  it("shows a readable recovery state when an API edge returns HTML instead of JSON", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, json: async () => { throw new SyntaxError("Unexpected token '<'"); } })));
+    render(<OpportunityWall />);
+    expect((await screen.findByRole("alert")).textContent).toContain("Internal openings are temporarily unavailable. Please try again.");
+    expect(screen.queryByText(/Unexpected token/i)).toBeNull();
+  });
 });
