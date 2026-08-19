@@ -92,6 +92,19 @@ describe("private referral HTTP routes", () => {
     expect(claimed).toEqual({ userId: 10, inviteCode: "r9-abcdef12", verifiedEmail: "joiner@example.com" });
   });
 
+  it("canonicalizes the reported Wellfound mobile link before creating the company referral request", async () => {
+    const app = express(); app.use(express.json());
+    let receivedTargetRoleUrl = "";
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 12, openId: "clerk-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedTargetRoleUrl = input.targetRoleUrl; return { requestId: 1, companyDomain: "chatfin.ai", notifiedEmployees: 0 }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
+      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+    const created = await request(app).post("/api/company-referrals").send({ targetRoleUrl: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile#details", attachmentIds: [1] });
+    expect(created.status).toBe(201); expect(receivedTargetRoleUrl).toBe("https://wellfound.com/jobs/3971835-account-executive");
+  });
+
   it("returns administrator activity only to a persisted administrator account", async () => {
     const app = express(); app.use(express.json());
     const identities = new Map([["admin", { account: { id: 7, openId: "clerk-admin", role: "admin" as const } }], ["member", { account: { id: 8, openId: "clerk-member", role: "user" as const } }]]);

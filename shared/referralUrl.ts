@@ -9,3 +9,15 @@ export function isValidTargetRoleUrl(value: string | undefined | null) {
     return false;
   }
 }
+
+export function normalizeTargetRoleUrl(value: string) {
+  const url = new URL(value.trim());
+  url.hash = "";
+  const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+  url.hostname = hostname;
+  if (hostname === "wellfound.com") {
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    url.search = "";
+  }
+  return url.toString();
+}

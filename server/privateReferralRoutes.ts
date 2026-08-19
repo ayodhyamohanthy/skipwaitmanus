@@ -103,7 +103,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const { targetRoleUrl, attachmentIds } = req.body as { targetRoleUrl?: string; attachmentIds?: number[] };
       if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
       if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: targetRoleUrl.trim(), attachmentIds, personalPitch: "Private referral request submitted through skipwait.me." });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch: "Private referral request submitted through skipwait.me." });
       record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees } });
       res.status(201).json(result);
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
@@ -252,4 +252,4 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "We could not create this token recovery grant" }); }
   });
 }
-import { isValidTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";

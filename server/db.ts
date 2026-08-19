@@ -4,6 +4,7 @@ import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewar
 import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
+import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -66,17 +67,18 @@ async function employerPageCandidates(targetRoleUrl: string) {
 }
 
 export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) {
-  const directDomain = companyDomainFromTargetUrl(targetRoleUrl);
+  const normalizedTargetRoleUrl = normalizeTargetRoleUrl(targetRoleUrl);
+  const directDomain = companyDomainFromTargetUrl(normalizedTargetRoleUrl);
   if (directDomain) return directDomain;
-  const protectedHostedDomain = verifiedEmployerDomainFromProtectedHostedListing(targetRoleUrl);
+  const protectedHostedDomain = verifiedEmployerDomainFromProtectedHostedListing(normalizedTargetRoleUrl);
   if (protectedHostedDomain) return protectedHostedDomain;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const verifiedDomains = await db.select({ domain: profiles.workEmailDomain }).from(profiles).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt)));
-  const urlCandidates = hostedEmployerCandidatesFromTargetUrl(targetRoleUrl);
+  const urlCandidates = hostedEmployerCandidatesFromTargetUrl(normalizedTargetRoleUrl);
   const matchedFromUrl = verifiedEmployerDomainFromCandidates(urlCandidates, verifiedDomains.map(row => row.domain));
   if (matchedFromUrl) return matchedFromUrl;
-  const pageCandidates = await employerPageCandidates(targetRoleUrl);
+  const pageCandidates = await employerPageCandidates(normalizedTargetRoleUrl);
   return verifiedEmployerDomainFromCandidates(pageCandidates, verifiedDomains.map(row => row.domain));
 }
 
