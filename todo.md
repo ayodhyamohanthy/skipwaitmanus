@@ -377,3 +377,4 @@
 - [x] Reproduce and correct the Bridge submission flow for the reported Wellfound Account Executive URL.
 - [x] Show clear employer-identification feedback after job-link validation, including the reviewed Wellfound-to-ChatFin mapping.
 - [x] Redesign engagement loops around ethical, user-benefiting utility patterns inspired by file.io rather than manipulative retention tactics.
+- [x] Verify and safely route the reported Wellfound Senior Product Designer listing at /jobs/4220336-senior-product-designer without misrouting other Wellfound jobs.

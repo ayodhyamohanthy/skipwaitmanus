@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "@shared/referralUrl";
+import { isValidTargetRoleUrl, normalizeTargetRoleUrl, reviewedEmployerFromTargetRoleUrl } from "@shared/referralUrl";
 
 describe("isValidTargetRoleUrl", () => {
   it("accepts complete HTTP(S) job links and rejects arbitrary text or non-web protocols", () => {
@@ -12,5 +12,11 @@ describe("isValidTargetRoleUrl", () => {
 
   it("canonicalizes Wellfound mobile tracking, hash, www, and trailing-slash variants before routing", () => {
     expect(normalizeTargetRoleUrl("https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile#details")).toBe("https://wellfound.com/jobs/3971835-account-executive");
+  });
+
+  it("recognizes only the independently reviewed Check listing and its canonical mobile variant", () => {
+    expect(reviewedEmployerFromTargetRoleUrl("https://wellfound.com/jobs/4220336-senior-product-designer")).toEqual({ name: "Check", domain: "checkhq.com" });
+    expect(reviewedEmployerFromTargetRoleUrl("https://www.wellfound.com/jobs/4220336-senior-product-designer/?source=mobile#details")).toEqual({ name: "Check", domain: "checkhq.com" });
+    expect(reviewedEmployerFromTargetRoleUrl("https://wellfound.com/jobs/4220337-product-designer")).toBeUndefined();
   });
 });

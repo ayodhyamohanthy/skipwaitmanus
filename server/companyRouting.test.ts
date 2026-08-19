@@ -38,11 +38,14 @@ describe("company routing from Target Role URLs", () => {
     expect(verifiedEmployerDomainFromCandidates(candidates, ["acme.com", "linkedin.com"])).toBe("acme.com");
   });
 
-  it("uses a reviewed exact fallback for the reported Cloudflare-protected Wellfound listing without routing any other Wellfound URL", async () => {
+  it("uses reviewed exact fallbacks for independently verified Wellfound listings without routing any other Wellfound URL", async () => {
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive")).toBe("chatfin.ai");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive/?source=mobile")).toBe("chatfin.ai");
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4220336-senior-product-designer")).toBe("checkhq.com");
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.wellfound.com/jobs/4220336-senior-product-designer/?source=mobile#details")).toBe("checkhq.com");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4322255-software-engineer-intern-freshers")).toBeUndefined();
     await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/3971835-account-executive")).resolves.toBe("chatfin.ai");
+    await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/4220336-senior-product-designer")).resolves.toBe("checkhq.com");
   });
 
   it("allows verified company domains while rejecting common consumer email domains", () => {
