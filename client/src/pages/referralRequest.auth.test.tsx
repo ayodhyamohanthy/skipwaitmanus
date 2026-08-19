@@ -5,14 +5,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import ReferralRequest from "./ReferralRequest";
 
 const authState = vi.hoisted(() => ({ signedIn: false, openSignIn: vi.fn() }));
-const pendingResume = vi.hoisted(() => ({ files: [] as File[], save: vi.fn(), clear: vi.fn() }));
+const pendingResume = vi.hoisted(() => ({ files: [] as File[], save: vi.fn(), clear: vi.fn(), restore: vi.fn(async () => [] as File[]) }));
 
 vi.mock("@/lib/trpc", () => ({
   trpc: { ai: { draftHiringManagerEmail: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } } },
 }));
 vi.mock("@/lib/pendingResume", () => ({
   savePendingResumeFiles: async (files: File[]) => { pendingResume.files = files; pendingResume.save(files); },
-  restorePendingResumeFiles: async () => pendingResume.files,
+  restorePendingResumeFiles: () => pendingResume.restore(),
   clearPendingResumeFiles: async () => { pendingResume.files = []; pendingResume.clear(); },
 }));
 
@@ -34,6 +34,8 @@ describe("ReferralRequest secure resume handoff", () => {
     pendingResume.files = [];
     pendingResume.save.mockReset();
     pendingResume.clear.mockReset();
+    pendingResume.restore.mockReset();
+    pendingResume.restore.mockImplementation(async () => pendingResume.files);
   });
 
   afterEach(() => cleanup());
@@ -86,6 +88,15 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(primaryAction.disabled).toBe(false);
     fireEvent.click(primaryAction);
     expect(openFileChooser).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not disable the post-resume CTA while IndexedDB restoration is pending", async () => {
+    pendingResume.restore.mockImplementation(() => new Promise<File[]>(() => undefined));
+    render(<ReferralRequest />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
+    const send = await screen.findByRole("button", { name: /sign in & send private request/i }) as HTMLButtonElement;
+    expect(send.disabled).toBe(false);
   });
 
   it("rejects unsupported files before storing or uploading a resume", () => {
