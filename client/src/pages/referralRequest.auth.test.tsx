@@ -46,12 +46,12 @@ describe("ReferralRequest secure resume handoff", () => {
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     expect(fileInput).toBeTruthy();
     const openFileChooser = vi.spyOn(fileInput, "click");
-    fireEvent.click(screen.getByText("Add your resume").closest("button") as HTMLButtonElement);
+    fireEvent.click(screen.getAllByRole("button", { name: /add your resume/i })[0]);
     expect(openFileChooser).toHaveBeenCalledTimes(1);
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
     expect(screen.getByText("avery-resume.pdf")).toBeTruthy();
     await waitFor(() => expect(pendingResume.save).toHaveBeenCalledTimes(1));
-    const send = screen.getByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
+    const send = await screen.findByRole("button", { name: /sign in & send private request/i }) as HTMLButtonElement;
     await waitFor(() => expect(send.disabled).toBe(false));
     fireEvent.click(send);
     await waitFor(() => expect(authState.openSignIn).toHaveBeenCalledTimes(1));
@@ -71,6 +71,16 @@ describe("ReferralRequest secure resume handoff", () => {
     vi.unstubAllGlobals();
   });
 
+  it("uses the primary action to open the resume picker before a document is selected", async () => {
+    render(<ReferralRequest />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const openFileChooser = vi.spyOn(fileInput, "click");
+    const primaryAction = screen.getAllByRole("button", { name: "Add your resume" }).at(-1) as HTMLButtonElement;
+    expect(primaryAction.disabled).toBe(false);
+    fireEvent.click(primaryAction);
+    expect(openFileChooser).toHaveBeenCalledTimes(1);
+  });
+
   it("does not reveal a cached credit count before the Job Seeker signs in", () => {
     localStorage.setItem("bridge-tokens", "5");
     render(<ReferralRequest />);
@@ -87,7 +97,7 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(fileInput?.disabled).toBe(false);
     expect(screen.getByRole("button", { name: "Account menu" })).toBeTruthy();
     const openFileChooser = vi.spyOn(fileInput as HTMLInputElement, "click");
-    fireEvent.click(screen.getByText("Add your resume").closest("button") as HTMLButtonElement);
+    fireEvent.click(screen.getAllByRole("button", { name: /add your resume/i })[0]);
     expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
 
@@ -125,7 +135,7 @@ describe("ReferralRequest secure resume handoff", () => {
     render(<ReferralRequest />);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
-    const sendButton = screen.getByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
+    const sendButton = await screen.findByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
     await waitFor(() => expect(sendButton.disabled).toBe(false));
     fireEvent.click(sendButton);
     await waitFor(() => expect(document.querySelector('[data-skipwait-coverage-invite="true"]')).toBeTruthy());

@@ -396,3 +396,7 @@
 - [x] Let verified Referrers review the matching Job Seeker’s message, job URL, and resume before accepting an unclaimed referral request, while keeping previews unavailable to other companies.
 - [x] Audit the Job Seeker and Referrer journeys for user-back mobile friction, ethical retention, voluntary sharing, and organic growth; prioritize and implement only high-confidence low-friction improvements.
 - [x] Enable a private, request-scoped conversation for the Job Seeker and matching verified Referrer only after the Referrer accepts that referral request.
+- [x] Audit and implement the highest-confidence mobile-first, privacy-safe user-experience improvements across active Job Seeker and Referrer journeys, including clear progress, recovery, and next-action states.
+- [x] Make the Job Seeker resume-step primary action match the real next step, opening the resume picker before a file is selected and clearly naming sign-in only when it is required to send.
+- [x] Remove Referrer token-payment friction from referral decisions so reviewing, approving, declining, and private follow-up remain free.
+- [x] Complete the accepted-referral handoff with a direct Referrer message action immediately after approval.

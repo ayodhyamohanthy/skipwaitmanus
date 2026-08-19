@@ -92,4 +92,22 @@ describe("Referrer work-email OTP verification", () => {
     expect(screen.queryByText(/Here is how a request will arrive/i)).toBeNull();
     expect(screen.queryByText(/Example only/i)).toBeNull();
   });
+
+  it("keeps the Referrer approval free and offers a direct private-message handoff after approval", async () => {
+    window.history.pushState({}, "", "/referrer?request=901");
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/901") && !init?.method) return { ok: true, json: async () => ({ request: { id: 901, candidateName: "Avery", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [{ id: "doc-1", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 8, key: "private/doc-1", url: "https://signed.example/avery-resume.pdf" }] } }) };
+      if (url.endsWith("/901/review") && init?.method === "POST") return { ok: true, json: async () => ({ status: "approved" }) };
+      return { ok: true, json: async () => ({}) };
+    }));
+    render(<Referrer />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Approve referral" })).toBeTruthy());
+    expect(screen.getByText("Reviewing is free.")).toBeTruthy();
+    expect(screen.queryByText(/token per approved referral/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Approve referral" }));
+    await waitFor(() => expect(screen.getByText("Referral approved.")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Message Job Seeker" })).toBeTruthy();
+    window.history.pushState({}, "", "/");
+  });
 });
