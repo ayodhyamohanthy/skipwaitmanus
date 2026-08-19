@@ -30,10 +30,12 @@ describe("My Requests empty state", () => {
   });
 
   it("shows the recorded sent, matched, and reviewed progress for an existing private request", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [{ id: 12, targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", status: "approved", referrerId: 77, createdAt: "2026-08-10T08:00:00.000Z", updatedAt: "2026-08-11T09:00:00.000Z", attachmentCount: 1 }] }) })));
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [{ id: 12, targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", status: "approved", referrerId: 77, referrerMessage: "I can introduce you to the hiring team.", unreadMessageCount: 2, createdAt: "2026-08-10T08:00:00.000Z", updatedAt: "2026-08-11T09:00:00.000Z", attachmentCount: 1 }] }) })));
     render(<MyRequests />);
     await waitFor(() => expect(screen.getByLabelText("Request progress")).toBeTruthy());
     expect(screen.getByLabelText("Request progress").textContent).toMatch(/Sent.*Matched.*Reviewed/);
     expect(screen.getByLabelText("Request progress").textContent).toContain("Updated");
+    expect(screen.getByLabelText("Referrer update").textContent).toContain("I can introduce you to the hiring team.");
+    expect(screen.getByRole("button", { name: "Open conversation · 2 new" })).toBeTruthy();
   });
 });

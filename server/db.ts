@@ -37,6 +37,12 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
 
+export async function getVerifiedWorkEmailAccess(userId: number) {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return undefined;
+  return { workEmailDomain: profile.workEmailDomain };
+}
+
 export type OperationalActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> };
 export async function recordOperationalActivity(input: OperationalActivityInput) {
   const db = await getDb(); if (!db) return;
@@ -220,11 +226,14 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return [];
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, savedAt: referralRequests.savedAt, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(jobs.company, profile.workEmailDomain)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.savedAt, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
-  return rows.filter(row => {
+  const scopedRows = rows.filter(row => {
     if (state === "new") return row.status === "pending" && !row.referrerId;
     if (state === "saved") return row.status === "pending" && (row.referrerId === userId || (!row.referrerId && Boolean(row.savedAt)));
     return row.referrerId === userId && row.status !== "pending";
-  }).map(row => ({ ...row, inboxState: state, isClaimedByYou: row.referrerId === userId }));
+  });
+  const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
+  const unreadByRequestId = new Map(unreadRows.map(row => [row.requestId, Number(row.unreadMessageCount)]));
+  return scopedRows.map(row => ({ ...row, inboxState: state, isClaimedByYou: row.referrerId === userId, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
 export async function getUnclaimedCompanyReferralPreview(userId: number, requestId: number) {
@@ -249,7 +258,10 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
 
 export async function listJobSeekerCompanyReferrals(userId: number) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralRequests.jobSeekerId, userId)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
+  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralRequests.jobSeekerId, userId)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.referrerMessage, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
+  const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
+  const unreadByRequestId = new Map(unreadRows.map(row => [row.requestId, Number(row.unreadMessageCount)]));
+  return rows.map(row => ({ ...row, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
 export async function getReferralFlowHealth() {
@@ -343,6 +355,7 @@ export type ReferralConversationMessage = { id: number; body: string; createdAt:
 
 export async function listReferralConversation(userId: number, requestId: number): Promise<ReferralConversationMessage[]> {
   const { db, jobSeekerId, referrerId } = await getApprovedReferralConversationParticipants(userId, requestId);
+  await db.update(messages).set({ readAt: new Date() }).where(and(eq(messages.referralRequestId, requestId), eq(messages.recipientId, userId), isNull(messages.readAt)));
   const rows = await db.select({ id: messages.id, body: messages.body, createdAt: messages.createdAt, senderId: messages.senderId }).from(messages).where(and(eq(messages.referralRequestId, requestId), or(and(eq(messages.senderId, jobSeekerId), eq(messages.recipientId, referrerId)), and(eq(messages.senderId, referrerId), eq(messages.recipientId, jobSeekerId))))).orderBy(asc(messages.createdAt), asc(messages.id));
   return rows.map(row => ({ id: row.id, body: row.body, createdAt: row.createdAt, isMine: row.senderId === userId }));
 }

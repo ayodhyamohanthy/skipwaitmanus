@@ -400,3 +400,8 @@
 - [x] Make the Job Seeker resume-step primary action match the real next step, opening the resume picker before a file is selected and clearly naming sign-in only when it is required to send.
 - [x] Remove Referrer token-payment friction from referral decisions so reviewing, approving, declining, and private follow-up remain free.
 - [x] Complete the accepted-referral handoff with a direct Referrer message action immediately after approval.
+- [x] Conduct a complete role-based product, authorization, and quality audit; fix verified loopholes and strengthen ethical daily utility for Job Seekers and Referrers.
+- [x] Retire legacy direct-referral and generic-messaging procedures that can bypass exact-company referral routing and approved-request conversation boundaries.
+- [x] Show a Referrer’s optional decision note only to the Job Seeker who owns the reviewed request.
+- [x] Add an early verified-company-email gate to the Referrer opportunity-publishing flow, with direct recovery into work-email verification.
+- [x] Add request-scoped unread conversation indicators derived only from genuine private messages and mark received messages read when the authorized participant opens the thread.

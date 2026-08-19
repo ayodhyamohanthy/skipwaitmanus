@@ -14,6 +14,7 @@ export type PrivateReferralRouteDeps = {
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
+  getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
   createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; remainingTokens?: number; coverageInviteCode?: string }>;
   fulfillCompanyCoverageInvitation?: (joinerUserId: number, input: { inviteCode: string; workEmailDomain: string }) => Promise<{ rewarded: boolean; tokenCount?: number }>;
   listCompanyReferralInbox: (userId: number) => Promise<unknown[]>;
@@ -137,6 +138,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!summary) return res.status(500).json({ error: "We could not load your referral credits" });
       res.json({ summary });
     } catch { res.status(500).json({ error: "We could not load your referral credits" }); }
+  });
+  app.get("/api/company-referrals/access", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
+      const access = await deps.getVerifiedWorkEmailAccess?.(identity.account.id);
+      res.set("Cache-Control", "private, no-store");
+      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null });
+    } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
   });
   app.get("/api/personal-invites/me", async (req, res) => {
     try {

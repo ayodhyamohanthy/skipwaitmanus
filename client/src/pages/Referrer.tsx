@@ -20,6 +20,8 @@ export default function Referrer() {
   const inviteCompany = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("company")?.trim().toLowerCase() || "";
   const inviteCode = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("invite")?.trim() || "";
   const claimedRequestId = typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("request"));
+  const returnTo = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("returnTo") || "";
+  const safeReturnTo = returnTo === "/post-opportunity" ? returnTo : "";
   const employeeSignInEmail = typeof window === "undefined" ? "" : window.sessionStorage.getItem("skipwait:employee-sign-in-email")?.trim().toLowerCase() || "";
   const [decision, setDecision] = useState<"" | "approved" | "declined">("");
   const [deciding, setDeciding] = useState(false);
@@ -74,7 +76,7 @@ export default function Referrer() {
     return () => { active = false; };
   }, [isSignedIn, claimedRequest, claimedRequestId, employeeEnrollmentReady]);
 
-  useEffect(() => { if (isSignedIn && inboxReady && !claimedRequest && !showWorkEmailEnrollment && !claimedRequestId) go("/inbox"); }, [claimedRequest, claimedRequestId, go, inboxReady, isSignedIn, showWorkEmailEnrollment]);
+  useEffect(() => { if (isSignedIn && inboxReady && !claimedRequest && !showWorkEmailEnrollment && !claimedRequestId) go(safeReturnTo || "/inbox"); }, [claimedRequest, claimedRequestId, go, inboxReady, isSignedIn, safeReturnTo, showWorkEmailEnrollment]);
 
   const decide = async (approved: boolean) => {
     if (!claimedRequest || deciding) return;

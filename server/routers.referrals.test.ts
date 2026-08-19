@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const dbMocks = vi.hoisted(() => ({
-  createReferralRequest: vi.fn(),
-  reviewReferralRequest: vi.fn(),
   saveProfile: vi.fn(),
 }));
 
@@ -25,25 +23,19 @@ function context(): TrpcContext {
 describe("Referral platform backend contracts", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it("persists a Referral Request for the authenticated Job Seeker", async () => {
-    dbMocks.createReferralRequest.mockResolvedValue({ id: 22 });
+  it("rejects the retired direct-referral procedure so a Job Seeker cannot bypass exact-company routing", async () => {
     const caller = appRouter.createCaller(context());
-    await expect(caller.referrals.create({ jobId: 4, referrerId: 9, personalPitch: "I would bring relevant product design experience and thoughtful systems thinking." })).resolves.toEqual({ id: 22 });
-    expect(dbMocks.createReferralRequest).toHaveBeenCalledWith(7, expect.objectContaining({ jobId: 4, referrerId: 9 }));
+    await expect(caller.referrals.create({ jobId: 4, referrerId: 9, personalPitch: "I would bring relevant product design experience and thoughtful systems thinking." })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("links only the submitted attachment identifiers to the new Referral Request", async () => {
-    dbMocks.createReferralRequest.mockResolvedValue({ id: 23 });
+  it("rejects the retired direct review procedure so Referrer decisions stay bound to claimed requests", async () => {
     const caller = appRouter.createCaller(context());
-    await expect(caller.referrals.create({ jobId: 4, referrerId: 9, personalPitch: "I would bring relevant product design experience and thoughtful systems thinking.", attachmentIds: [31, 32] })).resolves.toEqual({ id: 23 });
-    expect(dbMocks.createReferralRequest).toHaveBeenCalledWith(7, expect.objectContaining({ attachmentIds: [31, 32] }));
+    await expect(caller.referrals.review({ requestId: 22, decision: "approved", message: "I’m happy to make this introduction." })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
-  it("records a Referrer decision and optional review message", async () => {
-    dbMocks.reviewReferralRequest.mockResolvedValue({ status: "approved" });
+  it("rejects generic messaging so conversations cannot bypass participant-only accepted referrals", async () => {
     const caller = appRouter.createCaller(context());
-    await expect(caller.referrals.review({ requestId: 22, decision: "approved", message: "I’m happy to make this introduction." })).resolves.toEqual({ status: "approved" });
-    expect(dbMocks.reviewReferralRequest).toHaveBeenCalledWith(7, expect.objectContaining({ requestId: 22, decision: "approved" }));
+    await expect(caller.messaging.send({ recipientId: 9, body: "Hello" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
 
   it("persists the exact Job Seeker and Referrer role values on a profile", async () => {

@@ -65,4 +65,15 @@ describe("My Company Inbox employee access", () => {
     expect(screen.getByText("avery-resume.pdf")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Continue to referral decision" })).toBeTruthy();
   });
+
+  it("shows a genuine unread conversation cue only for the Referrer's accepted request", async () => {
+    authState.signedIn = true;
+    const completedRequest = { id: 11, companyDomain: "acme.com", status: "approved", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, unreadMessageCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-02", isClaimedByYou: true };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=completed") ? [completedRequest] : [] }) })));
+    render(<MyCompanyInbox />);
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Done" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("tab", { name: "Done" }));
+    await waitFor(() => expect(screen.getByText("The Job Seeker sent 1 new private message.")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Open conversation · 1 new" })).toBeTruthy();
+  });
 });
