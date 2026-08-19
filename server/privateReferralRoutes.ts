@@ -26,7 +26,7 @@ export type PrivateReferralRouteDeps = {
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
   publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; walkInAt?: Date; walkInEndsAt?: Date }) => Promise<unknown>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
-  listOperationalActivity?: (input: { limit?: number; action?: string }) => Promise<unknown[]>;
+  listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
   getReferralFlowHealth?: () => Promise<unknown>;
   findUsersForTokenRecovery?: (query: string) => Promise<unknown[]>;
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
@@ -38,6 +38,20 @@ export type PrivateReferralRouteDeps = {
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  const workflowPrefixes = ["/api/company-referrals", "/api/documents", "/api/opportunities", "/api/personal-invites", "/api/credits"];
+  const normalizedWorkflowRoute = (path: string) => path.replace(/\/\d+(?=\/|$)/g, "/:id").slice(0, 160);
+  app.use(async (req, res, next) => {
+    if (!workflowPrefixes.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`))) return next();
+    const startedAt = Date.now();
+    const identity = await deps.resolveIdentity(req).catch(() => undefined);
+    if (!identity) return next();
+    const route = normalizedWorkflowRoute(req.path);
+    res.once("finish", () => {
+      const outcome = res.statusCode < 400 ? "success" : res.statusCode === 401 || res.statusCode === 403 ? "denied" : "failure";
+      record({ actorUserId: identity.account.id, action: "workflow.request_completed", outcome, resourceType: "http_route", resourceId: route, metadata: { method: req.method, route, statusCode: res.statusCode, durationMs: Math.max(0, Date.now() - startedAt) } });
+    });
+    next();
+  });
   app.get("/api/opportunities", async (_req, res) => {
     try { res.json({ opportunities: await deps.listPublicCompanyOpportunities() }); } catch { res.status(500).json({ error: "We could not load opportunities right now" }); }
   });
@@ -210,7 +224,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     }
   });
   app.post("/api/company-referrals/:requestId/claim", async (req, res) => { try { const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to claim a referral request" }); if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" }); const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId); record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId }); res.json(result); } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); } });
-  app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const events = await deps.listOperationalActivity?.({ limit, action }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
+  app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
   app.get("/api/admin/flow-health", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);

@@ -42,6 +42,7 @@ describe("private referral HTTP routes", () => {
     const securedDocument = await request(app).get("/api/documents/77").set("x-test-user", "employee");
     expect(securedDocument.status).toBe(307); expect(securedDocument.headers.location).toBe("https://signed.example/resume.pdf");
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));
+    expect(activity.some(item => item.action === "workflow.request_completed" && item.metadata?.route === "/api/company-referrals" && item.metadata?.method === "POST" && item.metadata?.statusCode === 201)).toBe(true);
     expect(JSON.stringify(activity)).not.toContain("resume.pdf");
   });
 
@@ -109,14 +110,16 @@ describe("private referral HTTP routes", () => {
   it("returns administrator activity only to a persisted administrator account", async () => {
     const app = express(); app.use(express.json());
     const identities = new Map([["admin", { account: { id: 7, openId: "clerk-admin", role: "admin" as const } }], ["member", { account: { id: 8, openId: "clerk-member", role: "user" as const } }]]);
+    let activityQuery: Record<string, unknown> | undefined;
     registerPrivateReferralRoutes(app, {
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
-      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }), listOperationalActivity: async () => [{ id: 9, action: "document.uploaded", outcome: "success" }],
+      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }), listOperationalActivity: async input => { activityQuery = input; return [{ id: 9, action: "document.uploaded", outcome: "success" }]; },
     });
     expect((await request(app).get("/api/admin/activity").set("x-test-user", "member")).status).toBe(403);
-    const adminFeed = await request(app).get("/api/admin/activity?action=document").set("x-test-user", "admin");
+    const adminFeed = await request(app).get("/api/admin/activity?action=document&query=avery&outcome=denied").set("x-test-user", "admin");
     expect(adminFeed.status).toBe(200); expect(adminFeed.body.events).toHaveLength(1); expect(adminFeed.body.events[0].action).toBe("document.uploaded");
+    expect(activityQuery).toMatchObject({ action: "document", query: "avery", outcome: "denied" });
   });
 });

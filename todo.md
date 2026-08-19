@@ -380,3 +380,4 @@
 - [x] Verify and safely route the reported Wellfound Senior Product Designer listing at /jobs/4220336-senior-product-designer without misrouting other Wellfound jobs.
 - [x] Audit every supported Wellfound listing against the public listing and the employer’s official domain; remove any exception that cannot be independently verified.
 - [x] Verify and safely route the reported LinkedIn job listing 4446365088 to its real employer domain without ever routing to linkedin.com.
+- [x] Extend administrator-only activity logs to cover all material Job Seeker and Referrer workflow actions with privacy-safe troubleshooting metadata and searchable visibility.

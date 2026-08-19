@@ -18,9 +18,10 @@ describe("administrator activity viewer", () => {
   it("renders minimized operational metadata and filters administrator diagnostic events", async () => {
     render(<AdminActivity />);
     await waitFor(() => expect(screen.getByText("document.uploaded")).toBeTruthy());
-    expect(screen.getByText(/no document contents, OTPs, tokens/i)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Filter activity by action"), { target: { value: "document" } });
-    fireEvent.click(screen.getByRole("button", { name: "Filter" }));
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("action=document"))).toBe(true));
+    expect(screen.getByText(/No document contents or names, target URLs, OTPs/i)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Search activity"), { target: { value: "document" } });
+    fireEvent.change(screen.getByLabelText("Filter activity by outcome"), { target: { value: "success" } });
+    fireEvent.click(screen.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("query=document") && String(url).includes("outcome=success"))).toBe(true));
   });
 });
