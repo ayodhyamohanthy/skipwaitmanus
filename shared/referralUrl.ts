@@ -7,6 +7,7 @@ const reviewedEmployerLinks = new Map<string, ReviewedEmployer>([
   ["wellfound.com/jobs/4220336-senior-product-designer", { name: "Check", domain: "checkhq.com" }],
   ["linkedin.com/jobs/view/4446365088", { name: "Ethos", domain: "ethos.com" }],
   ["linkedin.com/jobs/view/4448866119", { name: "Rubrik", domain: "rubrik.com" }],
+  ["linkedin.com/jobs/view/4389299303", { name: "MakeMyTrip", domain: "makemytrip.com" }],
 ]);
 
 export function isValidTargetRoleUrl(value: string | undefined | null) {
@@ -24,8 +25,13 @@ export function normalizeTargetRoleUrl(value: string) {
   url.hash = "";
   const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
   url.hostname = hostname;
-  if (hostname === "wellfound.com" || hostname === "linkedin.com") {
+  if (hostname === "wellfound.com" || hostname === "linkedin.com" || hostname.endsWith(".linkedin.com")) {
+    if (hostname.endsWith(".linkedin.com")) url.hostname = "linkedin.com";
     url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    if (url.hostname === "linkedin.com") {
+      const jobId = url.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)$/)?.[1];
+      if (jobId) url.pathname = `/jobs/view/${jobId}`;
+    }
     url.search = "";
   }
   return url.toString();

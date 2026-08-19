@@ -26,4 +26,10 @@ describe("isValidTargetRoleUrl", () => {
     expect(reviewedEmployerFromTargetRoleUrl("https://linkedin.com/jobs/view/4446365088?trackingId=example#details")).toEqual({ name: "Ethos", domain: "ethos.com" });
     expect(reviewedEmployerFromTargetRoleUrl("https://www.linkedin.com/jobs/view/4446365089/")).toBeUndefined();
   });
+
+  it("recognizes the independently verified MakeMyTrip UX listing without treating nearby LinkedIn listings as MakeMyTrip", () => {
+    expect(reviewedEmployerFromTargetRoleUrl("https://linkedin.com/jobs/view/4389299303")).toEqual({ name: "MakeMyTrip", domain: "makemytrip.com" });
+    expect(reviewedEmployerFromTargetRoleUrl("https://in.linkedin.com/jobs/view/associate-director-ux-designer-at-makemytrip-4389299303?trackingId=example")).toEqual({ name: "MakeMyTrip", domain: "makemytrip.com" });
+    expect(reviewedEmployerFromTargetRoleUrl("https://linkedin.com/jobs/view/4389299304")).toBeUndefined();
+  });
 });
