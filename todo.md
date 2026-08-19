@@ -386,4 +386,7 @@
 - [x] Configure direct, privacy-safe email delivery of material application errors to ayodhya@skipwait.me with deduplication and searchable administrator diagnostics. Superseded to use ZeptoMail at the user's direction.
 - [x] Configure direct, privacy-safe ZeptoMail delivery of material application errors to ayodhya@skipwait.me with deduplication and searchable administrator diagnostics. Superseded to use the user-supplied Resend credential.
 - [x] Configure direct, privacy-safe Resend delivery of material application errors to ayodhya@skipwait.me with deduplication and searchable administrator diagnostics. Deferred at the user's request pending a later notification setup.
+- [x] Resume direct, privacy-safe Resend error alerts to ayodhya@skipwait.me using noreply@skipwait.me as the verified sender, with deduplication and searchable diagnostics. Completed with the updated verified `noreply@updates.skipwait.me` sender.
+- [x] Revalidate the upgraded full-access Resend credential before enabling direct administrator error alerts.
+- [x] Update Resend error-alert delivery to noreply@updates.skipwait.me and verify live minimized alert delivery to ayodhya@skipwait.me.
 - [x] Audit and strengthen verified employer identification across supported job boards and ATS links; report only behavior proven by real evidence and regression tests.
