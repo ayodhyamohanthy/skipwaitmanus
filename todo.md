@@ -393,3 +393,4 @@
 - [x] Audit and strengthen verified employer identification across supported job boards and ATS links; report only behavior proven by real evidence and regression tests.
 - [x] Add a privacy-safe unread-count badge for each verified Referrer’s exact-company, unclaimed New referral inbox items.
 - [x] Repair the email-invite action so it opens a valid prefilled recipient email handoff from every referral-sharing surface.
+- [x] Let verified Referrers review the matching Job Seeker’s message, job URL, and resume before accepting an unclaimed referral request, while keeping previews unavailable to other companies.

@@ -21,6 +21,7 @@ describe("private referral HTTP routes", () => {
       createCompanyReferralRequest: async () => ({ requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 }),
       listJobSeekerCompanyReferrals: async () => [{ id: 501 }, { id: 500 }, { id: 499 }],
       listCompanyReferralInbox: async () => [{ id: 501, companyDomain: "acme.com" }],
+      getUnclaimedCompanyReferralPreview: async (userId, requestId) => userId === 2 && requestId === 501 && !claimedBy ? { id: requestId, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
       claimCompanyReferralRequest: async (userId, requestId) => { claimedBy = userId; return { requestId, claimed: true }; },
       getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, candidateName: "Avery", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
       listPublicCompanyOpportunities: async () => [{ id: 91, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer" }],
@@ -36,7 +37,11 @@ describe("private referral HTTP routes", () => {
     expect(created.status).toBe(201); expect(created.body.companyDomain).toBe("acme.com"); expect(created.body.lifetimeRequestCount).toBe(3);
     expect((await request(app).get("/api/documents/77").set("x-test-user", "outsider")).status).toBe(404);
     expect((await request(app).get("/api/company-referrals/501").set("x-test-user", "outsider")).status).toBe(404);
+    expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "outsider")).status).toBe(404);
+    const preview = await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee");
+    expect(preview.status).toBe(200); expect(preview.body.request).toMatchObject({ candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0].url).toBe("https://signed.example/resume.pdf"); expect(preview.body.request.attachments[0]).not.toHaveProperty("fileKey");
     expect((await request(app).post("/api/company-referrals/501/claim").set("x-test-user", "employee")).status).toBe(200);
+    expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee")).status).toBe(404);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
     expect(detail.status).toBe(200); expect(detail.body.request.attachments[0].url).toBe("https://signed.example/resume.pdf"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
     const securedDocument = await request(app).get("/api/documents/77").set("x-test-user", "employee");

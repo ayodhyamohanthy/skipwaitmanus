@@ -227,6 +227,16 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   }).map(row => ({ ...row, inboxState: state, isClaimedByYou: row.referrerId === userId }));
 }
 
+export async function getUnclaimedCompanyReferralPreview(userId: number, requestId: number) {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return undefined;
+  const db = await getDb(); if (!db) return undefined;
+  const request = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, candidateName: users.name, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), eq(jobs.company, profile.workEmailDomain))).limit(1);
+  if (!request[0]) return undefined;
+  const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
+  return { ...request[0], attachments };
+}
+
 export async function saveCompanyReferralRequest(userId: number, requestId: number, saved: boolean) {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before saving referrals");
