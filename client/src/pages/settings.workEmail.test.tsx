@@ -6,7 +6,7 @@ import Settings from "./Settings";
 
 const profileState = vi.hoisted(() => ({ verified: false }));
 vi.mock("@clerk/react", () => ({
-  useAuth: () => ({ isSignedIn: true, isLoaded: true, signOut: vi.fn() }),
+  useAuth: () => ({ isSignedIn: true, isLoaded: true, signOut: vi.fn(), getToken: vi.fn(async () => null) }),
   useUser: () => ({ user: { emailAddresses: [] } }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -28,5 +28,12 @@ describe("Settings work email", () => {
     render(<Settings />);
     expect(screen.getByText("Work email verified")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Switch to Job Referrer mode" })).toBeTruthy();
+  });
+
+  it("exposes authenticated privacy controls without claiming an immediate deletion", () => {
+    render(<Settings />);
+    expect(screen.getByRole("button", { name: "Download my data" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Request account deletion" })).toBeTruthy();
+    expect(screen.getByText(/review deletion requests rather than silently removing/i)).toBeTruthy();
   });
 });

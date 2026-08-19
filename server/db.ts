@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -36,6 +36,58 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
+
+export async function exportUserData(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const [account, profile, requests, attachments, conversation, opportunities, wallet, transactions, privacy] = await Promise.all([
+    db.select({ id: users.id, name: users.name, email: users.email, createdAt: users.createdAt, updatedAt: users.updatedAt }).from(users).where(eq(users.id, userId)).limit(1),
+    db.select({ accountType: profiles.accountType, headline: profiles.headline, location: profiles.location, bio: profiles.bio, company: profiles.company, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, currentTitle: profiles.currentTitle, skills: profiles.skills, experience: profiles.experience, expertise: profiles.expertise, createdAt: profiles.createdAt, updatedAt: profiles.updatedAt }).from(profiles).where(eq(profiles.userId, userId)).limit(1),
+    db.select({ id: referralRequests.id, status: referralRequests.status, personalPitch: referralRequests.personalPitch, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.jobSeekerId, userId)),
+    db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, createdAt: referralAttachments.createdAt }).from(referralAttachments).where(eq(referralAttachments.ownerId, userId)),
+    db.select({ id: messages.id, referralRequestId: messages.referralRequestId, senderId: messages.senderId, recipientId: messages.recipientId, body: messages.body, readAt: messages.readAt, createdAt: messages.createdAt }).from(messages).where(or(eq(messages.senderId, userId), eq(messages.recipientId, userId))),
+    db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, isActive: companyOpportunities.isActive, createdAt: companyOpportunities.createdAt, updatedAt: companyOpportunities.updatedAt }).from(companyOpportunities).where(eq(companyOpportunities.ownerId, userId)),
+    db.select({ role: tokenBalances.role, balance: tokenBalances.balance, monthlyCreditsRemaining: tokenBalances.monthlyCreditsRemaining, monthlyAllowance: tokenBalances.monthlyAllowance, monthlyCycleKey: tokenBalances.monthlyCycleKey, plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrency: tokenBalances.subscriptionCurrency, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd, updatedAt: tokenBalances.updatedAt }).from(tokenBalances).where(eq(tokenBalances.userId, userId)),
+    db.select({ role: tokenTransactions.role, tokenCount: tokenTransactions.tokenCount, kind: tokenTransactions.kind, createdAt: tokenTransactions.createdAt }).from(tokenTransactions).where(eq(tokenTransactions.userId, userId)),
+    db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, source: privacyRequests.source, resolution: privacyRequests.resolution, createdAt: privacyRequests.createdAt, updatedAt: privacyRequests.updatedAt }).from(privacyRequests).where(eq(privacyRequests.userId, userId)),
+  ]);
+  return { generatedAt: new Date().toISOString(), format: "skipwait.me-personal-data-export-v1", account: account[0] ?? null, profile: profile[0] ?? null, referralRequests: requests, uploadedDocuments: attachments.map(attachment => ({ ...attachment, downloadPath: `/api/documents/${attachment.id}` })), acceptedConversations: conversation, publishedOpportunities: opportunities, creditWallets: wallet, creditTransactions: transactions, privacyRequests: privacy };
+}
+
+export async function listMyPrivacyRequests(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, resolution: privacyRequests.resolution, createdAt: privacyRequests.createdAt, updatedAt: privacyRequests.updatedAt }).from(privacyRequests).where(eq(privacyRequests.userId, userId)).orderBy(desc(privacyRequests.createdAt));
+}
+
+export async function createPrivacyErasureRequest(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, createdAt: privacyRequests.createdAt }).from(privacyRequests).where(and(eq(privacyRequests.userId, userId), eq(privacyRequests.kind, "erasure"))).orderBy(desc(privacyRequests.createdAt));
+  const active = existing.find(request => request.status === "requested" || request.status === "in_review");
+  if (active) return { ...active, alreadyRequested: true };
+  try {
+    const result = await db.insert(privacyRequests).values({ userId, kind: "erasure", status: "requested", activeKey: `erasure:${userId}` });
+    return { id: Number(result[0].insertId), kind: "erasure" as const, status: "requested" as const, createdAt: new Date(), alreadyRequested: false };
+  } catch {
+    const concurrent = await db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, createdAt: privacyRequests.createdAt }).from(privacyRequests).where(eq(privacyRequests.activeKey, `erasure:${userId}`)).limit(1);
+    if (concurrent[0]) return { ...concurrent[0], alreadyRequested: true };
+    throw new Error("We could not create your privacy request");
+  }
+}
+
+export async function listAdminPrivacyRequests(limit: number = 100) {
+  const db = await getDb(); if (!db) return [];
+  const safeLimit = Math.max(1, Math.min(250, Math.floor(limit)));
+  return db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, source: privacyRequests.source, resolution: privacyRequests.resolution, createdAt: privacyRequests.createdAt, updatedAt: privacyRequests.updatedAt, userId: privacyRequests.userId, requesterName: users.name, requesterEmail: users.email, reviewedByUserId: privacyRequests.reviewedByUserId, reviewedAt: privacyRequests.reviewedAt }).from(privacyRequests).innerJoin(users, eq(privacyRequests.userId, users.id)).orderBy(desc(privacyRequests.createdAt)).limit(safeLimit);
+}
+
+export async function reviewPrivacyRequest(adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select({ id: privacyRequests.id, userId: privacyRequests.userId, kind: privacyRequests.kind }).from(privacyRequests).where(eq(privacyRequests.id, requestId)).limit(1);
+  if (!existing[0]) return undefined;
+  const resolution = input.resolution?.trim().slice(0, 500) || null;
+  const activeKey = input.status === "completed" || input.status === "declined" ? null : `${existing[0].kind}:${existing[0].userId}`;
+  await db.update(privacyRequests).set({ status: input.status, activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(eq(privacyRequests.id, requestId));
+  return { id: requestId, status: input.status, resolution };
+}
 
 export async function getVerifiedWorkEmailAccess(userId: number) {
   const profile = await getProfileByUserId(userId);

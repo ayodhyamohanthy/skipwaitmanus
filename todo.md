@@ -405,3 +405,7 @@
 - [x] Show a Referrer’s optional decision note only to the Job Seeker who owns the reviewed request.
 - [x] Add an early verified-company-email gate to the Referrer opportunity-publishing flow, with direct recovery into work-email verification.
 - [x] Add request-scoped unread conversation indicators derived only from genuine private messages and mark received messages read when the authorized participant opens the thread.
+- [x] Assess skipwait.me against global platform standards and implement the highest-priority foundational gaps across trust, privacy, accessibility, reliability, international readiness, and user operations.
+- [x] Harden private resume uploads with server-side business allowlists, binary signature validation, and protective response headers.
+- [x] Add a public Privacy & Trust hub with accessible, plain-language explanations of private referral routing, documents, payments, and user controls.
+- [x] Add authenticated data export and deletion-request initiation with a privacy-request record and administrator review queue.

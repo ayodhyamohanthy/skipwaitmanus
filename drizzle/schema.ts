@@ -248,6 +248,20 @@ export const operationalActivityLogs = mysqlTable("operationalActivityLogs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("operational_activity_created_idx").on(table.createdAt), index("operational_activity_actor_idx").on(table.actorUserId), index("operational_activity_action_idx").on(table.action)]);
 
+export const privacyRequests = mysqlTable("privacyRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: mysqlEnum("kind", ["erasure"]).notNull(),
+  status: mysqlEnum("status", ["requested", "in_review", "completed", "declined"]).default("requested").notNull(),
+  source: varchar("source", { length: 32 }).default("account_settings").notNull(),
+  activeKey: varchar("activeKey", { length: 80 }),
+  resolution: varchar("resolution", { length: 500 }),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("privacy_request_active_key_unique").on(table.activeKey), index("privacy_request_user_kind_status_idx").on(table.userId, table.kind, table.status), index("privacy_request_status_created_idx").on(table.status, table.createdAt), index("privacy_request_user_idx").on(table.userId, table.createdAt)]);
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Profile = typeof profiles.$inferSelect;
@@ -255,3 +269,4 @@ export type Job = typeof jobs.$inferSelect;
 export type CompanyOpportunity = typeof companyOpportunities.$inferSelect;
 export type ReferralRequest = typeof referralRequests.$inferSelect;
 export type OperationalActivityLog = typeof operationalActivityLogs.$inferSelect;
+export type PrivacyRequest = typeof privacyRequests.$inferSelect;

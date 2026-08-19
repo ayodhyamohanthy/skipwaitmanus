@@ -13,6 +13,13 @@ type CreditSummary = { plan: "free" | "pro" | "max"; monthlyAllowance: number; m
 const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
 const pendingResumeSubmissionKey = "skipwait-pending-resume-submit";
 const FREE_MONTHLY_ALLOWANCE = 3;
+const documentMimeByExtension: Record<string, string> = { ".pdf": "application/pdf", ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg" };
+
+function acceptedDocumentMime(file: File) {
+  const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase(); const expectedMimeType = documentMimeByExtension[extension];
+  if (!expectedMimeType || (file.type && file.type !== expectedMimeType)) return null;
+  return expectedMimeType;
+}
 
 function getSavedAttachments(): Attachment[] { try { return JSON.parse(localStorage.getItem("bridge-seeker-attachments") || "[]") as Attachment[]; } catch { return []; } }
 function readFile(file: File): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); }); }
@@ -98,7 +105,8 @@ export default function ReferralRequest() {
       const clerkToken = await getToken();
       const uploaded = await Promise.all(files.map(async file => {
         const dataUrl = await readFile(file);
-        const response = await fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType: file.type || "application/octet-stream", dataUrl }) });
+        const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
+        const response = await fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType, dataUrl }) });
         const payload = await response.json(); if (!response.ok) throw new Error(payload.error || "Upload failed"); return payload as Attachment;
       }));
       setAttachments(current => { const next = [...current, ...uploaded]; localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
@@ -107,7 +115,7 @@ export default function ReferralRequest() {
   };
 
   const selectFiles = (files: FileList | null) => {
-    const selected = Array.from(files || []); if (!selected.length) return; setError("");
+    const selected = Array.from(files || []); if (!selected.length) return; const unsupported = selected.find(file => !acceptedDocumentMime(file)); if (unsupported) { setError("Use a PDF, Word document, PNG, or JPEG resume."); return; } setError("");
     if (isSignedIn) { void uploadFiles(selected); return; }
     setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
   };

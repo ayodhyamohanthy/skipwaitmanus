@@ -81,6 +81,14 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(openFileChooser).toHaveBeenCalledTimes(1);
   });
 
+  it("rejects unsupported files before storing or uploading a resume", () => {
+    render(<ReferralRequest />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["script"], "resume.html", { type: "text/html" })] } });
+    expect(screen.getByText(/Use a PDF, Word document, PNG, or JPEG resume/i)).toBeTruthy();
+    expect(pendingResume.save).not.toHaveBeenCalled();
+  });
+
   it("does not reveal a cached credit count before the Job Seeker signs in", () => {
     localStorage.setItem("bridge-tokens", "5");
     render(<ReferralRequest />);
