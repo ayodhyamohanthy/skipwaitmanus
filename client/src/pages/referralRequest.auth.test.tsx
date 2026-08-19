@@ -62,6 +62,8 @@ describe("ReferralRequest secure resume handoff", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) }));
     render(<ReferralRequest />);
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/api/documents"))).toBe(true));
+    const rawUploadCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/api/documents/raw"));
+    expect(rawUploadCall?.[1]).toMatchObject({ method: "POST", body: expect.any(File), headers: expect.objectContaining({ "Content-Type": "application/pdf", "X-Resume-Filename": "avery-resume.pdf", Authorization: "Bearer test-clerk-token" }) });
     await waitFor(() => expect(pendingResume.clear).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText("1 of 3 free credits used this month.")).toBeTruthy());
     expect(screen.getByLabelText("Referral request milestone").textContent).toContain("Your 1st referral request is now active.");

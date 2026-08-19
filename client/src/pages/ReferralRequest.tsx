@@ -24,7 +24,6 @@ function acceptedDocumentMime(file: File) {
 }
 
 function getSavedAttachments(): Attachment[] { try { return JSON.parse(localStorage.getItem("bridge-seeker-attachments") || "[]") as Attachment[]; } catch { return []; } }
-function readFile(file: File): Promise<string> { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = () => resolve(String(reader.result)); reader.onerror = reject; reader.readAsDataURL(file); }); }
 function fallbackSummary(total: number): CreditSummary { const safe = Math.max(0, total); return { plan: "free", monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCreditsRemaining: Math.min(safe, FREE_MONTHLY_ALLOWANCE), purchasedCreditsRemaining: Math.max(0, safe - FREE_MONTHLY_ALLOWANCE), totalAvailable: safe, cycleKey: "", subscriptionStatus: null, subscriptionCurrentTermEnd: null }; }
 function isCreditSummary(value: unknown): value is CreditSummary { if (!value || typeof value !== "object") return false; const candidate = value as Partial<CreditSummary>; return (candidate.plan === "free" || candidate.plan === "pro" || candidate.plan === "max") && typeof candidate.monthlyAllowance === "number" && typeof candidate.monthlyCreditsRemaining === "number" && typeof candidate.purchasedCreditsRemaining === "number" && typeof candidate.totalAvailable === "number"; }
 
@@ -106,10 +105,9 @@ export default function ReferralRequest() {
     try {
       const clerkToken = await getToken();
       const uploaded = await Promise.all(files.map(async file => {
-        const dataUrl = await readFile(file);
         const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
-        const response = await fetch("/api/documents", { method: "POST", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType, dataUrl }) });
-        const payload = await readApiJson<Attachment & { error?: string }>(response, "Upload failed"); if (!response.ok) throw new Error(payload.error || "Upload failed"); return payload;
+        const response = await fetch("/api/documents/raw", { method: "POST", headers: { "Content-Type": mimeType, "X-Resume-Filename": encodeURIComponent(file.name), ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: file });
+        const payload = await readApiJson<Attachment & { error?: string }>(response, "We could not upload your resume. Please try again."); if (!response.ok) throw new Error(payload.error || "We could not upload your resume. Please try again."); return payload;
       }));
       setAttachments(current => { const next = [...current, ...uploaded]; localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
       return uploaded;
