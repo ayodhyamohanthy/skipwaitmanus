@@ -1,38 +1,56 @@
-import { BriefcaseBusiness, Copy, Linkedin, Mail, MessageCircleMore, Share2, UsersRound } from "lucide-react";
-import { useLocation } from "wouter";
+import { ArrowLeft, Copy, Link2, Mail, Share2 } from "lucide-react";
+import { useAuth as useClerkAuth } from "@clerk/react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
+import { startLogin } from "@/const";
 
-type Audience = "job_seeker" | "referrer";
-
-function launch(url: string) { window.open(url, "_blank", "noopener,noreferrer"); }
+function open(url: string) { window.open(url, "_blank", "noopener,noreferrer"); }
 
 export default function ShareHub() {
   const [, go] = useLocation();
+  const { isLoaded, isSignedIn } = useClerkAuth();
+  const [inviteCode, setInviteCode] = useState("");
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const origin = typeof window === "undefined" ? "https://skipwait.me" : window.location.origin;
-  const canNativeShare = typeof navigator !== "undefined" && typeof (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share === "function";
-  const share = async (audience: Audience, channel: "whatsapp" | "status" | "email" | "linkedin" | "x" | "more" | "copy") => {
-    const isSeeker = audience === "job_seeker";
-    const link = isSeeker ? `${origin}/?source=friend-invite` : `${origin}/referrer?source=colleague-invite`;
-    const text = isSeeker
-      ? `skipwait.me helps Job Seekers make a private, prepared referral request for a real job link. It starts with 3 included requests and never exposes their resume until they choose to send.\n\n${link}`
-      : `skipwait.me gives employees a private, work-email-verified way to review referral requests or share an internal opening. Your identity stays hidden and you decide whether to help.\n\n${link}`;
-    const statusText = isSeeker
-      ? `Know someone looking for a job? skipwait.me gives them 3 included private referral requests. Their resume stays private until they choose to send. ${link}`
-      : `Work somewhere that is hiring? skipwait.me gives employees a private company inbox for referral requests and internal openings. You choose whether to help. ${link}`;
-    if (channel === "whatsapp") return launch(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    if (channel === "status") { try { await navigator.clipboard.writeText(statusText); toast("Status text copied. Open WhatsApp Status and paste when it is genuinely useful to your contacts."); } catch { toast("Copy the short Status message from this page and paste it into WhatsApp Status."); } return; }
-    if (channel === "email") return launch(`mailto:?subject=${encodeURIComponent(isSeeker ? "A calmer way to ask for a referral" : "A private way to help with referrals")}&body=${encodeURIComponent(text)}`);
-    if (channel === "linkedin") { try { await navigator.clipboard.writeText(text); toast("Invite copied. Paste it into a LinkedIn message."); } catch { toast("Copy the invite text from your browser and paste it into LinkedIn."); } return launch("https://www.linkedin.com/messaging/"); }
-    if (channel === "x") return launch(`https://x.com/intent/post?text=${encodeURIComponent(text)}`);
-    const nativeShare = (navigator as Navigator & { share?: (data: ShareData) => Promise<void> }).share;
-    if (channel === "more" && nativeShare) { await nativeShare.call(navigator, { title: "skipwait.me", text, url: link }).catch(() => undefined); return; }
-    try { await navigator.clipboard.writeText(text); toast("Invite copied. Share it only with someone who will find it useful."); } catch { toast("Copy is unavailable in this browser. Use WhatsApp, email, LinkedIn, or X instead."); }
+  const link = useMemo(() => inviteCode ? `${origin}/start?invite=${encodeURIComponent(inviteCode)}` : "", [inviteCode, origin]);
+  const message = useMemo(() => link ? `You found an opportunity! Now help your friends do the same.\n\nJoin skipwait.me with my link. We each get 1 extra referral credit when you join.\n\n${link}` : "", [link]);
+
+  useEffect(() => {
+    if (!isLoaded || !isSignedIn) return;
+    setLoading(true);
+    void fetch("/api/personal-invites/me", { credentials: "include" })
+      .then(async response => response.ok ? response.json() : Promise.reject(new Error("Invite unavailable")))
+      .then(data => setInviteCode(data.invite?.inviteCode ?? ""))
+      .catch(() => toast("We could not create your personal link. Try again."))
+      .finally(() => setLoading(false));
+  }, [isLoaded, isSignedIn]);
+
+  const copyLink = async () => {
+    if (!link) return;
+    try { await navigator.clipboard.writeText(link); toast("Personal link copied."); }
+    catch { toast("Copy is unavailable in this browser."); }
   };
-  const cards: Array<{ audience: Audience; eyebrow: string; title: string; detail: string; icon: React.ReactNode; reward: string; nudge: string }> = [
-    { audience: "job_seeker", eyebrow: "For a friend looking", title: "Help them arrive prepared.", detail: "Three included requests in a private, job-link-first flow. Their documents stay private until they choose to send.", icon: <BriefcaseBusiness className="h-5 w-5" />, reward: "Their benefit: 3 included referral requests", nudge: "Best shared with one person who is actively exploring a role." },
-    { audience: "referrer", eyebrow: "For a colleague working", title: "Give them control, not a public profile.", detail: "A private company inbox for matching requests or internal openings. Helping is always optional.", icon: <UsersRound className="h-5 w-5" />, reward: "Their benefit: a private company inbox", nudge: "Best shared with one colleague who may want to help thoughtfully." },
-  ];
-  return <main data-skipwait-screen="share-hub" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><section className="min-h-0 flex-1 pt-4"><p className="text-[11px] font-bold uppercase tracking-[.16em] text-[#0B57D0]">Share only when useful</p><h1 className="mt-2 text-[1.9rem] font-semibold leading-[.96] tracking-[-.055em]">Give someone a better referral route.</h1><p className="mt-3 text-[13px] leading-5 text-slate-600">No contact imports. No automatic invitations. Choose one person and the channel that fits your relationship.</p><div className="mt-4 grid gap-3">{cards.map(card => <article key={card.audience} className="rounded-xl border border-slate-200 bg-white p-3.5"><div className="flex items-start gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-blue-50 text-[#0B57D0]">{card.icon}</span><div><p className="text-[10px] font-bold uppercase tracking-[.13em] text-[#0B57D0]">{card.eyebrow}</p><h2 className="mt-1 text-[15px] font-semibold tracking-[-.02em]">{card.title}</h2><p className="mt-1 text-[12px] leading-[1.35] text-slate-600">{card.detail}</p><p className="mt-2 text-[11px] font-bold text-emerald-700">{card.reward}</p><p className="mt-1 text-[10px] leading-4 text-slate-500">{card.nudge}</p></div></div><p className="mt-3 text-[10px] font-semibold text-slate-500">Message · Status · Email · LinkedIn · X · More</p><div className="mt-1.5 grid grid-cols-6 gap-1.5"><button aria-label={`Share ${card.audience} invite on WhatsApp`} onClick={() => { void share(card.audience, "whatsapp"); }} className="rounded-lg border border-slate-200 py-2 text-[#0B57D0]"><MessageCircleMore className="mx-auto h-4 w-4" /></button><button aria-label={`Copy ${card.audience} invite for WhatsApp Status`} onClick={() => { void share(card.audience, "status"); }} className="rounded-lg border border-slate-200 py-2 text-[10px] font-bold text-[#0B57D0]">Status</button><button aria-label={`Share ${card.audience} invite by email`} onClick={() => { void share(card.audience, "email"); }} className="rounded-lg border border-slate-200 py-2 text-[#0B57D0]"><Mail className="mx-auto h-4 w-4" /></button><button aria-label={`Share ${card.audience} invite on LinkedIn`} onClick={() => { void share(card.audience, "linkedin"); }} className="rounded-lg border border-slate-200 py-2 text-[#0B57D0]"><Linkedin className="mx-auto h-4 w-4" /></button><button aria-label={`Share ${card.audience} invite on X`} onClick={() => { void share(card.audience, "x"); }} className="rounded-lg border border-slate-200 py-2 text-sm font-bold text-[#0B57D0]">X</button><button aria-label={`Copy ${card.audience} invite`} onClick={() => { void share(card.audience, canNativeShare ? "more" : "copy"); }} className="rounded-lg border border-slate-200 py-2 text-[#0B57D0]">{canNativeShare ? <Share2 className="mx-auto h-4 w-4" /> : <Copy className="mx-auto h-4 w-4" />}</button></div></article>)}</div></section><footer className="shrink-0 border-t border-slate-200 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"><button type="button" onClick={() => go("/requests")} className="w-full rounded-lg bg-[#0B57D0] px-5 py-3 text-sm font-bold text-white">Return to my requests</button></footer></div></main>;
+  const share = (channel: "x" | "facebook" | "linkedin" | "medium") => {
+    if (!link) return;
+    if (channel === "x") return open(`https://x.com/intent/post?text=${encodeURIComponent(message)}`);
+    if (channel === "facebook") return open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`);
+    if (channel === "linkedin") return open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`);
+    void navigator.clipboard.writeText(message).then(() => toast("Invite copied. Paste it into a Medium story."), () => toast("Copy the personal link and paste it into Medium."));
+    open("https://medium.com/new-story");
+  };
+  const emailInvite = () => {
+    if (!link) return;
+    const recipient = email.trim();
+    if (!recipient || !/^\S+@\S+\.\S+$/.test(recipient)) return toast("Enter one email address.");
+    window.location.href = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent("You found an opportunity. Help a friend do the same.")}&body=${encodeURIComponent(message)}`;
+  };
+
+  if (!isLoaded) return <main data-skipwait-screen="share-hub" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><Brand /></header><section className="flex min-h-0 flex-1 items-center"><div className="w-full"><div className="h-3 w-24 animate-pulse rounded bg-blue-100" /><div className="mt-3 h-16 w-4/5 animate-pulse rounded-xl bg-slate-200" /><div className="mt-4 h-28 animate-pulse rounded-xl border border-slate-200 bg-white" /><p className="mt-4 text-sm font-medium text-slate-500">Preparing your invite…</p></div></section></div></main>;
+  if (!isSignedIn) return <main data-skipwait-screen="share-hub" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><Link href="/" className="inline-flex items-center gap-1 text-sm font-semibold text-slate-600"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 items-center"><div className="w-full rounded-xl border border-slate-200 bg-white p-5 text-center shadow-sm"><span className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-blue-50 text-[#0B57D0]"><Share2 className="h-5 w-5" /></span><h1 className="mt-5 text-2xl font-semibold tracking-[-.04em]">Create your invite link.</h1><p className="mt-2 text-sm leading-6 text-slate-600">Sign in to share one personal link with a friend.</p><button onClick={() => startLogin()} className="mt-6 w-full rounded-lg bg-[#0B57D0] px-5 py-3 text-sm font-bold text-white">Sign in to continue</button></div></section></div></main>;
+
+  return <main data-skipwait-screen="share-hub" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><section className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4"><p className="text-[11px] font-bold uppercase tracking-[.16em] text-[#0B57D0]">Your invite</p><h1 className="mt-2 text-[1.9rem] font-semibold leading-[.98] tracking-[-.055em]">You found an opportunity.<br />Help a friend do the same.</h1><p className="mt-3 text-sm leading-6 text-slate-600">When a friend joins with your link, you both receive one extra referral credit. Their 3 monthly credits stay included.</p><section className="mt-5 rounded-xl border border-slate-200 bg-white p-4 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Personal link</p><div className="mt-2 flex items-center gap-2 rounded-lg bg-slate-50 p-3"><Link2 className="h-4 w-4 shrink-0 text-[#0B57D0]" /><code className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-700">{loading ? "Creating your link…" : link}</code><button type="button" aria-label="Copy personal invite link" disabled={!link} onClick={() => { void copyLink(); }} className="rounded-md bg-white p-2 text-[#0B57D0] shadow-sm disabled:opacity-40"><Copy className="h-4 w-4" /></button></div><button type="button" disabled={!link} onClick={() => { void copyLink(); }} className="mt-3 w-full rounded-lg bg-[#0B57D0] px-4 py-3 text-sm font-bold text-white disabled:opacity-40">Copy link</button></section><section className="mt-3 rounded-xl border border-slate-200 bg-white p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Send an email invite</p><div className="mt-3 flex gap-2"><input aria-label="Friend email" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} value={email} onChange={event => setEmail(event.target.value)} placeholder="friend@gmail.com" className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#0B57D0]" /><button type="button" onClick={emailInvite} disabled={!link} className="rounded-lg border border-blue-200 px-3 text-sm font-bold text-[#0B57D0] disabled:opacity-40">Invite</button></div></section><div className="mt-3 grid grid-cols-4 gap-2"><button aria-label="Share invite on X" onClick={() => share("x")} disabled={!link} className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-800 disabled:opacity-40">𝕏</button><button aria-label="Share invite on Facebook" onClick={() => share("facebook")} disabled={!link} className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-[#0B57D0] disabled:opacity-40">f</button><button aria-label="Share invite on LinkedIn" onClick={() => share("linkedin")} disabled={!link} className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-[#0B57D0] disabled:opacity-40">in</button><button aria-label="Share invite on Medium" onClick={() => share("medium")} disabled={!link} className="rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-800 disabled:opacity-40">M</button></div><p className="mt-3 text-center text-[11px] leading-4 text-slate-500">Rewards are applied once per verified new account. Self-invites and duplicate accounts are not eligible.</p></section><footer className="shrink-0 border-t border-slate-200 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"><button type="button" onClick={() => go("/requests")} className="w-full rounded-lg px-5 py-3 text-sm font-bold text-slate-600">Back to my requests</button></footer></div></main>;
 }

@@ -32,6 +32,8 @@ export type PrivateReferralRouteDeps = {
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
   grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
   getCreditSummary?: (userId: number, role: "job_seeker" | "referrer") => Promise<unknown>;
+  getOrCreatePersonalReferralInvite?: (userId: number) => Promise<{ inviteCode: string }>;
+  claimPersonalReferralInvite?: (joinerUserId: number, input: { inviteCode: string; verifiedEmail: string }) => Promise<{ rewarded: boolean; tokenCount?: number; reason?: string }>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
@@ -115,6 +117,29 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!summary) return res.status(500).json({ error: "We could not load your referral credits" });
       res.json({ summary });
     } catch { res.status(500).json({ error: "We could not load your referral credits" }); }
+  });
+  app.get("/api/personal-invites/me", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to create your personal invite link" });
+      if (!deps.getOrCreatePersonalReferralInvite) return res.status(503).json({ error: "Personal invites are not available yet" });
+      const invite = await deps.getOrCreatePersonalReferralInvite(identity.account.id);
+      res.json({ invite });
+    } catch { res.status(500).json({ error: "We could not create your personal invite link" }); }
+  });
+  app.post("/api/personal-invites/claim", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const inviteCode = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
+      const verifiedEmail = identity?.primaryEmail?.emailAddress?.trim().toLowerCase() ?? "";
+      if (!identity) return res.status(401).json({ error: "Sign in before claiming an invite" });
+      if (!inviteCode) return res.status(400).json({ error: "An invite code is required" });
+      if (!verifiedEmail || identity.primaryEmail?.verification?.status !== "verified") return res.status(403).json({ error: "Verify your email before claiming an invite" });
+      if (!deps.claimPersonalReferralInvite) return res.status(503).json({ error: "Personal invites are not available yet" });
+      const reward = await deps.claimPersonalReferralInvite(identity.account.id, { inviteCode, verifiedEmail });
+      record({ actorUserId: identity.account.id, action: "personal_invite.claimed", outcome: reward.rewarded ? "success" : "denied", resourceType: "personal_invite", metadata: { rewarded: reward.rewarded, reason: reward.reason ?? null, tokenCount: reward.tokenCount ?? 0 } });
+      res.json({ reward });
+    } catch { res.status(500).json({ error: "We could not apply that invite" }); }
   });
   app.get("/api/company-referrals/mine", async (req, res) => {
     try {

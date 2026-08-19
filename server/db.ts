@@ -1,7 +1,7 @@
 import { and, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
-import { randomUUID } from "node:crypto";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, verifiedEmployerDomainFromCandidates } from "./employerRouting";
@@ -353,6 +353,7 @@ export type CreditSummary = {
 };
 export const MAX_ADMIN_TOKEN_ADJUSTMENT = 1000;
 export const COMPANY_COVERAGE_REWARD_TOKENS = 1;
+export const PERSONAL_REFERRAL_REWARD_TOKENS = 1;
 
 async function addCoverageRewardCredit(tx: any, userId: number, role: WalletRole) {
   const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
@@ -385,6 +386,70 @@ export async function fulfillCompanyCoverageInvitation(joinerUserId: number, inp
     await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId, completedAt: new Date() }).where(eq(companyCoverageInvitations.id, invitation.id));
     return { rewarded: true as const, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
   });
+}
+
+async function addPersonalReferralRewardCredit(tx: any, userId: number) {
+  const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1);
+  if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + PERSONAL_REFERRAL_REWARD_TOKENS }).where(eq(tokenBalances.id, wallet[0].id));
+  else await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: PERSONAL_REFERRAL_REWARD_TOKENS, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+}
+
+export async function getOrCreatePersonalReferralInvite(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = (await db.select().from(personalReferralInvites).where(eq(personalReferralInvites.inviterUserId, userId)).limit(1))[0];
+  if (existing) return { inviteCode: existing.inviteCode };
+  const inviteCode = `r${userId}-${randomUUID().replace(/-/g, "").slice(0, 8)}`;
+  try {
+    await db.insert(personalReferralInvites).values({ inviterUserId: userId, inviteCode });
+    return { inviteCode };
+  } catch (error) {
+    const concurrent = (await db.select().from(personalReferralInvites).where(eq(personalReferralInvites.inviterUserId, userId)).limit(1))[0];
+    if (concurrent) return { inviteCode: concurrent.inviteCode };
+    throw error;
+  }
+}
+
+export function personalReferralInviteEligibility(input: { inviterUserId: number; joinerUserId: number; invitationCreatedAt: Date; joinerCreatedAt: Date; storedEmail: string | null; verifiedEmail: string }) {
+  if (input.inviterUserId === input.joinerUserId) return "self_invite" as const;
+  if (!input.storedEmail || input.storedEmail.trim().toLowerCase() !== input.verifiedEmail || input.joinerCreatedAt <= input.invitationCreatedAt) return "ineligible" as const;
+  return "eligible" as const;
+}
+
+export async function claimPersonalReferralInvite(joinerUserId: number, input: { inviteCode: string; verifiedEmail: string }) {
+  const inviteCode = input.inviteCode.trim();
+  const verifiedEmail = input.verifiedEmail.trim().toLowerCase();
+  if (!inviteCode || !verifiedEmail) return { rewarded: false as const, reason: "missing" as const };
+  const joinerEmailHash = createHash("sha256").update(verifiedEmail).digest("hex");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  try {
+    return await db.transaction(async tx => {
+      const invitation = (await tx.select().from(personalReferralInvites).where(eq(personalReferralInvites.inviteCode, inviteCode)).limit(1))[0];
+      if (!invitation) return { rewarded: false as const, reason: "unavailable" as const };
+      const joiner = (await tx.select({ email: users.email, createdAt: users.createdAt }).from(users).where(eq(users.id, joinerUserId)).limit(1))[0];
+      const eligibility = personalReferralInviteEligibility({ inviterUserId: invitation.inviterUserId, joinerUserId, invitationCreatedAt: invitation.createdAt, joinerCreatedAt: joiner?.createdAt ?? new Date(0), storedEmail: joiner?.email ?? null, verifiedEmail });
+      if (eligibility !== "eligible") return { rewarded: false as const, reason: eligibility };
+      const [priorForJoiner, priorForEmail] = await Promise.all([
+        tx.select({ id: personalReferralRewards.id }).from(personalReferralRewards).where(eq(personalReferralRewards.joinerUserId, joinerUserId)).limit(1),
+        tx.select({ id: personalReferralRewards.id }).from(personalReferralRewards).where(eq(personalReferralRewards.joinerEmailHash, joinerEmailHash)).limit(1),
+      ]);
+      if (priorForJoiner[0] || priorForEmail[0]) return { rewarded: false as const, reason: "duplicate_account" as const };
+      await tx.insert(personalReferralRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId, joinerEmailHash, tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS });
+      await addPersonalReferralRewardCredit(tx, invitation.inviterUserId);
+      await addPersonalReferralRewardCredit(tx, joinerUserId);
+      await tx.insert(tokenTransactions).values([
+        { userId: invitation.inviterUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "personal_referral_reward" },
+        { userId: joinerUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "personal_referral_reward" },
+      ]);
+      await tx.insert(notifications).values([
+        { userId: invitation.inviterUserId, category: "system", title: "Invite reward added", body: "A friend joined with your link. One extra referral credit was added." },
+        { userId: joinerUserId, category: "system", title: "Welcome credit added", body: "You joined with an invite. One extra referral credit was added alongside your monthly credits." },
+      ]);
+      return { rewarded: true as const, tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS };
+    });
+  } catch (error) {
+    if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { rewarded: false as const, reason: "duplicate_account" as const };
+    throw error;
+  }
 }
 
 function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect): CreditSummary {

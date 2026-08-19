@@ -129,7 +129,7 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward"]).notNull(),
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward"]).notNull(),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("token_transactions_user_idx").on(table.userId)]);
@@ -153,6 +153,23 @@ export const companyCoverageRewards = mysqlTable("companyCoverageRewards", {
   tokenCount: int("tokenCount").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("coverage_reward_invitation_unique").on(table.invitationId), uniqueIndex("coverage_reward_joiner_unique").on(table.joinerUserId), index("coverage_reward_inviter_idx").on(table.inviterUserId)]);
+
+export const personalReferralInvites = mysqlTable("personalReferralInvites", {
+  id: int("id").autoincrement().primaryKey(),
+  inviteCode: varchar("inviteCode", { length: 64 }).notNull(),
+  inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("personal_referral_invite_code_unique").on(table.inviteCode), uniqueIndex("personal_referral_inviter_unique").on(table.inviterUserId)]);
+
+export const personalReferralRewards = mysqlTable("personalReferralRewards", {
+  id: int("id").autoincrement().primaryKey(),
+  invitationId: int("invitationId").notNull().references(() => personalReferralInvites.id, { onDelete: "cascade" }),
+  inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  joinerUserId: int("joinerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  joinerEmailHash: varchar("joinerEmailHash", { length: 64 }).notNull(),
+  tokenCount: int("tokenCount").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("personal_referral_reward_invitation_joiner_unique").on(table.invitationId, table.joinerUserId), uniqueIndex("personal_referral_reward_joiner_unique").on(table.joinerUserId), uniqueIndex("personal_referral_reward_email_unique").on(table.joinerEmailHash), index("personal_referral_reward_inviter_idx").on(table.inviterUserId)]);
 
 export const adminTokenAdjustments = mysqlTable("adminTokenAdjustments", {
   id: int("id").autoincrement().primaryKey(),

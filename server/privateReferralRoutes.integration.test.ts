@@ -69,6 +69,29 @@ describe("private referral HTTP routes", () => {
     expect(published.status).toBe(201); expect(savedWorkEmail).toBe(true); expect(published.body.opportunity).toMatchObject({ companyDomain: "acme.com", roleTitle: "Product Designer" });
   });
 
+  it("issues a personal invite link and only forwards claims from a verified account email", async () => {
+    const app = express(); app.use(express.json());
+    const identities = new Map([
+      ["inviter", { account: { id: 9, openId: "clerk-inviter" }, primaryEmail: { emailAddress: "inviter@example.com", verification: { status: "verified" } } }],
+      ["joiner", { account: { id: 10, openId: "clerk-joiner" }, primaryEmail: { emailAddress: "joiner@example.com", verification: { status: "verified" } } }],
+      ["unverified", { account: { id: 11, openId: "clerk-unverified" }, primaryEmail: { emailAddress: "unverified@example.com", verification: { status: "unverified" } } }],
+    ]);
+    let claimed: { userId: number; inviteCode: string; verifiedEmail: string } | undefined;
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
+      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }), getOrCreatePersonalReferralInvite: async () => ({ inviteCode: "r9-abcdef12" }), claimPersonalReferralInvite: async (userId, input) => { claimed = { userId, ...input }; return { rewarded: true, tokenCount: 1 }; },
+    });
+    const personalLink = await request(app).get("/api/personal-invites/me").set("x-test-user", "inviter");
+    expect(personalLink.status).toBe(200); expect(personalLink.body.invite.inviteCode).toBe("r9-abcdef12");
+    const blocked = await request(app).post("/api/personal-invites/claim").set("x-test-user", "unverified").send({ inviteCode: "r9-abcdef12" });
+    expect(blocked.status).toBe(403); expect(claimed).toBeUndefined();
+    const claimedResponse = await request(app).post("/api/personal-invites/claim").set("x-test-user", "joiner").send({ inviteCode: "r9-abcdef12" });
+    expect(claimedResponse.status).toBe(200); expect(claimedResponse.body.reward).toMatchObject({ rewarded: true, tokenCount: 1 });
+    expect(claimed).toEqual({ userId: 10, inviteCode: "r9-abcdef12", verifiedEmail: "joiner@example.com" });
+  });
+
   it("returns administrator activity only to a persisted administrator account", async () => {
     const app = express(); app.use(express.json());
     const identities = new Map([["admin", { account: { id: 7, openId: "clerk-admin", role: "admin" as const } }], ["member", { account: { id: 8, openId: "clerk-member", role: "user" as const } }]]);
