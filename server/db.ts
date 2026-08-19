@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
-import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -56,18 +56,22 @@ export function companyDomainFromTargetUrl(targetRoleUrl: string): string | unde
   return directEmployerDomainFromTargetUrl(targetRoleUrl);
 }
 
-async function employerPageCandidates(targetRoleUrl: string) {
+async function employerPageEvidence(targetRoleUrl: string) {
   try {
     const url = new URL(targetRoleUrl);
-    if (!isHostedJobPlatform(url.hostname)) return [];
+    if (!isHostedJobPlatform(url.hostname)) return { candidates: [], officialDomains: [] };
     const candidateSets = await Promise.all(publicEmployerPageUrls(targetRoleUrl).map(async pageUrl => {
       const response = await fetch(pageUrl, { headers: { "User-Agent": "skipwait.me employer routing" }, redirect: "manual", signal: AbortSignal.timeout(4_000) });
-      if (!response.ok) return [];
-      return employerCandidatesFromJobPageHtml((await response.text()).slice(0, 512_000));
+      if (!response.ok) return { candidates: [], officialDomains: [] };
+      const html = (await response.text()).slice(0, 512_000);
+      return { candidates: employerCandidatesFromJobPageHtml(html), officialDomains: officialEmployerDomainsFromJobPageHtml(html) };
     }));
-    return Array.from(new Set(candidateSets.flat()));
+    return {
+      candidates: Array.from(new Set(candidateSets.flatMap(result => result.candidates))),
+      officialDomains: Array.from(new Set(candidateSets.flatMap(result => result.officialDomains))),
+    };
   } catch {
-    return [];
+    return { candidates: [], officialDomains: [] };
   }
 }
 
@@ -83,8 +87,9 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
   const urlCandidates = hostedEmployerCandidatesFromTargetUrl(normalizedTargetRoleUrl);
   const matchedFromUrl = verifiedEmployerDomainFromCandidates(urlCandidates, verifiedDomains.map(row => row.domain));
   if (matchedFromUrl) return matchedFromUrl;
-  const pageCandidates = await employerPageCandidates(normalizedTargetRoleUrl);
-  return verifiedEmployerDomainFromCandidates(pageCandidates, verifiedDomains.map(row => row.domain));
+  const pageEvidence = await employerPageEvidence(normalizedTargetRoleUrl);
+  if (pageEvidence.officialDomains.length === 1) return pageEvidence.officialDomains[0];
+  return verifiedEmployerDomainFromCandidates(pageEvidence.candidates, verifiedDomains.map(row => row.domain));
 }
 
 const consumerEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);

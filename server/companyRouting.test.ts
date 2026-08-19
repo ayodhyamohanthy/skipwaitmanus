@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { companyDomainFromTargetUrl, isWorkEmailDomain, resolveEmployerDomainFromTargetUrl } from "./db";
-import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 describe("company routing from Target Role URLs", () => {
   it("uses a direct employer careers hostname as the hidden company key", () => {
@@ -30,6 +30,18 @@ describe("company routing from Target Role URLs", () => {
     expect(candidates).toEqual(["acme"]);
     expect(verifiedEmployerDomainFromCandidates(candidates, ["acme.com"])).toBe("acme.com");
     expect(verifiedEmployerDomainFromCandidates(candidates, ["linkedin.com"])).toBeUndefined();
+  });
+
+  it("uses a JobPosting organization URL only when it agrees with the listed employer name", () => {
+    const matchingStructuredData = '<script type="application/ld+json">{"@context":"https://schema.org","@type":"JobPosting","hiringOrganization":{"@type":"Organization","name":"Acme, Inc.","sameAs":"https://careers.acme.com/company"}}</script>';
+    expect(employerCandidatesFromJobPageHtml(matchingStructuredData)).toContain("acme");
+    expect(officialEmployerDomainsFromJobPageHtml(matchingStructuredData)).toEqual(["acme.com"]);
+
+    const mismatchedStructuredData = '<script type="application/ld+json">{"@type":"JobPosting","hiringOrganization":{"name":"Acme","sameAs":"https://evil.example"}}</script>';
+    expect(officialEmployerDomainsFromJobPageHtml(mismatchedStructuredData)).toEqual([]);
+
+    const hostedStructuredData = '<script type="application/ld+json">{"@type":"JobPosting","hiringOrganization":{"name":"Acme","sameAs":"https://www.linkedin.com/company/acme"}}</script>';
+    expect(officialEmployerDomainsFromJobPageHtml(hostedStructuredData)).toEqual([]);
   });
 
   it("can read a standard hosted job-page title without ever treating the hosting platform as the employer", () => {

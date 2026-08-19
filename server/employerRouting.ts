@@ -81,8 +81,50 @@ function employerCandidatesFromPageTitle(title: string) {
   return parts.length >= 3 ? [parts[1]] : [];
 }
 
+type EmployerEvidence = { candidates: string[]; officialDomains: string[] };
+
+function structuredHiringOrganizations(value: unknown, organizations: Array<Record<string, unknown>>) {
+  if (Array.isArray(value)) {
+    value.forEach(item => structuredHiringOrganizations(item, organizations));
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  const record = value as Record<string, unknown>;
+  const hiringOrganization = record.hiringOrganization;
+  if (hiringOrganization && typeof hiringOrganization === "object" && !Array.isArray(hiringOrganization)) organizations.push(hiringOrganization as Record<string, unknown>);
+  Object.values(record).forEach(item => structuredHiringOrganizations(item, organizations));
+}
+
+function employerEvidenceFromStructuredData(html: string): EmployerEvidence {
+  const organizations: Array<Record<string, unknown>> = [];
+  const structuredScripts = Array.from(html.matchAll(/<script[^>]+type=["']application\/ld\+json[^"']*["'][^>]*>([\s\S]*?)<\/script>/gi))
+    .map(match => entityDecode(match[1] ?? "").trim())
+    .filter(raw => raw.length > 1 && raw.length <= 256_000);
+  for (const raw of structuredScripts) {
+    try { structuredHiringOrganizations(JSON.parse(raw), organizations); } catch { /* Ignore malformed third-party structured data. */ }
+  }
+  const candidates: string[] = [];
+  const officialDomains: string[] = [];
+  for (const organization of organizations) {
+    const name = typeof organization.name === "string" ? organization.name : undefined;
+    const candidate = name ? normalizedEmployerKey(name) : undefined;
+    if (!candidate) continue;
+    candidates.push(candidate);
+    const urls = [organization.sameAs, organization.url].flatMap(value => Array.isArray(value) ? value : [value]);
+    for (const officialUrl of urls) {
+      if (typeof officialUrl !== "string") continue;
+      const domain = directEmployerDomainFromTargetUrl(officialUrl);
+      const domainKey = domain ? normalizedEmployerKey(domain.split(".")[0] ?? "") : undefined;
+      if (domain && domainKey === candidate) officialDomains.push(domain);
+    }
+  }
+  return { candidates: Array.from(new Set(candidates)), officialDomains: Array.from(new Set(officialDomains)) };
+}
+
 export function employerCandidatesFromJobPageHtml(html: string) {
+  const structuredEvidence = employerEvidenceFromStructuredData(html);
   const candidates = [
+    ...structuredEvidence.candidates,
     ...valuesFromHtmlPattern(html, /"hiringOrganization"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"\\]+(?:\\.[^"\\]*)*)"/gi),
     ...valuesFromHtmlPattern(html, /"(?:companyName|employerName|company_name)"\s*:\s*"([^"\\]+(?:\\.[^"\\]*)*)"/gi),
     ...valuesFromHtmlPattern(html, /class=["'][^"']*topcard__org-name-link[^"']*["'][^>]*>\s*([^<]{2,160})</gi),
@@ -92,6 +134,10 @@ export function employerCandidatesFromJobPageHtml(html: string) {
     ...valuesFromHtmlPattern(html, /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]*>/gi).flatMap(employerCandidatesFromPageTitle),
   ];
   return Array.from(new Set(candidates.map(normalizedEmployerKey).filter(value => value.length > 1)));
+}
+
+export function officialEmployerDomainsFromJobPageHtml(html: string) {
+  return employerEvidenceFromStructuredData(html).officialDomains;
 }
 
 export function publicEmployerPageUrls(targetRoleUrl: string) {
