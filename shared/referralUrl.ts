@@ -1,5 +1,11 @@
 export const TARGET_ROLE_URL_ERROR = "Paste a complete job link that starts with http:// or https://.";
 
+export type ReviewedEmployer = { name: string; domain: string };
+
+const reviewedEmployerLinks = new Map<string, ReviewedEmployer>([
+  ["wellfound.com/jobs/3971835-account-executive", { name: "ChatFin", domain: "chatfin.ai" }],
+]);
+
 export function isValidTargetRoleUrl(value: string | undefined | null) {
   if (!value?.trim()) return false;
   try {
@@ -20,4 +26,13 @@ export function normalizeTargetRoleUrl(value: string) {
     url.search = "";
   }
   return url.toString();
+}
+
+export function reviewedEmployerFromTargetRoleUrl(value: string): ReviewedEmployer | undefined {
+  try {
+    const url = new URL(normalizeTargetRoleUrl(value));
+    return reviewedEmployerLinks.get(`${url.hostname}${url.pathname}`);
+  } catch {
+    return undefined;
+  }
 }

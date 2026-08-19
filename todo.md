@@ -375,3 +375,5 @@
 - [x] Diagnose and correct the live fallback shown for the reported Wellfound Account Executive link.
 - [x] Trace and correct the active referral submission path still returning the Wellfound careers-page fallback.
 - [x] Reproduce and correct the Bridge submission flow for the reported Wellfound Account Executive URL.
+- [x] Show clear employer-identification feedback after job-link validation, including the reviewed Wellfound-to-ChatFin mapping.
+- [x] Redesign engagement loops around ethical, user-benefiting utility patterns inspired by file.io rather than manipulative retention tactics.

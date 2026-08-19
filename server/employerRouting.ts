@@ -1,3 +1,5 @@
+import { reviewedEmployerFromTargetRoleUrl } from "../shared/referralUrl";
+
 const hostedJobPlatforms = [
   "linkedin.com", "indeed.com", "glassdoor.com", "greenhouse.io", "lever.co", "ashbyhq.com",
   "workable.com", "smartrecruiters.com", "jobvite.com", "teamtailor.com", "bamboohr.com",
@@ -7,12 +9,6 @@ const hostedJobPlatforms = [
   "stepstone.com", "seek.com.au", "bayt.com", "adzuna.com", "lensa.com", "careerbuilder.com",
   "snagajob.com", "cutshort.io", "instahyre.com", "hirist.com", "timesjobs.com",
 ];
-
-// Only add an entry after manually verifying the public listing and the employer's official domain.
-// This protects known Cloudflare-blocked listings without ever treating Wellfound itself as the employer.
-const verifiedProtectedHostedListings = new Map<string, string>([
-  ["wellfound.com/jobs/3971835-account-executive", "chatfin.ai"],
-]);
 
 const legalSuffixes = /\b(incorporated|inc|llc|ltd|limited|corp|corporation|company|co|plc|gmbh|pte|private)\b/gi;
 
@@ -40,12 +36,7 @@ export function directEmployerDomainFromTargetUrl(targetRoleUrl: string): string
 }
 
 export function verifiedEmployerDomainFromProtectedHostedListing(targetRoleUrl: string) {
-  try {
-    const url = new URL(targetRoleUrl);
-    return verifiedProtectedHostedListings.get(`${normalizedHost(url.hostname)}${url.pathname.replace(/\/$/, "")}`);
-  } catch {
-    return undefined;
-  }
+  return reviewedEmployerFromTargetRoleUrl(targetRoleUrl)?.domain;
 }
 
 function cleanHandle(value: string | undefined) {

@@ -44,4 +44,11 @@ describe("Onboarding Target Role URL", () => {
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
     expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
   });
+
+  it("confirms the reviewed employer for the reported Wellfound listing before the user continues", () => {
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile" } });
+    expect(screen.getByRole("status").textContent).toContain("Company identified: ChatFin");
+    expect(document.querySelector("[data-reviewed-employer='true']")).toBeTruthy();
+  });
 });
