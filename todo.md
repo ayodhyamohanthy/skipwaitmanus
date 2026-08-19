@@ -418,3 +418,4 @@
 - [x] Diagnose and repair the Job Seeker resume-upload failure while preserving private-document validation and authorization.
 - [x] Diagnose and repair the repeated live raw resume-upload failure after the first gateway transport change.
 - [x] Complete a comprehensive user-back QA audit across core roles, authorization, payments, privacy, mobile journeys, runtime resilience, and production readiness; repair every verified defect.
+- [x] Establish and maintain an SDET, operations-monitoring, and QA quality gate for every critical skipwait.me release path.
