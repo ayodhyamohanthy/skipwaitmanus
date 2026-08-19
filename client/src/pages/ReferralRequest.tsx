@@ -19,11 +19,11 @@ const documentMimeByExtension: Record<string, string> = { ".pdf": "application/p
 
 function acceptedDocumentMime(file: File) {
   const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase(); const expectedMimeType = documentMimeByExtension[extension];
-  if (!expectedMimeType || (file.type && file.type !== expectedMimeType)) return null;
+  if (!expectedMimeType) return null;
   return expectedMimeType;
 }
 function bytesToBase64(bytes: Uint8Array) { let output = ""; for (let index = 0; index < bytes.length; index += 1) output += String.fromCharCode(bytes[index] || 0); return btoa(output); }
-async function encryptResumeForTransport(file: File) {
+async function encryptResumeForTransport(file: Blob) {
   if (!crypto?.subtle) throw new Error("Your browser cannot securely prepare this resume upload. Please update it and try again.");
   const key = crypto.getRandomValues(new Uint8Array(32)); const iv = crypto.getRandomValues(new Uint8Array(12));
   const cryptoKey = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["encrypt"]);
@@ -101,7 +101,7 @@ export default function ReferralRequest() {
       try {
         const clerkToken = await getToken();
         const response = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {} });
-        const payload = await response.json().catch(() => ({}));
+        const payload = await readApiJson<{ summary?: unknown }>(response, "We could not refresh your referral credits");
         if (active && response.ok && isCreditSummary(payload.summary)) { setCreditSummary(payload.summary); setTokens(payload.summary.totalAvailable); setJobSeekerTokens(payload.summary.totalAvailable); }
       } catch { /* The request path retains the locally cached balance while the summary refreshes later. */ }
     })();
@@ -113,13 +113,20 @@ export default function ReferralRequest() {
     setUploading(true); setError("");
     try {
       const clerkToken = await getToken();
-      const uploaded = await Promise.all(files.map(async file => {
+      const uploaded: Attachment[] = [];
+      for (const file of files) {
         const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
         const headers = { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) };
-        const encrypted = await encryptResumeForTransport(file);
-        const response = await fetch("/api/documents/opaque", { method: "POST", headers, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType, ...encrypted }) });
-        const payload = await readApiJson<Attachment & { error?: string }>(response, "We could not upload your resume. Please try again."); if (!response.ok) throw new Error(payload.error || "We could not upload your resume. Please try again."); return payload;
-      }));
+        const startResponse = await fetch("/api/documents/uploads", { method: "POST", headers, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType, fileSize: file.size }) });
+        const start = await readApiJson<{ sessionId?: string; chunkBytes?: number; error?: string }>(startResponse, "We could not prepare your private resume upload. Please try again."); if (!startResponse.ok || !start.sessionId || !start.chunkBytes) throw new Error(start.error || "We could not prepare your private resume upload. Please try again.");
+        for (let byteOffset = 0, chunkIndex = 0; byteOffset < file.size; byteOffset += start.chunkBytes, chunkIndex += 1) {
+          const encrypted = await encryptResumeForTransport(file.slice(byteOffset, Math.min(file.size, byteOffset + start.chunkBytes)));
+          const chunkResponse = await fetch(`/api/documents/uploads/${start.sessionId}/chunks`, { method: "POST", headers, credentials: "include", body: JSON.stringify({ chunkIndex, ...encrypted }) });
+          const progress = await readApiJson<{ error?: string }>(chunkResponse, "We could not save part of your resume. Please try again."); if (!chunkResponse.ok) throw new Error(progress.error || "We could not save part of your resume. Please try again.");
+        }
+        const completeResponse = await fetch(`/api/documents/uploads/${start.sessionId}/complete`, { method: "POST", headers, credentials: "include" });
+        const payload = await readApiJson<Attachment & { error?: string }>(completeResponse, "We could not verify your uploaded resume. Please try again."); if (!completeResponse.ok) throw new Error(payload.error || "We could not verify your uploaded resume. Please try again."); uploaded.push(payload);
+      }
       setAttachments(current => { const next = [...current, ...uploaded]; localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
       return uploaded;
     } catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : "Upload failed"); throw uploadError; } finally { setUploading(false); }

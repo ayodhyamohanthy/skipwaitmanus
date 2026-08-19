@@ -59,13 +59,16 @@ describe("ReferralRequest secure resume handoff", () => {
 
     cleanup();
     authState.signedIn = true;
-    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents/opaque") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) }));
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/complete") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : String(input).includes("/chunks") ? { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) } : String(input).includes("/api/documents/uploads") ? { ok: true, json: async () => ({ sessionId: "upload-71", chunkBytes: 49152 }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) }));
     render(<ReferralRequest />);
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/api/documents"))).toBe(true));
-    const opaqueUploadCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/api/documents/opaque"));
-    expect(opaqueUploadCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ "Content-Type": "application/json", Authorization: "Bearer test-clerk-token" }) });
-    const opaqueBody = JSON.parse(String(opaqueUploadCall?.[1]?.body));
-    expect(opaqueBody).toMatchObject({ fileName: "avery-resume.pdf", mimeType: "application/pdf", encryptedContent: expect.any(String), encryptionKey: expect.any(String), initializationVector: expect.any(String) });
+    const startCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith("/api/documents/uploads"));
+    const chunkCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/chunks"));
+    const completeCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/complete"));
+    expect(startCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ "Content-Type": "application/json", Authorization: "Bearer test-clerk-token" }) });
+    expect(JSON.parse(String(startCall?.[1]?.body))).toMatchObject({ fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6 });
+    const encryptedChunk = JSON.parse(String(chunkCall?.[1]?.body)); expect(encryptedChunk).toMatchObject({ chunkIndex: 0, encryptedContent: expect.any(String), encryptionKey: expect.any(String), initializationVector: expect.any(String) });
+    expect(completeCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer test-clerk-token" }) });
     await waitFor(() => expect(pendingResume.clear).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText("1 of 3 free credits used this month.")).toBeTruthy());
     expect(screen.getByLabelText("Referral request milestone").textContent).toContain("Your 1st referral request is now active.");
@@ -115,7 +118,7 @@ describe("ReferralRequest secure resume handoff", () => {
 
   it("offers an optional note for the exact-company Referrer once a resume is attached", async () => {
     authState.signedIn = true;
-    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/documents/opaque") ? { ok: true, json: async () => ({ id: "73", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/73", url: "/api/documents/73" }) } : { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) }));
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/complete") ? { ok: true, json: async () => ({ id: "73", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/73", url: "/api/documents/73" }) } : String(input).includes("/chunks") ? { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) } : String(input).includes("/api/documents/uploads") ? { ok: true, json: async () => ({ sessionId: "upload-73", chunkBytes: 49152 }) } : { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) }));
     render(<ReferralRequest />);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
     fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
@@ -140,7 +143,9 @@ describe("ReferralRequest secure resume handoff", () => {
   it("keeps credits intact and presents one visual coverage invite action when no verified employee exists at the employer", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
-      if (String(input).includes("/api/documents/opaque")) return { ok: true, json: async () => ({ id: "72", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/72", url: "/api/documents/72" }) };
+      if (String(input).includes("/complete")) return { ok: true, json: async () => ({ id: "72", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/72", url: "/api/documents/72" }) };
+      if (String(input).includes("/chunks")) return { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) };
+      if (String(input).includes("/api/documents/uploads")) return { ok: true, json: async () => ({ sessionId: "upload-72", chunkBytes: 49152 }) };
       if (String(input).includes("/api/company-referrals")) return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "waiting_for_company_coverage", remainingTokens: 3, creditSummary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
       return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
     }));

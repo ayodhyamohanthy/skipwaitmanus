@@ -4,6 +4,7 @@ import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
 import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
+import { readApiJson } from "@/lib/apiResponse";
 
 type Plan = "pro" | "max";
 type CreditSummary = { plan: "free" | Plan; monthlyAllowance: number; monthlyCreditsRemaining: number; totalAvailable: number; subscriptionStatus: string | null; subscriptionCurrentTermEnd: string | null };
@@ -13,14 +14,14 @@ const plans: Record<Plan, { name: string; monthlyCredits: number; INR: PlanPrice
   pro: {
     name: "Pro",
     monthlyCredits: 10,
-    INR: { display: "₹599/month", referencePrice: "₹833", savings: "28% lower" },
-    USD: { display: "$10/month" },
+    INR: { display: "₹599/month" },
+    USD: { display: "$7/month" },
   },
   max: {
     name: "Max",
     monthlyCredits: 30,
-    INR: { display: "₹1,299/month", referencePrice: "₹1,666", savings: "22% lower" },
-    USD: { display: "$20/month" },
+    INR: { display: "₹1,299/month" },
+    USD: { display: "$15/month" },
   },
 };
 
@@ -45,7 +46,7 @@ export default function Plans() {
       try {
         const clerkToken = await getToken();
         const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {} });
-        const payload = await response.json().catch(() => ({}));
+        const payload = await readApiJson<{ summary?: CreditSummary }>(response, "We could not refresh your plan details");
         if (active && response.ok && payload.summary) setSummary(payload.summary);
       } catch {
         // Keep comparison available if the secure account summary retries.
@@ -67,7 +68,7 @@ export default function Plans() {
         headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) },
         body: JSON.stringify({ plan: selected, currency: route, billingCountry: routeDetails.billingCountry, role }),
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload = await readApiJson<{ checkoutUrl?: string; error?: string }>(response, "Unable to open secure plan checkout");
       if (!response.ok || typeof payload.checkoutUrl !== "string") throw new Error(payload.error || "Unable to open secure plan checkout");
       openChargebeeCheckout(payload.checkoutUrl);
     } catch (checkoutError) {
@@ -88,7 +89,7 @@ export default function Plans() {
         headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) },
         body: JSON.stringify({ role }),
       });
-      const payload = await response.json().catch(() => ({}));
+      const payload = await readApiJson<{ currentTermEnd?: string; error?: string }>(response, "We could not schedule your cancellation");
       if (!response.ok) throw new Error(payload.error || "We could not schedule your cancellation");
       setSummary(current => current ? { ...current, subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: payload.currentTermEnd ?? current.subscriptionCurrentTermEnd } : current);
     } catch (cancellationError) {

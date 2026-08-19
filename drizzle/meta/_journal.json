@@ -134,6 +134,20 @@
       "when": 1787158912596,
       "tag": "0018_equal_professor_monster",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1787164501947,
+      "tag": "0019_wandering_ben_urich",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1787164541852,
+      "tag": "0020_kind_havok",
+      "breakpoints": true
     }
   ]
 }

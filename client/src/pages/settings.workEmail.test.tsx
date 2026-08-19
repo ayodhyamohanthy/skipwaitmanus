@@ -1,32 +1,30 @@
 // @vitest-environment jsdom
 import React from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import Settings from "./Settings";
 
-const profileState = vi.hoisted(() => ({ verified: false }));
+const accessState = vi.hoisted(() => ({ verified: false }));
 vi.mock("@clerk/react", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, signOut: vi.fn(), getToken: vi.fn(async () => null) }),
   useUser: () => ({ user: { emailAddresses: [] } }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
-vi.mock("@/lib/trpc", () => ({
-  trpc: { profile: { mine: { useQuery: () => ({ data: profileState.verified ? { workEmailDomain: "acme.com", workEmailVerifiedAt: new Date() } : null, isLoading: false }) } } },
-}));
-
 describe("Settings work email", () => {
-  afterEach(() => { cleanup(); profileState.verified = false; window.history.replaceState({}, "", "/"); });
+  beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/company-referrals/access") ? { ok: true, json: async () => ({ verifiedCompanyAccess: accessState.verified, workEmailDomain: accessState.verified ? "acme.com" : null }) } : { ok: true, json: async () => ({ requests: [] }) })); });
+  afterEach(() => { cleanup(); accessState.verified = false; window.history.replaceState({}, "", "/"); vi.unstubAllGlobals(); });
 
-  it("offers Add work email when no verified work email exists", () => {
+  it("offers Add work email when no verified work email exists", async () => {
     render(<Settings />);
-    expect(screen.getByText("No verified work email yet")).toBeTruthy();
+    expect(await screen.findByText("No verified work email yet")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Add work email" }).getAttribute("href")).toBe("/referrer?setup=work-email");
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith("/api/company-referrals/access", expect.objectContaining({ credentials: "include" }));
   });
 
-  it("offers Referrer mode after a work email is verified", () => {
-    profileState.verified = true;
+  it("offers Referrer mode after a work email is verified", async () => {
+    accessState.verified = true;
     render(<Settings />);
-    expect(screen.getByText("Work email verified")).toBeTruthy();
+    expect(await screen.findByText("Work email verified")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Switch to Job Referrer mode" })).toBeTruthy();
   });
 

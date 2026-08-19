@@ -10,7 +10,7 @@ export const SUBSCRIPTION_PLANS = {
     monthlyAllowance: 10,
     prices: {
       INR: { amount: 59_900, display: "₹599/month", itemPriceId: "skipwait_pro_monthly-INR" },
-      USD: { amount: 1_000, display: "$10/month", itemPriceId: "skipwait_pro_monthly-USD" },
+      USD: { amount: 700, display: "$7/month", itemPriceId: "skipwait_pro_monthly-USD" },
     },
   },
   max: {
@@ -18,7 +18,7 @@ export const SUBSCRIPTION_PLANS = {
     monthlyAllowance: 30,
     prices: {
       INR: { amount: 129_900, display: "₹1,299/month", itemPriceId: "skipwait_max_monthly-INR" },
-      USD: { amount: 2_000, display: "$20/month", itemPriceId: "skipwait_max_monthly-USD" },
+      USD: { amount: 1_500, display: "$15/month", itemPriceId: "skipwait_max_monthly-USD" },
     },
   },
 } as const;

@@ -236,6 +236,29 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId)]);
 
+export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  fileName: varchar("fileName", { length: 255 }).notNull(),
+  mimeType: varchar("mimeType", { length: 120 }).notNull(),
+  expectedSize: int("expectedSize").notNull(),
+  receivedSize: int("receivedSize").default(0).notNull(),
+  nextChunkIndex: int("nextChunkIndex").default(0).notNull(),
+  status: mysqlEnum("status", ["active", "completed", "failed"]).default("active").notNull(),
+  attachmentId: int("attachmentId").references(() => referralAttachments.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("resume_upload_sessions_owner_status_idx").on(table.ownerId, table.status, table.createdAt)]);
+
+export const resumeUploadChunks = mysqlTable("resumeUploadChunks", {
+  id: int("id").autoincrement().primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => resumeUploadSessions.id, { onDelete: "cascade" }),
+  chunkIndex: int("chunkIndex").notNull(),
+  storageKey: varchar("storageKey", { length: 1024 }).notNull(),
+  byteSize: int("byteSize").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("resume_upload_chunks_session_index_unique").on(table.sessionId, table.chunkIndex), index("resume_upload_chunks_session_idx").on(table.sessionId, table.chunkIndex)]);
+
 export const operationalActivityLogs = mysqlTable("operationalActivityLogs", {
   id: int("id").autoincrement().primaryKey(),
   actorUserId: int("actorUserId").references(() => users.id, { onDelete: "set null" }),
