@@ -381,3 +381,4 @@
 - [x] Audit every supported Wellfound listing against the public listing and the employer’s official domain; remove any exception that cannot be independently verified.
 - [x] Verify and safely route the reported LinkedIn job listing 4446365088 to its real employer domain without ever routing to linkedin.com.
 - [x] Extend administrator-only activity logs to cover all material Job Seeker and Referrer workflow actions with privacy-safe troubleshooting metadata and searchable visibility.
+- [x] Resolve the reported LinkedIn listing 4448866119 and strengthen evidence-based employer extraction for supported job-board and ATS links without guessing or misrouting requests.

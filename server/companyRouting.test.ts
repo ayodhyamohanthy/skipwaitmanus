@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { companyDomainFromTargetUrl, isWorkEmailDomain, resolveEmployerDomainFromTargetUrl } from "./db";
-import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 describe("company routing from Target Role URLs", () => {
   it("uses a direct employer careers hostname as the hidden company key", () => {
@@ -38,17 +38,27 @@ describe("company routing from Target Role URLs", () => {
     expect(verifiedEmployerDomainFromCandidates(candidates, ["acme.com", "linkedin.com"])).toBe("acme.com");
   });
 
+  it("uses LinkedIn's public job-posting representation and extracts its company card only as a verified-domain candidate", () => {
+    expect(publicEmployerPageUrls("https://www.linkedin.com/jobs/view/4448866119/?trackingId=example#details")).toEqual(["https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/4448866119"]);
+    expect(publicEmployerPageUrls("https://www.indeed.com/viewjob?jk=123")).toEqual(["https://www.indeed.com/viewjob?jk=123"]);
+    const candidates = employerCandidatesFromJobPageHtml('<a class="topcard__org-name-link">Rubrik</a>');
+    expect(candidates).toEqual(["rubrik"]);
+    expect(verifiedEmployerDomainFromCandidates(candidates, ["rubrik.com", "linkedin.com"])).toBe("rubrik.com");
+  });
+
   it("uses reviewed exact fallbacks for independently verified Wellfound listings without routing any other Wellfound URL", async () => {
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive")).toBe("chatfin.ai");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/3971835-account-executive/?source=mobile")).toBe("chatfin.ai");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4220336-senior-product-designer")).toBe("checkhq.com");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.wellfound.com/jobs/4220336-senior-product-designer/?source=mobile#details")).toBe("checkhq.com");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.linkedin.com/jobs/view/4446365088/?trackingId=example#details")).toBe("ethos.com");
+    expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.linkedin.com/jobs/view/4448866119/?trackingId=example#details")).toBe("rubrik.com");
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://wellfound.com/jobs/4322255-software-engineer-intern-freshers")).toBeUndefined();
     expect(verifiedEmployerDomainFromProtectedHostedListing("https://www.linkedin.com/jobs/view/4446365089/")).toBeUndefined();
     await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/3971835-account-executive")).resolves.toBe("chatfin.ai");
     await expect(resolveEmployerDomainFromTargetUrl("https://wellfound.com/jobs/4220336-senior-product-designer")).resolves.toBe("checkhq.com");
     await expect(resolveEmployerDomainFromTargetUrl("https://www.linkedin.com/jobs/view/4446365088/")).resolves.toBe("ethos.com");
+    await expect(resolveEmployerDomainFromTargetUrl("https://www.linkedin.com/jobs/view/4448866119/")).resolves.toBe("rubrik.com");
   });
 
   it("allows verified company domains while rejecting common consumer email domains", () => {

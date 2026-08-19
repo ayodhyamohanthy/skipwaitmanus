@@ -85,11 +85,25 @@ export function employerCandidatesFromJobPageHtml(html: string) {
   const candidates = [
     ...valuesFromHtmlPattern(html, /"hiringOrganization"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"\\]+(?:\\.[^"\\]*)*)"/gi),
     ...valuesFromHtmlPattern(html, /"(?:companyName|employerName|company_name)"\s*:\s*"([^"\\]+(?:\\.[^"\\]*)*)"/gi),
+    ...valuesFromHtmlPattern(html, /class=["'][^"']*topcard__org-name-link[^"']*["'][^>]*>\s*([^<]{2,160})</gi),
+    ...valuesFromHtmlPattern(html, /<title[^>]*>\s*([^<]{2,200})\s*<\/title>/gi).flatMap(employerCandidatesFromPageTitle),
     ...valuesFromHtmlPattern(html, /(?:data-test|data-testid)=["'][^"']*(?:company|employer)[^"']*["'][^>]*>\s*([^<]{2,160})</gi),
     ...valuesFromHtmlPattern(html, /<meta[^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]+content=["']([^"']+)["'][^>]*>/gi).flatMap(employerCandidatesFromPageTitle),
     ...valuesFromHtmlPattern(html, /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["'](?:og:title|twitter:title)["'][^>]*>/gi).flatMap(employerCandidatesFromPageTitle),
   ];
   return Array.from(new Set(candidates.map(normalizedEmployerKey).filter(value => value.length > 1)));
+}
+
+export function publicEmployerPageUrls(targetRoleUrl: string) {
+  try {
+    const url = new URL(targetRoleUrl);
+    const host = normalizedHost(url.hostname);
+    const linkedInJobId = isHostOrSubdomain(host, "linkedin.com") ? url.pathname.match(/\/jobs\/view\/(\d+)/)?.[1] : undefined;
+    if (linkedInJobId) return [`https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/${linkedInJobId}`];
+    return [url.toString()];
+  } catch {
+    return [];
+  }
 }
 
 export function verifiedEmployerDomainFromCandidates(candidates: string[], verifiedDomains: Array<string | null | undefined>) {

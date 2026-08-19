@@ -5,7 +5,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
-import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -60,9 +60,12 @@ async function employerPageCandidates(targetRoleUrl: string) {
   try {
     const url = new URL(targetRoleUrl);
     if (!isHostedJobPlatform(url.hostname)) return [];
-    const response = await fetch(url, { headers: { "User-Agent": "skipwait.me employer routing" }, redirect: "manual", signal: AbortSignal.timeout(4_000) });
-    if (!response.ok) return [];
-    return employerCandidatesFromJobPageHtml((await response.text()).slice(0, 512_000));
+    const candidateSets = await Promise.all(publicEmployerPageUrls(targetRoleUrl).map(async pageUrl => {
+      const response = await fetch(pageUrl, { headers: { "User-Agent": "skipwait.me employer routing" }, redirect: "manual", signal: AbortSignal.timeout(4_000) });
+      if (!response.ok) return [];
+      return employerCandidatesFromJobPageHtml((await response.text()).slice(0, 512_000));
+    }));
+    return Array.from(new Set(candidateSets.flat()));
   } catch {
     return [];
   }

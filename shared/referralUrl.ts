@@ -6,6 +6,7 @@ const reviewedEmployerLinks = new Map<string, ReviewedEmployer>([
   ["wellfound.com/jobs/3971835-account-executive", { name: "ChatFin", domain: "chatfin.ai" }],
   ["wellfound.com/jobs/4220336-senior-product-designer", { name: "Check", domain: "checkhq.com" }],
   ["linkedin.com/jobs/view/4446365088", { name: "Ethos", domain: "ethos.com" }],
+  ["linkedin.com/jobs/view/4448866119", { name: "Rubrik", domain: "rubrik.com" }],
 ]);
 
 export function isValidTargetRoleUrl(value: string | undefined | null) {
