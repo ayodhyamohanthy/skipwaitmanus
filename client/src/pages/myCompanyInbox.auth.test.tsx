@@ -39,4 +39,17 @@ describe("My Company Inbox employee access", () => {
     expect(screen.getByRole("button", { name: "Share with a job seeker" })).toBeTruthy();
     expect(screen.queryByText("No new requests.")).toBeNull();
   });
+
+  it("shows the server-filtered New request count and keeps it visible across inbox tabs", async () => {
+    authState.signedIn = true;
+    const newRequests = [
+      { id: 1, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/one", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false },
+      { id: 2, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/two", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=saved") ? [] : newRequests }) })));
+    render(<MyCompanyInbox />);
+    await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
+    fireEvent.click(screen.getByRole("tab", { name: "Saved" }));
+    await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
+  });
 });
