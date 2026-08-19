@@ -367,5 +367,5 @@
 - [x] Reset all account purchased-credit balances to 0 and restore each account’s fresh monthly allowance to 3 credits without changing subscriptions or payment records.
 - [x] Unify the Referrer entry, inbox, empty, and review screens around the shared mobile-first header, spacing, typography, and action hierarchy.
 - [x] Replace “Share with someone looking for work” with clearer, more natural Referrer sharing microcopy.
-- [ ] Provide a verified Markdown status document explaining when monthly referral credits refresh.
+- [x] Provide a verified Markdown status document explaining when monthly referral credits refresh.
 - [x] Shorten the Referrer mobile share payload to one clear invitation line plus the referral link.
