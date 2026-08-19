@@ -414,3 +414,4 @@
 - [x] Fix the Share skipwait.me screen so all mobile sharing actions fit in the fixed viewport without page scrolling.
 - [x] Locate and guard every active client request path that can surface an HTML-as-JSON parser error, using uniform user-safe recovery messages.
 - [x] Add a private in-website notification center for meaningful Job Seeker and Referrer referral events, with unread state and direct next actions.
+- [x] Create an implementation-ready Markdown handoff for rebuilding skipwait.me in VibeCodingApp.
