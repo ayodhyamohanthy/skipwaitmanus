@@ -23,4 +23,12 @@ describe("Premium payment return recovery", () => {
     expect(await screen.findByText("Your verified payment is complete and your available credits are updated.")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/credit-recovery", expect.objectContaining({ method: "POST" }));
   });
+
+  it("uses the requested Pro and Max subscription microcopy while preserving the role-aware plans destination", async () => {
+    window.history.pushState({}, "", "/premium?role=job_seeker");
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ summary: { totalAvailable: 3 } }), { status: 200 })));
+    render(<Premium />);
+    const subscriptions = await screen.findByRole("link", { name: "Or Checkout Pro and Max Subscriptions" });
+    expect(subscriptions.getAttribute("href")).toBe("/plans?role=job_seeker");
+  });
 });
