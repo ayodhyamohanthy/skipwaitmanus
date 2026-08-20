@@ -444,3 +444,5 @@
 - [x] Transfer the prepared implementation documents to the user’s Vibecode workspace without credentials or private data; preserve the verified source-only ZIP separately because its document uploader does not support source-archive import.
 - [ ] Migrate the complete skipwait.me application to the user’s VibecodeApp hosting environment, including a secure canonical-domain, authentication, database, storage, payment, and webhook cutover plan.
 - [ ] Execute the staged VibecodeApp replatform: establish staging, rebuild security and workflows, migrate data, validate payment operations, and cut over skipwait.me only after verified parity and rollback readiness.
+- [ ] Resolve the Vibecode build-agent or supported source-import access prerequisite, then resume the staged migration without exposing the user’s API key, credentials, or production data.
+- [x] Produce a complete VibecodeApp-to-skipwait.me configuration-parity and manual implementation runbook, including a global-standard audit of user value, retention, trusted sharing, organic referral growth, and launch verification.
