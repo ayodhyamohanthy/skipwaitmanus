@@ -289,7 +289,9 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   const eligibleCandidates = await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const eligible = eligibleCandidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
   const coverageStatus = companyCoverageStatus(eligible.length);
-  const remaining = coverageStatus === "covered" ? await spendToken(userId, "job_seeker") : await getTokenWallet(userId, "job_seeker");
+  // A valid, private request always reserves one Job Seeker credit. Requests
+  // without current coverage remain queued for manual administrator follow-up.
+  const remaining = await spendToken(userId, "job_seeker");
   const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
   const jobId = Number(jobResult[0].insertId);
   const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, personalPitch: input.personalPitch, status: "pending" });

@@ -152,13 +152,13 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(screen.getByRole("link", { name: "Add credits" })).toBeTruthy();
   });
 
-  it("keeps credits intact and presents one visual coverage invite action when no verified employee exists at the employer", async () => {
+  it("uses a credit and queues a private request while presenting one visual coverage invite action when no verified employee exists", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {
       if (String(input).includes("/complete")) return { ok: true, json: async () => ({ id: "72", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/72", url: "/api/documents/72" }) };
       if (String(input).includes("/chunks")) return { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) };
       if (String(input).includes("/api/documents/uploads")) return { ok: true, json: async () => ({ sessionId: "upload-72", chunkBytes: 49152 }) };
-      if (String(input).includes("/api/company-referrals")) return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "waiting_for_company_coverage", remainingTokens: 3, creditSummary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
+      if (String(input).includes("/api/company-referrals")) return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "waiting_for_company_coverage", remainingTokens: 2, creditSummary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 2, purchasedCreditsRemaining: 0, totalAvailable: 2, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
       return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
     }));
     render(<ReferralRequest />);
@@ -169,6 +169,8 @@ describe("ReferralRequest secure resume handoff", () => {
     fireEvent.click(sendButton);
     await waitFor(() => expect(document.querySelector('[data-skipwait-coverage-invite="true"]')).toBeTruthy());
     expect(screen.getByRole("button", { name: "Invite one employee at acme.com" })).toBeTruthy();
+    expect(screen.getByText("Your request is queued for acme.com.")).toBeTruthy();
+    expect(screen.getByText("1 credit used · We’ll follow up as coverage grows.")).toBeTruthy();
     expect(screen.queryByText(/We are building coverage/i)).toBeNull();
     expect(screen.queryByText(/did not use a credit/i)).toBeNull();
     vi.unstubAllGlobals();

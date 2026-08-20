@@ -79,6 +79,23 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-b")).status).toBe(409);
   });
 
+  it("queues a no-coverage referral for manual administrator follow-up after reserving the Job Seeker credit", async () => {
+    const app = express(); app.use(express.json());
+    const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "clerk-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 88, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 880, companyDomain: "acme.com", notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2, creditSummary: { totalAvailable: 2 } }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 880, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
+      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }), recordActivity: async entry => { activity.push(entry); },
+    });
+
+    const response = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({ requestId: 880, notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2 });
+    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: true } }));
+  });
+
   it("lists anonymous opportunities publicly but only lets a verified employee publish one", async () => {
     const app = express();
     app.use(express.json());

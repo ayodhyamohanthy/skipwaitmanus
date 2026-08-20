@@ -8,6 +8,7 @@ export type ChargebeeIdentity = { account: { id: number; email?: string | null; 
 
 type Deps = {
   resolveIdentity: (req: Request) => Promise<ChargebeeIdentity | undefined>;
+  recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   createCheckout?: typeof createChargebeeCheckout;
   createPaymentIntent: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
   fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) => Promise<unknown>;
@@ -29,6 +30,7 @@ function roleFromBody(value: unknown): TokenRole {
 }
 
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
+  const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   app.post("/api/chargebee/checkout", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
@@ -57,6 +59,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         cancelUrl: `${origin}/premium?role=${role}&payment=cancelled`,
       });
       await deps.createPaymentIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, tokenCount: pack.tokenCount * quantity, amount: pack.amount * quantity, currency: pack.currency });
+      record({ actorUserId: identity.account.id, action: "billing.credit_checkout_started", outcome: "success", resourceType: "payment_intent", resourceId: checkout.hostedPageId, metadata: { role, tokenCount: pack.tokenCount * quantity, amount: pack.amount * quantity, currency: pack.currency, billingCountry } });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] checkout error", error);
@@ -91,6 +94,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const price = SUBSCRIPTION_PLANS[plan].prices[selectedCurrency];
       if (!deps.createSubscriptionIntent) throw new Error("Subscription intent storage is not configured");
       await deps.createSubscriptionIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, plan, itemPriceId: price.itemPriceId, amount: price.amount, currency: selectedCurrency });
+      record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: checkout.hostedPageId, metadata: { role, plan, currency: selectedCurrency, amount: price.amount, billingCountry } });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] subscription checkout error", error);
@@ -109,6 +113,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const runtime = deps.cancelSubscription ? undefined : resolveChargebeeRuntime(req.hostname);
       const result = await (deps.cancelSubscription ?? scheduleChargebeeSubscriptionCancellation)({ subscriptionId: subscription.subscriptionId, ...(runtime ? { site: runtime.site, apiKey: runtime.apiKey } : {}) });
       await deps.markSubscriptionNonRenewing?.(identity.account.id, role, subscription.subscriptionId, result.currentTermEnd);
+      record({ actorUserId: identity.account.id, action: "billing.subscription_cancellation_scheduled", outcome: "success", resourceType: "subscription", resourceId: subscription.subscriptionId, metadata: { role, status: result.status } });
       return res.json({ status: result.status, currentTermEnd: result.currentTermEnd });
     } catch (error) {
       console.error("[Chargebee] subscription cancellation error", error);

@@ -46,8 +46,10 @@ describe("Chargebee webhook route", () => {
     process.env.CHARGEBEE_WEBHOOK_SECRET = secret;
     let intent: { hostedPageId: string; checkoutIntentId: string; tokenCount: number } | undefined;
     let wallet = 3;
+    const activity: Array<{ action: string; actorUserId?: number; metadata?: Record<string, unknown> }> = [];
     registerChargebeeRoutes(app, {
       resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      recordActivity: async input => { activity.push(input); },
       createCheckout: async () => ({ checkoutUrl: "https://chargebee.test/hp_flow", hostedPageId: "hp_flow", checkoutIntentId: "intent_flow" }),
       createPaymentIntent: async input => { intent = { hostedPageId: input.hostedPageId, checkoutIntentId: input.checkoutIntentId, tokenCount: input.tokenCount }; },
       fulfillPayment: async input => { if (intent?.hostedPageId !== input.hostedPageId || intent?.checkoutIntentId !== input.passThruContent) return { status: "ignored" }; wallet += intent.tokenCount; return { status: "credited", tokenCount: intent.tokenCount }; },
@@ -65,6 +67,7 @@ describe("Chargebee webhook route", () => {
     expect(webhook.status).toBe(200);
     expect(webhook.body.result.status).toBe("credited");
     expect(wallet).toBe(4);
+    expect(activity).toContainEqual(expect.objectContaining({ actorUserId: 7, action: "billing.credit_checkout_started", metadata: expect.objectContaining({ currency: "INR", billingCountry: "IN", tokenCount: 1 }) }));
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 

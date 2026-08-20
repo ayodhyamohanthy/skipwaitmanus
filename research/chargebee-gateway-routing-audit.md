@@ -100,6 +100,8 @@ At the user’s request, a temporary live webhook was created at `https://bridge
 
 Local verification confirmed that the application correctly selects the live webhook secret for the managed host. However, the public managed-domain deployment continued accepting the test secret and rejecting the live secret after multiple published checks, indicating a deployment/runtime host-resolution mismatch outside the locally verified server path. The user approved a safety pause. The live webhook endpoint `whv1_16BXmZVSoApRCK1r` is now **disabled** (HTTP 200 update confirmation) but preserved for later reactivation. No live payment or subscription event can currently reach the application through that endpoint.
 
+The managed deployment investigation subsequently isolated delayed runtime rollout rather than a persisted application defect. After the quality-gated published repair, the public endpoint returned HTTP **401** for the test webhook secret and HTTP **202** for the live secret on a deliberately empty authenticated payload. This proves that the managed host now selects the isolated live secret and reaches the application’s safe ignored-event path. The endpoint remains disabled pending explicit reactivation and a provider-originated delivery test.
+
 ## Sources
 
 1. https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/gateway_settings

@@ -430,3 +430,5 @@
 - [ ] Temporarily activate the verified live Chargebee route and webhook on the managed Manus domain, with a documented one-setting switch back to skipwait.me after domain binding.
 - [ ] Repair the deployed managed-domain host allowlist so the public webhook selects its live secret instead of the test secret during the temporary rollout.
 - [ ] Investigate the managed deployment’s effective public-host and environment resolution without logging credentials, then repair and re-verify live webhook selection.
+- [x] Consume a referral credit and retain a manual-follow-up request when no matching verified employee exists, with clear user-facing status.
+- [x] Record meaningful Job Seeker and Referrer actions in the privacy-safe administrator activity log for manual outreach and support follow-up.
