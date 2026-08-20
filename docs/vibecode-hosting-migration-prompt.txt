@@ -1,0 +1,18 @@
+Read the uploaded files `skipwait-vibecodingapp-handoff.txt`, `vibecodingapp-transfer-guide.txt`, and `vibecode-hosting-migration-plan.txt` in full before editing code.
+
+We are migrating a production-grade job-referral PWA, not creating a prototype. Do not change the custom domain, production DNS, payment gateways, live Chargebee webhook, production secrets, or production database. Do not fabricate users, referrals, reviews, payments, messages, resumes, usage, or testimonials.
+
+First inspect the current Vibecode codebase and return a concise migration plan that maps every existing product capability to Vibecode Hono, Prisma/SQLite, Better Auth, cloud storage, and server-side environment variables. Flag incompatible dependencies. Keep these product invariants intact:
+
+- Product name is skipwait.me. Roles are Job Seeker and Referrer.
+- Referrers participate free of charge and verify only a company email using one OTP lifecycle. Personal email must never claim a Referrer identity.
+- Job Seeker request routing must target only verified employees of the real employer identified from the job URL. Never guess the employer.
+- Resume files are private. Enforce size/type/signature checks, owner authorization, and accepted-referral-only participant access. Never publish a document URL.
+- A valid referral request consumes one credit even when coverage is absent; no-coverage requests stay private for manual follow-up.
+- Job Seeker and Referrer can message only after approval. Progress updates are voluntary, factual, private, and do not generate rewards, public activity, rankings, or compulsive engagement.
+- Chargebee is the payment authority. India is Razorpay/INR; international is PayPal/USD. Browser callbacks never credit tokens. Server webhook fulfillment must be idempotent.
+- Preserve administrator activity/privacy queues, least-privilege admin access, user-safe API errors, and mobile-first fixed-view UI principles.
+
+Implement only the first secure staging milestone: Better Auth roles, company-email-only Referrer OTP, protected server routes, private storage model, activity-log model, and tests proving cross-user, cross-company, unauthenticated, and non-admin access are denied. Do not import real data or configure production values.
+
+Run the build and tests. Report the exact evidence and stop for review before implementing user workflows, payments, data migration, or a domain cutover.

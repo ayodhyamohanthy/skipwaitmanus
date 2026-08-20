@@ -442,3 +442,5 @@
 - [x] Repair the signed-out Share Hub so it resolves to a useful sign-in or public sharing state rather than remaining on “Preparing your invite…”, with a regression test.
 - [x] Create a secure, implementation-ready VibeCodingApp handoff package for skipwait.me, including all product specifications and manual integration requirements without credentials.
 - [x] Transfer the prepared implementation documents to the user’s Vibecode workspace without credentials or private data; preserve the verified source-only ZIP separately because its document uploader does not support source-archive import.
+- [ ] Migrate the complete skipwait.me application to the user’s VibecodeApp hosting environment, including a secure canonical-domain, authentication, database, storage, payment, and webhook cutover plan.
+- [ ] Execute the staged VibecodeApp replatform: establish staging, rebuild security and workflows, migrate data, validate payment operations, and cut over skipwait.me only after verified parity and rollback readiness.
