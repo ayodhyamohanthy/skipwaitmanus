@@ -16,8 +16,10 @@ describe("Chargebee environment boundary", () => {
   it("uses live credentials only for the explicitly enabled live domain", () => {
     expect(resolveChargebeeRuntime("skipwait.me:443", env)).toEqual({ environment: "live", site: "skipwait", apiKey: "live-key" });
     expect(resolveChargebeeWebhookSecret("skipwait.me", env)).toBe("live-webhook");
-    expect(resolveChargebeeRuntime("bridgeref-ybuthfmw.manus.space", env)).toEqual({ environment: "test", site: "skipwait-test", apiKey: "test-key" });
-    expect(resolveChargebeeWebhookSecret("bridgeref-ybuthfmw.manus.space", env)).toBe("test-webhook");
+    expect(resolveChargebeeRuntime("bridgeref-ybuthfmw.manus.space", env)).toEqual({ environment: "live", site: "skipwait", apiKey: "live-key" });
+    expect(resolveChargebeeWebhookSecret("bridgeref-ybuthfmw.manus.space", env)).toBe("live-webhook");
+    expect(resolveChargebeeRuntime("3000-im5hmgawqc67j45jjlcss-a6a715a0.us3.manus.computer", env)).toEqual({ environment: "test", site: "skipwait-test", apiKey: "test-key" });
+    expect(resolveChargebeeWebhookSecret("3000-im5hmgawqc67j45jjlcss-a6a715a0.us3.manus.computer", env)).toBe("test-webhook");
   });
 
   it("does not route lookalike or disabled hosts to live billing", () => {
