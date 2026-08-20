@@ -424,3 +424,7 @@
 - [x] Diagnose and repair the disabled Job Seeker CTA after a resume is attached.
 - [x] Simplify the resume screen so its intended action is the sole clear primary CTA and competing actions are removed.
 - [x] Update the Premium-page subscription link microcopy to “Or Checkout Pro and Max Subscriptions.”
+- [ ] Audit and complete Chargebee routing for Razorpay domestic INR payments in India and PayPal global payments, including sandbox verification and live-account readiness.
+- [ ] Provision isolated live Chargebee API and webhook credentials, activate the deployed application against the live site, and verify the live webhook without weakening test-environment safeguards.
+- [ ] Bind skipwait.me to this project, verify its webhook receiver, then create and test the Chargebee live webhook with the isolated live secret.
+- [ ] Temporarily activate the verified live Chargebee route and webhook on the managed Manus domain, with a documented one-setting switch back to skipwait.me after domain binding.
