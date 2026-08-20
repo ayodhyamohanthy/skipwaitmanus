@@ -55,10 +55,13 @@ describe("ShareHub personal invites", () => {
     expect(screen.getByRole("button", { name: "Sign in to continue" })).toBeTruthy();
   });
 
-  it("shows a visible loading shell instead of a blank page while authentication initializes", () => {
+  it("shows a usable sign-in state instead of an unbounded loading shell while authentication initializes", () => {
     authState.isLoaded = false;
+    authState.isSignedIn = false;
     render(<ShareHub />);
-    expect(screen.getByText("Preparing your invite…")).toBeTruthy();
+    expect(screen.getByText("Create your invite link.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in to continue" })).toBeTruthy();
+    expect(screen.queryByText("Preparing your invite…")).toBeNull();
     authState.isLoaded = true;
   });
 });

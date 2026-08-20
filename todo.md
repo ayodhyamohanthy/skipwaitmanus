@@ -438,3 +438,5 @@
 - [x] Add a voluntary, authorized post-approval referral-progress loop with factual participant notifications, status-specific next actions, and regression coverage—without rankings, incentives, or additional data exposure.
 - [x] Perform a full end-to-end QA audit across public, Job Seeker, Referrer, administrator, privacy, payments, security, resilience, and mobile paths; repair and regression-test every reproducible application defect.
 - [x] Produce and maintain a launch-readiness checklist that distinguishes mandatory go-live gates, owners, evidence, and staged post-launch work for skipwait.me.
+- [x] Perform a final all-flow production go/no-go verification, distinguishing tested application readiness from external launch blockers.
+- [x] Repair the signed-out Share Hub so it resolves to a useful sign-in or public sharing state rather than remaining on “Preparing your invite…”, with a regression test.
