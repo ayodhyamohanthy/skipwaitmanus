@@ -432,3 +432,4 @@
 - [ ] Investigate the managed deployment’s effective public-host and environment resolution without logging credentials, then repair and re-verify live webhook selection.
 - [x] Consume a referral credit and retain a manual-follow-up request when no matching verified employee exists, with clear user-facing status.
 - [x] Record meaningful Job Seeker and Referrer actions in the privacy-safe administrator activity log for manual outreach and support follow-up.
+- [x] Repair the Referrer work-email OTP flow so a valid code delivered to the entered company email completes verification reliably.

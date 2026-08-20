@@ -32,7 +32,7 @@ describe("WorkEmailSignIn", () => {
     render(<WorkEmailSignIn />);
     fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "employee@acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send code" }));
-    await waitFor(() => expect(clerk.signIn.create).toHaveBeenCalledWith({ identifier: "employee@acme.com", strategy: "email_code" }));
+    await waitFor(() => expect(clerk.signIn.create).toHaveBeenCalledWith({ identifier: "employee@acme.com" }));
     await waitFor(() => expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "work-id" }));
     expect(clerk.signIn.prepareFirstFactor).not.toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "personal-id" });
     expect(screen.getByText("Code sent to employee@acme.com")).toBeTruthy();
@@ -47,10 +47,26 @@ describe("WorkEmailSignIn", () => {
     render(<WorkEmailSignIn />);
     fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "employee@acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send code" }));
-    await waitFor(() => expect(clerk.signIn.create).toHaveBeenLastCalledWith({ identifier: "employee@acme.com", strategy: "email_code" }));
+    await waitFor(() => expect(clerk.signIn.create).toHaveBeenLastCalledWith({ identifier: "employee@acme.com" }));
     await waitFor(() => expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "work-id" }));
     expect(screen.queryByText(/That email address is taken/i)).toBeNull();
     expect(screen.getByText("Code sent to employee@acme.com")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Use a different company email" })).toBeNull();
+  });
+
+  it("verifies against the single explicitly prepared work-email code and activates the completed session", async () => {
+    clerk.signIn.create.mockResolvedValue({ status: "needs_first_factor", supportedFirstFactors: [{ strategy: "email_code", emailAddressId: "work-id" }] });
+    clerk.signIn.prepareFirstFactor.mockResolvedValue({ status: "needs_first_factor" });
+    clerk.signIn.attemptFirstFactor.mockResolvedValue({ status: "complete", createdSessionId: "sess_work_1" });
+    clerk.setActive.mockResolvedValue({});
+    render(<WorkEmailSignIn />);
+    fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "employee@acme.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
+    await waitFor(() => expect(screen.getByLabelText("Secure employee sign-in code")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Secure employee sign-in code"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
+    await waitFor(() => expect(clerk.signIn.attemptFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", code: "123456" }));
+    expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(clerk.setActive).toHaveBeenCalledWith({ session: "sess_work_1" }));
   });
 });
