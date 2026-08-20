@@ -422,3 +422,4 @@
 - [x] Diagnose and repair the live resume-upload stall so uploads complete or fail with clear recovery guidance.
 - [x] Diagnose and repair the reported safe employer-identification failure without allowing incorrect company routing.
 - [x] Diagnose and repair the disabled Job Seeker CTA after a resume is attached.
+- [x] Simplify the resume screen so its intended action is the sole clear primary CTA and competing actions are removed.

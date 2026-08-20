@@ -76,7 +76,8 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(screen.getByLabelText("Referral request milestone").textContent).toContain("Your 1st referral request is now active.");
     expect(document.querySelector("[data-referral-success='true']")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Share your invite link" }).getAttribute("href")).toBe("/share");
-    expect(screen.getByRole("link", { name: "Request another referral" }).getAttribute("href")).toBe("/start");
+    expect(screen.queryByRole("link", { name: "Request another referral" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "View my request" })).toBeNull();
     vi.unstubAllGlobals();
   });
 
