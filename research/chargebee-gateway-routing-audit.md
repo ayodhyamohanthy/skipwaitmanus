@@ -94,6 +94,12 @@ The application now has an explicit host-scoped credential boundary. Only the ca
 
 Chargebee’s live site currently has **zero webhook endpoints**. A direct unauthenticated POST probe to `https://skipwait.me/api/chargebee/webhook` returned a JSON HTTP **404 Not Found**, so `skipwait.me` is still not routed to this project’s deployed webhook receiver. Creating a live Chargebee webhook now would therefore send payment events to the legacy deployment, and is intentionally blocked. The remaining safe sequence is: bind `skipwait.me` to this project, verify a POST reaches this project and returns HTTP 401 when unsigned, create the live webhook at that canonical URL using the separately stored webhook secret, subscribe only to payment/subscription lifecycle events, then use Chargebee’s Test Webhook facility to confirm an authenticated 2xx delivery without crediting any account.
 
+### Temporary managed-domain attempt and safe suspension
+
+At the user’s request, a temporary live webhook was created at `https://bridgeref-ybuthfmw.manus.space/api/chargebee/webhook` with Basic Authentication, API v2 payloads, card-resource exclusion, and only `payment_succeeded` plus the required subscription lifecycle events. Its non-sensitive configuration was verified through the Chargebee API.
+
+Local verification confirmed that the application correctly selects the live webhook secret for the managed host. However, the public managed-domain deployment continued accepting the test secret and rejecting the live secret after multiple published checks, indicating a deployment/runtime host-resolution mismatch outside the locally verified server path. The user approved a safety pause. The live webhook endpoint `whv1_16BXmZVSoApRCK1r` is now **disabled** (HTTP 200 update confirmation) but preserved for later reactivation. No live payment or subscription event can currently reach the application through that endpoint.
+
 ## Sources
 
 1. https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/gateway_settings

@@ -97,6 +97,33 @@ describe("Chargebee webhook route", () => {
     expect(called).toBe(false);
   });
 
+  it("reports the selected runtime only for an explicit credential-free deployment diagnostic", async () => {
+    const app = express();
+    app.use(express.json());
+    process.env.CHARGEBEE_LIVE_ENABLED = "true";
+    process.env.CHARGEBEE_LIVE_DOMAIN = "skipwait.me";
+    process.env.CHARGEBEE_LIVE_WEBHOOK_SECRET = "live-diagnostic-secret";
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => undefined,
+      createPaymentIntent: async () => undefined,
+      fulfillPayment: async () => ({ status: "credited" }),
+    });
+
+    const response = await request(app)
+      .post("/api/chargebee/webhook")
+      .set("Host", "bridgeref-ybuthfmw.manus.space")
+      .set("X-Skipwait-Webhook-Diagnostic", "boundary")
+      .set("Authorization", auth("live-diagnostic-secret"))
+      .send({});
+
+    expect(response.status).toBe(202);
+    expect(response.header["x-skipwait-webhook-runtime"]).toBe("live");
+    expect(response.header["x-skipwait-webhook-host"]).toBe("bridgeref-ybuthfmw.manus.space");
+    delete process.env.CHARGEBEE_LIVE_ENABLED;
+    delete process.env.CHARGEBEE_LIVE_DOMAIN;
+    delete process.env.CHARGEBEE_LIVE_WEBHOOK_SECRET;
+  });
+
   it("does not credit a paid event when the hosted page matches but pass-through intent does not", async () => {
     const app = express();
     app.use(express.json());

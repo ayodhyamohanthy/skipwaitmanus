@@ -7,9 +7,9 @@ describe("live Chargebee credential", () => {
 
     const response = await fetch("https://skipwait.chargebee.com/api/v2/item_prices?limit=1", {
       headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(12_000),
     });
 
     expect(response.status).toBe(200);
-  });
+  }, 15_000);
 });

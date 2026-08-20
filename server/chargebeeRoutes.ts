@@ -1,7 +1,7 @@
 import type { Express, Request } from "express";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, isTokenPackId, isTokenQuantity, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
-import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
+import { isLiveChargebeeRequest, resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
@@ -152,6 +152,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   });
 
   app.post("/api/chargebee/webhook", async (req, res) => {
+    if (req.header("x-skipwait-webhook-diagnostic") === "boundary") {
+      // Temporary, opt-in deployment diagnosis. This never reveals a credential.
+      res.set("X-Skipwait-Webhook-Host", req.hostname);
+      res.set("X-Skipwait-Webhook-Runtime", isLiveChargebeeRequest(req.hostname) ? "live" : "test");
+    }
     const secret = resolveChargebeeWebhookSecret(req.hostname);
     if (!secret || !basicAuthMatches(req.header("authorization"), secret)) return res.status(401).send("Unauthorized");
     const subscription = parseSubscriptionEvent(req.body);

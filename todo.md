@@ -429,3 +429,4 @@
 - [ ] Bind skipwait.me to this project, verify its webhook receiver, then create and test the Chargebee live webhook with the isolated live secret.
 - [ ] Temporarily activate the verified live Chargebee route and webhook on the managed Manus domain, with a documented one-setting switch back to skipwait.me after domain binding.
 - [ ] Repair the deployed managed-domain host allowlist so the public webhook selects its live secret instead of the test secret during the temporary rollout.
+- [ ] Investigate the managed deployment’s effective public-host and environment resolution without logging credentials, then repair and re-verify live webhook selection.
