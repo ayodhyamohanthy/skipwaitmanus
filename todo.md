@@ -446,3 +446,4 @@
 - [ ] Execute the staged VibecodeApp replatform: establish staging, rebuild security and workflows, migrate data, validate payment operations, and cut over skipwait.me only after verified parity and rollback readiness.
 - [ ] Resolve the Vibecode build-agent or supported source-import access prerequisite, then resume the staged migration without exposing the user’s API key, credentials, or production data.
 - [x] Produce a complete VibecodeApp-to-skipwait.me configuration-parity and manual implementation runbook, including a global-standard audit of user value, retention, trusted sharing, organic referral growth, and launch verification.
+- [x] Add Queue Open Alerts: when a verified employee intentionally opens a company referral slot, notify only eligible queued Job Seekers immediately with one private next action, anti-spam controls, and regression coverage.

@@ -24,6 +24,7 @@ export type PrivateReferralRouteDeps = {
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
   createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown }>;
+  openCompanyReferralAvailability?: (userId: number, input: { slotCount?: number }) => Promise<{ companyDomain: string; requestedSlotCount: number; allocatedRequestIds: number[]; allocatedCount: number }>;
   fulfillCompanyCoverageInvitation?: (joinerUserId: number, input: { inviteCode: string; workEmailDomain: string }) => Promise<{ rewarded: boolean; tokenCount?: number }>;
   listCompanyReferralInbox: (userId: number) => Promise<unknown[]>;
   listCompanyReferralInboxByState?: (userId: number, state: "new" | "saved" | "completed") => Promise<unknown[]>;
@@ -324,6 +325,22 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: requests.length, scope } });
       res.json({ requests, scope });
     } catch { res.status(500).json({ error: "We could not load private company requests" }); }
+  });
+  app.post("/api/company-referrals/availability/open", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to open referral capacity" });
+      if (!deps.openCompanyReferralAvailability) return res.status(503).json({ error: "Referral availability is unavailable right now" });
+      const requestedSlotCount = typeof req.body?.slotCount === "number" ? req.body.slotCount : 1;
+      if (!Number.isInteger(requestedSlotCount) || requestedSlotCount < 1 || requestedSlotCount > 3) return res.status(400).json({ error: "Open between one and three real referral slots" });
+      const result = await deps.openCompanyReferralAvailability(identity.account.id, { slotCount: requestedSlotCount });
+      record({ actorUserId: identity.account.id, action: "company_referral.queue_opened", outcome: "success", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { requestedSlotCount: result.requestedSlotCount, allocatedCount: result.allocatedCount } });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ availability: result });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not open referral capacity";
+      res.status(/verify your company email/i.test(message) ? 403 : 409).json({ error: message });
+    }
   });
   app.post("/api/company-referrals/:requestId/save", async (req, res) => {
     try {

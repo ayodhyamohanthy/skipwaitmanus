@@ -148,6 +148,20 @@
       "when": 1787164541852,
       "tag": "0020_kind_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1787248810250,
+      "tag": "0021_clear_norrin_radd",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1787249477000,
+      "tag": "0022_queue_open_alert_backfill",
+      "breakpoints": true
     }
   ]
 }

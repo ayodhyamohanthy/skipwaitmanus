@@ -30,14 +30,15 @@ describe("My Company Inbox employee access", () => {
     expect(go).toHaveBeenCalledWith("/referrer");
   });
 
-  it("gives a verified employee a visual no-request state with direct availability share channels", async () => {
+  it("gives a verified employee a one-tap private capacity action when the New inbox is empty", async () => {
     authState.signedIn = true;
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) })));
+    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("availability/open") ? { availability: { allocatedCount: 1 } } : { requests: [] } }));
+    vi.stubGlobal("fetch", fetchMock);
     render(<MyCompanyInbox />);
-    await waitFor(() => expect(document.querySelector('[aria-label="No private referral requests"]')).toBeTruthy());
-    expect(document.querySelector('[data-skipwait-zero-action="referrer"]')).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Share on WhatsApp" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Share by email" })).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('[aria-label="Open referral capacity"]')).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Open referral capacity" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/availability/open", expect.objectContaining({ method: "POST", body: JSON.stringify({ slotCount: 1 }) })));
+    expect(await screen.findByText("1 waiting request is now available for your review.")).toBeTruthy();
     expect(screen.queryByText("No new requests.")).toBeNull();
   });
 

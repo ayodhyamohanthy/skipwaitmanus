@@ -79,11 +79,24 @@ export const referralRequests = mysqlTable("referralRequests", {
   referrerId: int("referrerId").references(() => users.id, { onDelete: "set null" }),
   personalPitch: text("personalPitch").notNull(),
   status: mysqlEnum("status", ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed"]).default("pending").notNull(),
+  waitingForCoverage: boolean("waitingForCoverage").default(false).notNull(),
+  coverageQueuedAt: timestamp("coverageQueuedAt"),
   referrerMessage: text("referrerMessage"),
   savedAt: timestamp("savedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt)]);
+
+export const referralAvailabilitySlots = mysqlTable("referralAvailabilitySlots", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["allocated", "released"]).default("allocated").notNull(),
+  activeRequestKey: varchar("activeRequestKey", { length: 80 }),
+  openedAt: timestamp("openedAt").defaultNow().notNull(),
+  releasedAt: timestamp("releasedAt"),
+}, table => [uniqueIndex("referral_availability_active_request_unique").on(table.activeRequestKey), index("referral_availability_referrer_idx").on(table.referrerId, table.status), index("referral_availability_company_idx").on(table.companyDomain, table.status), index("referral_availability_request_idx").on(table.referralRequestId)]);
 
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),

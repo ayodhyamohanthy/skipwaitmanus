@@ -96,6 +96,35 @@ describe("private referral HTTP routes", () => {
     expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: true } }));
   });
 
+  it("opens only exact-company referral capacity with bounded slots and no Referrer identity in the Job Seeker-facing result", async () => {
+    const app = express(); app.use(express.json());
+    const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
+    const identities = new Map([
+      ["employee", { account: { id: 21, openId: "clerk-acme" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }],
+      ["outsider", { account: { id: 22, openId: "clerk-other" }, primaryEmail: { emailAddress: "employee@other.com", verification: { status: "verified" } } }],
+    ]);
+    let allocationOpenings = 0;
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
+      openCompanyReferralAvailability: async (userId, input) => {
+        if (userId !== 21) throw new Error("Verify your company email before opening referral capacity");
+        allocationOpenings += 1;
+        return allocationOpenings === 1 ? { companyDomain: "acme.com", requestedSlotCount: input.slotCount ?? 1, allocatedRequestIds: [921], allocatedCount: 1 } : { companyDomain: "acme.com", requestedSlotCount: input.slotCount ?? 1, allocatedRequestIds: [], allocatedCount: 0 };
+      },
+      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }), recordActivity: async entry => { activity.push(entry); },
+    });
+    expect((await request(app).post("/api/company-referrals/availability/open").send({ slotCount: 1 })).status).toBe(401);
+    expect((await request(app).post("/api/company-referrals/availability/open").set("x-test-user", "employee").send({ slotCount: 4 })).status).toBe(400);
+    expect((await request(app).post("/api/company-referrals/availability/open").set("x-test-user", "outsider").send({ slotCount: 1 })).status).toBe(403);
+    const opened = await request(app).post("/api/company-referrals/availability/open").set("x-test-user", "employee").send({ slotCount: 1 });
+    expect(opened.status).toBe(200); expect(opened.body.availability).toMatchObject({ companyDomain: "acme.com", allocatedRequestIds: [921], allocatedCount: 1 }); expect(JSON.stringify(opened.body)).not.toContain("employee@");
+    const repeated = await request(app).post("/api/company-referrals/availability/open").set("x-test-user", "employee").send({ slotCount: 1 });
+    expect(repeated.status).toBe(200); expect(repeated.body.availability).toMatchObject({ allocatedRequestIds: [], allocatedCount: 0 });
+    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.queue_opened", companyDomain: "acme.com", metadata: { requestedSlotCount: 1, allocatedCount: 1 } }));
+  });
+
   it("lists anonymous opportunities publicly but only lets a verified employee publish one", async () => {
     const app = express();
     app.use(express.json());
