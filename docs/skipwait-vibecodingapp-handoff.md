@@ -66,8 +66,8 @@ Every core mobile screen must fit in one device viewport. Use a `h-dvh min-h-dvh
 2. The server canonicalizes the URL and resolves the actual employer domain using conservative evidence. Accept known ATS/careers links and structured job-posting evidence only when the organization and official domain agree. If the employer cannot be proven, ask for the employer’s careers-page link; never guess or route to the job-board host.
 3. The user attaches a resume. Allow PDF, DOC, DOCX, PNG, or JPEG only; validate MIME type, filename, size, and binary signature on the server.
 4. Sign in only when needed to securely upload or submit. Preserve the locally selected resume through sign-in on the same device.
-5. Create the request only after server authorization. If no verified employee exists for the exact company domain, do not spend a credit. Instead show one concise voluntary company-coverage invite action.
-6. When coverage exists, debit one Job Seeker referral credit in the server transaction and notify matching verified Referrers privately.
+5. Create the request only after server authorization. Every valid referral request debits one Job Seeker referral credit in the same server transaction, including when no verified employee exists yet. The no-coverage request remains private, is queued for administrator follow-up as coverage grows, and shows one concise voluntary company-coverage invite action.
+6. When coverage exists, notify matching verified Referrers privately. The request stays visible only to exact-company verified Referrers until one atomically claims it.
 7. Show a truthful progress screen: **Sent → Claimed → Reviewed**. Show an optional Referrer decision note only to the owning Job Seeker.
 
 ### Referrer work-email, review, and decision
@@ -81,7 +81,7 @@ Every core mobile screen must fit in one device viewport. Use a `h-dvh min-h-dvh
 
 ### Private conversation and notifications
 
-The system may create a private conversation only after an `approved` decision. The API must verify on every read and write that the caller is either the Job Seeker who owns the request or the verified Referrer assigned to that request. New messages, claims, decisions, verified company-coverage rewards, verified personal-invite rewards, and administrator token adjustments create account-owned notification records.
+The system may create a private conversation only after an `approved` decision. The API must verify on every read and write that the caller is either the Job Seeker who owns the request or the verified Referrer assigned to that request. After approval, either participant may optionally record a factual later milestone—**introduction made**, **interview started**, **offer received**, or **request closed**—only when it is a forward lifecycle transition. These updates are private, are not rewarded, and create a factual account-owned notification for the other participant. New messages, claims, decisions, verified company-coverage rewards, verified personal-invite rewards, and administrator token adjustments create account-owned notification records.
 
 The notification center has an unread bell badge, loads only the signed-in account’s display-safe notifications, supports mark-as-read, and sends the user to the relevant Request, Referrer Inbox, or Settings screen. Responses use `Cache-Control: private, no-store`; do not return internal user IDs or object-storage keys.
 
@@ -174,6 +174,17 @@ Provide this Markdown file first. Then provide only the following configuration 
 | Email provider (Resend) | Minimized material error alerts only | Server-only API key and verified `noreply@updates.skipwait.me` sender. |
 
 Do **not** send a VibeCodingApp agent any current private keys, webhook secrets, database URLs, Clerk tokens, payment credentials, or real user data. Use the product requirements above; configure credentials directly in the platform’s secret manager after the skeleton exists.
+
+## 12. Current launch-state constraints
+
+The source project has passed a full release quality gate with TypeScript, 61 test files, 177 passing tests, two intentional provider-dependent skips, production PWA build, and mobile/desktop visual route checks. These results validate the application implementation; they are **not** a substitute for the following account-controlled live checks in a new VibeCodingApp deployment:
+
+1. Bind the canonical `skipwait.me` domain to the new production project before pointing any live webhook at it.
+2. Use the new canonical receiver URL for Chargebee only after an unsigned POST returns HTTP 401 from the new application.
+3. Run one controlled India/INR Razorpay payment and one controlled international/USD PayPal payment with legitimate buyer accounts. Confirm Chargebee’s authenticated delivery and exactly-one server-side entitlement outcome.
+4. Configure production Clerk redirect/origin settings, work-email sender settings, private object storage, database backup/recovery, legal disclosures, support operations, and privacy-safe error alerts in the new environment.
+
+Do not copy production customer records, resumes, payment events, Clerk users, or secrets by uploading a source-code archive. Migrate real data only through an approved, separately designed migration plan with backups, access controls, legal review, and test-run reconciliation.
 
 ## 11. Recommended build process
 
