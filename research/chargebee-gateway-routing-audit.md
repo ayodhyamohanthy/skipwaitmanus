@@ -88,7 +88,7 @@ The live `Paypal-1` gateway detail confirms that the **PayPal payment method is 
 
 On 20 August 2026, a dedicated Chargebee live **Write Key** named `skipwait.me production server` was created. It permits create/read/update operations but explicitly cannot delete business data, which covers hosted checkout creation, hosted-page retrieval, and end-of-term subscription cancellation without granting deletion power. A minimal authenticated request to the live Item Prices endpoint returned HTTP 200, confirming the key works without retrieving customer data.
 
-The application now has an explicit host-scoped credential boundary. Only the canonical host `skipwait.me`, when `CHARGEBEE_LIVE_ENABLED=true`, selects the `skipwait` live site and live credentials. The managed project domain and preview domains stay on the `skipwait-test` site and test credentials. Automated tests cover canonical-host selection, preview isolation, lookalike-host rejection, and a fail-closed missing-live-key path.
+The application has an explicit, exact-host credential boundary. Only the one hostname set in `CHARGEBEE_LIVE_DOMAIN`, when `CHARGEBEE_LIVE_ENABLED=true`, selects the `skipwait` live site and live credentials. During the temporary rollout, that setting is the managed project domain; preview domains and every nonmatching hostname stay on the `skipwait-test` site and test credentials. Automated tests cover temporary-managed selection, canonical-host selection, preview isolation, lookalike-host rejection, and a fail-closed missing-live-key path.
 
 ## Live webhook deployment blocker
 
@@ -98,9 +98,19 @@ Chargebee’s live site currently has **zero webhook endpoints**. A direct unaut
 
 At the user’s request, a temporary live webhook was created at `https://bridgeref-ybuthfmw.manus.space/api/chargebee/webhook` with Basic Authentication, API v2 payloads, card-resource exclusion, and only `payment_succeeded` plus the required subscription lifecycle events. Its non-sensitive configuration was verified through the Chargebee API.
 
-Local verification confirmed that the application correctly selects the live webhook secret for the managed host. However, the public managed-domain deployment continued accepting the test secret and rejecting the live secret after multiple published checks, indicating a deployment/runtime host-resolution mismatch outside the locally verified server path. The user approved a safety pause. The live webhook endpoint `whv1_16BXmZVSoApRCK1r` is now **disabled** (HTTP 200 update confirmation) but preserved for later reactivation. No live payment or subscription event can currently reach the application through that endpoint.
+Local verification confirmed that the application correctly selects the live webhook secret for the managed host. However, the public managed-domain deployment continued accepting the test secret and rejecting the live secret after multiple published checks, indicating a deployment/runtime host-resolution mismatch outside the locally verified server path. The endpoint was safely disabled while the deployment diagnosis completed.
 
-The managed deployment investigation subsequently isolated delayed runtime rollout rather than a persisted application defect. After the quality-gated published repair, the public endpoint returned HTTP **401** for the test webhook secret and HTTP **202** for the live secret on a deliberately empty authenticated payload. This proves that the managed host now selects the isolated live secret and reaches the application’s safe ignored-event path. The endpoint remains disabled pending explicit reactivation and a provider-originated delivery test.
+The managed deployment investigation subsequently isolated delayed runtime rollout rather than a persisted application defect. After the quality-gated published repair, the public endpoint returned HTTP **401** for the test webhook secret and HTTP **202** for the live secret on a deliberately empty authenticated payload. This proves that the managed host now selects the isolated live secret and reaches the application’s safe ignored-event path.
+
+### Managed-domain activation verification — 20 August 2026
+
+The preserved live endpoint `whv1_16BXmZVSoApRCK1r` has been re-enabled through the authenticated live Chargebee API. A follow-up API retrieval confirms `disabled: false` and preserves the intended managed receiver URL. A separate authenticated no-op POST to the published receiver returned HTTP **202** with `{ "received": true, "ignored": true }`; it created no payment, subscription, entitlement, or credit. This is a receiver and credential-boundary verification, not a provider-originated business event.
+
+The temporary host diagnostic response headers have been removed from production code now that the issue is resolved. Live billing selection is narrowed to one exact configured hostname: while `CHARGEBEE_LIVE_DOMAIN` is `bridgeref-ybuthfmw.manus.space`, only that managed hostname can select the live Chargebee site and webhook secret; the canonical hostname and all preview hosts select test credentials. The automated boundary regression covers both the temporary managed setting and the post-binding canonical setting.
+
+### Canonical-domain cutover procedure
+
+The remaining external prerequisite is binding `skipwait.me` to this project. Once the binding is complete, the switch is intentionally one setting: change `CHARGEBEE_LIVE_DOMAIN` from `bridgeref-ybuthfmw.manus.space` to `skipwait.me`. The exact-host boundary then immediately returns the managed domain to test credentials and permits live credentials only at the canonical domain. Update the preserved live Chargebee webhook endpoint URL to `https://skipwait.me/api/chargebee/webhook`, confirm an unsigned POST returns HTTP 401, and use Chargebee’s authenticated dashboard webhook-test facility to record the first provider-originated delivery. The live dashboard session is currently expired, so that final provider-originated test requires a Chargebee account login; no login attempt, payment, subscription, or credit has been fabricated in its place.
 
 ## Sources
 

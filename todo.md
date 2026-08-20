@@ -424,12 +424,13 @@
 - [x] Diagnose and repair the disabled Job Seeker CTA after a resume is attached.
 - [x] Simplify the resume screen so its intended action is the sole clear primary CTA and competing actions are removed.
 - [x] Update the Premium-page subscription link microcopy to “Or Checkout Pro and Max Subscriptions.”
-- [ ] Audit and complete Chargebee routing for Razorpay domestic INR payments in India and PayPal global payments, including sandbox verification and live-account readiness.
-- [ ] Provision isolated live Chargebee API and webhook credentials, activate the deployed application against the live site, and verify the live webhook without weakening test-environment safeguards.
+- [x] Audit and complete Chargebee routing for Razorpay domestic INR payments in India and PayPal global payments, including sandbox verification and live-account readiness.
+- [x] Provision isolated live Chargebee API and webhook credentials, activate the deployed application against the live site, and verify the live webhook without weakening test-environment safeguards.
 - [ ] Bind skipwait.me to this project, verify its webhook receiver, then create and test the Chargebee live webhook with the isolated live secret.
-- [ ] Temporarily activate the verified live Chargebee route and webhook on the managed Manus domain, with a documented one-setting switch back to skipwait.me after domain binding.
-- [ ] Repair the deployed managed-domain host allowlist so the public webhook selects its live secret instead of the test secret during the temporary rollout.
-- [ ] Investigate the managed deployment’s effective public-host and environment resolution without logging credentials, then repair and re-verify live webhook selection.
+- [x] Temporarily activate the verified live Chargebee route and webhook on the managed Manus domain, with a documented one-setting switch back to skipwait.me after domain binding.
+- [x] Repair the deployed managed-domain host allowlist so the public webhook selects its live secret instead of the test secret during the temporary rollout.
+- [x] Investigate the managed deployment’s effective public-host and environment resolution without logging credentials, then repair and re-verify live webhook selection.
 - [x] Consume a referral credit and retain a manual-follow-up request when no matching verified employee exists, with clear user-facing status.
 - [x] Record meaningful Job Seeker and Referrer actions in the privacy-safe administrator activity log for manual outreach and support follow-up.
 - [x] Repair the Referrer work-email OTP flow so a valid code delivered to the entered company email completes verification reliably.
+- [x] Autonomously re-verify and complete the safe managed-domain Chargebee webhook activation, documenting only prerequisites that cannot be performed without external domain control.
