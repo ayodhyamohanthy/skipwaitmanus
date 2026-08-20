@@ -4,6 +4,7 @@ import { SignInButton, useAuth as useClerkAuth } from "@clerk/react";
 import { useLocation } from "wouter";
 import { AccountMenu } from "@/components/AccountMenu";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
+import ReferralProgress from "@/components/ReferralProgress";
 import { getJobSeekerReferralState, type ReferralStatus } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -20,7 +21,7 @@ function compactDate(value: string) {
 function RequestProgress({ request }: { request: ReferralRequest }) {
   const reviewed = request.status !== "pending";
   const matched = Boolean(request.referrerId);
-  return <ol aria-label="Request progress" className="mt-4 grid grid-cols-3 gap-2 rounded-xl border border-slate-200 bg-white p-3 text-center"><li><span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-blue-50 text-xs font-bold text-[#0B57D0]">1</span><p className="mt-1 text-[11px] font-bold text-slate-800">Sent</p><p className="mt-0.5 text-[10px] text-slate-500">{compactDate(request.createdAt)}</p></li><li><span className={`mx-auto grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${matched ? "bg-blue-50 text-[#0B57D0]" : "bg-slate-100 text-slate-500"}`}>2</span><p className="mt-1 text-[11px] font-bold text-slate-800">Matched</p><p className="mt-0.5 text-[10px] text-slate-500">{matched ? `Updated ${compactDate(request.updatedAt)}` : "Waiting"}</p></li><li><span className={`mx-auto grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${reviewed ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>3</span><p className="mt-1 text-[11px] font-bold text-slate-800">Reviewed</p><p className="mt-0.5 text-[10px] text-slate-500">{reviewed ? `Updated ${compactDate(request.updatedAt)}` : "Not yet"}</p></li></ol>;
+  return <div className="mt-4 rounded-xl border border-slate-200 bg-white p-3"><ol aria-label="Request progress" className="grid grid-cols-3 gap-2 text-center"><li><span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-blue-50 text-xs font-bold text-[#0B57D0]">1</span><p className="mt-1 text-[11px] font-bold text-slate-800">Sent</p><p className="mt-0.5 text-[10px] text-slate-500">{compactDate(request.createdAt)}</p></li><li><span className={`mx-auto grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${matched ? "bg-blue-50 text-[#0B57D0]" : "bg-slate-100 text-slate-500"}`}>2</span><p className="mt-1 text-[11px] font-bold text-slate-800">Matched</p><p className="mt-0.5 text-[10px] text-slate-500">{matched ? `Updated ${compactDate(request.updatedAt)}` : "Waiting"}</p></li><li><span className={`mx-auto grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${reviewed ? "bg-emerald-50 text-emerald-800" : "bg-slate-100 text-slate-500"}`}>3</span><p className="mt-1 text-[11px] font-bold text-slate-800">Reviewed</p><p className="mt-0.5 text-[10px] text-slate-500">{reviewed ? `Updated ${compactDate(request.updatedAt)}` : "Not yet"}</p></li></ol><div className="mt-4 border-t border-slate-100 pt-3"><ReferralProgress status={request.status} /></div></div>;
 }
 
 export default function MyRequests() {

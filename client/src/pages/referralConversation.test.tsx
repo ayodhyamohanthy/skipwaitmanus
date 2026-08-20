@@ -49,4 +49,24 @@ describe("ReferralConversation", () => {
     expect(screen.getByRole("button", { name: "Secure sign in" })).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("lets an accepted referral partner optionally record one factual progress milestone", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/progress")) {
+        expect(init?.method).toBe("POST");
+        expect(JSON.parse(String(init?.body))).toEqual({ status: "intro_made" });
+        return { ok: true, json: async () => ({ progress: { status: "intro_made", changed: true } }) };
+      }
+      return { ok: true, json: async () => ({ messages: [] }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ReferralConversation />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Update" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Update" }));
+    expect(screen.getByText("Record a real milestone")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Introduction made" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST", credentials: "include" })));
+    expect(screen.queryByText("Record a real milestone")).toBeNull();
+  });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canReviewReferral, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, referralStatusLabels } from "./referral";
+import { canReviewReferral, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, isPostApprovalReferralStatus, isReferralProgressUpdateStatus, referralStatusLabels } from "./referral";
 
 describe("Referral Request state helpers", () => {
   it("provides the prescribed request state labels", () => {
@@ -18,10 +18,20 @@ describe("Referral Request state helpers", () => {
     expect(getReferralProgress("offer")).toBeGreaterThan(getReferralProgress("interview"));
   });
 
+  it("allows only factual post-approval lifecycle progress updates", () => {
+    expect(isPostApprovalReferralStatus("approved")).toBe(true);
+    expect(isPostApprovalReferralStatus("interview")).toBe(true);
+    expect(isPostApprovalReferralStatus("pending")).toBe(false);
+    expect(isReferralProgressUpdateStatus("intro_made")).toBe(true);
+    expect(isReferralProgressUpdateStatus("offer")).toBe(true);
+    expect(isReferralProgressUpdateStatus("approved")).toBe(false);
+  });
+
   it("keeps Job Seeker status copy factual about routing, claim, and decision", () => {
     expect(getJobSeekerReferralState({ status: "pending", referrerId: null })).toMatchObject({ label: "Privately routed", tone: "amber" });
     expect(getJobSeekerReferralState({ status: "pending", referrerId: 4 })).toMatchObject({ label: "Under review", tone: "blue" });
     expect(getJobSeekerReferralState({ status: "declined", referrerId: 4 })).toMatchObject({ label: "Request closed", tone: "slate" });
+    expect(getJobSeekerReferralState({ status: "interview", referrerId: 4 })).toMatchObject({ label: "Interview in progress", tone: "blue" });
   });
 
   it("separates new, saved, and completed Referrer inbox work without fabricating activity", () => {

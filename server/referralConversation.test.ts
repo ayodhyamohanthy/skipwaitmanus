@@ -12,7 +12,9 @@ describe("approved referral conversation authorization", () => {
     expect(() => authorizeApprovedReferralConversation(33, accepted)).toThrow(/not available to you/i);
   });
 
-  it("rejects a claimed-but-pending request and every non-approved decision", () => {
+  it("keeps the conversation available after real lifecycle updates but rejects requests before acceptance or after decline", () => {
+    expect(authorizeApprovedReferralConversation(11, { jobSeekerId: 11, referrerId: 22, status: "intro_made" })).toMatchObject({ recipientId: 22 });
+    expect(authorizeApprovedReferralConversation(22, { jobSeekerId: 11, referrerId: 22, status: "offer" })).toMatchObject({ recipientId: 11 });
     expect(() => authorizeApprovedReferralConversation(11, { jobSeekerId: 11, referrerId: 22, status: "pending" })).toThrow(/only available after the referral is accepted/i);
     expect(() => authorizeApprovedReferralConversation(22, { jobSeekerId: 11, referrerId: 22, status: "declined" })).toThrow(/only available after the referral is accepted/i);
     expect(() => authorizeApprovedReferralConversation(11, undefined)).toThrow(/not available to you/i);
@@ -44,6 +46,13 @@ describe("approved referral conversation HTTP routes", () => {
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 601, companyDomain: "acme.com", notifiedEmployees: 1 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 601, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
       listReferralConversation: conversationMessages,
+      updateReferralProgress: async (userId, input) => {
+        const { recipientId } = authorizeApprovedReferralConversation(userId, input.requestId === 601 ? acceptedRequest : undefined);
+        if (input.status !== "intro_made") throw new Error("Choose a later real progress milestone");
+        acceptedRequest.status = input.status;
+        expect(recipientId).toBe(userId === 11 ? 22 : 11);
+        return { status: input.status, changed: true };
+      },
       sendReferralConversationMessage: async (userId, requestId, body) => {
         const { recipientId } = authorizeApprovedReferralConversation(userId, requestId === 601 ? acceptedRequest : undefined);
         stored.push({ id: stored.length + 1, body, createdAt: new Date("2026-08-19T09:01:00.000Z"), senderId: userId });
@@ -60,6 +69,10 @@ describe("approved referral conversation HTTP routes", () => {
 
     acceptedRequest.status = "approved";
     expect((await request(app).get("/api/company-referrals/601/conversation").set("x-test-user", "outsider")).status).toBe(403);
+    expect((await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "seeker").send({ status: "not_real" })).status).toBe(400);
+    expect((await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "outsider").send({ status: "intro_made" })).status).toBe(403);
+    const progressed = await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "seeker").send({ status: "intro_made" });
+    expect(progressed.status).toBe(200); expect(progressed.body.progress).toEqual({ status: "intro_made", changed: true });
     const seekerMessages = await request(app).get("/api/company-referrals/601/conversation").set("x-test-user", "seeker");
     expect(seekerMessages.status).toBe(200);
     expect(seekerMessages.headers["cache-control"]).toBe("private, no-store");
@@ -72,7 +85,7 @@ describe("approved referral conversation HTTP routes", () => {
     expect((await request(app).post("/api/company-referrals/601/conversation").set("x-test-user", "seeker").send({ body: "   " })).status).toBe(400);
     const seekerAfterReply = await request(app).get("/api/company-referrals/601/conversation").set("x-test-user", "seeker");
     expect(seekerAfterReply.body.messages[1]).toMatchObject({ body: "I can take the next step.", isMine: false });
-    expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["company_referral.conversation_viewed", "company_referral.conversation_message_sent"]));
+    expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["company_referral.conversation_viewed", "company_referral.conversation_message_sent", "company_referral.progress_updated"]));
     expect(JSON.stringify(activity)).not.toContain("I can take the next step.");
   });
 });

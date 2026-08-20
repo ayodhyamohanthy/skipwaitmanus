@@ -4,6 +4,7 @@ import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewar
 import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
+import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
@@ -427,8 +428,23 @@ export async function reviewReferralRequest(userId: number, input: { requestId: 
 
 export function authorizeApprovedReferralConversation(userId: number, request: { jobSeekerId: number; referrerId: number | null; status: string } | undefined) {
   if (!request || (request.jobSeekerId !== userId && request.referrerId !== userId)) throw new Error("This conversation is not available to you");
-  if (request.status !== "approved" || !request.referrerId) throw new Error("Conversation is only available after the referral is accepted");
+  if (!isPostApprovalReferralStatus(request.status) || !request.referrerId) throw new Error("Conversation is only available after the referral is accepted");
   return { jobSeekerId: request.jobSeekerId, referrerId: request.referrerId, recipientId: userId === request.jobSeekerId ? request.referrerId : request.jobSeekerId };
+}
+
+export async function updateReferralProgress(userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1);
+  const existing = request[0];
+  const { recipientId } = authorizeApprovedReferralConversation(userId, existing);
+  if (existing.status === "closed") throw new Error("This referral request is already closed");
+  const currentIndex = referralProgressUpdateStatuses.indexOf(existing.status as ReferralProgressUpdateStatus);
+  const nextIndex = referralProgressUpdateStatuses.indexOf(input.status);
+  const canClose = input.status === "closed";
+  if (!canClose && (nextIndex < 0 || nextIndex <= currentIndex)) throw new Error("Choose a later real progress milestone");
+  await db.update(referralRequests).set({ status: input.status }).where(eq(referralRequests.id, input.requestId));
+  await db.insert(notifications).values({ userId: recipientId, category: "status", title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." });
+  return { status: input.status, changed: true };
 }
 
 async function getApprovedReferralConversationParticipants(userId: number, requestId: number) {
@@ -436,6 +452,14 @@ async function getApprovedReferralConversationParticipants(userId: number, reque
   if (!db) throw new Error("Database unavailable");
   const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
   return { db, ...authorizeApprovedReferralConversation(userId, request[0]) };
+}
+
+export async function getApprovedReferralProgressStatus(userId: number, requestId: number): Promise<{ status: ReferralStatus }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
+  authorizeApprovedReferralConversation(userId, request[0]);
+  return { status: request[0].status as ReferralStatus };
 }
 
 export type ReferralConversationMessage = { id: number; body: string; createdAt: Date; isMine: boolean };

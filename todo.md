@@ -434,3 +434,5 @@
 - [x] Record meaningful Job Seeker and Referrer actions in the privacy-safe administrator activity log for manual outreach and support follow-up.
 - [x] Repair the Referrer work-email OTP flow so a valid code delivered to the entered company email completes verification reliably.
 - [x] Autonomously re-verify and complete the safe managed-domain Chargebee webhook activation, documenting only prerequisites that cannot be performed without external domain control.
+- [x] Conduct a rigorous global-platform audit of skipwait.me’s value, retention, trust, liquidity, referral, viral, and organic-growth loops; implement and test the highest-confidence low-friction improvements.
+- [x] Add a voluntary, authorized post-approval referral-progress loop with factual participant notifications, status-specific next actions, and regression coverage—without rankings, incentives, or additional data exposure.
