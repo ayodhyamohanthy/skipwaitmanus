@@ -40,6 +40,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Managed deployments terminate TLS at a trusted reverse proxy. This lets
+  // req.hostname reflect the canonical public host for host-scoped billing.
+  app.set("trust proxy", true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
   app.use(clerkMiddleware());
