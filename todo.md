@@ -464,3 +464,6 @@
 - [x] Enhance private Slot Opened re-engagement alerts with trigger-based in-app and email delivery only for waiting Job Seekers at the exact verified company, without queue position disclosure or priority changes.
 - [x] Add a server-derived, anonymized aggregate referral-impact indicator that contains no candidate names, companies, precise timestamps, queue data, hiring guarantee, or fabricated activity.
 - [x] Add regression and visual coverage for re-engagement alert targeting, notification privacy, aggregate-indicator truthfulness, and no-queue-manipulation safeguards.
+- [x] Audit and align source-app metadata, Open Graph URLs/assets, share/email link construction, and authentication callback configuration around https://skipwait.me without changing external domain ownership or provider dashboards.
+- [x] Verify mobile-first dashboard responsiveness, skeleton/error loading states, and fast interaction behavior across active dashboard views; implement only evidence-backed source-app improvements.
+- [x] Add regression and visual coverage for canonical URL contracts, metadata/share safety, and dashboard loading/responsive behavior before checkpointing.
