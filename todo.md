@@ -476,3 +476,7 @@
 - [x] Diagnose and repair the authenticated `/start` page API query failure without weakening account authorization or suppressing genuine transport errors.
 - [x] Add focused regression coverage for the repaired `/start` query lifecycle, including authenticated loading and failure behavior.
 - [x] Re-run the full quality gate and verify the `/start` route after the repair before checkpointing.
+- [ ] Establish a clean, staging-only SkipWait VibecodeApp baseline that preserves live Manus hosting, skipwait.me DNS, payments, secrets, webhooks, and customer-data isolation.
+- [ ] Transfer the verified skipwait.me source specification, parity requirements, and staged external build scope into the confirmed VibecodeApp workspace without credentials or production data.
+- [ ] Rebuild and audit functional parity in VibecodeApp staging for core referral, authentication, private document, notification, payment-boundary, and privacy workflows before proposing any cutover.
+- [ ] Produce controlled domain, authentication, payment, webhook, data-migration, rollback, and acceptance evidence required before redirecting skipwait.me from the verified source release.
