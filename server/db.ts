@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referrerFastTrackLinks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -549,6 +549,13 @@ export async function getAccessibleReferralAttachment(userId: number, attachment
   return result[0];
 }
 
+export async function getOwnedResumeAttachmentForPitch(userId: number, attachmentId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId))).limit(1);
+  if (!result[0]) throw new Error("Your private resume is unavailable");
+  return result[0];
+}
+
 export function canAccessReferralAttachment(actorUserId: number, attachment: { ownerId: number; referrerId?: number | null }): boolean {
   return attachment.ownerId === actorUserId || attachment.referrerId === actorUserId;
 }
@@ -597,6 +604,36 @@ export async function getApprovedReferralProgressStatus(userId: number, requestI
   const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
   authorizeApprovedReferralConversation(userId, request[0]);
   return { status: request[0].status as ReferralStatus };
+}
+
+export type PrivateReferralShareCard = { shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean };
+
+async function getAuthorizedReferralShareCardRequest(userId: number, requestId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, requestId)).limit(1);
+  const request = rows[0]; authorizeApprovedReferralConversation(userId, request);
+  return { db, request };
+}
+
+export async function getOrCreateReferralShareCard(userId: number, requestId: number): Promise<PrivateReferralShareCard> {
+  const { db, request } = await getAuthorizedReferralShareCardRequest(userId, requestId);
+  const shareToken = randomUUID().replace(/-/g, "");
+  await db.insert(referralShareCards).values({ referralRequestId: request.id, createdByUserId: userId, shareToken, isActive: true }).onDuplicateKeyUpdate({ set: { shareToken, isActive: true, revokedAt: null } });
+  const card = await db.select({ shareToken: referralShareCards.shareToken, isActive: referralShareCards.isActive }).from(referralShareCards).where(and(eq(referralShareCards.referralRequestId, request.id), eq(referralShareCards.createdByUserId, userId))).limit(1);
+  return { shareToken: card[0].shareToken, isActive: card[0].isActive, companyDomain: request.companyDomain, status: request.status as ReferralStatus };
+}
+
+export async function revokeReferralShareCard(userId: number, requestId: number) {
+  const { db } = await getAuthorizedReferralShareCardRequest(userId, requestId);
+  const result = await db.update(referralShareCards).set({ isActive: false, revokedAt: new Date() }).where(and(eq(referralShareCards.referralRequestId, requestId), eq(referralShareCards.createdByUserId, userId), eq(referralShareCards.isActive, true)));
+  return { revoked: Number(result[0].affectedRows) > 0 };
+}
+
+export async function getPublicReferralShareCard(shareToken: string): Promise<{ companyDomain: string; status: ReferralStatus } | undefined> {
+  const db = await getDb(); if (!db) return undefined;
+  const result = await db.select({ companyDomain: jobs.company, status: referralRequests.status }).from(referralShareCards).innerJoin(referralRequests, eq(referralShareCards.referralRequestId, referralRequests.id)).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralShareCards.shareToken, shareToken), eq(referralShareCards.isActive, true))).limit(1);
+  const card = result[0];
+  return card && isPostApprovalReferralStatus(card.status) ? { companyDomain: card.companyDomain, status: card.status as ReferralStatus } : undefined;
 }
 
 export type ReferralConversationMessage = { id: number; body: string; createdAt: Date; isMine: boolean };

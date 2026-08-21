@@ -1,7 +1,9 @@
 import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { validatePrivateDocument } from "./documentValidation";
-import { getPrivateReferrerImpactSummary } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
+import { draftSmartReferralPitch } from "./ai";
+import sharp from "sharp";
 import { isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
@@ -25,6 +27,11 @@ export type PrivateReferralRouteDeps = {
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
   getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
+  getOwnedResumeAttachmentForPitch?: (userId: number, attachmentId: number) => Promise<{ id: number; fileKey: string; mimeType: string }>;
+  draftSmartReferralPitch?: (input: { companyDomain: string; targetRoleUrl: string; resumeUrl?: string; resumeMimeType?: string }) => Promise<string>;
+  getOrCreateReferralShareCard?: (userId: number, requestId: number) => Promise<{ shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean }>;
+  revokeReferralShareCard?: (userId: number, requestId: number) => Promise<{ revoked: boolean }>;
+  getPublicReferralShareCard?: (shareToken: string) => Promise<{ companyDomain: string; status: ReferralStatus } | undefined>;
   createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; fastTrack?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -76,6 +83,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     const decipher = createDecipheriv("aes-256-gcm", key, iv); decipher.setAuthTag(encrypted.subarray(-16));
     return Buffer.concat([decipher.update(encrypted.subarray(0, -16)), decipher.final()]);
   };
+  const escapeHtml = (value: string) => value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
+  const isOpaqueShareToken = (value: string) => /^[a-zA-Z0-9-]{16,64}$/.test(value);
   const createPrivateAttachment = async (identity: Identity, fileName: string, mimeType: string, buffer: Buffer, fileKey?: string) => {
     const validated = validatePrivateDocument({ fileName, mimeType, buffer });
     const key = fileKey || (await deps.storagePut(`${privateDocumentPrefix(identity)}${Date.now()}-${deps.sanitizeDocumentName(validated.fileName)}`, buffer, validated.mimeType)).key;
@@ -86,7 +95,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   const persistPrivateDocument = async (identity: Identity, fileName: string, mimeType: string, buffer: Buffer) => {
     return createPrivateAttachment(identity, fileName, mimeType, buffer);
   };
-  const workflowPrefixes = ["/api/company-referrals", "/api/documents", "/api/opportunities", "/api/personal-invites", "/api/referrer-fast-track", "/api/credits", "/api/notifications", "/api/privacy", "/api/admin", "/api/chargebee"];
+  const workflowPrefixes = ["/api/company-referrals", "/api/documents", "/api/opportunities", "/api/personal-invites", "/api/referrer-fast-track", "/api/referral-share-cards", "/api/smart-pitch", "/api/credits", "/api/notifications", "/api/privacy", "/api/admin", "/api/chargebee"];
   const normalizedWorkflowRoute = (path: string) => path.replace(/\/\d+(?=\/|$)/g, "/:id").slice(0, 160);
   app.use(async (req, res, next) => {
     if (!workflowPrefixes.some(prefix => req.path === prefix || req.path.startsWith(`${prefix}/`))) return next();
@@ -347,6 +356,73 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "no-store");
       res.json({ link });
     } catch { res.status(500).json({ error: "We could not open this private referral link" }); }
+  });
+  app.post("/api/smart-pitch", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to create a private starting draft" });
+      const { attachmentId, targetRoleUrl, companyDomain } = req.body as { attachmentId?: number; targetRoleUrl?: string; companyDomain?: string };
+      if (!Number.isInteger(attachmentId) || !targetRoleUrl || !isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: "Add a valid Target Role URL and uploaded resume first" });
+      const attachment = await (deps.getOwnedResumeAttachmentForPitch ?? getOwnedResumeAttachmentForPitch)(identity.account.id, Number(attachmentId));
+      const requestedCompany = typeof companyDomain === "string" && /^[a-z0-9][a-z0-9.-]{1,251}[a-z0-9]$/i.test(companyDomain.trim()) ? companyDomain.trim().toLowerCase() : new URL(targetRoleUrl).hostname.replace(/^www\./, "").toLowerCase();
+      let resumeUrl: string | undefined;
+      if (attachment.mimeType === "application/pdf") { try { resumeUrl = await deps.storageGetSignedUrl(attachment.fileKey); } catch { resumeUrl = undefined; } }
+      const draft = await (deps.draftSmartReferralPitch ?? draftSmartReferralPitch)({ companyDomain: requestedCompany, targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), resumeUrl, resumeMimeType: attachment.mimeType });
+      record({ actorUserId: identity.account.id, action: "smart_pitch.drafted", outcome: "success", resourceType: "attachment", resourceId: attachment.id, companyDomain: requestedCompany, metadata: { pdfUsed: Boolean(resumeUrl) } });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ draft });
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not create a starting draft"; res.status(/private resume is unavailable/i.test(message) ? 403 : 500).json({ error: message }); }
+  });
+  app.post("/api/referral-share-cards/:requestId", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (!identity) return res.status(401).json({ error: "Sign in to create a share card" });
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
+      const card = await (deps.getOrCreateReferralShareCard ?? getOrCreateReferralShareCard)(identity.account.id, requestId);
+      const shareUrl = `${req.protocol}://${req.get("host")}/share-card/${encodeURIComponent(card.shareToken)}`;
+      record({ actorUserId: identity.account.id, action: "referral_share_card.created", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, companyDomain: card.companyDomain, metadata: { status: card.status } });
+      res.set("Cache-Control", "private, no-store"); res.status(201).json({ shareToken: card.shareToken, shareUrl, companyDomain: card.companyDomain, status: "accepted" });
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not create a share card"; res.status(/only available after approval|not part of this private referral/i.test(message) ? 403 : 500).json({ error: message }); }
+  });
+  app.delete("/api/referral-share-cards/:requestId", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (!identity) return res.status(401).json({ error: "Sign in to remove a share card" });
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
+      const result = await (deps.revokeReferralShareCard ?? revokeReferralShareCard)(identity.account.id, requestId);
+      record({ actorUserId: identity.account.id, action: "referral_share_card.revoked", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, metadata: { revoked: result.revoked } });
+      res.set("Cache-Control", "private, no-store"); res.json(result);
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not remove that share card"; res.status(/only available after approval|not part of this private referral/i.test(message) ? 403 : 500).json({ error: message }); }
+  });
+  app.get("/api/referral-share-cards/public/:shareToken", async (req, res) => {
+    try {
+      if (!/^[a-zA-Z0-9-]{16,64}$/.test(req.params.shareToken)) return res.status(404).json({ error: "This share card is unavailable" });
+      const card = await (deps.getPublicReferralShareCard ?? getPublicReferralShareCard)(req.params.shareToken);
+      if (!card) return res.status(404).json({ error: "This share card is unavailable" });
+      record({ action: "referral_share_card.resolved", outcome: "success", resourceType: "referral_share_card", companyDomain: card.companyDomain, metadata: { public: true } });
+      res.set("Cache-Control", "no-store"); res.json({ card: { companyDomain: card.companyDomain, status: "accepted" } });
+    } catch { res.status(500).json({ error: "We could not open this share card" }); }
+  });
+  app.get("/api/referral-share-cards/public/:shareToken/image.png", async (req, res) => {
+    try {
+      if (!isOpaqueShareToken(req.params.shareToken)) return res.status(404).end();
+      const card = await (deps.getPublicReferralShareCard ?? getPublicReferralShareCard)(req.params.shareToken);
+      if (!card) return res.status(404).end();
+      const companyDomain = escapeHtml(card.companyDomain);
+      const svg = `<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg"><rect width="1200" height="630" fill="#f8fafc"/><rect x="48" y="48" width="1104" height="534" rx="36" fill="#ffffff" stroke="#dbeafe" stroke-width="3"/><rect x="94" y="100" width="74" height="74" rx="20" fill="#0B57D0"/><path d="M112 137h38M131 118v38" stroke="#fff" stroke-width="7" stroke-linecap="round"/><text x="94" y="232" fill="#0B57D0" font-family="Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="4">SKIPWAIT.ME · PRIVATE REFERRAL</text><text x="94" y="332" fill="#0f172a" font-family="Arial, sans-serif" font-size="64" font-weight="700">Accepted at ${companyDomain}</text><text x="94" y="405" fill="#475569" font-family="Arial, sans-serif" font-size="34">Shared voluntarily. No hiring outcome is implied.</text><line x1="94" y1="478" x2="1106" y2="478" stroke="#dbeafe" stroke-width="3"/><text x="94" y="532" fill="#64748b" font-family="Arial, sans-serif" font-size="28">A factual company-level milestone</text></svg>`;
+      const image = await sharp(Buffer.from(svg)).png().toBuffer();
+      res.set("Cache-Control", "public, max-age=300"); res.type("png").send(image);
+    } catch { res.status(500).end(); }
+  });
+  app.get("/share-card/:shareToken", async (req, res) => {
+    try {
+      if (!isOpaqueShareToken(req.params.shareToken)) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#475569;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
+      const card = await (deps.getPublicReferralShareCard ?? getPublicReferralShareCard)(req.params.shareToken);
+      if (!card) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#475569;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
+      const origin = `${req.protocol}://${req.get("host")}`; const canonicalUrl = `${origin}/share-card/${encodeURIComponent(req.params.shareToken)}`; const imageUrl = `${origin}/api/referral-share-cards/public/${encodeURIComponent(req.params.shareToken)}/image.png`; const companyDomain = escapeHtml(card.companyDomain);
+      record({ action: "referral_share_card.viewed", outcome: "success", resourceType: "referral_share_card", companyDomain: card.companyDomain, metadata: { public: true } });
+      res.set("Cache-Control", "no-store"); res.type("html").send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Accepted referral at ${companyDomain} | skipwait.me</title><meta name="description" content="A voluntarily shared referral acceptance milestone at ${companyDomain}. No hiring outcome is implied."><link rel="canonical" href="${canonicalUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="skipwait.me"><meta property="og:title" content="Accepted at ${companyDomain}"><meta property="og:description" content="Shared voluntarily. No hiring outcome is implied."><meta property="og:url" content="${canonicalUrl}"><meta property="og:image" content="${imageUrl}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Accepted at ${companyDomain}"><meta name="twitter:description" content="Shared voluntarily. No hiring outcome is implied."><meta name="twitter:image" content="${imageUrl}"><style>body{margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif}.card{box-sizing:border-box;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}.panel{width:min(100%,520px);border:1px solid #dbeafe;border-radius:24px;background:#fff;padding:32px;box-shadow:0 16px 40px rgba(15,23,42,.08)}.mark{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#0B57D0;color:#fff;font-weight:800}.eyebrow{margin:24px 0 0;color:#0B57D0;font-size:12px;font-weight:800;letter-spacing:.14em}.title{margin:12px 0 0;font-size:38px;line-height:1.02;letter-spacing:-.05em}.copy{margin:20px 0 0;color:#475569;font-size:16px;line-height:1.55}.note{margin:20px 0 0;border-radius:14px;background:#eff6ff;padding:14px;color:#1e3a8a;font-size:14px;line-height:1.45}</style></head><body><main class="card"><section class="panel" aria-label="Referral acceptance milestone"><div class="mark">↗</div><p class="eyebrow">SKIPWAIT.ME · PRIVATE REFERRAL</p><h1 class="title">Accepted at ${companyDomain}</h1><p class="copy">A private referral request was accepted at ${companyDomain}.</p><p class="note">Shared voluntarily. No hiring outcome is implied.</p></section></main></body></html>`);
+    } catch { res.status(500).type("html").send("<!doctype html><title>Share card unavailable</title>"); }
   });
   app.get("/api/personal-invites/me", async (req, res) => {
     try {

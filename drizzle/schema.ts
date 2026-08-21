@@ -87,6 +87,16 @@ export const referralRequests = mysqlTable("referralRequests", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt)]);
 
+export const referralShareCards = mysqlTable("referralShareCards", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shareToken: varchar("shareToken", { length: 64 }).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  revokedAt: timestamp("revokedAt"),
+}, table => [uniqueIndex("referral_share_card_token_unique").on(table.shareToken), uniqueIndex("referral_share_card_owner_request_unique").on(table.referralRequestId, table.createdByUserId), index("referral_share_card_public_idx").on(table.shareToken, table.isActive), index("referral_share_card_request_idx").on(table.referralRequestId)]);
+
 export const referralAvailabilitySlots = mysqlTable("referralAvailabilitySlots", {
   id: int("id").autoincrement().primaryKey(),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
