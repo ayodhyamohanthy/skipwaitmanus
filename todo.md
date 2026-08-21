@@ -481,3 +481,7 @@
 - [ ] Rebuild and audit functional parity in VibecodeApp staging for core referral, authentication, private document, notification, payment-boundary, and privacy workflows before proposing any cutover.
 - [ ] Produce controlled domain, authentication, payment, webhook, data-migration, rollback, and acceptance evidence required before redirecting skipwait.me from the verified source release.
 - [x] Prepare a concise, staging-only manual VibecodeApp migration packet with exact prompts, validation gates, and production-isolation boundaries for the user.
+- [ ] Identify appropriate product-launch platforms, prepare truthful skipwait.me launch submissions, and publish only after explicit confirmation for each public posting.
+- [ ] Resume the authorized VibecodeApp staging rebuild and verify each secure-foundation, core-workflow, and parity milestone before any production cutover.
+- [ ] Rebuild every required SkipWait capability with verified Vibecode-compatible services instead of retaining incompatible Express, tRPC, Drizzle/MySQL, Clerk, or source-runtime dependencies.
+- [ ] Remove the imported Manus frontend’s unresolved `@shared/const` / tRPC bootstrap and replace it with a buildable Vibecode-native application entry before rebuilding feature parity.
