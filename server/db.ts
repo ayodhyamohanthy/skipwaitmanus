@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createHash, randomUUID } from "node:crypto";
@@ -554,6 +554,22 @@ export async function openCompanyReferralAvailability(userId: number, input: { s
     }
     return { companyDomain, requestedSlotCount: slotCount, allocatedRequestIds, allocatedCount: allocatedRequestIds.length };
   });
+}
+
+export async function getSlotOpenedAlertRecipients(referrerId: number, requestIds: number[]) {
+  const eligibleRequestIds = Array.from(new Set(requestIds.filter(id => Number.isInteger(id) && id > 0)));
+  if (!eligibleRequestIds.length) return [];
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ requestId: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, email: users.email, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(users.id, referralRequests.jobSeekerId)).where(and(inArray(referralRequests.id, eligibleRequestIds), eq(referralRequests.referrerId, referrerId), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, false)));
+  return rows.filter(row => typeof row.email === "string" && row.email.includes("@"));
+}
+
+export type PublicReferralImpact = { acceptedReferrals: number };
+
+export async function getPublicReferralImpact(): Promise<PublicReferralImpact> {
+  const db = await getDb(); if (!db) return { acceptedReferrals: 0 };
+  const result = await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(or(eq(referralRequests.status, "approved"), eq(referralRequests.status, "intro_made"), eq(referralRequests.status, "interview"), eq(referralRequests.status, "offer"), eq(referralRequests.status, "closed")));
+  return { acceptedReferrals: Number(result[0]?.acceptedReferrals ?? 0) };
 }
 
 export async function getReferralFlowHealth() {

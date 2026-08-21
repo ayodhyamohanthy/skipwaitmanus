@@ -1,4 +1,5 @@
 import { ArrowRight, CheckCircle2, HeartHandshake, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Brand } from "@/components/Brand";
 import { Menu } from "lucide-react";
@@ -6,9 +7,21 @@ import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTi
 
 export default function Home() {
   const [, go] = useLocation();
+  const [acceptedReferrals, setAcceptedReferrals] = useState<number | null>(null);
+  useEffect(() => {
+    let active = true;
+    const loadImpact = async () => {
+      try {
+        const response = await fetch("/api/referral-impact"); const payload = await response.json() as { acceptedReferrals?: unknown };
+        if (active && response.ok && typeof payload.acceptedReferrals === "number") setAcceptedReferrals(Math.max(0, Math.floor(payload.acceptedReferrals)));
+      } catch { if (active) setAcceptedReferrals(null); }
+    };
+    void loadImpact(); const timer = window.setInterval(() => { void loadImpact(); }, 120_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
 
   return <main className="h-dvh min-h-dvh overflow-hidden bg-slate-50 text-slate-950 sm:h-auto sm:min-h-screen sm:overflow-visible">
-    <header className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 sm:h-auto sm:px-6 sm:py-5"><Brand /><div className="hidden items-center gap-5 sm:flex"><button onClick={() => go("/wall")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">Internal openings</button><button onClick={() => go("/referrer")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">I give referrals</button><button onClick={() => go("/privacy")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">Privacy & trust</button><button onClick={() => go("/start")} className="rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0847AD]">Request a referral</button></div><div className="sm:hidden"><Sheet><SheetTrigger asChild><button type="button" aria-label="Open navigation menu" className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition active:scale-[.97] hover:border-blue-200 hover:text-[#0B57D0]"><Menu className="h-5 w-5" /></button></SheetTrigger><SheetContent side="right" className="w-[min(84vw,20rem)] border-slate-200 bg-white p-0"><SheetHeader className="border-b border-slate-100 px-5 py-5"><SheetTitle className="text-left text-base">Menu</SheetTitle><SheetDescription className="sr-only">Public navigation</SheetDescription></SheetHeader><nav className="flex flex-col gap-1 p-3" aria-label="Mobile navigation"><SheetClose asChild><button type="button" onClick={() => go("/wall")} className="min-h-12 rounded-lg px-4 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50">Internal openings</button></SheetClose><SheetClose asChild><button type="button" onClick={() => go("/referrer")} className="min-h-12 rounded-lg px-4 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50">I give referrals</button></SheetClose><SheetClose asChild><button type="button" onClick={() => go("/privacy")} className="min-h-12 rounded-lg px-4 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50">Privacy & trust</button></SheetClose><SheetClose asChild><button type="button" onClick={() => go("/start")} className="mt-3 min-h-12 rounded-lg bg-[#0B57D0] px-4 text-left text-sm font-bold text-white hover:bg-[#0847AD]">Request a referral</button></SheetClose></nav></SheetContent></Sheet></div></header>
+    <header className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-5 sm:h-auto sm:px-6 sm:py-5"><Brand /><ImpactIndicator acceptedReferrals={acceptedReferrals} /><div className="hidden items-center gap-5 sm:flex"><button onClick={() => go("/wall")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">Internal openings</button><button onClick={() => go("/referrer")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">I give referrals</button><button onClick={() => go("/privacy")} className="text-sm font-semibold text-slate-600 hover:text-slate-950">Privacy & trust</button><button onClick={() => go("/start")} className="rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#0847AD]">Request a referral</button></div><div className="sm:hidden"><Sheet><SheetTrigger asChild><button type="button" aria-label="Open navigation menu" className="grid h-10 w-10 place-items-center rounded-lg border border-slate-200 bg-white text-slate-700 shadow-sm transition active:scale-[.97] hover:border-blue-200 hover:text-[#0B57D0]"><Menu className="h-5 w-5" /></button></SheetTrigger><SheetContent side="right" className="w-[min(84vw,20rem)] border-slate-200 bg-white p-0"><SheetHeader className="border-b border-slate-100 px-5 py-5"><SheetTitle className="text-left text-base">Menu</SheetTitle><SheetDescription className="sr-only">Public navigation</SheetDescription></SheetHeader><nav className="flex flex-col gap-1 p-3" aria-label="Mobile navigation"><SheetClose asChild><button type="button" onClick={() => go("/wall")} className="min-h-12 rounded-lg px-4 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50">Internal openings</button></SheetClose><SheetClose asChild><button type="button" onClick={() => go("/referrer")} className="min-h-12 rounded-lg px-4 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50">I give referrals</button></SheetClose><SheetClose asChild><button type="button" onClick={() => go("/privacy")} className="min-h-12 rounded-lg px-4 text-left text-sm font-semibold text-slate-800 hover:bg-slate-50">Privacy & trust</button></SheetClose><SheetClose asChild><button type="button" onClick={() => go("/start")} className="mt-3 min-h-12 rounded-lg bg-[#0B57D0] px-4 text-left text-sm font-bold text-white hover:bg-[#0847AD]">Request a referral</button></SheetClose></nav></SheetContent></Sheet></div></header>
     <section className="mx-auto flex h-[calc(100dvh-4rem)] max-w-6xl flex-col justify-center px-5 py-5 sm:grid sm:h-auto sm:items-center sm:gap-10 sm:px-6 sm:py-12 lg:grid-cols-[1.08fr_.92fr] lg:gap-14 lg:py-20">
       <div>
         <p className="hidden items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0B57D0] sm:inline-flex"><Sparkles className="h-3.5 w-3.5" />Referrals, without the runaround</p>
@@ -26,3 +39,8 @@ export default function Home() {
 }
 
 function WorkflowStep({ number, title, body }: { number: string; title: string; body: string }) { return <div className="flex gap-4"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-blue-50 text-xs font-bold text-[#0B57D0]">{number}</span><div><p className="text-sm font-semibold text-slate-900">{title}</p><p className="mt-1 text-sm leading-6 text-slate-600">{body}</p></div></div>; }
+
+function ImpactIndicator({ acceptedReferrals }: { acceptedReferrals: number | null }) {
+  if (!acceptedReferrals) return null;
+  return <p aria-live="polite" className="hidden items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-[#0B57D0] lg:inline-flex"><CheckCircle2 className="h-3.5 w-3.5" />{acceptedReferrals} referrals accepted</p>;
+}

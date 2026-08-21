@@ -461,3 +461,6 @@
 - [x] Add Referrer one-click dashboard decisions: explicit “Accept & submit referral” and “Decline” actions with a concise, factual decline reason while preserving candidate review, exact-company authorization, and audit logging.
 - [x] Add private Referrer email-notification decision handoff with authenticated single-use review links and no candidate-document, employee-identity, queue, or hiring-guarantee disclosure in the email body.
 - [x] Add regression and visual coverage for one-click Referrer decisions, authenticated email handoff, idempotency, and private notification behavior.
+- [x] Enhance private Slot Opened re-engagement alerts with trigger-based in-app and email delivery only for waiting Job Seekers at the exact verified company, without queue position disclosure or priority changes.
+- [x] Add a server-derived, anonymized aggregate referral-impact indicator that contains no candidate names, companies, precise timestamps, queue data, hiring guarantee, or fabricated activity.
+- [x] Add regression and visual coverage for re-engagement alert targeting, notification privacy, aggregate-indicator truthfulness, and no-queue-manipulation safeguards.

@@ -4,6 +4,7 @@ import { validatePrivateDocument } from "./documentValidation";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
+import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
 import { isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 
@@ -39,6 +40,9 @@ export type PrivateReferralRouteDeps = {
   getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
   deactivateReferrerFastTrackLink?: (userId: number) => Promise<{ deactivated: boolean }>;
   openCompanyReferralAvailability?: (userId: number, input: { slotCount?: number }) => Promise<{ companyDomain: string; requestedSlotCount: number; allocatedRequestIds: number[]; allocatedCount: number }>;
+  getSlotOpenedAlertRecipients?: (referrerId: number, requestIds: number[]) => Promise<Array<{ requestId: number; jobSeekerId: number; email: string | null; companyDomain: string }>>;
+  sendSlotOpenedAlertEmail?: (input: { to: string; companyDomain: string; requestsUrl: string }) => Promise<{ sent: boolean; reason: string }>;
+  getPublicReferralImpact?: () => Promise<{ acceptedReferrals: number }>;
   fulfillCompanyCoverageInvitation?: (joinerUserId: number, input: { inviteCode: string; workEmailDomain: string }) => Promise<{ rewarded: boolean; tokenCount?: number }>;
   listCompanyReferralInbox: (userId: number) => Promise<unknown[]>;
   listCompanyReferralInboxByState?: (userId: number, state: "new" | "saved" | "completed") => Promise<unknown[]>;
@@ -330,6 +334,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ summary });
     } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not load private impact" }); }
   });
+  app.get("/api/referral-impact", async (_req, res) => {
+    try {
+      const impact = await deps.getPublicReferralImpact?.() ?? { acceptedReferrals: 0 };
+      res.set("Cache-Control", "public, max-age=120");
+      res.json({ acceptedReferrals: Math.max(0, Math.floor(impact.acceptedReferrals)) });
+    } catch { res.status(503).json({ error: "Referral impact is unavailable right now" }); }
+  });
   app.get("/api/referrer-fast-track/me", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
@@ -493,6 +504,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const requestedSlotCount = typeof req.body?.slotCount === "number" ? req.body.slotCount : 1;
       if (!Number.isInteger(requestedSlotCount) || requestedSlotCount < 1 || requestedSlotCount > 3) return res.status(400).json({ error: "Open between one and three real referral slots" });
       const result = await deps.openCompanyReferralAvailability(identity.account.id, { slotCount: requestedSlotCount });
+      if (result.allocatedCount && deps.getSlotOpenedAlertRecipients) {
+        try {
+          const recipients = await deps.getSlotOpenedAlertRecipients(identity.account.id, result.allocatedRequestIds);
+          const sender = deps.sendSlotOpenedAlertEmail ?? sendSlotOpenedAlertEmail;
+          const origin = `${req.protocol}://${req.get("host")}`;
+          const deliveries = await Promise.all(recipients.map(recipient => sender({ to: recipient.email ?? "", companyDomain: recipient.companyDomain, requestsUrl: `${origin}/requests` })));
+          record({ actorUserId: identity.account.id, action: "company_referral.slot_open_alert_dispatched", outcome: deliveries.some(delivery => delivery.sent) ? "success" : "failure", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { allocatedCount: result.allocatedCount, alertRecipientCount: recipients.length, deliveredCount: deliveries.filter(delivery => delivery.sent).length } });
+        } catch {
+          record({ actorUserId: identity.account.id, action: "company_referral.slot_open_alert_dispatched", outcome: "failure", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { allocatedCount: result.allocatedCount } });
+        }
+      }
       record({ actorUserId: identity.account.id, action: "company_referral.queue_opened", outcome: "success", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { requestedSlotCount: result.requestedSlotCount, allocatedCount: result.allocatedCount } });
       res.set("Cache-Control", "private, no-store");
       res.json({ availability: result });
