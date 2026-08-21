@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fastTrackLinkMatchesCompany, isVerifiedEmployeeOfCompany } from "./db";
+import { companySlugFromDomain, fastTrackLinkMatchesCompany, isSafeFastTrackAlias, isVerifiedEmployeeOfCompany } from "./db";
 
 describe("Referrer Fast-Track Link contract", () => {
   it("routes only to the exact normalized verified company domain", () => {
@@ -14,5 +14,15 @@ describe("Referrer Fast-Track Link contract", () => {
     expect(isVerifiedEmployeeOfCompany(verified, "stripe.com")).toBe(true);
     expect(isVerifiedEmployeeOfCompany({ ...verified, workEmailVerifiedAt: null }, "stripe.com")).toBe(false);
     expect(isVerifiedEmployeeOfCompany({ ...verified, workEmailDomain: "other.com" }, "stripe.com")).toBe(false);
+  });
+
+  it("uses a non-identifying company-scoped alias format and rejects reserved or identity-shaped route values", () => {
+    expect(companySlugFromDomain("stripe.com")).toBe("stripe");
+    expect(companySlugFromDomain("www.google.co.in")).toBe("google");
+    expect(isSafeFastTrackAlias("ref-a1b2c3d4e5")).toBe(true);
+    expect(isSafeFastTrackAlias("stripe-employee")).toBe(true);
+    expect(isSafeFastTrackAlias("admin")).toBe(false);
+    expect(isSafeFastTrackAlias("@employee")).toBe(false);
+    expect(isSafeFastTrackAlias("a")).toBe(false);
   });
 });

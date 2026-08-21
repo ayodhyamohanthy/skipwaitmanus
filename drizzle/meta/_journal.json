@@ -169,6 +169,13 @@
       "when": 1787295550317,
       "tag": "0023_worried_celestials",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1787296440166,
+      "tag": "0024_rich_gambit",
+      "breakpoints": true
     }
   ]
 }

@@ -33,6 +33,19 @@ The recipient-facing page uses factual copy: **“Request a private referral at 
 | `POST /api/company-referrals` with `fastTrackCode` | Signed-in Job Seeker | Validates the code and exact employer domain, then creates a private request assigned to the verified link owner. |
 | `/fast/:code` | Public | Offers the private company request path, shows no employee identity, and carries the opaque code into the existing onboarding/request flow. |
 
+## Vanity URL contract
+
+Every active Fast-Track Link also receives one **generated pseudonymous alias**. Its public form is `skipwait.me/refer/{company-slug}/{alias}`. The company slug is a presentation-only, normalized form of the verified company domain; the server always rechecks it against the stored exact company domain before resolving the path.
+
+| Concern | Rule |
+|---|---|
+| Alias format | Generated aliases use lowercase letters, numbers, and hyphens only. They are 3–30 characters, non-identifying, and reserved route words are rejected. |
+| Identity protection | An alias is never generated from a Referrer name, email local-part, employee ID, or job title. The public API returns only the company label and active state. |
+| Stability | A Referrer has one account-owned active alias. It survives ordinary link retrieval; a company re-verification can rotate it server-side if company binding changes. |
+| Public resolution | `/refer/{company-slug}/{alias}` proves that the requested slug and alias refer to the same active verified company corridor. It never returns the opaque link code, Referrer account ID, or identity. |
+| Routing | The recipient’s resume submission carries the alias and company slug back to the server. The server resolves the active link again and independently validates the Target Role URL against that exact company. |
+| Prohibited use | Vanity aliases do not grant priority, alter Queue Open Alert order, disclose capacity, reveal a Referrer, or imply a bypass, review, interview, or employment guarantee. |
+
 ## Mobile interaction model
 
 The Referrer controls the feature from a single card in the verified company inbox: **“Your Fast-Track Link”**, a company-labelled opaque URL, one **Copy link** action, and an optional **Pause link** control. The link card is available even when there are no inbound requests. The recipient page uses one primary action: **“Start private request.”**

@@ -103,11 +103,12 @@ export const referrerFastTrackLinks = mysqlTable("referrerFastTrackLinks", {
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
   linkCode: varchar("linkCode", { length: 64 }).notNull(),
+  vanityAlias: varchar("vanityAlias", { length: 30 }),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   deactivatedAt: timestamp("deactivatedAt"),
-}, table => [uniqueIndex("referrer_fast_track_referrer_unique").on(table.referrerId), uniqueIndex("referrer_fast_track_code_unique").on(table.linkCode), index("referrer_fast_track_public_idx").on(table.linkCode, table.isActive), index("referrer_fast_track_company_idx").on(table.companyDomain, table.isActive)]);
+}, table => [uniqueIndex("referrer_fast_track_referrer_unique").on(table.referrerId), uniqueIndex("referrer_fast_track_code_unique").on(table.linkCode), uniqueIndex("referrer_fast_track_alias_unique").on(table.vanityAlias), index("referrer_fast_track_public_idx").on(table.linkCode, table.isActive), index("referrer_fast_track_alias_public_idx").on(table.vanityAlias, table.isActive), index("referrer_fast_track_company_idx").on(table.companyDomain, table.isActive)]);
 
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),

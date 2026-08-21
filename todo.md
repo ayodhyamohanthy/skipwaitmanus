@@ -451,3 +451,5 @@
 - [ ] Reattach the secure source-only skipwait.me handoff, transfer, migration, and parity documents to the replacement VibecodeApp staging workspace.
 - [ ] Rebuild and validate skipwait.me functional parity in VibecodeApp before any canonical-domain or production payment cutover.
 - [x] Add Referrer Fast-Track Links: verified Referrers can create branded exact-company share links that route Job Seekers into a private referral request flow without revealing Referrer identity, ranking candidates, or creating scarcity mechanics.
+- [x] Preserve fair private queues: reject invitation-based position jumping or referral-rank rewards, and add a regression that confirms Queue Open Alerts continue to allocate only by original eligible hold order.
+- [x] Add privacy-preserving Referrer vanity Fast-Track URLs: verified Referrers can reserve a non-identifying alias for a company-scoped public path that resolves only to the private request flow.

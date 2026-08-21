@@ -129,27 +129,37 @@ export async function getVerifiedWorkEmailAccess(userId: number) {
   return { workEmailDomain: profile.workEmailDomain };
 }
 
-export type ReferrerFastTrackLink = { linkCode: string; companyDomain: string; isActive: boolean };
+export type ReferrerFastTrackLink = { linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean };
 
 const createFastTrackCode = () => randomUUID().replace(/-/g, "");
+const createFastTrackAlias = () => `ref-${randomUUID().replace(/-/g, "").slice(0, 10)}`;
+const reservedFastTrackAliases = new Set(["admin", "api", "auth", "fast", "inbox", "login", "notifications", "refer", "request", "settings", "start"]);
+
+export function companySlugFromDomain(companyDomain: string) {
+  const normalized = companyDomain.trim().toLowerCase().replace(/^www\./, "");
+  const parts = normalized.split(".").filter(Boolean);
+  return (parts.length > 1 ? parts[0] : normalized).replace(/[^a-z0-9-]/g, "").slice(0, 48);
+}
+
+export function isSafeFastTrackAlias(alias: string) {
+  const normalized = alias.trim().toLowerCase();
+  return /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(normalized) && !reservedFastTrackAliases.has(normalized);
+}
 
 export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink> {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating a Fast-Track Link");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const companyDomain = profile.workEmailDomain.trim().toLowerCase();
-  const existing = await db.select({ linkCode: referrerFastTrackLinks.linkCode, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1);
-  if (existing[0] && existing[0].companyDomain === companyDomain) return existing[0];
-  if (existing[0]) {
-    const linkCode = createFastTrackCode();
-    await db.update(referrerFastTrackLinks).set({ companyDomain, linkCode, isActive: true, deactivatedAt: null }).where(eq(referrerFastTrackLinks.referrerId, userId));
-    return { linkCode, companyDomain, isActive: true };
-  }
+  const existing = await db.select({ linkCode: referrerFastTrackLinks.linkCode, vanityAlias: referrerFastTrackLinks.vanityAlias, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1);
+  if (existing[0] && existing[0].companyDomain === companyDomain && existing[0].vanityAlias) return { ...existing[0], vanityAlias: existing[0].vanityAlias };
   for (let attempt = 0; attempt < 4; attempt += 1) {
-    const linkCode = createFastTrackCode();
+    const linkCode = existing[0]?.companyDomain === companyDomain ? existing[0].linkCode : createFastTrackCode();
+    const vanityAlias = createFastTrackAlias();
     try {
-      await db.insert(referrerFastTrackLinks).values({ referrerId: userId, companyDomain, linkCode, isActive: true });
-      return { linkCode, companyDomain, isActive: true };
+      if (existing[0]) await db.update(referrerFastTrackLinks).set({ companyDomain, linkCode, vanityAlias, isActive: true, deactivatedAt: null }).where(eq(referrerFastTrackLinks.referrerId, userId));
+      else await db.insert(referrerFastTrackLinks).values({ referrerId: userId, companyDomain, linkCode, vanityAlias, isActive: true });
+      return { linkCode, vanityAlias, companyDomain, isActive: true };
     } catch (error) {
       if (attempt === 3) throw error;
     }
@@ -167,6 +177,17 @@ export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<
   return { companyDomain: link.companyDomain, isActive: true };
 }
 
+export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+  const normalizedSlug = companySlug.trim().toLowerCase();
+  const normalizedAlias = vanityAlias.trim().toLowerCase();
+  if (!normalizedSlug || !isSafeFastTrackAlias(normalizedAlias)) return undefined;
+  const db = await getDb(); if (!db) return undefined;
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const link = result[0];
+  if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
+  return { companyDomain: link.companyDomain, isActive: true };
+}
+
 async function getActiveReferrerFastTrackLink(linkCode: string) {
   const normalizedCode = linkCode.trim().slice(0, 64);
   if (!normalizedCode) return undefined;
@@ -174,6 +195,17 @@ async function getActiveReferrerFastTrackLink(linkCode: string) {
   const result = await db.select({ referrerId: referrerFastTrackLinks.referrerId, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
+  return { referrerId: link.referrerId, companyDomain: link.companyDomain };
+}
+
+async function getActiveReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string) {
+  const normalizedSlug = companySlug.trim().toLowerCase();
+  const normalizedAlias = vanityAlias.trim().toLowerCase();
+  if (!normalizedSlug || !isSafeFastTrackAlias(normalizedAlias)) return undefined;
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.select({ referrerId: referrerFastTrackLinks.referrerId, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const link = result[0];
+  if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
   return { referrerId: link.referrerId, companyDomain: link.companyDomain };
 }
 
@@ -341,12 +373,13 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; fastTrackCode?: string }) {
+export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) {
   const companyDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
   if (!companyDomain) throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : undefined;
-  if (input.fastTrackCode && !fastTrackLink) throw new Error("This private referral link is no longer active");
+  if (input.fastTrackCode && (input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
+  const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : input.fastTrackCompanySlug && input.fastTrackAlias ? await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug, input.fastTrackAlias) : undefined;
+  if ((input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias) && !fastTrackLink) throw new Error("This private referral link is no longer active");
   if (fastTrackLink && !fastTrackLinkMatchesCompany(fastTrackLink.companyDomain, companyDomain)) throw new Error("Use a job link for the same company as this private referral link");
   const eligibleCandidates = fastTrackLink ? [{ userId: fastTrackLink.referrerId, accountType: "referrer", workEmailDomain: companyDomain, workEmailVerifiedAt: new Date() }] : await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const eligible = eligibleCandidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));

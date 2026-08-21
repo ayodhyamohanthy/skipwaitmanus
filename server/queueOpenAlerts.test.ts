@@ -32,4 +32,19 @@ describe("Queue Open Alerts allocation contract", () => {
     expect(helpers).toContain("const isQueueAllocationForYou = row.queueAllocationId !== null && row.referrerId === userId");
     expect(helpers).toContain("queueStatus: row.referrerId && row.status === \"pending\" ? \"available_for_review\"");
   });
+
+  it("preserves original eligible hold order and excludes invitation-driven position jumps or referral-rank rewards", () => {
+    const source = projectFile("server/db.ts");
+    const allocationStart = source.indexOf("export async function openCompanyReferralAvailability");
+    const allocationEnd = source.indexOf("export async function getReferralFlowHealth", allocationStart);
+    const allocation = source.slice(allocationStart, allocationEnd);
+    const specification = projectFile("docs/queue-open-alerts-spec.md");
+    expect(allocation).toContain("orderBy(asc(referralRequests.coverageQueuedAt), asc(referralRequests.id))");
+    expect(allocation).not.toContain("personalReferralInvite");
+    expect(allocation).not.toContain("personalReferralReward");
+    expect(allocation).not.toContain("position");
+    expect(allocation).not.toContain("rank");
+    expect(specification).toMatch(/must \*\*not\*\* implement position jumping/i);
+    expect(specification).toMatch(/hidden queue rank/i);
+  });
 });
