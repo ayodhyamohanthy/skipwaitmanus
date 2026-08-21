@@ -125,6 +125,24 @@ describe("private referral HTTP routes", () => {
     expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.queue_opened", companyDomain: "acme.com", metadata: { requestedSlotCount: 1, allocatedCount: 1 } }));
   });
 
+  it("returns only a verified Referrer’s aggregate private impact and never candidate or queue data", async () => {
+    const app = express(); app.use(express.json());
+    const identities = new Map([
+      ["referrer", { account: { id: 71, openId: "clerk-referrer" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }],
+      ["outsider", { account: { id: 72, openId: "clerk-outsider" }, primaryEmail: { emailAddress: "person@example.com", verification: { status: "verified" } } }],
+    ]);
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
+      getPrivateReferrerImpactSummary: async userId => { if (userId !== 71) throw new Error("Verify your company email to view your private impact"); return { reviewed: 7, approved: 4, introductions: 3, interviews: 2, offers: 1 }; }, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+    expect((await request(app).get("/api/referrer-impact/me")).status).toBe(401);
+    const ownImpact = await request(app).get("/api/referrer-impact/me").set("x-test-user", "referrer");
+    expect(ownImpact.status).toBe(200); expect(ownImpact.body).toEqual({ summary: { reviewed: 7, approved: 4, introductions: 3, interviews: 2, offers: 1 } }); expect(JSON.stringify(ownImpact.body)).not.toMatch(/candidate|requestId|queue|email/i);
+    expect((await request(app).get("/api/referrer-impact/me").set("x-test-user", "outsider")).status).toBe(403);
+  });
+
   it("lists anonymous opportunities publicly but only lets a verified employee publish one", async () => {
     const app = express();
     app.use(express.json());

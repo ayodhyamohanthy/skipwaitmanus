@@ -453,3 +453,6 @@
 - [x] Add Referrer Fast-Track Links: verified Referrers can create branded exact-company share links that route Job Seekers into a private referral request flow without revealing Referrer identity, ranking candidates, or creating scarcity mechanics.
 - [x] Preserve fair private queues: reject invitation-based position jumping or referral-rank rewards, and add a regression that confirms Queue Open Alerts continue to allocate only by original eligible hold order.
 - [x] Add privacy-preserving Referrer vanity Fast-Track URLs: verified Referrers can reserve a non-identifying alias for a company-scoped public path that resolves only to the private request flow.
+- [x] Keep the current skipwait.me source application as the implementation source of truth; defer VibecodeApp build, migration, and cutover actions until the source release is stable and the user resumes that work.
+- [x] Audit and strengthen skipwait.me’s source-app growth loops for fast time-to-value, reciprocal Job Seeker–Referrer utility, voluntary shareable proof, and compounding private account value—without queue priority, fabricated proof, identity exposure, or dark patterns.
+- [x] Add a private Referrer impact summary with server-derived aggregate review and voluntary milestone counts, visible only to the verified Referrer and never as a public leaderboard or candidate record.

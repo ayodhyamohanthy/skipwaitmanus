@@ -1,6 +1,7 @@
 import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { validatePrivateDocument } from "./documentValidation";
+import { getPrivateReferrerImpactSummary } from "./db";
 import { isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
@@ -23,6 +24,7 @@ export type PrivateReferralRouteDeps = {
   completeResumeUploadSession?: (ownerId: number, sessionId: string, attachmentId: number) => Promise<void>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
+  getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
   createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; fastTrack?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -291,6 +293,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store");
       res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null });
     } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
+  });
+  app.get("/api/referrer-impact/me", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with your company email to view private impact" });
+      const summary = await (deps.getPrivateReferrerImpactSummary ?? getPrivateReferrerImpactSummary)(identity.account.id);
+      res.set("Cache-Control", "private, no-store");
+      res.json({ summary });
+    } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not load private impact" }); }
   });
   app.get("/api/referrer-fast-track/me", async (req, res) => {
     try {

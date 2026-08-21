@@ -129,6 +129,23 @@ export async function getVerifiedWorkEmailAccess(userId: number) {
   return { workEmailDomain: profile.workEmailDomain };
 }
 
+export type PrivateReferrerImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
+
+export async function getPrivateReferrerImpactSummary(userId: number): Promise<PrivateReferrerImpactSummary> {
+  const access = await getVerifiedWorkEmailAccess(userId);
+  if (!access) throw new Error("Verify your company email to view your private impact");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.referrerId, userId));
+  const statusCount = (status: ReferralStatus) => rows.filter(row => row.status === status).length;
+  return {
+    reviewed: rows.length,
+    approved: statusCount("approved") + statusCount("intro_made") + statusCount("interview") + statusCount("offer"),
+    introductions: statusCount("intro_made") + statusCount("interview") + statusCount("offer"),
+    interviews: statusCount("interview") + statusCount("offer"),
+    offers: statusCount("offer"),
+  };
+}
+
 export type ReferrerFastTrackLink = { linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean };
 
 const createFastTrackCode = () => randomUUID().replace(/-/g, "");
