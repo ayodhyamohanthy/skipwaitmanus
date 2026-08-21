@@ -97,6 +97,16 @@ export const referralShareCards = mysqlTable("referralShareCards", {
   revokedAt: timestamp("revokedAt"),
 }, table => [uniqueIndex("referral_share_card_token_unique").on(table.shareToken), uniqueIndex("referral_share_card_owner_request_unique").on(table.referralRequestId, table.createdByUserId), index("referral_share_card_public_idx").on(table.shareToken, table.isActive), index("referral_share_card_request_idx").on(table.referralRequestId)]);
 
+export const referrerReviewEmailLinks = mysqlTable("referrerReviewEmailLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  linkToken: varchar("linkToken", { length: 64 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("referrer_review_email_token_unique").on(table.linkToken), uniqueIndex("referrer_review_email_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referrer_review_email_lookup_idx").on(table.linkToken, table.referrerId, table.expiresAt), index("referrer_review_email_request_idx").on(table.referralRequestId)]);
+
 export const referralAvailabilitySlots = mysqlTable("referralAvailabilitySlots", {
   id: int("id").autoincrement().primaryKey(),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),

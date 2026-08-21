@@ -458,3 +458,6 @@
 - [x] Add a private Referrer impact summary with server-derived aggregate review and voluntary milestone counts, visible only to the verified Referrer and never as a public leaderboard or candidate record.
 - [x] Add Smart Pitch Generator: after a Job Seeker privately uploads a resume and supplies a verified target role, generate an editable server-side draft without retaining or exposing resume text beyond the authorized request flow.
 - [x] Add opt-in factual referral milestone cards: accepted-request participants can create a company-level share card for LinkedIn or X that never exposes a Referrer identity, resume, queue position, hiring guarantee, or unverifiable “Fast-Tracked” claim.
+- [x] Add Referrer one-click dashboard decisions: explicit “Accept & submit referral” and “Decline” actions with a concise, factual decline reason while preserving candidate review, exact-company authorization, and audit logging.
+- [x] Add private Referrer email-notification decision handoff with authenticated single-use review links and no candidate-document, employee-identity, queue, or hiring-guarantee disclosure in the email body.
+- [x] Add regression and visual coverage for one-click Referrer decisions, authenticated email handoff, idempotency, and private notification behavior.

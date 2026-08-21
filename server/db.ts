@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -398,7 +398,7 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : input.fastTrackCompanySlug && input.fastTrackAlias ? await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug, input.fastTrackAlias) : undefined;
   if ((input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias) && !fastTrackLink) throw new Error("This private referral link is no longer active");
   if (fastTrackLink && !fastTrackLinkMatchesCompany(fastTrackLink.companyDomain, companyDomain)) throw new Error("Use a job link for the same company as this private referral link");
-  const eligibleCandidates = fastTrackLink ? [{ userId: fastTrackLink.referrerId, accountType: "referrer", workEmailDomain: companyDomain, workEmailVerifiedAt: new Date() }] : await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const eligibleCandidates = fastTrackLink ? await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(eq(profiles.userId, fastTrackLink.referrerId)) : await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const eligible = eligibleCandidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
   const coverageStatus = companyCoverageStatus(eligible.length);
   // A valid, private request always reserves one Job Seeker credit. Requests
@@ -413,6 +413,74 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: fastTrackLink ? "A Fast-Track referral request is ready" : "A private referral request is available", body: fastTrackLink ? `A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.` : `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
   const coverageInvite = !fastTrackLink && coverageStatus === "waiting_for_company_coverage" ? await createCompanyCoverageInvitation(userId, companyDomain) : undefined;
   return { requestId, companyDomain, coverageStatus, coverageInviteCode: coverageInvite?.inviteCode, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining, fastTrack: Boolean(fastTrackLink) };
+}
+
+const reviewEmailLifetimeMs = 7 * 24 * 60 * 60 * 1000;
+const reviewLinkToken = () => randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "").slice(0, 16);
+
+export async function createReferrerReviewEmailLinks(requestId: number, recipients: Array<{ userId: number; email: string | null; companyDomain: string }>) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const expiresAt = new Date(Date.now() + reviewEmailLifetimeMs);
+  const links: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
+  for (const recipient of recipients) {
+    const email = recipient.email?.trim().toLowerCase() || "";
+    const domain = email.split("@")[1] || "";
+    if (!email || domain !== recipient.companyDomain) continue;
+    const linkToken = reviewLinkToken();
+    await db.insert(referrerReviewEmailLinks).values({ referralRequestId: requestId, referrerId: recipient.userId, linkToken, expiresAt }).onDuplicateKeyUpdate({ set: { linkToken, expiresAt, consumedAt: null } });
+    links.push({ referrerId: recipient.userId, email, linkToken, companyDomain: recipient.companyDomain });
+  }
+  return links;
+}
+
+export async function prepareReferrerReviewEmailNotifications(requestId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
+  const current = request[0]; if (!current || current.status !== "pending") return [];
+  const recipients = await db.select({ userId: profiles.userId, email: users.email, companyDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const eligible = recipients.filter(recipient => (!current.referrerId || recipient.userId === current.referrerId) && recipient.companyDomain === current.companyDomain && isVerifiedEmployeeOfCompany(recipient, current.companyDomain));
+  return createReferrerReviewEmailLinks(requestId, eligible.map(recipient => ({ userId: recipient.userId, email: recipient.email, companyDomain: current.companyDomain })));
+}
+
+export async function resolveReferrerReviewEmailLink(userId: number, linkToken: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const link = await db.select({ referralRequestId: referrerReviewEmailLinks.referralRequestId, expiresAt: referrerReviewEmailLinks.expiresAt, consumedAt: referrerReviewEmailLinks.consumedAt, status: referralRequests.status, assignedReferrerId: referralRequests.referrerId }).from(referrerReviewEmailLinks).innerJoin(referralRequests, eq(referralRequests.id, referrerReviewEmailLinks.referralRequestId)).where(and(eq(referrerReviewEmailLinks.linkToken, linkToken), eq(referrerReviewEmailLinks.referrerId, userId))).limit(1);
+  if (!link[0] || link[0].consumedAt || link[0].expiresAt.getTime() < Date.now() || link[0].status !== "pending" || (link[0].assignedReferrerId !== null && link[0].assignedReferrerId !== userId)) throw new Error("This private review link is unavailable");
+  return { requestId: link[0].referralRequestId };
+}
+
+const oneClickDeclineMessages = {
+  role_not_a_fit: "I do not think this role is the right fit for my referral.",
+  cannot_support: "I cannot support a referral for this role right now.",
+  timing: "I am not able to take this referral on right now.",
+} as const;
+
+export type OneClickDeclineReason = keyof typeof oneClickDeclineMessages;
+
+export async function oneClickReviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: OneClickDeclineReason }) {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before reviewing referrals");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const request = await tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1);
+    const current = request[0];
+    if (!current || current.status !== "pending" || !isVerifiedEmployeeOfCompany(profile, current.companyDomain) || (current.referrerId !== null && current.referrerId !== userId)) throw new Error("This referral request is no longer available");
+    if (current.referrerId === null) {
+      const claimed = await tx.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, input.requestId), isNull(referralRequests.referrerId), eq(referralRequests.status, "pending")));
+      if (Number(claimed[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
+    }
+    const message = input.decision === "declined" ? oneClickDeclineMessages[input.declineReason ?? "cannot_support"] : null;
+    const updated = await tx.update(referralRequests).set({ status: input.decision, referrerMessage: message }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, "pending"), eq(referralRequests.referrerId, userId)));
+    if (Number(updated[0].affectedRows) !== 1) throw new Error("This referral request has already been reviewed");
+    await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: message || "Your Referrer has reviewed your Referral Request." });
+    return { status: input.decision, companyDomain: current.companyDomain, declineReason: input.decision === "declined" ? input.declineReason ?? "cannot_support" : undefined };
+  });
+}
+
+export async function consumeReferrerReviewEmailLink(userId: number, linkToken: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const consumed = await db.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken, linkToken), eq(referrerReviewEmailLinks.referrerId, userId), isNull(referrerReviewEmailLinks.consumedAt)));
+  if (Number(consumed[0].affectedRows) !== 1) throw new Error("This private review link is unavailable");
 }
 
 export async function listCompanyReferralInbox(userId: number) {

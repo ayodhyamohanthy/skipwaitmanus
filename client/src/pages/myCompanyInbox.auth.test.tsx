@@ -55,17 +55,23 @@ describe("My Company Inbox employee access", () => {
     await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
   });
 
-  it("shows the matching candidate note, role link, and resume before continuing to the referral decision", async () => {
+  it("shows the matching candidate note, role link, and resume before direct acceptance or a concise one-click decline", async () => {
     authState.signedIn = true;
     const inboxRequest = { id: 7, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : { requests: [inboxRequest] } })));
+    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : url.includes("one-click-review") ? { status: "approved" } : { requests: [inboxRequest] } }));
+    vi.stubGlobal("fetch", fetchMock);
     render(<MyCompanyInbox />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Review candidate" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Review candidate" }));
     await waitFor(() => expect(screen.getByText("Avery")).toBeTruthy());
     expect(screen.getByText("I led a measurable product design launch.")).toBeTruthy();
     expect(screen.getByText("avery-resume.pdf")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Continue to referral decision" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept & submit referral" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Not a fit" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Can’t support" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Not now" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Accept & submit referral" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved" }) })));
   });
 
   it("shows a genuine unread conversation cue only for the Referrer's accepted request", async () => {
