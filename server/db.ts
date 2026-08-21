@@ -1,6 +1,6 @@
 import { and, asc, count, desc, eq, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referrerFastTrackLinks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createHash, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -129,6 +129,60 @@ export async function getVerifiedWorkEmailAccess(userId: number) {
   return { workEmailDomain: profile.workEmailDomain };
 }
 
+export type ReferrerFastTrackLink = { linkCode: string; companyDomain: string; isActive: boolean };
+
+const createFastTrackCode = () => randomUUID().replace(/-/g, "");
+
+export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink> {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating a Fast-Track Link");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const companyDomain = profile.workEmailDomain.trim().toLowerCase();
+  const existing = await db.select({ linkCode: referrerFastTrackLinks.linkCode, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1);
+  if (existing[0] && existing[0].companyDomain === companyDomain) return existing[0];
+  if (existing[0]) {
+    const linkCode = createFastTrackCode();
+    await db.update(referrerFastTrackLinks).set({ companyDomain, linkCode, isActive: true, deactivatedAt: null }).where(eq(referrerFastTrackLinks.referrerId, userId));
+    return { linkCode, companyDomain, isActive: true };
+  }
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const linkCode = createFastTrackCode();
+    try {
+      await db.insert(referrerFastTrackLinks).values({ referrerId: userId, companyDomain, linkCode, isActive: true });
+      return { linkCode, companyDomain, isActive: true };
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
+  throw new Error("We could not create your Fast-Track Link");
+}
+
+export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+  const normalizedCode = linkCode.trim().slice(0, 64);
+  if (!normalizedCode) return undefined;
+  const db = await getDb(); if (!db) return undefined;
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const link = result[0];
+  if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
+  return { companyDomain: link.companyDomain, isActive: true };
+}
+
+async function getActiveReferrerFastTrackLink(linkCode: string) {
+  const normalizedCode = linkCode.trim().slice(0, 64);
+  if (!normalizedCode) return undefined;
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.select({ referrerId: referrerFastTrackLinks.referrerId, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const link = result[0];
+  if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
+  return { referrerId: link.referrerId, companyDomain: link.companyDomain };
+}
+
+export async function deactivateReferrerFastTrackLink(userId: number): Promise<{ deactivated: boolean }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.update(referrerFastTrackLinks).set({ isActive: false, deactivatedAt: new Date() }).where(and(eq(referrerFastTrackLinks.referrerId, userId), eq(referrerFastTrackLinks.isActive, true)));
+  return { deactivated: Number(result[0].affectedRows) === 1 };
+}
+
 export type OperationalActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> };
 export async function recordOperationalActivity(input: OperationalActivityInput) {
   const db = await getDb(); if (!db) return;
@@ -193,6 +247,10 @@ export function isVerifiedEmployeeOfCompany(profile: { accountType?: string | nu
 
 export function companyCoverageStatus(eligibleEmployeeCount: number) {
   return eligibleEmployeeCount > 0 ? "covered" as const : "waiting_for_company_coverage" as const;
+}
+
+export function fastTrackLinkMatchesCompany(linkCompanyDomain: string, resolvedCompanyDomain: string) {
+  return linkCompanyDomain.trim().toLowerCase() === resolvedCompanyDomain.trim().toLowerCase();
 }
 
 export async function createCompanyCoverageInvitation(inviterUserId: number, companyDomain: string) {
@@ -283,11 +341,14 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[] }) {
+export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; fastTrackCode?: string }) {
   const companyDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
   if (!companyDomain) throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const eligibleCandidates = await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : undefined;
+  if (input.fastTrackCode && !fastTrackLink) throw new Error("This private referral link is no longer active");
+  if (fastTrackLink && !fastTrackLinkMatchesCompany(fastTrackLink.companyDomain, companyDomain)) throw new Error("Use a job link for the same company as this private referral link");
+  const eligibleCandidates = fastTrackLink ? [{ userId: fastTrackLink.referrerId, accountType: "referrer", workEmailDomain: companyDomain, workEmailVerifiedAt: new Date() }] : await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const eligible = eligibleCandidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
   const coverageStatus = companyCoverageStatus(eligible.length);
   // A valid, private request always reserves one Job Seeker credit. Requests
@@ -296,12 +357,12 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
   const jobId = Number(jobResult[0].insertId);
   const isWaitingForCoverage = coverageStatus === "waiting_for_company_coverage";
-  const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, personalPitch: input.personalPitch, status: "pending", waitingForCoverage: isWaitingForCoverage, coverageQueuedAt: isWaitingForCoverage ? new Date() : null });
+  const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, referrerId: fastTrackLink?.referrerId ?? null, personalPitch: input.personalPitch, status: "pending", waitingForCoverage: isWaitingForCoverage, coverageQueuedAt: isWaitingForCoverage ? new Date() : null });
   const requestId = Number(requestResult[0].insertId);
   for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
-  for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: "A private referral request is available", body: `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
-  const coverageInvite = coverageStatus === "waiting_for_company_coverage" ? await createCompanyCoverageInvitation(userId, companyDomain) : undefined;
-  return { requestId, companyDomain, coverageStatus, coverageInviteCode: coverageInvite?.inviteCode, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining };
+  for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: fastTrackLink ? "A Fast-Track referral request is ready" : "A private referral request is available", body: fastTrackLink ? `A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.` : `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
+  const coverageInvite = !fastTrackLink && coverageStatus === "waiting_for_company_coverage" ? await createCompanyCoverageInvitation(userId, companyDomain) : undefined;
+  return { requestId, companyDomain, coverageStatus, coverageInviteCode: coverageInvite?.inviteCode, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining, fastTrack: Boolean(fastTrackLink) };
 }
 
 export async function listCompanyReferralInbox(userId: number) {
@@ -317,7 +378,7 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, savedAt: referralRequests.savedAt, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(jobs.company, profile.workEmailDomain)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.savedAt, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id).orderBy(desc(referralRequests.updatedAt));
   const scopedRows = rows.filter(row => {
     const isQueueAllocationForYou = row.queueAllocationId !== null && row.referrerId === userId;
-    if (state === "new") return row.status === "pending" && (!row.referrerId || isQueueAllocationForYou);
+    if (state === "new") return row.status === "pending" && (!row.referrerId || row.referrerId === userId || isQueueAllocationForYou);
     if (state === "saved") return row.status === "pending" && ((row.referrerId === userId && !row.queueAllocationId) || (!row.referrerId && Boolean(row.savedAt)));
     return row.referrerId === userId && row.status !== "pending";
   });

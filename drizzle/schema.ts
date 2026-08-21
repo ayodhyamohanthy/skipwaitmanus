@@ -98,6 +98,17 @@ export const referralAvailabilitySlots = mysqlTable("referralAvailabilitySlots",
   releasedAt: timestamp("releasedAt"),
 }, table => [uniqueIndex("referral_availability_active_request_unique").on(table.activeRequestKey), index("referral_availability_referrer_idx").on(table.referrerId, table.status), index("referral_availability_company_idx").on(table.companyDomain, table.status), index("referral_availability_request_idx").on(table.referralRequestId)]);
 
+export const referrerFastTrackLinks = mysqlTable("referrerFastTrackLinks", {
+  id: int("id").autoincrement().primaryKey(),
+  referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
+  linkCode: varchar("linkCode", { length: 64 }).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  deactivatedAt: timestamp("deactivatedAt"),
+}, table => [uniqueIndex("referrer_fast_track_referrer_unique").on(table.referrerId), uniqueIndex("referrer_fast_track_code_unique").on(table.linkCode), index("referrer_fast_track_public_idx").on(table.linkCode, table.isActive), index("referrer_fast_track_company_idx").on(table.companyDomain, table.isActive)]);
+
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "set null" }),

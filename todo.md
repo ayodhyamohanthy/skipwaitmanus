@@ -447,3 +447,7 @@
 - [ ] Resolve the Vibecode build-agent or supported source-import access prerequisite, then resume the staged migration without exposing the user’s API key, credentials, or production data.
 - [x] Produce a complete VibecodeApp-to-skipwait.me configuration-parity and manual implementation runbook, including a global-standard audit of user value, retention, trusted sharing, organic referral growth, and launch verification.
 - [x] Add Queue Open Alerts: when a verified employee intentionally opens a company referral slot, notify only eligible queued Job Seekers immediately with one private next action, anti-spam controls, and regression coverage.
+- [ ] Replace the current VibecodeApp workspace with a clean, staging-only skipwait.me application baseline while preserving live-domain, payment, secret, webhook, and customer-data isolation.
+- [ ] Reattach the secure source-only skipwait.me handoff, transfer, migration, and parity documents to the replacement VibecodeApp staging workspace.
+- [ ] Rebuild and validate skipwait.me functional parity in VibecodeApp before any canonical-domain or production payment cutover.
+- [x] Add Referrer Fast-Track Links: verified Referrers can create branded exact-company share links that route Job Seekers into a private referral request flow without revealing Referrer identity, ranking candidates, or creating scarcity mechanics.

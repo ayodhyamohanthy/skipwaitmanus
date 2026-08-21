@@ -175,6 +175,35 @@ describe("private referral HTTP routes", () => {
     expect(claimed).toEqual({ userId: 10, inviteCode: "r9-abcdef12", verifiedEmail: "joiner@example.com" });
   });
 
+  it("creates a private Fast-Track Link only for the verified Referrer and resolves no employee identity publicly", async () => {
+    const app = express(); app.use(express.json());
+    const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
+    const identities = new Map([
+      ["employee", { account: { id: 31, openId: "clerk-stripe" }, primaryEmail: { emailAddress: "employee@stripe.com", verification: { status: "verified" } } }],
+      ["seeker", { account: { id: 32, openId: "clerk-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }],
+    ]);
+    let receivedFastTrackCode: string | undefined;
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "stripe.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedFastTrackCode = input.fastTrackCode; return { requestId: 802, companyDomain: "stripe.com", notifiedEmployees: 1, fastTrack: true }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 802, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
+      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+      getOrCreateReferrerFastTrackLink: async userId => { if (userId !== 31) throw new Error("Verify your company email before creating a Fast-Track Link"); return { linkCode: "a".repeat(32), companyDomain: "stripe.com", isActive: true }; },
+      getPublicReferrerFastTrackLink: async code => code === "a".repeat(32) ? { companyDomain: "stripe.com", isActive: true } : undefined,
+      deactivateReferrerFastTrackLink: async userId => ({ deactivated: userId === 31 }), recordActivity: async entry => { activity.push(entry); },
+    });
+
+    expect((await request(app).get("/api/referrer-fast-track/me")).status).toBe(401);
+    const owner = await request(app).get("/api/referrer-fast-track/me").set("x-test-user", "employee");
+    expect(owner.status).toBe(200); expect(owner.body.link).toMatchObject({ companyDomain: "stripe.com", linkCode: "a".repeat(32), isActive: true }); expect(owner.body.link.url).toMatch(/\/fast\//); expect(JSON.stringify(owner.body)).not.toContain("employee@");
+    const publicLink = await request(app).get(`/api/referrer-fast-track/${"a".repeat(32)}`);
+    expect(publicLink.status).toBe(200); expect(publicLink.body).toEqual({ link: { companyDomain: "stripe.com", isActive: true } }); expect(JSON.stringify(publicLink.body)).not.toContain("referrerId");
+    expect((await request(app).get("/api/referrer-fast-track/inactive-link")).status).toBe(404);
+    const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.stripe.com/jobs/design", attachmentIds: [1], fastTrackCode: "a".repeat(32) });
+    expect(created.status).toBe(201); expect(created.body).toMatchObject({ requestId: 802, companyDomain: "stripe.com", fastTrack: true }); expect(receivedFastTrackCode).toBe("a".repeat(32)); expect(JSON.stringify(created.body)).not.toContain("clerk-stripe");
+    expect(activity).toContainEqual(expect.objectContaining({ action: "referrer_fast_track.link_accessed", companyDomain: "stripe.com" }));
+  });
+
   it("canonicalizes the reported Wellfound mobile link before creating the company referral request", async () => {
     const app = express(); app.use(express.json());
     let receivedTargetRoleUrl = "";
