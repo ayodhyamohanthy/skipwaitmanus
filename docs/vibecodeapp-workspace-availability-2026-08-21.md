@@ -11,3 +11,7 @@ The source application at `/home/ubuntu/bridge-referrals` remains the verified i
 ## Existing-workspace constraint
 
 The existing workspace is not yet a clean parity candidate. Its retained audit history describes a much broader, unrelated React/Hono/Prisma/SQLite application with material backend type errors, no configured automated test suite, no Prisma migration history, and non-parity social, ranking, advertising, achievement, and payment features. The previous agent build attempt was blocked by a `402 insufficient credit balance` response, and the previously uploaded source-handoff documents are reported absent from its filesystem. No replacement, source import, code edit, deployment, or staging reset was performed in this review.
+
+## Latest workspace-list observation
+
+On the latest authenticated, read-only visit to the VibecodeApp workspace list, the account displayed **“No projects found.”** This conflicts with the earlier direct-link workspace observation and means there is currently no confirmed, accessible staging target for a safe source import. No workspace was created, restored, reset, deployed, or otherwise changed. The source-app release remains the only verified implementation and deployment record.
