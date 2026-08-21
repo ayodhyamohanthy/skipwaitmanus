@@ -467,9 +467,9 @@
 - [x] Audit and align source-app metadata, Open Graph URLs/assets, share/email link construction, and authentication callback configuration around https://skipwait.me without changing external domain ownership or provider dashboards.
 - [x] Verify mobile-first dashboard responsiveness, skeleton/error loading states, and fast interaction behavior across active dashboard views; implement only evidence-backed source-app improvements.
 - [x] Add regression and visual coverage for canonical URL contracts, metadata/share safety, and dashboard loading/responsive behavior before checkpointing.
-- [ ] Add truthful asymmetric re-engagement message templates that describe only verified review or capacity events, with no fabricated seniority, profile-review, scarcity, queue, or hiring claims.
+- [x] Add truthful asymmetric re-engagement message templates that describe only verified review or capacity events, with no fabricated seniority, profile-review, scarcity, queue, or hiring claims.
 - [ ] Evaluate and, where safely supported, add opt-in Slack or Linear delivery for private Referrer triage using authenticated one-click action handoffs that reveal no candidate documents or private data before authorization.
-- [ ] Add regression coverage for asymmetric-alert truthfulness, recipient isolation, authenticated action-link authorization, and external-delivery failure isolation.
+- [x] Add regression coverage for asymmetric-alert truthfulness, recipient isolation, authenticated action-link authorization, and external-delivery failure isolation.
 - [x] Conduct final release-readiness QA covering the automated quality gate, public and authenticated route shells, mobile fixed-viewport behavior, canonical metadata, and production deployment boundaries.
 - [x] Verify high-risk privacy, authorization, payment, and notification contracts against their existing regression coverage and deployment configuration before any launch decision.
 - [x] Document final QA evidence, unresolved external launch prerequisites, and a clear go/no-go recommendation without fabricating live payment or domain-cutover proof.

@@ -3,6 +3,7 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
 import { createSlotOpenedAlertEmailSender } from "./slotOpenedAlertEmail";
+import { referrerReviewReengagementMessage, slotOpenedReengagementMessage } from "./reengagementMessaging";
 
 describe("private Slot Opened alerts and aggregate impact", () => {
   afterEach(() => { delete process.env.RESEND_API_KEY; delete process.env.ERROR_ALERT_FROM_EMAIL; });
@@ -55,5 +56,16 @@ describe("private Slot Opened alerts and aggregate impact", () => {
     const sender = createSlotOpenedAlertEmailSender({ fetchImpl: async (_url, init) => { body = String(init?.body || ""); return new Response("{}", { status: 200 }); } });
     await expect(sender({ to: "seeker@example.com", companyDomain: "acme.com", requestsUrl: "https://skipwait.me/requests" })).resolves.toEqual({ sent: true, reason: "sent" });
     expect(body).toContain("acme.com"); expect(body).toContain("does not guarantee"); expect(body).not.toMatch(/resume|candidate|employee identity|queue|rank|sarah|stripe/i);
+  });
+
+  it("uses only verified review and capacity language, never fabricated seniority, profile activity, scarcity, or outcomes", () => {
+    const capacity = slotOpenedReengagementMessage("Acme<script>.com");
+    const review = referrerReviewReengagementMessage("acme.com");
+    const rendered = JSON.stringify({ capacity, review });
+    expect(capacity.companyDomain).toBe("Acmescript.com");
+    expect(capacity.body).toContain("opened review capacity");
+    expect(review.body).toContain("optional and always free");
+    expect(rendered).not.toMatch(/senior|staff engineer|profile draft|reviewed your profile|[0-9] of [0-9]|spot|queue|rank|fast.tracked/i);
+    expect(rendered).toContain("does not guarantee");
   });
 });
