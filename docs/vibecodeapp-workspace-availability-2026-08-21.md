@@ -29,3 +29,9 @@ After a transient browser reset, the direct workspace link reopened successfully
 A subsequent asynchronous workspace refresh reset the browser session again before update details could be expanded. This prevents reliable real-time build-log inspection in the current session; it does not prove success or failure of the external build request.
 
 The workspace can still be reopened and visibly retains the submitted request and update groups, but DOM-level text inspection returned no expanded build evidence and clickable controls became invalid as the page mutated. The external workspace therefore remains **submitted / unverified** pending stable access to its logs, code view, or an explicit completion result.
+
+On a repeat monitoring attempt, the workspace again rendered the retained request with seven current updates and visible Code/Logs controls, then invalidated all stamped controls before those views could be opened. No build-success, test-success, or error conclusion can be responsibly inferred from the update count alone.
+
+## Source rollback-reference verification
+
+The source project’s complete `pnpm quality:gate` was rerun after these monitoring attempts. It passed TypeScript validation, all 69 test files (203 passed, 2 intentional external skips), and the production PWA/server build. The test log includes the pre-existing intentionally isolated Resend delivery-failure test path, which prints a mocked `403: blocked` delivery outcome while the test itself passes. This verifies the source reference only; it does not establish external workspace parity.
