@@ -485,3 +485,7 @@
 - [ ] Resume the authorized VibecodeApp staging rebuild and verify each secure-foundation, core-workflow, and parity milestone before any production cutover.
 - [ ] Rebuild every required SkipWait capability with verified Vibecode-compatible services instead of retaining incompatible Express, tRPC, Drizzle/MySQL, Clerk, or source-runtime dependencies.
 - [ ] Remove the imported Manus frontend’s unresolved `@shared/const` / tRPC bootstrap and replace it with a buildable Vibecode-native application entry before rebuilding feature parity.
+- [ ] Recreate the complete SkipWait product in VibecodeApp with compatible native architecture for every required capability, then prove staging parity before any production cutover.
+- [ ] Deliver a genuinely working VibecodeApp SkipWait staging application, replacing every incompatible source dependency while preserving the complete Job Seeker, Referrer, and Admin value flows.
+- [ ] Create and verify the missing Vibecode-native `backend/` baseline, including the expected `backend/src/index.ts` health-only entrypoint, before implementing private application services.
+- [x] Submit and track the approved Vibecode workspace-agent recovery request for the repeatedly stalled local backend file-creation task.
