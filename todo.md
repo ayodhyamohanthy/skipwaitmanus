@@ -480,3 +480,4 @@
 - [ ] Transfer the verified skipwait.me source specification, parity requirements, and staged external build scope into the confirmed VibecodeApp workspace without credentials or production data.
 - [ ] Rebuild and audit functional parity in VibecodeApp staging for core referral, authentication, private document, notification, payment-boundary, and privacy workflows before proposing any cutover.
 - [ ] Produce controlled domain, authentication, payment, webhook, data-migration, rollback, and acceptance evidence required before redirecting skipwait.me from the verified source release.
+- [x] Prepare a concise, staging-only manual VibecodeApp migration packet with exact prompts, validation gates, and production-isolation boundaries for the user.
