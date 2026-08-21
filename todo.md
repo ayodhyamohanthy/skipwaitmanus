@@ -473,3 +473,6 @@
 - [x] Conduct final release-readiness QA covering the automated quality gate, public and authenticated route shells, mobile fixed-viewport behavior, canonical metadata, and production deployment boundaries.
 - [x] Verify high-risk privacy, authorization, payment, and notification contracts against their existing regression coverage and deployment configuration before any launch decision.
 - [x] Document final QA evidence, unresolved external launch prerequisites, and a clear go/no-go recommendation without fabricating live payment or domain-cutover proof.
+- [x] Diagnose and repair the authenticated `/start` page API query failure without weakening account authorization or suppressing genuine transport errors.
+- [x] Add focused regression coverage for the repaired `/start` query lifecycle, including authenticated loading and failure behavior.
+- [x] Re-run the full quality gate and verify the `/start` route after the repair before checkpointing.
