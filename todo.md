@@ -490,4 +490,5 @@
 - [x] Create and verify the missing Vibecode-native `backend/` baseline, including the expected `backend/src/index.ts` health-only entrypoint, before implementing private application services.
 - [x] Submit and track the approved Vibecode workspace-agent recovery request for the repeatedly stalled local backend file-creation task.
 - [x] Establish and locally verify the isolated Vibecode-native identity, exact-company authorization, metadata-only document, and privacy-safe activity-audit foundation using synthetic SQLite tests only; retain production-domain, payment, secret, webhook, and customer-data isolation.
+- [ ] Complete and independently verify the isolated Vibecode-native accepted-only Job Seeker–assigned Referrer private conversation workflow, including recipient isolation, strict content boundaries, and synthetic route-level tests without external delivery.
 - [ ] Notify the user only after the complete VibecodeApp migration is independently verified end to end; do not send interim migration-progress updates.
