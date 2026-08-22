@@ -489,3 +489,4 @@
 - [ ] Deliver a genuinely working VibecodeApp SkipWait staging application, replacing every incompatible source dependency while preserving the complete Job Seeker, Referrer, and Admin value flows.
 - [ ] Create and verify the missing Vibecode-native `backend/` baseline, including the expected `backend/src/index.ts` health-only entrypoint, before implementing private application services.
 - [x] Submit and track the approved Vibecode workspace-agent recovery request for the repeatedly stalled local backend file-creation task.
+- [ ] Notify the user only after the complete VibecodeApp migration is independently verified end to end; do not send interim migration-progress updates.
