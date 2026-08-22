@@ -1,0 +1,40 @@
+# Isolated Vibecode Sandbox: Core Workflow Evidence
+
+**Workspace:** `SkipWait Sandbox` (`01a02963-df6f-71ef-a505-935bcc253b61`)  
+**Boundary:** Isolated staging only. No deployment or publish action was used; no custom domain, DNS, production data, production secret, payment provider, webhook, or external job-board/employer-site operation was used.
+
+## Recorded Evidence
+
+The sandbox agent reported completion of an offline native core-referral workflow in staged increments. The evidence below is a record of the visible sandbox task output and remains subject to independent source inspection before parity completion is claimed.
+
+| Area | Visible result | Latest reported validation |
+|---|---|---|
+| Identity, authorization, and activity privacy foundation | Exact server-derived `ayodhya@skipwait.me` admin identity; exact company-domain referrer eligibility; public DTO allowlists; metadata-only document representation; activity-event redaction; test-only session injection guarded against production/development use. | Earlier Phase-3 output reached **176 passing tests**; later full suite output reached **373 passing tests** across eight suites with no failures. |
+| Referral lifecycle | Native status contract aligned to `draft`, `submitted`, `coverage_pending`, `claimed`, `approved`, `declined`, `intro_made`, `interview`, `offer`, and `closed`; review requires claimed status; conversation eligibility begins only at approved and excludes the admin role. | Agent reported **312 passing tests** after lifecycle alignment and coverage-pending / conversation-gate tests. |
+| Employer resolution | Offline HTTP(S)-only link validation; no inferred employer from job-board/ATS hosts or path slugs; deterministic injectable resolver must be evidence-backed and non-contradictory; recoverable `NEEDS_MANUAL_EMPLOYER` result when no employer can be safely verified. | Agent reported **335 passing tests** across seven suites, with a fetch spy proving zero external network calls. |
+| Authenticated route coverage | Real Better Auth production session resolver is retained. A strictly in-process resolver override is limited to `NODE_ENV=test`; request headers, cookies, query parameters, and bodies cannot select it. Route tests exercise the native workflows through Hono. | Agent reported **373 passing tests** across eight suites; live local health `200`; `/api/me` remained `401` with and without spoofed headers; table cleanup reported zero rows. |
+| Documents and Job Seeker attachment ownership | In progress at this record time: metadata-only document service, owner-controlled document identifiers, nested safe DTOs, attachment checks in create/update flows, document routes, and authenticated request tests. No document bytes, storage keys, signed URLs, or storage upload flow were introduced in the reported work. | Active work at recording time; do not treat as verified until dedicated tests and final full-suite output are independently reviewed. |
+
+## Safety and Verification Notes
+
+The work reported only synthetic, namespaced SQLite fixtures and repeated cleanup of `User`, `Session`, `Verification`, `UserProfile`, `ReferralRequest`, and `ActivityEvent` rows. The sandbox agent stated that no Better Auth OTP or email send path, payment path, deployment operation, or external-site request was called during the recorded workflow work.
+
+One previously recorded testing incident remains in force: the sandbox agent had earlier invoked the OTP generation path for a non-routable `.invalid` address. Generated verification and rate-limit rows were deleted, the test strategy was changed to avoid the send path, and subsequent work must continue to avoid all OTP/email invocation, including `.invalid` addresses.
+
+## Open Verification Requirements
+
+This evidence does **not** complete the migration. Before any parity or cutover statement, review persisted sandbox files directly; rerun the complete local validation suite; inspect route DTOs and transition rules; complete the remaining document, message, notification, frontend, administration, growth, payment/webhook, staging-deployment, migration rehearsal, rollback, and production-cutover gates. The canonical `skipwait.me` domain and all production systems remain untouched.
+
+## Later Visible Core-Workflow Evidence
+
+The agent subsequently reported the following incremental, staging-only results while continuing Phase 4:
+
+| Slice | Reported implementation and validation | Independent-review note |
+|---|---|---|
+| Job Seeker request attachments | Metadata-only `Document` registration/listing plus owner-enforced `documentIds` on create/update; all attachment failures collapse to `422 INVALID_DOCUMENTS`; transactional create/update; submitted request attachments freeze; pre-claim inbox reveals counts only. Agent reported **404 pass / 0 fail** across nine suites, backend/webapp typechecks and build clean, local health 200, route 401 smoke checks, and empty tables after cleanup. | Verify that every document route and projection excludes filename, storage key, byte content, signed URL, and all cross-owner data. Confirm the chosen storage-provider integration before any real upload capability exists. |
+| Exact-company Referrer inbox | Submitted and unclaimed requests only; session-email-derived verified company corridor; self-dealing omission; strict public summary with only id/status/note-present/document count/created time; no employee directory; separate assigned-work read for the particular referrer. Agent reported **413 pass / 0 fail** across nine suites and the same staging-boundary checks. | Inspect the persisted route ordering and DTO serializers to ensure route parameter parsing cannot bypass the public allowlist or disclose request existence across companies. |
+| Atomic claim | Conditional database update on unclaimed state, with distinct winner/competitor/idempotent-self outcomes; claimed timestamp stability and audit replay marking. Agent reported **423 pass / 0 fail**, repeated concurrent synthetic contenders, typecheck/build/health/401 smoke checks, and empty tables. | The reported HTTP concurrency helper uses a test-only request marker that the real resolver ignores. Independently inspect this harness and production middleware to prove no request input can activate an identity override outside the test runtime. This must remain a verification gate, not a completed security claim. |
+
+| Claimed Referrer packet and decision | Assigned Referrer packet exposes only the job/request material needed after claim; decision transition supports only assigned actor and bounded decline codes; decision states are exercised across invalid lifecycle transitions. Agent reported **441 pass / 0 fail** and a structural three-layer no-storage/bytes/signed-URL DTO sweep. | Inspect the complete owner/assigned serializer tree and decision routes directly. Confirm the agent's asserted status set matches the source behaviour and neither privileged projection carries a direct storage reference. |
+| Job Seeker ownership matrix | Full owner packet across all stated lifecycle statuses, with unrelated Job Seeker and cross-company Referrer read/mutation/list denials asserted both at service and HTTP layers. Agent reported **449 pass / 0 fail**, typecheck/build, health 200, unauthenticated 401, and clean synthetic tables. | The agent explicitly left unknown-id 404 versus forbidden-id 403 behaviour as an existence-oracle risk. Treat that mismatch as an outstanding security design decision for independent review, not as resolved parity. |
+| No-coverage handling | Valid submission without an exact-company eligible Referrer enters `coverage_pending` atomically, records queue-entry time, preserves owner-only request material, returns a single no-ranking/no-credit/no-money action contract, and does not claim a referral is guaranteed. | Verify persisted status transition rules, rerun its full tests and route checks, and confirm that future notification/release logic cannot leak employer, candidate, or queue information. This is not yet a completed final workflow or deployment proof. |
