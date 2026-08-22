@@ -487,6 +487,7 @@
 - [ ] Remove the imported Manus frontend’s unresolved `@shared/const` / tRPC bootstrap and replace it with a buildable Vibecode-native application entry before rebuilding feature parity.
 - [ ] Recreate the complete SkipWait product in VibecodeApp with compatible native architecture for every required capability, then prove staging parity before any production cutover.
 - [ ] Deliver a genuinely working VibecodeApp SkipWait staging application, replacing every incompatible source dependency while preserving the complete Job Seeker, Referrer, and Admin value flows.
-- [ ] Create and verify the missing Vibecode-native `backend/` baseline, including the expected `backend/src/index.ts` health-only entrypoint, before implementing private application services.
+- [x] Create and verify the missing Vibecode-native `backend/` baseline, including the expected `backend/src/index.ts` health-only entrypoint, before implementing private application services.
 - [x] Submit and track the approved Vibecode workspace-agent recovery request for the repeatedly stalled local backend file-creation task.
+- [x] Establish and locally verify the isolated Vibecode-native identity, exact-company authorization, metadata-only document, and privacy-safe activity-audit foundation using synthetic SQLite tests only; retain production-domain, payment, secret, webhook, and customer-data isolation.
 - [ ] Notify the user only after the complete VibecodeApp migration is independently verified end to end; do not send interim migration-progress updates.
