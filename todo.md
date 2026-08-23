@@ -501,14 +501,14 @@
 - [x] Complete the full API-backed, mobile-first native SkipWait Sandbox UI flow for Job Seeker, Referrer, privacy-safe administrator, request lifecycle, progress, conversation, and safe staging states before any cutover work.
 - [x] Use the lower-cost Haiku 4.5 agent model for remaining VibecodeApp UI implementation where the platform makes that model available, while retaining independent review and staging safety controls.
 - [x] Implement and independently verify the native privacy-safe administrator activity-log read contract, then replace its typed-unavailable staging view without exposing request content, document references, employee identities, or client-side administrator inference.
-- [ ] Implement and independently verify a read-only native credits and billing-boundary contract/UI using server-derived account state only, with no pricing, checkout, provider SDK, webhook, or payment mutation in staging.
+- [x] Implement and independently verify a read-only native credits and billing-boundary contract/UI using server-derived account state only, with no pricing, checkout, provider SDK, webhook, or payment mutation in staging.
 
 - [x] Independently verify the final administrator activity route, UI, mocked tests, and offline validation after the latest remediation before accepting that slice.
 
 - [x] Independently verify all native UI routes, source-stack isolation, mobile visual system, loading/error/empty behavior, and no fake records before accepting the complete staging UI surface.
 
 - [ ] Complete remaining native backend parity, isolated staging deployment/rehearsal, rollback proof, and production cutover gates; do not mark complete until independently evidenced.
-- [ ] Remediate the billing-slice violation: remove any fabricated placeholder account/credit values and document the prohibited local server/cURL validation attempt; re-verify using mocked offline tests only with no runtime or external requests.
+- [x] Remediate the billing-slice violation: remove any fabricated placeholder account/credit values and document the prohibited local server/cURL validation attempt; re-verify using mocked offline tests only with no runtime or external requests.
 - [ ] UI-first gate: complete and independently verify every native mobile user-flow screen, transition, loading/error/empty state, role-safe action, Back/Escape path, mocked API behavior, and responsive visual constraint before resuming backend parity or payment-boundary work; use only Claude Haiku 4.5 where available.
 - [x] Investigate and restore the currently served skipwait.me UI loading path using the minimum independently verified fix, then confirm the public and authenticated shells load without changing isolated Sandbox deployment, DNS, payments, credentials, webhooks, storage, or customer data.
 - [x] Repair and independently verify the Sandbox Job Seeker request-success route so it lands on the registered singular request-detail path, and add a regression covering the successful creation transition.
@@ -520,6 +520,7 @@
 - [x] Diagnose and repair the failed isolated Sandbox authenticated account-state regression after the shared-contract move, then rerun only the exact synthetic backend test before accepting the neutral DTO change.
 - [x] Provision or otherwise isolate a current synthetic SQLite schema for Sandbox backend regression tests—the existing local `dev.db` lacks `ConversationMessage` before fixtures run—only under a separately bounded no-customer-data/no-delivery verification gate.
 - [x] Diagnose and repair the isolated Sandbox webapp build failure that still resolves `zod` through the root shared contract path despite the intended dedicated contract boundary; do not accept the alias remediation until a post-fix build succeeds.
+- [x] Remove the Sandbox account-activity notice’s prohibited claim that billing features will be available in production; retain only a neutral staging-unavailable statement and re-verify the focused UI contract.
 - [x] Repair and independently verify the Sandbox accepted-only conversation send payload so it matches the server’s strict `{ body }` contract in both Job Seeker and Referrer views, with mocked regression coverage for send success and validation failure.
 - [x] Add and independently verify consistent non-destructive Escape return paths on Sandbox Referrer inbox/assigned/activation and Notifications list surfaces, preserving focused-input behavior and every existing Back control.
 - [x] Remove and independently verify Job-Seeker-only interview/offer reporting actions from the Sandbox Referrer request UI, retaining only referrer-authorized review, referral-introduction, decision, and accepted-only conversation actions.
