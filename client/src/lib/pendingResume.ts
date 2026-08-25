@@ -9,8 +9,7 @@ function openPendingResumeDatabase(): Promise<IDBDatabase | undefined> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(databaseName, 1);
     request.onupgradeneeded = () => {
-      if (!request.result.objectStoreNames.contains(storeName))
-        request.result.createObjectStore(storeName, { keyPath: "id" });
+      if (!request.result.objectStoreNames.contains(storeName)) request.result.createObjectStore(storeName, { keyPath: "id" });
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
@@ -23,9 +22,7 @@ export async function savePendingResumeFiles(files: File[]) {
   try {
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(storeName, "readwrite");
-      transaction
-        .objectStore(storeName)
-        .put({ id: recordKey, files } satisfies PendingResumeRecord);
+      transaction.objectStore(storeName).put({ id: recordKey, files } satisfies PendingResumeRecord);
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error);
     });
@@ -38,17 +35,11 @@ export async function restorePendingResumeFiles(): Promise<File[]> {
   const database = await openPendingResumeDatabase();
   if (!database) return [];
   try {
-    const record = await new Promise<PendingResumeRecord | undefined>(
-      (resolve, reject) => {
-        const request = database
-          .transaction(storeName, "readonly")
-          .objectStore(storeName)
-          .get(recordKey);
-        request.onsuccess = () =>
-          resolve(request.result as PendingResumeRecord | undefined);
-        request.onerror = () => reject(request.error);
-      }
-    );
+    const record = await new Promise<PendingResumeRecord | undefined>((resolve, reject) => {
+      const request = database.transaction(storeName, "readonly").objectStore(storeName).get(recordKey);
+      request.onsuccess = () => resolve(request.result as PendingResumeRecord | undefined);
+      request.onerror = () => reject(request.error);
+    });
     return record?.files ?? [];
   } finally {
     database.close();

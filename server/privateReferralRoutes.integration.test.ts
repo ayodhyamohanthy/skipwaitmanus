@@ -27,7 +27,7 @@ describe("private referral HTTP routes", () => {
 
     const infrastructure = await request(app).post("/api/company-referrals/701/save").set("x-test-user", "employee").send({ saved: true });
     expect(infrastructure.status).toBe(500);
-    expect(infrastructure.body.error).toBe("This referral request is no longer available");
+    expect(infrastructure.body.error).toBe("Something went wrong on our side. Please try again.");
     expect(infrastructure.body.error).not.toContain("Database unavailable");
 
     saveError = new Error("This referral request is already saved");

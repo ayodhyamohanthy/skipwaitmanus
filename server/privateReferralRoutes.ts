@@ -6,7 +6,7 @@ import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
 import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
-import { logHandledError, respondDomainFailure, respondInternalFailure } from "./errorReporting";
+import { isUnexpectedFailure, logHandledError, respondDomainFailure, respondInternalFailure } from "./errorReporting";
 import sharp from "sharp";
 import { isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 
@@ -202,7 +202,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const opportunity = await deps.publishCompanyOpportunity(identity.account.id, { kind, roleTitle, targetRoleUrl, location, walkInAt: parseDate(walkInAt), walkInEndsAt: parseDate(walkInEndsAt) });
       const logged = opportunity as { id?: number; companyDomain?: string }; record({ actorUserId: identity.account.id, action: "opportunity.published", outcome: "success", resourceType: "opportunity", resourceId: logged.id, companyDomain: logged.companyDomain, metadata: { kind } });
       res.status(201).json({ opportunity });
-    } catch (error) { respondDomainFailure(res, "POST /api/opportunities", error, { status: 400, message: "We could not publish that opportunity", unexpectedMessage: "We could not publish that opportunity" }); }
+    } catch (error) { respondDomainFailure(res, "POST /api/opportunities", error, { status: 400, message: "We could not publish that opportunity", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/documents", async (req, res) => {
     try {
@@ -211,7 +211,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!fileName || !mimeType || !dataUrl) return res.status(400).json({ error: "Document details are required" });
       const buffer = deps.dataUrlToBuffer(dataUrl);
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, buffer));
-    } catch (error) { const message = error instanceof Error ? error.message : ""; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); respondDomainFailure(res, "POST /api/documents", error, { status: isValidationError ? 400 : 500, message: "We could not upload that document. Please try again.", unexpectedMessage: "We could not upload that document. Please try again." }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); respondDomainFailure(res, "POST /api/documents", error, { status: isValidationError ? 400 : 500, message: "We could not upload that document. Please try again.", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/documents/raw", (req, res, next) => parseRawPrivateDocument(req, res, error => error ? res.status(413).json({ error: "Documents must be smaller than 10 MB" }) : next()), async (req, res) => {
     try {
@@ -221,7 +221,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const mimeType = (req.header("content-type") || "").split(";", 1)[0]?.trim() || "";
       if (!fileName || !privateDocumentMimeTypes.includes(mimeType) || !Buffer.isBuffer(req.body)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, req.body));
-    } catch (error) { const message = error instanceof Error ? error.message : ""; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); respondDomainFailure(res, "POST /api/documents/raw", error, { status: isValidationError ? 400 : 500, message: "We could not upload that document. Please try again.", unexpectedMessage: "We could not upload that document. Please try again." }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); respondDomainFailure(res, "POST /api/documents/raw", error, { status: isValidationError ? 400 : 500, message: "We could not upload that document. Please try again.", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/documents/opaque", async (req, res) => {
     try {
@@ -229,7 +229,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const { fileName, mimeType, encryptedContent, encryptionKey, initializationVector } = req.body as { fileName?: string; mimeType?: string; encryptedContent?: string; encryptionKey?: string; initializationVector?: string };
       if (!fileName || !mimeType || !privateDocumentMimeTypes.includes(mimeType)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector })));
-    } catch (error) { const message = error instanceof Error ? error.message : ""; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); respondDomainFailure(res, "POST /api/documents/opaque", error, { status: isValidationError ? 400 : 500, message: "We could not upload that document. Please try again.", unexpectedMessage: "We could not upload that document. Please try again." }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); respondDomainFailure(res, "POST /api/documents/opaque", error, { status: isValidationError ? 400 : 500, message: "We could not upload that document. Please try again.", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/documents/uploads", async (req, res) => {
     try {
@@ -253,7 +253,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const { key } = await deps.storagePut(`${privateDocumentPrefix(identity)}staging/${session.id}/${safeChunkIndex}`, chunk, "application/octet-stream");
       const progress = await deps.appendResumeUploadChunk(identity.account.id, { sessionId: session.id, chunkIndex: safeChunkIndex, storageKey: key, byteSize: chunk.length });
       res.set("Cache-Control", "private, no-store"); res.json(progress);
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/documents/uploads/:sessionId/chunks", error, { status: /invalid|incomplete|out of order|too large/i.test(message) ? 400 : 500, message: "We could not save this resume fragment", unexpectedMessage: "We could not save this resume fragment" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/documents/uploads/:sessionId/chunks", error, { status: /invalid|incomplete|out of order|too large/i.test(message) ? 400 : 500, message: "We could not save this resume fragment", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/documents/uploads/:sessionId/complete", async (req, res) => {
     try {
@@ -266,7 +266,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const buffer = Buffer.concat(pieces); if (buffer.length !== session.expectedSize) throw new Error("Resume upload size could not be verified");
       const attachment = await createPrivateAttachment(identity, session.fileName, session.mimeType, buffer); await deps.completeResumeUploadSession(identity.account.id, session.id, attachment.id);
       res.status(201).json(attachment);
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/documents/uploads/:sessionId/complete", error, { status: /incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : 500, message: "We could not finish your resume upload", unexpectedMessage: "We could not finish your resume upload" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/documents/uploads/:sessionId/complete", error, { status: /incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : 500, message: "We could not finish your resume upload", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.get("/api/documents/:attachmentId", async (req, res) => {
     try {
@@ -408,7 +408,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: true } });
       }
       res.status(201).json({ ...result, ...(lifetimeRequestCount ? { lifetimeRequestCount } : {}) });
-    } catch (error) { respondDomainFailure(res, "POST /api/company-referrals", error, { status: 400, message: "We could not send this private referral request", unexpectedMessage: "We could not send this private referral request" }); }
+    } catch (error) { respondDomainFailure(res, "POST /api/company-referrals", error, { status: 400, message: "We could not send this private referral request", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.get("/api/credits/summary", async (req, res) => {
     try {
@@ -436,7 +436,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const summary = await (deps.getPrivateReferrerImpactSummary ?? getPrivateReferrerImpactSummary)(identity.account.id);
       res.set("Cache-Control", "private, no-store");
       res.json({ summary });
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "GET /api/referrer-impact/me", error, { status: /verify your company email/i.test(message) ? 403 : 500, message: "We could not load private impact", unexpectedMessage: "We could not load private impact" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "GET /api/referrer-impact/me", error, { status: /verify your company email/i.test(message) ? 403 : 500, message: "We could not load private impact", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.get("/api/referral-impact", async (_req, res) => {
     try {
@@ -457,7 +457,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_accessed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { active: link.isActive } });
       res.set("Cache-Control", "private, no-store");
       res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via Skipwait.me.` } });
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "GET /api/referrer-fast-track/me", error, { status: /verify your company email/i.test(message) ? 403 : 500, message: "We could not create your Fast-Track Link", unexpectedMessage: "We could not create your Fast-Track Link" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "GET /api/referrer-fast-track/me", error, { status: /verify your company email/i.test(message) ? 403 : 500, message: "We could not create your Fast-Track Link", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/referrer-fast-track/me/deactivate", async (req, res) => {
     try {
@@ -504,7 +504,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "smart_pitch.drafted", outcome: "success", resourceType: "attachment", resourceId: attachment.id, companyDomain: requestedCompany, metadata: { pdfUsed: Boolean(resumeUrl) } });
       res.set("Cache-Control", "private, no-store");
       res.json({ draft });
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/smart-pitch", error, { status: /private resume is unavailable/i.test(message) ? 403 : 500, message: "We could not create a starting draft", unexpectedMessage: "We could not create a starting draft" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/smart-pitch", error, { status: /private resume is unavailable/i.test(message) ? 403 : 500, message: "We could not create a starting draft", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/referral-share-cards/:requestId", async (req, res) => {
     try {
@@ -515,7 +515,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const shareUrl = `${req.protocol}://${req.get("host")}/share-card/${encodeURIComponent(card.shareToken)}`;
       record({ actorUserId: identity.account.id, action: "referral_share_card.created", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, companyDomain: card.companyDomain, metadata: { status: card.status } });
       res.set("Cache-Control", "private, no-store"); res.status(201).json({ shareToken: card.shareToken, shareUrl, companyDomain: card.companyDomain, status: "accepted" });
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/referral-share-cards/:requestId", error, { status: /only available after approval|not part of this private referral/i.test(message) ? 403 : 500, message: "We could not create a share card", unexpectedMessage: "We could not create a share card" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/referral-share-cards/:requestId", error, { status: /only available after approval|not part of this private referral/i.test(message) ? 403 : 500, message: "We could not create a share card", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.delete("/api/referral-share-cards/:requestId", async (req, res) => {
     try {
@@ -525,7 +525,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await (deps.revokeReferralShareCard ?? revokeReferralShareCard)(identity.account.id, requestId);
       record({ actorUserId: identity.account.id, action: "referral_share_card.revoked", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, metadata: { revoked: result.revoked } });
       res.set("Cache-Control", "private, no-store"); res.json(result);
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "DELETE /api/referral-share-cards/:requestId", error, { status: /only available after approval|not part of this private referral/i.test(message) ? 403 : 500, message: "We could not remove that share card", unexpectedMessage: "We could not remove that share card" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "DELETE /api/referral-share-cards/:requestId", error, { status: /only available after approval|not part of this private referral/i.test(message) ? 403 : 500, message: "We could not remove that share card", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.get("/api/referral-share-cards/public/:shareToken", async (req, res) => {
     try {
@@ -625,7 +625,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ availability: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
-      respondDomainFailure(res, "POST /api/company-referrals/availability/open", error, { status: /verify your company email/i.test(message) ? 403 : 409, message: "We could not open referral capacity", unexpectedMessage: "We could not open referral capacity" });
+      respondDomainFailure(res, "POST /api/company-referrals/availability/open", error, { status: /verify your company email/i.test(message) ? 403 : 409, message: "We could not open referral capacity", unexpectedMessage: "Something went wrong on our side. Please try again." });
     }
   });
   app.post("/api/company-referrals/:requestId/save", async (req, res) => {
@@ -638,7 +638,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.saveCompanyReferralRequest(identity.account.id, requestId, saved);
       record({ actorUserId: identity.account.id, action: saved ? "company_referral.saved" : "company_referral.unsaved", outcome: "success", resourceType: "referral_request", resourceId: requestId });
       res.json(result);
-    } catch (error) { respondDomainFailure(res, "POST /api/company-referrals/:requestId/save", error, { status: 409, message: "This referral request is no longer available", unexpectedMessage: "This referral request is no longer available" }); }
+    } catch (error) { respondDomainFailure(res, "POST /api/company-referrals/:requestId/save", error, { status: 409, message: "This referral request is no longer available", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/company-referrals/:requestId/review", async (req, res) => {
     try {
@@ -651,7 +651,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.reviewReferralRequest(identity.account.id, { requestId, decision, message });
       record({ actorUserId: identity.account.id, action: `company_referral.${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId });
       res.json(result);
-    } catch (error) { respondDomainFailure(res, "POST /api/company-referrals/:requestId/review", error, { status: 409, message: "This referral request can no longer be reviewed", unexpectedMessage: "This referral request can no longer be reviewed" }); }
+    } catch (error) { respondDomainFailure(res, "POST /api/company-referrals/:requestId/review", error, { status: 409, message: "This referral request can no longer be reviewed", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/company-referrals/:requestId/one-click-review", async (req, res) => {
     try {
@@ -662,7 +662,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
       record({ actorUserId: identity.account.id, action: `company_referral.one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/company-referrals/:requestId/one-click-review", error, { status: /verify your work email|no longer available|another verified employee/i.test(message) ? 409 : 500, message: "This referral request can no longer be reviewed", unexpectedMessage: "This referral request can no longer be reviewed" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/company-referrals/:requestId/one-click-review", error, { status: /verify your work email|no longer available|another verified employee/i.test(message) ? 409 : 500, message: "This referral request can no longer be reviewed", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/referrer-review-links/:linkToken/decision", async (req, res) => {
     try {
@@ -675,7 +675,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       await deps.consumeReferrerReviewEmailLink(identity.account.id, linkToken);
       record({ actorUserId: identity.account.id, action: `company_referral.email_one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: link.requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
-    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/referrer-review-links/:linkToken/decision", error, { status: /private review link|no longer available|another verified employee/i.test(message) ? 409 : 500, message: "This private review link is unavailable", unexpectedMessage: "This private review link is unavailable" }); }
+    } catch (error) { const message = error instanceof Error ? error.message : ""; respondDomainFailure(res, "POST /api/referrer-review-links/:linkToken/decision", error, { status: /private review link|no longer available|another verified employee/i.test(message) ? 409 : 500, message: "This private review link is unavailable", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
   app.post("/api/company-referrals/:requestId/progress", async (req, res) => {
     const requestId = Number(req.params.requestId);
@@ -692,8 +692,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ progress: result });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not record this referral progress";
-      record({ actorUserId, action: "company_referral.progress_updated", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
-      respondDomainFailure(res, "POST /api/company-referrals/:requestId/progress", error, { status: /only available after the referral is accepted|not available to you/i.test(message) ? 403 : 409, message: "We could not record this referral progress", unexpectedMessage: "We could not record this referral progress" });
+      record({ actorUserId, action: "company_referral.progress_updated", outcome: isUnexpectedFailure(error) ? "failure" : "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      respondDomainFailure(res, "POST /api/company-referrals/:requestId/progress", error, { status: /only available after the referral is accepted|not available to you/i.test(message) ? 403 : 409, message: "We could not record this referral progress", unexpectedMessage: "Something went wrong on our side. Please try again." });
     }
   });
   app.get("/api/company-referrals/:requestId/conversation", async (req, res) => {
@@ -712,8 +712,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ messages, progressStatus: progress?.status });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not open this private conversation";
-      record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
-      respondDomainFailure(res, "GET /api/company-referrals/:requestId/conversation", error, { status: /only available after the referral is accepted/i.test(message) ? 409 : 403, message: "We could not open this private conversation", unexpectedMessage: "We could not open this private conversation" });
+      record({ actorUserId, action: "company_referral.conversation_viewed", outcome: isUnexpectedFailure(error) ? "failure" : "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      respondDomainFailure(res, "GET /api/company-referrals/:requestId/conversation", error, { status: /only available after the referral is accepted/i.test(message) ? 409 : 403, message: "We could not open this private conversation", unexpectedMessage: "Something went wrong on our side. Please try again." });
     }
   });
   app.post("/api/company-referrals/:requestId/conversation", async (req, res) => {
@@ -733,8 +733,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(201).json({ message });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not send this private message";
-      record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
-      respondDomainFailure(res, "POST /api/company-referrals/:requestId/conversation", error, { status: /only available after the referral is accepted/i.test(message) ? 409 : 403, message: "We could not send this private message", unexpectedMessage: "We could not send this private message" });
+      record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: isUnexpectedFailure(error) ? "failure" : "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      respondDomainFailure(res, "POST /api/company-referrals/:requestId/conversation", error, { status: /only available after the referral is accepted/i.test(message) ? 409 : 403, message: "We could not send this private message", unexpectedMessage: "Something went wrong on our side. Please try again." });
     }
   });
   app.get("/api/company-referrals/:requestId/preview", async (req, res) => {
@@ -772,7 +772,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       respondInternalFailure(res, "GET /api/company-referrals/:requestId", error, { status: 500, message: "We could not load this private referral request" });
     }
   });
-  app.post("/api/company-referrals/:requestId/claim", async (req, res) => { try { const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to claim a referral request" }); if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" }); const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId); record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId }); res.json(result); } catch (error) { respondDomainFailure(res, "POST /api/company-referrals/:requestId/claim", error, { status: 409, message: "This referral request is no longer available", unexpectedMessage: "This referral request is no longer available" }); } });
+  app.post("/api/company-referrals/:requestId/claim", async (req, res) => { try { const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to claim a referral request" }); if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" }); const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId); record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId }); res.json(result); } catch (error) { respondDomainFailure(res, "POST /api/company-referrals/:requestId/claim", error, { status: 409, message: "This referral request is no longer available", unexpectedMessage: "Something went wrong on our side. Please try again." }); } });
   app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch (error) { respondInternalFailure(res, "GET /api/admin/activity", error, { status: 500, message: "We could not load operational activity" }); } });
   app.get("/api/admin/privacy-requests", async (req, res) => {
     try {
@@ -834,7 +834,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const grant = await deps.grantAdminTokenAdjustment(identity.account.id, { recipientUserId, role, tokenCount, caseReference, reason });
       record({ actorUserId: identity.account.id, action: "admin.token_recovery_granted", outcome: "success", resourceType: "token_adjustment", resourceId: grant.adjustmentId, metadata: { recipientUserId, role, tokenCount } });
       res.status(201).json({ grant });
-    } catch (error) { respondDomainFailure(res, "POST /api/admin/token-recovery/grants", error, { status: 409, message: "We could not create this token recovery grant", unexpectedMessage: "We could not create this token recovery grant" }); }
+    } catch (error) { respondDomainFailure(res, "POST /api/admin/token-recovery/grants", error, { status: 409, message: "We could not create this token recovery grant", unexpectedMessage: "Something went wrong on our side. Please try again." }); }
   });
 }
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
