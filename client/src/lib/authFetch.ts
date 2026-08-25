@@ -15,7 +15,7 @@ export function createAuthJsonFetch<TDefault extends object>(getToken: () => Pro
   const authFetch = createAuthFetch(getToken);
   return async <T extends object = TDefault>(path: string, init?: RequestInit): Promise<T> => {
     const response = await authFetch(path, init);
-    const payload = await readApiJson<T & Record<string, unknown>>(response, fallbackMessage);
+    const payload = await readApiJson<T & Record<string, unknown>>(response, fallbackMessage) as T;
     if (!response.ok) throw new Error((payload as { error?: string }).error || fallbackMessage);
     return payload;
   };
