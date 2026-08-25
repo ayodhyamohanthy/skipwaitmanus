@@ -1,5 +1,5 @@
 import "./envBoot";
-import express from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -31,7 +31,15 @@ import { workEmailOtpService } from "../workEmailOtp";
 import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes } from "../payments";
+import { logHandledError } from "../errorReporting";
 
+process.on("unhandledRejection", error => {
+  logHandledError("unhandled rejection", error);
+});
+process.on("uncaughtException", error => {
+  logHandledError("uncaught exception", error);
+  process.exit(1);
+});
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -129,6 +137,12 @@ async function startServer() {
   } else {
     serveStatic(app);
   }
+  app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
+    if (res.headersSent) return next(error);
+    const route = req.path.replace(/\/\d+(?=\/|$)/g, "/:id").slice(0, 160);
+    logHandledError("unhandled request", error, { method: req.method, route, status: 500 });
+    res.status(500).json({ error: "Something went wrong on our side. Please try again." });
+  });
 
   const preferredPort = parseInt(process.env.PORT || "3000");
   const port = await findAvailablePort(preferredPort);
@@ -142,4 +156,7 @@ async function startServer() {
   });
 }
 
-startServer().catch(console.error);
+startServer().catch(error => {
+  logHandledError("server startup", error);
+  process.exit(1);
+});

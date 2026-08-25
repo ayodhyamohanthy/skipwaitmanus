@@ -4,6 +4,38 @@ import { describe, expect, it } from "vitest";
 import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
 
 describe("private referral HTTP routes", () => {
+  it("promotes infrastructure failures on saved referrals without leaking their cause", async () => {
+    const app = express();
+    app.use(express.json());
+    let saveError: Error = new Error("Database unavailable");
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 2, openId: "employee" } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "private/resume.pdf" }),
+      storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
+      createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }),
+      getAccessibleReferralAttachment: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }),
+      createCompanyReferralRequest: async () => ({ requestId: 701, companyDomain: "acme.com", notifiedEmployees: 1 }),
+      listCompanyReferralInbox: async () => [],
+      claimCompanyReferralRequest: async (userId, requestId) => ({ requestId, claimed: userId > 0 }),
+      getClaimedCompanyReferralDetail: async () => undefined,
+      listPublicCompanyOpportunities: async () => [],
+      publishCompanyOpportunity: async () => ({ id: 1 }),
+      saveCompanyReferralRequest: async () => { throw saveError; },
+    });
+
+    const infrastructure = await request(app).post("/api/company-referrals/701/save").set("x-test-user", "employee").send({ saved: true });
+    expect(infrastructure.status).toBe(500);
+    expect(infrastructure.body.error).toBe("This referral request is no longer available");
+    expect(infrastructure.body.error).not.toContain("Database unavailable");
+
+    saveError = new Error("This referral request is already saved");
+    const domain = await request(app).post("/api/company-referrals/701/save").set("x-test-user", "employee").send({ saved: true });
+    expect(domain.status).toBe(409);
+    expect(domain.body.error).toBe("This referral request is already saved");
+  });
+
   it("keeps a resume private through upload, request creation, exclusive claim, and unrelated-user denial", async () => {
     const app = express();
     app.use(express.json());

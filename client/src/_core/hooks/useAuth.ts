@@ -46,7 +46,12 @@ export function useAuth(options?: UseAuthOptions) {
       // backend cookie is cleared by the logout mutation.
       try {
         sessionStorage.removeItem("manus-cookie");
-      } catch {}
+      } catch (error) {
+        console.warn(
+          "[Auth] Unable to clear the mirrored session token",
+          error
+        );
+      }
       utils.auth.me.setData(undefined, null);
       await utils.auth.me.invalidate();
     }

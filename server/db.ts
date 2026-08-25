@@ -9,6 +9,7 @@ import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralS
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { logHandledError } from "./errorReporting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -127,7 +128,8 @@ export async function createPrivacyErasureRequest(userId: number) {
   try {
     const result = await db.insert(privacyRequests).values({ userId, kind: "erasure", status: "requested", activeKey: `erasure:${userId}` });
     return { id: Number(result[0].insertId), kind: "erasure" as const, status: "requested" as const, createdAt: new Date(), alreadyRequested: false };
-  } catch {
+  } catch (error) {
+    logHandledError("createPrivacyErasureRequest insert", error);
     const concurrent = await db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, createdAt: privacyRequests.createdAt }).from(privacyRequests).where(eq(privacyRequests.activeKey, `erasure:${userId}`)).limit(1);
     if (concurrent[0]) return { ...concurrent[0], alreadyRequested: true };
     throw new Error("We could not create your privacy request");
@@ -292,7 +294,8 @@ async function employerPageEvidence(targetRoleUrl: string) {
       candidates: Array.from(new Set(candidateSets.flatMap(result => result.candidates))),
       officialDomains: Array.from(new Set(candidateSets.flatMap(result => result.officialDomains))),
     };
-  } catch {
+  } catch (error) {
+    logHandledError("employer page evidence", error);
     return { candidates: [], officialDomains: [] };
   }
 }

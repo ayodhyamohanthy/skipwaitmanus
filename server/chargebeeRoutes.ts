@@ -3,6 +3,7 @@ import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, creat
 import type { TokenRole } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { logHandledError } from "./errorReporting";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -30,7 +31,7 @@ function roleFromBody(value: unknown): TokenRole {
 }
 
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
-  const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(error => logHandledError("operational activity record", error, { action: input.action, outcome: input.outcome })); };
   app.post("/api/chargebee/checkout", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);

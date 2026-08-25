@@ -101,7 +101,7 @@ export default function ReferralRequest() {
 
   useEffect(() => {
     let active = true;
-    void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => current.length ? current : files); }).catch(() => undefined).finally(() => { if (active) setPendingFilesRestored(true); });
+    void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => current.length ? current : files); }).catch(() => { if (active) setError("We could not restore your resume while signing you in. Please re-attach it before sending."); }).finally(() => { if (active) setPendingFilesRestored(true); });
     return () => { active = false; };
   }, []);
 
@@ -149,7 +149,7 @@ export default function ReferralRequest() {
   const selectFiles = (files: FileList | null) => {
     const selected = Array.from(files || []); if (!selected.length) return; const unsupported = selected.find(file => !acceptedDocumentMime(file)); if (unsupported) { setError("Use a PDF, Word document, PNG, or JPEG resume."); return; } setError("");
     if (isSignedIn) { void uploadFiles(selected).catch(() => undefined); return; }
-    setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
+    setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => { setError("We could not keep your resume ready while you sign in. Please re-attach it after signing in."); }); return next; });
   };
   const createSmartPitch = async () => {
     const attachment = attachments[0]; const targetRoleUrl = localStorage.getItem("bridge-target-url");
@@ -165,7 +165,7 @@ export default function ReferralRequest() {
     finally { setSmartPitchLoading(false); }
   };
   const removeAttachment = (id: string) => setAttachments(current => { const next = current.filter(attachment => attachment.id !== id); localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
-  const removePendingFile = (index: number) => setPendingFiles(current => { const next = current.filter((_, currentIndex) => currentIndex !== index); void savePendingResumeFiles(next).catch(() => undefined); return next; });
+  const removePendingFile = (index: number) => setPendingFiles(current => { const next = current.filter((_, currentIndex) => currentIndex !== index); void savePendingResumeFiles(next).catch(error => { console.warn("[Referral Request] Unable to update pending resume files", error); }); return next; });
 
   const send = async () => {
     if (!attachmentCount) { setError("Add your resume before sending this request."); return; }
@@ -183,14 +183,14 @@ export default function ReferralRequest() {
       const payload = await readApiJson<ReferralSubmissionResponse>(response, "We could not send this private referral request"); if (!response.ok) throw new Error(payload.error || "We could not send this private referral request");
       const nextSummary = isCreditSummary(payload.creditSummary) ? payload.creditSummary : fallbackSummary(Number.isFinite(Number(payload.remainingTokens)) ? Number(payload.remainingTokens) : Math.max(0, summary.totalAvailable - TOKEN_ACTION_COST));
       setCreditSummary(nextSummary); setTokens(nextSummary.totalAvailable); setJobSeekerTokens(nextSummary.totalAvailable);
-      setPendingFiles([]); void clearPendingResumeFiles().catch(() => undefined); sessionStorage.removeItem(pendingResumeSubmissionKey);
+      setPendingFiles([]); void clearPendingResumeFiles().catch(error => { console.warn("[Referral Request] Unable to clear pending resume files after submission", error); }); sessionStorage.removeItem(pendingResumeSubmissionKey);
       setCoveragePending(payload.coverageStatus === "waiting_for_company_coverage");
       setCoverageInviteCode(typeof payload.coverageInviteCode === "string" ? payload.coverageInviteCode : "");
       setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(typeof payload.lifetimeRequestCount === "number" && Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.setItem("bridge-request-sent", "true"); setSubmitted(true);
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "We could not send this private referral request"); } finally { setSubmitting(false); }
   };
 
-  const handleSend = async () => { if (!attachmentCount) { resumeInputRef.current?.click(); return; } if (!isSignedIn) { sessionStorage.setItem(pendingResumeSubmissionKey, "true"); await savePendingResumeFiles(pendingFiles).catch(() => undefined); openSignIn(); return; } void send(); };
+  const handleSend = async () => { if (!attachmentCount) { resumeInputRef.current?.click(); return; } if (!isSignedIn) { sessionStorage.setItem(pendingResumeSubmissionKey, "true"); try { await savePendingResumeFiles(pendingFiles); } catch (error) { console.warn("[Referral Request] Unable to save pending resume files before sign-in", error); setError("We could not keep your resume ready while you sign in. Please re-attach it after signing in."); return; } openSignIn(); return; } void send(); };
   useEffect(() => { if (!isSignedIn || !pendingFilesRestored || sessionStorage.getItem(pendingResumeSubmissionKey) !== "true") return; sessionStorage.removeItem(pendingResumeSubmissionKey); void send(); }, [isSignedIn, pendingFilesRestored]);
 
   if (submitted && !coveragePending) return <ReferralRequestSuccess summary={summary} companyDomain={companyDomain} lifetimeRequestCount={lifetimeRequestCount} />;
