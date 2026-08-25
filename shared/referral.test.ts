@@ -34,6 +34,27 @@ describe("Referral Request state helpers", () => {
     expect(getJobSeekerReferralState({ status: "interview", referrerId: 4 })).toMatchObject({ label: "Interview in progress", tone: "blue" });
   });
 
+  it("describes every post-approval milestone as a factual private update", () => {
+    expect(getJobSeekerReferralState({ status: "approved", referrerId: 4 })).toMatchObject({ label: "Referral approved", tone: "emerald" });
+    expect(getJobSeekerReferralState({ status: "intro_made", referrerId: 4 })).toMatchObject({ label: "Introduction made", tone: "blue" });
+    expect(getJobSeekerReferralState({ status: "offer", referrerId: 4 })).toMatchObject({ label: "Offer recorded", tone: "emerald" });
+    expect(getJobSeekerReferralState({ status: "closed", referrerId: 4 })).toMatchObject({ label: "Request closed", tone: "slate" });
+    expect(getJobSeekerReferralState({ status: "offer", referrerId: 4 }).detail).not.toMatch(/hired|success story/i);
+  });
+
+  it("scores the lifecycle from routed request to closed and treats a declined request as no progress", () => {
+    expect(getReferralProgress("approved")).toBe(20);
+    expect(getReferralProgress("intro_made")).toBe(40);
+    expect(getReferralProgress("closed")).toBe(100);
+    expect(getReferralProgress("declined")).toBe(0);
+  });
+
+  it("rejects a status that is not a factual progress update", () => {
+    expect(isReferralProgressUpdateStatus("pending")).toBe(false);
+    expect(isReferralProgressUpdateStatus(undefined)).toBe(false);
+    expect(isReferralProgressUpdateStatus(4)).toBe(false);
+  });
+
   it("separates new, saved, and completed Referrer inbox work without fabricating activity", () => {
     expect(getReferrerInboxState({ status: "pending", referrerId: null, savedAt: null })).toBe("new");
     expect(getReferrerInboxState({ status: "pending", referrerId: null, savedAt: new Date() })).toBe("saved");
