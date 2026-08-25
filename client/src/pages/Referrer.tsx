@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Download, External
 import { WorkEmailSignIn, coverageInviteSessionKey } from "@/components/WorkEmailSignIn";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { AccountMenu } from "@/components/AccountMenu";
-import { readApiJson } from "@/lib/apiResponse";
+import { createAuthJsonFetch } from "@/lib/authFetch";
 
 type Attachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
 type CompanyInboxItem = { id: number; targetRoleUrl: string; companyDomain: string; createdAt: string; attachmentCount: number };
@@ -43,13 +43,7 @@ export default function Referrer() {
   const previewable = Boolean(document && (document.mimeType === "application/pdf" || document.mimeType.startsWith("image/")));
   const candidate = claimedRequest?.candidateName || "Candidate";
 
-  const companyFetch = async (path: string, init?: RequestInit) => {
-    const token = await getToken();
-    const response = await fetch(path, { ...init, headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, credentials: "include" });
-    const payload = await readApiJson<CompanyResponse>(response, "We could not complete that private company request");
-    if (!response.ok) throw new Error(payload.error || "We could not complete that private company request");
-    return payload;
-  };
+  const companyFetch = createAuthJsonFetch<CompanyResponse>(getToken, "We could not complete that private company request");
 
   useEffect(() => {
     if (!isSignedIn) { setEmployeeEnrollmentReady(false); return; }

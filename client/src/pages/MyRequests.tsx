@@ -7,6 +7,7 @@ import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import ReferralProgress from "@/components/ReferralProgress";
 import { getJobSeekerReferralState, type ReferralStatus } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
+import { bearerHeaders } from "@/lib/authFetch";
 
 type ReferralRequest = { id: number; targetRoleUrl: string | null; companyDomain: string; status: ReferralStatus; referrerId: number | null; queueStatus?: "available_for_review" | "waiting_for_coverage" | null; referrerMessage: string | null; unreadMessageCount: number; createdAt: string; updatedAt: string; attachmentCount: number };
 
@@ -39,7 +40,7 @@ export default function MyRequests() {
     void (async () => {
       try {
         const token = await getToken();
-        const response = await fetch("/api/company-referrals/mine", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const response = await fetch("/api/company-referrals/mine", { credentials: "include", headers: bearerHeaders(token) });
         const payload = await readApiJson<{ requests?: ReferralRequest[]; error?: string }>(response, "We could not load your referral requests");
         if (!response.ok) throw new Error(payload.error || "We could not load your referral requests");
         if (active) { setRequests(payload.requests || []); setActiveIndex(0); }

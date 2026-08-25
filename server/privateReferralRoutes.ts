@@ -15,6 +15,11 @@ type Identity = { account: Account; primaryEmail?: EmailAddress | null; emailAdd
 type Attachment = { id: number; fileName: string; mimeType: string; fileSize: number; fileKey?: string };
 type PrivateNotification = { id: number; category: "referral" | "message" | "status" | "system"; title: string; body: string; readAt: Date | null; createdAt: Date };
 
+export function parsePositiveInt(value: unknown): number | undefined {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 export type PrivateReferralRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
   dataUrlToBuffer: (dataUrl: string) => Buffer;
@@ -93,6 +98,19 @@ export type PrivateReferralRouteDeps = {
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  const requireIdentity = async (req: Request, res: express.Response, message: string) => {
+    const identity = await deps.resolveIdentity(req);
+    if (!identity) {
+      res.status(401).json({ error: message });
+      return undefined;
+    }
+    return identity;
+  };
+  const documentUploadError = (error: unknown, includeUploadData = false) => {
+    const message = error instanceof Error ? error.message : "We could not upload that document. Please try again.";
+    const pattern = includeUploadData ? /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i : /PDF|Word|PNG|JPEG|document type|smaller than/i;
+    return { message, status: pattern.test(message) ? 400 : 500 };
+  };
   const privateDocumentMimeTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
   const parseRawPrivateDocument = express.raw({ type: privateDocumentMimeTypes, limit: "10mb" });
   const privateDocumentPrefix = (identity: Identity) => `skipwait/private-referrals/${identity.account.openId}/`;
@@ -136,8 +154,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/notifications", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to view your private updates" });
+      const identity = await requireIdentity(req, res, "Sign in to view your private updates"); if (!identity) return;
       if (!deps.listNotifications) return res.status(503).json({ error: "Your updates are unavailable right now" });
       res.set("Cache-Control", "private, no-store");
       const notifications = await deps.listNotifications(identity.account.id);
@@ -146,8 +163,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.put("/api/referrer/slack-webhook", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
+      const identity = await requireIdentity(req, res, "Sign in to manage your private triage delivery"); if (!identity) return;
       if (!deps.saveReferrerSlackWebhook) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
       const webhookUrl = typeof req.body?.webhookUrl === "string" ? req.body.webhookUrl.trim() : "";
       if (!isValidSlackIncomingWebhookUrl(webhookUrl)) return res.status(400).json({ error: "Use a valid Slack incoming-webhook URL (https://hooks.slack.com/...)" });
@@ -158,8 +174,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/referrer/slack-webhook", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
+      const identity = await requireIdentity(req, res, "Sign in to manage your private triage delivery"); if (!identity) return;
       if (!deps.getReferrerSlackWebhookStatus) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
       res.set("Cache-Control", "private, no-store");
       const status = await deps.getReferrerSlackWebhookStatus(identity.account.id);
@@ -168,8 +183,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.delete("/api/referrer/slack-webhook", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
+      const identity = await requireIdentity(req, res, "Sign in to manage your private triage delivery"); if (!identity) return;
       if (!deps.deactivateReferrerSlackWebhook) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
       const result = await deps.deactivateReferrerSlackWebhook(identity.account.id);
       record({ actorUserId: identity.account.id, action: "slack_webhook.disconnected", outcome: "success", resourceType: "slack_webhook", metadata: { wasConnected: result.deactivated } });
@@ -178,10 +192,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/notifications/:notificationId/read", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      const notificationId = Number(req.params.notificationId);
-      if (!identity) return res.status(401).json({ error: "Sign in to update your private notifications" });
-      if (!Number.isInteger(notificationId) || notificationId <= 0) return res.status(400).json({ error: "Invalid notification reference" });
+      const identity = await requireIdentity(req, res, "Sign in to update your private notifications");
+      const notificationId = parsePositiveInt(req.params.notificationId);
+      if (!identity) return;
+      if (!notificationId) return res.status(400).json({ error: "Invalid notification reference" });
       if (!deps.markNotificationRead) return res.status(503).json({ error: "Notifications are unavailable right now" });
       await deps.markNotificationRead(identity.account.id, notificationId);
       record({ actorUserId: identity.account.id, action: "notification.read", outcome: "success", resourceType: "notification", resourceId: notificationId });
@@ -191,8 +205,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/opportunities", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to publish an opportunity" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to publish an opportunity"); if (!identity) return;
       if (!identity.primaryEmail || identity.primaryEmail.verification?.status !== "verified") return res.status(403).json({ error: "Verify your primary work email in Clerk before publishing" });
       const { kind, roleTitle, targetRoleUrl, location, walkInAt, walkInEndsAt } = req.body as { kind?: string; roleTitle?: string; targetRoleUrl?: string; location?: string; walkInAt?: string; walkInEndsAt?: string };
       if ((kind !== "hiring_now" && kind !== "walk_in") || !roleTitle?.trim()) return res.status(400).json({ error: "Choose Hiring now or Walk-in and add the role" });
@@ -205,34 +218,34 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/documents", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to upload documents securely"); if (!identity) return;
       const { fileName, mimeType, dataUrl } = req.body as { fileName?: string; mimeType?: string; dataUrl?: string };
       if (!fileName || !mimeType || !dataUrl) return res.status(400).json({ error: "Document details are required" });
       const buffer = deps.dataUrlToBuffer(dataUrl);
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, buffer));
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+    } catch (error) { const failure = documentUploadError(error); res.status(failure.status).json({ error: failure.message }); }
   });
   app.post("/api/documents/raw", (req, res, next) => parseRawPrivateDocument(req, res, error => error ? res.status(413).json({ error: "Documents must be smaller than 10 MB" }) : next()), async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to upload documents securely"); if (!identity) return;
       const encodedName = req.header("x-resume-filename") || "";
       let fileName = ""; try { fileName = decodeURIComponent(encodedName); } catch { fileName = ""; }
       const mimeType = (req.header("content-type") || "").split(";", 1)[0]?.trim() || "";
       if (!fileName || !privateDocumentMimeTypes.includes(mimeType) || !Buffer.isBuffer(req.body)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, req.body));
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+    } catch (error) { const failure = documentUploadError(error); res.status(failure.status).json({ error: failure.message }); }
   });
   app.post("/api/documents/opaque", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to upload documents securely"); if (!identity) return;
       const { fileName, mimeType, encryptedContent, encryptionKey, initializationVector } = req.body as { fileName?: string; mimeType?: string; encryptedContent?: string; encryptionKey?: string; initializationVector?: string };
       if (!fileName || !mimeType || !privateDocumentMimeTypes.includes(mimeType)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector })));
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+    } catch (error) { const failure = documentUploadError(error, true); res.status(failure.status).json({ error: failure.message }); }
   });
   app.post("/api/documents/uploads", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to upload documents securely"); if (!identity) return;
       const { fileName, mimeType, fileSize } = req.body as { fileName?: string; mimeType?: string; fileSize?: number };
       const safeFileSize = typeof fileSize === "number" && Number.isInteger(fileSize) && fileSize > 0 && fileSize <= 10 * 1024 * 1024 ? fileSize : null;
       if (!fileName || !mimeType || !privateDocumentMimeTypes.includes(mimeType) || safeFileSize === null) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume smaller than 10 MB" });
@@ -243,7 +256,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/documents/uploads/:sessionId/chunks", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to upload documents securely"); if (!identity) return;
       const { chunkIndex, encryptedContent, encryptionKey, initializationVector } = req.body as { chunkIndex?: number; encryptedContent?: string; encryptionKey?: string; initializationVector?: string };
       const safeChunkIndex = typeof chunkIndex === "number" && Number.isInteger(chunkIndex) && chunkIndex >= 0 ? chunkIndex : null;
       if (!deps.getResumeUploadSession || !deps.appendResumeUploadChunk || safeChunkIndex === null) return res.status(400).json({ error: "This resume chunk could not be verified" });
@@ -256,7 +269,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/documents/uploads/:sessionId/complete", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to upload documents securely" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to upload documents securely"); if (!identity) return;
       if (!deps.getResumeUploadSession || !deps.completeResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
       const session = await deps.getResumeUploadSession(identity.account.id, req.params.sessionId); if (!session) return res.status(404).json({ error: "This private upload is no longer available" });
       if (session.status === "completed" && session.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` });
@@ -269,8 +282,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/documents/:attachmentId", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const attachmentId = Number(req.params.attachmentId);
-      if (!identity) return res.status(401).send("Sign in with Clerk to view this document"); if (!Number.isInteger(attachmentId) || attachmentId <= 0) return res.status(400).send("Invalid document reference");
+      const identity = await deps.resolveIdentity(req); const attachmentId = parsePositiveInt(req.params.attachmentId);
+      if (!identity) return res.status(401).send("Sign in with Clerk to view this document"); if (!attachmentId) return res.status(400).send("Invalid document reference");
       const attachment = await deps.getAccessibleReferralAttachment(identity.account.id, attachmentId); if (!attachment) return res.status(404).send("Document not found");
       record({ actorUserId: identity.account.id, action: "document.accessed", outcome: "success", resourceType: "attachment", resourceId: attachmentId, metadata: { access: "authorized" } });
       const url = await deps.storageGetSignedUrl(attachment.fileKey || ""); res.set("Cache-Control", "private, no-store"); res.redirect(307, url);
@@ -278,18 +291,18 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/privacy/export", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to export your data" });
+      const identity = await requireIdentity(req, res, "Sign in to export your data"); if (!identity) return;
       const exportData = await deps.exportUserData?.(identity.account.id); if (!exportData) return res.status(503).json({ error: "Your data export is unavailable right now" });
       record({ actorUserId: identity.account.id, action: "privacy.data_exported", outcome: "success", resourceType: "privacy_export" });
       res.set("Cache-Control", "private, no-store"); res.attachment(`skipwait-personal-data-${new Date().toISOString().slice(0, 10)}.json`); res.json(exportData);
     } catch { res.status(500).json({ error: "We could not prepare your data export" }); }
   });
   app.get("/api/privacy/requests", async (req, res) => {
-    try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to view privacy requests" }); res.set("Cache-Control", "private, no-store"); res.json({ requests: await deps.listMyPrivacyRequests?.(identity.account.id) ?? [] }); } catch { res.status(500).json({ error: "We could not load your privacy requests" }); }
+    try { const identity = await requireIdentity(req, res, "Sign in to view privacy requests"); if (!identity) return; res.set("Cache-Control", "private, no-store"); res.json({ requests: await deps.listMyPrivacyRequests?.(identity.account.id) ?? [] }); } catch { res.status(500).json({ error: "We could not load your privacy requests" }); }
   });
   app.post("/api/privacy/requests/erasure", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to request account deletion" });
+      const identity = await requireIdentity(req, res, "Sign in to request account deletion"); if (!identity) return;
       const privacyRequest = await deps.createPrivacyErasureRequest?.(identity.account.id); if (!privacyRequest) return res.status(503).json({ error: "Privacy requests are unavailable right now" });
       record({ actorUserId: identity.account.id, action: "privacy.erasure_requested", outcome: "success", resourceType: "privacy_request", resourceId: privacyRequest.id, metadata: { alreadyRequested: privacyRequest.alreadyRequested } });
       res.status(privacyRequest.alreadyRequested ? 200 : 201).json({ request: privacyRequest });
@@ -297,8 +310,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/work-email/otp/send", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in before verifying a work email" });
+      const identity = await requireIdentity(req, res, "Sign in before verifying a work email"); if (!identity) return;
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       if (!deps.sendWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
       const result = await deps.sendWorkEmailOtp({ email });
@@ -310,8 +322,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/work-email/otp/verify", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in before verifying a work email" });
+      const identity = await requireIdentity(req, res, "Sign in before verifying a work email"); if (!identity) return;
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
       if (!deps.verifyWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
@@ -324,9 +335,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals/verify-work-email", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
+      const identity = await requireIdentity(req, res, "Sign in to verify a work email");
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-      if (!identity) return res.status(401).json({ error: "Sign in to verify a work email" });
+      if (!identity) return;
       if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
       // Proof of ownership comes from exactly one of two authorities:
       // 1. Server-side OTP proof: the verify endpoint consumed a valid code for
@@ -363,8 +374,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
+      const identity = await requireIdentity(req, res, "Sign in before sending a private company request"); if (!identity) return;
       const { targetRoleUrl, attachmentIds, candidateMessage, fastTrackCode, fastTrackCompanySlug, fastTrackAlias } = req.body as { targetRoleUrl?: string; attachmentIds?: number[]; candidateMessage?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
       if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
       if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
@@ -411,8 +421,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/credits/summary", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to view your referral credits" });
+      const identity = await requireIdentity(req, res, "Sign in to view your referral credits"); if (!identity) return;
       const role = req.query.role === "referrer" ? "referrer" : "job_seeker";
       const summary = await deps.getCreditSummary?.(identity.account.id, role);
       if (!summary) return res.status(500).json({ error: "We could not load your referral credits" });
@@ -421,8 +430,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/company-referrals/access", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
+      const identity = await requireIdentity(req, res, "Sign in with your company email to continue"); if (!identity) return;
       const access = await deps.getVerifiedWorkEmailAccess?.(identity.account.id);
       res.set("Cache-Control", "private, no-store");
       res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null });
@@ -430,8 +438,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/referrer-impact/me", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with your company email to view private impact" });
+      const identity = await requireIdentity(req, res, "Sign in with your company email to view private impact"); if (!identity) return;
       const summary = await (deps.getPrivateReferrerImpactSummary ?? getPrivateReferrerImpactSummary)(identity.account.id);
       res.set("Cache-Control", "private, no-store");
       res.json({ summary });
@@ -446,8 +453,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/referrer-fast-track/me", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to create a Fast-Track Link" });
+      const identity = await requireIdentity(req, res, "Sign in with your verified company email to create a Fast-Track Link"); if (!identity) return;
       if (!deps.getOrCreateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
       const link = await deps.getOrCreateReferrerFastTrackLink(identity.account.id);
       const origin = `${req.protocol}://${req.get("host")}`;
@@ -460,8 +466,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/referrer-fast-track/me/deactivate", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to pause your Fast-Track Link" });
+      const identity = await requireIdentity(req, res, "Sign in to pause your Fast-Track Link"); if (!identity) return;
       if (!deps.deactivateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
       const result = await deps.deactivateReferrerFastTrackLink(identity.account.id);
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_paused", outcome: "success", resourceType: "referrer_fast_track", metadata: { deactivated: result.deactivated } });
@@ -491,8 +496,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/smart-pitch", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to create a private starting draft" });
+      const identity = await requireIdentity(req, res, "Sign in to create a private starting draft"); if (!identity) return;
       const { attachmentId, targetRoleUrl, companyDomain } = req.body as { attachmentId?: number; targetRoleUrl?: string; companyDomain?: string };
       if (!Number.isInteger(attachmentId) || !targetRoleUrl || !isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: "Add a valid Target Role URL and uploaded resume first" });
       const attachment = await (deps.getOwnedResumeAttachmentForPitch ?? getOwnedResumeAttachmentForPitch)(identity.account.id, Number(attachmentId));
@@ -507,9 +511,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/referral-share-cards/:requestId", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
-      if (!identity) return res.status(401).json({ error: "Sign in to create a share card" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
+      const identity = await requireIdentity(req, res, "Sign in to create a share card"); const requestId = parsePositiveInt(req.params.requestId);
+      if (!identity) return;
+      if (!requestId) return res.status(400).json({ error: "Invalid referral reference" });
       const card = await (deps.getOrCreateReferralShareCard ?? getOrCreateReferralShareCard)(identity.account.id, requestId);
       const shareUrl = `${req.protocol}://${req.get("host")}/share-card/${encodeURIComponent(card.shareToken)}`;
       record({ actorUserId: identity.account.id, action: "referral_share_card.created", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, companyDomain: card.companyDomain, metadata: { status: card.status } });
@@ -518,9 +522,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.delete("/api/referral-share-cards/:requestId", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
-      if (!identity) return res.status(401).json({ error: "Sign in to remove a share card" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
+      const identity = await requireIdentity(req, res, "Sign in to remove a share card"); const requestId = parsePositiveInt(req.params.requestId);
+      if (!identity) return;
+      if (!requestId) return res.status(400).json({ error: "Invalid referral reference" });
       const result = await (deps.revokeReferralShareCard ?? revokeReferralShareCard)(identity.account.id, requestId);
       record({ actorUserId: identity.account.id, action: "referral_share_card.revoked", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, metadata: { revoked: result.revoked } });
       res.set("Cache-Control", "private, no-store"); res.json(result);
@@ -558,8 +562,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/personal-invites/me", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to create your personal invite link" });
+      const identity = await requireIdentity(req, res, "Sign in to create your personal invite link"); if (!identity) return;
       if (!deps.getOrCreatePersonalReferralInvite) return res.status(503).json({ error: "Personal invites are not available yet" });
       const invite = await deps.getOrCreatePersonalReferralInvite(identity.account.id);
       res.json({ invite });
@@ -567,10 +570,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/personal-invites/claim", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
+      const identity = await requireIdentity(req, res, "Sign in before claiming an invite");
       const inviteCode = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
       const verifiedEmail = identity?.primaryEmail?.emailAddress?.trim().toLowerCase() ?? "";
-      if (!identity) return res.status(401).json({ error: "Sign in before claiming an invite" });
+      if (!identity) return;
       if (!inviteCode) return res.status(400).json({ error: "An invite code is required" });
       if (!verifiedEmail || identity.primaryEmail?.verification?.status !== "verified") return res.status(403).json({ error: "Verify your email before claiming an invite" });
       if (!deps.claimPersonalReferralInvite) return res.status(503).json({ error: "Personal invites are not available yet" });
@@ -581,8 +584,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/company-referrals/mine", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view your referral requests" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to view your referral requests"); if (!identity) return;
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id) ?? [];
       record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length } });
       res.json({ requests });
@@ -590,8 +592,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/company-referrals/inbox", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view employee requests" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to view employee requests"); if (!identity) return;
       const requestedScope = typeof req.query.scope === "string" ? req.query.scope : "new";
       const scope = requestedScope === "saved" || requestedScope === "completed" ? requestedScope : "new";
       const requests = deps.listCompanyReferralInboxByState ? await deps.listCompanyReferralInboxByState(identity.account.id, scope) : await deps.listCompanyReferralInbox(identity.account.id);
@@ -601,8 +602,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals/availability/open", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to open referral capacity" });
+      const identity = await requireIdentity(req, res, "Sign in with your verified company email to open referral capacity"); if (!identity) return;
       if (!deps.openCompanyReferralAvailability) return res.status(503).json({ error: "Referral availability is unavailable right now" });
       const requestedSlotCount = typeof req.body?.slotCount === "number" ? req.body.slotCount : 1;
       if (!Number.isInteger(requestedSlotCount) || requestedSlotCount < 1 || requestedSlotCount > 3) return res.status(400).json({ error: "Open between one and three real referral slots" });
@@ -628,10 +628,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals/:requestId/save", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to save a private request"); const requestId = parsePositiveInt(req.params.requestId);
       const saved = req.body?.saved !== false;
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to save a private request" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!identity) return;
+      if (!requestId) return res.status(400).json({ error: "Invalid referral request" });
       if (!deps.saveCompanyReferralRequest) return res.status(501).json({ error: "Saving requests is not available yet" });
       const result = await deps.saveCompanyReferralRequest(identity.account.id, requestId, saved);
       record({ actorUserId: identity.account.id, action: saved ? "company_referral.saved" : "company_referral.unsaved", outcome: "success", resourceType: "referral_request", resourceId: requestId });
@@ -640,11 +640,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals/:requestId/review", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to review a private request"); const requestId = parsePositiveInt(req.params.requestId);
       const decision = req.body?.decision;
       const message = typeof req.body?.message === "string" ? req.body.message.slice(0, 3000) : undefined;
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to review a private request" });
-      if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined")) return res.status(400).json({ error: "Choose approve or decline for this referral request" });
+      if (!identity) return;
+      if (!requestId || (decision !== "approved" && decision !== "declined")) return res.status(400).json({ error: "Choose approve or decline for this referral request" });
       if (!deps.reviewReferralRequest) return res.status(501).json({ error: "Reviewing requests is not available yet" });
       const result = await deps.reviewReferralRequest(identity.account.id, { requestId, decision, message });
       record({ actorUserId: identity.account.id, action: `company_referral.${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId });
@@ -653,9 +653,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals/:requestId/one-click-review", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); const decision = req.body?.decision; const declineReason = req.body?.declineReason;
-      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to review this private request" });
-      if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason))) return res.status(400).json({ error: "Choose accept or a concise decline reason" });
+      const identity = await requireIdentity(req, res, "Sign in with your verified company email to review this private request"); const requestId = parsePositiveInt(req.params.requestId); const decision = req.body?.decision; const declineReason = req.body?.declineReason;
+      if (!identity) return;
+      if (!requestId || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason))) return res.status(400).json({ error: "Choose accept or a concise decline reason" });
       if (!deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "One-click review is unavailable right now" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
       record({ actorUserId: identity.account.id, action: `company_referral.one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
@@ -664,8 +664,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/referrer-review-links/:linkToken/decision", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const linkToken = req.params.linkToken; const decision = req.body?.decision; const declineReason = req.body?.declineReason;
-      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to use this private review link" });
+      const identity = await requireIdentity(req, res, "Sign in with your verified company email to use this private review link"); const linkToken = req.params.linkToken; const decision = req.body?.decision; const declineReason = req.body?.declineReason;
+      if (!identity) return;
       if (!isOpaqueReviewLinkToken(linkToken) || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason))) return res.status(400).json({ error: "This private review action is invalid" });
       if (!deps.resolveReferrerReviewEmailLink || !deps.consumeReferrerReviewEmailLink || !deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "Email review is unavailable right now" });
       const link = await deps.resolveReferrerReviewEmailLink(identity.account.id, linkToken);
@@ -676,14 +676,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) { const message = error instanceof Error ? error.message : "This private review link is unavailable"; res.status(/private review link|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
   });
   app.post("/api/company-referrals/:requestId/progress", async (req, res) => {
-    const requestId = Number(req.params.requestId);
+    const requestId = parsePositiveInt(req.params.requestId);
     let actorUserId: number | undefined;
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to record private referral progress" });
+      const identity = await requireIdentity(req, res, "Sign in to record private referral progress");
+      if (!identity) return;
       actorUserId = identity.account.id;
       const status = req.body?.status;
-      if (!Number.isInteger(requestId) || requestId <= 0 || !isReferralProgressUpdateStatus(status)) return res.status(400).json({ error: "Choose a real referral progress milestone" });
+      if (!requestId || !isReferralProgressUpdateStatus(status)) return res.status(400).json({ error: "Choose a real referral progress milestone" });
       if (!deps.updateReferralProgress) return res.status(503).json({ error: "Referral progress updates are unavailable right now" });
       const result = await deps.updateReferralProgress(actorUserId, { requestId, status });
       record({ actorUserId, action: "company_referral.progress_updated", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { status: result.status } });
@@ -695,13 +695,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     }
   });
   app.get("/api/company-referrals/:requestId/conversation", async (req, res) => {
-    const requestId = Number(req.params.requestId);
+    const requestId = parsePositiveInt(req.params.requestId);
     let actorUserId: number | undefined;
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to open this private conversation" });
+      const identity = await requireIdentity(req, res, "Sign in to open this private conversation");
+      if (!identity) return;
       actorUserId = identity.account.id;
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!requestId) return res.status(400).json({ error: "Invalid referral request" });
       if (!deps.listReferralConversation) return res.status(503).json({ error: "Private conversations are not available yet" });
       const messages = await deps.listReferralConversation(actorUserId, requestId);
       const progress = await deps.getApprovedReferralProgressStatus?.(actorUserId, requestId);
@@ -715,14 +715,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     }
   });
   app.post("/api/company-referrals/:requestId/conversation", async (req, res) => {
-    const requestId = Number(req.params.requestId);
+    const requestId = parsePositiveInt(req.params.requestId);
     let actorUserId: number | undefined;
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to send a private message" });
+      const identity = await requireIdentity(req, res, "Sign in to send a private message");
+      if (!identity) return;
       actorUserId = identity.account.id;
       const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!requestId) return res.status(400).json({ error: "Invalid referral request" });
       if (!body) return res.status(400).json({ error: "Write a message before sending" });
       if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
       if (!deps.sendReferralConversationMessage) return res.status(503).json({ error: "Private conversations are not available yet" });
@@ -737,9 +737,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/company-referrals/:requestId/preview", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to review this request" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to review this request"); const requestId = parsePositiveInt(req.params.requestId);
+      if (!identity) return;
+      if (!requestId) return res.status(400).json({ error: "Invalid referral request" });
       if (!deps.getUnclaimedCompanyReferralPreview) return res.status(501).json({ error: "Candidate preview is not available yet" });
       const request = await deps.getUnclaimedCompanyReferralPreview(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not available to your verified company account" });
@@ -751,10 +751,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/company-referrals/:requestId", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      const requestId = Number(req.params.requestId);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to view this request" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      const identity = await requireIdentity(req, res, "Sign in with Clerk to view this request");
+      const requestId = parsePositiveInt(req.params.requestId);
+      if (!identity) return;
+      if (!requestId) return res.status(400).json({ error: "Invalid referral request" });
       const request = await deps.getClaimedCompanyReferralDetail(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not assigned to your verified employee account" });
       const attachments = await Promise.all(request.attachments.map(async attachment => ({
@@ -770,7 +770,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(500).json({ error: "We could not load this private referral request" });
     }
   });
-  app.post("/api/company-referrals/:requestId/claim", async (req, res) => { try { const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); if (!identity) return res.status(401).json({ error: "Sign in with Clerk to claim a referral request" }); if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" }); const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId); record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId }); res.json(result); } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); } });
+  app.post("/api/company-referrals/:requestId/claim", async (req, res) => { try { const identity = await requireIdentity(req, res, "Sign in with Clerk to claim a referral request"); const requestId = parsePositiveInt(req.params.requestId); if (!identity) return; if (!requestId) return res.status(400).json({ error: "Invalid referral request" }); const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId); record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId }); res.json(result); } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); } });
   app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
   app.get("/api/admin/privacy-requests", async (req, res) => {
     try {
@@ -782,9 +782,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/admin/privacy-requests/:requestId/review", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      const identity = await deps.resolveIdentity(req); const requestId = parsePositiveInt(req.params.requestId);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid privacy request" });
+      if (!requestId) return res.status(400).json({ error: "Invalid privacy request" });
       const status = req.body?.status; const resolution = typeof req.body?.resolution === "string" ? req.body.resolution.slice(0, 500) : undefined;
       if (status !== "in_review" && status !== "completed" && status !== "declined") return res.status(400).json({ error: "Choose a valid privacy request status" });
       const request = await deps.reviewPrivacyRequest?.(identity.account.id, requestId, { status, resolution }); if (!request) return res.status(404).json({ error: "Privacy request not found" });

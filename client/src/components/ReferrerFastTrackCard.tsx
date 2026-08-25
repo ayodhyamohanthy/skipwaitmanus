@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth as useClerkAuth } from "@clerk/react";
 import { toast } from "sonner";
 import { readApiJson } from "@/lib/apiResponse";
+import { bearerHeaders } from "@/lib/authFetch";
 
 type FastTrackLink = { linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean; url: string; vanityUrl: string; suggestedBioCopy: string };
 
@@ -17,7 +18,7 @@ export function ReferrerFastTrackCard() {
     void (async () => {
       try {
         const token = await getToken();
-        const response = await fetch("/api/referrer-fast-track/me", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const response = await fetch("/api/referrer-fast-track/me", { credentials: "include", headers: bearerHeaders(token) });
         const payload = await readApiJson<{ link?: FastTrackLink; error?: string }>(response, "Fast-Track Link unavailable");
         if (!response.ok) throw new Error(payload.error || "Fast-Track Link unavailable");
         if (active) setLink(payload.link || null);

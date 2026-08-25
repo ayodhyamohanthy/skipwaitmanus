@@ -7,6 +7,7 @@ import { canSpendToken, getJobSeekerTokens, setJobSeekerTokens, TOKEN_ACTION_COS
 import { clearReferralDraft } from "@/lib/pwaContinuity";
 import { clearPendingResumeFiles, restorePendingResumeFiles, savePendingResumeFiles } from "@/lib/pendingResume";
 import { readApiJson } from "@/lib/apiResponse";
+import { bearerHeaders } from "@/lib/authFetch";
 
 type Attachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
 type CreditSummary = { plan: "free" | "pro" | "max"; monthlyAllowance: number; monthlyCreditsRemaining: number; purchasedCreditsRemaining: number; totalAvailable: number; cycleKey: string; subscriptionStatus: string | null; subscriptionCurrentTermEnd: string | null };
@@ -111,7 +112,7 @@ export default function ReferralRequest() {
     void (async () => {
       try {
         const clerkToken = await getToken();
-        const response = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {} });
+        const response = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: bearerHeaders(clerkToken) });
         const payload = await readApiJson<{ summary?: unknown }>(response, "We could not refresh your referral credits");
         if (active && response.ok && isCreditSummary(payload.summary)) { setCreditSummary(payload.summary); setTokens(payload.summary.totalAvailable); setJobSeekerTokens(payload.summary.totalAvailable); }
       } catch { /* The request path retains the locally cached balance while the summary refreshes later. */ }
@@ -127,7 +128,7 @@ export default function ReferralRequest() {
       const uploaded: Attachment[] = [];
       for (const file of files) {
         const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
-        const headers = { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) };
+        const headers = { "Content-Type": "application/json", ...bearerHeaders(clerkToken) };
         const startResponse = await uploadFetch("/api/documents/uploads", { method: "POST", headers, credentials: "include", body: JSON.stringify({ fileName: file.name, mimeType, fileSize: file.size }) }, "Your resume upload took too long to start. Check your connection and try again.");
         const start = await readApiJson<{ sessionId?: string; chunkBytes?: number; error?: string }>(startResponse, "We could not prepare your private resume upload. Please try again."); if (!startResponse.ok || !start.sessionId || !start.chunkBytes) throw new Error(start.error || "We could not prepare your private resume upload. Please try again.");
         const totalChunks = Math.ceil(file.size / start.chunkBytes); setUploadProgress({ completed: 0, total: totalChunks, status: "Preparing your private resume…" });
@@ -157,7 +158,7 @@ export default function ReferralRequest() {
     setSmartPitchLoading(true); setSmartPitchStatus(""); setError("");
     try {
       const clerkToken = await getToken();
-      const response = await fetch("/api/smart-pitch", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, body: JSON.stringify({ attachmentId: Number(attachment.id), targetRoleUrl }) });
+      const response = await fetch("/api/smart-pitch", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...bearerHeaders(clerkToken) }, body: JSON.stringify({ attachmentId: Number(attachment.id), targetRoleUrl }) });
       const payload = await readApiJson<{ draft?: string; error?: string }>(response, "We could not create a starting draft");
       if (!response.ok || !payload.draft) throw new Error(payload.error || "We could not create a starting draft");
       setCandidateMessage(payload.draft); setNoteOpen(true); setSmartPitchStatus("Starting draft ready. Edit anything before sending.");
@@ -179,7 +180,7 @@ export default function ReferralRequest() {
       const allAttachments = [...attachments, ...newlyUploaded];
       const clerkToken = await getToken();
       const referralParams = new URLSearchParams(window.location.search); const fastTrackCode = referralParams.get("fast")?.trim(); const fastTrackCompanySlug = referralParams.get("referCompany")?.trim(); const fastTrackAlias = referralParams.get("referAlias")?.trim();
-      const response = await fetch("/api/company-referrals", { method: "POST", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, credentials: "include", body: JSON.stringify({ targetRoleUrl, attachmentIds: allAttachments.map(attachment => Number(attachment.id)).filter(Number.isInteger), candidateMessage: candidateMessage.trim(), ...(fastTrackCode ? { fastTrackCode } : {}), ...(fastTrackCompanySlug && fastTrackAlias ? { fastTrackCompanySlug, fastTrackAlias } : {}) }) });
+      const response = await fetch("/api/company-referrals", { method: "POST", headers: { "Content-Type": "application/json", ...bearerHeaders(clerkToken) }, credentials: "include", body: JSON.stringify({ targetRoleUrl, attachmentIds: allAttachments.map(attachment => Number(attachment.id)).filter(Number.isInteger), candidateMessage: candidateMessage.trim(), ...(fastTrackCode ? { fastTrackCode } : {}), ...(fastTrackCompanySlug && fastTrackAlias ? { fastTrackCompanySlug, fastTrackAlias } : {}) }) });
       const payload = await readApiJson<ReferralSubmissionResponse>(response, "We could not send this private referral request"); if (!response.ok) throw new Error(payload.error || "We could not send this private referral request");
       const nextSummary = isCreditSummary(payload.creditSummary) ? payload.creditSummary : fallbackSummary(Number.isFinite(Number(payload.remainingTokens)) ? Number(payload.remainingTokens) : Math.max(0, summary.totalAvailable - TOKEN_ACTION_COST));
       setCreditSummary(nextSummary); setTokens(nextSummary.totalAvailable); setJobSeekerTokens(nextSummary.totalAvailable);

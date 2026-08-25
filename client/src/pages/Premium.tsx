@@ -5,6 +5,7 @@ import { ArrowLeft, Check, CreditCard, LoaderCircle } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
+import { bearerHeaders } from "@/lib/authFetch";
 
 type Pack = { id: "skipwait_token_1-INR" | "skipwait_token_1-USD"; price: number; currency: PaymentRoute };
 type PendingCheckout = { hostedPageId: string; role: TokenRole };
@@ -42,7 +43,7 @@ export default function Premium() {
     void (async () => {
       try {
         const clerkToken = await getToken();
-        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {} });
+        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: bearerHeaders(clerkToken) });
         const payload = await response.json().catch(() => ({}));
         if (active && response.ok && typeof payload.summary?.totalAvailable === "number") setBalance(payload.summary.totalAvailable);
       } catch { if (active) setBalance(null); }
@@ -61,7 +62,7 @@ export default function Premium() {
       attempts += 1;
       try {
         const clerkToken = await getToken();
-        const response = await fetch("/api/chargebee/credit-recovery", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, body: JSON.stringify({ hostedPageId: checkout.hostedPageId, role }) });
+      const response = await fetch("/api/chargebee/credit-recovery", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...bearerHeaders(clerkToken) }, body: JSON.stringify({ hostedPageId: checkout.hostedPageId, role }) });
         const payload = await response.json().catch(() => ({}));
         if (!active) return;
         if (payload.status === "credited") {
@@ -90,7 +91,7 @@ export default function Premium() {
     setStatus("launching");
     try {
       const clerkToken = await getToken();
-      const response = await fetch("/api/chargebee/checkout", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, body: JSON.stringify({ itemPriceId: selected.id, billingCountry: routeDetails.billingCountry, role, quantity }) });
+      const response = await fetch("/api/chargebee/checkout", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...bearerHeaders(clerkToken) }, body: JSON.stringify({ itemPriceId: selected.id, billingCountry: routeDetails.billingCountry, role, quantity }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || typeof body.checkoutUrl !== "string" || typeof body.hostedPageId !== "string") throw new Error(body.error || "Unable to open secure checkout");
       savePendingCheckout({ hostedPageId: body.hostedPageId, role });

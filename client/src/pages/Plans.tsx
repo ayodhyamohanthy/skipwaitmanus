@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { readApiJson } from "@/lib/apiResponse";
+import { bearerHeaders } from "@/lib/authFetch";
 
 type Plan = "pro" | "max";
 type CreditSummary = { plan: "free" | Plan; monthlyAllowance: number; monthlyCreditsRemaining: number; totalAvailable: number; subscriptionStatus: string | null; subscriptionCurrentTermEnd: string | null };
@@ -45,7 +46,7 @@ export default function Plans() {
     void (async () => {
       try {
         const clerkToken = await getToken();
-        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {} });
+        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: bearerHeaders(clerkToken) });
         const payload = await readApiJson<{ summary?: CreditSummary }>(response, "We could not refresh your plan details");
         if (active && response.ok && payload.summary) setSummary(payload.summary);
       } catch {
@@ -65,7 +66,7 @@ export default function Plans() {
       const response = await fetch("/api/chargebee/subscription-checkout", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) },
+        headers: { "Content-Type": "application/json", ...bearerHeaders(clerkToken) },
         body: JSON.stringify({ plan: selected, currency: route, billingCountry: routeDetails.billingCountry, role }),
       });
       const payload = await readApiJson<{ checkoutUrl?: string; error?: string }>(response, "Unable to open secure plan checkout");
@@ -86,7 +87,7 @@ export default function Plans() {
       const response = await fetch("/api/chargebee/subscription-cancel", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) },
+        headers: { "Content-Type": "application/json", ...bearerHeaders(clerkToken) },
         body: JSON.stringify({ role }),
       });
       const payload = await readApiJson<{ currentTermEnd?: string; error?: string }>(response, "We could not schedule your cancellation");

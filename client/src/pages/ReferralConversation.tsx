@@ -3,9 +3,11 @@ import { useAuth as useClerkAuth, SignInButton } from "@clerk/react";
 import { ArrowLeft, ArrowUp, CheckCircle2, Copy, LockKeyhole, Share2 } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { isPostApprovalReferralStatus, referralStatusSteps, type ReferralStatus } from "@shared/referral";
+import { createAuthJsonFetch } from "@/lib/authFetch";
 
 type ConversationMessage = { id: number; body: string; createdAt: string; isMine: boolean };
 type ReferralShareCard = { shareUrl: string; companyDomain: string; status: "accepted" };
+type ConversationResponse = { error?: string; messages?: ConversationMessage[]; progressStatus?: ReferralStatus; progress?: { status?: ReferralStatus }; shareUrl?: string; companyDomain?: string; status?: "accepted" };
 const progressOptions = [
   { status: "intro_made", label: "Introduction made" },
   { status: "interview", label: "Interview started" },
@@ -39,17 +41,11 @@ export default function ReferralConversation() {
   const [shareCardStatus, setShareCardStatus] = useState("");
   const messageListRef = useRef<HTMLDivElement>(null);
 
-  const request = async (path: string, init?: RequestInit) => {
-    const token = await getToken();
-    const response = await fetch(path, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || "We could not complete this private conversation action");
-    return payload;
-  };
+  const request = createAuthJsonFetch<ConversationResponse>(getToken, "We could not complete this private conversation action");
   const loadConversation = async () => {
     if (!isSignedIn || !Number.isInteger(requestId) || requestId <= 0) return;
     setLoading(true); setError("");
-    try { const payload = await request(`/api/company-referrals/${requestId}/conversation`); setMessages(payload.messages || []); if (isPostApprovalReferralStatus(payload.progressStatus)) setProgressStatus(payload.progressStatus); }
+    try { const payload = await request(`/api/company-referrals/${requestId}/conversation`); setMessages(payload.messages || []); if (payload.progressStatus && isPostApprovalReferralStatus(payload.progressStatus)) setProgressStatus(payload.progressStatus); }
     catch (reason) { setError(reason instanceof Error ? reason.message : "We could not open this private conversation"); }
     finally { setLoading(false); }
   };
@@ -77,7 +73,7 @@ export default function ReferralConversation() {
     setUpdatingProgress(true); setProgressError("");
     try {
       const payload = await request(`/api/company-referrals/${requestId}/progress`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-      if (isPostApprovalReferralStatus(payload.progress?.status)) setProgressStatus(payload.progress.status);
+      if (payload.progress?.status && isPostApprovalReferralStatus(payload.progress.status)) setProgressStatus(payload.progress.status);
       setShowProgress(false);
     } catch (reason) { setProgressError(reason instanceof Error ? reason.message : "We could not record this referral progress"); }
     finally { setUpdatingProgress(false); }

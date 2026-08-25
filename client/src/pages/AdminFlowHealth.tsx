@@ -3,6 +3,7 @@ import { Activity, AlertCircle, ArrowRight, BarChart3, CheckCircle2, FileText, G
 import { useEffect, useState } from "react";
 import { Brand } from "@/components/Brand";
 import { readApiJson } from "@/lib/apiResponse";
+import { bearerHeaders } from "@/lib/authFetch";
 
 type FlowHealth = {
   funnel: { requestsCreated: number; requestsClaimed: number; decisionsRecorded: number; waitingForCoverage: number };
@@ -29,7 +30,7 @@ export default function AdminFlowHealth() {
     void (async () => {
       try {
         const token = await getToken();
-        const response = await fetch("/api/admin/flow-health", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const response = await fetch("/api/admin/flow-health", { credentials: "include", headers: bearerHeaders(token) });
         const payload = await readApiJson<{ health?: FlowHealth; error?: string }>(response, "We could not load referral flow health");
         if (!response.ok) throw new Error(payload.error || "We could not load referral flow health");
         if (active) setHealth(payload.health || emptyHealth);

@@ -3,6 +3,7 @@ import { useAuth as useClerkAuth } from "@clerk/react";
 import { Bell } from "lucide-react";
 import { useLocation } from "wouter";
 import { readApiJson } from "@/lib/apiResponse";
+import { bearerHeaders } from "@/lib/authFetch";
 
 type NotificationPreview = { id: number; readAt: string | null };
 type NotificationResponse = { notifications?: NotificationPreview[]; error?: string };
@@ -18,7 +19,7 @@ export function NotificationBell() {
     void (async () => {
       try {
         const token = await getToken();
-        const response = await fetch("/api/notifications", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const response = await fetch("/api/notifications", { credentials: "include", headers: bearerHeaders(token) });
         const payload = await readApiJson<NotificationResponse>(response, "Your private updates are unavailable right now.");
         if (!response.ok) throw new Error(payload.error || "Your private updates are unavailable right now.");
         if (active) setUnreadCount((payload.notifications || []).filter(notification => !notification.readAt).length);
