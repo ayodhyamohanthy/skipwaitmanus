@@ -28,6 +28,7 @@ import { sendReferrerReviewEmail } from "../referrerReviewEmail";
 import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
 import { sendTransactionalEmail } from "../emailDelivery";
 import { workEmailOtpService } from "../workEmailOtp";
+import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes } from "../payments";
