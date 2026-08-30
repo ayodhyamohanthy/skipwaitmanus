@@ -57,15 +57,31 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       const durableAdmin = (process.env.SKIPWAIT_ADMIN_EMAIL || "ayodhya@skipwait.me").trim().toLowerCase();
       const loginHint = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
       if (!loginHint || loginHint !== durableAdmin) return res.status(403).send("Administrator sign-in is restricted to the skipwait.me administrator account");
-      res.redirect(302, authorizationUrl("sign-in", redirectUriFor(req), loginHint));
+      res.redirect(302, workos.userManagement.getAuthorizationUrl({
+        provider: "authkit",
+        redirectUri: redirectUriFor(req),
+        state: "skipwait-admin",
+        screenHint: "sign-in",
+        loginHint,
+      }));
     });
 
     app.get("/api/auth/workos/callback", async (req, res) => {
       const code = typeof req.query.code === "string" ? req.query.code : "";
+      const state = typeof req.query.state === "string" ? req.query.state : "";
       if (!code) return res.status(400).send("Authentication could not be completed");
       try {
         const auth = await workos.userManagement.authenticateWithCode({ clientId: process.env.WORKOS_CLIENT_ID!, code });
         const user = auth.user;
+        // Administrator plane strict match (defense-in-depth): when the flow
+        // started from the admin gate (state=skipwait-admin), the authenticated
+        // email must end precisely with the administrator domain. Anything else
+        // is rejected here at the callback, not just the entry route.
+        if (state === "skipwait-admin") {
+          const adminDomain = (process.env.SKIPWAIT_ADMIN_EMAIL || "ayodhya@skipwait.me").split("@")[1]?.trim().toLowerCase() ?? "skipwait.me";
+          const email = user.email.trim().toLowerCase();
+          if (!email.endsWith(`@${adminDomain}`)) return res.status(403).send("Administrator sign-in requires a verified skipwait.me work email");
+        }
         const openId = resolveWorkosOpenId(user.id);
         const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
         await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });

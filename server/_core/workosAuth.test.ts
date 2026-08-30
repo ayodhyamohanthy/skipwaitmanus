@@ -41,11 +41,11 @@ const baseEnv = {
 describe("role-aware WorkOS sign-in entries", () => {
   afterEach(() => { vi.restoreAllMocks(); authUrl.mockClear(); });
 
-  it("sends the administrator gate to AuthKit with a login hint for the durable admin only", async () => {
+  it("sends the administrator gate to AuthKit with the admin state marker and login hint for the durable admin only", async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
     const allowed = await request(app).get("/api/auth/workos/admin?email=ayodhya@skipwait.me");
     expect(allowed.status).toBe(302);
-    expect(authUrl).toHaveBeenCalledWith(expect.objectContaining({ loginHint: "ayodhya@skipwait.me", screenHint: "sign-in" }));
+    expect(authUrl).toHaveBeenCalledWith(expect.objectContaining({ loginHint: "ayodhya@skipwait.me", screenHint: "sign-in", state: "skipwait-admin" }));
     const denied = await request(app).get("/api/auth/workos/admin?email=someone@gmail.com");
     expect(denied.status).toBe(403);
     const deniedNoEmail = await request(app).get("/api/auth/workos/admin");

@@ -5,6 +5,7 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
@@ -287,7 +288,7 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
   return verifiedEmployerDomainFromCandidates(pageEvidence.candidates, verifiedDomains.map(row => row.domain));
 }
 
-const consumerEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);
+const consumerEmailDomains = new Set<string>(CONSUMER_EMAIL_DOMAINS);
 export function isWorkEmailDomain(domain: string): boolean { return Boolean(domain) && !consumerEmailDomains.has(domain.trim().toLowerCase()); }
 
 export function isVerifiedEmployeeOfCompany(profile: { accountType?: string | null; workEmailDomain?: string | null; workEmailVerifiedAt?: Date | null }, companyDomain: string) {

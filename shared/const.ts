@@ -35,3 +35,14 @@ export const decodeOAuthState = (state: string): OAuthState => {
   }
   return { redirectUri: decoded };
 };
+
+// Canonical email-plane rules shared by client and server. The referrer plane
+// rejects these consumer domains; the seeker plane allows them. Keep the
+// server list (server/db.ts consumerEmailDomains) in sync with this set.
+export const CONSUMER_EMAIL_DOMAINS = [
+  "gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com",
+] as const;
+
+export function isCorporateEmailDomain(domain: string): boolean {
+  return Boolean(domain) && !CONSUMER_EMAIL_DOMAINS.includes(domain.trim().toLowerCase() as (typeof CONSUMER_EMAIL_DOMAINS)[number]);
+}
