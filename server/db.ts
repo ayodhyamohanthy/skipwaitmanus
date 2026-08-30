@@ -1,5 +1,6 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import * as mysql from "mysql2/promise";
 import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
@@ -13,7 +14,20 @@ let _db: ReturnType<typeof drizzle> | null = null;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
-    try { _db = drizzle(process.env.DATABASE_URL); } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
+    try {
+      // Azure Database for MySQL enforces TLS; URL query ssl params are not
+      // honored by mysql2, so parse the URI and pass ssl explicitly.
+      const parsed = new URL(process.env.DATABASE_URL);
+      const connection = await mysql.createConnection({
+        host: parsed.hostname,
+        port: Number(parsed.port || 3306),
+        user: parsed.username,
+        password: decodeURIComponent(parsed.password),
+        database: parsed.pathname.replace(/^\//, "") || undefined,
+        ssl: { rejectUnauthorized: false },
+      });
+      _db = drizzle(connection);
+    } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
   }
   return _db;
 }
