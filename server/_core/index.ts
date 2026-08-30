@@ -27,10 +27,10 @@ import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
 import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
 import { sendTransactionalEmail } from "../emailDelivery";
-import { createWorkEmailOtpService } from "../workEmailOtp";
+import { workEmailOtpService } from "../workEmailOtp";
 import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
+import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 
-const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async ({ to, code }) => sendTransactionalEmail({ to, subject: "Your skipwait.me verification code", text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email.` }) });
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -77,6 +77,8 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
+  // Referrer OTP-first login is a public surface, always registered.
+  registerReferrerOtpLoginRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
   else registerDevAuthRoutes(app);
   app.use(materialErrorAlertMiddleware);

@@ -2,6 +2,7 @@ import { createHash, randomInt } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { workEmailOtpCodes } from "../drizzle/schema";
 import { getDb, isWorkEmailDomain } from "./db";
+import { sendTransactionalEmail } from "./emailDelivery";
 
 export type WorkEmailOtpDeliveryInput = { to: string; code: string };
 
@@ -114,4 +115,13 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
   };
 }
 
-export const workEmailOtpService = createWorkEmailOtpService();
+// Shared wired instance: delivers codes via the transactional sender
+// (ZeptoMail primary, Resend fallback). index.ts and the OTP login routes
+// both use this instance so delivery is configured exactly once.
+export const workEmailOtpService = createWorkEmailOtpService({
+  sendEmail: async ({ to, code }) => sendTransactionalEmail({
+    to,
+    subject: "Your skipwait.me verification code",
+    text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email — nothing changes.`,
+  }),
+});
