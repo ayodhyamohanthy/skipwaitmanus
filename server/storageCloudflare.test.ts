@@ -6,7 +6,8 @@ describe("Cloudflare R2 storage configuration gate", () => {
     previous.forEach(([key]) => { delete process.env[key]; });
     const mod = await import("./storageCloudflare");
     expect(mod.r2Configured()).toBe(false);
-    expect(() => { void mod.storagePut("x", Buffer.from("y")); }).toThrow(/R2 storage is not configured/);
+    // storagePut is async: the rejection surfaces as a rejected promise, not a sync throw.
+    await expect(mod.storagePut("x", Buffer.from("y"))).rejects.toThrow(/R2 storage is not configured/);
     previous.forEach(([key, value]) => { if (value !== undefined) process.env[key] = value; });
   });
 });
