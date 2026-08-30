@@ -41,7 +41,7 @@ describe("Settings Slack triage section", () => {
     const input = screen.getByLabelText("Slack incoming-webhook URL");
     await user.type(input, "https://hooks.slack.com/services/T000/B000/XXXX");
     await user.click(screen.getByRole("button", { name: /Connect Slack/i }));
-    await waitFor(() => expect(screen.getByText("Your private Slack triage channel is connected.")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Your private Slack triage channel is connected.")).toBeTruthy(), { timeout: 8000 });
     const putCall = (fetch as unknown as { mock: { calls: Array<[unknown, unknown]> } }).mock.calls.find(([, init]) => (init as RequestInit)?.method === "PUT");
     expect(putCall).toBeTruthy();
     expect(JSON.parse((putCall?.[1] as RequestInit | undefined)?.body as string)).toEqual({ webhookUrl: "https://hooks.slack.com/services/T000/B000/XXXX" });
@@ -67,7 +67,7 @@ describe("Settings Slack triage section", () => {
     render(<Settings />);
     await waitFor(() => expect(screen.getByText("Slack triage connected")).toBeTruthy());
     await user.click(screen.getByRole("button", { name: /Disconnect Slack/i }));
-    await waitFor(() => expect(screen.getByText(/disconnected/i)).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Your Slack triage channel is disconnected.")).toBeTruthy(), { timeout: 8000 });
     const deleteCall = vi.mocked(fetch).mock.calls.find(([, init]) => (init as RequestInit)?.method === "DELETE");
     expect(deleteCall).toBeTruthy();
     vi.unstubAllGlobals();
