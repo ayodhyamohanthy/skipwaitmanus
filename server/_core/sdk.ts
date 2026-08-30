@@ -24,6 +24,8 @@ export type SessionPayload = {
   name: string;
 };
 
+const MIN_SESSION_SECRET_LENGTH = 32;
+
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
 const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfoWithJwt`;
@@ -160,8 +162,21 @@ class SDKServer {
     return new Map(Object.entries(parsed));
   }
 
+  /**
+   * HS256 session keys are only as strong as `JWT_SECRET`. An empty or short
+   * secret lets anyone mint a session for any `openId`, so refuse to sign or
+   * verify instead of silently accepting a guessable key.
+   */
   private getSessionSecret() {
     const secret = ENV.cookieSecret;
+    if (!secret) {
+      throw new Error("JWT_SECRET is not configured; refusing to issue or accept session tokens");
+    }
+    if (ENV.isProduction && secret.length < MIN_SESSION_SECRET_LENGTH) {
+      throw new Error(
+        `JWT_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters; refusing to issue or accept session tokens`
+      );
+    }
     return new TextEncoder().encode(secret);
   }
 
