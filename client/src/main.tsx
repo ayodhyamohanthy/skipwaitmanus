@@ -8,6 +8,7 @@ import superjson from "superjson";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import { startLogin } from "./const";
+import { getGlobalAccessToken } from "./_core/accessToken";
 import { resolveDeviceLocale } from "./lib/device";
 import "./index.css";
 
@@ -70,10 +71,12 @@ const trpcClient = trpc.createClient({
       url: "/api/trpc",
       transformer: superjson,
       headers() {
+        // AuthKit SDK access token first (JWT verified server-side via JWKS).
+        const sdkToken = getGlobalAccessToken();
+        if (sdkToken) return { Authorization: `Bearer ${sdkToken}` };
         // Preview auto-login fallback: when the browser blocks iframe cookies
         // (Safari ITP / private browsing / WebView), the runtime mirrors the
         // session into sessionStorage so we can forward it as a Bearer token.
-        // The regular OAuth cookie flow keeps working and takes priority server-side.
         try {
           const raw = sessionStorage.getItem("manus-cookie");
           if (raw) {

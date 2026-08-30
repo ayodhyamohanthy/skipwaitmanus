@@ -20,7 +20,7 @@ import { sdk } from "./sdk";
  * touch real identity providers.
  */
 
-type DevEmailAddress = { id: string; emailAddress: string; verification: { status: "verified" } };
+export type DevEmailAddress = { id: string; emailAddress: string; verification: { status: "verified" | "unverified" } };
 
 export type DevIdentity = {
   account: { id: number; openId: string; role?: "user" | "admin"; name: string | null; email: string | null; loginMethod: string | null };

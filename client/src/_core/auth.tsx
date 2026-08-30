@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
+import { setGlobalAccessToken } from "./accessToken";
 
 /**
  * Clerk-compat provider backed by WorkOS AuthKit.
@@ -32,11 +33,6 @@ type CompatValue = {
 
 const CompatContext = createContext<CompatValue | null>(null);
 
-function authkitSignInUrl(): string {
-  // Same-origin server route 302s to AuthKit with the right client/redirect.
-  return "/api/auth/workos/sign-in";
-}
-
 function Inner({ children }: { children: React.ReactNode }) {
   const auth = useWorkOSAuth();
 
@@ -50,14 +46,34 @@ function Inner({ children }: { children: React.ReactNode }) {
       }
     : null;
 
-  const openSignIn = useCallback(() => { window.location.href = authkitSignInUrl(); }, []);
+  const openSignIn = useCallback(() => {
+    // SDK-first: use AuthKit's own PKCE sign-in URL (redirects back to this
+    // origin; the SDK handles the ?code= exchange and session on return).
+    auth.signIn().catch(() => { window.location.href = "/api/auth/workos/sign-in"; });
+  }, [auth.signIn]);
+
+  // Publish the SDK access token for non-React API clients (tRPC link).
+  useEffect(() => {
+    let cancelled = false;
+    const publish = async () => {
+      if (!auth.user) { setGlobalAccessToken(null); return; }
+      try {
+        const token = await auth.getAccessToken();
+        if (!cancelled) setGlobalAccessToken(token);
+      } catch { if (!cancelled) setGlobalAccessToken(null); }
+    };
+    void publish();
+    return () => { cancelled = true; };
+  }, [auth.user, auth.getAccessToken]);
 
   const value = useMemo<CompatValue>(
     () => ({
       isLoaded: !auth.isLoading,
       isSignedIn: Boolean(auth.user),
       userId: auth.user?.id ?? null,
-      getToken: async () => null,
+      getToken: async () => {
+        try { return await auth.getAccessToken(); } catch { return null; }
+      },
       signOut: async () => {
         try {
           await auth.signOut();

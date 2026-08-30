@@ -1,42 +1,73 @@
 import { WorkOS } from "@workos-inc/node";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Express, Request } from "express";
-import { resolveDevIdentity, type DevIdentity } from "./devAuth";
 import * as db from "../db";
+import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./devAuth";
 import { getSessionCookieOptions } from "./cookies";
 
 /**
  * WorkOS AuthKit authentication for production skipwait.me.
  *
- * AuthKit hosts the sign-in UI (email code, Google, Microsoft, SSO). After the
- * AuthKit callback this module upserts the WorkOS user and issues the SAME
- * app_session_id JWT used by the managed-OAuth and dev-auth paths, so every
- * downstream identity check keeps working unchanged (resolveDevIdentity
- * verifies that JWT and loads the user by openId).
+ * SDK-first flow: the AuthKit React SDK (client/src/_core/auth.tsx) runs its
+ * own PKCE sign-in in the browser and holds a WorkOS access JWT. Every API
+ * call presents it as `Authorization: Bearer <jwt>`; this module verifies the
+ * JWT against WorkOS's published JWKS and maps the user by openId, upserting
+ * on first sight. The resulting identity has the same shape resolveDevIdentity
+ * produces, so every route works unchanged.
+ *
+ * The server redirect routes (/api/auth/workos/sign-in, /callback, /logout)
+ * remain for the admin plane and legacy flows; they issue the same
+ * app_session_id cookie the dev-auth path uses.
  *
  * Registered only when WORKOS_CLIENT_ID, WORKOS_API_KEY, and
- * WORKOS_COOKIE_PASSWORD are configured AND Clerk is not (CLERK_SECRET_KEY
- * unset), so exactly one production auth authority is active at a time.
- *
- * Work-email enrollment: AuthKit verifies the sign-in email itself
- * (emailVerified), so the signed-in user's verified address enrolls directly.
- * Enrollment of a separate company address is handled server-side by
- * server/workEmailOtp.ts and delivered with ZeptoMail.
+ * WORKOS_COOKIE_PASSWORD are configured AND Clerk is not.
  */
 
 export function workosConfigured(): boolean {
   return Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD && !process.env.CLERK_SECRET_KEY);
 }
 
-export type WorkosIdentity = DevIdentity;
-
-/** Resolve the signed-in WorkOS user from the app session JWT (fail-closed). */
-export async function resolveWorkosIdentity(req: Request): Promise<WorkosIdentity | undefined> {
-  return resolveDevIdentity(req);
-}
-
 export function resolveWorkosOpenId(workosUserId: string): string {
   return `workos_${workosUserId}`.slice(0, 64);
+}
+
+let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
+function workosJwks() {
+  if (!jwksCache) jwksCache = createRemoteJWKSet(new URL("https://api.workos.com/sso/jwks/client_01M18Q4VRZYVY01H3SBSNVFZB2/"));
+  return jwksCache;
+}
+
+/** Verify a WorkOS access JWT (Bearer) and map it to the app identity. */
+async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
+  const { payload } = await jwtVerify(bearer, workosJwks(), { issuer: "https://api.workos.com" });
+  const sub = typeof payload.sub === "string" ? payload.sub : "";
+  if (!sub) return undefined;
+  const openId = resolveWorkosOpenId(sub);
+  const email = typeof payload.email === "string" ? payload.email : null;
+  const emailVerified = payload.email_verified === true;
+  const name = typeof payload.name === "string" && payload.name ? payload.name : email?.split("@")[0] ?? null;
+  await db.upsertUser({ openId, name, email, loginMethod: "workos", lastSignedIn: new Date() });
+  const account = await db.getUserByOpenId(openId);
+  if (!account) return undefined;
+  const primaryEmail: DevEmailAddress | null = email
+    ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } }
+    : null;
+  return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+}
+
+/** Identity resolution for the WorkOS plane: SDK JWT first, app session second. */
+export async function resolveWorkosIdentity(req: Request): Promise<DevIdentity | undefined> {
+  const authHeader = req.headers.authorization;
+  const bearer = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined;
+  if (bearer && bearer.split(".").length === 3) {
+    try {
+      return await identityFromWorkosJwt(bearer);
+    } catch (error) {
+      console.warn("[Auth] WorkOS JWT verification failed:", (error as Error).message?.slice(0, 120));
+    }
+  }
+  return resolveDevIdentity(req);
 }
 
 export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) {
@@ -57,12 +88,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       ...(loginHint ? { loginHint } : {}),
     });
 
-    app.get("/api/auth/workos/sign-in", (req, res) => {
-      const returnTo = typeof req.query.return === "string" ? req.query.return : "";
-      const state = returnTo && returnTo.startsWith("/") ? "return=" + encodeURIComponent(returnTo) : "skipwait-auth";
-      res.redirect(302, workos.userManagement.getAuthorizationUrl({ provider: "authkit", redirectUri: redirectUriFor(req), state, screenHint: "sign-in" }));
-    });
+    app.get("/api/auth/workos/sign-in", (req, res) => res.redirect(302, authorizationUrl("sign-in", redirectUriFor(req))));
     app.get("/api/auth/workos/sign-up", (req, res) => res.redirect(302, authorizationUrl("sign-up", redirectUriFor(req))));
+
     // Administrator plane: only the durable skipwait.me admin identity may
     // proceed. Any other address is bounced before AuthKit is ever reached.
     app.get("/api/auth/workos/admin", (req, res) => {
@@ -98,11 +126,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
         await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
-        const token = await (await import("./sdk")).sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
+        const token = await sdkCreateSessionToken(openId, name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
-        // Return the user to where their journey started: /referrer keeps any
-        // invite query params so the coverage flow resumes after sign-in.
-        const returnTo = typeof req.query.state === "string" && req.query.state.startsWith("return=") ? decodeURIComponent(req.query.state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
+        const returnTo = state.startsWith("return=") ? decodeURIComponent(state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
         res.redirect(302, returnTo);
       } catch {
         res.status(502).send("We could not complete sign-in. Please try again.");
@@ -115,4 +141,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       res.json({ signedOut: true });
     });
   };
+}
+
+async function sdkCreateSessionToken(openId: string, name: string): Promise<string> {
+  const { sdk } = await import("./sdk");
+  return sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
 }

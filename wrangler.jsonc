@@ -1,0 +1,33 @@
+// Cloudflare Containers deployment for the skipwait.me API.
+{
+  "name": "skipwait-api",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-01",
+  "containers": [
+    {
+      "class_name": "SkipwaitApi",
+      "image": "./Dockerfile",
+      "max_instances": 2,
+      "name": "skipwait-api"
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SkipwaitApi",
+        "class_name": "SkipwaitApi"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "SkipwaitApi"
+      ]
+    }
+  ],
+  "vars": {
+    "NODE_ENV": "production"
+  }
+}

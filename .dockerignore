@@ -4,6 +4,6 @@ dist
 structure.txt
 .env
 .env.local
-*.md
+*.log
 docs
 research
