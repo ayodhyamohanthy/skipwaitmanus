@@ -155,7 +155,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       await deps.saveReferrerSlackWebhook(identity.account.id, webhookUrl);
       record({ actorUserId: identity.account.id, action: "slack_webhook.saved", outcome: "success", resourceType: "slack_webhook", metadata: { active: true } });
       res.json({ connected: true });
-    } catch { res.status(500).json({ error: "We could not connect your Slack triage channel" }); }
+    } catch (error) { respondInternalFailure(res, "PUT /api/referrer/slack-webhook", error, { status: 500, message: "We could not connect your Slack triage channel" }); }
   });
   app.get("/api/referrer/slack-webhook", async (req, res) => {
     try {
@@ -165,7 +165,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store");
       const status = await deps.getReferrerSlackWebhookStatus(identity.account.id);
       res.json({ connected: status.connected, active: status.connected ? status.active !== false : false });
-    } catch { res.status(500).json({ error: "We could not load your Slack triage delivery status" }); }
+    } catch (error) { respondInternalFailure(res, "GET /api/referrer/slack-webhook", error, { status: 500, message: "We could not load your Slack triage delivery status" }); }
   });
   app.delete("/api/referrer/slack-webhook", async (req, res) => {
     try {
@@ -175,7 +175,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.deactivateReferrerSlackWebhook(identity.account.id);
       record({ actorUserId: identity.account.id, action: "slack_webhook.disconnected", outcome: "success", resourceType: "slack_webhook", metadata: { wasConnected: result.deactivated } });
       res.json({ connected: false });
-    } catch { res.status(500).json({ error: "We could not disconnect your Slack triage channel" }); }
+    } catch (error) { respondInternalFailure(res, "DELETE /api/referrer/slack-webhook", error, { status: 500, message: "We could not disconnect your Slack triage channel" }); }
   });
   app.post("/api/notifications/:notificationId/read", async (req, res) => {
     try {
@@ -307,7 +307,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (result.reason === "rate_limited") return res.status(429).json({ error: "A code was sent recently. Wait a minute before requesting another.", retryAfterSeconds: 60 });
       if (result.reason === "invalid_email") return res.status(400).json({ error: "Enter a valid work email address" });
       return res.status(503).json({ error: result.reason === "not_configured" ? "Work-email verification is unavailable right now" : "We could not deliver the code. Try again shortly." });
-    } catch { res.status(500).json({ error: "We could not send the verification code" }); }
+    } catch (error) { respondInternalFailure(res, "POST /api/work-email/otp/send", error, { status: 500, message: "We could not send the verification code" }); }
   });
   app.post("/api/work-email/otp/verify", async (req, res) => {
     try {
@@ -321,7 +321,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       await deps.registerWorkEmailOtpFailure?.({ email, code });
       record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
       res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
-    } catch { res.status(500).json({ error: "We could not verify the code" }); }
+    } catch (error) { respondInternalFailure(res, "POST /api/work-email/otp/verify", error, { status: 500, message: "We could not verify the code" }); }
   });
   app.post("/api/company-referrals/verify-work-email", async (req, res) => {
     try {
@@ -399,7 +399,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
           }));
           const slackSentCount = slackDelivery.filter((item: { sent: boolean }) => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: slackSentCount === slackTargets.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: slackTargets.length, sentCount: slackSentCount } });
-        } catch { record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain }); }
+        } catch (error) { logHandledError("POST /api/company-referrals review Slack dispatch", error, { status: 500 }); record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain }); }
       }
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
