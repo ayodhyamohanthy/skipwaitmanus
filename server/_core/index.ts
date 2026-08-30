@@ -8,7 +8,13 @@ import { registerOAuthRoutes } from "./oauth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { dataUrlToBuffer, sanitizeDocumentName } from "../documentUpload";
-import { storageGetSignedUrl, storagePut } from "../storage";
+import { storageGetSignedUrl as forgeStorageGetSignedUrl, storagePut as forgeStoragePut } from "../storage";
+import { r2Configured, storagePut as r2StoragePut, storageGetSignedUrl as r2StorageGetSignedUrl } from "../storageCloudflare";
+
+// Document storage: Cloudflare R2 when configured (production), legacy Forge
+// proxy otherwise (managed dev). Same storagePut/storageGetSignedUrl contract.
+const storagePut = r2Configured() ? r2StoragePut : forgeStoragePut;
+const storageGetSignedUrl = r2Configured() ? r2StorageGetSignedUrl : forgeStorageGetSignedUrl;
 import * as db from "../db";
 import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
