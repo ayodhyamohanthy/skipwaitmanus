@@ -1127,7 +1127,7 @@ export async function grantPendingActionRewards(userId: number, role: WalletRole
       await tx.insert(notifications).values({ userId, category: "system", title: "Referral credits unlocked", body: `Your ${total} invite credit${total === 1 ? "" : "s"} were added after your first referral action. Keep going!` });
     });
   } catch (error) {
-    console.warn("[Credits] Failed to grant pending action rewards:", error);
+    logHandledError("grant pending action rewards", error);
   }
 }
 
