@@ -57,7 +57,11 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       ...(loginHint ? { loginHint } : {}),
     });
 
-    app.get("/api/auth/workos/sign-in", (req, res) => res.redirect(302, authorizationUrl("sign-in", redirectUriFor(req))));
+    app.get("/api/auth/workos/sign-in", (req, res) => {
+      const returnTo = typeof req.query.return === "string" ? req.query.return : "";
+      const state = returnTo && returnTo.startsWith("/") ? "return=" + encodeURIComponent(returnTo) : "skipwait-auth";
+      res.redirect(302, workos.userManagement.getAuthorizationUrl({ provider: "authkit", redirectUri: redirectUriFor(req), state, screenHint: "sign-in" }));
+    });
     app.get("/api/auth/workos/sign-up", (req, res) => res.redirect(302, authorizationUrl("sign-up", redirectUriFor(req))));
     // Administrator plane: only the durable skipwait.me admin identity may
     // proceed. Any other address is bounced before AuthKit is ever reached.
@@ -96,7 +100,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
         const token = await (await import("./sdk")).sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
-        res.redirect(302, process.env.WORKOS_POST_SIGNIN_PATH || "/");
+        // Return the user to where their journey started: /referrer keeps any
+        // invite query params so the coverage flow resumes after sign-in.
+        const returnTo = typeof req.query.state === "string" && req.query.state.startsWith("return=") ? decodeURIComponent(req.query.state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
+        res.redirect(302, returnTo);
       } catch {
         res.status(502).send("We could not complete sign-in. Please try again.");
       }

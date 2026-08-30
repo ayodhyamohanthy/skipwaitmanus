@@ -35,7 +35,9 @@ export function WorkEmailSignIn({ inviteCode, compact = false }: { inviteCode?: 
       const response = await fetch("/api/work-email/otp/send", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail }) });
       const payload = (await response.json().catch(() => ({}))) as { sent?: boolean; error?: string; retryAfterSeconds?: number };
       if (!response.ok || !payload.sent) {
-        const detail = payload.error || (payload.error === undefined && payload.sent === false ? "We could not send a code right now. Try again shortly." : "We could not start secure company-email access.");
+        // Surface the server's specific message (rate limits, sign-in required,
+        // delivery failures) instead of a generic mask, so users know what to do.
+        const detail = payload.error || (payload.sent === false ? "We could not send a code right now. Try again shortly." : "We could not start secure company-email access.");
         setError(detail);
         return;
       }
