@@ -217,9 +217,16 @@ export default defineConfig({
       // shim backed by server/_core/devAuth.ts. When a publishable key exists,
       // the real Clerk SDK ships unchanged. Regex finds = exact match, so
       // @clerk/react and @clerk/react/legacy each resolve to the shim itself.
-      ...((process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.VITE_WORKOS_ENABLED === "true")
+      ...(process.env.VITE_CLERK_PUBLISHABLE_KEY
         ? []
-        : [
+        : process.env.VITE_WORKOS_ENABLED === "true"
+          ? [
+              // WorkOS AuthKit is the active provider: re-expose the Clerk
+              // hook surface through the WorkOS-backed compat shim.
+              { find: /^@clerk\/react$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/clerkWorkOsShim.tsx") },
+              { find: /^@clerk\/react\/legacy$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/clerkWorkOsShim.tsx") },
+            ]
+          : [
             { find: /^@clerk\/react$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/clerkShim.tsx") },
             { find: /^@clerk\/react\/legacy$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/clerkShim.tsx") },
           ]),

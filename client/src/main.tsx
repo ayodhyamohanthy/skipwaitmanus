@@ -3,7 +3,7 @@ import { COOKIE_NAME, UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
-import { AuthKitProvider } from "@workos-inc/authkit-react";
+import { ClerkProvider } from "@clerk/react";
 import superjson from "superjson";
 import { registerSW } from "virtual:pwa-register";
 import App from "./App";
@@ -100,11 +100,11 @@ const trpcClient = trpc.createClient({
 });
 
 createRoot(document.getElementById("root")!).render(
-  <AuthKitProvider clientId={import.meta.env.VITE_WORKOS_CLIENT_ID}>
+  <ClerkProvider>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
         <App />
       </QueryClientProvider>
     </trpc.Provider>
-  </AuthKitProvider>
+  </ClerkProvider>
 );

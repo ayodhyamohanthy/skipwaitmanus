@@ -1,0 +1,132 @@
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
+
+/**
+ * Clerk-compat provider backed by WorkOS AuthKit.
+ *
+ * ~20 call sites import useAuth/useUser/SignInButton/useClerk from
+ * @clerk/react. Production auth is WorkOS AuthKit, so this module re-exposes
+ * the Clerk-shaped hooks on top of the WorkOS context. The vite alias resolves
+ * @clerk/react to THIS file when VITE_WORKOS_ENABLED=true.
+ *
+ * - useAuth()  -> { isLoaded, isSignedIn, userId, getToken, signOut }
+ * - useUser()  -> { isLoaded, isSignedIn, user } (Clerk user shape)
+ * - useClerk() -> { openSignIn, signOut } — openSignIn routes to AuthKit
+ * - SignInButton navigates to AuthKit; UserButton renders a minimal avatar.
+ * - getToken() resolves null: server routes authenticate via the
+ *   app_session_id cookie (AuthKit fetch sends credentials: include).
+ */
+
+type EmailAddress = { emailAddress: string; verification: { status: string } };
+type CompatUser = { id: string; fullName: string | null; imageUrl: string | null; primaryEmailAddress: { emailAddress: string } | null; emailAddresses: EmailAddress[] } | null;
+
+type CompatValue = {
+  isLoaded: boolean;
+  isSignedIn: boolean;
+  userId: string | null;
+  getToken: () => Promise<string | null>;
+  signOut: () => Promise<void>;
+  user: CompatUser;
+  openSignIn: () => void;
+};
+
+const CompatContext = createContext<CompatValue | null>(null);
+
+function authkitSignInUrl(): string {
+  // Same-origin server route 302s to AuthKit with the right client/redirect.
+  return "/api/auth/workos/sign-in";
+}
+
+function Inner({ children }: { children: React.ReactNode }) {
+  const auth = useWorkOSAuth();
+
+  const user: CompatUser = auth.user
+    ? {
+        id: auth.user.id,
+        fullName: [auth.user.firstName, auth.user.lastName].filter(Boolean).join(" ") || null,
+        imageUrl: auth.user.profilePictureUrl ?? null,
+        primaryEmailAddress: { emailAddress: auth.user.email },
+        emailAddresses: [{ emailAddress: auth.user.email, verification: { status: auth.user.emailVerified ? "verified" : "unverified" } }],
+      }
+    : null;
+
+  const openSignIn = useCallback(() => { window.location.href = authkitSignInUrl(); }, []);
+
+  const value = useMemo<CompatValue>(
+    () => ({
+      isLoaded: !auth.isLoading,
+      isSignedIn: Boolean(auth.user),
+      userId: auth.user?.id ?? null,
+      getToken: async () => null,
+      signOut: async () => {
+        try {
+          await auth.signOut();
+        } catch { /* already signed out */ }
+        try { await fetch("/api/auth/workos/logout", { method: "POST", credentials: "include" }); } catch { /* best effort */ }
+        window.location.href = "/";
+      },
+      user,
+      openSignIn,
+    }),
+    [auth.isLoading, auth.user, auth.signOut, openSignIn, user],
+  );
+
+  return <CompatContext.Provider value={value}>{children}</CompatContext.Provider>;
+}
+
+export function ClerkProvider({ children }: { children: React.ReactNode; publishableKey?: string }) {
+  const clientId = import.meta.env.VITE_WORKOS_CLIENT_ID || "";
+  if (!clientId) {
+    // Misconfiguration should be loud in the console, not a blank page.
+    console.error("[auth] VITE_WORKOS_CLIENT_ID is not set; WorkOS-backed ClerkProvider cannot initialize AuthKit");
+  }
+  return (
+    <WorkOSAuthKitProvider clientId={clientId}>
+      <Inner>{children}</Inner>
+    </WorkOSAuthKitProvider>
+  );
+}
+
+function useCompat(hookName: string): CompatValue {
+  const value = useContext(CompatContext);
+  if (!value) throw new Error(`${hookName} must be used within <ClerkProvider> (WorkOS-backed)`);
+  return value;
+}
+
+export function useAuth() {
+  const compat = useCompat("useAuth");
+  return { isLoaded: compat.isLoaded, isSignedIn: compat.isSignedIn, userId: compat.userId, getToken: compat.getToken, signOut: compat.signOut };
+}
+
+export function useUser() {
+  const compat = useCompat("useUser");
+  return { isLoaded: compat.isLoaded, isSignedIn: compat.isSignedIn, user: compat.user };
+}
+
+export function useClerk() {
+  const compat = useCompat("useClerk");
+  return { openSignIn: compat.openSignIn, signOut: compat.signOut };
+}
+
+export function SignInButton({ children, className }: { mode?: "modal" | "redirect"; children?: React.ReactNode; className?: string }) {
+  const compat = useCompat("SignInButton");
+  return <button type="button" className={className} onClick={compat.openSignIn}>{children ?? "Sign in"}</button>;
+}
+
+export function SignedIn({ children }: { children: React.ReactNode }) {
+  return useCompat("SignedIn").isSignedIn ? <>{children}</> : null;
+}
+
+export function SignedOut({ children }: { children: React.ReactNode }) {
+  return useCompat("SignedOut").isSignedIn ? null : <>{children}</>;
+}
+
+export function UserButton() {
+  const compat = useCompat("UserButton");
+  if (!compat.isSignedIn) return null;
+  return (
+    <button type="button" aria-label="Account" onClick={() => { window.location.href = "/settings"; }} className="grid h-8 w-8 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white text-slate-600">
+      {compat.user?.imageUrl ? <img src={compat.user.imageUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs font-bold">{compat.user?.fullName?.[0] ?? "U"}</span>}
+    </button>
+  );
+}
