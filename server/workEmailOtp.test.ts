@@ -18,14 +18,18 @@ function memoryTable() {
   };
 }
 
-vi.mock("./db", () => ({
-  getDb: async () => null,
-}));
+vi.mock(import("./db"), async importOriginal => {
+  const actual = await importOriginal();
+  return { ...actual, getDb: async () => null };
+});
 
 describe("work email OTP validation", () => {
-  it("accepts plausible addresses and rejects malformed ones", () => {
+  it("accepts only plausible company addresses and rejects malformed or consumer ones", () => {
     expect(isValidWorkEmailOtpEmail("ref@acme.com")).toBe(true);
     expect(isValidWorkEmailOtpEmail("REF@ACME.COM")).toBe(true);
+    // Referrer-plane OTP is work-email-only: consumer inboxes never receive codes.
+    expect(isValidWorkEmailOtpEmail("seeker@gmail.com")).toBe(false);
+    expect(isValidWorkEmailOtpEmail("person@outlook.com")).toBe(false);
     expect(isValidWorkEmailOtpEmail("not-an-email")).toBe(false);
     expect(isValidWorkEmailOtpEmail("")).toBe(false);
     expect(isValidWorkEmailOtpEmail("a@b")).toBe(false);

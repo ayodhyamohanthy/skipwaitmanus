@@ -1,7 +1,7 @@
 import { createHash, randomInt } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { workEmailOtpCodes } from "../drizzle/schema";
-import { getDb } from "./db";
+import { getDb, isWorkEmailDomain } from "./db";
 
 export type WorkEmailOtpDeliveryInput = { to: string; code: string };
 
@@ -18,7 +18,10 @@ const MAX_ATTEMPTS = 5;
 const MAX_ACTIVE_PER_EMAIL = 3;
 
 export function isValidWorkEmailOtpEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value) && value.length <= 320;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value) || value.length > 320) return false;
+  const domain = value.slice(value.lastIndexOf("@") + 1).toLowerCase();
+  // Referrer-plane login is work-email-only: consumer inboxes never receive codes.
+  return isWorkEmailDomain(domain);
 }
 
 export function hashCode(email: string, code: string): string {
