@@ -1,7 +1,7 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
-import { createHash, randomUUID } from "node:crypto";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
@@ -431,6 +431,61 @@ export async function createReferrerReviewEmailLinks(requestId: number, recipien
     links.push({ referrerId: recipient.userId, email, linkToken, companyDomain: recipient.companyDomain });
   }
   return links;
+}
+
+// ---- Opt-in private Slack triage delivery (encrypted at rest) ----
+function slackWebhookMasterKey(): Buffer {
+  const secret = process.env.JWT_SECRET || "skipwait-local-development-secret";
+  return createHash("sha256").update(`skipwait:slack-webhook:${secret}`).digest();
+}
+function encryptSlackWebhookUrl(url: string): string {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", slackWebhookMasterKey(), iv);
+  const encrypted = Buffer.concat([cipher.update(url, "utf8"), cipher.final(), cipher.getAuthTag()]);
+  return `${iv.toString("base64")}:${encrypted.toString("base64")}`;
+}
+function decryptSlackWebhookUrl(stored: string): string | undefined {
+  try {
+    const [ivPart, dataPart] = stored.split(":");
+    if (!ivPart || !dataPart) return undefined;
+    const decipher = createDecipheriv("aes-256-gcm", slackWebhookMasterKey(), Buffer.from(ivPart, "base64"));
+    const payload = Buffer.from(dataPart, "base64");
+    decipher.setAuthTag(payload.subarray(-16));
+    return Buffer.concat([decipher.update(payload.subarray(0, -16)), decipher.final()]).toString("utf8");
+  } catch { return undefined; }
+}
+
+export async function saveReferrerSlackWebhook(userId: number, webhookUrl: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const encrypted = encryptSlackWebhookUrl(webhookUrl);
+  await db.insert(referrerSlackWebhooks).values({ referrerId: userId, webhookUrl: encrypted, isActive: true }).onDuplicateKeyUpdate({ set: { webhookUrl: encrypted, isActive: true, updatedAt: new Date() } });
+  return { connected: true as const };
+}
+
+export async function getReferrerSlackWebhookStatus(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ isActive: referrerSlackWebhooks.isActive, updatedAt: referrerSlackWebhooks.updatedAt }).from(referrerSlackWebhooks).where(eq(referrerSlackWebhooks.referrerId, userId)).limit(1);
+  const row = rows[0];
+  return row ? { connected: true, active: row.isActive, updatedAt: row.updatedAt } : { connected: false as const, active: false as const };
+}
+
+export async function deactivateReferrerSlackWebhook(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const updated = await db.update(referrerSlackWebhooks).set({ isActive: false, updatedAt: new Date() }).where(eq(referrerSlackWebhooks.referrerId, userId));
+  return { deactivated: Number((updated as unknown as Array<{ affectedRows: number }>)[0]?.affectedRows ?? 0) > 0 };
+}
+
+export async function getActiveReferrerSlackWebhooks(referrerIds: number[]) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const safeIds = referrerIds.filter(id => Number.isInteger(id) && id > 0);
+  if (safeIds.length === 0) return [];
+  const rows = await db.select({ referrerId: referrerSlackWebhooks.referrerId, webhookUrl: referrerSlackWebhooks.webhookUrl }).from(referrerSlackWebhooks).where(and(eq(referrerSlackWebhooks.isActive, true), inArray(referrerSlackWebhooks.referrerId, safeIds)));
+  const deliveries: Array<{ referrerId: number; webhookUrl: string }> = [];
+  for (const row of rows) {
+    const decrypted = decryptSlackWebhookUrl(row.webhookUrl);
+    if (decrypted) deliveries.push({ referrerId: row.referrerId, webhookUrl: decrypted });
+  }
+  return deliveries;
 }
 
 export async function prepareReferrerReviewEmailNotifications(requestId: number) {

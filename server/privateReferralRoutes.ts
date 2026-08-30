@@ -4,6 +4,7 @@ import { validatePrivateDocument } from "./documentValidation";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
+import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
 import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
 import { isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
@@ -57,6 +58,11 @@ export type PrivateReferralRouteDeps = {
   resolveReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<{ requestId: number }>;
   consumeReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<void>;
   sendReferrerReviewEmail?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
+  saveReferrerSlackWebhook?: (userId: number, webhookUrl: string) => Promise<{ connected: boolean }>;
+  getReferrerSlackWebhookStatus?: (userId: number) => Promise<{ connected: boolean; active?: boolean; updatedAt?: Date }>;
+  deactivateReferrerSlackWebhook?: (userId: number) => Promise<{ deactivated: boolean }>;
+  getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
+  sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
@@ -133,6 +139,38 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const notifications = await deps.listNotifications(identity.account.id);
       res.json({ notifications: notifications.map(({ id, category, title, body, readAt, createdAt }) => ({ id, category, title, body, readAt, createdAt })) });
     } catch { res.status(500).json({ error: "We could not load your private updates" }); }
+  });
+  app.put("/api/referrer/slack-webhook", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
+      if (!deps.saveReferrerSlackWebhook) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
+      const webhookUrl = typeof req.body?.webhookUrl === "string" ? req.body.webhookUrl.trim() : "";
+      if (!isValidSlackIncomingWebhookUrl(webhookUrl)) return res.status(400).json({ error: "Use a valid Slack incoming-webhook URL (https://hooks.slack.com/...)" });
+      await deps.saveReferrerSlackWebhook(identity.account.id, webhookUrl);
+      record({ actorUserId: identity.account.id, action: "slack_webhook.saved", outcome: "success", resourceType: "slack_webhook", metadata: { active: true } });
+      res.json({ connected: true });
+    } catch { res.status(500).json({ error: "We could not connect your Slack triage channel" }); }
+  });
+  app.get("/api/referrer/slack-webhook", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
+      if (!deps.getReferrerSlackWebhookStatus) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
+      res.set("Cache-Control", "private, no-store");
+      const status = await deps.getReferrerSlackWebhookStatus(identity.account.id);
+      res.json({ connected: status.connected, active: status.connected ? status.active !== false : false });
+    } catch { res.status(500).json({ error: "We could not load your Slack triage delivery status" }); }
+  });
+  app.delete("/api/referrer/slack-webhook", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to manage your private triage delivery" });
+      if (!deps.deactivateReferrerSlackWebhook) return res.status(503).json({ error: "Slack triage delivery is unavailable right now" });
+      const result = await deps.deactivateReferrerSlackWebhook(identity.account.id);
+      record({ actorUserId: identity.account.id, action: "slack_webhook.disconnected", outcome: "success", resourceType: "slack_webhook", metadata: { wasConnected: result.deactivated } });
+      res.json({ connected: false });
+    } catch { res.status(500).json({ error: "We could not disconnect your Slack triage channel" }); }
   });
   app.post("/api/notifications/:notificationId/read", async (req, res) => {
     try {
@@ -287,15 +325,30 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if ((fastTrackCompanySlug || fastTrackAlias) && (!safeFastTrackCompanySlug || !safeFastTrackAlias)) return res.status(400).json({ error: "This private referral alias is invalid" });
       if (fastTrackCode && !safeFastTrackCode) return res.status(400).json({ error: "This private referral link is invalid" });
       const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias });
+      let reviewLinks: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
       if (deps.prepareReferrerReviewEmailNotifications) {
         try {
-          const reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
+          reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
           const reviewEmailSender = deps.sendReferrerReviewEmail ?? sendReferrerReviewEmail;
           const origin = `${req.protocol}://${req.get("host")}`;
           const delivery = await Promise.all(reviewLinks.map(link => reviewEmailSender({ to: link.email, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` })));
           const sentCount = delivery.filter(item => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: sentCount === reviewLinks.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: reviewLinks.length, sentCount } });
         } catch { record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain }); }
+      }
+      if (deps.getActiveReferrerSlackWebhooks && reviewLinks.length > 0) {
+        try {
+          const slackTargets = await deps.getActiveReferrerSlackWebhooks(reviewLinks.map(link => link.referrerId));
+          const slackSender = deps.sendReferrerSlackDelivery ?? sendReferrerSlackDelivery;
+          const origin = `${req.protocol}://${req.get("host")}`;
+          const slackDelivery = await Promise.all(slackTargets.map(target => {
+            const link = reviewLinks.find(item => item.referrerId === target.referrerId);
+            if (!link) return Promise.resolve({ sent: false as const, reason: "not_configured" as const });
+            return slackSender({ to: target.webhookUrl, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` }).catch(() => ({ sent: false as const, reason: "delivery_failed" as const }));
+          }));
+          const slackSentCount = slackDelivery.filter((item: { sent: boolean }) => item.sent).length;
+          record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: slackSentCount === slackTargets.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: slackTargets.length, sentCount: slackSentCount } });
+        } catch { record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain }); }
       }
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
