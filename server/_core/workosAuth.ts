@@ -35,17 +35,21 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
   return function registerWorkosAuthRoutes(app: Express) {
     if (!workosConfigured()) return;
     const workos = deps.workos ?? new WorkOS(process.env.WORKOS_API_KEY!, { clientId: process.env.WORKOS_CLIENT_ID! });
-    const redirectUri = process.env.WORKOS_REDIRECT_URI || "https://skipwait.me/api/auth/workos/callback";
+    const configuredRedirectUri = process.env.WORKOS_REDIRECT_URI;
+    // In production the canonical URI is fixed (skipwait.me). In dev, derive it
+    // from the request host so any local port works without env edits.
+    const redirectUriFor = (req: { protocol: string; get: (h: string) => string | undefined }) =>
+      configuredRedirectUri || `${req.protocol}://${req.get("host")}/api/auth/workos/callback`;
 
-    const authorizationUrl = (screenHint: "sign-in" | "sign-up") => workos.userManagement.getAuthorizationUrl({
+    const authorizationUrl = (screenHint: "sign-in" | "sign-up", redirectUri: string) => workos.userManagement.getAuthorizationUrl({
       provider: "authkit",
       redirectUri,
       state: "skipwait-auth",
       screenHint,
     });
 
-    app.get("/api/auth/workos/sign-in", (_req, res) => res.redirect(302, authorizationUrl("sign-in")));
-    app.get("/api/auth/workos/sign-up", (_req, res) => res.redirect(302, authorizationUrl("sign-up")));
+    app.get("/api/auth/workos/sign-in", (req, res) => res.redirect(302, authorizationUrl("sign-in", redirectUriFor(req))));
+    app.get("/api/auth/workos/sign-up", (req, res) => res.redirect(302, authorizationUrl("sign-up", redirectUriFor(req))));
 
     app.get("/api/auth/workos/callback", async (req, res) => {
       const code = typeof req.query.code === "string" ? req.query.code : "";

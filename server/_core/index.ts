@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./envBoot";
 import express from "express";
 import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
 import { createServer } from "http";
