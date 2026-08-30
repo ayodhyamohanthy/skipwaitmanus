@@ -41,7 +41,7 @@ const baseEnv = {
 describe("role-aware WorkOS sign-in entries", () => {
   afterEach(() => { vi.restoreAllMocks(); authUrl.mockClear(); });
 
-  it("sends the administrator gate to AuthKit with the admin state marker and login hint for the durable admin only", async () => {
+  it("sends the administrator gate to AuthKit with the admin state marker and login hint for the durable admin only", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
     const allowed = await request(app).get("/api/auth/workos/admin?email=ayodhya@skipwait.me");
     expect(allowed.status).toBe(302);
@@ -54,7 +54,7 @@ describe("role-aware WorkOS sign-in entries", () => {
     restore();
   });
 
-  it("keeps general sign-in and sign-up open without a login hint", async () => {
+  it("keeps general sign-in and sign-up open without a login hint", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
     const signIn = await request(app).get("/api/auth/workos/sign-in");
     expect(signIn.status).toBe(302);

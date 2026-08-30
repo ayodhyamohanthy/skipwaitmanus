@@ -1,6 +1,5 @@
 import "./envBoot";
 import express from "express";
-import { clerkClient, clerkMiddleware, getAuth } from "@clerk/express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
@@ -29,7 +28,7 @@ import { sendReferrerReviewEmail } from "../referrerReviewEmail";
 import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
 import { sendTransactionalEmail } from "../emailDelivery";
 import { createWorkEmailOtpService } from "../workEmailOtp";
-import { createWorkosAuthRoutesRegistrar, workosConfigured } from "./workosAuth";
+import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 
 const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async ({ to, code }) => sendTransactionalEmail({ to, subject: "Your skipwait.me verification code", text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email.` }) });
 
@@ -60,24 +59,14 @@ async function startServer() {
   app.set("trust proxy", true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
-  // Clerk authenticates production traffic. When the repo runs outside the
-  // managed environment (fresh clone, offline demo, CI) no Clerk keys exist,
-  // and clerkMiddleware() would reject every request — including public pages.
-  // In that case fall back to the local dev session (server/_core/devAuth.ts).
-  const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
-  if (clerkConfigured) app.use(clerkMiddleware());
-  // WorkOS AuthKit is the alternative production authority (registered below,
-  // only when Clerk keys are absent). Exactly one provider is ever active.
-  const resolveClerkAccount = clerkConfigured
-    ? async (req: express.Request) => {
-    const auth = getAuth(req);
-    if (!auth.isAuthenticated || !auth.userId) return undefined;
-    const clerkUser = await clerkClient.users.getUser(auth.userId);
-    const primaryEmail = clerkUser.primaryEmailAddress;
-    await db.upsertUser({ openId: auth.userId, name: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null, email: primaryEmail?.emailAddress ?? null, loginMethod: "clerk" });
-    const account = await db.getUserByOpenId(auth.userId);
-    return account ? { account, primaryEmail, emailAddresses: clerkUser.emailAddresses } : undefined;
-  }
+  // WorkOS AuthKit is the only production auth authority. The callback route
+  // (server/_core/workosAuth.ts) verifies the AuthKit session and issues the
+  // app_session_id JWT; resolveWorkosIdentity loads the upserted user for it.
+  // When WorkOS keys are absent entirely (fresh clone, offline demo, CI), the
+  // local dev session keeps the app usable without granting any production
+  // identity.
+  const resolveClerkAccount = workosConfigured()
+    ? resolveWorkosIdentity
     : async (req: express.Request) => {
     const identity = await resolveDevIdentity(req);
     if (!identity) return undefined;
@@ -89,7 +78,7 @@ async function startServer() {
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
-  else if (!clerkConfigured) registerDevAuthRoutes(app);
+  else registerDevAuthRoutes(app);
   app.use(materialErrorAlertMiddleware);
   registerStorageProxy(app);
   registerOAuthRoutes(app);

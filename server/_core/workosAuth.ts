@@ -1,6 +1,7 @@
 import { WorkOS } from "@workos-inc/node";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
-import type { Express } from "express";
+import type { Express, Request } from "express";
+import { resolveDevIdentity, type DevIdentity } from "./devAuth";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
 
@@ -25,6 +26,13 @@ import { getSessionCookieOptions } from "./cookies";
 
 export function workosConfigured(): boolean {
   return Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD && !process.env.CLERK_SECRET_KEY);
+}
+
+export type WorkosIdentity = DevIdentity;
+
+/** Resolve the signed-in WorkOS user from the app session JWT (fail-closed). */
+export async function resolveWorkosIdentity(req: Request): Promise<WorkosIdentity | undefined> {
+  return resolveDevIdentity(req);
 }
 
 export function resolveWorkosOpenId(workosUserId: string): string {
