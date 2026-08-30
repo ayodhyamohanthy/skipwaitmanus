@@ -1,0 +1,5 @@
+# Cloudflare deployment config for skipwait.me
+# Account + OAuth credentials live in wrangler's local config (never committed).
+name = "skipwait"
+compatibility_date = "2026-08-01"
+pages_build_output_dir = "dist/public"
