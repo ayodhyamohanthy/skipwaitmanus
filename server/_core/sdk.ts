@@ -25,6 +25,7 @@ export type SessionPayload = {
 };
 
 const MIN_SESSION_SECRET_LENGTH = 32;
+const LOCAL_SESSION_SECRET = "skipwait-local-development-secret";
 
 const EXCHANGE_TOKEN_PATH = `/webdev.v1.WebDevAuthPublicService/ExchangeToken`;
 const GET_USER_INFO_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserInfo`;
@@ -165,10 +166,12 @@ class SDKServer {
   /**
    * HS256 session keys are only as strong as `JWT_SECRET`. An empty or short
    * secret lets anyone mint a session for any `openId`, so refuse to sign or
-   * verify instead of silently accepting a guessable key.
+   * verify in production instead of silently accepting a guessable key. Outside
+   * production the `app_session_id` contract keeps working on a fixed local key
+   * so the dev-auth and WorkOS callback paths need no extra configuration.
    */
   private getSessionSecret() {
-    const secret = ENV.cookieSecret;
+    const secret = ENV.cookieSecret || (ENV.isProduction ? "" : LOCAL_SESSION_SECRET);
     if (!secret) {
       throw new Error("JWT_SECRET is not configured; refusing to issue or accept session tokens");
     }
