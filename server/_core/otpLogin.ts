@@ -84,4 +84,3 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
     res.json({ signedOut: true });
   });
 }
-
