@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: skipwait-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /api/opportunities
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WORKOS_CLIENT_ID
+        sync: false
+      - key: WORKOS_API_KEY
+        sync: false
+      - key: WORKOS_COOKIE_PASSWORD
+        sync: false
+      - key: WORKOS_REDIRECT_URI
+        value: https://skipwait.me/api/auth/workos/callback
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: ZEPTOMAIL_API_KEY
+        sync: false
+      - key: ZEPTOMAIL_FROM_EMAIL
+        value: noreply@updates.skipwait.me
+      - key: ERROR_ALERT_FROM_EMAIL
+        value: noreply@updates.skipwait.me
+      - key: VITE_WORKOS_CLIENT_ID
+        sync: false
+      - key: VITE_WORKOS_ENABLED
+        value: "true"
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false

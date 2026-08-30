@@ -1,0 +1,9 @@
+node_modules
+dist
+.openclaw
+structure.txt
+.env
+.env.local
+*.md
+docs
+research
