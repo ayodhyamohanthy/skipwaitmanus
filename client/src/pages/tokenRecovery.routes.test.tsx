@@ -9,9 +9,16 @@ vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ isAuthenticated: tru
 vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-clerk-token") }), useClerk: () => ({ openSignIn: vi.fn() }) }));
 const openCheckout = vi.fn();
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: (...args: unknown[]) => openCheckout(...args) }));
+// Deterministic payment-route detection: the main regressions cover the
+// international-first presentation (India revealed via the correction toggle).
+// Host time zones (e.g. Asia/Calcutta) must not change which scenario runs.
+// Individual tests set mockBrowserRoute.current to exercise the other route.
+const mockBrowserRoute = vi.hoisted(() => ({ current: "USD" as "USD" | "INR" }));
+vi.mock("@/lib/paymentRoute", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/paymentRoute")>()), browserPaymentRoute: () => mockBrowserRoute.current }));
 
 function prepareStorage() {
   localStorage.clear();
+  mockBrowserRoute.current = "USD";
   localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
   localStorage.setItem("bridge-tokens", "0");
 }
@@ -73,5 +80,26 @@ describe("secure token checkout routes", () => {
     fireEvent.change(screen.getByRole("spinbutton", { name: "Number of credits to add" }), { target: { value: "5" } });
     expect(screen.getByText("5 referral credits")).toBeTruthy();
     expect(screen.getByRole("button", { name: /continue to pay ₹495 INR/i })).toBeTruthy();
+  });
+
+  it("shows the detected India route first for India browsers, with a quiet international correction", () => {
+    mockBrowserRoute.current = "INR";
+    window.history.pushState({}, "", "/premium");
+    render(<Premium />);
+    expect(screen.getByText("Pay ₹99")).toBeTruthy();
+    expect(screen.getByText(/Razorpay Domestic/)).toBeTruthy();
+    expect(screen.queryByText(/PayPal/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use international payment/i }));
+    expect(screen.getByText("Pay $1")).toBeTruthy();
+    expect(screen.getByText(/PayPal/)).toBeTruthy();
+  });
+
+  it("starts an India-route checkout with the edited quantity and INR billing country", async () => {
+    window.history.pushState({}, "", "/premium");
+    render(<Premium />);
+    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
+    fireEvent.click(screen.getByRole("button", { name: /continue to pay ₹990 inr/i }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ method: "POST", body: expect.stringContaining('"billingCountry":"IN"') })));
+    expect(openCheckout).toHaveBeenCalledWith("https://skipwait-test.chargebee.com/hosted_pages/test");
   });
 });

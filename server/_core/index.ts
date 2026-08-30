@@ -11,6 +11,7 @@ import { dataUrlToBuffer, sanitizeDocumentName } from "../documentUpload";
 import { storageGetSignedUrl, storagePut } from "../storage";
 import * as db from "../db";
 import { createContext } from "./context";
+import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
@@ -48,8 +49,14 @@ async function startServer() {
   app.set("trust proxy", true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
-  app.use(clerkMiddleware());
-  const resolveClerkAccount = async (req: express.Request) => {
+  // Clerk authenticates production traffic. When the repo runs outside the
+  // managed environment (fresh clone, offline demo, CI) no Clerk keys exist,
+  // and clerkMiddleware() would reject every request — including public pages.
+  // In that case fall back to the local dev session (server/_core/devAuth.ts).
+  const clerkConfigured = Boolean(process.env.CLERK_SECRET_KEY);
+  if (clerkConfigured) app.use(clerkMiddleware());
+  const resolveClerkAccount = clerkConfigured
+    ? async (req: express.Request) => {
     const auth = getAuth(req);
     if (!auth.isAuthenticated || !auth.userId) return undefined;
     const clerkUser = await clerkClient.users.getUser(auth.userId);
@@ -57,10 +64,17 @@ async function startServer() {
     await db.upsertUser({ openId: auth.userId, name: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(" ") || null, email: primaryEmail?.emailAddress ?? null, loginMethod: "clerk" });
     const account = await db.getUserByOpenId(auth.userId);
     return account ? { account, primaryEmail, emailAddresses: clerkUser.emailAddresses } : undefined;
+  }
+    : async (req: express.Request) => {
+    const identity = await resolveDevIdentity(req);
+    if (!identity) return undefined;
+    return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
   };
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Dev session routes read JSON bodies, so they register after the parsers.
+  if (!clerkConfigured) registerDevAuthRoutes(app);
   app.use(materialErrorAlertMiddleware);
   registerStorageProxy(app);
   registerOAuthRoutes(app);

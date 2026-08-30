@@ -13,7 +13,10 @@ async function chargebeeCredentialRead(url: string, authorization: string) {
 }
 
 describe("configured Chargebee credentials", () => {
-  it("authenticates against the Chargebee test-site events endpoint", async () => {
+  // Live credential checks require real secrets and outbound network access.
+  // Opt in explicitly with RUN_EXTERNAL_CREDENTIAL_TESTS=true, matching the
+  // Resend credential test convention.
+  it.runIf(process.env.RUN_EXTERNAL_CREDENTIAL_TESTS === "true")("authenticates against the Chargebee test-site events endpoint", async () => {
     const apiKey = process.env.CHARGEBEE_API_KEY;
     expect(apiKey, "CHARGEBEE_API_KEY must be configured").toBeTruthy();
 

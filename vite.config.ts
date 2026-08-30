@@ -209,11 +209,21 @@ const plugins = [
 export default defineConfig({
   plugins,
   resolve: {
-    alias: {
-      "@": path.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
-    },
+    alias: [
+      { find: "@", replacement: path.resolve(import.meta.dirname, "client", "src") },
+      { find: "@shared", replacement: path.resolve(import.meta.dirname, "shared") },
+      { find: "@assets", replacement: path.resolve(import.meta.dirname, "attached_assets") },
+      // Local development without Clerk keys: swap @clerk/react for the dev
+      // shim backed by server/_core/devAuth.ts. When a publishable key exists,
+      // the real Clerk SDK ships unchanged. Regex finds = exact match, so
+      // @clerk/react and @clerk/react/legacy each resolve to the shim itself.
+      ...(process.env.VITE_CLERK_PUBLISHABLE_KEY
+        ? []
+        : [
+            { find: /^@clerk\/react$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/clerkShim.tsx") },
+            { find: /^@clerk\/react\/legacy$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/clerkShim.tsx") },
+          ]),
+    ],
   },
   envDir: path.resolve(import.meta.dirname),
   root: path.resolve(import.meta.dirname, "client"),
