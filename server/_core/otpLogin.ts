@@ -5,6 +5,7 @@ import { isWorkEmailDomain } from "../db";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk } from "./sdk";
 import { workEmailOtpService } from "../workEmailOtp";
+import { logHandledError, respondInternalFailure } from "../errorReporting";
 
 /**
  * Referrer OTP-first login: the work-email OTP IS the sign-in.
@@ -38,8 +39,8 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       if (result.reason === "rate_limited") return res.status(429).json({ error: "A code was sent recently. Wait a minute before requesting another.", retryAfterSeconds: 60 });
       if (result.reason === "not_configured") return res.status(503).json({ error: "Email delivery is not configured yet" });
       return res.status(502).json({ error: "We could not deliver the code. Try again shortly." });
-    } catch {
-      res.status(500).json({ error: "We could not send the verification code" });
+    } catch (error) {
+      respondInternalFailure(res, "POST /api/auth/otp/send", error, { status: 500, message: "We could not send the verification code" });
     }
   });
 
@@ -68,13 +69,13 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       // First login: enroll the verified company address as the referrer profile
       const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
       if (!existingProfile?.workEmailDomain) {
-        await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);
+        await db.saveVerifiedWorkEmail(account.id, email).catch(error => { logHandledError("POST /api/auth/otp/verify work-email enrollment", error); });
       }
       const token = await sdk.createSessionToken(openId, { name: account.name ?? email, expiresInMs: ONE_YEAR_MS });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
       res.json({ signedIn: true, role: account.role, email });
-    } catch {
-      res.status(500).json({ error: "We could not verify the code" });
+    } catch (error) {
+      respondInternalFailure(res, "POST /api/auth/otp/verify", error, { status: 500, message: "We could not verify the code" });
     }
   });
 
@@ -83,5 +84,4 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
     res.json({ signedOut: true });
   });
 }
-
 
