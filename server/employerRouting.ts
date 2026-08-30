@@ -125,6 +125,11 @@ export function employerCandidatesFromJobPageHtml(html: string) {
   const structuredEvidence = employerEvidenceFromStructuredData(html);
   const candidates = [
     ...structuredEvidence.candidates,
+    // LinkedIn guest pages link the hiring company's logo/name to
+    // linkedin.com/company/<handle>. The handle usually matches the employer's
+    // email domain (e.g. ethoslife -> ethoslife.com), so include it alongside
+    // the display name (which may be a shortened brand like "Ethos").
+    ...valuesFromHtmlPattern(html, /linkedin\.com\/company\/([a-zA-Z0-9][a-zA-Z0-9_-]+)/gi),
     ...valuesFromHtmlPattern(html, /"hiringOrganization"\s*:\s*\{[^}]*?"name"\s*:\s*"([^"\\]+(?:\\.[^"\\]*)*)"/gi),
     ...valuesFromHtmlPattern(html, /"(?:companyName|employerName|company_name)"\s*:\s*"([^"\\]+(?:\\.[^"\\]*)*)"/gi),
     ...valuesFromHtmlPattern(html, /class=["'][^"']*topcard__org-name-link[^"']*["'][^>]*>\s*([^<]{2,160})</gi),

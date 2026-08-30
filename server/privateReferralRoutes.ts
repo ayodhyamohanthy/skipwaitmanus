@@ -364,7 +364,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/company-referrals", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk before sending a private company request" });
+      if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
       const { targetRoleUrl, attachmentIds, candidateMessage, fastTrackCode, fastTrackCompanySlug, fastTrackAlias } = req.body as { targetRoleUrl?: string; attachmentIds?: number[]; candidateMessage?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
       if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
       if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });

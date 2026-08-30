@@ -311,7 +311,29 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
   if (matchedFromUrl) return matchedFromUrl;
   const pageEvidence = await employerPageEvidence(normalizedTargetRoleUrl);
   if (pageEvidence.officialDomains.length === 1) return pageEvidence.officialDomains[0];
-  return verifiedEmployerDomainFromCandidates(pageEvidence.candidates, verifiedDomains.map(row => row.domain));
+  const matchedFromPage = verifiedEmployerDomainFromCandidates([...urlCandidates, ...pageEvidence.candidates], verifiedDomains.map(row => row.domain));
+  if (matchedFromPage) return matchedFromPage;
+  // Aggregators like LinkedIn label jobs with a brand display name ("Ethos") whose
+  // domain key ("ethos") can differ from the company's email domain ("ethoslife").
+  // The company profile handle (linkedin.com/company/ethoslife) is the stronger
+  // signal, so prefix-match verified referrer domains against it: handle
+  // "ethoslife" matches ethoslife.com exactly, or ethoslife.co.in style country
+  // TLDs, but never ethos-in-a-different-name domains.
+  const handleCandidates = Array.from(new Set([...urlCandidates, ...pageEvidence.candidates]));
+  if (handleCandidates.length > 0) {
+    const handleMatches = verifiedDomains
+      .map(row => row.domain?.trim().toLowerCase())
+      .filter((domain): domain is string => Boolean(domain))
+      .filter(domain => {
+        const labels = domain.split(".");
+        if (labels.length < 2) return false;
+        const name = labels.slice(0, -1).join("");
+        return handleCandidates.some(handle => handle === name || (handle.length >= 4 && name.startsWith(handle)));
+      });
+    const uniqueMatches = Array.from(new Set(handleMatches));
+    if (uniqueMatches.length === 1) return uniqueMatches[0];
+  }
+  return undefined;
 }
 
 const consumerEmailDomains = new Set<string>(CONSUMER_EMAIL_DOMAINS);
