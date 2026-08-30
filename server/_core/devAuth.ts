@@ -61,7 +61,7 @@ async function upsertDevUser(input: { openId: string; name: string; email: strin
   const existing = memoryAccounts.get(input.openId);
   const account: MemoryAccount = existing
     ? { ...existing, name: input.name, email: input.email, lastSignedIn: new Date() }
-    : { id: memoryAccounts.size + 1, openId: input.openId, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email }), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
+    : { id: memoryAccounts.size + 1, openId: input.openId, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
   memoryAccounts.set(input.openId, account);
   return account;
 }
@@ -78,14 +78,6 @@ export async function resolveDevIdentity(req: Request): Promise<DevIdentity | un
   } catch {
     return undefined;
   }
-}
-
-function devCookieOptions(req: Request) {
-  const base = getSessionCookieOptions(req);
-  // SameSite=None requires the Secure attribute, which plain-http localhost
-  // cannot send. Use Lax for local plain-http development only.
-  if (!base.secure) return { ...base, sameSite: "lax" as const };
-  return base;
 }
 
 export function registerDevAuthRoutes(app: Express) {
@@ -112,18 +104,20 @@ export function registerDevAuthRoutes(app: Express) {
       return;
     }
     const openId = `dev_${randomUUID().replace(/-/g, "")}`.slice(0, 64);
-    const account = await upsertDevUser({ openId, name, email, loginMethod: "clerk" });
+    // `dev` rather than `clerk`: no identity provider vouches for this session,
+    // so recording a provider name here would misrepresent how it was created.
+    const account = await upsertDevUser({ openId, name, email, loginMethod: "dev" });
     if (!account) {
       res.status(500).json({ error: "Dev session could not be created" });
       return;
     }
     const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
-    res.cookie(COOKIE_NAME, sessionToken, { ...devCookieOptions(req), maxAge: ONE_YEAR_MS });
+    res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
     res.json({ signedIn: true, account: { id: account.id, name: account.name, email: account.email, role: account.role } });
   });
 
   app.post("/api/dev-auth/logout", (req: Request, res: Response) => {
-    res.clearCookie(COOKIE_NAME, devCookieOptions(req));
+    res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
     res.json({ signedIn: false });
   });
 }

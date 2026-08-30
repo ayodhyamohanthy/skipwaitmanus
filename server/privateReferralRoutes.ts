@@ -66,6 +66,7 @@ export type PrivateReferralRouteDeps = {
   sendWorkEmailOtp?: (input: { email: string }) => Promise<{ sent: boolean; reason: string }>;
   verifyWorkEmailOtp?: (input: { email: string; code: string }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
+  hasVerifiedWorkEmailOtp?: (input: { email: string }) => Promise<boolean>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
@@ -328,11 +329,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to verify a work email" });
       if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
       // Proof of ownership comes from exactly one of two authorities:
-      // 1. otpVerified: the server-side ZeptoMail OTP flow (verify endpoint
-      //    consumed a valid code for this exact address just before this call).
+      // 1. Server-side OTP proof: the verify endpoint consumed a valid code for
+      //    this exact address moments ago, and the OTP store still holds the
+      //    receipt. This is checked against server state — the request body is
+      //    never trusted to assert its own verification, because any client can
+      //    send `otpVerified: true` for an address it does not control.
       // 2. The signed-in identity provider already reporting this address as
       //    verified on the authenticated user (AuthKit/Clerk-managed email).
-      const otpProof = req.body?.otpVerified === true;
+      const otpProof = (await deps.hasVerifiedWorkEmailOtp?.({ email })) ?? false;
       const verifiedEmail: { emailAddress: string } | undefined = otpProof ? undefined : identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
       if (!otpProof && !verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
       if (otpProof) {

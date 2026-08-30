@@ -20,10 +20,22 @@ export async function getDb() {
 
 const durableAdministratorEmail = "ayodhya@skipwait.me";
 
-export function resolveSyncedUserRole(input: { openId: string; email?: string | null; requestedRole?: "user" | "admin"; existingRole?: "user" | "admin" }) {
+/**
+ * Sessions that assert their own email address rather than inheriting one an
+ * external provider attested. The local dev sign-in takes the address straight
+ * from the request body, so it can never be evidence of identity.
+ */
+const UNAUTHENTICATED_EMAIL_LOGIN_METHOD = "dev";
+
+export function resolveSyncedUserRole(input: { openId: string; email?: string | null; requestedRole?: "user" | "admin"; existingRole?: "user" | "admin"; loginMethod?: string | null }) {
   const normalizedEmail = input.email?.trim().toLowerCase();
-  if (normalizedEmail === durableAdministratorEmail) return "admin" as const;
-  return input.requestedRole ?? input.existingRole ?? (input.openId === ENV.ownerOpenId ? "admin" : "user");
+  const emailIsProviderVerified = input.loginMethod !== UNAUTHENTICATED_EMAIL_LOGIN_METHOD;
+  // The administrator promotion is keyed on the email address, so it is only
+  // safe when that address came from a provider that verified it. Otherwise a
+  // self-asserted address would hand out administrator access to anyone.
+  if (normalizedEmail === durableAdministratorEmail && emailIsProviderVerified) return "admin" as const;
+  const ownerMatches = Boolean(ENV.ownerOpenId) && input.openId === ENV.ownerOpenId;
+  return input.requestedRole ?? input.existingRole ?? (ownerMatches ? "admin" : "user");
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
@@ -31,7 +43,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   const db = await getDb();
   if (!db) return;
   const current = await db.select({ role: users.role }).from(users).where(eq(users.openId, user.openId)).limit(1);
-  const role = resolveSyncedUserRole({ openId: user.openId, email: user.email, requestedRole: user.role, existingRole: current[0]?.role });
+  const role = resolveSyncedUserRole({ openId: user.openId, email: user.email, requestedRole: user.role, existingRole: current[0]?.role, loginMethod: user.loginMethod });
   const values: InsertUser = { openId: user.openId, name: user.name ?? null, email: user.email ?? null, loginMethod: user.loginMethod ?? null, lastSignedIn: user.lastSignedIn ?? new Date(), role };
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: { name: values.name, email: values.email, loginMethod: values.loginMethod, lastSignedIn: values.lastSignedIn, role: values.role } });
 }

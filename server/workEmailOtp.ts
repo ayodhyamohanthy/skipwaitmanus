@@ -16,6 +16,10 @@ const CODE_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const MAX_ACTIVE_PER_EMAIL = 3;
+// How long a consumed code keeps counting as proof that this address was
+// verified. Short enough that a code cannot be reused across sessions, long
+// enough to cover the enroll call that immediately follows verification.
+const VERIFICATION_RECEIPT_MS = 10 * 60 * 1000;
 
 export function isValidWorkEmailOtpEmail(value: string): boolean {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value) || value.length > 320) return false;
@@ -79,10 +83,33 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       if (!isValidWorkEmailOtpEmail(email) || !/^\d{6}$/.test(code)) return;
       const db = await getDb();
       if (!db) return;
-      const rows = await db.select().from(workEmailOtpCodes).where(and(eq(workEmailOtpCodes.email, email), eq(workEmailOtpCodes.codeHash, hashCode(email, code))));
-      const row = rows[0];
-      if (!row || row.consumedAt !== null) return;
-      await db.update(workEmailOtpCodes).set({ attempts: row.attempts + 1 }).where(eq(workEmailOtpCodes.id, row.id));
+      const rows = await db.select().from(workEmailOtpCodes).where(eq(workEmailOtpCodes.email, email));
+      // Charge the failure against every code still in play for this address.
+      // Matching on the submitted code's hash would only ever penalise a
+      // *correct* code — a wrong guess matches no row, so the counter stayed at
+      // zero and MAX_ATTEMPTS never locked anything out.
+      const timestamp = now();
+      const active = rows.filter(row => row.consumedAt === null && row.expiresAt.getTime() > timestamp);
+      for (const row of active) {
+        await db.update(workEmailOtpCodes).set({ attempts: row.attempts + 1 }).where(eq(workEmailOtpCodes.id, row.id));
+      }
+    },
+    /**
+     * Server-owned proof that this address completed the OTP flow.
+     *
+     * Enrollment must never trust a client-supplied "I verified this" flag: the
+     * browser can send anything. `consumedAt` is written only by `verifyCode`
+     * after a correct, unexpired, un-exhausted code, so a recent timestamp here
+     * is genuine evidence the code was received and entered.
+     */
+    async hasRecentVerification(rawEmail: string, withinMs: number = VERIFICATION_RECEIPT_MS): Promise<boolean> {
+      const email = rawEmail.trim().toLowerCase();
+      if (!isValidWorkEmailOtpEmail(email)) return false;
+      const db = await getDb();
+      if (!db) return false;
+      const rows = await db.select().from(workEmailOtpCodes).where(eq(workEmailOtpCodes.email, email));
+      const timestamp = now();
+      return rows.some(row => row.consumedAt !== null && row.consumedAt.getTime() > timestamp - withinMs);
     },
   };
 }
