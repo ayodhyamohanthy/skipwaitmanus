@@ -18,7 +18,7 @@ export async function getDb() {
       // Azure Database for MySQL enforces TLS; URL query ssl params are not
       // honored by mysql2, so parse the URI and pass ssl explicitly.
       const parsed = new URL(process.env.DATABASE_URL);
-      const connection = await mysql.createConnection({
+      const connection = await mysql.createPool({
         host: parsed.hostname,
         port: Number(parsed.port || 3306),
         user: parsed.username,
@@ -26,7 +26,7 @@ export async function getDb() {
         database: parsed.pathname.replace(/^\//, "") || undefined,
         ssl: { rejectUnauthorized: false },
       });
-      _db = drizzle(connection);
+      _db = drizzle(connection) as unknown as ReturnType<typeof drizzle>;
     } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
   }
   return _db;
@@ -555,6 +555,7 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
     const updated = await tx.update(referralRequests).set({ status: input.decision, referrerMessage: message }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, "pending"), eq(referralRequests.referrerId, userId)));
     if (Number(updated[0].affectedRows) !== 1) throw new Error("This referral request has already been reviewed");
     await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: message || "Your Referrer has reviewed your Referral Request." });
+    if (input.decision === "approved") await grantPendingActionRewards(userId, "referrer");
     return { status: input.decision, companyDomain: current.companyDomain, declineReason: input.decision === "declined" ? input.declineReason ?? "cannot_support" : undefined };
   });
 }
@@ -897,10 +898,10 @@ export async function fulfillCompanyCoverageInvitation(joinerUserId: number, inp
       return { rewarded: false as const, reason: "reward_limit" as const };
     }
     await tx.insert(companyCoverageRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS });
-    await addCoverageRewardCredit(tx, invitation.inviterUserId, "job_seeker");
-    await addCoverageRewardCredit(tx, joinerUserId, "referrer");
-    await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "company_coverage_reward" }, { userId: joinerUserId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "company_coverage_reward" }]);
-    await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage reward added", body: "A matching employee verified their work email. One referral credit was added to your account." }, { userId: joinerUserId, category: "system", title: "Welcome credit added", body: "You joined private company coverage with a verified work email. One referral credit was added." }]);
+    // Action-gated: no credits for verifying alone. Both sides earn when the
+    // invited referrer actually accepts a request, or the seeker sends one.
+    await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending" }, { userId: joinerUserId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending" }]);
+    await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action." }, { userId: joinerUserId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request." }]);
     await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId, completedAt: new Date() }).where(eq(companyCoverageInvitations.id, invitation.id));
     return { rewarded: true as const, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
   });
@@ -952,15 +953,15 @@ export async function claimPersonalReferralInvite(joinerUserId: number, input: {
       ]);
       if (priorForJoiner[0] || priorForEmail[0]) return { rewarded: false as const, reason: "duplicate_account" as const };
       await tx.insert(personalReferralRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId, joinerEmailHash, tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS });
-      await addPersonalReferralRewardCredit(tx, invitation.inviterUserId);
-      await addPersonalReferralRewardCredit(tx, joinerUserId);
+      // Action-gated: credits are recorded as pending and unlock only after the
+      // recipient performs a real referral action (send request / accept one).
       await tx.insert(tokenTransactions).values([
-        { userId: invitation.inviterUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "personal_referral_reward" },
-        { userId: joinerUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "personal_referral_reward" },
+        { userId: invitation.inviterUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending" },
+        { userId: joinerUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending" },
       ]);
       await tx.insert(notifications).values([
-        { userId: invitation.inviterUserId, category: "system", title: "Invite reward added", body: "A friend joined with your link. One extra referral credit was added." },
-        { userId: joinerUserId, category: "system", title: "Welcome credit added", body: "You joined with an invite. One extra referral credit was added alongside your monthly credits." },
+        { userId: invitation.inviterUserId, category: "system", title: "Invite reward pending", body: "A friend joined with your link. One extra referral credit unlocks after your next referral action." },
+        { userId: joinerUserId, category: "system", title: "Invite credit pending", body: "You joined with an invite. One extra referral credit unlocks after you send or accept your first private referral request." },
       ]);
       return { rewarded: true as const, tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS };
     });
@@ -1077,7 +1078,33 @@ export async function markSubscriptionNonRenewing(userId: number, role: WalletRo
   return { subscriptionId, status: "non_renewing" as const, currentTermEnd };
 }
 
+// ---- Action-gated viral rewards ----
+// Credits from invites (personal or company coverage) are earned only when the
+// recipient performs a real action: a Job Seeker sends a private referral
+// request; a Referrer claims and accepts a referral request. Joining grants
+// nothing, which removes the incentive to farm sign-ups.
+export async function grantPendingActionRewards(userId: number, role: WalletRole) {
+  const db = await getDb(); if (!db) return;
+  try {
+    await db.transaction(async tx => {
+      const pending = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.kind, "invite_reward_pending")));
+      if (pending.length === 0) return;
+      const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
+      const total = pending.reduce((sum, row) => sum + Number(row.tokenCount), 0);
+      if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + total }).where(eq(tokenBalances.id, wallet[0].id));
+      else await tx.insert(tokenBalances).values({ userId, role, balance: total, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+      for (const row of pending) {
+        await tx.update(tokenTransactions).set({ kind: "invite_reward_granted" }).where(eq(tokenTransactions.id, row.id));
+      }
+      await tx.insert(notifications).values({ userId, category: "system", title: "Referral credits unlocked", body: `Your ${total} invite credit${total === 1 ? "" : "s"} were added after your first referral action. Keep going!` });
+    });
+  } catch (error) {
+    console.warn("[Credits] Failed to grant pending action rewards:", error);
+  }
+}
+
 export async function spendToken(userId: number, role: WalletRole) {
+  await grantPendingActionRewards(userId, role);
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await ensureTokenWallet(userId, role);

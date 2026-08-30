@@ -1,0 +1,1 @@
+ALTER TABLE `tokenTransactions` MODIFY COLUMN `kind` enum('purchase','direct_request','admin_adjustment','company_coverage_reward','personal_referral_reward','invite_reward_pending','invite_reward_granted') NOT NULL;
