@@ -4,6 +4,7 @@ import type { Express, Request } from "express";
 import { resolveDevIdentity, type DevIdentity } from "./devAuth";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
+import { logHandledError } from "../errorReporting";
 
 /**
  * WorkOS AuthKit authentication for production skipwait.me.
@@ -104,7 +105,8 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         // invite query params so the coverage flow resumes after sign-in.
         const returnTo = typeof req.query.state === "string" && req.query.state.startsWith("return=") ? decodeURIComponent(req.query.state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
         res.redirect(302, returnTo);
-      } catch {
+      } catch (error) {
+        logHandledError("GET /api/auth/workos/callback", error, { status: 502 });
         res.status(502).send("We could not complete sign-in. Please try again.");
       }
     });
