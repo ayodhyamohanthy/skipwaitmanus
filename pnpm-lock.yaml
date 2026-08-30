@@ -124,6 +124,9 @@ importers:
       '@trpc/server':
         specifier: ^11.18.0
         version: 11.18.0(typescript@5.9.3)
+      '@workos-inc/authkit-react':
+        specifier: ^0.16.2
+        version: 0.16.2(react@19.2.1)
       '@workos-inc/node':
         specifier: 10.12.0
         version: 10.12.0
@@ -3100,6 +3103,14 @@ packages:
 
   '@vitest/utils@2.1.9':
     resolution: {integrity: sha512-v0psaMSkNJ3A2NMrUEHFRzJtDPFn+/VWZ5WxImB21T9fjucJRmS7xCS3ppEnARb9y11OAzaD+P2Ps+b+BGX5iQ==}
+
+  '@workos-inc/authkit-js@0.20.2':
+    resolution: {integrity: sha512-EEo8VitBko7ON5shVRS4AMmgezWhWfxKKtGV7QpJMgsejKBXi0DujCFf7blR7z46z3xr3Ge55yVEMSrOMtMOzg==}
+
+  '@workos-inc/authkit-react@0.16.2':
+    resolution: {integrity: sha512-Q10bTJ3sd8zfbIlxl8KavLeHLuW7v2aJLfq+syyWsVa9VzbrBVFyr7HNxt3aAVJq1kcMfTJu1p9gSJT3Gswulg==}
+    peerDependencies:
+      react: '>=17'
 
   '@workos-inc/node@10.12.0':
     resolution: {integrity: sha512-ApDXB6gqQBehjobenm4t2bz/yP05l3Rs/N/qkb1lNVHI2Kikk5ec6h9ZY1JiKowesWR+2hliWfQTW/uQUOX6EQ==}
@@ -8666,6 +8677,13 @@ snapshots:
       '@vitest/pretty-format': 2.1.9
       loupe: 3.2.1
       tinyrainbow: 1.2.0
+
+  '@workos-inc/authkit-js@0.20.2': {}
+
+  '@workos-inc/authkit-react@0.16.2(react@19.2.1)':
+    dependencies:
+      '@workos-inc/authkit-js': 0.20.2
+      react: 19.2.1
 
   '@workos-inc/node@10.12.0': {}
 
