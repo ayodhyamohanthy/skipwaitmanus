@@ -285,8 +285,8 @@ importers:
         specifier: ^30.0.1
         version: 30.0.1(@noble/hashes@1.8.0)
       pnpm:
-        specifier: ^10.15.1
-        version: 10.18.0
+        specifier: ^10.34.4
+        version: 10.34.4
       postcss:
         specifier: ^8.5.23
         version: 8.5.23
@@ -4882,8 +4882,8 @@ packages:
     resolution: {integrity: sha512-qcJu88Q2IWqJsDD529JKMdwGm/dvInW4HvQnRwiH9JtihJvzGOscDtHE3x1pBKeUOTysQ8kVmLnJ2kJu7yhcGA==}
     engines: {node: '>=12'}
 
-  pnpm@10.18.0:
-    resolution: {integrity: sha512-6AT4ifHOzEDVctsITuw+SIFzn43sacD/ENLRvv+aTjCTg7ontbdQBZ1/TBSVNbbNDSyx7Trrc5I5pChKaPQM+g==}
+  pnpm@10.34.4:
+    resolution: {integrity: sha512-h2i+VSAK4/Iia2Un/Momh+FLxOXxLXchoPJdo99HkVF3BYZI20F3uvNIEg+guidS2NjZP2vq8f5krhjajelhrw==}
     engines: {node: '>=18.12'}
     hasBin: true
 
@@ -10741,7 +10741,7 @@ snapshots:
 
   picomatch@4.0.7: {}
 
-  pnpm@10.18.0: {}
+  pnpm@10.34.4: {}
 
   points-on-curve@0.2.0: {}
 
