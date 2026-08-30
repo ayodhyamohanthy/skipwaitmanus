@@ -62,7 +62,9 @@ async function paypalOrder(input: { amountUsd: number; reference: string }) {
 
 type PlanPricing = { inrAmount: number; usdAmount: number };
 
-export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId: string, tokens: number) => PlanPricing | undefined; resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>; record: (entry: Record<string, unknown>) => Promise<void> }) {
+export type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> };
+
+export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId: string, tokens: number) => PlanPricing | undefined; resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>; record: (entry: ActivityInput) => Promise<void> }) {
   app.post("/api/payments/razorpay/order", async (req, res) => {
     try {
       if (!razorpayConfigured()) return res.status(503).json({ error: "Razorpay is not configured" });
