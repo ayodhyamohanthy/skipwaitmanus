@@ -1,4 +1,5 @@
 import type { Express, Request, Response } from "express";
+import { respondInternalFailure } from "./errorReporting";
 
 /**
  * Payment providers: Razorpay for domestic (INR) checkouts, PayPal for global
@@ -61,8 +62,16 @@ async function paypalOrder(input: { amountUsd: number; reference: string }) {
 }
 
 type PlanPricing = { inrAmount: number; usdAmount: number };
+type PaymentActivityInput = {
+  actorUserId?: number;
+  action: string;
+  outcome: "success" | "failure" | "denied";
+  resourceType?: string;
+  resourceId?: string | number;
+  metadata?: Record<string, string | number | boolean | null | undefined>;
+};
 
-export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId: string, tokens: number) => PlanPricing | undefined; resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>; record: (entry: Record<string, unknown>) => Promise<void> }) {
+export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId: string, tokens: number) => PlanPricing | undefined; resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>; record: (entry: PaymentActivityInput) => Promise<void> }) {
   app.post("/api/payments/razorpay/order", async (req, res) => {
     try {
       if (!razorpayConfigured()) return res.status(503).json({ error: "Razorpay is not configured" });
@@ -73,11 +82,10 @@ export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId
       const pricing = deps.planPricing(planId, tokens);
       if (!pricing) return res.status(400).json({ error: "Unknown plan" });
       const order = await razorpayOrder({ amountInRupees: pricing.inrAmount, receipt: `skipwait_${identity.account.id}_${Date.now()}`, notes: { userId: String(identity.account.id), planId } });
-      await deps.record({ actorUserId: identity.account.id, action: "payment.razorpay_order_created", outcome: "success", resourceType: "payment", metadata: { planId, orderId: order.id } });
+      await deps.record({ actorUserId: identity.account.id, action: "payment.razorpay_order_created", outcome: "success", resourceType: "payment" });
       res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID });
     } catch (error) {
-      console.warn("[Payments] razorpay order error:", error);
-      res.status(502).json({ error: "We could not start the Razorpay checkout. Try again shortly." });
+      respondInternalFailure(res, "POST /api/payments/razorpay/order", error, { status: 502, message: "We could not start the Razorpay checkout. Try again shortly." });
     }
   });
 
@@ -91,11 +99,10 @@ export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId
       const pricing = deps.planPricing(planId, tokens);
       if (!pricing) return res.status(400).json({ error: "Unknown plan" });
       const order = await paypalOrder({ amountUsd: pricing.usdAmount, reference: `skipwait-${identity.account.id}-${Date.now()}` });
-      await deps.record({ actorUserId: identity.account.id, action: "payment.paypal_order_created", outcome: "success", resourceType: "payment", metadata: { planId, orderId: order.id } });
+      await deps.record({ actorUserId: identity.account.id, action: "payment.paypal_order_created", outcome: "success", resourceType: "payment" });
       res.json({ orderId: order.id, status: order.status });
     } catch (error) {
-      console.warn("[Payments] paypal order error:", error);
-      res.status(502).json({ error: "We could not start the PayPal checkout. Try again shortly." });
+      respondInternalFailure(res, "POST /api/payments/paypal/order", error, { status: 502, message: "We could not start the PayPal checkout. Try again shortly." });
     }
   });
 }

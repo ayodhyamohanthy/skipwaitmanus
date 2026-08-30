@@ -32,6 +32,7 @@ import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigure
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes } from "../payments";
 import { logHandledError } from "../errorReporting";
+import { SUBSCRIPTION_PLANS } from "../../shared/subscriptionPlans";
 
 process.on("unhandledRejection", error => {
   logHandledError("unhandled rejection", error);
