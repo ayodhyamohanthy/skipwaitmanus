@@ -24,9 +24,9 @@ services:
       - key: ZEPTOMAIL_API_KEY
         sync: false
       - key: ZEPTOMAIL_FROM_EMAIL
-        value: noreply@updates.skipwait.me
+        value: noreply@skipwait.me
       - key: ERROR_ALERT_FROM_EMAIL
-        value: noreply@updates.skipwait.me
+        value: noreply@skipwait.me
       - key: VITE_WORKOS_CLIENT_ID
         sync: false
       - key: VITE_WORKOS_ENABLED
