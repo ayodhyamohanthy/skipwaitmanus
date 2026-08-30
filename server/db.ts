@@ -301,6 +301,9 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
   const normalizedTargetRoleUrl = normalizeTargetRoleUrl(targetRoleUrl);
   const directDomain = companyDomainFromTargetUrl(normalizedTargetRoleUrl);
   if (directDomain) return directDomain;
+  const isBoardDomain = (domain: string) => {
+    try { return isHostedJobPlatform(new URL(`https://${domain}`).hostname); } catch { return false; }
+  };
   const protectedHostedDomain = verifiedEmployerDomainFromProtectedHostedListing(normalizedTargetRoleUrl);
   if (protectedHostedDomain) return protectedHostedDomain;
   const db = await getDb();
@@ -310,7 +313,7 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
   const matchedFromUrl = verifiedEmployerDomainFromCandidates(urlCandidates, verifiedDomains.map(row => row.domain));
   if (matchedFromUrl) return matchedFromUrl;
   const pageEvidence = await employerPageEvidence(normalizedTargetRoleUrl);
-  if (pageEvidence.officialDomains.length === 1) return pageEvidence.officialDomains[0];
+  if (pageEvidence.officialDomains.length === 1 && !isBoardDomain(pageEvidence.officialDomains[0])) return pageEvidence.officialDomains[0];
   const matchedFromPage = verifiedEmployerDomainFromCandidates([...urlCandidates, ...pageEvidence.candidates], verifiedDomains.map(row => row.domain));
   if (matchedFromPage) return matchedFromPage;
   // Aggregators like LinkedIn label jobs with a brand display name ("Ethos") whose
@@ -330,7 +333,7 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
         const name = labels.slice(0, -1).join("");
         return handleCandidates.some(handle => handle === name || (handle.length >= 4 && name.startsWith(handle)));
       });
-    const uniqueMatches = Array.from(new Set(handleMatches));
+    const uniqueMatches = Array.from(new Set(handleMatches)).filter(domain => !isBoardDomain(domain));
     if (uniqueMatches.length === 1) return uniqueMatches[0];
   }
   return undefined;
