@@ -12,7 +12,14 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // call would desync it from an in-flight login and the callback would reject it
 // with "invalid oauth state". It returns void by design, so there is no URL to
 // stash across renders.
+// WorkOS AuthKit sign-in: when the app is built with VITE_WORKOS_ENABLED the
+// browser navigates to the server's AuthKit redirect route instead of the
+// managed OAuth portal or a Clerk modal.
 export const startLogin = () => {
+  if (import.meta.env.VITE_WORKOS_ENABLED === "true") {
+    window.location.href = "/api/auth/workos/sign-in";
+    return;
+  }
   const oauthPortalUrl = import.meta.env.VITE_OAUTH_PORTAL_URL;
   const appId = import.meta.env.VITE_APP_ID;
   const redirectUri = `${window.location.origin}/api/oauth/callback`;

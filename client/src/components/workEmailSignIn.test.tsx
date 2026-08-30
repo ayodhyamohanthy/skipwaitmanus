@@ -4,69 +4,56 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { WorkEmailSignIn } from "./WorkEmailSignIn";
 
-const clerk = vi.hoisted(() => ({
-  signIn: { create: vi.fn(), prepareFirstFactor: vi.fn(), attemptFirstFactor: vi.fn() },
-  signUp: { create: vi.fn(), prepareEmailAddressVerification: vi.fn(), attemptEmailAddressVerification: vi.fn() },
-  setActive: vi.fn(),
-}));
+const fetchMock = vi.fn();
 
-vi.mock("@clerk/react/legacy", () => ({
-  useSignIn: () => ({ isLoaded: true, signIn: clerk.signIn, setActive: clerk.setActive }),
-  useSignUp: () => ({ isLoaded: true, signUp: clerk.signUp, setActive: clerk.setActive }),
-}));
-
-describe("WorkEmailSignIn", () => {
+describe("WorkEmailSignIn (server-owned OTP via ZeptoMail)", () => {
   beforeEach(() => {
     sessionStorage.clear();
-    Object.values(clerk.signIn).forEach(mock => mock.mockReset());
-    Object.values(clerk.signUp).forEach(mock => mock.mockReset());
-    clerk.setActive.mockReset();
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
   });
-  afterEach(() => cleanup());
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-  it("prepares an OTP only for the entered company-email factor using a provider-valid request", async () => {
-    clerk.signIn.create.mockResolvedValue({ status: "needs_first_factor", supportedFirstFactors: [
-      { strategy: "email_code", emailAddressId: "personal-id", safeIdentifier: "personal@gmail.com" },
-      { strategy: "email_code", emailAddressId: "work-id", safeIdentifier: "employee@acme.com" },
-    ] });
+  it("sends a code through the server OTP endpoint for the entered company address", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ sent: true }) });
     render(<WorkEmailSignIn />);
     fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "employee@acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send code" }));
-    await waitFor(() => expect(clerk.signIn.create).toHaveBeenCalledWith({ identifier: "employee@acme.com" }));
-    await waitFor(() => expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "work-id" }));
-    expect(clerk.signIn.prepareFirstFactor).not.toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "personal-id" });
-    expect(screen.getByText("Code sent to employee@acme.com")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Use a different company email" })).toBeNull();
+    await waitFor(() => expect(screen.getByText("Code sent to employee@acme.com")).toBeTruthy());
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("/api/work-email/otp/send");
+    expect(JSON.parse((init as RequestInit).body as string)).toEqual({ email: "employee@acme.com" });
+    expect(sessionStorage.getItem("skipwait:employee-sign-in-email")).toBe("employee@acme.com");
   });
 
-  it("turns an existing-email sign-up collision into a provider-valid company-email sign-in without showing an email-taken message", async () => {
-    clerk.signIn.create
-      .mockRejectedValueOnce({ errors: [{ code: "form_identifier_not_found" }] })
-      .mockResolvedValueOnce({ status: "needs_first_factor", supportedFirstFactors: [{ strategy: "email_code", emailAddressId: "work-id", safeIdentifier: "employee@acme.com" }] });
-    clerk.signUp.create.mockRejectedValue({ errors: [{ code: "form_identifier_exists", longMessage: "That email address is taken. Please try another." }] });
+  it("surfaces rate limiting and delivery errors without advancing the flow", async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 429, json: async () => ({ error: "A code was sent recently. Wait a minute before requesting another.", retryAfterSeconds: 60 }) });
     render(<WorkEmailSignIn />);
     fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "employee@acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send code" }));
-    await waitFor(() => expect(clerk.signIn.create).toHaveBeenLastCalledWith({ identifier: "employee@acme.com" }));
-    await waitFor(() => expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", emailAddressId: "work-id" }));
-    expect(screen.queryByText(/That email address is taken/i)).toBeNull();
-    expect(screen.getByText("Code sent to employee@acme.com")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "Use a different company email" })).toBeNull();
+    await waitFor(() => expect(screen.getByText(/A code was sent recently/i)).toBeTruthy());
+    expect(screen.queryByText(/Code sent to/i)).toBeNull();
   });
 
-  it("verifies against the single explicitly prepared work-email code and activates the completed session", async () => {
-    clerk.signIn.create.mockResolvedValue({ status: "needs_first_factor", supportedFirstFactors: [{ strategy: "email_code", emailAddressId: "work-id" }] });
-    clerk.signIn.prepareFirstFactor.mockResolvedValue({ status: "needs_first_factor" });
-    clerk.signIn.attemptFirstFactor.mockResolvedValue({ status: "complete", createdSessionId: "sess_work_1" });
-    clerk.setActive.mockResolvedValue({});
+  it("verifies the code server-side, enrolls the verified address, and completes without provider calls", async () => {
+    fetchMock.mockImplementation(async (url: unknown) => {
+      if (String(url).endsWith("/api/work-email/otp/send")) return { ok: true, json: async () => ({ sent: true }) };
+      if (String(url).endsWith("/api/work-email/otp/verify")) return { ok: true, json: async () => ({ verified: true }) };
+      if (String(url).endsWith("/api/company-referrals/verify-work-email")) return { ok: true, json: async () => ({ verified: true, workEmailDomain: "acme.com" }) };
+      return { ok: false, json: async () => ({}) };
+    });
+    const reload = vi.fn();
+    Object.defineProperty(window, "location", { value: { ...window.location, reload }, writable: true });
     render(<WorkEmailSignIn />);
     fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "employee@acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send code" }));
     await waitFor(() => expect(screen.getByLabelText("Secure employee sign-in code")).toBeTruthy());
     fireEvent.change(screen.getByLabelText("Secure employee sign-in code"), { target: { value: "123456" } });
     fireEvent.click(screen.getByRole("button", { name: "Verify code" }));
-    await waitFor(() => expect(clerk.signIn.attemptFirstFactor).toHaveBeenCalledWith({ strategy: "email_code", code: "123456" }));
-    expect(clerk.signIn.prepareFirstFactor).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(clerk.setActive).toHaveBeenCalledWith({ session: "sess_work_1" }));
+    await waitFor(() => expect(reload).toHaveBeenCalled(), { timeout: 8000 });
+    const verifyCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/work-email/otp/verify"));
+    expect(JSON.parse((verifyCall?.[1] as RequestInit).body as string)).toEqual({ email: "employee@acme.com", code: "123456" });
+    const enrollCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals/verify-work-email"));
+    expect(JSON.parse((enrollCall?.[1] as RequestInit).body as string)).toMatchObject({ email: "employee@acme.com", otpVerified: true });
   });
 });

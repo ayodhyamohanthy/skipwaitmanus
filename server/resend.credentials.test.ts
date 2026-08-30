@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-const runExternalCredentialTests = process.env.RUN_EXTERNAL_CREDENTIAL_TESTS === "true";
+const runExternalCredentialTests = process.env.RUN_EXTERNAL_CREDENTIAL_TESTS === "true" && !process.env.ZEPTOMAIL_API_KEY;
 
 describe("Resend direct-error-alert configuration", () => {
   it("uses the verified updates.skipwait sender address", () => {

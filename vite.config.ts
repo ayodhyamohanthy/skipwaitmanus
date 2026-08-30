@@ -217,7 +217,7 @@ export default defineConfig({
       // shim backed by server/_core/devAuth.ts. When a publishable key exists,
       // the real Clerk SDK ships unchanged. Regex finds = exact match, so
       // @clerk/react and @clerk/react/legacy each resolve to the shim itself.
-      ...(process.env.VITE_CLERK_PUBLISHABLE_KEY
+      ...((process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.VITE_WORKOS_ENABLED === "true")
         ? []
         : [
             { find: /^@clerk\/react$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/clerkShim.tsx") },

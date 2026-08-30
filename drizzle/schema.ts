@@ -107,6 +107,16 @@ export const referrerReviewEmailLinks = mysqlTable("referrerReviewEmailLinks", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referrer_review_email_token_unique").on(table.linkToken), uniqueIndex("referrer_review_email_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referrer_review_email_lookup_idx").on(table.linkToken, table.referrerId, table.expiresAt), index("referrer_review_email_request_idx").on(table.referralRequestId)]);
 
+export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  codeHash: varchar("codeHash", { length: 64 }).notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("work_email_otp_email_hash_idx").on(table.email, table.codeHash)]);
+
 export const referrerSlackWebhooks = mysqlTable("referrerSlackWebhooks", {
   id: int("id").autoincrement().primaryKey(),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),

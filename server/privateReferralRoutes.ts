@@ -63,6 +63,9 @@ export type PrivateReferralRouteDeps = {
   deactivateReferrerSlackWebhook?: (userId: number) => Promise<{ deactivated: boolean }>;
   getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
   sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
+  sendWorkEmailOtp?: (input: { email: string }) => Promise<{ sent: boolean; reason: string }>;
+  verifyWorkEmailOtp?: (input: { email: string; code: string }) => Promise<boolean>;
+  registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
@@ -291,13 +294,56 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(privacyRequest.alreadyRequested ? 200 : 201).json({ request: privacyRequest });
     } catch { res.status(500).json({ error: "We could not create your account deletion request" }); }
   });
+  app.post("/api/work-email/otp/send", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in before verifying a work email" });
+      const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+      if (!deps.sendWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
+      const result = await deps.sendWorkEmailOtp({ email });
+      if (result.sent) { record({ actorUserId: identity.account.id, action: "work_email.otp_sent", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ sent: true }); }
+      if (result.reason === "rate_limited") return res.status(429).json({ error: "A code was sent recently. Wait a minute before requesting another.", retryAfterSeconds: 60 });
+      if (result.reason === "invalid_email") return res.status(400).json({ error: "Enter a valid work email address" });
+      return res.status(503).json({ error: result.reason === "not_configured" ? "Work-email verification is unavailable right now" : "We could not deliver the code. Try again shortly." });
+    } catch { res.status(500).json({ error: "We could not send the verification code" }); }
+  });
+  app.post("/api/work-email/otp/verify", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in before verifying a work email" });
+      const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+      const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
+      if (!deps.verifyWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
+      const verified = await deps.verifyWorkEmailOtp({ email, code });
+      if (verified) { record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ verified: true }); }
+      await deps.registerWorkEmailOtpFailure?.({ email, code });
+      record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
+      res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
+    } catch { res.status(500).json({ error: "We could not verify the code" }); }
+  });
   app.post("/api/company-referrals/verify-work-email", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
-      if (!identity) return res.status(401).json({ error: "Sign in with Clerk to verify a work email" });
+      if (!identity) return res.status(401).json({ error: "Sign in to verify a work email" });
       if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
-      const verifiedEmail = identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
+      // Proof of ownership comes from exactly one of two authorities:
+      // 1. otpVerified: the server-side ZeptoMail OTP flow (verify endpoint
+      //    consumed a valid code for this exact address just before this call).
+      // 2. The signed-in identity provider already reporting this address as
+      //    verified on the authenticated user (AuthKit/Clerk-managed email).
+      const otpProof = req.body?.otpVerified === true;
+      const verifiedEmail: { emailAddress: string } | undefined = otpProof ? undefined : identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
+      if (!otpProof && !verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
+      if (otpProof) {
+        // Authenticated OTP: record the verified work email directly.
+        const enrolled = await deps.saveVerifiedWorkEmail(identity.account.id, email);
+        const inviteCodeOtp = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
+        const rewardOtp = inviteCodeOtp && enrolled?.workEmailDomain && deps.fulfillCompanyCoverageInvitation ? await deps.fulfillCompanyCoverageInvitation(identity.account.id, { inviteCode: inviteCodeOtp, workEmailDomain: enrolled.workEmailDomain }) : { rewarded: false };
+        record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: enrolled?.workEmailDomain ?? undefined, metadata: { verification: "server_otp" } });
+        if (rewardOtp.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: enrolled?.workEmailDomain ?? undefined, metadata: { tokenCount: rewardOtp.tokenCount ?? 0 } });
+        return res.json({ verified: true, workEmailDomain: enrolled?.workEmailDomain, reward: rewardOtp });
+      }
       if (!verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
       const profile = await deps.saveVerifiedWorkEmail(identity.account.id, verifiedEmail.emailAddress);
       const inviteCode = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
