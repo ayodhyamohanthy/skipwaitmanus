@@ -34,6 +34,7 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
         return res.status(400).json({ error: "Referrers sign in with a company email. Personal email providers are not accepted." });
       }
       const result = await workEmailOtpService.sendCode(email);
+      if (!result.sent) console.warn("[OTP] send failed:", result.reason, "| zepto key len:", (process.env.ZEPTOMAIL_API_KEY || "").length, "| from:", process.env.ZEPTOMAIL_FROM_EMAIL);
       if (result.sent) return res.json({ sent: true });
       if (result.reason === "rate_limited") return res.status(429).json({ error: "A code was sent recently. Wait a minute before requesting another.", retryAfterSeconds: 60 });
       if (result.reason === "not_configured") return res.status(503).json({ error: "Email delivery is not configured yet" });

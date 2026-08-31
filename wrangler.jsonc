@@ -1,4 +1,8 @@
 // Cloudflare Containers deployment for the skipwait.me API.
+// Non-secret runtime vars below. Secrets (DATABASE_URL, JWT_SECRET,
+// WORKOS_API_KEY, WORKOS_COOKIE_PASSWORD, ZEPTOMAIL_API_KEY) live in the
+// Worker secret store (`wrangler secret put ...`) and are forwarded into the
+// container by the SkipwaitApi class in src/worker.ts.
 {
   "name": "skipwait-api",
   "main": "src/worker.ts",
@@ -28,6 +32,11 @@
     }
   ],
   "vars": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "WORKOS_CLIENT_ID": "client_01M18Q4VRZYVY01H3SBSNVFZB2",
+    "WORKOS_REDIRECT_URI": "https://skipwait.me/api/auth/workos/callback",
+    "WORKOS_POST_SIGNIN_PATH": "/",
+    "ZEPTOMAIL_FROM_EMAIL": "noreply@skipwait.me",
+    "ERROR_ALERT_FROM_EMAIL": "noreply@skipwait.me"
   }
 }
