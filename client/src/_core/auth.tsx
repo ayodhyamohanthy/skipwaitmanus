@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { setGlobalAccessToken } from "./accessToken";
+import { trpc } from "@/lib/trpc";
 
 /**
  * Clerk-compat provider backed by WorkOS AuthKit.
@@ -35,6 +36,15 @@ const CompatContext = createContext<CompatValue | null>(null);
 
 function Inner({ children }: { children: React.ReactNode }) {
   const auth = useWorkOSAuth();
+  // Server cookie session is the source of truth: it works for BOTH auth planes
+  // (WorkOS AuthKit sign-in AND the referrer work-email OTP login). The AuthKit
+  // SDK only knows its own PKCE session, so OTP users would look signed out.
+  const meQuery = trpc.auth.me.useQuery(undefined, { retry: false, refetchOnWindowFocus: false });
+  const utils = trpc.useUtils();
+
+  const serverUser = meQuery.data ?? null;
+  const signedIn = Boolean(serverUser) || Boolean(auth.user);
+  const isLoaded = !meQuery.isLoading && !auth.isLoading;
 
   const user: CompatUser = auth.user
     ? {
@@ -44,11 +54,19 @@ function Inner({ children }: { children: React.ReactNode }) {
         primaryEmailAddress: { emailAddress: auth.user.email },
         emailAddresses: [{ emailAddress: auth.user.email, verification: { status: auth.user.emailVerified ? "verified" : "unverified" } }],
       }
-    : null;
+    : serverUser
+      ? {
+          id: String(serverUser.id),
+          fullName: serverUser.name || null,
+          imageUrl: null,
+          primaryEmailAddress: serverUser.email ? { emailAddress: serverUser.email } : null,
+          emailAddresses: serverUser.email ? [{ emailAddress: serverUser.email, verification: { status: "verified" as const } }] : [],
+        }
+      : null;
 
   const openSignIn = useCallback(() => {
-    // SDK-first: use AuthKit's own PKCE sign-in URL (redirects back to this
-    // origin; the SDK handles the ?code= exchange and session on return).
+    // AuthKit SDK PKCE when it can run (returns into the SPA); server 302 flow
+    // otherwise. Both end at the same app_session_id cookie verified by tRPC.
     auth.signIn().catch(() => { window.location.href = "/api/auth/workos/sign-in"; });
   }, [auth.signIn]);
 
@@ -66,25 +84,22 @@ function Inner({ children }: { children: React.ReactNode }) {
     return () => { cancelled = true; };
   }, [auth.user, auth.getAccessToken]);
 
+  const signOut = useCallback(async () => {
+    try { await auth.signOut(); } catch { /* already signed out */ }
+    try { await fetch("/api/auth/workos/logout", { method: "POST", credentials: "include" }); } catch { /* best effort */ }
+    try { sessionStorage.removeItem("manus-cookie"); } catch {}
+    await utils.auth.me.invalidate();
+    utils.auth.me.setData(undefined, null);
+    window.location.href = "/";
+  }, [auth.signOut, utils]);
+
+  const getToken = useCallback(async () => {
+    try { return await auth.getAccessToken(); } catch { return null; }
+  }, [auth.getAccessToken]);
+
   const value = useMemo<CompatValue>(
-    () => ({
-      isLoaded: !auth.isLoading,
-      isSignedIn: Boolean(auth.user),
-      userId: auth.user?.id ?? null,
-      getToken: async () => {
-        try { return await auth.getAccessToken(); } catch { return null; }
-      },
-      signOut: async () => {
-        try {
-          await auth.signOut();
-        } catch { /* already signed out */ }
-        try { await fetch("/api/auth/workos/logout", { method: "POST", credentials: "include" }); } catch { /* best effort */ }
-        window.location.href = "/";
-      },
-      user,
-      openSignIn,
-    }),
-    [auth.isLoading, auth.user, auth.signOut, openSignIn, user],
+    () => ({ isLoaded, isSignedIn: signedIn, userId: user?.id ?? null, getToken, signOut, user, openSignIn }),
+    [isLoaded, signedIn, getToken, signOut, user, openSignIn],
   );
 
   return <CompatContext.Provider value={value}>{children}</CompatContext.Provider>;

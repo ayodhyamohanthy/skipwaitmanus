@@ -103,11 +103,13 @@ const trpcClient = trpc.createClient({
 });
 
 createRoot(document.getElementById("root")!).render(
-  <ClerkProvider>
+  <QueryClientProvider client={queryClient}>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      <QueryClientProvider client={queryClient}>
+      {/* Auth compat reads the server session via tRPC (works for both the
+          AuthKit and work-email OTP planes), so it must sit INSIDE tRPC. */}
+      <ClerkProvider>
         <App />
-      </QueryClientProvider>
+      </ClerkProvider>
     </trpc.Provider>
-  </ClerkProvider>
+  </QueryClientProvider>
 );
