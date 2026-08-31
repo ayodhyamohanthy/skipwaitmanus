@@ -5,7 +5,6 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import { ClerkProvider } from "@clerk/react";
 import superjson from "superjson";
-import { registerSW } from "virtual:pwa-register";
 import App from "./App";
 import { startLogin } from "./const";
 import { getGlobalAccessToken } from "./_core/accessToken";
@@ -30,12 +29,13 @@ if (import.meta.env.DEV) {
     registrations.forEach((registration) => { void registration.unregister(); });
   });
 } else {
-  registerSW({
-    immediate: true,
-    onRegisterError(error) {
-      console.error("[PWA] Service worker registration failed", error);
-    },
+  // PWA SW disabled (cached-shell intermittently blanked lazy routes after
+  // deploys). Unregister any previously installed worker and purge caches so
+  // every browser heals on next visit. Keep manifest for installability.
+  navigator.serviceWorker?.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => { void registration.unregister(); });
   });
+  if ("caches" in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
 }
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {

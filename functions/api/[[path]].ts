@@ -1,7 +1,7 @@
 // Pages Function: proxies every /api/* request from skipwait.me to the API
 // server (Render). Keeps frontend and API same-origin so cookies, WorkOS
 // redirects, and CORS all work without extra domains.
-const DEFAULT_API_ORIGIN = "https://skipwait-api.ayodhya-711.workers.dev";
+const DEFAULT_API_ORIGIN = "https://skipwaitmanus.ayodhya-711.workers.dev";
 
 export const onRequest: PagesFunction<{ API_ORIGIN?: string }> = async (context) => {
   const url = new URL(context.request.url);

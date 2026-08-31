@@ -101,13 +101,9 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     window.location.href = "/";
   }, [auth.signOut, utils]);
 
-  // Stable identity: consumers (Notifications etc.) put getToken in effect deps;
-  // the SDK's getAccessToken is a new function each render and would loop them.
-  const sdkGetToken = React.useRef(auth.getAccessToken);
-  sdkGetToken.current = auth.getAccessToken;
   const getToken = useCallback(async () => {
-    try { return await sdkGetToken.current(); } catch { return null; }
-  }, []);
+    try { return await auth.getAccessToken(); } catch { return null; }
+  }, [auth.getAccessToken]);
 
   const value = useMemo<CompatValue>(
     () => ({ isLoaded, isSignedIn: signedIn, userId: user?.id ?? null, getToken, signOut, user, openSignIn }),
@@ -141,37 +137,33 @@ export function ClerkProvider({ children }: { children: React.ReactNode; publish
   return (
     <WorkOSAuthKitProvider clientId={clientId}>
       <AuthKitErrorDowngrade>
-        {(downgraded) =>
-          downgraded
-            ? <CompatShell sdkAuth={downgraded}>{children}</CompatShell>
-            : <AuthKitInner>{children}</AuthKitInner>
-        }
+        {(downgrade) => <AuthKitInner downgrade={downgrade}>{children}</AuthKitInner>}
       </AuthKitErrorDowngrade>
     </WorkOSAuthKitProvider>
   );
 }
 
-class AuthKitErrorDowngrade extends React.Component<{ children: (auth: CompatSdkAuth) => React.ReactNode }, { error: Error | null }> {
+class AuthKitErrorDowngrade extends React.Component<{ children: (downgrade: boolean) => React.ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) { return { error }; }
   render() {
-    if (this.state.error) {
-      // AuthKit SDK render failure (refresh/session errors) must never blank a
-      // route: downgrade to the server-cookie-only compat layer.
-      return this.props.children({
-        isLoading: false,
-        user: null,
-        signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
-        getAccessToken: async () => null,
-        signOut: async () => {},
-      });
-    }
-    return this.props.children(null as unknown as CompatSdkAuth);
+    // false = use the live AuthKit SDK; true = AuthKit render failed, fall back
+    // to the server-cookie-only compat layer instead of blanking the route.
+    return this.props.children(Boolean(this.state.error));
   }
 }
 
-function AuthKitInner({ children }: { children: React.ReactNode }) {
+function AuthKitInner({ children, downgrade }: { children: React.ReactNode; downgrade: boolean }) {
   const auth = useWorkOSAuth();
+  if (downgrade) {
+    return <CompatShell sdkAuth={{
+      isLoading: false,
+      user: null,
+      signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
+      getAccessToken: async () => null,
+      signOut: async () => {},
+    }}>{children}</CompatShell>;
+  }
   return <CompatShell sdkAuth={auth}>{children}</CompatShell>;
 }
 
