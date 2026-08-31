@@ -762,7 +762,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         fileName: attachment.fileName,
         mimeType: attachment.mimeType,
         fileSize: attachment.fileSize,
-        url: attachment.fileKey ? await deps.storageGetSignedUrl(attachment.fileKey) : `/api/documents/${attachment.id}`,
+        url: attachment.fileKey ? await deps.storageGetSignedUrl(attachment.fileKey).catch(() => `/api/documents/${attachment.id}`) : `/api/documents/${attachment.id}`,
       })));
       record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length } });
       res.json({ request: { ...request, attachments } });

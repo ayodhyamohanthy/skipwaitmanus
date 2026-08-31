@@ -1,4 +1,4 @@
-import { bigint, boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { bigint, boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, customType } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -357,3 +357,17 @@ export type CompanyOpportunity = typeof companyOpportunities.$inferSelect;
 export type ReferralRequest = typeof referralRequests.$inferSelect;
 export type OperationalActivityLog = typeof operationalActivityLogs.$inferSelect;
 export type PrivacyRequest = typeof privacyRequests.$inferSelect;
+
+const longblob = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "longblob";
+  },
+});
+
+export const documentBlobs = mysqlTable("documentBlobs", {
+  id: int("id").autoincrement().primaryKey(),
+  fileKey: varchar("fileKey", { length: 512 }).notNull().unique(),
+  data: longblob("data").notNull(),
+  sizeBytes: int("sizeBytes").notNull().default(0),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});

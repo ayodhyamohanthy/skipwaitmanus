@@ -4,7 +4,8 @@ import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
-import { registerStorageProxy } from "./storageProxy";
+import { registerDbDocumentRoute, registerStorageProxy } from "./storageProxy";
+import { dbStorageGet, dbStoragePut } from "../storageDb";
 import { appRouter } from "../routers";
 import { dataUrlToBuffer, sanitizeDocumentName } from "../documentUpload";
 import { storageGetSignedUrl as forgeStorageGetSignedUrl, storagePut as forgeStoragePut } from "../storage";
@@ -12,8 +13,16 @@ import { r2Configured, storagePut as r2StoragePut, storageGetSignedUrl as r2Stor
 
 // Document storage: Cloudflare R2 when configured (production), legacy Forge
 // proxy otherwise (managed dev). Same storagePut/storageGetSignedUrl contract.
-const storagePut = r2Configured() ? r2StoragePut : forgeStoragePut;
-const storageGetSignedUrl = r2Configured() ? r2StorageGetSignedUrl : forgeStorageGetSignedUrl;
+// Storage adapter selection: R2 when configured, managed Forge otherwise.
+// When NEITHER backend is configured (fresh deployments), fall back to the
+// authenticated document proxy route so detail views never 500.
+const usingDbStorage = !r2Configured() && !(process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY);
+const storageGetSignedUrl = r2Configured()
+  ? r2StorageGetSignedUrl
+  : process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY
+    ? forgeStorageGetSignedUrl
+    : async (key: string) => `/api/documents/by-key/${encodeURIComponent(key)}`;
+const storagePut = r2Configured() ? r2StoragePut : process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY ? forgeStoragePut : dbStoragePut;
 import * as db from "../db";
 import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
@@ -85,6 +94,7 @@ async function startServer() {
   else registerDevAuthRoutes(app);
   app.use(materialErrorAlertMiddleware);
   registerStorageProxy(app);
+  registerDbDocumentRoute(app, { resolveIdentity: resolveClerkAccount });
   registerOAuthRoutes(app);
   registerPrivateReferralRoutes(app, { resolveIdentity: resolveClerkAccount, dataUrlToBuffer, sanitizeDocumentName, storagePut, storageGetSignedUrl, createReferralAttachment: db.createReferralAttachment, getAccessibleReferralAttachment: db.getAccessibleReferralAttachment, createResumeUploadSession: db.createResumeUploadSession, getResumeUploadSession: db.getResumeUploadSession, appendResumeUploadChunk: db.appendResumeUploadChunk, completeResumeUploadSession: db.completeResumeUploadSession, saveVerifiedWorkEmail: db.saveVerifiedWorkEmail, getVerifiedWorkEmailAccess: db.getVerifiedWorkEmailAccess, fulfillCompanyCoverageInvitation: db.fulfillCompanyCoverageInvitation, createCompanyReferralRequest: db.createCompanyReferralRequest, prepareReferrerReviewEmailNotifications: db.prepareReferrerReviewEmailNotifications, resolveReferrerReviewEmailLink: db.resolveReferrerReviewEmailLink, consumeReferrerReviewEmailLink: db.consumeReferrerReviewEmailLink, oneClickReviewReferralRequest: db.oneClickReviewReferralRequest, sendReferrerReviewEmail, saveReferrerSlackWebhook: db.saveReferrerSlackWebhook, getReferrerSlackWebhookStatus: db.getReferrerSlackWebhookStatus, deactivateReferrerSlackWebhook: db.deactivateReferrerSlackWebhook, getActiveReferrerSlackWebhooks: db.getActiveReferrerSlackWebhooks, sendWorkEmailOtp: ({ email }) => workEmailOtpService.sendCode(email), verifyWorkEmailOtp: ({ email, code }) => workEmailOtpService.verifyCode(email, code), registerWorkEmailOtpFailure: ({ email, code }) => workEmailOtpService.registerFailedAttempt(email, code), hasVerifiedWorkEmailOtp: ({ email }) => workEmailOtpService.hasRecentVerification(email), getSlotOpenedAlertRecipients: db.getSlotOpenedAlertRecipients, sendSlotOpenedAlertEmail, getPublicReferralImpact: db.getPublicReferralImpact, getOwnedResumeAttachmentForPitch: db.getOwnedResumeAttachmentForPitch, draftSmartReferralPitch, getOrCreateReferralShareCard: db.getOrCreateReferralShareCard, revokeReferralShareCard: db.revokeReferralShareCard, getPublicReferralShareCard: db.getPublicReferralShareCard, getOrCreateReferrerFastTrackLink: db.getOrCreateReferrerFastTrackLink, getPublicReferrerFastTrackLink: db.getPublicReferrerFastTrackLink, getPublicReferrerFastTrackVanityLink: db.getPublicReferrerFastTrackVanityLink, deactivateReferrerFastTrackLink: db.deactivateReferrerFastTrackLink, openCompanyReferralAvailability: db.openCompanyReferralAvailability, listCompanyReferralInbox: db.listCompanyReferralInbox, listCompanyReferralInboxByState: db.listCompanyReferralInboxByState, getUnclaimedCompanyReferralPreview: db.getUnclaimedCompanyReferralPreview, listJobSeekerCompanyReferrals: db.listJobSeekerCompanyReferrals, saveCompanyReferralRequest: db.saveCompanyReferralRequest, claimCompanyReferralRequest: db.claimCompanyReferralRequest, getClaimedCompanyReferralDetail: db.getClaimedCompanyReferralDetail, reviewReferralRequest: db.reviewReferralRequest, updateReferralProgress: db.updateReferralProgress, getApprovedReferralProgressStatus: db.getApprovedReferralProgressStatus, listReferralConversation: db.listReferralConversation, sendReferralConversationMessage: db.sendReferralConversationMessage, listPublicCompanyOpportunities: db.listPublicCompanyOpportunities, publishCompanyOpportunity: db.publishCompanyOpportunity, recordActivity: db.recordOperationalActivity, listOperationalActivity: db.listOperationalActivity, getReferralFlowHealth: db.getReferralFlowHealth, findUsersForTokenRecovery: db.findUsersForTokenRecovery, listAdminTokenAdjustments: db.listAdminTokenAdjustments, grantAdminTokenAdjustment: db.grantAdminTokenAdjustment, getCreditSummary: db.getTokenWallet, getOrCreatePersonalReferralInvite: db.getOrCreatePersonalReferralInvite, claimPersonalReferralInvite: db.claimPersonalReferralInvite, exportUserData: db.exportUserData, listMyPrivacyRequests: db.listMyPrivacyRequests, createPrivacyErasureRequest: db.createPrivacyErasureRequest, listAdminPrivacyRequests: db.listAdminPrivacyRequests, reviewPrivacyRequest: db.reviewPrivacyRequest, listNotifications: db.listNotifications, markNotificationRead: db.markNotificationRead });
   // Razorpay (INR domestic) + PayPal (USD global) checkout order creation.
