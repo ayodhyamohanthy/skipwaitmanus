@@ -59,13 +59,13 @@ describe("Referrer work-email OTP verification", () => {
     expect(clerkState.createEmailAddress).not.toHaveBeenCalled();
   });
 
-  it("opens directly to one compact company-email OTP action before secure employee sign-in", () => {
+  it("opens directly to one compact company-email OTP action before secure employee sign-in", async () => {
     clerkState.isSignedIn = false;
     render(<Referrer />);
-    expect(screen.getByText("Verify your work email")).toBeTruthy();
-    expect(screen.getByText("Personal emails aren’t accepted.")).toBeTruthy();
-    expect(screen.getByLabelText("Company email for secure employee sign in").parentElement?.className).not.toContain("sr-only");
-    expect(screen.getByRole("button", { name: "Send code" })).toBeTruthy();
+    expect(screen.getByText("Become a verified referrer")).toBeTruthy();
+    expect(screen.getByText("Two quick steps: sign in, then verify your work email.")).toBeTruthy();
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send sign-in code" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
     expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("h-dvh");
     expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("overflow-hidden");
@@ -74,13 +74,16 @@ describe("Referrer work-email OTP verification", () => {
     expect(screen.queryByText(/no password, social sign-in, or personal email access/i)).toBeNull();
   });
 
-  it("rejects a personal email before initiating private Referrer authentication", () => {
+  it("rejects a personal email before initiating private Referrer authentication", async () => {
     clerkState.isSignedIn = false;
     render(<Referrer />);
-    fireEvent.change(screen.getByLabelText("Company email for secure employee sign in"), { target: { value: "person@gmail.com" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send code" }));
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "Personal email providers cannot access private referral requests. Use your company address." }) })));
+    fireEvent.change(screen.getByLabelText("Company email"), { target: { value: "person@gmail.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
+    await screen.findByRole("alert");
     expect(screen.getByText(/personal email providers cannot access private referral requests/i)).toBeTruthy();
     expect(employeeSignInState.signIn.create).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it("shows an icon-first request mockup and direct voluntary share channels only after company-email enrollment", async () => {
