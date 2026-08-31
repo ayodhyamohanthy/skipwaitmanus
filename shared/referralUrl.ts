@@ -21,20 +21,28 @@ export function isValidTargetRoleUrl(value: string | undefined | null) {
 }
 
 export function normalizeTargetRoleUrl(value: string) {
-  const url = new URL(value.trim());
-  url.hash = "";
-  const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
-  url.hostname = hostname;
-  if (hostname === "wellfound.com" || hostname === "linkedin.com" || hostname.endsWith(".linkedin.com")) {
-    if (hostname.endsWith(".linkedin.com")) url.hostname = "linkedin.com";
-    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
-    if (url.hostname === "linkedin.com") {
-      const jobId = url.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)$/)?.[1];
-      if (jobId) url.pathname = `/jobs/view/${jobId}`;
+  try {
+    const url = new URL(value.trim());
+    url.hash = "";
+    const hostname = url.hostname.toLowerCase().replace(/^www\./, "");
+    url.hostname = hostname;
+    if (hostname === "wellfound.com" || hostname === "linkedin.com" || hostname.endsWith(".linkedin.com")) {
+      if (hostname.endsWith(".linkedin.com")) url.hostname = "linkedin.com";
+      url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+      if (url.hostname === "linkedin.com") {
+        const jobId = url.pathname.match(/\/jobs\/view\/(?:[^/]*-)?(\d+)$/)?.[1];
+        if (jobId) url.pathname = `/jobs/view/${jobId}`;
+      }
+      url.search = "";
     }
-    url.search = "";
+    return url.toString();
+  } catch {
+    // Unparseable input: hand back the trimmed original so server callers fall
+    // through to their friendly "could not identify the employer" validation
+    // error instead of leaking a raw `Invalid URL` TypeError as a 500. Every
+    // downstream resolver guards its own URL parsing, so this is safe.
+    return value.trim();
   }
-  return url.toString();
 }
 
 export function reviewedEmployerFromTargetRoleUrl(value: string): ReviewedEmployer | undefined {
