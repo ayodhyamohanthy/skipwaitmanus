@@ -71,3 +71,16 @@ pnpm build            # client PWA + server bundle -> dist/
 6. The deployed web bundle must be built from the same commit as the API
    (contract: tRPC + REST shapes). CI deploys both on every push; check
    `scripts/sync-check.sh` when working locally.
+
+## AI model swap (no code changes)
+The AI features (smart pitch, copilot, fit summary, referrer matching) go
+through `server/_core/modelRouter.ts`: any OpenAI-compatible endpoint works.
+
+Swap = set three values, redeploy (or `wrangler secret put` for the key):
+```
+AI_PROVIDER_BASE_URL=https://api.groq.com/openai/v1   # or Together/Fireworks/DeepSeek/Qwen/Mistral/OpenRouter/vLLM/Ollama
+AI_PROVIDER_API_KEY=...        # secret: wrangler secret put AI_PROVIDER_API_KEY
+AI_MODEL=llama-3.3-70b-versatile
+```
+Verified behaviors: config-only model swap works; provider outage returns the
+built-in deterministic fallback text (features never hard-fail).
