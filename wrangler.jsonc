@@ -4,7 +4,7 @@
 // live in the Worker secret store (`wrangler secret put ...`) and are forwarded
 // into the container by the SkipwaitApi class in src/worker.ts.
 {
-  "name": "skipwait-api",
+  "name": "skipwaitmanus",
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-01",
   "containers": [
@@ -12,7 +12,7 @@
       "class_name": "SkipwaitApi",
       "image": "./Dockerfile",
       "max_instances": 2,
-      "name": "skipwait-api"
+      "name": "skipwaitmanus-api"
     }
   ],
   "durable_objects": {
