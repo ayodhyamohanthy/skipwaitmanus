@@ -1,0 +1,13 @@
+# Dependency updates. package-manager bumps are excluded: pnpm is pinned via
+# the packageManager field and must only change together with Dockerfile +
+# pnpm-lock.yaml (reproducible container builds).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    allow:
+      - dependency-type: "all"
+    ignore:
+      - dependency-name: "pnpm"
