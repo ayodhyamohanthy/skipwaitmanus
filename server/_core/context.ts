@@ -37,7 +37,7 @@ export async function createContext(
 
   return {
     req: opts.req,
-    res: opts.req ? ({ ...opts.req } as typeof opts.req) : opts.req,
+    res: opts.res,
     user,
   };
 }
