@@ -32,10 +32,18 @@ type CompatValue = {
   openSignIn: () => void;
 };
 
+type CompatSdkAuth = {
+  isLoading: boolean;
+  user: { id: string; email: string; emailVerified: boolean; firstName?: string | null; lastName?: string | null; profilePictureUrl?: string | null } | null;
+  signIn: () => Promise<void>;
+  getAccessToken: () => Promise<string | null>;
+  signOut: () => Promise<void>;
+};
+
 const CompatContext = createContext<CompatValue | null>(null);
 
-function Inner({ children }: { children: React.ReactNode }) {
-  const auth = useWorkOSAuth();
+function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth: CompatSdkAuth }) {
+  const auth = sdkAuth;
   // Server cookie session is the source of truth: it works for BOTH auth planes
   // (WorkOS AuthKit sign-in AND the referrer work-email OTP login). The AuthKit
   // SDK only knows its own PKCE session, so OTP users would look signed out.
@@ -105,17 +113,37 @@ function Inner({ children }: { children: React.ReactNode }) {
   return <CompatContext.Provider value={value}>{children}</CompatContext.Provider>;
 }
 
+function ServerSessionCompatProvider({ children }: { children: React.ReactNode }) {
+  // No AuthKit client id (local dev / SDK-free mode): run the same compat
+  // surface with a neutral SDK layer so consumers still get the server
+  // cookie session via tRPC auth.me.
+  const neutral = useMemo(() => ({
+    isLoading: false,
+    user: null,
+    signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
+    getAccessToken: async () => null,
+    signOut: async () => { /* handled by the compat signOut */ },
+  }), []);
+  return <CompatShell sdkAuth={neutral}>{children}</CompatShell>;
+}
+
 export function ClerkProvider({ children }: { children: React.ReactNode; publishableKey?: string }) {
   const clientId = import.meta.env.VITE_WORKOS_CLIENT_ID || "";
   if (!clientId) {
     // Misconfiguration should be loud in the console, not a blank page.
-    console.error("[auth] VITE_WORKOS_CLIENT_ID is not set; WorkOS-backed ClerkProvider cannot initialize AuthKit");
+    console.error("[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth");
+    return <ServerSessionCompatProvider>{children}</ServerSessionCompatProvider>;
   }
   return (
     <WorkOSAuthKitProvider clientId={clientId}>
-      <Inner>{children}</Inner>
+      <AuthKitBridge>{children}</AuthKitBridge>
     </WorkOSAuthKitProvider>
   );
+}
+
+function AuthKitBridge({ children }: { children: React.ReactNode }) {
+  const auth = useWorkOSAuth();
+  return <CompatShell sdkAuth={auth}>{children}</CompatShell>;
 }
 
 function useCompat(hookName: string): CompatValue {

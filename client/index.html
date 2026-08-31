@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>window.__errs=[];window.addEventListener('error',e=>{window.__errs.push(String(e.message)+' @ '+e.filename+':'+e.lineno)});window.addEventListener('unhandledrejection',e=>{window.__errs.push('PROMISE: '+String(e.reason))});</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0B57D0" />
@@ -29,6 +30,21 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script defer src="%VITE_ANALYTICS_ENDPOINT%/umami" data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
+    <script>
+      // Analytics loads only when both values were provided at build time;
+      // an unset placeholder previously produced a broken request on every page.
+      (function () {
+        try {
+          var endpoint = "%VITE_ANALYTICS_ENDPOINT%";
+          var websiteId = "%VITE_ANALYTICS_WEBSITE_ID%";
+          if (!endpoint || endpoint.indexOf("%") === 0 || !websiteId || websiteId.indexOf("%") === 0) return;
+          var s = document.createElement("script");
+          s.defer = true;
+          s.src = endpoint + "/umami";
+          s.setAttribute("data-website-id", websiteId);
+          document.head.appendChild(s);
+        } catch (e) {}
+      })();
+    </script>
   </body>
 </html>
