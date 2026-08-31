@@ -2,7 +2,7 @@
 
 A mobile-first PWA where a Job Seeker shares one real job link and a resume, and only verified employees of that employer can review it. Employee identities stay hidden until a Referrer chooses to claim and approve a request.
 
-- **Stack:** React 19 + Vite + Tailwind 4 + tRPC + Express + Drizzle (MySQL) + Clerk auth + Chargebee payments
+- **Stack:** React 19 + Vite + Tailwind 4 + tRPC + Express + Drizzle (MySQL) + WorkOS AuthKit auth + Razorpay/PayPal/Chargebee payments + Cloudflare (Pages + Containers)
 - **Product docs:** see `docs/skipwait-vibecodingapp-handoff.md` (build spec), `todo.md` (history), `GROWTH_AND_MONETIZATION_AUDIT.md`
 
 ## Quick start (local development)
@@ -19,25 +19,26 @@ cp .env.example .env
 pnpm dev        # server + Vite on http://localhost:3000
 ```
 
-### Local dev sign-in (no Clerk keys needed)
+### Local dev sign-in (no WorkOS keys needed)
 
-On a fresh clone there are no Clerk credentials, so the app falls back to a
+On a fresh clone there are no WorkOS credentials, so the app falls back to a
 **local dev session**:
 
-- The server skips `clerkMiddleware()` and registers `server/_core/devAuth.ts`
+- The server registers `server/_core/devAuth.ts` (dev-auth routes)
   (`/api/dev-auth/session|login|logout`), which issues the same
   `app_session_id` JWT a real OAuth login would.
-- Vite aliases `@clerk/react` to `client/src/_core/clerkShim.tsx`, a drop-in
-  shim exposing `ClerkProvider`, `useAuth`, `useUser`, `useClerk`,
-  `SignInButton`, and legacy `useSignIn`/`useSignUp` stubs.
+- Vite aliases `@clerk/react` to `client/src/_core/auth.tsx`, a WorkOS-backed
+  compat module exposing the Clerk-shaped hook surface (`useAuth`, `useUser`,
+  `useClerk`, `SignInButton`); with no keys it renders the local dev sign-in.
 - A small "Local dev sign-in" widget (bottom-left) creates a session on this
   machine only. It never grants anything beyond the role derived by
   `resolveSyncedUserRole` (admin only for the durable admin email), and it
-  disappears entirely once real Clerk keys are configured.
+  disappears entirely once real WorkOS keys are configured.
 
 Without a database the signed-in shell still works (dev sessions live in
 process memory); data-backed features show their honest empty/error states.
-Real work-email OTP requires Clerk keys — the stubs explain this inline.
+Real work-email OTP requires `ZEPTOMAIL_API_KEY` (any transactional sender
+  wired in `server/workEmailOtp.ts` works).
 
 ## Environment variables
 
@@ -46,7 +47,12 @@ Real work-email OTP requires Clerk keys — the stubs explain this inline.
 | `JWT_SECRET` | Session cookie signing (required for dev auth) |
 | `VITE_APP_ID` | App id embedded in session payloads |
 | `DATABASE_URL` | MySQL connection (optional locally; in-memory dev sessions otherwise) |
-| `CLERK_SECRET_KEY` + `VITE_CLERK_PUBLISHABLE_KEY` | Real Clerk auth (disables the dev fallback when set) |
+| `WORKOS_CLIENT_ID` / `WORKOS_API_KEY` / `WORKOS_COOKIE_PASSWORD` / `WORKOS_REDIRECT_URI` | Production WorkOS AuthKit auth (disables the dev fallback when set; redirect URI `https://skipwait.me/api/auth/workos/callback`) |
+| `VITE_WORKOS_CLIENT_ID` / `VITE_WORKOS_ENABLED` | Browser side of AuthKit (client id is public) |
+| `ZEPTOMAIL_API_KEY` / `ZEPTOMAIL_FROM_EMAIL` | Work-email OTP delivery (referrer sign-in) |
+| `R2_*` (optional) | Cloudflare R2 document storage; falls back to the database adapter when unset |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` / `PAYPAL_CLIENT_ID` / `PAYPAL_SECRET` | INR / USD checkout (optional; Chargebee remains the fallback) |
+| `SKIPWAIT_ADMIN_EMAIL` | The only address allowed through the admin sign-in gate |
 | `VITE_APP_TITLE` | Managed app title (`skipwait.me`) |
 | `CHARGEBEE_SITE` / `CHARGEBEE_API_KEY` / `CHARGEBEE_WEBHOOK_SECRET` | Payments (webhook-only fulfillment) |
 | `CHARGEBEE_LIVE_API_KEY` | Live-site operations |

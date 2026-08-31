@@ -128,5 +128,9 @@
       "path-to-regexp": "0.1.13",
       "body-parser": "1.20.6"
     }
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=10"
   }
 }

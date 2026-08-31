@@ -114,3 +114,4 @@ client/public/__manus__/version.json
 .project-config.json
 
 .openclaw-*.txt
+backups/
