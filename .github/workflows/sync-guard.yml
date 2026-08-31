@@ -1,0 +1,14 @@
+name: Sync Guard (Mac <-> GitHub)
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours: detect Mac drift only via issue reminder
+  workflow_dispatch:
+
+jobs:
+  reminder:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Note
+        run: echo "Server-side guard. Mac-side drift is detected locally by scripts/sync-check.sh (run after every push session)."
