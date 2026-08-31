@@ -74,9 +74,10 @@ async function startServer() {
     if (!identity) return undefined;
     return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
   };
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Body limit covers the largest accepted document (10 MB) after base64
+  // expansion, without letting an unauthenticated request buffer 50 MB.
+  app.use(express.json({ limit: "16mb" }));
+  app.use(express.urlencoded({ limit: "1mb", extended: true }));
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
   // Referrer OTP-first login is a public surface, always registered.

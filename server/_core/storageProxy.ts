@@ -1,14 +1,32 @@
 import type { Express } from "express";
 import { ENV } from "./env";
 
+/** Storage prefix whose objects are only reachable through authorized routes. */
+const PRIVATE_SEGMENT = "private-referrals";
+
+/**
+ * Collapses a requested storage path into canonical `a/b/c` segments, or returns
+ * `null` when it is unsafe. Traversal and empty or `.` segments are rejected so a
+ * request cannot dress up a private key (`.//skipwait/private-referrals/...`) as
+ * something the prefix check does not recognize.
+ */
+export function normalizeStorageKey(rawKey: string): string | null {
+  if (!rawKey || /[\0\\]/.test(rawKey)) return null;
+  const segments = rawKey.split("/").filter(segment => segment !== "" && segment !== ".");
+  if (segments.length === 0 || segments.includes("..")) return null;
+  if (segments.includes(PRIVATE_SEGMENT)) return null;
+  return segments.join("/");
+}
+
 export function registerStorageProxy(app: Express) {
   app.get("/manus-storage/*", async (req, res) => {
-    const key = (req.params as Record<string, string>)[0];
-    if (!key) {
+    const rawKey = (req.params as Record<string, string>)[0];
+    if (!rawKey) {
       res.status(400).send("Missing storage key");
       return;
     }
-    if (key.startsWith("skipwait/private-referrals/")) {
+    const key = normalizeStorageKey(rawKey);
+    if (!key) {
       res.status(404).send("Document not found");
       return;
     }

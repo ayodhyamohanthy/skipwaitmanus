@@ -9,4 +9,9 @@ describe("document upload helpers", () => {
   it("decodes base64 document payloads", () => {
     expect(dataUrlToBuffer("data:text/plain;base64,SGVsbG8=").toString()).toBe("Hello");
   });
+
+  it("rejects payloads that are not data URLs or exceed the document ceiling", () => {
+    expect(() => dataUrlToBuffer("https://example.com/resume.pdf")).toThrow("Invalid document payload");
+    expect(() => dataUrlToBuffer(`data:application/pdf;base64,${"A".repeat(14_500_001)}`)).toThrow("Invalid document payload");
+  });
 });
