@@ -37,6 +37,7 @@
     "WORKOS_REDIRECT_URI": "https://skipwait.me/api/auth/workos/callback",
     "WORKOS_POST_SIGNIN_PATH": "/",
     "ZEPTOMAIL_FROM_EMAIL": "noreply@skipwait.me",
-    "ERROR_ALERT_FROM_EMAIL": "noreply@skipwait.me"
+    "ERROR_ALERT_FROM_EMAIL": "noreply@skipwait.me",
+    "VITE_APP_ID": "skipwait"
   }
 }
