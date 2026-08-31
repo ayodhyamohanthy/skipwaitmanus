@@ -148,7 +148,7 @@ describe("ReferralRequest secure resume handoff", () => {
     render(<ReferralRequest />);
 
     await waitFor(() => expect(screen.getByText("You have used all available referral credits.")).toBeTruthy());
-    expect(screen.getByText("0/3 monthly credits left")).toBeTruthy();
+    expect(screen.getByText(/0 of 3 free monthly credits left/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Add credits" })).toBeTruthy();
   });
 
