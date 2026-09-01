@@ -34,7 +34,7 @@ export function resolveWorkosOpenId(workosUserId: string): string {
 
 let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
 function workosJwks() {
-  if (!jwksCache) jwksCache = createRemoteJWKSet(new URL("https://api.workos.com/sso/jwks/client_01M18Q4VRZYVY01H3SBSNVFZB2/"));
+  if (!jwksCache) jwksCache = createRemoteJWKSet(new URL("https://api.workos.com/sso/jwks/client_01M17TTFJ6784B1CN6MHAHB60Y/"));
   return jwksCache;
 }
 

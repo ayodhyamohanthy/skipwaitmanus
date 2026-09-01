@@ -36,7 +36,7 @@ jobs:
       - name: Build web app
         run: pnpm build
         env:
-          VITE_WORKOS_CLIENT_ID: client_01M18Q4VRZYVY01H3SBSNVFZB2
+          VITE_WORKOS_CLIENT_ID: client_01M17TTFJ6784B1CN6MHAHB60Y
           VITE_WORKOS_ENABLED: "true"
 
       - name: Deploy to Cloudflare Pages
