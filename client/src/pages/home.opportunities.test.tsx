@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Home from "./Home";
 
-vi.mock("@clerk/react", () => ({ SignedIn: ({ children }) => null, SignedOut: ({ children }) => children }));
+vi.mock("@/_core/auth", () => ({ SignedIn: ({ children }) => null, SignedOut: ({ children }) => children }));
 
 afterEach(() => cleanup());
 

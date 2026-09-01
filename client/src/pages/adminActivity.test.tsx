@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AdminActivity from "./AdminActivity";
 
-vi.mock("@clerk/react", () => ({
+vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));

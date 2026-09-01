@@ -1,6 +1,6 @@
 import { ArrowRight, HeartHandshake } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 
 type ReferrerCredits = {
   plan: string;
@@ -19,7 +19,7 @@ type ReferrerCredits = {
  * shows how many monthly slots remain before an upgrade is needed.
  */
 export function ReferrerCreditsCard({ compact = false }: { compact?: boolean }) {
-  const { isSignedIn, getToken } = useClerkAuth();
+  const { isSignedIn, getToken } = useAuth();
   const [credits, setCredits] = useState<ReferrerCredits | null>(null);
 
   useEffect(() => {

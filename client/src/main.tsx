@@ -3,7 +3,7 @@ import { COOKIE_NAME, UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
-import { ClerkProvider } from "@clerk/react";
+import { AuthProvider } from "./_core/auth";
 import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
@@ -105,11 +105,11 @@ const trpcClient = trpc.createClient({
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
-      {/* Auth compat reads the server session via tRPC (works for both the
+      {/* Auth reads the server session via tRPC (works for both the
           AuthKit and work-email OTP planes), so it must sit INSIDE tRPC. */}
-      <ClerkProvider>
+      <AuthProvider>
         <App />
-      </ClerkProvider>
+      </AuthProvider>
     </trpc.Provider>
   </QueryClientProvider>
 );

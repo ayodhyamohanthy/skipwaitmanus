@@ -5,8 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import Premium from "./Premium";
 
 vi.mock("@/lib/trpc", () => ({ trpc: { ai: { draftHiringManagerEmail: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } } } }));
-vi.mock("@/_core/hooks/useAuth", () => ({ useAuth: () => ({ isAuthenticated: true, isLoading: false, user: { id: 1 }, refresh: vi.fn(), logout: vi.fn() }) }));
-vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-clerk-token") }), useClerk: () => ({ openSignIn: vi.fn() }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() }) }));
 const openCheckout = vi.fn();
 vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: (...args: unknown[]) => openCheckout(...args) }));
 // Deterministic payment-route detection: the main regressions cover the

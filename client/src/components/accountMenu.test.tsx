@@ -5,14 +5,14 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AccountMenu } from "./AccountMenu";
 
 const signOut = vi.fn().mockResolvedValue(undefined);
-const clerkUser = vi.hoisted(() => ({ imageUrl: "https://images.example.test/avery.png" as string | null, workEmailVerified: false }));
-vi.mock("@clerk/react", () => ({
+const authUser = vi.hoisted(() => ({ imageUrl: "https://images.example.test/avery.png" as string | null, workEmailVerified: false }));
+vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isLoaded: true, isSignedIn: true, signOut }),
-  useUser: () => ({ user: clerkUser.imageUrl ? { imageUrl: clerkUser.imageUrl, emailAddresses: clerkUser.workEmailVerified ? [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] : [{ emailAddress: "avery@gmail.com", verification: { status: "verified" } }] } : null }),
+  useUser: () => ({ user: authUser.imageUrl ? { imageUrl: authUser.imageUrl, emailAddresses: authUser.workEmailVerified ? [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] : [{ emailAddress: "avery@gmail.com", verification: { status: "verified" } }] } : null }),
 }));
 
 describe("AccountMenu", () => {
-  afterEach(() => { cleanup(); signOut.mockClear(); clerkUser.imageUrl = "https://images.example.test/avery.png"; clerkUser.workEmailVerified = false; window.history.replaceState({}, "", "/"); });
+  afterEach(() => { cleanup(); signOut.mockClear(); authUser.imageUrl = "https://images.example.test/avery.png"; authUser.workEmailVerified = false; window.history.replaceState({}, "", "/"); });
 
   it("uses the signed-in profile image as the compact menu trigger", () => {
     render(<AccountMenu />);
@@ -21,7 +21,7 @@ describe("AccountMenu", () => {
   });
 
   it("falls back to the compact user icon when the signed-in profile has no image", () => {
-    clerkUser.imageUrl = null;
+    authUser.imageUrl = null;
     render(<AccountMenu />);
     expect(screen.getByRole("button", { name: "Account menu" }).querySelector("img")).toBeNull();
   });
@@ -35,7 +35,7 @@ describe("AccountMenu", () => {
   });
 
   it("shows My Company Inbox only after a verified company email is present", async () => {
-    clerkUser.workEmailVerified = true;
+    authUser.workEmailVerified = true;
     render(<AccountMenu />);
     fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
     expect(await screen.findByRole("menuitem", { name: "My Company Inbox" })).toBeTruthy();

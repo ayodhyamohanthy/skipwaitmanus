@@ -230,15 +230,6 @@ export default defineConfig({
       { find: "@", replacement: path.resolve(import.meta.dirname, "client", "src") },
       { find: "@shared", replacement: path.resolve(import.meta.dirname, "shared") },
       { find: "@assets", replacement: path.resolve(import.meta.dirname, "attached_assets") },
-      // Local development without Clerk keys: swap @clerk/react for the dev
-      // shim backed by server/_core/devAuth.ts. When a publishable key exists,
-      // the real Clerk SDK ships unchanged. Regex finds = exact match, so
-      // @clerk/react and @clerk/react/legacy each resolve to the shim itself.
-      // WorkOS is the only auth provider. @clerk/react resolves to the
-      // WorkOS-backed compat module so the Clerk-shaped hook surface keeps
-      // working with zero per-file imports changes.
-      { find: /^@clerk\/react$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/auth.tsx") },
-      { find: /^@clerk\/react\/legacy$/, replacement: path.resolve(import.meta.dirname, "client/src/_core/auth.tsx") },
     ],
   },
   envDir: path.resolve(import.meta.dirname),

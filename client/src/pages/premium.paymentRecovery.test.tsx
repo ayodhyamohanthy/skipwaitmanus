@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import Premium from "./Premium";
 
-vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("clerk-token") }), useClerk: () => ({ openSignIn: vi.fn() }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() }) }));
 
 describe("Premium payment return recovery", () => {
   afterEach(() => { cleanup(); window.sessionStorage.clear(); vi.unstubAllGlobals(); });

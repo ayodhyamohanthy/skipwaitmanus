@@ -4,14 +4,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ReferralConversation from "./ReferralConversation";
 
-const { clerkState, go } = vi.hoisted(() => ({ clerkState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn() }));
+const { authState, go } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn() }));
 
-vi.mock("@clerk/react", () => ({ useAuth: () => clerkState, SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({ useLocation: () => ["/conversation/601", go], useRoute: () => [true, { requestId: "601" }] }));
 
 beforeEach(() => {
-  clerkState.isSignedIn = true;
-  clerkState.getToken = vi.fn().mockResolvedValue("test-token");
+  authState.isSignedIn = true;
+  authState.getToken = vi.fn().mockResolvedValue("test-token");
   go.mockReset();
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -41,7 +41,7 @@ describe("ReferralConversation", () => {
   });
 
   it("keeps the conversation data behind sign-in", () => {
-    clerkState.isSignedIn = false;
+    authState.isSignedIn = false;
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     render(<ReferralConversation />);

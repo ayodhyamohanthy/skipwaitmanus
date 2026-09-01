@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth as useClerkAuth, useUser } from "@clerk/react";
+import { useAuth, useUser } from "@/_core/auth";
 import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Download, ExternalLink, FileText, Send, XCircle } from "lucide-react";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { WorkEmailSignIn, coverageInviteSessionKey } from "@/components/WorkEmailSignIn";
@@ -20,7 +20,7 @@ function ReferrerFlowHeader({ backHref = "/", right }: { backHref?: string; righ
 
 export default function Referrer() {
   const [, go] = useLocation();
-  const { isSignedIn, getToken, signOut } = useClerkAuth();
+  const { isSignedIn, getToken, signOut } = useAuth();
   const { user } = useUser();
   const inviteCompany = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("company")?.trim().toLowerCase() || "";
   const inviteCode = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("invite")?.trim() || "";

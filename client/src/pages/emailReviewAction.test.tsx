@@ -6,7 +6,7 @@ import EmailReviewAction from "./EmailReviewAction";
 
 const { authState, go } = vi.hoisted(() => ({ authState: { signedIn: true }, go: vi.fn() }));
 
-vi.mock("@clerk/react", () => ({ useAuth: () => ({ isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-token") }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-token") }) }));
 vi.mock("wouter", () => ({ useRoute: () => [true, { linkToken: "a".repeat(48) }], useLocation: () => ["/email-review", go] }));
 vi.mock("@/components/WorkEmailSignIn", () => ({ WorkEmailSignIn: () => <div>Work email sign in</div> }));
 

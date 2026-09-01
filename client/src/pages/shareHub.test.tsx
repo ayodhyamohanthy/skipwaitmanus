@@ -6,7 +6,7 @@ import ShareHub from "./ShareHub";
 
 const { authState, go } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn() }));
 
-vi.mock("@clerk/react", () => ({ useAuth: () => authState }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => authState }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <span>Account</span> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <span>skipwait.me</span> }));
 vi.mock("@/const", () => ({ startLogin: vi.fn() }));

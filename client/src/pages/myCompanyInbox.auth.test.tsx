@@ -6,7 +6,7 @@ import MyCompanyInbox from "./MyCompanyInbox";
 
 const { go, authState } = vi.hoisted(() => ({ go: vi.fn(), authState: { signedIn: false } }));
 
-vi.mock("@clerk/react", () => ({
+vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-token") }),
   useUser: () => ({ user: authState.signedIn ? { emailAddresses: [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] } : undefined }),
 }));

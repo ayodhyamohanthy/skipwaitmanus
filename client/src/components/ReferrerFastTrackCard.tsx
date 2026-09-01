@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 import { toast } from "sonner";
 import { readApiJson } from "@/lib/apiResponse";
 
 type FastTrackLink = { linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean; url: string; vanityUrl: string; suggestedBioCopy: string };
 
 export function ReferrerFastTrackCard() {
-  const { getToken, isSignedIn } = useClerkAuth();
+  const { getToken, isSignedIn } = useAuth();
   const [link, setLink] = useState<FastTrackLink | null>(null);
   const [loading, setLoading] = useState(false);
 

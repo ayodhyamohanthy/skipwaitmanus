@@ -5,7 +5,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import Settings from "./Settings";
 
 const accessState = vi.hoisted(() => ({ verified: false }));
-vi.mock("@clerk/react", () => ({
+vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, signOut: vi.fn(), getToken: vi.fn(async () => null) }),
   useUser: () => ({ user: { emailAddresses: [] } }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,

@@ -1,5 +1,5 @@
 import { Bell, BriefcaseBusiness, FileText, LogOut, Settings, Share2, UserRound } from "lucide-react";
-import { useAuth, useUser } from "@clerk/react";
+import { useAuth, useUser } from "@/_core/auth";
 import { useLocation } from "wouter";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/components/NotificationBell";

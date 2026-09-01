@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Bookmark, CheckCircle2, ExternalLink, FileText, Inbox, LockKeyhole } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useAuth as useClerkAuth, useUser } from "@clerk/react";
+import { useAuth, useUser } from "@/_core/auth";
 import { useLocation } from "wouter";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
@@ -20,7 +20,7 @@ const scopes: Array<{ id: InboxScope; label: string; description: string }> = [{
 
 export default function MyCompanyInbox() {
   const [, go] = useLocation();
-  const { isSignedIn, getToken } = useClerkAuth();
+  const { isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const [scope, setScope] = useState<InboxScope>("new");
   const [requests, setRequests] = useState<CompanyInboxItem[]>([]);

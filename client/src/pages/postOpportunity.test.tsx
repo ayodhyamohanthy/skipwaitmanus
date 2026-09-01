@@ -6,8 +6,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import PostOpportunity from "./PostOpportunity";
 
 const { authState, go } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn() }));
-const getToken = vi.fn().mockResolvedValue("clerk-token");
-vi.mock("@clerk/react", () => ({ useAuth: () => ({ isLoaded: authState.isLoaded, isSignedIn: authState.isSignedIn, getToken }) }));
+const getToken = vi.fn().mockResolvedValue("test-token");
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: authState.isLoaded, isSignedIn: authState.isSignedIn, getToken }) }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
   useLocation: () => ["/post-opportunity", go],
@@ -16,7 +16,7 @@ vi.mock("wouter", () => ({
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); getToken.mockClear(); go.mockClear(); authState.isLoaded = true; authState.isSignedIn = true; });
 
 describe("verified employee opportunity post", () => {
-  it("publishes a Hiring now opportunity only with the Clerk token and confirms that the employee identity remains off-card", async () => {
+  it("publishes a Hiring now opportunity only with the session token and confirms that the employee identity remains off-card", async () => {
     const fetchMock = vi.fn(async (url: string, _init: RequestInit) => url === "/api/company-referrals/access" ? { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) } : { ok: true, json: async () => ({ opportunity: { companyDomain: "acme.com", roleTitle: "Product Designer" } }) });
     vi.stubGlobal("fetch", fetchMock);
     render(<PostOpportunity />);

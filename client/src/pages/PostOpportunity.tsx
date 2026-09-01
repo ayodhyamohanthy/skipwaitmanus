@@ -1,4 +1,4 @@
-import { useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 import { ArrowLeft, ArrowRight, BadgeCheck, BriefcaseBusiness, CalendarDays, CheckCircle2, Clock3, LockKeyhole, MapPin } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -11,7 +11,7 @@ function localInputToIso(value: string) { if (!value) return undefined; const da
 
 export default function PostOpportunity() {
   const [, go] = useLocation();
-  const { isSignedIn, getToken } = useClerkAuth();
+  const { isSignedIn, getToken } = useAuth();
   const [mode, setMode] = useState<OpportunityMode>("hiring_now");
   const [roleTitle, setRoleTitle] = useState("");
   const [targetRoleUrl, setTargetRoleUrl] = useState("");

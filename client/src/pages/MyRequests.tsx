@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, BriefcaseBusiness, CheckCircle2, ExternalLink, FileText, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
-import { SignInButton, useAuth as useClerkAuth } from "@clerk/react";
+import { SignInButton, useAuth } from "@/_core/auth";
 import { useLocation } from "wouter";
 import { AccountMenu } from "@/components/AccountMenu";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
@@ -27,7 +27,7 @@ function RequestProgress({ request }: { request: ReferralRequest }) {
 
 export default function MyRequests() {
   const [, go] = useLocation();
-  const { isSignedIn, getToken } = useClerkAuth();
+  const { isSignedIn, getToken } = useAuth();
   const [requests, setRequests] = useState<ReferralRequest[]>([]);
   const [credits, setCredits] = useState<SeekerCredits | null>(null);
   const [loading, setLoading] = useState(false);
@@ -53,7 +53,7 @@ export default function MyRequests() {
     return () => { active = false; };
   }, [getToken, isSignedIn]);
 
-  if (!isSignedIn) return <main data-skipwait-screen="my-requests-sign-in" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><button type="button" onClick={() => go("/")} className="inline-flex items-center gap-1 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />Back</button></header><section className="flex flex-1 flex-col justify-center"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Your referral requests</p><h1 className="mt-3 text-[2.35rem] font-semibold leading-[.96] tracking-[-.06em]">See the real status.</h1><p className="mt-4 text-sm leading-6 text-slate-600">Return to your private request updates. We show routing, claim, and real decisions only.</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><SignInButton mode="modal"><button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-5 py-3.5 text-sm font-bold text-white">Secure sign in <ArrowRight className="h-4 w-4" /></button></SignInButton></footer></div></main>;
+  if (!isSignedIn) return <main data-skipwait-screen="my-requests-sign-in" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><button type="button" onClick={() => go("/")} className="inline-flex items-center gap-1 text-sm font-bold text-slate-600"><ArrowLeft className="h-4 w-4" />Back</button></header><section className="flex flex-1 flex-col justify-center"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Your referral requests</p><h1 className="mt-3 text-[2.35rem] font-semibold leading-[.96] tracking-[-.06em]">See the real status.</h1><p className="mt-4 text-sm leading-6 text-slate-600">Return to your private request updates. We show routing, claim, and real decisions only.</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><SignInButton><button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-5 py-3.5 text-sm font-bold text-white">Secure sign in <ArrowRight className="h-4 w-4" /></button></SignInButton></footer></div></main>;
 
   const request = requests[activeIndex];
   const state = request ? request.queueStatus === "available_for_review" ? { label: "Available for review", title: `A verified employee at ${request.companyDomain} can now review your request.`, detail: "Their identity remains private. You will see a factual update when they make a decision.", tone: "blue" as const } : request.queueStatus === "waiting_for_coverage" ? { label: "Waiting for coverage", title: "Your request is waiting for company coverage.", detail: "It remains private until a verified employee at the target company is available.", tone: "amber" as const } : getJobSeekerReferralState(request) : null;

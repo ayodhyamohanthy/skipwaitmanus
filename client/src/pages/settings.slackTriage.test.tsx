@@ -5,11 +5,10 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Settings from "./Settings";
 
-vi.mock("@clerk/react", () => ({
+vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("token") }),
   useUser: () => ({ user: { imageUrl: "https://cdn.example/avatar.png", fullName: "Avery", emailAddresses: [{ emailAddress: "ref@acme.com", verification: { status: "verified" } }] }, isSignedIn: true, isLoaded: true }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
-  UserButton: () => null,
   SignedIn: ({ children }: { children: React.ReactNode }) => children,
   SignedOut: () => null,
 }));

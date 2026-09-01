@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 import { ArrowLeft, Check, CreditCard, LoaderCircle } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
@@ -20,8 +20,7 @@ function clearPendingCheckout() { if (typeof window !== "undefined") window.sess
 
 export default function Premium() {
   const role: TokenRole = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
-  const { isSignedIn, getToken } = useClerkAuth();
-  const { openSignIn } = useClerk();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const [route, setRoute] = useState<PaymentRoute>(browserPaymentRoute);
   const [quantity, setQuantity] = useState(10);
   const [balance, setBalance] = useState<number | null>(null);
@@ -41,8 +40,8 @@ export default function Premium() {
     let active = true;
     void (async () => {
       try {
-        const clerkToken = await getToken();
-        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {} });
+        const sessionToken = await getToken();
+        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {} });
         const payload = await response.json().catch(() => ({}));
         if (active && response.ok && typeof payload.summary?.totalAvailable === "number") setBalance(payload.summary.totalAvailable);
       } catch { if (active) setBalance(null); }
@@ -60,8 +59,8 @@ export default function Premium() {
       if (!active || attempts >= 3) return;
       attempts += 1;
       try {
-        const clerkToken = await getToken();
-        const response = await fetch("/api/chargebee/credit-recovery", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, body: JSON.stringify({ hostedPageId: checkout.hostedPageId, role }) });
+        const sessionToken = await getToken();
+        const response = await fetch("/api/chargebee/credit-recovery", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, body: JSON.stringify({ hostedPageId: checkout.hostedPageId, role }) });
         const payload = await response.json().catch(() => ({}));
         if (!active) return;
         if (payload.status === "credited") {
@@ -89,8 +88,8 @@ export default function Premium() {
     setError("");
     setStatus("launching");
     try {
-      const clerkToken = await getToken();
-      const response = await fetch("/api/chargebee/checkout", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) }, body: JSON.stringify({ itemPriceId: selected.id, billingCountry: routeDetails.billingCountry, role, quantity }) });
+      const sessionToken = await getToken();
+      const response = await fetch("/api/chargebee/checkout", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, body: JSON.stringify({ itemPriceId: selected.id, billingCountry: routeDetails.billingCountry, role, quantity }) });
       const body = await response.json().catch(() => ({}));
       if (!response.ok || typeof body.checkoutUrl !== "string" || typeof body.hostedPageId !== "string") throw new Error(body.error || "Unable to open secure checkout");
       savePendingCheckout({ hostedPageId: body.hostedPageId, role });

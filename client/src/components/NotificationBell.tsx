@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 import { Bell } from "lucide-react";
 import { useLocation } from "wouter";
 import { readApiJson } from "@/lib/apiResponse";
@@ -8,7 +8,7 @@ type NotificationPreview = { id: number; readAt: string | null };
 type NotificationResponse = { notifications?: NotificationPreview[]; error?: string };
 
 export function NotificationBell() {
-  const { isSignedIn, getToken } = useClerkAuth();
+  const { isSignedIn, getToken } = useAuth();
   const [, go] = useLocation();
   const [unreadCount, setUnreadCount] = useState(0);
 

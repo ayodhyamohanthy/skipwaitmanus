@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Brand } from "@/components/Brand";
 import { Menu } from "lucide-react";
-import { SignedIn } from "@clerk/react";
+import { SignedIn } from "@/_core/auth";
 import { FileText, BriefcaseBusiness } from "lucide-react";
 import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 

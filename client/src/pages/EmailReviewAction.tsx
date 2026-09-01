@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 import { CheckCircle2, LockKeyhole, XCircle } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { WorkEmailSignIn } from "@/components/WorkEmailSignIn";
@@ -11,7 +11,7 @@ type DeclineReason = "role_not_a_fit" | "cannot_support" | "timing";
 export default function EmailReviewAction() {
   const [, params] = useRoute("/email-review/:linkToken");
   const [, go] = useLocation();
-  const { isSignedIn, getToken } = useClerkAuth();
+  const { isSignedIn, getToken } = useAuth();
   const getTokenRef = useRef(getToken);
   const actionStartedRef = useRef(false);
   const [state, setState] = useState<"ready" | "working" | "approved" | "declined" | "error">("ready");

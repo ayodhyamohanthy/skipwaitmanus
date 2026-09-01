@@ -38,12 +38,6 @@
       ],
       "@shared/*": [
         "./shared/*"
-      ],
-      "@clerk/react": [
-        "client/src/_core/auth.tsx"
-      ],
-      "@clerk/react/legacy": [
-        "client/src/_core/auth.tsx"
       ]
     }
   }

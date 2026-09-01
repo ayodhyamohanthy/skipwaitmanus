@@ -16,9 +16,8 @@ vi.mock("@/lib/pendingResume", () => ({
   clearPendingResumeFiles: async () => { pendingResume.files = []; pendingResume.clear(); },
 }));
 
-vi.mock("@clerk/react", () => ({
-  useAuth: () => ({ isLoaded: true, isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-clerk-token") }),
-  useClerk: () => ({ openUserProfile: vi.fn(), openSignIn: authState.openSignIn }),
+vi.mock("@/_core/auth", () => ({
+  useAuth: () => ({ isLoaded: true, isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: authState.openSignIn }),
   useUser: () => ({ isLoaded: true, user: null }),
   SignInButton: ({ children }: { children: React.ReactNode }) => <span onClick={authState.openSignIn}>{children}</span>,
 }));
@@ -67,10 +66,10 @@ describe("ReferralRequest secure resume handoff", () => {
     const startCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith("/api/documents/uploads"));
     const chunkCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/chunks"));
     const completeCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/complete"));
-    expect(startCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ "Content-Type": "application/json", Authorization: "Bearer test-clerk-token" }) });
+    expect(startCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ "Content-Type": "application/json", Authorization: "Bearer test-token" }) });
     expect(JSON.parse(String(startCall?.[1]?.body))).toMatchObject({ fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6 });
     const encryptedChunk = JSON.parse(String(chunkCall?.[1]?.body)); expect(encryptedChunk).toMatchObject({ chunkIndex: 0, encryptedContent: expect.any(String), encryptionKey: expect.any(String), initializationVector: expect.any(String) });
-    expect(completeCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer test-clerk-token" }) });
+    expect(completeCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer test-token" }) });
     await waitFor(() => expect(pendingResume.clear).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText("1 of 3 free credits used this month.")).toBeTruthy());
     expect(screen.getByLabelText("Referral request milestone").textContent).toContain("Your 1st referral request is now active.");

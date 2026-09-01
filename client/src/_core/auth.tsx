@@ -4,17 +4,15 @@ import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
 
 /**
- * Clerk-compat provider backed by WorkOS AuthKit.
+ * WorkOS AuthKit provider exposing the app's auth hook surface.
  *
- * ~20 call sites import useAuth/useUser/SignInButton/useClerk from
- * @clerk/react. Production auth is WorkOS AuthKit, so this module re-exposes
- * the Clerk-shaped hooks on top of the WorkOS context. The vite alias resolves
- * @clerk/react to THIS file when VITE_WORKOS_ENABLED=true.
+ * ~20 call sites import useAuth/useUser/SignInButton from @/_core/auth.
+ * Production auth is WorkOS AuthKit, so this module re-exposes the app's
+ * shared hook surface on top of the WorkOS context.
  *
- * - useAuth()  -> { isLoaded, isSignedIn, userId, getToken, signOut }
- * - useUser()  -> { isLoaded, isSignedIn, user } (Clerk user shape)
- * - useClerk() -> { openSignIn, signOut } — openSignIn routes to AuthKit
- * - SignInButton navigates to AuthKit; UserButton renders a minimal avatar.
+ * - useAuth()  -> { isLoaded, isSignedIn, userId, getToken, signOut, openSignIn }
+ * - useUser()  -> { isLoaded, isSignedIn, user } (compat user shape)
+ * - openSignIn routes to AuthKit; SignInButton navigates to AuthKit.
  * - getToken() resolves null: server routes authenticate via the
  *   app_session_id cookie (AuthKit fetch sends credentials: include).
  */
@@ -127,7 +125,7 @@ function ServerSessionCompatProvider({ children }: { children: React.ReactNode }
   return <CompatShell sdkAuth={neutral}>{children}</CompatShell>;
 }
 
-export function ClerkProvider({ children }: { children: React.ReactNode; publishableKey?: string }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const clientId = import.meta.env.VITE_WORKOS_CLIENT_ID || "";
   if (!clientId) {
     // Misconfiguration should be loud in the console, not a blank page.
@@ -169,13 +167,13 @@ function AuthKitInner({ children, downgrade }: { children: React.ReactNode; down
 
 function useCompat(hookName: string): CompatValue {
   const value = useContext(CompatContext);
-  if (!value) throw new Error(`${hookName} must be used within <ClerkProvider> (WorkOS-backed)`);
+  if (!value) throw new Error(`${hookName} must be used within <AuthProvider> (WorkOS-backed)`);
   return value;
 }
 
 export function useAuth() {
   const compat = useCompat("useAuth");
-  return { isLoaded: compat.isLoaded, isSignedIn: compat.isSignedIn, userId: compat.userId, getToken: compat.getToken, signOut: compat.signOut };
+  return { isLoaded: compat.isLoaded, isSignedIn: compat.isSignedIn, userId: compat.userId, getToken: compat.getToken, signOut: compat.signOut, openSignIn: compat.openSignIn };
 }
 
 export function useUser() {
@@ -183,12 +181,7 @@ export function useUser() {
   return { isLoaded: compat.isLoaded, isSignedIn: compat.isSignedIn, user: compat.user };
 }
 
-export function useClerk() {
-  const compat = useCompat("useClerk");
-  return { openSignIn: compat.openSignIn, signOut: compat.signOut };
-}
-
-export function SignInButton({ children, className }: { mode?: "modal" | "redirect"; children?: React.ReactNode; className?: string }) {
+export function SignInButton({ children, className }: { children?: React.ReactNode; className?: string }) {
   const compat = useCompat("SignInButton");
   return <button type="button" className={className} onClick={compat.openSignIn}>{children ?? "Sign in"}</button>;
 }
@@ -199,14 +192,4 @@ export function SignedIn({ children }: { children: React.ReactNode }) {
 
 export function SignedOut({ children }: { children: React.ReactNode }) {
   return useCompat("SignedOut").isSignedIn ? null : <>{children}</>;
-}
-
-export function UserButton() {
-  const compat = useCompat("UserButton");
-  if (!compat.isSignedIn) return null;
-  return (
-    <button type="button" aria-label="Account" onClick={() => { window.location.href = "/settings"; }} className="grid h-8 w-8 place-items-center overflow-hidden rounded-full border border-slate-200 bg-white text-slate-600">
-      {compat.user?.imageUrl ? <img src={compat.user.imageUrl} alt="" className="h-full w-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-xs font-bold">{compat.user?.fullName?.[0] ?? "U"}</span>}
-    </button>
-  );
 }

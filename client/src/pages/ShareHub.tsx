@@ -1,5 +1,5 @@
 import { ArrowLeft, Copy, Link2, Share2 } from "lucide-react";
-import { useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ function open(url: string) { window.open(url, "_blank", "noopener,noreferrer"); 
 
 export default function ShareHub() {
   const [, go] = useLocation();
-  const { isSignedIn } = useClerkAuth();
+  const { isSignedIn } = useAuth();
   const [inviteCode, setInviteCode] = useState(""); const [email, setEmail] = useState(""); const [loading, setLoading] = useState(false);
   const origin = typeof window === "undefined" ? "https://skipwait.me" : window.location.origin;
   const link = useMemo(() => inviteCode ? `${origin}/start?invite=${encodeURIComponent(inviteCode)}` : "", [inviteCode, origin]);

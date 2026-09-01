@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
-import { useAuth as useClerkAuth, useClerk } from "@clerk/react";
+import { useAuth } from "@/_core/auth";
 import { ArrowLeft, ArrowRight, Check, LoaderCircle } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
@@ -27,8 +27,7 @@ const plans: Record<Plan, { name: string; monthlyCredits: number; INR: PlanPrice
 
 export default function Plans() {
   const role = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
-  const { isSignedIn, getToken } = useClerkAuth();
-  const { openSignIn } = useClerk();
+  const { isSignedIn, getToken, openSignIn } = useAuth();
   const [selected, setSelected] = useState<Plan>("pro");
   const [route, setRoute] = useState<PaymentRoute>(browserPaymentRoute);
   const [summary, setSummary] = useState<CreditSummary | null>(null);
@@ -44,8 +43,8 @@ export default function Plans() {
     let active = true;
     void (async () => {
       try {
-        const clerkToken = await getToken();
-        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {} });
+        const sessionToken = await getToken();
+        const response = await fetch(`/api/credits/summary?role=${role}`, { credentials: "include", headers: sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {} });
         const payload = await readApiJson<{ summary?: CreditSummary }>(response, "We could not refresh your plan details");
         if (active && response.ok && payload.summary) setSummary(payload.summary);
       } catch {
@@ -61,11 +60,11 @@ export default function Plans() {
     setError("");
     setStatus("opening");
     try {
-      const clerkToken = await getToken();
+      const sessionToken = await getToken();
       const response = await fetch("/api/chargebee/subscription-checkout", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) },
+        headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) },
         body: JSON.stringify({ plan: selected, currency: route, billingCountry: routeDetails.billingCountry, role }),
       });
       const payload = await readApiJson<{ checkoutUrl?: string; error?: string }>(response, "Unable to open secure plan checkout");
@@ -82,11 +81,11 @@ export default function Plans() {
     setError("");
     setCancelling(true);
     try {
-      const clerkToken = await getToken();
+      const sessionToken = await getToken();
       const response = await fetch("/api/chargebee/subscription-cancel", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(clerkToken ? { Authorization: `Bearer ${clerkToken}` } : {}) },
+        headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) },
         body: JSON.stringify({ role }),
       });
       const payload = await readApiJson<{ currentTermEnd?: string; error?: string }>(response, "We could not schedule your cancellation");
