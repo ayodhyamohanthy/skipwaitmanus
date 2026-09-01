@@ -67,7 +67,7 @@ Vibecode requires a deployed application, adding the domain in its deployment da
 
 ## 5. Global-standard user-value and growth parity
 
-The goal is not to imitate every global product mechanic. The goal is to preserve the mechanisms that create **real professional value**, while rejecting tactics that inflate activity at the cost of trust. Referrals reduce matching friction; marketplaces require dense, relevant supply; and quality-based incentives work best when anchored to verified value rather than broad invitation volume. [4] [5] [6]
+The goal is not to imitate every global product mechanic. The goal is to preserve the mechanisms that create **real professional value**, while rejecting tactics that inflate activity at the cost of trust. Referrals reduce matching friction; marketplaces require dense, relevant supply; and quality-based incentives work best when anchored to verified value rather than broad invitation volume. [4] [6]
 
 | Loop | User trigger | Product action to preserve or build | Success measure | Trust guardrail |
 | --- | --- | --- | --- | --- |
@@ -95,7 +95,7 @@ The following choices are already stronger than the common marketplace shortcut 
 
 **Private Referrer impact summaries are required parity.** A verified Referrer may view only their own server-derived aggregate counts for assigned requests and voluntary participant-recorded milestones. The response must never contain candidate names, request IDs, messages, documents, queue information, other employees, public comparisons, rankings, or outcome-contingent rewards. This creates useful account continuity without converting sensitive referral work into a public social artifact.
 
-The following are deliberately **out of scope** even if they are common elsewhere: public employee directories, opaque candidate scoring, job-outcome guarantees, fabricated reviews or testimonials, false scarcity, broad referral blasts, contact scraping, reward spam, streaks, paid Referrer decisions, and a public activity feed. Employment-related automated candidate assessment creates heightened governance requirements; Skipwait must remain a human-controlled connection and workflow product. [7]
+The following are deliberately **out of scope** even if they are common elsewhere: public employee directories, opaque candidate scoring, job-outcome guarantees, fabricated reviews or testimonials, false scarcity, broad referral blasts, contact scraping, reward spam, streaks, paid Referrer decisions, and a public activity feed. Employment-related automated candidate assessment creates heightened governance requirements; Skipwait must remain a human-controlled connection and workflow product. [6]
 
 ## 6. Global readiness after core parity
 
@@ -130,8 +130,6 @@ The following are deliberately **out of scope** even if they are common elsewher
 
 [4]: [Federal Reserve Bank of Philadelphia — Job Referrals and the Labor Market](https://www.philadelphiafed.org/the-economy/macroeconomics/how-do-job-referrals-impact-the-us-labor-market)
 
-[5]: [Stripe Atlas — Andrew Chen on Marketplaces](https://stripe.com/guides/atlas/andrew-chen-marketplaces)
+[5]: [MIS Quarterly — Rewards or Upgrades? Incentive Designs in Referral Programs](https://misq.umn.edu/misq/article/50/2/673/3630/Rewards-or-Upgrades-Incentive-Designs-in-Referral)
 
-[6]: [MIS Quarterly — Rewards or Upgrades? Incentive Designs in Referral Programs](https://misq.umn.edu/misq/article/50/2/673/3630/Rewards-or-Upgrades-Incentive-Designs-in-Referral)
-
-[7]: [European Commission — Regulatory Framework for AI](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai)
+[6]: [European Commission — Regulatory Framework for AI](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai)

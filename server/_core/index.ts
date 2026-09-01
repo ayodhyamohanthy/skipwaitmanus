@@ -40,6 +40,7 @@ import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes } from "../payments";
+import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -69,6 +70,10 @@ async function startServer() {
   app.set("trust proxy", true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
+  // Provider gateway webhooks (Razorpay HMAC, PayPal signature API) register
+  // before the global JSON parser: the Razorpay handler must HMAC the exact
+  // raw request bytes the provider signed, so it parses its own body.
+  registerPaymentWebhookRoutes(app, { record: db.recordOperationalActivity, recordGatewayEvent: db.recordGatewayPaymentEvent });
   // WorkOS AuthKit is the only production auth authority. The callback route
   // (server/_core/workosAuth.ts) verifies the AuthKit session and issues the
   // app_session_id JWT; resolveWorkosIdentity loads the upserted user for it.

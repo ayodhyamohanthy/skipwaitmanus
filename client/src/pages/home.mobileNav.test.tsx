@@ -44,6 +44,6 @@ describe("Home mobile navigation", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ acceptedReferrals: 17 }) })));
     render(<Home />);
     await waitFor(() => expect(screen.getByText("17 referrals accepted")).toBeTruthy());
-    expect(document.body.textContent).not.toMatch(/sarah|stripe|minutes ago|fast-tracked|queue|rank/i);
+    expect(document.body.textContent).not.toMatch(/sarah|netflix|minutes ago|fast-tracked|queue|rank/i);
   });
 });

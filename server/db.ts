@@ -1175,6 +1175,18 @@ export async function markChargebeePaymentForReview(paymentId: number, reason: "
   await db.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "pending")));
 }
 
+// Read-only correlation for direct-gateway webhook deliveries (Razorpay/PayPal):
+// reports whether an event's checkoutIntentId matches a Chargebee-initiated
+// fulfillment row. Never writes and never credits — Chargebee remains the
+// billing source of truth; this only makes webhook acks honest about matching.
+export async function recordGatewayPaymentEvent(input: { provider: "razorpay" | "paypal"; eventId: string; eventType: string; checkoutIntentId?: string }) {
+  if (!input.checkoutIntentId) return { matched: false };
+  const db = await getDb();
+  if (!db) return { matched: false };
+  const row = await db.select({ id: paymentFulfillments.id }).from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.checkoutIntentId, input.checkoutIntentId))).limit(1);
+  return { matched: row.length > 0 };
+}
+
 export async function fulfillChargebeePayment(input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) {
   if (!input.hostedPageId) return { status: "ignored" as const, reason: "missing_hosted_page" };
   if (!input.passThruContent) return { status: "ignored" as const, reason: "missing_checkout_intent" };
@@ -1273,6 +1285,6 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     else await tx.insert(tokenBalances).values({ userId, role, balance: 0, ...patch });
     if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
     await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
-    return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, stripeCustomerId: null, id: 0, updatedAt: new Date() }), ...patch }) };
+    return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, id: 0, updatedAt: new Date() }), ...patch }) };
   });
 }

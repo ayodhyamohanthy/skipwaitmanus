@@ -47,7 +47,7 @@ describe("private Slot Opened alerts and aggregate impact", () => {
     const { app } = appFor();
     const impact = await request(app).get("/api/referral-impact");
     expect(impact.status).toBe(200); expect(impact.body).toEqual({ acceptedReferrals: 17 });
-    expect(JSON.stringify(impact.body)).not.toMatch(/name|company|stripe|sarah|time|queue|request/i);
+    expect(JSON.stringify(impact.body)).not.toMatch(/name|company|netflix|sarah|time|queue|request/i);
   });
 
   it("keeps outbound Slot Opened emails factual and free of private referral content", async () => {
@@ -55,7 +55,7 @@ describe("private Slot Opened alerts and aggregate impact", () => {
     let body = "";
     const sender = createSlotOpenedAlertEmailSender({ fetchImpl: async (_url, init) => { body = String(init?.body || ""); return new Response("{}", { status: 200 }); } });
     await expect(sender({ to: "seeker@example.com", companyDomain: "acme.com", requestsUrl: "https://skipwait.me/requests" })).resolves.toEqual({ sent: true, reason: "sent" });
-    expect(body).toContain("acme.com"); expect(body).toContain("does not guarantee"); expect(body).not.toMatch(/resume|candidate|employee identity|queue|rank|sarah|stripe/i);
+    expect(body).toContain("acme.com"); expect(body).toContain("does not guarantee"); expect(body).not.toMatch(/resume|candidate|employee identity|queue|rank|sarah|netflix/i);
   });
 
   it("uses only verified review and capacity language, never fabricated seniority, profile activity, scarcity, or outcomes", () => {

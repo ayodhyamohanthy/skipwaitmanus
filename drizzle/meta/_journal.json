@@ -218,6 +218,13 @@
       "when": 1796160000000,
       "tag": "0030_document_blobs",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1788305367230,
+      "tag": "0031_drop_legacy_payment_columns",
+      "breakpoints": true
     }
   ]
 }

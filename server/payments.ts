@@ -31,7 +31,7 @@ async function razorpayOrder(input: { amountInRupees: number; receipt: string; n
   return (await response.json()) as { id: string; amount: number; currency: string };
 }
 
-async function paypalAccessToken(): Promise<string> {
+export async function paypalAccessToken(): Promise<string> {
   const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString("base64");
   const base = process.env.PAYPAL_ENV === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
   const response = await fetch(`${base}/v1/oauth2/token`, {

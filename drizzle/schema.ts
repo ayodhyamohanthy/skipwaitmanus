@@ -184,7 +184,6 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   subscriptionCurrentTermStart: timestamp("subscriptionCurrentTermStart"),
   subscriptionCurrentTermEnd: timestamp("subscriptionCurrentTermEnd"),
   subscriptionResourceVersion: bigint("subscriptionResourceVersion", { mode: "number" }),
-  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("token_balances_user_idx").on(table.userId), uniqueIndex("token_balances_user_role_unique").on(table.userId, table.role), uniqueIndex("token_balances_subscription_unique").on(table.subscriptionId)]);
 
@@ -194,7 +193,6 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
   kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted"]).notNull(),
-  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("token_transactions_user_idx").on(table.userId)]);
 

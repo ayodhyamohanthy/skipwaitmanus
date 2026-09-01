@@ -6,7 +6,7 @@
 
 ## User-facing promise
 
-The recipient-facing page uses factual copy: **“Request a private referral at Stripe.”** It identifies the company only. It does not name, profile, count, rate, or otherwise reveal the Referrer. The Referrer’s suggested LinkedIn-bio copy is similarly factual: **“Private referral requests at Stripe via Skipwait.me.”** Product UI must not claim that a candidate skips other applicants, bypasses an employer’s application process, or is guaranteed a review.
+The recipient-facing page uses factual copy: **“Request a private referral at Acme Corp.”** It identifies the company only. It does not name, profile, count, rate, or otherwise reveal the Referrer. The Referrer’s suggested LinkedIn-bio copy is similarly factual: **“Private referral requests at Acme Corp via Skipwait.me.”** Product UI must not claim that a candidate skips other applicants, bypasses an employer’s application process, or is guaranteed a review.
 
 ## Contract
 
