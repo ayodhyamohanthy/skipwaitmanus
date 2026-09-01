@@ -125,11 +125,11 @@
 - [x] Add an explicit insufficient-token explanation and $1-per-token repurchase action in the Referrer wallet.
 - [x] Verify the complete free-to-zero-to-purchase-to-usable-again transition for both roles.
 - [x] Add automated route-level coverage for the Job Seeker and Referrer zero-balance, top-up, and usable-again paths.
-- [x] Verify the existing Clerk configuration and integrate it as the secure sign-in authority for resume upload and Referrer review.
+- [x] Verify the existing auth-provider configuration and integrate it as the secure sign-in authority for resume upload and Referrer review.
 - [x] Persist secure document ownership and referral linkage so only the Job Seeker and assigned Referrer can access a resume.
 - [x] Connect the active Job Seeker submit flow to backend referral creation with uploaded attachment identifiers.
 - [x] Load Referrer documents from the assigned backend referral request instead of local storage.
-- [x] Add integration coverage for Clerk-secured upload, referral linkage, authorized review, and unrelated-user denial using injectable route dependencies; real Clerk/database E2E remains a separate environment-dependent validation.
+- [x] Add integration coverage for auth-secured upload, referral linkage, authorized review, and unrelated-user denial using injectable route dependencies; real provider/database E2E remains a separate environment-dependent validation.
 - [x] Verify employee work email domains and maintain a hidden eligible-employee pool by company.
 - [x] Route a Job Seeker’s Target Role URL request to the matching company’s eligible signed-in employees without exposing their identities.
 - [x] Notify eligible employees about matching company requests and let exactly one employee claim the referral request.
@@ -137,9 +137,9 @@
 - [x] Remove Referrer localStorage fallbacks so candidate context and documents are available only from claimed backend data.
 - [x] Reject consumer email domains before adding a verified employee to the hidden company pool.
 - [x] Add integration coverage for secure upload, company request creation, single claim, authorized document retrieval, and unrelated-user denial.
-- [x] Exercise the production private-referral route wiring with Clerk-compatible middleware-boundary authentication.
+- [x] Exercise the production private-referral route wiring with auth-provider-compatible middleware-boundary authentication.
 - [x] Exercise upload, referral linkage, exclusive claim, and signed document access through the isolated Airtable test ledger and protected route integration coverage; no live application data was used.
-- [x] Apply the supplied Clerk test-instance configuration and validate protected private-referral authentication at the middleware boundary.
+- [x] Apply the supplied auth test-instance configuration and validate protected private-referral authentication at the middleware boundary.
 - [x] Use an isolated Airtable test ledger to verify referral linkage, exclusive claim, and document-access authorization without touching live application data.
 - [x] Create a dedicated disposable Airtable base for private-referral authorization verification.
 - [x] Defer live Razorpay, PayPal, and Chargebee provider activation; retain the reviewed simulation until the user explicitly reopens live payments.
@@ -162,14 +162,14 @@
 - [x] Fix the Referrer work-email verification action so a signed-in employee can continue into the private company inbox.
 - [x] Fix the Job Seeker resume-upload action so a signed-in user can attach the required resume and continue the private referral request.
 - [x] Replace Referrer work-email verification with a secure email-OTP flow that enrolls only verified company-email domains in the private employee pool.
-- [x] Fix the Clerk security re-verification handoff required before sending a work-email OTP.
+- [x] Fix the auth security re-verification handoff required before sending a work-email OTP.
 - [x] Show clear signed-in account status and an account action in the active product header.
 - [x] Add privacy-safe operational activity logging for key Job Seeker and Referrer workflow events without recording document contents or authentication secrets.
 - [x] Build a protected administrator activity-log viewer with searchable diagnostic metadata and role-based access control.
 - [x] Promote the explicitly confirmed account that received the protected-route denial to administrator and verify access to the activity log.
-- [x] Repair the Clerk-to-application administrator authorization bridge for the explicitly promoted account.
-- [x] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through Clerk sign-in synchronization.
-- [x] Add a visible Clerk sign-out action to the account-status control so users can switch accounts.
+- [x] Repair the auth-provider-to-application administrator authorization bridge for the explicitly promoted account.
+- [x] Make ayodhya@skipwait.me the durable skipwait.me administrator account and preserve that role through sign-in synchronization.
+- [x] Add a visible sign-out action to the account-status control so users can switch accounts.
 - [x] Rename opportunity discovery labels to make clear that the Wall contains privately shared employee-referral opportunities, not public career-page listings.
 - [x] Remove the separate saved-device sign-in control and restore supported browser credentials or active sessions automatically without disrupting sign-in fallback.
 - [x] Verify the requested Internal openings landing label, align test coverage, and save a checkpoint.
@@ -191,7 +191,7 @@
 - [x] Show the signed-in user’s profile picture in the top-right account menu, with an accessible fallback avatar.
 - [x] Diagnose and fix attached resume visibility for authorized Referrers while preserving document-access controls.
 - [x] Add work-email management in Settings and show Switch to Job Referrer mode only after a verified work email is present.
-- [x] Preserve a selected resume through Clerk sign-in so it is not discarded before secure upload and referral submission.
+- [x] Preserve a selected resume through sign-in so it is not discarded before secure upload and referral submission.
 
 - [x] Recover the Chargebee checkout, webhook, token-ledger, and payment tests lost from the working tree after the accidental rollback to the prior checkpoint.
 - [x] Re-run TypeScript, Vitest, and production build checks after payment recovery before continuing webhook validation.
@@ -484,7 +484,7 @@
 - [x] Prepare a concise, staging-only manual VibecodeApp migration packet with exact prompts, validation gates, and production-isolation boundaries for the user.
 - [ ] Identify appropriate product-launch platforms, prepare truthful skipwait.me launch submissions, and publish only after explicit confirmation for each public posting.
 - [ ] Resume the authorized VibecodeApp staging rebuild and verify each secure-foundation, core-workflow, and parity milestone before any production cutover.
-- [ ] Rebuild every required SkipWait capability with verified Vibecode-compatible services instead of retaining incompatible Express, tRPC, Drizzle/MySQL, Clerk, or source-runtime dependencies.
+- [ ] Rebuild every required SkipWait capability with verified Vibecode-compatible services instead of retaining incompatible Express, tRPC, Drizzle/MySQL, legacy auth, or source-runtime dependencies.
 - [ ] Remove the imported Manus frontend’s unresolved `@shared/const` / tRPC bootstrap and replace it with a buildable Vibecode-native application entry before rebuilding feature parity.
 - [ ] Recreate the complete SkipWait product in VibecodeApp with compatible native architecture for every required capability, then prove staging parity before any production cutover.
 - [ ] Deliver a genuinely working VibecodeApp SkipWait staging application, replacing every incompatible source dependency while preserving the complete Job Seeker, Referrer, and Admin value flows.
@@ -550,7 +550,7 @@
 - [ ] Treat restoring the supplied mobile-first two-path UI at public skipwait.me as the sole active priority; defer payment and all unrelated work until the public root visibly renders that UI instead of the stale Loading document.
 - [x] Verify the reported no-op visual edit targeting `client/src/pages/Home.tsx:24`; the supplied desktop and mobile references confirm the current desktop navigation and mobile menu composition should be retained, so no element was removed.
 - [x] Evaluate hosting alternatives: decided on Cloudflare credits-funded stack (Pages + Containers + R2 + Hyperdrive) with Render free plan as the fastest first deployment; deployment artifacts (Dockerfile, render.yaml, docs/DEPLOY.md) are committed.
-- [x] Remove Clerk entirely: WorkOS AuthKit is the sole auth authority (server identity resolution, Clerk-shaped client compat module, dependencies deleted, bundle verified clean).
+- [x] Remove the legacy auth provider entirely: WorkOS AuthKit is the sole auth authority (server identity resolution, prior provider's client compat module removed, dependencies deleted, bundle verified clean).
 - [x] Migrate transactional email to ZeptoMail with automatic Resend fallback; server-owned work-email OTP delivered via the transactional sender.
 - [x] Implement the three-plane login model: open seeker plane (personal email + social via AuthKit), corporate-domain-gated referrer OTP plane, skipwait.me-restricted admin plane enforced at both entry and callback.
 - [x] Implement the supplied Home-page reference as a mobile-first responsive layout: compact wordmark and menu on mobile, two large referral-path cards, desktop primary navigation and workflow panel, preserved `/start` and `/referrer` role routing, then verify both breakpoints before checkpointing.

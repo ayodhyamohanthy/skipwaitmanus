@@ -14,7 +14,7 @@ The workspace contains a submitted rebuild request and several update groups, bu
 | --- | --- |
 | Existing application | It is identified as a non-production staging target; any unrelated legacy code is replaced or isolated. |
 | Temporary deployment | A Vibecode temporary HTTPS URL exists. It is **not** `skipwait.me`. |
-| Secrets | No provider key, database export, Clerk cookie, Chargebee live credential, Resend key, or customer record appears in source code, browser output, or prompts. |
+| Secrets | No provider key, database export, legacy auth session cookie, Chargebee live credential, Resend key, or customer record appears in source code, browser output, or prompts. |
 | Evidence | You can open the project’s file tree, build log, and test command/output. |
 
 ## 2. Prompt 1 — secure foundation only
@@ -35,7 +35,7 @@ First inspect the current codebase. Then implement ONLY Milestone 1 and stop for
 5. Add a private document-storage abstraction. No document may be public or served from a permanent URL. Do not upload a real resume.
 6. Create tests that prove unauthenticated, non-admin, cross-user, and cross-company access is denied. Add tests for the work-email rule and private-storage authorization boundary.
 
-Use Vibecode-native Hono, Prisma/SQLite, Better Auth, cloud storage, and server environment variables where appropriate. Do not imitate Express, tRPC, Drizzle, MySQL, or Clerk line-by-line.
+Use Vibecode-native Hono, Prisma/SQLite, Better Auth, cloud storage, and server environment variables where appropriate. Do not imitate Express, tRPC, Drizzle, MySQL, or the legacy auth provider line-by-line.
 
 Run the type check, tests, and production build. When finished, report: exact files created/changed; test command and results; build result; temporary staging URL; and known gaps. Stop before referral workflows, payments, data migration, live configuration, or domain cutover.
 ```

@@ -1,6 +1,6 @@
 # skipwait.me Full Migration to VibecodeApp
 
-**Decision.** VibecodeApp can be the intended production host for the full skipwait.me application, including the public site and its deployed backend. This is **not** a DNS-only switch. The current application is a React/TypeScript + Express/tRPC + Drizzle/MySQL system using Clerk, private S3 document storage, Chargebee, Resend, and server-side authorization. Vibecode deploys its own Hono backend, SQLite/Prisma database, Better Auth sessions, cloud storage, environment-variable manager, and custom-domain routing. The backend therefore needs a controlled **replatform and data migration**, not an unsafe file copy. [1] [2] [3]
+**Decision.** VibecodeApp can be the intended production host for the full skipwait.me application, including the public site and its deployed backend. This is **not** a DNS-only switch. The current application is a React/TypeScript + Express/tRPC + Drizzle/MySQL system using a hosted auth provider, private S3 document storage, Chargebee, Resend, and server-side authorization. Vibecode deploys its own Hono backend, SQLite/Prisma database, Better Auth sessions, cloud storage, environment-variable manager, and custom-domain routing. The backend therefore needs a controlled **replatform and data migration**, not an unsafe file copy. [1] [2] [3]
 
 > **Cutover rule:** The current production system remains the source of truth until a separately deployed Vibecode staging release passes functional, security, payment, document-access, and data-integrity verification. Do not point `skipwait.me` at Vibecode before those checks pass.
 
@@ -11,8 +11,8 @@
 | Web application | React 19, TypeScript, Tailwind 4, Vite PWA | Vibecode web application | Recreate the product UI and route behavior; retain the enterprise-blue design and mobile fixed-view rules. |
 | Server API | Express 4, tRPC 11, private HTTP routes | Hono backend routes | Rebuild the server-side contracts. Never convert authorization or payment fulfillment into browser logic. |
 | Database | Drizzle ORM over MySQL/TiDB | Prisma over Vibecode SQLite | Map every table, index, relationship, enum, and UTC timestamp; import data only through a controlled migration script and reconciliation report. |
-| Job Seeker identity | Clerk | Better Auth email OTP/session system | Rebuild the identity boundary. Preserve account/email mapping only after consented, verified migration; require a new secure session rather than carrying cookies or session tokens. |
-| Referrer identity | Clerk company-email OTP with company-domain checks | Better Auth email OTP plus server-side company-domain verification | Preserve the company-email-only rule, single-code OTP lifecycle, and exact-company access authorization. |
+| Job Seeker identity | Hosted auth provider | Better Auth email OTP/session system | Rebuild the identity boundary. Preserve account/email mapping only after consented, verified migration; require a new secure session rather than carrying cookies or session tokens. |
+| Referrer identity | Hosted auth provider company-email OTP with company-domain checks | Better Auth email OTP plus server-side company-domain verification | Preserve the company-email-only rule, single-code OTP lifecycle, and exact-company access authorization. |
 | Private resumes | Encrypted fragmented upload to private S3 objects with signed URLs | Vibecode Cloud storage, server-side private access | Recreate encrypted uploads, size/type/signature validation, owner checks, staging cleanup, and approved-participant-only resume access. Do not make resumes public URLs. |
 | Payments | Chargebee server API; Razorpay for INR and PayPal for USD; webhook-based fulfillment | Chargebee server API through Vibecode Hono backend | Preserve the existing verified Chargebee catalog and server-only entitlement logic. Change the host-bound live environment only after domain cutover. |
 | Notifications/errors | Private in-app notifications; Resend operational alerting | Vibecode backend + Resend environment variables | Keep notification authorization and privacy-safe activity logging server-side. |
@@ -20,7 +20,7 @@
 
 ## 2. Why this must be a replatform, not a source upload
 
-Vibecode’s documented backend uses **Hono**, **SQLite with Prisma**, and **Better Auth**. The current source depends on Express, tRPC, Drizzle/MySQL, Clerk, and storage helpers provided by the current hosting environment. These components are not drop-in compatible. [2] [3]
+Vibecode’s documented backend uses **Hono**, **SQLite with Prisma**, and **Better Auth**. The current source depends on Express, tRPC, Drizzle/MySQL, a hosted auth provider, and storage helpers provided by the current hosting environment. These components are not drop-in compatible. [2] [3]
 
 The existing Vibecode workspace file panel accepts operational documents but does not accept a source archive. The secure product specification and transfer guide are already uploaded there as text documents. The verified **source-only ZIP** remains the reference archive for a supported future source-import, Git, SSH, or manual porting route. It excludes credentials, customer data, resumes, payment events, local logs, builds, and dependencies.
 

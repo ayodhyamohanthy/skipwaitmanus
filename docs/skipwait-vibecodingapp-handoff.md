@@ -167,13 +167,13 @@ Provide this Markdown file first. Then provide only the following configuration 
 
 | Integration | Needed for | What to provide |
 |---|---|---|
-| Authentication provider (currently Clerk) | Secure Job Seeker login and company-email OTP verification | Publishable key, server secret, allowed redirect URLs, and verified sender/domain settings. |
+| Authentication provider (legacy hosted auth at the time of writing; WorkOS AuthKit today) | Secure Job Seeker login and company-email OTP verification | Publishable key, server secret, allowed redirect URLs, and verified sender/domain settings. |
 | Database | Ownership, lifecycle, balances, notifications, admin records | Secure database connection configured through the platform’s secret manager. |
 | Private object storage | Resumes and attachments | Bucket configuration and server-only credentials; no public bucket. |
 | Chargebee + Razorpay + PayPal | Localized checkout and webhook-driven fulfillment | Server-only API keys, webhook secret, product/price identifiers, and test-mode callback URL. |
 | Email provider (Resend) | Minimized material error alerts only | Server-only API key and verified `noreply@updates.skipwait.me` sender. |
 
-Do **not** send a VibeCodingApp agent any current private keys, webhook secrets, database URLs, Clerk tokens, payment credentials, or real user data. Use the product requirements above; configure credentials directly in the platform’s secret manager after the skeleton exists.
+Do **not** send a VibeCodingApp agent any current private keys, webhook secrets, database URLs, legacy auth provider tokens, payment credentials, or real user data. Use the product requirements above; configure credentials directly in the platform’s secret manager after the skeleton exists.
 
 ## 12. Current launch-state constraints
 
@@ -182,9 +182,9 @@ The source project has passed a full release quality gate with TypeScript, 61 te
 1. Bind the canonical `skipwait.me` domain to the new production project before pointing any live webhook at it.
 2. Use the new canonical receiver URL for Chargebee only after an unsigned POST returns HTTP 401 from the new application.
 3. Run one controlled India/INR Razorpay payment and one controlled international/USD PayPal payment with legitimate buyer accounts. Confirm Chargebee’s authenticated delivery and exactly-one server-side entitlement outcome.
-4. Configure production Clerk redirect/origin settings, work-email sender settings, private object storage, database backup/recovery, legal disclosures, support operations, and privacy-safe error alerts in the new environment.
+4. Configure production auth redirect/origin settings, work-email sender settings, private object storage, database backup/recovery, legal disclosures, support operations, and privacy-safe error alerts in the new environment.
 
-Do not copy production customer records, resumes, payment events, Clerk users, or secrets by uploading a source-code archive. Migrate real data only through an approved, separately designed migration plan with backups, access controls, legal review, and test-run reconciliation.
+Do not copy production customer records, resumes, payment events, legacy auth provider accounts, or secrets by uploading a source-code archive. Migrate real data only through an approved, separately designed migration plan with backups, access controls, legal review, and test-run reconciliation.
 
 ## 11. Recommended build process
 

@@ -20,7 +20,7 @@ This audit exercises the published current release and development preview again
 
 ## Constraints
 
-The sandbox does not have an active Clerk Job Seeker, verified-company Referrer, or administrator session. The audit therefore combines visual route-shell review, full automated boundary coverage, protected-route contract tests, runtime logs, and production-safe unauthenticated checks. Any action requiring a real payment, real OTP inbox, production data, or an external dashboard remains non-destructive and is not fabricated.
+The sandbox does not have an active Job Seeker, verified-company Referrer, or administrator session. The audit therefore combines visual route-shell review, full automated boundary coverage, protected-route contract tests, runtime logs, and production-safe unauthenticated checks. Any action requiring a real payment, real OTP inbox, production data, or an external dashboard remains non-destructive and is not fabricated.
 
 ## Final result
 

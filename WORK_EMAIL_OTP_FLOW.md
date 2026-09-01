@@ -1,13 +1,23 @@
 # Work-Email OTP Flow
 
-The Referrer remains signed in to skipwait.me with any supported identity. To join a company’s hidden employee pool, the Referrer enters a separate company email address. The browser adds that email to the signed-in Clerk user, requests Clerk’s email-code verification, and then submits the verified address to skipwait.me for domain eligibility validation and enrollment.
+For Referrers, the work-email OTP **is** the sign-in: there is no separate
+account step. The Referrer enters a company email address, the server sends a
+six-digit code to that address via ZeptoMail (work domains only — consumer
+inboxes are rejected before a code is ever generated), and verifying the code
+creates the session. The verified company email itself becomes the identity,
+and on first sign-in it is automatically enrolled as the referrer profile for
+that company domain.
 
 | Step | Responsibility | Result |
 | --- | --- | --- |
-| Enter work email | Referrer | A company address is supplied without changing the sign-in identity. |
-| Send six-digit code | Clerk | Clerk delivers and owns the short-lived verification challenge. |
-| Confirm code | Clerk | The submitted address becomes a verified Clerk email address. |
-| Enroll company domain | skipwait.me | The server confirms that the specific verified address belongs to the signed-in user, rejects consumer domains, and records the company domain. |
+| Enter work email | Referrer | A company address is supplied as the sign-in identity. |
+| Send six-digit code | skipwait.me server (`/api/auth/otp/send`) | The server generates the short-lived challenge and delivers it via ZeptoMail; consumer domains are rejected. |
+| Confirm code | skipwait.me server (`/api/auth/otp/verify`) | The server checks the hashed code (10-min TTL, single use, attempt caps) and issues the `app_session_id` JWT session cookie. |
+| Enroll company domain | skipwait.me | On first sign-in the verified address is recorded as the referrer profile for that company domain, so the Referrer lands ready to receive their company's private requests. |
 | Load private inbox | skipwait.me | Requests are scoped only to that verified company domain. |
 
-The server never accepts an arbitrary email string as proof. It retrieves the authenticated Clerk user and only enrolls an address that Clerk reports as verified on that user record. This keeps personal inboxes out of the employee pool and preserves the existing hidden-identity model.
+The server never accepts an arbitrary email string as proof. The identity is
+derived solely from successful proof-of-delivery to the company address: the
+session is issued only after the code was verified server-side against the
+hashed code stored for that exact email. This keeps personal inboxes out of
+the employee pool and preserves the hidden-identity model.

@@ -6,13 +6,13 @@
 
 ## 1. What “same configuration” means
 
-The target must preserve **behavioral and security parity**, not copy incompatible infrastructure line-for-line. Vibecode’s documented platform uses a Hono backend, Prisma with SQLite, Better Auth, cloud storage, environment-variable management, and custom-domain deployments. The current application uses Express/tRPC, Drizzle/MySQL, Clerk, private S3 storage, and Chargebee. The migration must therefore map each guarantee to the correct Vibecode-native equivalent. [1] [2] [3]
+The target must preserve **behavioral and security parity**, not copy incompatible infrastructure line-for-line. Vibecode’s documented platform uses a Hono backend, Prisma with SQLite, Better Auth, cloud storage, environment-variable management, and custom-domain deployments. The current application uses Express/tRPC, Drizzle/MySQL, a hosted auth provider, private S3 storage, and Chargebee. The migration must therefore map each guarantee to the correct Vibecode-native equivalent. [1] [2] [3]
 
 | Current skipwait guarantee | VibecodeApp implementation requirement | Acceptance evidence |
 | --- | --- | --- |
 | React PWA, enterprise-blue design, mobile one-action screens | Rebuild responsive PWA routes in Vibecode; preserve the blue/slate system, DM Sans, `h-dvh` flow shells, no in-flow logos, no mobile page scrolling, and one primary action per step. | Mobile and desktop screenshots for every public and authenticated route. |
 | Private server API | Hono backend routes with server-side authorization, validation, rate controls, JSON-safe error responses, security headers, and privacy-safe activity logs. | Unauthenticated, cross-user, cross-company, and admin-denied integration tests. |
-| Job Seeker identity | Better Auth account/session boundary; never copy Clerk cookies or existing sessions. | Controlled Job Seeker sign-up, sign-in, sign-out, and session-recovery test. |
+| Job Seeker identity | Better Auth account/session boundary; never copy legacy session cookies or existing sessions. | Controlled Job Seeker sign-up, sign-in, sign-out, and session-recovery test. |
 | Work-email-only Referrer identity | Better Auth email OTP plus server-side personal-domain rejection, exact company-domain verification, and a single active code lifecycle. | Company OTP reaches the entered address; personal email is rejected; incorrect/expired code fails safely. |
 | Exact-company referral routing | Canonical job-link resolution maps only independently verified employers; matching verified employees alone can view/claim the request. | Positive and negative employer-routing tests, including job-board URLs and neighbouring-listing rejection. |
 | Private resumes | Fragmented/encrypted upload transport, strict size/MIME/extension/signature validation, server-only private storage, signed temporary access, owner/accepted-Referrer authorization. | Cross-user and cross-company document access receives 401/403; approved participant preview works. |
@@ -45,7 +45,7 @@ Enter these in **Vibecode’s Environment** UI only. Use the existing secret val
 | Chargebee live boundary | Live credentials are selected only on the canonical host. | `CHARGEBEE_LIVE_ENABLED=true`; `CHARGEBEE_LIVE_DOMAIN=skipwait.me`; `CHARGEBEE_LIVE_SITE=skipwait`; dedicated live API key; distinct live webhook secret. |
 | Chargebee test boundary | Staging and preview routes remain isolated from live billing. | Test site/key/webhook secret only; never route preview traffic through live fulfillment. |
 | Payment routing | India uses INR/Razorpay; international customers use USD/PayPal through Chargebee. | Server validates country/currency/item-price pairing. There is no manual browser override and no direct client credit. |
-| Better Auth | New secure sessions are created on Vibecode. | Use a new high-entropy production secret; configure trusted origins, OTP sender, session security, and company-email Referrer rule. Do not migrate Clerk session cookies. |
+| Better Auth | New secure sessions are created on Vibecode. | Use a new high-entropy production secret; configure trusted origins, OTP sender, session security, and company-email Referrer rule. Do not migrate legacy auth session cookies. |
 | Private storage | Resume files are never public. | Use private bucket/container, server-side signing credentials, strict private CORS, encrypted fragments, final signature/type checks, and cleanup job. |
 | Database | Application data remains server-authorized and recoverable. | Vibecode Prisma/SQLite production database; migration journal; daily backup/export procedure; no BLOB resume storage. |
 | Resend | Operational failures reach the account owner without exposing content. | Use the verified sender `noreply@updates.skipwait.me`; retain privacy-safe, deduplicated error alerts. |

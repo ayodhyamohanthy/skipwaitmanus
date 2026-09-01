@@ -6,7 +6,7 @@
 
 ## Fresh verification result
 
-`server/privateReferralRoutes.integration.test.ts` completed successfully with two passing HTTP-level tests. The private-referral test verifies the lifecycle through Clerk-compatible test identities and an injectable persistence harness. It confirms that a resume upload is owned by the Job Seeker, is linked to the resulting company request, can be claimed by one verified employee, remains inaccessible to an unrelated signed-in identity, and becomes available to the claiming employee only after the exclusive claim.
+`server/privateReferralRoutes.integration.test.ts` completed successfully with two passing HTTP-level tests. The private-referral test verifies the lifecycle through server-issued test identities and an injectable persistence harness. It confirms that a resume upload is owned by the Job Seeker, is linked to the resulting company request, can be claimed by one verified employee, remains inaccessible to an unrelated signed-in identity, and becomes available to the claiming employee only after the exclusive claim.
 
 | Lifecycle stage | Actor | Result | Ledger record |
 | --- | --- | --- | --- |
@@ -18,10 +18,10 @@
 
 ## Boundary of this result
 
-This confirms the HTTP authorization contract and keeps a traceable record in a disposable Airtable base. It does **not** replace the remaining production-middleware exercise or a test-database run against real persistence. Those require a staging database and Clerk-compatible production boundary setup, and remain separately tracked.
+This confirms the HTTP authorization contract and keeps a traceable record in a disposable Airtable base. It does **not** replace the remaining production-middleware exercise or a test-database run against real persistence. Those require a staging database and a production authentication boundary setup, and remain separately tracked.
 
 ## Live middleware-boundary check
 
-The development deployment was also exercised through the existing Clerk-authenticated browser session with a read-only request to an unassigned referral identifier. The private route returned only the generic unassigned-request error and did not expose candidate data, request metadata, attachment URLs, or signed document access. The isolated ledger records this non-destructive check as `recyKjGboOMuxj6ZG`.
+The development deployment was also exercised through the existing authenticated browser session with a read-only request to an unassigned referral identifier. The private route returned only the generic unassigned-request error and did not expose candidate data, request metadata, attachment URLs, or signed document access. The isolated ledger records this non-destructive check as `recyKjGboOMuxj6ZG`.
 
 This validates the mounted route and `getAuth()` boundary for the current development deployment. It is not a substitute for the still-pending test-database lifecycle run.

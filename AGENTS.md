@@ -46,7 +46,7 @@ pnpm build            # client PWA + server bundle -> dist/
 | Area | Path |
 |---|---|
 | Client pages | `client/src/pages/` (wired in `App.tsx`) |
-| Auth compat (Clerk-shaped → WorkOS) | `client/src/_core/auth.tsx` (aliased from `@clerk/react`) |
+| Auth provider (WorkOS AuthKit) | `client/src/_core/auth.tsx` (WorkOS-backed hook surface) |
 | tRPC routers | `server/routers.ts` |
 | REST routes (referrals, docs, admin) | `server/privateReferralRoutes.ts` |
 | Identity resolution | `server/_core/workosAuth.ts` (JWT JWKS + cookie) → `devAuth.ts` |

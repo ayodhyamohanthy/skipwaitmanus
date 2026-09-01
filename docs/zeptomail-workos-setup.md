@@ -5,7 +5,7 @@ This release makes two provider swaps, both code-complete and provider-gated:
 | Concern | Was | Now | Fallback |
 | --- | --- | --- | --- |
 | Transactional email (review notices, slot alerts, work-email OTP, admin error alerts) | Resend only | **ZeptoMail** (Zoho) primary | Automatic fallback to Resend when `ZEPTOMAIL_API_KEY` is unset |
-| Production sign-in authority | Clerk | **WorkOS AuthKit** | Clerk (if `CLERK_SECRET_KEY` set) → local dev sessions |
+| Production sign-in authority | The previous hosted auth provider | **WorkOS AuthKit** | Local dev sessions (when WorkOS credentials are unset) |
 
 ## 1. ZeptoMail (transactional email)
 
@@ -38,8 +38,8 @@ Why: ZeptoMail is pay-per-credit with no monthly minimum (10,000 credits ≈ $1�
 - `server/emailDelivery.ts` — provider-agnostic transactional sender (ZeptoMail → Resend → not-configured). Never throws; failures are returned to callers who already handle them.
 - `server/_core/workosAuth.ts` — AuthKit routes. The callback upserts the WorkOS user (`workos_<id>` openId) and issues the same `app_session_id` JWT the rest of the app already verifies, so **no other route, DB query, or authorization check changed**.
 - `server/workEmailOtp.ts` + migration `0028` — server-owned enrollment OTP (hashed codes, 10-min TTL, single use, attempt caps, resend cooldown).
-- `WorkEmailSignIn` — now drives the server OTP endpoints instead of the Clerk legacy SDK.
-- Exactly one auth authority is active at a time: Clerk keys win, then WorkOS, then local dev sessions.
+- `WorkEmailSignIn` — drives the server OTP endpoints (`/api/auth/otp/send|verify`) directly.
+- Exactly one auth authority is active at a time: WorkOS AuthKit in production; local dev sessions when WorkOS credentials are unset.
 
 ## 4. Verification status
 

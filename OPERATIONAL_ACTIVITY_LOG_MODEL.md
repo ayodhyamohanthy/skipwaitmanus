@@ -1,12 +1,12 @@
 # Operational Activity Log Model
 
-The administrator log is an **operations and diagnostics** record, not a surveillance feed. It records the actor, action category, outcome, affected company or resource identifier, and a deliberately minimized metadata summary. It never stores document bytes, resume text, referral-email content, Clerk tokens, OTP values, session cookies, or message bodies.
+The administrator log is an **operations and diagnostics** record, not a surveillance feed. It records the actor, action category, outcome, affected company or resource identifier, and a deliberately minimized metadata summary. It never stores document bytes, resume text, referral-email content, auth tokens, OTP values, session cookies, or message bodies.
 
 | Event category | Recorded metadata | Excluded data |
 | --- | --- | --- |
 | Document upload and secure retrieval | File type, byte count, attachment identifier, outcome | File bytes, signed URL, document filename, document text |
 | Company referral request | Request identifier, company domain, attachment count, notified-employee count | Resume content, Job Seeker email, employee identities shared with Job Seeker |
-| Work-email enrollment | Company domain and success/failure status | Full work email, OTP, Clerk challenge data |
+| Work-email enrollment | Company domain and success/failure status | Full work email, OTP, verification challenge data |
 | Claim and decision | Request identifier, company domain, action outcome | Candidate document content and referral message text |
 | Opportunity post | Opportunity identifier, company domain, posting kind | Employee identity on the public card |
 

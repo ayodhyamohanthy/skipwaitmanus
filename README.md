@@ -27,9 +27,10 @@ On a fresh clone there are no WorkOS credentials, so the app falls back to a
 - The server registers `server/_core/devAuth.ts` (dev-auth routes)
   (`/api/dev-auth/session|login|logout`), which issues the same
   `app_session_id` JWT a real OAuth login would.
-- Vite aliases `@clerk/react` to `client/src/_core/auth.tsx`, a WorkOS-backed
-  compat module exposing the Clerk-shaped hook surface (`useAuth`, `useUser`,
-  `useClerk`, `SignInButton`); with no keys it renders the local dev sign-in.
+- `client/src/_core/auth.tsx` exposes the shared hook surface (`useAuth`,
+  `useUser`, `SignInButton`, `SignedIn`, `SignedOut`) on top of WorkOS AuthKit
+  plus the server `app_session_id` cookie session; with no keys it falls back
+  to the server-session-only mode for local dev.
 - A small "Local dev sign-in" widget (bottom-left) creates a session on this
   machine only. It never grants anything beyond the role derived by
   `resolveSyncedUserRole` (admin only for the durable admin email), and it
@@ -78,7 +79,7 @@ See `.env.example` for the full list.
 | Area | Path |
 |---|---|
 | Pages / routes | `client/src/pages/`, wired in `client/src/App.tsx` |
-| Clerk dev shim | `client/src/_core/clerkShim.tsx` + alias in `vite.config.ts` |
+| Auth provider surface | `client/src/_core/auth.tsx` (WorkOS AuthKit hooks) |
 | Payment route detection (INR/USD) | `client/src/lib/paymentRoute.ts` |
 | tRPC routers | `server/routers.ts` |
 | REST routes (referrals, uploads, admin) | `server/privateReferralRoutes.ts` |
@@ -94,5 +95,5 @@ See `.env.example` for the full list.
   INR-first presentations.
 - Live external credential checks (Chargebee API, Resend API) are gated behind
   `RUN_EXTERNAL_CREDENTIAL_TESTS=true` and skipped otherwise.
-- Production behavior is unchanged when Clerk keys are present: the shim and
-  dev auth routes are registered only in their absence.
+- Production auth is WorkOS-only: the dev-auth fallback routes are registered
+  only when WorkOS credentials are absent.

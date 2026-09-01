@@ -25,7 +25,7 @@ The ideal Job Seeker path has three beats:
 
 1. **Paste a Target Role URL.** Immediately show the company, the role link, and a simple coverage signal. The user should not be asked for a password, a profile, or a long form.
 2. **Choose to request privately.** Show the next practical requirement: a resume. Only when the user taps the upload surface should skipwait.me open the secure sign-in sheet.
-3. **Return exactly where they were.** After Clerk sign-in, restore the URL, name if provided, selected state, and upload context. The first uploaded resume becomes the required document; every further document is visibly optional.
+3. **Return exactly where they were.** After sign-in, restore the URL, name if provided, selected state, and upload context. The first uploaded resume becomes the required document; every further document is visibly optional.
 
 The UI copy should make the gate self-explanatory:
 
@@ -55,7 +55,7 @@ The Referrer sees a clear choice before sign-in:
 
 > “Work at a company that is hiring? Join privately with your work email.”
 
-Only after the employee taps **Join company coverage**, **Claim a request**, or **Publish an opportunity** should the system ask for Clerk sign-in and work-email verification. The explanation should be singular and specific: “We verify your work email so Job Seekers can trust the company coverage without seeing your identity.”
+Only after the employee taps **Join company coverage**, **Claim a request**, or **Publish an opportunity** should the system ask for sign-in and work-email verification. The explanation should be singular and specific: “We verify your work email so Job Seekers can trust the company coverage without seeing your identity.”
 
 This is lower friction than gating the entire Referrer page, because a potential employee can first understand what they are joining and why it helps.
 

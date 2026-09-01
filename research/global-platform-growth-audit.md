@@ -114,4 +114,4 @@ This is a **value loop**, not an engagement loop. Its purpose is to let real wor
 
 ### Validation
 
-The full release gate passed after implementation: TypeScript, **61 test files with 177 passing tests and 2 intentional external skips**, and the production PWA build. During validation, transient Clerk and Chargebee transport timeouts were independently diagnosed as external provider latency; the existing credential smoke checks now use bounded retries while still failing on invalid or unauthorized responses. No payment behavior, account entitlement, or user data handling was loosened.
+The full release gate passed after implementation: TypeScript, **61 test files with 177 passing tests and 2 intentional external skips**, and the production PWA build. During validation, transient auth-provider and Chargebee transport timeouts were independently diagnosed as external provider latency; the existing credential smoke checks now use bounded retries while still failing on invalid or unauthorized responses. No payment behavior, account entitlement, or user data handling was loosened.

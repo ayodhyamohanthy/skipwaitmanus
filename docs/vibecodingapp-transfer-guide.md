@@ -10,7 +10,7 @@ Use **two separate artifacts** rather than a single enormous chat prompt. The fi
 | `docs/skipwait-vibecodingapp-handoff.md` | The master product brief, UI system, user flows, schema, API contract, payment rules, privacy boundary, and acceptance tests. | Upload this file to the VibeCodingApp project. If file upload is unavailable, paste the master prompt first and then sections 2–12 in order. |
 | `docs/pre-launch-checklist.md` | Founder operating checklist for domains, payments, legal, support, monitoring, beta, and expansion. | Keep this open during deployment; it is not source code. |
 
-> **Never upload or paste secrets.** Do not transfer `.env` files, database URLs, Clerk keys, Chargebee/Razorpay/PayPal/Resend credentials, webhook passwords, JWT secrets, real resumes, customer exports, or payment events. Enter new credentials directly in VibeCodingApp’s secret manager after its codebase exists.
+> **Never upload or paste secrets.** Do not transfer `.env` files, database URLs, auth provider keys, Chargebee/Razorpay/PayPal/Resend credentials, webhook passwords, JWT secrets, real resumes, customer exports, or payment events. Enter new credentials directly in VibeCodingApp’s secret manager after its codebase exists.
 
 ## Step-by-step transfer
 
