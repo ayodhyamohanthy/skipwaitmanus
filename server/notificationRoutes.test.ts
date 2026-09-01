@@ -9,7 +9,7 @@ describe("private notification routes", () => {
     const readCalls: Array<{ userId: number; notificationId: number }> = [];
     const activity: Array<{ actorUserId?: number; action: string }> = [];
     registerPrivateReferralRoutes(app, {
-      resolveIdentity: async req => req.header("x-test-user") === "member" ? { account: { id: 41, openId: "clerk-member" } } : undefined,
+      resolveIdentity: async req => req.header("x-test-user") === "member" ? { account: { id: 41, openId: "workos-member" } } : undefined,
       dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
       createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,

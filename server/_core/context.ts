@@ -2,7 +2,6 @@ import type { CreateExpressContextOptions } from "@trpc/server/adapters/express"
 import type { User } from "../../drizzle/schema";
 import { resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { resolveDevIdentity } from "./devAuth";
-import { sdk } from "./sdk";
 
 export type TrpcContext = {
   req: CreateExpressContextOptions["req"];
@@ -21,10 +20,6 @@ export async function createContext(
       // app_session_id cookie issued at the WorkOS/OTP callbacks.
       const identity = await resolveWorkosIdentity(opts.req);
       user = (identity?.account as User | undefined) ?? null;
-    } else if (process.env.CLERK_SECRET_KEY) {
-      // Managed environment: authenticate the legacy session token (the
-      // browser SDK session is validated by Clerk middleware on REST routes).
-      user = await sdk.authenticateRequest(opts.req);
     } else {
       // Local development without provider keys: resolve the dev session.
       const identity = await resolveDevIdentity(opts.req);

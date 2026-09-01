@@ -9,7 +9,7 @@ function buildApp(overrides: Record<string, unknown> = {}) {
   const app = express(); app.use(express.json());
   const activity: Array<{ actorUserId?: number; action: string; metadata?: Record<string, unknown> }> = [];
   registerPrivateReferralRoutes(app, {
-    resolveIdentity: async req => req.header("x-test-user") === "member" ? { account: { id: 77, openId: "clerk-referrer" } } : undefined,
+    resolveIdentity: async req => req.header("x-test-user") === "member" ? { account: { id: 77, openId: "workos-referrer" } } : undefined,
     dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
     storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
     createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,

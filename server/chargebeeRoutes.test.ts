@@ -48,7 +48,7 @@ describe("Chargebee webhook route", () => {
     let wallet = 3;
     const activity: Array<{ action: string; actorUserId?: number; metadata?: Record<string, unknown> }> = [];
     registerChargebeeRoutes(app, {
-      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       recordActivity: async input => { activity.push(input); },
       createCheckout: async () => ({ checkoutUrl: "https://chargebee.test/hp_flow", hostedPageId: "hp_flow", checkoutIntentId: "intent_flow" }),
       createPaymentIntent: async input => { intent = { hostedPageId: input.hostedPageId, checkoutIntentId: input.checkoutIntentId, tokenCount: input.tokenCount }; },
@@ -77,7 +77,7 @@ describe("Chargebee webhook route", () => {
     let checkoutQuantity = 0;
     let paymentIntent: { tokenCount: number; amount: number; currency: string } | undefined;
     registerChargebeeRoutes(app, {
-      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       createCheckout: async input => { checkoutQuantity = input.quantity ?? 1; return { checkoutUrl: "https://chargebee.test/hp_quantity", hostedPageId: "hp_quantity", checkoutIntentId: "intent_quantity" }; },
       createPaymentIntent: async input => { paymentIntent = { tokenCount: input.tokenCount, amount: input.amount, currency: input.currency }; },
       fulfillPayment: async () => ({ status: "credited" }),
@@ -148,7 +148,7 @@ describe("Chargebee webhook route", () => {
     const reviewReasons: string[] = [];
     let fulfilled = 0;
     registerChargebeeRoutes(app, {
-      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       createPaymentIntent: async () => undefined,
       fulfillPayment: async input => { fulfilled += 1; expect(input).toMatchObject({ eventId: "hosted_page:hp_recovery", hostedPageId: "hp_recovery", passThruContent: "intent_recovery", amount: 9900, currency: "INR" }); return { status: "credited", tokenCount: 1 }; },
       getPaymentRecovery: async (_userId, _role, hostedPageId) => hostedPageId === "hp_recovery" ? { id: 41, status: "pending", hostedPageId, checkoutIntentId: "intent_recovery", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null } : { id: 42, status: "pending", hostedPageId, checkoutIntentId: "intent_expected", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null },
@@ -174,7 +174,7 @@ describe("Chargebee webhook route", () => {
     let storedIntent: Record<string, unknown> | undefined;
     let appliedEvent: Record<string, unknown> | undefined;
     registerChargebeeRoutes(app, {
-      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       createPaymentIntent: async () => undefined,
       fulfillPayment: async () => ({ status: "credited" }),
       createSubscriptionCheckout: async input => { expect(input.plan).toBe("pro"); expect(input.currency).toBe("INR"); return { checkoutUrl: "https://chargebee.test/hp_pro", hostedPageId: "hp_pro", checkoutIntentId: "intent_pro" }; },
@@ -196,7 +196,7 @@ describe("Chargebee webhook route", () => {
     app.use(express.json());
     let persisted: Record<string, unknown> | undefined;
     registerChargebeeRoutes(app, {
-      resolveIdentity: async () => ({ account: { id: 7, openId: "clerk_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
+      resolveIdentity: async () => ({ account: { id: 7, openId: "workos_test", email: "candidate@example.com", name: "Candidate" }, primaryEmail: { emailAddress: "candidate@example.com" } }),
       createPaymentIntent: async () => undefined,
       fulfillPayment: async () => ({ status: "credited" }),
       getUserSubscription: async (userId, role) => { expect(userId).toBe(7); expect(role).toBe("job_seeker"); return { subscriptionId: "sub_owned", status: "active" }; },

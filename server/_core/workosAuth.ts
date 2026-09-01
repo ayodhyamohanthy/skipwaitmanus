@@ -21,11 +21,11 @@ import { getSessionCookieOptions } from "./cookies";
  * app_session_id cookie the dev-auth path uses.
  *
  * Registered only when WORKOS_CLIENT_ID, WORKOS_API_KEY, and
- * WORKOS_COOKIE_PASSWORD are configured AND Clerk is not.
+ * WORKOS_COOKIE_PASSWORD are configured.
  */
 
 export function workosConfigured(): boolean {
-  return Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD && !process.env.CLERK_SECRET_KEY);
+  return Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD);
 }
 
 export function resolveWorkosOpenId(workosUserId: string): string {

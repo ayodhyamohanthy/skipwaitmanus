@@ -26,9 +26,9 @@ describe("approved referral conversation HTTP routes", () => {
     const app = express();
     app.use(express.json());
     const identities = new Map([
-      ["seeker", { account: { id: 11, openId: "clerk-seeker" } }],
-      ["referrer", { account: { id: 22, openId: "clerk-referrer" } }],
-      ["outsider", { account: { id: 33, openId: "clerk-outsider" } }],
+      ["seeker", { account: { id: 11, openId: "workos-seeker" } }],
+      ["referrer", { account: { id: 22, openId: "workos-referrer" } }],
+      ["outsider", { account: { id: 33, openId: "workos-outsider" } }],
     ]);
     const acceptedRequest = { jobSeekerId: 11, referrerId: 22, status: "pending" };
     const stored = [{ id: 1, body: "Thanks for reviewing this.", createdAt: new Date("2026-08-19T09:00:00.000Z"), senderId: 11 }];

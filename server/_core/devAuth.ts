@@ -9,15 +9,15 @@ import { sdk } from "./sdk";
 /**
  * Local development authentication.
  *
- * Production skipwait.me authenticates through Clerk (browser SDK + Clerk
- * middleware). When this repo runs outside the managed hosting environment
- * (fresh clone, offline demo, CI), Clerk keys are usually absent, and
- * `clerkMiddleware()` would reject every request — including public pages.
+ * Production skipwait.me authenticates through WorkOS AuthKit (SDK JWT
+ * bearer token plus the app session cookie). When this repo runs with no
+ * provider keys configured (fresh clone, offline demo, CI), there is no
+ * production authority to verify a session against.
  *
  * These routes provide an equivalent server-local session built on the same
- * `app_session_id` JWT the OAuth callback uses. They are registered ONLY when
- * CLERK_SECRET_KEY is not configured, and they never grant admin role or
- * touch real identity providers.
+ * `app_session_id` JWT the WorkOS/OTP callbacks use. They are registered
+ * ONLY when WorkOS keys are absent, and they never grant admin role or touch
+ * real identity providers.
  */
 
 export type DevEmailAddress = { id: string; emailAddress: string; verification: { status: "verified" | "unverified" } };
@@ -104,8 +104,8 @@ export function registerDevAuthRoutes(app: Express) {
       return;
     }
     const openId = `dev_${randomUUID().replace(/-/g, "")}`.slice(0, 64);
-    // `dev` rather than `clerk`: no identity provider vouches for this session,
-    // so recording a provider name here would misrepresent how it was created.
+    // `dev`: no identity provider vouches for this session, so recording a
+    // provider name here would misrepresent how it was created.
     const account = await upsertDevUser({ openId, name, email, loginMethod: "dev" });
     if (!account) {
       res.status(500).json({ error: "Dev session could not be created" });

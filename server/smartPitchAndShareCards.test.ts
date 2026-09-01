@@ -6,9 +6,9 @@ import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
 
 describe("Smart Pitch and referral share cards", () => {
   const identities = new Map([
-    ["seeker", { account: { id: 1, openId: "clerk-seeker" } }],
-    ["referrer", { account: { id: 2, openId: "clerk-referrer" } }],
-    ["outsider", { account: { id: 3, openId: "clerk-outsider" } }],
+    ["seeker", { account: { id: 1, openId: "workos-seeker" } }],
+    ["referrer", { account: { id: 2, openId: "workos-referrer" } }],
+    ["outsider", { account: { id: 3, openId: "workos-outsider" } }],
   ]);
 
   function appFor() {

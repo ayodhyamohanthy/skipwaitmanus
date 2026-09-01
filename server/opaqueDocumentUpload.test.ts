@@ -15,7 +15,7 @@ describe("opaque private-document upload route", () => {
   it("accepts an authorized encrypted PDF payload, decrypts it only server-side, validates its signature, and stores a private attachment", async () => {
     const app = express(); app.use(express.json({ limit: "50mb" })); let stored: Buffer | undefined;
     registerPrivateReferralRoutes(app, {
-      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "clerk-seeker" } } : undefined,
+      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "workos-seeker" } } : undefined,
       dataUrlToBuffer: () => Buffer.from("unused"), sanitizeDocumentName: value => value,
       storagePut: async (_key, data) => { stored = data; return { key: "private/resume.pdf" }; }, storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
       createReferralAttachment: async (_ownerId, input) => ({ id: 64, fileName: input.fileName, mimeType: input.mimeType, fileSize: input.fileSize, fileKey: input.fileKey }), getAccessibleReferralAttachment: async () => undefined,
@@ -33,7 +33,7 @@ describe("opaque private-document upload route", () => {
   it("accepts an owner-scoped encrypted fragment, rejects an outsider, and reassembles the verified document only when all bytes arrive", async () => {
     const app = express(); app.use(express.json({ limit: "50mb" })); const sessions = new Map<string, any>(); const privateBytes = new Map<string, Buffer>(); let attachmentId = 70;
     registerPrivateReferralRoutes(app, {
-      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "clerk-seeker" } } : req.header("x-test-user") === "outsider" ? { account: { id: 13, openId: "clerk-outsider" } } : undefined,
+      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "workos-seeker" } } : req.header("x-test-user") === "outsider" ? { account: { id: 13, openId: "workos-outsider" } } : undefined,
       dataUrlToBuffer: () => Buffer.from("unused"), sanitizeDocumentName: value => value,
       storagePut: async (key, data) => { privateBytes.set(key, data); return { key }; }, storageGetSignedUrl: async key => `https://signed.example/${encodeURIComponent(key)}`,
       createReferralAttachment: async (_ownerId, input) => ({ id: attachmentId++, fileName: input.fileName, mimeType: input.mimeType, fileSize: input.fileSize, fileKey: input.fileKey }), getAccessibleReferralAttachment: async () => undefined,

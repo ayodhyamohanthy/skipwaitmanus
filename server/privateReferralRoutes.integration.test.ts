@@ -11,7 +11,7 @@ describe("private referral HTTP routes", () => {
     let submittedCandidateMessage = "";
     const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
     const attachment = { id: 77, ownerId: 1, fileName: "resume.pdf", fileKey: "private/resume.pdf", mimeType: "application/pdf", fileSize: 3, referrerId: undefined as number | undefined };
-    const identities = new Map([["seeker", { account: { id: 1, openId: "clerk-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }], ["employee", { account: { id: 2, openId: "clerk-employee" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }], ["outsider", { account: { id: 3, openId: "clerk-outsider" }, primaryEmail: { emailAddress: "outsider@other.com", verification: { status: "verified" } } }]]);
+    const identities = new Map([["seeker", { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }], ["employee", { account: { id: 2, openId: "workos-employee" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }], ["outsider", { account: { id: 3, openId: "workos-outsider" }, primaryEmail: { emailAddress: "outsider@other.com", verification: { status: "verified" } } }]]);
     registerPrivateReferralRoutes(app, {
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))),
       dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
@@ -57,9 +57,9 @@ describe("private referral HTTP routes", () => {
     const app = express(); app.use(express.json());
     let claimedBy: number | undefined;
     const identities = new Map([
-      ["employee-a", { account: { id: 2, openId: "clerk-employee-a" }, primaryEmail: { emailAddress: "a@acme.com", verification: { status: "verified" } } }],
-      ["employee-b", { account: { id: 3, openId: "clerk-employee-b" }, primaryEmail: { emailAddress: "b@acme.com", verification: { status: "verified" } } }],
-      ["outsider", { account: { id: 4, openId: "clerk-outsider" }, primaryEmail: { emailAddress: "employee@other.com", verification: { status: "verified" } } }],
+      ["employee-a", { account: { id: 2, openId: "workos-employee-a" }, primaryEmail: { emailAddress: "a@acme.com", verification: { status: "verified" } } }],
+      ["employee-b", { account: { id: 3, openId: "workos-employee-b" }, primaryEmail: { emailAddress: "b@acme.com", verification: { status: "verified" } } }],
+      ["outsider", { account: { id: 4, openId: "workos-outsider" }, primaryEmail: { emailAddress: "employee@other.com", verification: { status: "verified" } } }],
     ]);
     const unclaimedRequest = { id: 701, companyDomain: "acme.com", status: "pending", referrerId: null };
     registerPrivateReferralRoutes(app, {
@@ -83,7 +83,7 @@ describe("private referral HTTP routes", () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     registerPrivateReferralRoutes(app, {
-      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "clerk-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
+      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } } : undefined,
       dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 88, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 880, companyDomain: "acme.com", notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2, creditSummary: { totalAvailable: 2 } }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 880, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
@@ -100,8 +100,8 @@ describe("private referral HTTP routes", () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     const identities = new Map([
-      ["employee", { account: { id: 21, openId: "clerk-acme" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }],
-      ["outsider", { account: { id: 22, openId: "clerk-other" }, primaryEmail: { emailAddress: "employee@other.com", verification: { status: "verified" } } }],
+      ["employee", { account: { id: 21, openId: "workos-acme" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }],
+      ["outsider", { account: { id: 22, openId: "workos-other" }, primaryEmail: { emailAddress: "employee@other.com", verification: { status: "verified" } } }],
     ]);
     let allocationOpenings = 0;
     registerPrivateReferralRoutes(app, {
@@ -128,8 +128,8 @@ describe("private referral HTTP routes", () => {
   it("returns only a verified Referrer’s aggregate private impact and never candidate or queue data", async () => {
     const app = express(); app.use(express.json());
     const identities = new Map([
-      ["referrer", { account: { id: 71, openId: "clerk-referrer" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }],
-      ["outsider", { account: { id: 72, openId: "clerk-outsider" }, primaryEmail: { emailAddress: "person@example.com", verification: { status: "verified" } } }],
+      ["referrer", { account: { id: 71, openId: "workos-referrer" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }],
+      ["outsider", { account: { id: 72, openId: "workos-outsider" }, primaryEmail: { emailAddress: "person@example.com", verification: { status: "verified" } } }],
     ]);
     registerPrivateReferralRoutes(app, {
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
@@ -146,7 +146,7 @@ describe("private referral HTTP routes", () => {
   it("lists anonymous opportunities publicly but only lets a verified employee publish one", async () => {
     const app = express();
     app.use(express.json());
-    const identities = new Map([["employee", { account: { id: 2, openId: "clerk-employee" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } }, emailAddresses: [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] }], ["personal", { account: { id: 4, openId: "clerk-personal" }, primaryEmail: { emailAddress: "person@gmail.com", verification: { status: "verified" } }, emailAddresses: [{ emailAddress: "person@gmail.com", verification: { status: "verified" } }] }]]);
+    const identities = new Map([["employee", { account: { id: 2, openId: "workos-employee" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } }, emailAddresses: [{ emailAddress: "employee@acme.com", verification: { status: "verified" } }] }], ["personal", { account: { id: 4, openId: "workos-personal" }, primaryEmail: { emailAddress: "person@gmail.com", verification: { status: "verified" } }, emailAddresses: [{ emailAddress: "person@gmail.com", verification: { status: "verified" } }] }]]);
     let savedWorkEmail = false;
     let fulfilledInvite: { userId: number; inviteCode: string; workEmailDomain: string } | undefined;
     registerPrivateReferralRoutes(app, {
@@ -173,9 +173,9 @@ describe("private referral HTTP routes", () => {
   it("issues a personal invite link and only forwards claims from a verified account email", async () => {
     const app = express(); app.use(express.json());
     const identities = new Map([
-      ["inviter", { account: { id: 9, openId: "clerk-inviter" }, primaryEmail: { emailAddress: "inviter@example.com", verification: { status: "verified" } } }],
-      ["joiner", { account: { id: 10, openId: "clerk-joiner" }, primaryEmail: { emailAddress: "joiner@example.com", verification: { status: "verified" } } }],
-      ["unverified", { account: { id: 11, openId: "clerk-unverified" }, primaryEmail: { emailAddress: "unverified@example.com", verification: { status: "unverified" } } }],
+      ["inviter", { account: { id: 9, openId: "workos-inviter" }, primaryEmail: { emailAddress: "inviter@example.com", verification: { status: "verified" } } }],
+      ["joiner", { account: { id: 10, openId: "workos-joiner" }, primaryEmail: { emailAddress: "joiner@example.com", verification: { status: "verified" } } }],
+      ["unverified", { account: { id: 11, openId: "workos-unverified" }, primaryEmail: { emailAddress: "unverified@example.com", verification: { status: "unverified" } } }],
     ]);
     let claimed: { userId: number; inviteCode: string; verifiedEmail: string } | undefined;
     registerPrivateReferralRoutes(app, {
@@ -197,8 +197,8 @@ describe("private referral HTTP routes", () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     const identities = new Map([
-      ["employee", { account: { id: 31, openId: "clerk-stripe" }, primaryEmail: { emailAddress: "employee@stripe.com", verification: { status: "verified" } } }],
-      ["seeker", { account: { id: 32, openId: "clerk-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }],
+      ["employee", { account: { id: 31, openId: "workos-stripe" }, primaryEmail: { emailAddress: "employee@stripe.com", verification: { status: "verified" } } }],
+      ["seeker", { account: { id: 32, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }],
     ]);
     let receivedFastTrackCode: string | undefined;
     let receivedVanity: { companySlug?: string; alias?: string } | undefined;
@@ -220,7 +220,7 @@ describe("private referral HTTP routes", () => {
     expect(publicLink.status).toBe(200); expect(publicLink.body).toEqual({ link: { companyDomain: "stripe.com", isActive: true } }); expect(JSON.stringify(publicLink.body)).not.toContain("referrerId");
     expect((await request(app).get("/api/referrer-fast-track/inactive-link")).status).toBe(404);
     const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.stripe.com/jobs/design", attachmentIds: [1], fastTrackCode: "a".repeat(32) });
-    expect(created.status).toBe(201); expect(created.body).toMatchObject({ requestId: 802, companyDomain: "stripe.com", fastTrack: true }); expect(receivedFastTrackCode).toBe("a".repeat(32)); expect(JSON.stringify(created.body)).not.toContain("clerk-stripe");
+    expect(created.status).toBe(201); expect(created.body).toMatchObject({ requestId: 802, companyDomain: "stripe.com", fastTrack: true }); expect(receivedFastTrackCode).toBe("a".repeat(32)); expect(JSON.stringify(created.body)).not.toContain("workos-stripe");
     const vanity = await request(app).get("/api/referrer-fast-track/vanity/stripe/ref-a1b2c3d4e5");
     expect(vanity.status).toBe(200); expect(vanity.body).toEqual({ link: { companyDomain: "stripe.com", isActive: true } }); expect(JSON.stringify(vanity.body)).not.toContain("referrerId");
     expect((await request(app).get("/api/referrer-fast-track/vanity/google/ref-a1b2c3d4e5")).status).toBe(404);
@@ -234,7 +234,7 @@ describe("private referral HTTP routes", () => {
     const app = express(); app.use(express.json());
     let receivedTargetRoleUrl = "";
     registerPrivateReferralRoutes(app, {
-      resolveIdentity: async () => ({ account: { id: 12, openId: "clerk-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      resolveIdentity: async () => ({ account: { id: 12, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedTargetRoleUrl = input.targetRoleUrl; return { requestId: 1, companyDomain: "chatfin.ai", notifiedEmployees: 0 }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
@@ -245,7 +245,7 @@ describe("private referral HTTP routes", () => {
 
   it("returns administrator activity only to a persisted administrator account", async () => {
     const app = express(); app.use(express.json());
-    const identities = new Map([["admin", { account: { id: 7, openId: "clerk-admin", role: "admin" as const } }], ["member", { account: { id: 8, openId: "clerk-member", role: "user" as const } }]]);
+    const identities = new Map([["admin", { account: { id: 7, openId: "workos-admin", role: "admin" as const } }], ["member", { account: { id: 8, openId: "workos-member", role: "user" as const } }]]);
     let activityQuery: Record<string, unknown> | undefined;
     registerPrivateReferralRoutes(app, {
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
