@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skipwait.me — Pending Screens (Seeker · Referrer · Admin)</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #f4f2ee;
+    --bg-subtle: #edeae4;
+    --surface: #ffffff;
+    --surface-raised: #fbfaf8;
+    --border: rgba(28,27,25,0.08);
+    --border-hover: rgba(28,27,25,0.16);
+    --accent: #0B57D0;
+    --accent-dim: rgba(11,87,208,0.08);
+    --text: #1c1b19;
+    --text-secondary: rgba(28,27,25,0.62);
+    --text-tertiary: rgba(28,27,25,0.38);
+    --shadow-sm: 0 1px 3px rgba(28,27,25,0.06), 0 1px 2px rgba(28,27,25,0.04);
+    --shadow-md: 0 4px 16px rgba(28,27,25,0.08), 0 2px 6px rgba(28,27,25,0.05);
+    --shadow-lg: 0 12px 40px rgba(28,27,25,0.12), 0 4px 12px rgba(28,27,25,0.07);
+    --shadow-drag: 0 20px 60px rgba(28,27,25,0.18), 0 0 0 1.5px var(--accent);
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --font-sans: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --font-mono: "SF Mono", "Fira Code", "JetBrains Mono", "Cascadia Code", monospace;
+    --note-bg: #fdf9ec;
+    --note-border: rgba(191,155,72,0.25);
+    --transition-fast: 120ms cubic-bezier(0.25, 0.1, 0.25, 1);
+    --transition-normal: 200ms cubic-bezier(0.25, 0.1, 0.25, 1);
+  }
+
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--bg);
+    font-family: var(--font-sans);
+    color: var(--text);
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* grain overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 0.025;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-size: 512px 512px;
+    mix-blend-mode: overlay;
+  }
+
+  /* ===== canvas viewport ===== */
+  .canvas-viewport {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    cursor: grab;
+  }
+  .canvas-viewport.panning { cursor: grabbing; }
+
+  .canvas-world {
+    position: absolute;
+    left: 0; top: 0;
+    width: 20000px; height: 20000px;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  /* ===== dot grid ===== */
+  .canvas-viewport {
+    --grid-color: rgba(28,27,25,0.05);
+  }
+
+  /* ===== draggable elements ===== */
+  .canvas-el {
+    position: absolute;
+    cursor: grab;
+    transition: box-shadow var(--transition-normal), transform var(--transition-fast);
+  }
+  .canvas-el:hover { z-index: 10; }
+  .canvas-el.dragging {
+    cursor: grabbing;
+    z-index: 999;
+    box-shadow: var(--shadow-drag) !important;
+    transform: scale(1.01);
+    transition: none;
+  }
+
+  /* ===== section header ===== */
+  .section-header {
+    position: absolute;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    white-space: nowrap;
+  }
+  .section-header .section-num {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    opacity: 0.8;
+  }
+  .section-header .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .section-header .section-line {
+    flex: none;
+    width: 48px;
+    height: 1px;
+    background: linear-gradient(90deg, var(--accent) 0%, transparent 100%);
+    opacity: 0.3;
+  }
+
+  /* ===== title ===== */
+  .canvas-title {
+    position: absolute;
+    pointer-events: none;
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    color: var(--text);
+  }
+
+  /* ===== text block ===== */
+  .canvas-text {
+    position: absolute;
+    line-height: 1.7;
+    letter-spacing: 0.005em;
+    color: var(--text-secondary);
+    min-width: 200px;
+    max-width: 560px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ===== tag ===== */
+  .canvas-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 14px;
+    border-radius: 100px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    transition: border-color var(--transition-fast), background var(--transition-fast);
+    white-space: nowrap;
+  }
+  .canvas-tag:hover {
+    border-color: var(--border-hover);
+    background: var(--surface-raised);
+  }
+  .canvas-tag .tag-dot {
+    width: 5px; height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+
+  /* ===== context card ===== */
+  .context-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    min-width: 220px;
+    transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+  }
+  .context-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+  }
+  .context-card .card-head {
+    padding: 16px 20px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .context-card .card-head .head-indicator {
+    width: 3px;
+    height: 16px;
+    border-radius: 2px;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .context-card .card-head h3 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    color: var(--text);
+  }
+  .context-card .card-content {
+    padding: 0 20px 20px;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--text-secondary);
+  }
+  .context-card .card-content ul {
+    list-style: none;
+    padding: 0;
+  }
+  .context-card .card-content li {
+    padding: 4px 0;
+    padding-left: 12px;
+    position: relative;
+  }
+  .context-card .card-content li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--text-tertiary);
+  }
+
+  /* ===== design system card ===== */
+  .ds-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+  }
+  .ds-card:hover {
+    border-color: var(--border-hover);
+    box-shadow: var(--shadow-md);
+  }
+  .ds-card .ds-head {
+    padding: 16px 20px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+  }
+  .ds-card .ds-body {
+    padding: 0 20px 20px;
+  }
+
+  /* color type */
+  .ds-card .color-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+    gap: 8px;
+  }
+  .ds-card .color-chip {
+    aspect-ratio: 1;
+    border-radius: var(--radius-sm);
+    position: relative;
+    transition: transform var(--transition-fast);
+  }
+  .ds-card .color-chip:hover { transform: scale(1.08); }
+  .ds-card .color-chip .chip-label {
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+  }
+
+  /* typography type */
+  .ds-card .type-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ds-card .type-row {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  .ds-card .type-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-tertiary);
+    min-width: 36px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .ds-card .type-sample {
+    color: var(--text);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ===== color swatch (standalone) ===== */
+  .color-swatch-group {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 20px;
+  }
+  .swatch-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+  .swatch-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    box-shadow: var(--shadow-sm), inset 0 1px 0 rgba(255,255,255,0.08);
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  }
+  .swatch-circle:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+  }
+  .swatch-name {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  .swatch-hex {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-tertiary);
+    text-align: center;
+  }
+
+  /* ===== type sample (standalone) ===== */
+  .type-sample-group {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    min-width: 400px;
+  }
+  .type-sample-row {
+    display: flex;
+    align-items: baseline;
+    gap: 20px;
+  }
+  .type-sample-meta {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-tertiary);
+    min-width: 48px;
+    flex-shrink: 0;
+    letter-spacing: 0.04em;
+  }
+  .type-sample-text {
+    color: var(--text);
+    line-height: 1.25;
+  }
+
+  /* ===== note (sticky) ===== */
+  .canvas-note {
+    background: var(--note-bg);
+    border: 1px solid var(--note-border);
+    border-radius: var(--radius-md);
+    padding: 16px 18px;
+    min-width: 200px;
+    max-width: 300px;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-normal), transform var(--transition-fast);
+  }
+  .canvas-note:hover {
+    box-shadow: var(--shadow-md);
+  }
+  .canvas-note .note-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--accent);
+    opacity: 0.7;
+    margin-bottom: 8px;
+  }
+  .canvas-note .note-body {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text-secondary);
+  }
+
+  /* ===== design page ===== */
+  .design-page {
+    background: #fff;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    transition: box-shadow var(--transition-normal);
+  }
+  .design-page:hover {
+    box-shadow: 0 16px 56px rgba(0,0,0,0.5), 0 6px 16px rgba(0,0,0,0.35);
+  }
+  .design-page .page-content {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+  .page-label {
+    position: absolute;
+    bottom: -32px;
+    left: 0;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-tertiary);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .page-label .label-num {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent);
+    opacity: 0.6;
+  }
+
+  /* ===== diagram ===== */
+  .canvas-diagram {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+  .canvas-diagram .diagram-content {
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+  }
+
+  /* ===== zoom controls ===== */
+  .zoom-controls {
+    position: fixed;
+    bottom: 24px; right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    z-index: 100;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+  }
+  .zoom-btn {
+    width: 36px; height: 36px;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition-fast), color var(--transition-fast);
+  }
+  .zoom-btn:hover {
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+  }
+  .zoom-btn:active {
+    background: rgba(255,255,255,0.03);
+  }
+  .zoom-label {
+    min-width: 50px; height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+  }
+
+  /* ===== coord indicator ===== */
+  .coord-indicator {
+    position: fixed;
+    bottom: 28px; left: 24px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    color: var(--text-tertiary);
+    z-index: 100;
+    padding: 4px 10px;
+    background: rgba(17,17,16,0.85);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ===== keyboard hint ===== */
+  .kbd-hint {
+    position: fixed;
+    top: 20px; right: 24px;
+    z-index: 100;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    display: flex;
+    gap: 12px;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+  }
+  .canvas-viewport:hover ~ .kbd-hint { opacity: 1; }
+  .kbd-hint kbd {
+    font-family: var(--font-mono);
+    padding: 2px 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="canvas-viewport" id="viewport">
+  <div class="canvas-world" id="world"></div>
+</div>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" id="zoomOut" aria-label="">&#8722;</button>
+  <div class="zoom-label" id="zoomLabel">100%</div>
+  <button class="zoom-btn" id="zoomIn" aria-label="">+</button>
+  <button class="zoom-btn" id="zoomReset" title="" aria-label="">&#8962;</button>
+</div>
+
+<div class="coord-indicator" id="coordIndicator">0, 0</div>
+
+<div class="kbd-hint" id="kbdHint"></div>
+
+<script>
+(() => {
+  // ═══════════════════════════════════════════════════════════
+  // LOCALIZE: instantiating agent MUST translate every value in
+  // UI_STRINGS to the user's conversation language. Machine fields
+  // (id/class/data-*) remain English.
+  // ═══════════════════════════════════════════════════════════
+  const UI_STRINGS = {
+    projectDescription: 'Infinite canvas design delivery template.\nSupports free layout of titles, text, tags, cards, color swatches, type samples, design pages, and notes.',
+    tags: ['Infinite Canvas', 'Design Delivery', 'Three-Layer Architecture'],
+    contextCards: {
+      coreFeatures: { title: 'Core Features', items: ['Pan & zoom canvas', 'Drag elements freely', 'Undo / Redo', 'Trackpad gesture support'] },
+      techHighlights: { title: 'Technical Highlights', items: ['Single-file HTML delivery', 'No external dependencies', 'Open directly in browser', 'Pointer Events touch compatibility'] },
+      deliveryStandards: { title: 'Delivery Standards', items: ['Row 1 answers three core questions', 'Row 2 shows color & type system', 'Row 3 pages arranged by flow'] },
+    },
+    notes: {
+      designPhilosophy: { tag: 'Design Philosophy', body: 'Pursue a design-board feel, not a table. Elements scatter freely; important things are bigger and more prominent.' },
+      remark: { tag: 'Remark', body: 'This is the template demo scene. When used, the agent fills in project content.' },
+    },
+    typeSamples: {
+      heading: 'Heading',
+      subheading: 'Subheading',
+      bodyText: 'Body text. Design is the process of turning intent into perceivable form.',
+      caption: 'Caption / supplementary text',
+    },
+    pages: {
+      home: { label: 'Home', heading: 'Welcome to the Infinite Canvas', cta: 'Start Exploring' },
+      discover: { label: 'Discover', todayPick: 'Today\'s Picks' },
+      cards: {
+        designSystemIntro: { title: 'Design System Basics', desc: 'Build a complete design language from scratch' },
+        colorTheory: { title: 'Color Theory', desc: 'Understanding oklch and harmonious palettes' },
+        typographyRhythm: { title: 'Typography Rhythm', desc: 'Line height, letter spacing, and breathing room' },
+      },
+      profile: { label: 'Profile', name: 'Designer', role: 'Product Design \u00b7 3 Projects', items: ['My Projects', 'Design Specs', 'Settings'] },
+    },
+    docTitle: 'skipwait.me — Pending Screens (Seeker · Referrer · Admin)',
+    zoom: { zoomIn: 'Zoom in', zoomOut: 'Zoom out', reset: 'Reset view' },
+    kbdHints: [['Scroll', 'pan'], ['\u2318Scroll', 'zoom'], ['\u2318Z', 'undo']],
+    sections: { context: '01 PROJECT CONTEXT', designSystem: '02 DESIGN SYSTEM', deliverables: '03 DESIGN DELIVERABLES' },
+    demoTitle: 'Canvas Template',
+    designSystemCards: {
+      colorTitle: 'Color Palette',
+      typographyTitle: 'Typography',
+      componentsTitle: 'Components',
+      swatchNames: ['Accent', 'Surface', 'Raised', 'Text', 'Muted', 'Border'],
+      typeMeta: { h1: 'H1', h2: 'H2', body: 'Body', caption: 'Caption' },
+      componentSamples: { primary: 'Primary Button', secondary: 'Secondary', inputPlaceholder: 'Input placeholder\u2026' },
+    },
+    hello: 'Hello',
+  };
+
+  // Chrome strings live in UI_STRINGS too — applied here so the static HTML
+  // above carries no visible copy at all (machine-checkable invariant).
+  document.title = UI_STRINGS.docTitle;
+  document.getElementById('zoomIn').setAttribute('aria-label', UI_STRINGS.zoom.zoomIn);
+  document.getElementById('zoomOut').setAttribute('aria-label', UI_STRINGS.zoom.zoomOut);
+  document.getElementById('zoomReset').setAttribute('aria-label', UI_STRINGS.zoom.reset);
+  document.getElementById('kbdHint').innerHTML = UI_STRINGS.kbdHints
+    .map(([keys, action]) => `<span><kbd>${keys}</kbd> ${action}</span>`)
+    .join('');
+
+  const viewport = document.getElementById('viewport');
+  const world = document.getElementById('world');
+  const zoomLabel = document.getElementById('zoomLabel');
+  const coordIndicator = document.getElementById('coordIndicator');
+
+  /* ===== canvas state ===== */
+  let panX = 0, panY = 0, zoom = 1;
+  const MIN_ZOOM = 0.05, MAX_ZOOM = 8;
+
+  function updateTransform() {
+    world.style.transform = `translate(${panX}px,${panY}px) scale(${zoom})`;
+    zoomLabel.textContent = Math.round(zoom * 100) + '%';
+    updateGrid();
+  }
+
+  /* ===== dot grid ===== */
+  function updateGrid() {
+    const g = 40 * zoom;
+    const ox = panX % g, oy = panY % g;
+    viewport.style.backgroundImage = `radial-gradient(circle, var(--grid-color) 0.8px, transparent 0.8px)`;
+    viewport.style.backgroundSize = `${g}px ${g}px`;
+    viewport.style.backgroundPosition = `${ox}px ${oy}px`;
+  }
+
+  /* ===== panning ===== */
+  let isPanning = false, panSX, panSY;
+
+  viewport.addEventListener('pointerdown', (e) => {
+    if (e.target === viewport || e.target === world) {
+      isPanning = true;
+      panSX = e.clientX - panX;
+      panSY = e.clientY - panY;
+      viewport.classList.add('panning');
+      viewport.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    }
+  });
+  viewport.addEventListener('pointermove', (e) => {
+    if (!isPanning) return;
+    panX = e.clientX - panSX;
+    panY = e.clientY - panSY;
+    updateTransform();
+  });
+  viewport.addEventListener('pointerup', () => {
+    isPanning = false;
+    viewport.classList.remove('panning');
+  });
+
+  /* ===== wheel: trackpad scroll = pan, pinch/ctrl+scroll = zoom ===== */
+  viewport.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+
+    if (e.ctrlKey || e.metaKey) {
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const wx = (mx - panX) / zoom, wy = (my - panY) / zoom;
+      const factor = e.deltaY > 0 ? 0.95 : 1.05;
+      zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+      panX = mx - wx * zoom;
+      panY = my - wy * zoom;
+    } else {
+      const hasX = Math.abs(e.deltaX) > 0.5;
+      if (hasX || Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.3) {
+        panX -= e.deltaX;
+        panY -= e.deltaY;
+      } else {
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const wx = (mx - panX) / zoom, wy = (my - panY) / zoom;
+        const factor = e.deltaY > 0 ? 0.95 : 1.05;
+        zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+        panX = mx - wx * zoom;
+        panY = my - wy * zoom;
+      }
+    }
+    updateTransform();
+  }, { passive: false });
+
+  /* ===== zoom buttons ===== */
+  function zoomAt(factor) {
+    const r = viewport.getBoundingClientRect();
+    const cx = r.width / 2, cy = r.height / 2;
+    const wx = (cx - panX) / zoom, wy = (cy - panY) / zoom;
+    zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * factor));
+    panX = cx - wx * zoom;
+    panY = cy - wy * zoom;
+    updateTransform();
+  }
+  document.getElementById('zoomIn').onclick = () => zoomAt(1.25);
+  document.getElementById('zoomOut').onclick = () => zoomAt(0.8);
+  document.getElementById('zoomReset').onclick = () => { zoom = 1; panX = 0; panY = 0; updateTransform(); };
+  document.getElementById('zoomReset').title = UI_STRINGS.zoom.reset;
+
+  /* ===== coord indicator ===== */
+  viewport.addEventListener('pointermove', (e) => {
+    if (isPanning) return;
+    const r = viewport.getBoundingClientRect();
+    coordIndicator.textContent = `${Math.round((e.clientX - r.left - panX) / zoom)}, ${Math.round((e.clientY - r.top - panY) / zoom)}`;
+  });
+
+  /* ===== touch gestures ===== */
+  let lastPinchDist = null, lastPinchCenter = null;
+
+  viewport.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const t0 = e.touches[0], t1 = e.touches[1];
+      lastPinchDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+      lastPinchCenter = { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 };
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  viewport.addEventListener('touchmove', (e) => {
+    if (e.touches.length !== 2) return;
+    e.preventDefault();
+    const t0 = e.touches[0], t1 = e.touches[1];
+    const dist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY);
+    const center = { x: (t0.clientX + t1.clientX) / 2, y: (t0.clientY + t1.clientY) / 2 };
+    if (lastPinchDist > 0) {
+      const r = viewport.getBoundingClientRect();
+      const mx = center.x - r.left, my = center.y - r.top;
+      const wx = (mx - panX) / zoom, wy = (my - panY) / zoom;
+      zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * Math.pow(dist / lastPinchDist, 0.6)));
+      panX = mx - wx * zoom;
+      panY = my - wy * zoom;
+    }
+    if (lastPinchCenter) {
+      panX += center.x - lastPinchCenter.x;
+      panY += center.y - lastPinchCenter.y;
+    }
+    lastPinchDist = dist;
+    lastPinchCenter = center;
+    updateTransform();
+  }, { passive: false });
+
+  viewport.addEventListener('touchend', (e) => {
+    if (e.touches.length < 2) { lastPinchDist = null; lastPinchCenter = null; }
+  });
+
+  /* ===== undo ===== */
+  const undoStack = [];
+  function saveUndo() {
+    const s = [];
+    world.querySelectorAll('.canvas-el').forEach(el => {
+      s.push({ id: el.id, left: el.style.left, top: el.style.top });
+    });
+    undoStack.push({ panX, panY, zoom, assets: s });
+    if (undoStack.length > 60) undoStack.shift();
+  }
+  function undo() {
+    if (!undoStack.length) return;
+    const st = undoStack.pop();
+    panX = st.panX; panY = st.panY; zoom = st.zoom;
+    st.assets.forEach(a => {
+      const el = document.getElementById(a.id);
+      if (el) { el.style.left = a.left; el.style.top = a.top; }
+    });
+    updateTransform();
+  }
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); }
+  });
+
+  /* ===== draggable ===== */
+  function makeDraggable(el) {
+    let dragging = false, sx, sy, ox, oy;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      el.classList.add('dragging');
+      saveUndo();
+      sx = e.clientX; sy = e.clientY;
+      ox = parseFloat(el.style.left); oy = parseFloat(el.style.top);
+      el.setPointerCapture(e.pointerId);
+      e.stopPropagation();
+    });
+    el.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      el.style.left = (ox + (e.clientX - sx) / zoom) + 'px';
+      el.style.top = (oy + (e.clientY - sy) / zoom) + 'px';
+    });
+    el.addEventListener('pointerup', () => {
+      if (dragging) { dragging = false; el.classList.remove('dragging'); }
+    });
+  }
+
+  /* ===== unique id ===== */
+  let _id = 0;
+  function uid(prefix) { return (prefix || 'el') + '-' + (++_id); }
+
+  /* ===== API: addSection ===== */
+  function addSection(rowY, label) {
+    const parts = label.split(' ');
+    const num = parts[0] || '';
+    const rest = parts.slice(1).join(' ');
+    const el = document.createElement('div');
+    el.className = 'section-header';
+    el.style.left = '60px';
+    el.style.top = rowY + 'px';
+    el.innerHTML = `<span class="section-line"></span><span class="section-num">${num}</span><span class="section-label">${rest}</span>`;
+    world.appendChild(el);
+    return rowY;
+  }
+
+  /* ===== API: addTitle ===== */
+  function addTitle(x, y, text, options = {}) {
+    const el = document.createElement('div');
+    el.className = 'canvas-title';
+    el.id = uid('title');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.fontSize = (options.fontSize || 48) + 'px';
+    if (options.fontWeight) el.style.fontWeight = options.fontWeight;
+    if (options.color) el.style.color = options.color;
+    if (options.maxWidth) el.style.maxWidth = options.maxWidth + 'px';
+    el.textContent = text;
+    world.appendChild(el);
+    return el;
+  }
+
+  /* ===== API: addText ===== */
+  function addText(x, y, text, options = {}) {
+    const el = document.createElement('div');
+    el.className = 'canvas-text canvas-el';
+    el.id = uid('text');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.fontSize = (options.fontSize || 14) + 'px';
+    if (options.color) el.style.color = options.color;
+    if (options.maxWidth) el.style.maxWidth = options.maxWidth + 'px';
+    el.textContent = text;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addTag ===== */
+  function addTag(x, y, label, options = {}) {
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('tag');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    const dotColor = options.color || 'var(--accent)';
+    el.innerHTML = `<div class="canvas-tag"><span class="tag-dot" style="background:${dotColor}"></span>${label}</div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addContextCard ===== */
+  function addContextCard(x, y, w, h, title, content) {
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('ctx');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.width = w + 'px';
+    if (h) el.style.height = h + 'px';
+    el.innerHTML = `<div class="context-card" style="width:100%;${h ? 'height:100%' : ''}">
+      <div class="card-head"><div class="head-indicator"></div><h3>${title}</h3></div>
+      <div class="card-content">${content}</div>
+    </div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addDesignSystemCard ===== */
+  function addDesignSystemCard(x, y, w, h, type, data) {
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('ds');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.width = w + 'px';
+    if (h) el.style.height = h + 'px';
+
+    let body = '';
+    if (type === 'color' && Array.isArray(data.colors)) {
+      body = `<div class="color-grid">${data.colors.map(c =>
+        `<div class="color-chip" style="background:${c.hex}"><span class="chip-label">${c.name || c.hex}</span></div>`
+      ).join('')}</div>`;
+    } else if (type === 'typography' && Array.isArray(data.samples)) {
+      body = `<div class="type-stack">${data.samples.map(s =>
+        `<div class="type-row"><span class="type-label">${s.label}</span><span class="type-sample" style="font-size:${s.size}px;font-weight:${s.weight || 400}">${s.text || 'Aa'}</span></div>`
+      ).join('')}</div>`;
+    } else if (typeof data.html === 'string') {
+      body = data.html;
+    }
+
+    el.innerHTML = `<div class="ds-card" style="width:100%;${h ? 'height:100%' : ''}">
+      <div class="ds-head">${data.title || type}</div>
+      <div class="ds-body">${body}</div>
+    </div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addColorSwatch ===== */
+  function addColorSwatch(x, y, colors) {
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('swatch');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.innerHTML = `<div class="color-swatch-group">${colors.map(c =>
+      `<div class="swatch-item">
+        <div class="swatch-circle" style="background:${c.hex}"></div>
+        <div class="swatch-name">${c.name || ''}</div>
+        <div class="swatch-hex">${c.hex}</div>
+      </div>`
+    ).join('')}</div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addTypeSample ===== */
+  function addTypeSample(x, y, samples) {
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('typesample');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.innerHTML = `<div class="type-sample-group">${samples.map(s =>
+      `<div class="type-sample-row">
+        <span class="type-sample-meta">${s.label}<br>${s.size}px</span>
+        <span class="type-sample-text" style="font-size:${s.size}px;font-weight:${s.weight || 400};${s.font ? 'font-family:' + s.font : ''}">${s.text || 'The quick brown fox'}</span>
+      </div>`
+    ).join('')}</div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addPage ===== */
+  let _pageNum = 0;
+  function addPage(x, y, w, h, label, htmlContent) {
+    _pageNum++;
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('page');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.width = w + 'px';
+    el.style.height = (h + 40) + 'px';
+    el.innerHTML = `<div class="design-page" style="width:${w}px;height:${h}px;">
+      <div class="page-content">${htmlContent}</div>
+    </div>
+    <div class="page-label"><span class="label-num">${String(_pageNum).padStart(2,'0')}</span>${label}</div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addNote ===== */
+  function addNote(x, y, tag, text) {
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('note');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.innerHTML = `<div class="canvas-note">
+      <div class="note-tag">${tag}</div>
+      <div class="note-body">${text}</div>
+    </div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== API: addDiagram ===== */
+  function addDiagram(x, y, w, h, htmlContent) {
+    const el = document.createElement('div');
+    el.className = 'canvas-el';
+    el.id = uid('diagram');
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.width = w + 'px';
+    el.style.height = h + 'px';
+    el.innerHTML = `<div class="canvas-diagram" style="width:100%;height:100%;">
+      <div class="diagram-content">${htmlContent}</div>
+    </div>`;
+    world.appendChild(el);
+    makeDraggable(el);
+    return el;
+  }
+
+  /* ===== Layout helpers (overlap prevention) ===== */
+  function below(el, gap) { if (gap === undefined) gap = 20; return parseFloat(el.style.top) + el.offsetHeight + gap; }
+  function rightOf(el, gap) { if (gap === undefined) gap = 20; return parseFloat(el.style.left) + el.offsetWidth + gap; }
+  function maxY(els, gap) { if (gap === undefined) gap = 20; return Math.max(...els.map(e => parseFloat(e.style.top) + e.offsetHeight)) + gap; }
+  function maxX(els, gap) { if (gap === undefined) gap = 20; return Math.max(...els.map(e => parseFloat(e.style.left) + e.offsetWidth)) + gap; }
+
+  /* ===== expose API ===== */
+  window.canvas = { addSection, addTitle, addText, addTag, addContextCard, addDesignSystemCard, addColorSwatch, addTypeSample, addPage, addNote, addDiagram, below, rightOf, maxY, maxX };
+
+  /* ===== demo scene ===== */
+  /* Layout rules:
+     - Vertical positioning uses below(el, gap) based on actual rendered height of the element above, no hardcoded Y
+     - Horizontal positioning uses rightOf(el, gap) or fixed X (fixed values are fine when element widths are known)
+     - Cross-row alignment uses maxY([all elements in that row], 80) to get the next row's starting Y
+     - Always save the return value of each add* call to a variable for later element references
+  */
+  function initDemo() {
+
+  /* ── Row 1: PROJECT CONTEXT ───────────────────────── */
+  addSection(40, UI_STRINGS.sections.context);
+
+  const r1Title = addTitle(100, 90, "skipwait.me — Pending Screens", { fontSize: 48, fontWeight: 700 });
+  const r1Desc = addText(100, below(r1Title, 12), "High-fidelity pending-state screens for all three roles.\n\nJob Seekers track requests they sent. Referrers review incoming private requests. Admin sees the platform-wide approval queue. One shared status vocabulary across every surface, so a status means the same thing everywhere.", { fontSize: 15, maxWidth: 520 });
+
+  const tagsY = below(r1Desc, 16);
+  const t1 = addTag(100, tagsY, "Job Seeker");
+  const t2 = addTag(rightOf(t1, 8), tagsY, "Referrer");
+  const t3 = addTag(rightOf(t2, 8), tagsY, "Admin");
+  addTag(rightOf(t3, 8), tagsY, "Design-only · preset 17 Takram");
+
+  const cardsY = below(t1, 24);
+  const card1 = addContextCard(100, cardsY, 320, null, "Status vocabulary (shared)", '<ul><li><b>Pending</b> — sent, not yet claimed/decided</li><li><b>Under review</b> — claimed by a referrer</li><li><b>Approved</b> — referral agreed; conversation opens</li><li><b>Declined</b> — decision recorded, reason private</li><li><b>Closed</b> — outcome recorded or withdrawn</li></ul>');
+  const card2 = addContextCard(440, cardsY, 320, null, "What each role must do", '<ul><li><b>Seeker:</b> see every pending item (ref, date, stage), withdraw a pending request</li><li><b>Referrer:</b> candidate + job context, accept / decline from the queue</li><li><b>Admin:</b> filterable queue, item detail, approve / reject with recorded decision</li></ul>');
+  const card3 = addContextCard(780, cardsY, 300, null, "States designed per screen", '<ul><li>Populated list + item detail</li><li>Loading (skeleton)</li><li>Empty (first-use + cleared)</li><li>Error / action-failed (retry, input preserved)</li></ul>');
+
+  const notesY = maxY([card1, card2, card3], 28);
+  const note1 = addNote(100, notesY, "Design DNA — 17 Takram", "Rounded, calm, soft shadows; chart-grade clarity; restrained brand blue #0B57D0 used sparingly (eyebrow + primary action only). Neutrals carry the screen; semantic colors only for status.");
+  addNote(rightOf(note1, 20), notesY, "Handoff note", "All screens reuse the shared component sheet in Row 2. Reference IDs are Ref-0001 style; timestamps 'Sep 1, 09:41'. Withdraw/decide actions hit real endpoints — see docs/design/pending-screens-handoff.md.");
+
+  /* ── Row 2: DESIGN SYSTEM ─────────────────────────── */
+  const r2Start = maxY([card1, card2, card3, note1], 80);
+  addSection(r2Start, UI_STRINGS.sections.designSystem);
+
+  const dsY = r2Start + 60;
+  const colorCard = addDesignSystemCard(100, dsY, 500, null, 'color', {
+    title: "Color tokens",
+    html: `<div class="color-swatch-group" style="flex-wrap:wrap;gap:14px;">
+      <div class="swatch-item"><div class="swatch-circle" style="background:#0B57D0"></div><div class="swatch-name">Accent</div><div class="swatch-hex">#0B57D0</div></div>
+      <div class="swatch-item"><div class="swatch-circle" style="background:#f8f7f4"></div><div class="swatch-name">Surface</div><div class="swatch-hex">#f8f7f4</div></div>
+      <div class="swatch-item"><div class="swatch-circle" style="background:#ffffff"></div><div class="swatch-name">Card</div><div class="swatch-hex">#ffffff</div></div>
+      <div class="swatch-item"><div class="swatch-circle" style="background:#1c1b19"></div><div class="swatch-name">Text</div><div class="swatch-hex">#1c1b19</div></div>
+      <div class="swatch-item"><div class="swatch-circle" style="background:#b45309"></div><div class="swatch-name">Pending</div><div class="swatch-hex">#b45309</div></div>
+      <div class="swatch-item"><div class="swatch-circle" style="background:#15803d"></div><div class="swatch-name">Approved</div><div class="swatch-hex">#15803d</div></div>
+      <div class="swatch-item"><div class="swatch-circle" style="background:#b91c1c"></div><div class="swatch-name">Declined</div><div class="swatch-hex">#b91c1c</div></div>
+    </div>`
+  });
+
+  const typeCard = addDesignSystemCard(620, dsY, 430, null, 'typography', {
+    title: "Typography — Inter",
+    html: `<div class="type-sample-group">
+      <div class="type-sample-row"><span class="type-sample-meta">H1<br>32px</span><span class="type-sample-text" style="font-size:32px;font-weight:600;letter-spacing:-0.03em;">Pending review</span></div>
+      <div class="type-sample-row"><span class="type-sample-meta">H2<br>22px</span><span class="type-sample-text" style="font-size:22px;font-weight:600;">Incoming requests</span></div>
+      <div class="type-sample-row"><span class="type-sample-meta">Body<br>14px</span><span class="type-sample-text" style="font-size:14px;">Senior Frontend Engineer at ethoslife.com · sent Sep 1</span></div>
+      <div class="type-sample-row"><span class="type-sample-meta">Caption<br>11px</span><span class="type-sample-text" style="font-size:11px;letter-spacing:0.08em;">REF-0007 · UPDATED 09:41</span></div>
+    </div>`
+  });
+
+  const badgeCard = addDesignSystemCard(1070, dsY, 330, null, 'components', {
+    title: "Shared components",
+    html: `<div style="display:flex;flex-direction:column;gap:12px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="padding:4px 10px;border-radius:999px;background:rgba(180,83,9,0.1);color:#b45309;font-size:11px;font-weight:700;">● Pending</span>
+        <span style="padding:4px 10px;border-radius:999px;background:rgba(11,87,208,0.1);color:#0B57D0;font-size:11px;font-weight:700;">● Under review</span>
+        <span style="padding:4px 10px;border-radius:999px;background:rgba(21,128,61,0.1);color:#15803d;font-size:11px;font-weight:700;">● Approved</span>
+        <span style="padding:4px 10px;border-radius:999px;background:rgba(185,28,28,0.1);color:#b91c1c;font-size:11px;font-weight:700;">● Declined</span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button style="padding:8px 16px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer;">Accept referral</button>
+        <button style="padding:8px 16px;border-radius:10px;border:1px solid var(--border-hover);background:transparent;color:var(--text);font-size:12px;cursor:pointer;">Decline</button>
+      </div>
+      <div style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface-raised);font-size:12px;color:var(--text-tertiary);">Filter: status ▾ · date ▾ · role ▾</div>
+    </div>`
+  });
+
+  /* ── Row 3: DELIVERABLES ──────────────────────────── */
+  const pagesY = maxY([colorCard, typeCard, badgeCard], 80);
+  addSection(pagesY, UI_STRINGS.sections.deliverables);
+
+  /* ── 3.1 SEEKER pending list (populated) ── */
+  addPage(100, pagesY + 60, 400, 620, "SEEKER · Pending requests", `
+    <div style="width:100%;height:100%;background:#f8f7f4;padding:18px;font-family:Inter,-apple-system,sans-serif;display:flex;flex-direction:column;font-size:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:700;color:#1c1b19;">← My requests</span>
+        <span style="width:26px;height:26px;border-radius:50%;background:#e8eefc;display:inline-flex;align-items:center;justify-content:center;color:#0B57D0;font-weight:700;font-size:10px;">AK</span>
+      </div>
+      <div style="margin-top:14px;background:#eef3fc;border:1px solid #dbe6fb;border-radius:12px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#0B57D0;">FREE PLAN</span>
+          <span style="font-weight:700;color:#1c1b19;">2 left</span>
+        </div>
+        <div style="margin-top:6px;height:5px;border-radius:99px;background:#dbe6fb;"><div style="width:33%;height:100%;border-radius:99px;background:#0B57D0;"></div></div>
+        <div style="margin-top:6px;color:#57534e;">1 of 3 free credits used this month.</div>
+      </div>
+      <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:700;color:#1c1b19;">Senior Frontend Engineer</span><span style="padding:3px 8px;border-radius:99px;background:rgba(11,87,208,0.1);color:#0B57D0;font-size:10px;font-weight:700;">● Under review</span></div>
+          <div style="margin-top:3px;color:#78716c;">ethoslife.com · Ref-0007 · sent Sep 1</div>
+          <div style="margin-top:6px;color:#57534e;">A verified employee is reviewing your request. Their identity stays private.</div>
+          <div style="margin-top:8px;display:flex;gap:8px;"><button style="padding:5px 10px;border-radius:8px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">View details</button><button style="padding:5px 10px;border-radius:8px;border:none;background:rgba(185,28,28,0.06);color:#b91c1c;font-size:11px;font-weight:600;">Withdraw</button></div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:700;color:#1c1b19;">Product Designer</span><span style="padding:3px 8px;border-radius:99px;background:rgba(180,83,9,0.1);color:#b45309;font-size:10px;font-weight:700;">● Pending</span></div>
+          <div style="margin-top:3px;color:#78716c;">ravelin.com · Ref-0006 · sent Aug 29</div>
+          <div style="margin-top:6px;color:#57534e;">Privately routed to eligible employees. It stays private while someone decides.</div>
+          <div style="margin-top:8px;display:flex;gap:8px;"><button style="padding:5px 10px;border-radius:8px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">View details</button><button style="padding:5px 10px;border-radius:8px;border:none;background:rgba(185,28,28,0.06);color:#b91c1c;font-size:11px;font-weight:600;">Withdraw</button></div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);opacity:.85;">
+          <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-weight:700;color:#1c1b19;">Data Scientist</span><span style="padding:3px 8px;border-radius:99px;background:rgba(21,128,61,0.1);color:#15803d;font-size:10px;font-weight:700;">● Approved</span></div>
+          <div style="margin-top:3px;color:#78716c;">ethoslife.com · Ref-0004 · approved Aug 27</div>
+          <div style="margin-top:6px;color:#57534e;">Your referrer messaged you. Continue privately.</div>
+          <div style="margin-top:8px;"><button style="padding:5px 10px;border-radius:8px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:600;">Open conversation · 2 new</button></div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  /* ── 3.2 SEEKER detail + states ── */
+  addPage(520, pagesY + 60, 400, 620, "SEEKER · Detail + states", `
+    <div style="width:100%;height:100%;background:#f8f7f4;padding:18px;font-family:Inter,-apple-system,sans-serif;display:flex;flex-direction:column;gap:10px;font-size:12px;">
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(28,27,25,0.06);">
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#78716c;">REF-0007 · SENIOR FRONTEND ENGINEER</span><span style="padding:3px 8px;border-radius:99px;background:rgba(11,87,208,0.1);color:#0B57D0;font-size:10px;font-weight:700;">● Under review</span></div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;color:#57534e;">
+          <div style="display:flex;gap:6px;align-items:center;color:#15803d;font-weight:600;">● Request sent — Sep 1, 09:41</div>
+          <div style="display:flex;gap:6px;align-items:center;color:#0B57D0;font-weight:600;">● Claimed by a verified employee — Sep 1, 11:02</div>
+          <div style="display:flex;gap:6px;align-items:center;color:#a8a29e;">● Decision — waiting</div>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(28,27,25,0.06);display:flex;gap:8px;">
+          <button style="padding:6px 10px;border-radius:8px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">View resume</button>
+          <button style="padding:6px 10px;border-radius:8px;border:1px solid rgba(185,28,28,0.25);background:#fff;color:#b91c1c;font-size:11px;font-weight:600;">Withdraw request…</button>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px dashed rgba(28,27,25,0.2);display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center;">
+        <div style="width:34px;height:34px;border-radius:10px;background:#f0ede8;display:inline-flex;align-items:center;justify-content:center;color:#a8a29e;font-size:16px;">✉</div>
+        <div style="font-weight:700;color:#1c1b19;">Nothing pending right now</div>
+        <div style="color:#78716c;">Your sent requests and their outcomes will appear here.</div>
+        <button style="margin-top:4px;padding:7px 14px;border-radius:9px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:700;">Ask another referral</button>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(28,27,25,0.06);">
+        <div style="display:flex;gap:10px;align-items:center;"><span style="width:26px;height:26px;border-radius:8px;background:#e8eefc;display:inline-flex;align-items:center;justify-content:center;">⏳</span><div><div style="font-weight:700;color:#1c1b19;">Loading your requests…</div><div style="color:#78716c;">Routing checks usually take a second.</div></div></div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;"><div style="height:10px;border-radius:6px;background:#f0ede8;width:70%;"></div><div style="height:10px;border-radius:6px;background:#f0ede8;width:55%;"></div><div style="height:10px;border-radius:6px;background:#f0ede8;width:62%;"></div></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(185,28,28,0.25);">
+        <div style="font-weight:700;color:#b91c1c;">Withdraw didn't go through</div>
+        <div style="margin-top:3px;color:#78716c;">The network dropped before we could reach the server. Your request is still active and nothing was lost.</div>
+        <div style="margin-top:8px;display:flex;gap:8px;"><button style="padding:6px 12px;border-radius:8px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:600;">Try again</button><button style="padding:6px 12px;border-radius:8px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">Keep request</button></div>
+      </div>
+    </div>
+  `);
+
+  /* ── 3.3 REFERRER queue (populated) ── */
+  addPage(940, pagesY + 60, 400, 620, "REFERRER · Incoming queue", `
+    <div style="width:100%;height:100%;background:#f8f7f4;padding:18px;font-family:Inter,-apple-system,sans-serif;display:flex;flex-direction:column;font-size:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:700;color:#1c1b19;">← Company inbox</span>
+        <span style="width:26px;height:26px;border-radius:50%;background:#e8eefc;display:inline-flex;align-items:center;justify-content:center;color:#0B57D0;font-weight:700;font-size:10px;">EM</span>
+      </div>
+      <div style="margin-top:12px;background:#eef3fc;border:1px solid #dbe6fb;border-radius:12px;padding:10px 12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;"><span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#0B57D0;">REFERRAL CREDITS</span><span style="font-weight:700;color:#1c1b19;">3 left</span></div>
+        <div style="margin-top:6px;height:5px;border-radius:99px;background:#dbe6fb;"><div style="width:0%;height:100%;border-radius:99px;background:#0B57D0;"></div></div>
+        <div style="margin-top:6px;color:#57534e;">0 of 3 free credits used this month. Accepting a request uses one.</div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;">
+        <span style="padding:5px 10px;border-radius:99px;background:#0B57D0;color:#fff;font-size:10px;font-weight:700;">New · 2</span>
+        <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:10px;font-weight:700;">Saved</span>
+        <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:10px;font-weight:700;">Completed</span>
+      </div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);">
+          <div style="display:flex;justify-content:space-between;"><span style="font-weight:700;color:#1c1b19;">Priya Sharma</span><span style="color:#78716c;font-size:10px;">Sep 1, 14:05</span></div>
+          <div style="margin-top:2px;color:#78716c;">Senior Frontend Engineer · Ref-0007</div>
+          <div style="margin-top:6px;color:#57534e;">"I've shipped React + design-system work at two fintechs; the JD's TypeScript bar matches my daily work."</div>
+          <div style="margin-top:6px;display:flex;gap:6px;color:#78716c;"><span>📄 1 resume</span><span>🔗 Role link</span><span>Identity hidden</span></div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button style="flex:1;padding:7px 0;border-radius:9px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:700;">Accept referral</button>
+            <button style="flex:1;padding:7px 0;border-radius:9px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">Decline</button>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);">
+          <div style="display:flex;justify-content:space-between;"><span style="font-weight:700;color:#1c1b19;">Daniel Okafor</span><span style="color:#78716c;font-size:10px;">Sep 1, 09:12</span></div>
+          <div style="margin-top:2px;color:#78716c;">Platform Engineer · Ref-0008</div>
+          <div style="margin-top:6px;color:#57534e;">"Referred by a teammate; happy to share my Kubernetes work if useful."</div>
+          <div style="margin-top:6px;display:flex;gap:6px;color:#78716c;"><span>📄 2 documents</span><span>🔗 Role link</span></div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button style="flex:1;padding:7px 0;border-radius:9px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:700;">Accept referral</button>
+            <button style="flex:1;padding:7px 0;border-radius:9px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">Decline</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  /* ── 3.4 REFERRER states ── */
+  addPage(1360, pagesY + 60, 400, 620, "REFERRER · Detail + states", `
+    <div style="width:100%;height:100%;background:#f8f7f4;padding:18px;font-family:Inter,-apple-system,sans-serif;display:flex;flex-direction:column;gap:10px;font-size:12px;">
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(28,27,25,0.06);">
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#78716c;">REF-0007</span><span style="padding:3px 8px;border-radius:99px;background:rgba(180,83,9,0.1);color:#b45309;font-size:10px;font-weight:700;">● Awaiting your decision</span></div>
+        <div style="margin-top:8px;font-weight:700;color:#1c1b19;">Priya Sharma — Senior Frontend Engineer</div>
+        <div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px;color:#57534e;">
+          <div style="background:#f8f7f4;border-radius:8px;padding:8px;"><div style="font-size:10px;font-weight:700;color:#78716c;">CANDIDATE</div><div style="margin-top:2px;">Resume · pitch note</div></div>
+          <div style="background:#f8f7f4;border-radius:8px;padding:8px;"><div style="font-size:10px;font-weight:700;color:#78716c;">ROLE</div><div style="margin-top:2px;">Link + team context</div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button style="flex:1;padding:8px 0;border-radius:9px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:700;">Accept referral</button>
+          <button style="flex:1;padding:8px 0;border-radius:9px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">Decline…</button>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(28,27,25,0.06);">
+        <div style="font-weight:700;color:#1c1b19;">Decline with a reason (optional, private)</div>
+        <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:11px;">Not my team</span>
+          <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:11px;">Timing</span>
+          <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:11px;">Can't assess</span>
+        </div>
+        <div style="margin-top:8px;padding:8px;border-radius:9px;border:1px solid rgba(28,27,25,0.1);color:#a8a29e;">Optional note (never shown to the seeker)…</div>
+        <div style="margin-top:8px;display:flex;gap:8px;"><button style="flex:1;padding:8px 0;border-radius:9px;border:1px solid rgba(185,28,28,0.25);background:#fff;color:#b91c1c;font-size:11px;font-weight:700;">Confirm decline</button><button style="padding:8px 12px;border-radius:9px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">Cancel</button></div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px dashed rgba(28,27,25,0.2);text-align:center;">
+        <div style="font-weight:700;color:#1c1b19;">Your queue is clear</div>
+        <div style="margin-top:3px;color:#78716c;">New private requests for ethoslife.com will appear here the moment a seeker sends one.</div>
+        <div style="margin-top:8px;color:#a8a29e;font-size:10px;">🔔 We'll also email you — no need to keep this page open.</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(185,28,28,0.25);">
+        <div style="font-weight:700;color:#b91c1c;">Accept failed</div>
+        <div style="margin-top:3px;color:#78716c;">Another employee accepted this request a moment earlier. Nothing was charged to your credits.</div>
+        <div style="margin-top:8px;display:flex;gap:8px;"><button style="padding:6px 12px;border-radius:8px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#1c1b19;font-size:11px;font-weight:600;">Back to queue</button></div>
+      </div>
+    </div>
+  `);
+
+  /* ── 3.5 ADMIN queue ── */
+  addPage(1780, pagesY + 60, 460, 620, "ADMIN · Approval queue", `
+    <div style="width:100%;height:100%;background:#f8f7f4;padding:18px;font-family:Inter,-apple-system,sans-serif;display:flex;flex-direction:column;font-size:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-weight:700;color:#1c1b19;">← Admin · Pending queue</span>
+        <span style="padding:3px 8px;border-radius:99px;background:#eef3fc;color:#0B57D0;font-size:10px;font-weight:700;">skipwait.me admin</span>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;">
+        <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:10px;font-weight:700;">Status: All ▾</span>
+        <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:10px;font-weight:700;">Role: All ▾</span>
+        <span style="padding:5px 10px;border-radius:99px;border:1px solid rgba(28,27,25,0.12);background:#fff;color:#57534e;font-size:10px;font-weight:700;">Date: Last 7 days ▾</span>
+        <span style="padding:5px 10px;border-radius:99px;background:#eef3fc;color:#0B57D0;font-size:10px;font-weight:700;">14 open</span>
+      </div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);">
+          <div style="display:flex;justify-content:space-between;"><span style="font-weight:700;color:#1c1b19;">Ref-0007 · Seeker request</span><span style="padding:3px 8px;border-radius:99px;background:rgba(11,87,208,0.1);color:#0B57D0;font-size:10px;font-weight:700;">● Under review</span></div>
+          <div style="margin-top:2px;color:#78716c;">ethoslife.com · opened Sep 1, 09:41 · referrer claimed 11:02</div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button style="padding:5px 12px;border-radius:8px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:700;">Open record</button>
+            <button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(21,128,61,0.3);background:#fff;color:#15803d;font-size:11px;font-weight:600;">Approve</button>
+            <button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(185,28,28,0.25);background:#fff;color:#b91c1c;font-size:11px;font-weight:600;">Reject</button>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);">
+          <div style="display:flex;justify-content:space-between;"><span style="font-weight:700;color:#1c1b19;">Ref-0009 · Referrer enrollment</span><span style="padding:3px 8px;border-radius:99px;background:rgba(180,83,9,0.1);color:#b45309;font-size:10px;font-weight:700;">● Pending</span></div>
+          <div style="margin-top:2px;color:#78716c;">ravelin.com · work-email OTP verified Sep 1, 08:20 · 0 requests</div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button style="padding:5px 12px;border-radius:8px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:700;">Open record</button>
+            <button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(21,128,61,0.3);background:#fff;color:#15803d;font-size:11px;font-weight:600;">Approve</button>
+            <button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(185,28,28,0.25);background:#fff;color:#b91c1c;font-size:11px;font-weight:600;">Reject</button>
+          </div>
+        </div>
+        <div style="background:#fff;border-radius:12px;padding:12px;border:1px solid rgba(28,27,25,0.06);">
+          <div style="display:flex;justify-content:space-between;"><span style="font-weight:700;color:#1c1b19;">Ref-0011 · Credit pack payment</span><span style="padding:3px 8px;border-radius:99px;background:rgba(180,83,9,0.1);color:#b45309;font-size:10px;font-weight:700;">● Review</span></div>
+          <div style="margin-top:2px;color:#78716c;">PayPal · \$1.00 · initiated Aug 31, 22:03 · status requires_review</div>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button style="padding:5px 12px;border-radius:8px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:700;">Open record</button>
+            <button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(21,128,61,0.3);background:#fff;color:#15803d;font-size:11px;font-weight:600;">Approve</button>
+            <button style="padding:5px 12px;border-radius:8px;border:1px solid rgba(185,28,28,0.25);background:#fff;color:#b91c1c;font-size:11px;font-weight:600;">Reject</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  /* ── 3.6 ADMIN detail + states ── */
+  addPage(2260, pagesY + 60, 460, 620, "ADMIN · Record detail + states", `
+    <div style="width:100%;height:100%;background:#f8f7f4;padding:18px;font-family:Inter,-apple-system,sans-serif;display:flex;flex-direction:column;gap:10px;font-size:12px;">
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(28,27,25,0.06);">
+        <div style="display:flex;justify-content:space-between;"><span style="font-size:10px;font-weight:700;letter-spacing:.1em;color:#78716c;">REF-0007 · FULL RECORD</span><span style="padding:3px 8px;border-radius:99px;background:rgba(11,87,208,0.1);color:#0B57D0;font-size:10px;font-weight:700;">● Under review</span></div>
+        <div style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:6px;color:#57534e;">
+          <div style="background:#f8f7f4;border-radius:8px;padding:8px;"><div style="font-size:10px;font-weight:700;color:#78716c;">SEEKER</div><div style="margin-top:2px;">workos_test_seeker · joined Aug 28</div></div>
+          <div style="background:#f8f7f4;border-radius:8px;padding:8px;"><div style="font-size:10px;font-weight:700;color:#78716c;">REFERRER</div><div style="margin-top:2px;">employee@ethoslife.com · verified</div></div>
+          <div style="background:#f8f7f4;border-radius:8px;padding:8px;"><div style="font-size:10px;font-weight:700;color:#78716c;">ROLE</div><div style="margin-top:2px;">linkedin.com/jobs/view/444…</div></div>
+          <div style="background:#f8f7f4;border-radius:8px;padding:8px;"><div style="font-size:10px;font-weight:700;color:#78716c;">CREDIT</div><div style="margin-top:2px;">1 monthly credit held</div></div>
+        </div>
+        <div style="margin-top:10px;font-size:10px;font-weight:700;letter-spacing:.1em;color:#78716c;">HISTORY</div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:5px;color:#57534e;">
+          <div>● Sep 1 09:41 — request created</div>
+          <div>● Sep 1 09:41 — 1 credit reserved (monthly)</div>
+          <div>● Sep 1 11:02 — claimed by verified referrer</div>
+        </div>
+        <div style="margin-top:10px;padding:8px;border-radius:9px;border:1px solid rgba(28,27,25,0.1);color:#a8a29e;">Decision note (recorded on the item)…</div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button style="flex:1;padding:8px 0;border-radius:9px;border:none;background:#15803d;color:#fff;font-size:11px;font-weight:700;">Approve</button>
+          <button style="flex:1;padding:8px 0;border-radius:9px;border:1px solid rgba(185,28,28,0.25);background:#fff;color:#b91c1c;font-size:11px;font-weight:600;">Reject</button>
+        </div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px dashed rgba(28,27,25,0.2);text-align:center;">
+        <div style="font-weight:700;color:#1c1b19;">Queue clear</div>
+        <div style="margin-top:3px;color:#78716c;">No items match these filters. Widen the date range or clear filters.</div>
+      </div>
+      <div style="background:#fff;border-radius:12px;padding:14px;border:1px solid rgba(185,28,28,0.25);">
+        <div style="font-weight:700;color:#b91c1c;">Decision failed to save</div>
+        <div style="margin-top:3px;color:#78716c;">The record is unchanged and still in the queue. No notifications were sent.</div>
+        <div style="margin-top:8px;display:flex;gap:8px;"><button style="padding:6px 12px;border-radius:8px;border:none;background:#0B57D0;color:#fff;font-size:11px;font-weight:600;">Retry decision</button></div>
+      </div>
+    </div>
+  `);
+
+  /* ── 04 STATUS FLOW ─────────────────────────── */
+  const flowY = pagesY + 700;
+  addSection(flowY, "04 STATUS FLOW — one vocabulary everywhere");
+  const flowCard = addDiagram(100, flowY + 60, 1000, 120, `
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-family:Inter,sans-serif;font-size:12px;color:#1c1b19;">
+      <span style="padding:8px 14px;border-radius:99px;background:rgba(180,83,9,0.1);color:#b45309;font-weight:700;">Pending</span><span style="color:#a8a29e;">→</span>
+      <span style="padding:8px 14px;border-radius:99px;background:rgba(11,87,208,0.1);color:#0B57D0;font-weight:700;">Under review</span><span style="color:#a8a29e;">→</span>
+      <span style="padding:8px 14px;border-radius:99px;background:rgba(21,128,61,0.1);color:#15803d;font-weight:700;">Approved</span><span style="color:#a8a29e;">→</span>
+      <span style="padding:8px 14px;border-radius:99px;background:#fff;border:1px solid rgba(28,27,25,0.12);font-weight:600;">Conversation · milestones</span><span style="color:#a8a29e;">→</span>
+      <span style="padding:8px 14px;border-radius:99px;background:#fff;border:1px solid rgba(28,27,25,0.12);font-weight:600;">Closed</span>
+      <span style="color:#a8a29e;">| any stage →</span>
+      <span style="padding:8px 14px;border-radius:99px;background:rgba(185,28,28,0.1);color:#b91c1c;font-weight:700;">Declined / Withdrawn</span>
+    </div>
+  `);
+  addNote(1120, flowY + 60, "Traceability", "Every item carries Ref-ID + timestamps + full status history (who, when, what). Seeker sees a public-safe version; admin sees actor emails and credit movements.");
+}
+
+  initDemo();
+
+  const r = viewport.getBoundingClientRect();
+  panX = r.width * 0.04;
+  panY = r.height * 0.04;
+  updateTransform();
+})();
+</script>
+</body>
+</html>
