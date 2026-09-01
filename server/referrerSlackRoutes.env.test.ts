@@ -7,7 +7,7 @@ describe("transactional email delivery", () => {
   it("sends through ZeptoMail with the Zoho-enczapikey scheme and v1.1 payload shape", async () => {
     const fetchImpl = vi.fn(async () => okResponse);
     process.env.ZEPTOMAIL_API_KEY = "test-key";
-    process.env.ZEPTOMAIL_FROM_EMAIL = "noreply@updates.skipwait.me";
+    process.env.ZEPTOMAIL_FROM_EMAIL = "noreply@skipwait.me";
     const send = createZeptoMailSender({ fetchImpl: fetchImpl as unknown as typeof fetch });
     const result = await send({ to: "ref@acme.com", subject: "Private review", text: "body" });
     expect(result).toEqual({ sent: true, reason: "sent" });
@@ -16,7 +16,7 @@ describe("transactional email delivery", () => {
     const headers = (init as RequestInit).headers as Record<string, string>;
     expect(headers.Authorization).toBe("Zoho-enczapikey test-key");
     const body = JSON.parse((init as RequestInit).body as string);
-    expect(body.from.address).toBe("noreply@updates.skipwait.me");
+    expect(body.from.address).toBe("noreply@skipwait.me");
     expect(body.to[0].email_address.address).toBe("ref@acme.com");
     expect(body.textbody).toBe("body");
     delete process.env.ZEPTOMAIL_API_KEY;
@@ -25,7 +25,7 @@ describe("transactional email delivery", () => {
 
   it("falls back from not-configured ZeptoMail to Resend, but never double-sends after a failure", async () => {
     process.env.RESEND_API_KEY = "re_test";
-    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@updates.skipwait.me";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
     delete process.env.ZEPTOMAIL_API_KEY;
     const fetchImpl = vi.fn(async () => okResponse);
     const send = createTransactionalEmailSender({ fetchImpl: fetchImpl as unknown as typeof fetch });

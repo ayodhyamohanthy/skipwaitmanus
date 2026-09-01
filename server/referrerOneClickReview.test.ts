@@ -56,7 +56,7 @@ describe("Referrer one-click review actions", () => {
   });
 
   it("keeps recipient review emails factual and omits candidate-private details", async () => {
-    process.env.RESEND_API_KEY = "test-key"; process.env.ERROR_ALERT_FROM_EMAIL = "noreply@updates.skipwait.me";
+    process.env.RESEND_API_KEY = "test-key"; process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
     let body = "";
     const sender = createReferrerReviewEmailSender({ fetchImpl: async (_url, init) => { body = String(init?.body || ""); return new Response("{}", { status: 200 }); } });
     await expect(sender({ to: "employee@acme.com", companyDomain: "acme.com", reviewUrl: `https://skipwait.me/email-review/${token}` })).resolves.toEqual({ sent: true, reason: "sent" });

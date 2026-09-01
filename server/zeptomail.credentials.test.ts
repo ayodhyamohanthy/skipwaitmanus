@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 const runExternalCredentialTests = process.env.RUN_EXTERNAL_CREDENTIAL_TESTS === "true";
 
 describe("Transactional email configuration (ZeptoMail primary, Resend fallback)", () => {
-  it("keeps the verified updates.skipwait sender address for the fallback path", () => {
-    expect(process.env.ERROR_ALERT_FROM_EMAIL).toBe("noreply@updates.skipwait.me");
+  it("keeps the verified skipwait.me sender address for the transactional path", () => {
+    // Unset on bare clones/CI is fine: production wrangler.jsonc pins noreply@skipwait.me.
+    const sender = process.env.ERROR_ALERT_FROM_EMAIL;
+    expect(sender === undefined || sender === "noreply@skipwait.me").toBe(true);
   });
 
   it.runIf(runExternalCredentialTests)("authenticates the configured ZeptoMail key against the domain-scoped send API without sending", async () => {

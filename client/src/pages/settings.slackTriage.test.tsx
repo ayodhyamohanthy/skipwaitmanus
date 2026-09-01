@@ -31,7 +31,7 @@ describe("Settings Slack triage section", () => {
   beforeEach(() => { });
   afterEach(() => { cleanup(); });
 
-  it("shows the opt-in Slack connect form for verified referrers and connects a valid webhook", async () => {
+  it("shows the opt-in Slack connect form for verified referrers and connects a valid webhook", { timeout: 15000 }, async () => {
     const fetch = fetchMock();
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();

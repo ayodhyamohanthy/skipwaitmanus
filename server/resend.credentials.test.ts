@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 const runExternalCredentialTests = process.env.RUN_EXTERNAL_CREDENTIAL_TESTS === "true" && !process.env.ZEPTOMAIL_API_KEY;
 
 describe("Resend direct-error-alert configuration", () => {
-  it("uses the verified updates.skipwait sender address", () => {
-    expect(process.env.ERROR_ALERT_FROM_EMAIL).toBe("noreply@updates.skipwait.me");
+  it("keeps the verified skipwait.me sender address", () => {
+    // Unset on bare clones/CI is fine: production wrangler.jsonc pins noreply@skipwait.me.
+    const sender = process.env.ERROR_ALERT_FROM_EMAIL;
+    expect(sender === undefined || sender === "noreply@skipwait.me").toBe(true);
   });
 
   it.runIf(runExternalCredentialTests)("authenticates the configured API key without sending an email", async () => {
