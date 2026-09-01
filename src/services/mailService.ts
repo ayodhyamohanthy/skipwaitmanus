@@ -18,7 +18,7 @@ export interface WorkerEnv {
 export async function sendZeptoMail(payload: EmailPayload, env: WorkerEnv) {
   // Use https://api.zeptomail.in/v1.1/email for Zoho India accounts,
   // or https://api.zeptomail.com/v1.1/email for Zoho US/Global accounts.
-  const endpoint = "https://api.zeptomail.in/v1.1/email";
+  const endpoint = "https://api.zeptomail.com/v1.1/email";
 
   const requestBody = {
     from: {
