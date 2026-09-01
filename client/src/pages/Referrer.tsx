@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useAuth as useClerkAuth } from "@clerk/react";
+import { useAuth as useClerkAuth, useUser } from "@clerk/react";
 import { ArrowLeft, ArrowRight, CheckCircle2, ClipboardCheck, Download, ExternalLink, FileText, Send, XCircle } from "lucide-react";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { WorkEmailSignIn, coverageInviteSessionKey } from "@/components/WorkEmailSignIn";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { AccountMenu } from "@/components/AccountMenu";
 import { readApiJson } from "@/lib/apiResponse";
+import { isCompanyEmail } from "@/lib/workEmail";
 
 type Attachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
 type CompanyInboxItem = { id: number; targetRoleUrl: string; companyDomain: string; createdAt: string; attachmentCount: number };
@@ -20,12 +21,23 @@ function ReferrerFlowHeader({ backHref = "/", right }: { backHref?: string; righ
 export default function Referrer() {
   const [, go] = useLocation();
   const { isSignedIn, getToken, signOut } = useClerkAuth();
+  const { user } = useUser();
   const inviteCompany = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("company")?.trim().toLowerCase() || "";
   const inviteCode = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("invite")?.trim() || "";
   const claimedRequestId = typeof window === "undefined" ? 0 : Number(new URLSearchParams(window.location.search).get("request"));
   const returnTo = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("returnTo") || "";
   const safeReturnTo = returnTo === "/post-opportunity" ? returnTo : "";
   const employeeSignInEmail = typeof window === "undefined" ? "" : window.sessionStorage.getItem("skipwait:employee-sign-in-email")?.trim().toLowerCase() || "";
+  // The OTP-first referrer sign-in (ReferrerOtpSignIn) enrolls the verified
+  // company email on the server and never writes the legacy
+  // "skipwait:employee-sign-in-email" sessionStorage key. After its reload the
+  // session email IS the verified work email, so derive enrollment from the
+  // compat session (tRPC auth.me) instead of that key — otherwise this screen
+  // re-shows the "Continue with work email" card and its button signs the
+  // fresh session out. The sessionStorage key stays as the fallback for the
+  // legacy WorkEmailSignIn flow (/email-review/:token via EmailReviewAction).
+  const sessionEmail = user?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() || "";
+  const sessionEmailIsCompany = Boolean(sessionEmail) && isCompanyEmail(sessionEmail);
   const [decision, setDecision] = useState<"" | "approved" | "declined">("");
   const [deciding, setDeciding] = useState(false);
   const [message, setMessage] = useState("");
@@ -54,7 +66,18 @@ export default function Referrer() {
 
   useEffect(() => {
     if (!isSignedIn) { setEmployeeEnrollmentReady(false); return; }
-    if (!employeeSignInEmail) { setEmployeeEnrollmentReady(true); return; }
+    if (!employeeSignInEmail) {
+      setEmployeeEnrollmentReady(true);
+      if (sessionEmailIsCompany) {
+        // Signed in and the session email is already a company address: the
+        // server verified + enrolled it during /api/auth/otp/verify. Hide the
+        // legacy "Continue with work email" card (its only action would sign
+        // the fresh OTP session out) and let the inbox load directly.
+        setShowWorkEmailEnrollment(false);
+        setWorkEmailError("");
+      }
+      return;
+    }
     let active = true;
     const savedInviteCode = typeof window === "undefined" ? "" : window.sessionStorage.getItem(coverageInviteSessionKey) || "";
     setEmployeeEnrollmentReady(false);
@@ -65,7 +88,7 @@ export default function Referrer() {
       setShowWorkEmailEnrollment(false); setWorkEmailError("");
     }).catch(error => { if (active) setWorkEmailError(error instanceof Error ? error.message : "We could not confirm this company email for private referral access."); }).finally(() => { if (active) setEmployeeEnrollmentReady(true); });
     return () => { active = false; };
-  }, [isSignedIn, employeeSignInEmail]);
+  }, [isSignedIn, employeeSignInEmail, sessionEmailIsCompany]);
 
   useEffect(() => {
     if (!isSignedIn || claimedRequest || !employeeEnrollmentReady) return;
@@ -75,11 +98,21 @@ export default function Referrer() {
       if (!active) return;
       if (claimedRequestId > 0) { setClaimedRequest(payload.request || null); setActiveDocument(0); }
       else setInbox(payload.requests || []);
-    }).catch(() => { if (active) setInboxError(claimedRequestId > 0 ? "This private request is not available to your verified employee account." : "Verify your work email to view private company requests."); }).finally(() => { if (active) setInboxReady(true); });
+    }).catch((error: unknown) => {
+      if (!active) return;
+      if (claimedRequestId > 0) setInboxError("This private request is not available to your verified employee account.");
+      else if (sessionEmailIsCompany) {
+        // The session email is the verified company address (OTP enrollment ran
+        // server-side), so a failure here is transient/specific — surface it
+        // without the "verify your work email" mask. Never flash the
+        // enrollment card or sign the user out for this.
+        setInboxError(error instanceof Error ? error.message : "We could not load private company requests.");
+      } else setInboxError("Verify your work email to view private company requests.");
+    }).finally(() => { if (active) setInboxReady(true); });
     return () => { active = false; };
-  }, [isSignedIn, claimedRequest, claimedRequestId, employeeEnrollmentReady]);
+  }, [isSignedIn, claimedRequest, claimedRequestId, employeeEnrollmentReady, sessionEmailIsCompany]);
 
-  useEffect(() => { if (isSignedIn && inboxReady && !claimedRequest && !showWorkEmailEnrollment && !claimedRequestId) go(safeReturnTo || "/inbox"); }, [claimedRequest, claimedRequestId, go, inboxReady, isSignedIn, safeReturnTo, showWorkEmailEnrollment]);
+  useEffect(() => { if (isSignedIn && inboxReady && !claimedRequest && !showWorkEmailEnrollment && !claimedRequestId && !inboxError) go(safeReturnTo || "/inbox"); }, [claimedRequest, claimedRequestId, go, inboxError, inboxReady, isSignedIn, safeReturnTo, showWorkEmailEnrollment]);
 
   const decide = async (approved: boolean) => {
     if (!claimedRequest || deciding) return;
@@ -99,7 +132,7 @@ export default function Referrer() {
 
   if (!inboxReady) return <main data-skipwait-screen="referrer-loading" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><ReferrerFlowHeader backHref="/" /><section className="min-h-0 flex-1 overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Verified employee inbox</p><h1 className="mt-3 text-2xl font-semibold">Loading your private company requests…</h1></section></div></main>;
 
-  if (!claimedRequest && inbox.length === 0 && !showWorkEmailEnrollment) return <EmptyCompanyInbox />;
+  if (!claimedRequest && inbox.length === 0 && !showWorkEmailEnrollment && !inboxError) return <EmptyCompanyInbox />;
 
   if (!claimedRequest) return <main data-skipwait-screen="referrer-inbox" className="h-dvh min-h-dvh overflow-hidden bg-slate-50 px-5 py-4 text-slate-950"><div className="mx-auto flex h-full max-w-xl flex-col"><ReferrerFlowHeader backHref="/" /><section className="min-h-0 flex-1 overflow-y-auto overscroll-contain rounded-xl border border-slate-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">Verified employee inbox</p><h1 className="mt-3 text-3xl font-semibold tracking-[-.04em]">Private requests at your company.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-slate-600">Reviewing and responding are always free. Your identity stays hidden until you choose to help.</p>{coverageRewardMessage ? <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800">{coverageRewardMessage}</p> : null}{showWorkEmailEnrollment ? <div className="mt-6 rounded-xl border border-blue-200 bg-blue-50 p-4"><p className="text-sm font-semibold text-slate-900">Use your company email account.</p><p className="mt-1 text-xs leading-5 text-slate-600">Private Referrer access is a separate passwordless company-email sign-in. We never add that email to a personal account or send a code to another address.</p><button type="button" onClick={() => { void switchToWorkEmail(); }} className="mt-3 rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white">Continue with work email</button></div> : null}{workEmailError && !showWorkEmailEnrollment ? <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{workEmailError}</p> : null}{inboxError ? <p className="mt-4 rounded-xl bg-amber-50 p-3 text-sm text-amber-800">{inboxError}</p> : null}<div className="mt-6 space-y-3">{inbox.map(request => <article key={request.id} className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">{request.companyDomain} · {request.attachmentCount} document{request.attachmentCount === 1 ? "" : "s"}</p><a href={request.targetRoleUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-sm font-semibold text-[#0B57D0]">{request.targetRoleUrl}</a><p className="mt-2 text-sm text-slate-600">Review the candidate’s note and resume before deciding whether you can help.</p><button type="button" onClick={() => { void claim(request.id); }} disabled={claimingId === request.id} className="mt-4 rounded-lg bg-[#0B57D0] px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{claimingId === request.id ? "Opening review…" : "Review candidate"}</button></article>)}</div></section></div></main>;
 
