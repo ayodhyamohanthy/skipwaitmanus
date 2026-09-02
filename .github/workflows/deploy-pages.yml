@@ -23,6 +23,10 @@ concurrency:
 # See scripts/sync-manifest.json for the schema.
 # ──────────────────────────────────────────────
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
