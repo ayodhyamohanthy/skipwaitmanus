@@ -68,16 +68,28 @@ jobs:
           # recreated on the NEXT request with the newest image.  A warm
           # instance keeps serving the OLD code, and polling keeps it warm —
           # so we must SLEEP FIRST (let it idle out), then wake it once.
+          # Lifecycle: the warm instance serves the OLD image; it recycles
+          # only after 10m idle (sleepAfter). CRITICAL: every curl request
+          # RESETS the idle timer, so we must never wake it while waiting.
+          # - wrong SHA  -> the curl woke the OLD instance -> sleep a FULL
+          #   10m cycle before the next check.
+          # - empty body -> the instance is mid-recycle (new image booting)
+          #   -> retry quickly (60s); this is the GOOD signal.
           echo "Waiting 10m for the warm container instance to sleep (sleepAfter=10m)..."
           sleep 600
-          for i in 1 2 3; do
+          for i in $(seq 1 20); do
             BODY=$(curl -s --max-time 5 https://skipwait.me/api/health 2>/dev/null || true)
             SHA=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('commitSha',''))" 2>/dev/null || true)
             if [ "$SHA" = "$EXPECTED_SHA" ]; then echo "SYNC OK: live API reports $SHA"; exit 0; fi
-            echo "attempt $i: got '${SHA:0:7}' want ${EXPECTED_SHA:0:7} — sleeping 5m then retrying"
-            sleep 300
+            if [ -z "$SHA" ]; then
+              echo "attempt $i: empty response — instance recycling (new image booting), retrying in 60s"
+              sleep 60
+            else
+              echo "attempt $i: got '${SHA:0:7}' want ${EXPECTED_SHA:0:7} — the check woke the OLD instance; sleeping a full 10m cycle"
+              sleep 600
+            fi
           done
-          echo "SYNC FAILED: live API did not report the pushed commit after ~20m"; exit 1
+          echo "SYNC FAILED: live API did not report the pushed commit"; exit 1
 
       - name: Append sync log
         if: always()
