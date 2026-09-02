@@ -116,3 +116,6 @@ client/public/__manus__/version.json
 .openclaw-*.txt
 backups/
 .aider*
+
+# CI build artifact (baked commit sha)
+commit-sha.txt

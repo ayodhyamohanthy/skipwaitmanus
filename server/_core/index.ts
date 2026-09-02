@@ -1,4 +1,5 @@
 import "./envBoot";
+import { readFile } from "node:fs/promises";
 import express from "express";
 import { createServer } from "http";
 import net from "net";
@@ -90,6 +91,15 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// Public health endpoint — returns the baked commit SHA for CI self-verification
+app.get("/api/health", async (_req, res) => {
+  let commitSha = "";
+  try { commitSha = (await readFile("commit-sha.txt", "utf8")).trim(); } catch { /* not baked */ }
+  res.set("Cache-Control", "no-store");
+  res.json({ ok: true, service: "skipwait-api", commitSha });
+});
+
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
   // Referrer OTP-first login is a public surface, always registered.

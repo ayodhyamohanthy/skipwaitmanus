@@ -38,9 +38,22 @@ jobs:
         env:
           VITE_WORKOS_CLIENT_ID: client_01M17TTFJ6784B1CN6MHAHB60Y
           VITE_WORKOS_ENABLED: "true"
+          VITE_GIT_COMMIT_SHA: ${{ github.sha }}
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist/public --project-name skipwait --branch main --commit-dirty=true
+
+      - name: Verify live site carries the pushed commit
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          for i in $(seq 1 10); do
+            if curl -s https://skipwait.me/ | grep -q "name=\"git-commit\" content=\"$EXPECTED_SHA\""; then
+              echo "SYNC OK: live site carries $EXPECTED_SHA"; exit 0
+            fi
+            echo "attempt $i: SHA not live yet — waiting"; sleep 15
+          done
+          echo "SYNC FAILED: live site does not carry the pushed commit"; exit 1
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
