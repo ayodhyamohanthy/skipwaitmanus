@@ -225,6 +225,13 @@
       "when": 1788305367230,
       "tag": "0031_drop_legacy_payment_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1796764800000,
+      "tag": "0032_referral_withdraw_and_payment_rejected",
+      "breakpoints": true
     }
   ]
 }

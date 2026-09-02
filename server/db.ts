@@ -633,6 +633,28 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
   return { requestId, saved };
 }
 
+export async function withdrawCompanyReferralRequest(userId: number, requestId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const request = await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1);
+    const current = request[0];
+    if (!current) throw new Error("This referral request is not in your account");
+    if (current.status !== "pending" || current.referrerId !== null) throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1);
+    if (!wallet[0]) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
+    // Credit timing rule: reserved at creation, refunded on withdraw. The refund
+    // returns the monthly credit first (same cycle, under the free allowance);
+    // a rolled cycle or a full monthly allowance refunds to the pack balance.
+    const refundToMonthly = wallet[0].monthlyCycleKey === currentMonthlyCycleKey() && wallet[0].monthlyCreditsRemaining < FREE_MONTHLY_ALLOWANCE;
+    const patch = refundToMonthly ? { monthlyCreditsRemaining: wallet[0].monthlyCreditsRemaining + 1 } : { balance: wallet[0].balance + 1 };
+    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet[0].id));
+    await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: 1, kind: "withdrawal_refund" });
+    const updated = await tx.update(referralRequests).set({ status: "withdrawn" }).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
+    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
+    return { withdrawn: true as const, requestId, status: "withdrawn" as const, creditSummary: creditSummaryFromWallet({ ...wallet[0], ...patch }) };
+  });
+}
+
 export async function listJobSeekerCompanyReferrals(userId: number) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralRequests.jobSeekerId, userId)).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.referrerMessage, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
@@ -1211,6 +1233,35 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase" });
     return { status: "credited" as const, tokenCount: intent[0].tokenCount, userId: intent[0].userId, role: intent[0].role };
+  });
+}
+
+export async function listRequiresReviewPayments(limit = 100) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(eq(paymentFulfillments.status, "requires_review")).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 250)));
+}
+
+export async function resolveRequiresReviewPayment(adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const rows = await tx.select().from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1);
+    const row = rows[0];
+    if (!row) throw new Error("This payment record does not exist");
+    if (row.status !== "requires_review") throw new Error("This payment was already resolved");
+    if (decision === "credited") {
+      // Mirror fulfillChargebeePayment's wallet update: balance increment when a
+      // wallet row exists, otherwise create the wallet with the credited tokens.
+      const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
+      if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${row.tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
+      else await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+      await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase" });
+    }
+    await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? new Date() : null, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
+    const metadata = { provider: row.provider, tokenCount: row.tokenCount, amount: row.amount, currency: row.currency, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
+    await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
+    return { paymentId, decision, tokenCount: row.tokenCount, userId: row.userId, role: row.role };
   });
 }
 

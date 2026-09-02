@@ -50,6 +50,7 @@ export type PrivateReferralRouteDeps = {
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
+  withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
@@ -89,6 +90,8 @@ export type PrivateReferralRouteDeps = {
   reviewPrivacyRequest?: (adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) => Promise<unknown>;
   listNotifications?: (userId: number) => Promise<PrivateNotification[]>;
   markNotificationRead?: (userId: number, notificationId: number) => Promise<{ success: boolean }>;
+  listRequiresReviewPayments?: (limit?: number) => Promise<unknown[]>;
+  resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) => Promise<{ paymentId: number; decision: string; tokenCount: number; userId: number; role: string }>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
@@ -638,6 +641,20 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json(result);
     } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); }
   });
+  app.post("/api/company-referrals/:requestId/withdraw", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
+      if (!identity) return res.status(401).json({ error: "Sign in to withdraw a referral request" });
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
+      if (!deps.withdrawCompanyReferralRequest) return res.status(501).json({ error: "Withdrawing requests is not available yet" });
+      const result = await deps.withdrawCompanyReferralRequest(identity.account.id, requestId);
+      record({ actorUserId: identity.account.id, action: "referral_request.withdrawn", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { creditRefunded: true } });
+      res.set("Cache-Control", "private, no-store"); res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not withdraw this referral request";
+      res.status(/not in your account/i.test(message) ? 404 : /no longer be withdrawn/i.test(message) ? 409 : 500).json({ error: message });
+    }
+  });
   app.post("/api/company-referrals/:requestId/review", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
@@ -772,6 +789,33 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.post("/api/company-referrals/:requestId/claim", async (req, res) => { try { const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); if (!identity) return res.status(401).json({ error: "Sign in to claim a referral request" }); if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" }); const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId); record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId }); res.json(result); } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request is no longer available" }); } });
   app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
+  app.get("/api/admin/payments/review", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100));
+      const payments = await deps.listRequiresReviewPayments?.(limit) ?? [];
+      record({ actorUserId: identity.account.id, action: "admin.payment_reviews_viewed", outcome: "success", resourceType: "payment_fulfillment", metadata: { limit, queueCount: payments.length } });
+      res.json({ payments });
+    } catch { res.status(500).json({ error: "We could not load the payment review queue" }); }
+  });
+  app.post("/api/admin/payments/review/:paymentId", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
+      const decision = req.body?.decision;
+      if (decision !== "credited" && decision !== "rejected") return res.status(400).json({ error: "Choose credited or rejected for this payment" });
+      if (!deps.resolveRequiresReviewPayment) return res.status(501).json({ error: "Payment review is not available yet" });
+      const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
+      const payment = await deps.resolveRequiresReviewPayment(identity.account.id, paymentId, decision, note);
+      record({ actorUserId: identity.account.id, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, note: typeof note === "string" ? note : null } });
+      res.json({ payment });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not record this payment decision";
+      res.status(/already resolved/i.test(message) ? 409 : /does not exist/i.test(message) ? 404 : 500).json({ error: message });
+    }
+  });
   app.get("/api/admin/privacy-requests", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });

@@ -1,4 +1,4 @@
-export const referralStatuses = ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed"] as const;
+export const referralStatuses = ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"] as const;
 export type ReferralStatus = (typeof referralStatuses)[number];
 
 export const referralStatusLabels: Record<ReferralStatus, string> = {
@@ -9,6 +9,7 @@ export const referralStatusLabels: Record<ReferralStatus, string> = {
   interview: "Interview",
   offer: "Offer",
   closed: "Closed",
+  withdrawn: "Withdrawn",
 };
 
 export const referralStatusSteps: ReferralStatus[] = ["pending", "approved", "intro_made", "interview", "offer", "closed"];
@@ -26,7 +27,7 @@ export function isReferralProgressUpdateStatus(status: unknown): status is Refer
 }
 
 export function getReferralProgress(status: ReferralStatus): number {
-  if (status === "declined") return 0;
+  if (status === "declined" || status === "withdrawn") return 0;
   const step = referralStatusSteps.indexOf(status);
   return step < 0 ? 0 : Math.round((step / (referralStatusSteps.length - 1)) * 100);
 }
@@ -51,6 +52,7 @@ export function getJobSeekerReferralState(input: { status: ReferralStatus; refer
   if (input.status === "offer") return { label: "Offer recorded", title: "An offer milestone was recorded.", detail: "This is a factual private progress update, not a public success claim.", tone: "emerald" };
   if (input.status === "closed") return { label: "Request closed", title: "This referral request is closed.", detail: "Your private request history and documents remain protected.", tone: "slate" };
   if (input.status === "declined") return { label: "Request closed", title: "This referral request was declined.", detail: "Your documents stay private. You can reuse your packet for another opportunity.", tone: "slate" };
+  if (input.status === "withdrawn") return { label: "Withdrawn", title: "You withdrew this request.", detail: "Your credit was returned to your balance. You can request another referral anytime.", tone: "slate" };
   return { label: referralStatusLabels[input.status], title: referralStatusLabels[input.status], detail: "This request has a verified status update.", tone: input.status === "offer" ? "emerald" : "blue" };
 }
 

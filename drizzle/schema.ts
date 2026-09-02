@@ -78,7 +78,7 @@ export const referralRequests = mysqlTable("referralRequests", {
   jobSeekerId: int("jobSeekerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   referrerId: int("referrerId").references(() => users.id, { onDelete: "set null" }),
   personalPitch: text("personalPitch").notNull(),
-  status: mysqlEnum("status", ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"]).default("pending").notNull(),
   waitingForCoverage: boolean("waitingForCoverage").default(false).notNull(),
   coverageQueuedAt: timestamp("coverageQueuedAt"),
   referrerMessage: text("referrerMessage"),
@@ -192,7 +192,7 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted"]).notNull(),
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund"]).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("token_transactions_user_idx").on(table.userId)]);
 
@@ -256,7 +256,7 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   tokenCount: int("tokenCount").notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
-  status: mysqlEnum("status", ["pending", "credited", "requires_review"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "credited", "requires_review", "rejected"]).default("pending").notNull(),
   reconciliationReason: varchar("reconciliationReason", { length: 120 }),
   lastCheckedAt: timestamp("lastCheckedAt"),
   creditedAt: timestamp("creditedAt"),
