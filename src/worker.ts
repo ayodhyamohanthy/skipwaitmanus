@@ -37,6 +37,6 @@ export default {
     ctx: ExecutionContext
   ): Promise<Response> {
     // Single-instance API: all requests to one container for session affinity.
-    return getContainer(env.SkipwaitApi, "skipwait-api", true).fetch(request);
+    return getContainer(env.SkipwaitApi, "skipwaitmanus-api", true).fetch(request);
   },
 };
