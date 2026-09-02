@@ -256,7 +256,7 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   tokenCount: int("tokenCount").notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
-  status: mysqlEnum("status", ["pending", "credited", "requires_review", "rejected"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "credited", "requires_review", "rejected", "refunded"]).default("pending").notNull(),
   reconciliationReason: varchar("reconciliationReason", { length: 120 }),
   lastCheckedAt: timestamp("lastCheckedAt"),
   creditedAt: timestamp("creditedAt"),

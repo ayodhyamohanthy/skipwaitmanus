@@ -92,6 +92,9 @@ export type PrivateReferralRouteDeps = {
   markNotificationRead?: (userId: number, notificationId: number) => Promise<{ success: boolean }>;
   listRequiresReviewPayments?: (limit?: number) => Promise<unknown[]>;
   resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) => Promise<{ paymentId: number; decision: string; tokenCount: number; userId: number; role: string }>;
+  listRecentPayments?: (limit?: number) => Promise<unknown[]>;
+  refundCreditedPayment?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; refunded: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
+  getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
@@ -794,10 +797,23 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100));
-      const payments = await deps.listRequiresReviewPayments?.(limit) ?? [];
-      record({ actorUserId: identity.account.id, action: "admin.payment_reviews_viewed", outcome: "success", resourceType: "payment_fulfillment", metadata: { limit, queueCount: payments.length } });
+      const scope = req.query.scope === "credited" ? "credited" : "review";
+      const payments = scope === "credited" ? await deps.listRecentPayments?.(limit) ?? [] : await deps.listRequiresReviewPayments?.(limit) ?? [];
+      record({ actorUserId: identity.account.id, action: "admin.payment_reviews_viewed", outcome: "success", resourceType: "payment_fulfillment", metadata: { limit, queueCount: payments.length, scope } });
       res.json({ payments });
     } catch { res.status(500).json({ error: "We could not load the payment review queue" }); }
+  });
+  app.post("/api/admin/payments/review/:paymentId/refund", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
+      if (!deps.refundCreditedPayment) return res.status(501).json({ error: "Payment refunds are not available yet" });
+      const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
+      const refund = await deps.refundCreditedPayment(identity.account.id, paymentId, note);
+      record({ actorUserId: identity.account.id, action: "payment.refunded", outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { provider: refund.provider, amount: refund.amount, currency: refund.currency, tokenCount: refund.tokenCount, note: typeof note === "string" ? note : null } });
+      res.json({ refunded: true, paymentId });
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not refund this payment"; res.status(409).json({ error: message }); }
   });
   app.post("/api/admin/payments/review/:paymentId", async (req, res) => {
     try {
@@ -844,6 +860,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "admin.flow_health_viewed", outcome: "success", resourceType: "flow_health" });
       res.json({ health });
     } catch { res.status(500).json({ error: "We could not load referral flow health" }); }
+  });
+  app.get("/api/admin/revenue", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const revenue = await deps.getRevenueSummary?.() ?? { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: new Date() };
+      record({ actorUserId: identity.account.id, action: "admin.revenue_viewed", outcome: "success", resourceType: "revenue" });
+      res.json({ revenue });
+    } catch { res.status(500).json({ error: "We could not load revenue" }); }
   });
   app.get("/api/admin/token-recovery/users", async (req, res) => {
     try {

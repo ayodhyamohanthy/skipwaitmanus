@@ -1265,6 +1265,41 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
   });
 }
 
+export async function listRecentPayments(limit = 20) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({ id: paymentFulfillments.id, status: paymentFulfillments.status, provider: paymentFulfillments.provider, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(inArray(paymentFulfillments.status, ["credited", "refunded"])).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 250)));
+}
+export async function refundCreditedPayment(adminUserId: number, paymentId: number, note?: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]), eq(paymentFulfillments.status, "credited"))).limit(1);
+    const row = rows[0];
+    if (!row) throw new Error("This payment cannot be refunded");
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
+    if (wallet[0]) await tx.update(tokenBalances).set({ balance: Math.max(0, wallet[0].balance - row.tokenCount) }).where(eq(tokenBalances.id, wallet[0].id));
+    await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment" });
+    const updated = await tx.update(paymentFulfillments).set({ status: "refunded", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
+    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment cannot be refunded");
+    const metadata = { provider: row.provider, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
+    await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "payment.refunded", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
+    return { paymentId, refunded: true, tokenCount: row.tokenCount, userId: row.userId, role: row.role, provider: row.provider, amount: row.amount, currency: row.currency };
+  });
+}
+export async function getRevenueSummary() {
+  const db = await getDb();
+  if (!db) return { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: new Date() };
+  const credited = await db.select({ provider: paymentFulfillments.provider, currency: paymentFulfillments.currency, totalAmount: sql<number>`sum(${paymentFulfillments.amount})`, count: count() }).from(paymentFulfillments).where(eq(paymentFulfillments.status, "credited")).groupBy(paymentFulfillments.provider, paymentFulfillments.currency);
+  const refunded = await db.select({ currency: paymentFulfillments.currency, totalAmount: sql<number>`sum(${paymentFulfillments.amount})`, count: count() }).from(paymentFulfillments).where(eq(paymentFulfillments.status, "refunded")).groupBy(paymentFulfillments.currency);
+  const byCurrency = new Map<string, { currency: string; totalAmount: number; count: number }>();
+  for (const row of credited) {
+    const agg = byCurrency.get(row.currency) ?? { currency: row.currency, totalAmount: 0, count: 0 };
+    agg.totalAmount += Number(row.totalAmount ?? 0); agg.count += Number(row.count ?? 0); byCurrency.set(row.currency, agg);
+  }
+  return { byProvider: credited.map(row => ({ provider: row.provider, currency: row.currency, totalAmount: Number(row.totalAmount ?? 0), count: Number(row.count ?? 0) })), totalsByCurrency: Array.from(byCurrency.values()), refundedTotalByCurrency: refunded.map(row => ({ currency: row.currency, totalAmount: Number(row.totalAmount ?? 0), count: Number(row.count ?? 0) })), recordedAt: new Date() };
+}
+
 export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: PaidSubscriptionPlan; itemPriceId: string; amount: number; currency: "INR" | "USD" }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");

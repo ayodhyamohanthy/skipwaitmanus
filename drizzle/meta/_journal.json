@@ -232,6 +232,13 @@
       "when": 1796764800000,
       "tag": "0032_referral_withdraw_and_payment_rejected",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1796851200000,
+      "tag": "0033_payment_refunded",
+      "breakpoints": true
     }
   ]
 }
