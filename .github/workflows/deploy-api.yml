@@ -19,6 +19,12 @@ concurrency:
   group: deploy-api
   cancel-in-progress: false
 
+# ──────────────────────────────────────────────
+# EXTENSION POINT: add a new step here for each
+# additional target system (Vercel, Netlify, …).
+# See scripts/sync-manifest.json for the schema.
+# ──────────────────────────────────────────────
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -54,19 +60,35 @@ jobs:
         env:
           EXPECTED_SHA: ${{ github.sha }}
         run: |
-          # Container instances sleep after 10m idle and are recreated on the
-          # next request with the newest image. The instance may be warm on the
-          # OLD image, so we must outlast the sleep cycle: poll for up to
-          # 14 minutes (28 x 30s) before failing.
-          for i in $(seq 1 28); do
+          # Container instances sleep after 10m idle (sleepAfter) and are
+          # recreated on the NEXT request with the newest image.  A warm
+          # instance keeps serving the OLD code, and polling keeps it warm —
+          # so we must SLEEP FIRST (let it idle out), then wake it once.
+          echo "Waiting 10m for the warm container instance to sleep (sleepAfter=10m)..."
+          sleep 600
+          for i in 1 2 3; do
             BODY=$(curl -s --max-time 5 https://skipwait.me/api/health 2>/dev/null || true)
             SHA=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('commitSha',''))" 2>/dev/null || true)
             if [ "$SHA" = "$EXPECTED_SHA" ]; then echo "SYNC OK: live API reports $SHA"; exit 0; fi
-            if echo "$BODY" | head -1 | grep -q "<!doctype html>"; then
-              echo "attempt $i: old container still serving (warm instance) — waiting for 10m idle recycle"
-            else
-              echo "attempt $i: got SHA '${SHA:0:7}' want ${EXPECTED_SHA:0:7}"
-            fi
-            sleep 30
+            echo "attempt $i: got '${SHA:0:7}' want ${EXPECTED_SHA:0:7} — sleeping 5m then retrying"
+            sleep 300
           done
-          echo "SYNC FAILED: live API did not report the pushed commit after 14m"; exit 1
+          echo "SYNC FAILED: live API did not report the pushed commit after ~20m"; exit 1
+
+      - name: Append sync log
+        if: always()
+        run: bash scripts/append-sync-log.sh "${{ github.workflow }}" "${{ github.sha }}" "${{ job.status }}"
+
+      - name: Notify sync status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = `${{ job.status }}`;
+            const msg = status === 'success' ? '✅ Sync succeeded' : '❌ Sync failed';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              body: `${msg} — workflow: ${{ github.workflow }}, commit: ${{ github.sha }}`
+            });

@@ -17,6 +17,12 @@ concurrency:
   group: deploy-pages
   cancel-in-progress: false
 
+# ──────────────────────────────────────────────
+# EXTENSION POINT: add a new step here for each
+# additional target system (Vercel, Netlify, …).
+# See scripts/sync-manifest.json for the schema.
+# ──────────────────────────────────────────────
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -57,3 +63,21 @@ jobs:
             echo "attempt $i: SHA not live yet — waiting"; sleep 15
           done
           echo "SYNC FAILED: live site does not carry the pushed commit"; exit 1
+
+      - name: Append sync log
+        if: always()
+        run: bash scripts/append-sync-log.sh "${{ github.workflow }}" "${{ github.sha }}" "${{ job.status }}"
+
+      - name: Notify sync status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const status = `${{ job.status }}`;
+            const msg = status === 'success' ? '✅ Sync succeeded' : '❌ Sync failed';
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: 1,
+              body: `${msg} — workflow: ${{ github.workflow }}, commit: ${{ github.sha }}`
+            });

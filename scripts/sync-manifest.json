@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "description": "Sync manifest — one entry per target system. To add a system (e.g. Vercel), copy the api entry, set enabled:true, and add the matching workflow file.",
+  "systems": [
+    {
+      "id": "api",
+      "type": "cloudflare-containers",
+      "enabled": true,
+      "workflow": "deploy-api.yml",
+      "verify": "GET https://skipwait.me/api/health -> commitSha == pushed sha"
+    },
+    {
+      "id": "web",
+      "type": "cloudflare-pages",
+      "enabled": true,
+      "workflow": "deploy-pages.yml",
+      "verify": "<meta name='git-commit'> on https://skipwait.me/ == pushed sha"
+    },
+    {
+      "id": "vercel",
+      "type": "vercel",
+      "enabled": false,
+      "workflow": "deploy-vercel.yml (placeholder)",
+      "verify": "not configured",
+      "note": "Extension point: copy the api entry and add a deploy-vercel.yml workflow."
+    }
+  ]
+}
