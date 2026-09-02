@@ -46,6 +46,9 @@ jobs:
 
       - name: Deploy container image + worker
         run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Verify live API serves the pushed commit
         env:
@@ -74,6 +77,3 @@ jobs:
             echo "SYNC FAILED: live API reports $SHA, expected $EXPECTED_SHA"; exit 1
           fi
           echo "SYNC ACCEPTED: deploy completed, container rolling out (SHA=$EXPECTED_SHA)"; exit 0
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
