@@ -54,26 +54,19 @@ jobs:
         env:
           EXPECTED_SHA: ${{ github.sha }}
         run: |
-          # First deploy: the container may still be rolling out or the old
-          # container (without /api/health) may be serving.  Retry up to 15
-          # times (5 min) to give the container time to recycle.
-          for i in $(seq 1 15); do
+          # Container instances sleep after 10m idle and are recreated on the
+          # next request with the newest image. The instance may be warm on the
+          # OLD image, so we must outlast the sleep cycle: poll for up to
+          # 14 minutes (28 x 30s) before failing.
+          for i in $(seq 1 28); do
             BODY=$(curl -s --max-time 5 https://skipwait.me/api/health 2>/dev/null || true)
-            # Accept JSON response with matching SHA
             SHA=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('commitSha',''))" 2>/dev/null || true)
             if [ "$SHA" = "$EXPECTED_SHA" ]; then echo "SYNC OK: live API reports $SHA"; exit 0; fi
-            # Accept HTML response (old container without /api/health) as a
-            # transitional state — the npx wrangler deploy already succeeded.
             if echo "$BODY" | head -1 | grep -q "<!doctype html>"; then
-              echo "TRANSITION: old container still serving (no /api/health yet) — waiting for container recycle"
-              sleep 20; continue
+              echo "attempt $i: old container still serving (warm instance) — waiting for 10m idle recycle"
+            else
+              echo "attempt $i: got SHA '${SHA:0:7}' want ${EXPECTED_SHA:0:7}"
             fi
-            echo "attempt $i: got SHA '${SHA:0:7}' want ${EXPECTED_SHA:0:7} — waiting for container rollout"; sleep 20
+            sleep 30
           done
-          # Last resort: check the container deployment itself
-          BODY=$(curl -s https://skipwait.me/api/health 2>/dev/null || true)
-          SHA=$(echo "$BODY" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('commitSha',''))" 2>/dev/null || true)
-          if [ -n "$SHA" ] && [ "$SHA" != "$EXPECTED_SHA" ]; then
-            echo "SYNC FAILED: live API reports $SHA, expected $EXPECTED_SHA"; exit 1
-          fi
-          echo "SYNC ACCEPTED: deploy completed, container rolling out (SHA=$EXPECTED_SHA)"; exit 0
+          echo "SYNC FAILED: live API did not report the pushed commit after 14m"; exit 1
