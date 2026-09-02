@@ -68,6 +68,19 @@ jobs:
         if: always()
         run: bash scripts/append-sync-log.sh "${{ github.workflow }}" "${{ github.sha }}" "${{ job.status }}"
 
+      - name: Commit sync log back to main
+        if: always()
+        run: |
+          git config user.name "sync-bot"
+          git config user.email "sync-bot@skipwait.me"
+          git add docs/SYNC_LOG.md
+          if git diff --cached --quiet; then
+            echo "no sync log change to commit"
+          else
+            git commit -m "Sync log: ${{ github.workflow }} ${{ github.sha }} ${{ job.status }} [skip ci]"
+            git push origin HEAD:main
+          fi
+
       - name: Notify sync status
         if: always()
         continue-on-error: true
