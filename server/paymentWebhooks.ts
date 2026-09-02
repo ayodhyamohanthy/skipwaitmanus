@@ -76,7 +76,7 @@ export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entr
   const paypalConfigured = () => Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET);
   const paypalVerificationConfigured = () => Boolean(process.env.PAYPAL_WEBHOOK_ID) && paypalConfigured();
 
-  app.post("/api/payments/razorpay/webhook", express.json({ limit: "256kb", verify: captureRawBody }), async (req: Request, res: Response) => {
+  async function handleRazorpayWebhook(req: Request, res: Response) {
     const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
     if (!secret) return res.status(503).json({ error: "Webhook not configured" });
     const raw = rawBodies.get(req);
@@ -101,6 +101,17 @@ export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entr
       metadata: { orderId: payment?.order_id, amount: payment?.amount ?? refund?.amount, currency: payment?.currency ?? refund?.currency, status: typeof subject?.status === "string" ? subject.status : undefined, verification: "hmac_verified" },
     });
     return res.status(200).json({ received: true, matched: correlation?.matched === true });
+  }
+
+  // Legacy alias: the Razorpay dashboard had a webhook registered at
+  // /api/razorpay/webhook before the handler lived here; keep both paths
+  // wired to the same handler so existing registrations keep working.
+  app.post("/api/razorpay/webhook", express.json({ limit: "256kb", verify: captureRawBody }), async (req: Request, res: Response) => {
+    return handleRazorpayWebhook(req, res);
+  });
+
+  app.post("/api/payments/razorpay/webhook", express.json({ limit: "256kb", verify: captureRawBody }), async (req: Request, res: Response) => {
+    return handleRazorpayWebhook(req, res);
   });
 
   app.post("/api/payments/paypal/webhook", express.json({ limit: "256kb" }), async (req: Request, res: Response) => {
