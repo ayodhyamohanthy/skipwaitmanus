@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
 import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
@@ -1372,5 +1373,136 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
     await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
     return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, id: 0, updatedAt: new Date() }), ...patch }) };
+  });
+}
+
+// ---- Unified admin approval queue (seeker requests, referrer enrollments, payments) ----
+
+export type AdminApprovalQueueKind = "referral_request" | "referrer_enrollment" | "payment";
+export type AdminApprovalQueueStatus = "pending" | "under_review" | "approved" | "declined" | "requires_review";
+export type AdminApprovalQueueItem = {
+  kind: AdminApprovalQueueKind;
+  id: number;
+  status: AdminApprovalQueueStatus;
+  companyDomain: string;
+  provider?: string | null;
+  amount?: number | null;
+  currency?: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  summary: string;
+  meta: {
+    claimTime?: Date | null;
+    otpTime?: Date | null;
+    tokenCount?: number | null;
+    reason?: string | null;
+    seekerName?: string | null;
+    seekerEmail?: string | null;
+    referrerName?: string | null;
+    referrerEmail?: string | null;
+    roleTitle?: string | null;
+    targetRoleUrl?: string | null;
+    pitch?: string | null;
+    role?: string | null;
+    userEmail?: string | null;
+    waitingForCoverage?: boolean | null;
+    creditReserved?: boolean | null;
+    approvalNote?: string | null;
+  };
+};
+
+/**
+ * Verified referrers who have never taken a referral action (claimed, reviewed,
+ * or accepted a request). The enrollment itself is enrolled the moment a work
+ * email OTP verifies; the admin triage item is the non-action state.
+ */
+export async function listReferrerEnrollmentsAwaitingAction() {
+  const db = await getDb(); if (!db) return [];
+  const verified = await db.select({ userId: profiles.userId, name: users.name, email: users.email, companyDomain: profiles.workEmailDomain, verifiedAt: profiles.workEmailVerifiedAt, createdAt: profiles.createdAt, updatedAt: profiles.updatedAt }).from(profiles).innerJoin(users, eq(profiles.userId, users.id)).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt)));
+  const acted = await db.select({ referrerId: referralRequests.referrerId }).from(referralRequests).where(isNotNull(referralRequests.referrerId));
+  const actedUserIds = new Set(acted.map(row => row.referrerId));
+  return verified.filter(row => !actedUserIds.has(row.userId)).map(row => ({ ...row, companyDomain: row.companyDomain ?? "" }));
+}
+
+function adminApprovalStatusFromActivity(action: string): AdminApprovalQueueStatus | undefined {
+  if (action === "admin.approval_approved") return "approved";
+  if (action === "admin.approval_rejected") return "declined";
+  return undefined;
+}
+
+export async function listAdminApprovalQueue(limit: number = 100) {
+  const db = await getDb(); if (!db) return [];
+  const safeLimit = Math.max(1, Math.min(250, Math.floor(limit)));
+  const referrerUser = alias(users, "referrerUser");
+  const [requests, payments, enrollments, enrollmentDecisions] = await Promise.all([
+    db.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, personalPitch: referralRequests.personalPitch, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, roleTitle: jobs.title, targetRoleUrl: jobs.targetRoleUrl, seekerName: users.name, seekerEmail: users.email, referrerName: referrerUser.name, referrerEmail: referrerUser.email }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referrerUser, eq(referralRequests.referrerId, referrerUser.id)).where(inArray(referralRequests.status, ["pending", "approved", "declined"])).orderBy(desc(referralRequests.updatedAt)).limit(safeLimit),
+    db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, tokenCount: paymentFulfillments.tokenCount, status: paymentFulfillments.status, reconciliationReason: paymentFulfillments.reconciliationReason, role: paymentFulfillments.role, createdAt: paymentFulfillments.createdAt, lastCheckedAt: paymentFulfillments.lastCheckedAt, creditedAt: paymentFulfillments.creditedAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(inArray(paymentFulfillments.status, ["requires_review", "credited", "rejected"])).orderBy(desc(paymentFulfillments.lastCheckedAt), desc(paymentFulfillments.createdAt)).limit(safeLimit),
+    listReferrerEnrollmentsAwaitingAction(),
+    db.select({ resourceId: operationalActivityLogs.resourceId, action: operationalActivityLogs.action, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.resourceType, "referrer_enrollment"), like(operationalActivityLogs.action, "admin.approval_%"))).orderBy(desc(operationalActivityLogs.createdAt)).limit(safeLimit),
+  ]);
+  const enrollmentDecisionById = new Map<string, { status: AdminApprovalQueueStatus; note?: string | null }>();
+  for (const decision of enrollmentDecisions) {
+    if (!decision.resourceId || enrollmentDecisionById.has(decision.resourceId)) continue;
+    const status = adminApprovalStatusFromActivity(decision.action); if (!status) continue;
+    let note: string | null = null;
+    try { note = (JSON.parse(decision.metadata ?? "{}") as { note?: string | null }).note ?? null; } catch { note = null; }
+    enrollmentDecisionById.set(decision.resourceId, { status, note });
+  }
+  const items: AdminApprovalQueueItem[] = [];
+  for (const request of requests) {
+    const status: AdminApprovalQueueStatus = request.status === "pending" ? request.referrerId ? "under_review" : "pending" : request.status === "approved" ? "approved" : "declined";
+    const pitch = (request.personalPitch ?? "").trim();
+    items.push({
+      kind: "referral_request", id: request.id, status, companyDomain: request.companyDomain, createdAt: request.createdAt, updatedAt: request.updatedAt,
+      summary: request.status === "pending" && !request.referrerId && request.waitingForCoverage ? "Waiting for company coverage — no verified employee has claimed this yet" : (pitch ? pitch.slice(0, 220) : "Private referral request awaiting a decision"),
+      meta: { claimTime: request.referrerId ? request.updatedAt : null, tokenCount: 1, creditReserved: true, waitingForCoverage: request.waitingForCoverage, seekerName: request.seekerName, seekerEmail: request.seekerEmail, referrerName: request.referrerName, referrerEmail: request.referrerEmail, roleTitle: request.roleTitle, targetRoleUrl: request.targetRoleUrl, pitch },
+    });
+  }
+  for (const payment of payments) {
+    const status: AdminApprovalQueueStatus = payment.status === "requires_review" ? "requires_review" : payment.status === "credited" ? "approved" : "declined";
+    items.push({
+      kind: "payment", id: payment.id, status, companyDomain: "", provider: payment.provider, amount: payment.amount, currency: payment.currency, createdAt: payment.createdAt, updatedAt: payment.lastCheckedAt ?? payment.creditedAt ?? payment.createdAt,
+      summary: payment.reconciliationReason ?? "Credit-pack payment flagged for manual reconciliation",
+      meta: { tokenCount: payment.tokenCount, reason: payment.reconciliationReason, role: payment.role, userEmail: payment.userEmail },
+    });
+  }
+  for (const enrollment of enrollments) {
+    const decision = enrollmentDecisionById.get(String(enrollment.userId));
+    items.push({
+      kind: "referrer_enrollment", id: enrollment.userId, status: decision?.status ?? "under_review", companyDomain: enrollment.companyDomain, createdAt: enrollment.createdAt, updatedAt: enrollment.updatedAt,
+      summary: decision?.status === "approved" ? "Enrollment approved by an administrator" : decision?.status === "declined" ? "Enrollment rejected by an administrator" : "Work email verified · awaiting a first referral action",
+      meta: { otpTime: enrollment.verifiedAt, referrerName: enrollment.name, referrerEmail: enrollment.email, approvalNote: decision?.note ?? null },
+    });
+  }
+  return items.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, safeLimit);
+}
+
+export async function resolveAdminApproval(adminUserId: number, itemKind: AdminApprovalQueueKind, itemId: number, decision: "approved" | "rejected", note?: string) {
+  const trimmedNote = typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null;
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (itemKind === "referrer_enrollment") {
+    // Enrollments have no clean status column, so the decision lives on the
+    // audit trail only (metadata carries the admin note).
+    const row = await db.select({ id: profiles.id, companyDomain: profiles.workEmailDomain }).from(profiles).where(and(eq(profiles.userId, itemId), eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt))).limit(1);
+    if (!row[0]) throw new Error("This enrollment record could not be found");
+    await db.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `admin.approval_${decision}`, outcome: "success", resourceType: "referrer_enrollment", resourceId: String(itemId), companyDomain: row[0].companyDomain ?? undefined, metadata: JSON.stringify(trimmedNote ? { note: trimmedNote } : {}) });
+    return { kind: itemKind, id: itemId, status: decision === "approved" ? "approved" as const : "declined" as const, note: trimmedNote };
+  }
+  if (itemKind === "payment") {
+    // Approving a credit pack credits the tokens, mirroring the payment review
+    // workflow; the row's own audit entry is written by the resolver.
+    const result = await resolveRequiresReviewPayment(adminUserId, itemId, decision === "approved" ? "credited" : "rejected", trimmedNote ?? undefined);
+    return { kind: itemKind, id: itemId, status: decision === "approved" ? "approved" as const : "declined" as const, tokenCount: result.tokenCount };
+  }
+  return db.transaction(async tx => {
+    const rows = await tx.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, itemId)).limit(1);
+    const row = rows[0];
+    if (!row) throw new Error("This referral request could not be found");
+    if (row.status !== "pending") throw new Error("This record was already resolved");
+    const nextStatus = decision === "approved" ? "approved" : "declined";
+    const updated = await tx.update(referralRequests).set({ status: nextStatus }).where(and(eq(referralRequests.id, itemId), eq(referralRequests.status, "pending")));
+    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This record was already resolved");
+    await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `admin.approval_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: String(itemId), companyDomain: row.companyDomain, metadata: JSON.stringify(trimmedNote ? { status: nextStatus, note: trimmedNote } : { status: nextStatus }) });
+    return { kind: itemKind, id: itemId, status: nextStatus as AdminApprovalQueueStatus };
   });
 }

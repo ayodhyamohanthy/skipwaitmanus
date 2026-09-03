@@ -95,6 +95,8 @@ export type PrivateReferralRouteDeps = {
   listRecentPayments?: (limit?: number) => Promise<unknown[]>;
   refundCreditedPayment?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; refunded: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
+  listAdminApprovalQueue?: (limit?: number) => Promise<unknown[]>;
+  resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
@@ -804,6 +806,36 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     }
   });
   app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
+  app.get("/api/admin/approval-queue", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100));
+      const items = await deps.listAdminApprovalQueue?.(limit) ?? [];
+      record({ actorUserId: identity.account.id, action: "admin.approval_queue_viewed", outcome: "success", resourceType: "approval_queue", metadata: { limit, queueCount: items.length } });
+      res.json({ items });
+    } catch { res.status(500).json({ error: "We could not load the approval queue" }); }
+  });
+  app.post("/api/admin/approval-queue/:kind/:id/decision", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const kind = req.params.kind;
+      const itemId = Number(req.params.id);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      if (kind !== "referral_request" && kind !== "referrer_enrollment" && kind !== "payment") return res.status(400).json({ error: "Invalid record type" });
+      if (!Number.isInteger(itemId) || itemId <= 0) return res.status(400).json({ error: "Invalid record reference" });
+      const decision = req.body?.decision;
+      if (decision !== "approved" && decision !== "rejected") return res.status(400).json({ error: "Choose approve or reject for this record" });
+      if (!deps.resolveAdminApproval) return res.status(501).json({ error: "Approval decisions are not available yet" });
+      const note = typeof req.body?.note === "string" ? req.body.note.trim().slice(0, 500) : undefined;
+      const result = await deps.resolveAdminApproval(identity.account.id, kind, itemId, decision, note);
+      record({ actorUserId: identity.account.id, action: `admin.approval_${decision}`, outcome: "success", resourceType: kind, resourceId: itemId, metadata: { decision, note: typeof note === "string" ? note : null } });
+      res.json({ ok: true, status: (result as { status?: string })?.status ?? (decision === "approved" ? "approved" : "declined"), decision });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not record this approval decision";
+      res.status(/already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
+    }
+  });
   app.get("/api/admin/payments/review", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
