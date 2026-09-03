@@ -38,6 +38,7 @@ export const jobs = mysqlTable("jobs", {
   title: varchar("title", { length: 180 }).notNull(),
   company: varchar("company", { length: 160 }).notNull(),
   location: varchar("location", { length: 120 }).notNull(),
+  compensation: text("compensation"), // human-readable pay range; free-text
   seniority: varchar("seniority", { length: 80 }).notNull(),
   employmentType: varchar("employmentType", { length: 80 }).notNull(),
   workMode: varchar("workMode", { length: 80 }).notNull(),
@@ -58,6 +59,7 @@ export const companyOpportunities = mysqlTable("companyOpportunities", {
   roleTitle: varchar("roleTitle", { length: 180 }).notNull(),
   targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }),
   location: varchar("location", { length: 180 }),
+  compensation: text("compensation"), // human-readable pay range; free-text
   walkInAt: timestamp("walkInAt"),
   walkInEndsAt: timestamp("walkInEndsAt"),
   isActive: boolean("isActive").default(true).notNull(),

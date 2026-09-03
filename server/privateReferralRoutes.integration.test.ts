@@ -9,6 +9,7 @@ describe("private referral HTTP routes", () => {
     app.use(express.json());
     let claimedBy: number | undefined;
     let submittedCandidateMessage = "";
+    let submittedCompensation: string | undefined;
     const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
     const attachment = { id: 77, ownerId: 1, fileName: "resume.pdf", fileKey: "private/resume.pdf", mimeType: "application/pdf", fileSize: 3, referrerId: undefined as number | undefined };
     const identities = new Map([["seeker", { account: { id: 1, openId: "workos-seeker" }, primaryEmail: { emailAddress: "seeker@example.com", verification: { status: "verified" } } }], ["employee", { account: { id: 2, openId: "workos-employee" }, primaryEmail: { emailAddress: "employee@acme.com", verification: { status: "verified" } } }], ["outsider", { account: { id: 3, openId: "workos-outsider" }, primaryEmail: { emailAddress: "outsider@other.com", verification: { status: "verified" } } }]]);
@@ -19,7 +20,7 @@ describe("private referral HTTP routes", () => {
       createReferralAttachment: async () => attachment,
       getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === claimedBy ? { ...attachment, referrerId: claimedBy } : undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }),
-      createCompanyReferralRequest: async (_userId, input) => { submittedCandidateMessage = input.personalPitch; return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 }; },
+      createCompanyReferralRequest: async (_userId, input) => { submittedCandidateMessage = input.personalPitch; submittedCompensation = input.compensation; return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 }; },
       listJobSeekerCompanyReferrals: async () => [{ id: 501 }, { id: 500 }, { id: 499 }],
       listCompanyReferralInbox: async () => [{ id: 501, companyDomain: "acme.com" }],
       getUnclaimedCompanyReferralPreview: async (userId, requestId) => userId === 2 && requestId === 501 && !claimedBy ? { id: requestId, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
@@ -34,9 +35,10 @@ describe("private referral HTTP routes", () => {
     expect(upload.status).toBe(201); expect(upload.body.url).toBe("/api/documents/77");
     const malformed = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "acme product designer", attachmentIds: [77] });
     expect(malformed.status).toBe(400); expect(malformed.body.error).toMatch(/complete job link/i);
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch." });
+    const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", compensation: "₹12–18 LPA" });
     expect(created.status).toBe(201); expect(created.body.companyDomain).toBe("acme.com"); expect(created.body.lifetimeRequestCount).toBe(3);
     expect(submittedCandidateMessage).toBe("I led a measurable product design launch.");
+    expect(submittedCompensation).toBe("₹12–18 LPA");
     expect((await request(app).get("/api/documents/77").set("x-test-user", "outsider")).status).toBe(404);
     expect((await request(app).get("/api/company-referrals/501").set("x-test-user", "outsider")).status).toBe(404);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "outsider")).status).toBe(404);
@@ -166,8 +168,8 @@ describe("private referral HTTP routes", () => {
     expect(otpVerifiedWorkEmail.status).toBe(200); expect(savedWorkEmail).toBe(true);
     expect(otpVerifiedWorkEmail.body.reward).toMatchObject({ rewarded: true, tokenCount: 1 });
     expect(fulfilledInvite).toEqual({ userId: 2, inviteCode: "verified-coverage-invite", workEmailDomain: "acme.com" });
-    const published = await request(app).post("/api/opportunities").set("x-test-user", "employee").send({ kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design" });
-    expect(published.status).toBe(201); expect(savedWorkEmail).toBe(true); expect(published.body.opportunity).toMatchObject({ companyDomain: "acme.com", roleTitle: "Product Designer" });
+    const published = await request(app).post("/api/opportunities").set("x-test-user", "employee").send({ kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", compensation: "₹12–18 LPA" });
+    expect(published.status).toBe(201); expect(savedWorkEmail).toBe(true); expect(published.body.opportunity).toMatchObject({ companyDomain: "acme.com", roleTitle: "Product Designer", compensation: "₹12–18 LPA" });
   });
 
   it("issues a personal invite link and only forwards claims from a verified account email", async () => {

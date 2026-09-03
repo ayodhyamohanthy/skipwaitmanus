@@ -33,6 +33,23 @@ describe("verified employee opportunity post", () => {
     expect(screen.queryByText("employee@acme.com")).toBeNull();
   });
 
+  it("collects the optional pay range and submits it with the opportunity", async () => {
+    const fetchMock = vi.fn(async (url: string, _init: RequestInit) => url === "/api/company-referrals/access" ? { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) } : { ok: true, json: async () => ({ opportunity: { companyDomain: "acme.com", roleTitle: "Product Designer" } }) });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<PostOpportunity />);
+    await screen.findByLabelText("Role or job title");
+    fireEvent.change(screen.getByLabelText("Role or job title"), { target: { value: "Product Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    const compensationInput = await screen.findByLabelText("Compensation");
+    expect(compensationInput).toBeTruthy();
+    expect(compensationInput.getAttribute("placeholder")).toContain("₹12–18 LPA or $80k–$110k");
+    expect(screen.getByText("One line for the public pay range. Leave blank if you prefer not to share.")).toBeTruthy();
+    fireEvent.change(compensationInput, { target: { value: "₹12–18 LPA" } });
+    fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
+    await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
+    expect(String(fetchMock.mock.calls[1][1]?.body)).toContain('"compensation":"₹12–18 LPA"');
+  });
+
   it("requires a start time when the verified employee selects a Walk-in", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) })));
     render(<PostOpportunity />);

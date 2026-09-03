@@ -239,6 +239,13 @@
       "when": 1796851200000,
       "tag": "0033_payment_refunded",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1796937600000,
+      "tag": "0034_opportunity_compensation",
+      "breakpoints": true
     }
   ]
 }

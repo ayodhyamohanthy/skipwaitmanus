@@ -11,13 +11,15 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("Opportunity Wall", () => {
   it("shows anonymous company opportunities and saves a role-url draft before the Job Seeker signs in", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14" }] }) })));
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", compensation: "₹12–18 LPA", walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14" }] }) })));
     render(<OpportunityWall />);
     await waitFor(() => expect(screen.getByText("Product Designer")).toBeTruthy());
     expect(screen.getByText("acme.com")).toBeTruthy();
+    expect(screen.getByText("Compensation: ₹12–18 LPA")).toBeTruthy();
     expect(screen.queryByText("employee@acme.com")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Use this opportunity" }));
     expect(localStorage.getItem("bridge-target-url")).toBe("https://careers.acme.com/jobs/design");
+    expect(localStorage.getItem("bridge-target-compensation")).toBe("₹12–18 LPA");
     expect(JSON.parse(localStorage.getItem("skipwait-pwa-referral-draft") || "{}").targetUrl).toBe("https://careers.acme.com/jobs/design");
   });
 
@@ -25,6 +27,7 @@ describe("Opportunity Wall", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14" }] }) })));
     render(<OpportunityWall />);
     await waitFor(() => expect(screen.getByText("Product Designer")).toBeTruthy());
+    expect(screen.queryByText(/^Compensation:/)).toBeNull();
     const whatsApp = screen.getByRole("link", { name: "Share on WhatsApp" }).getAttribute("href") || "";
     const email = screen.getByRole("link", { name: "Share by email" }).getAttribute("href") || "";
     expect(whatsApp).toContain("wa.me/?text="); expect(whatsApp).toContain(encodeURIComponent("Product Designer"));

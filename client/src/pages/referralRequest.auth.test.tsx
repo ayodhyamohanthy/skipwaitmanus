@@ -174,4 +174,10 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(screen.queryByText(/did not use a credit/i)).toBeNull();
     vi.unstubAllGlobals();
   });
+
+  it("shows the pay range carried from the Opportunity Wall on the resume step", () => {
+    localStorage.setItem("bridge-target-compensation", "₹12–18 LPA");
+    render(<ReferralRequest />);
+    expect(screen.getByText("Compensation: ₹12–18 LPA")).toBeTruthy();
+  });
 });
