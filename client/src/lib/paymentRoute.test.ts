@@ -12,7 +12,7 @@ describe("payment route defaults", () => {
     expect(detectPaymentRoute()).toBe("USD");
     expect(detectPaymentRoute({ language: "en" })).toBe("USD");
     expect(detectPaymentRoute({ languages: ["en-US"], timeZone: "America/New_York" })).toBe("USD");
-    expect(paymentRouteDetails("USD")).toMatchObject({ billingCountry: "INTL", gateway: "PayPal" });
+    expect(paymentRouteDetails("USD")).toMatchObject({ billingCountry: "INTL", gateway: "PayPal (USD)" });
     expect(alternatePaymentRoute("INR")).toBe("USD");
   });
 });

@@ -20,8 +20,8 @@ export function browserPaymentRoute(): PaymentRoute {
 
 export function paymentRouteDetails(route: PaymentRoute) {
   return route === "INR"
-    ? { currency: "INR" as const, billingCountry: "IN" as const, gateway: "Razorpay Domestic", countryLabel: "India", alternateLabel: "Use international payment" }
-    : { currency: "USD" as const, billingCountry: "INTL" as const, gateway: "PayPal", countryLabel: "International", alternateLabel: "Use India payment" };
+    ? { currency: "INR" as const, billingCountry: "IN" as const, gateway: "Razorpay (INR)", gatewayDescriptor: "Secure hosted checkout via Chargebee", countryLabel: "India", alternateLabel: "Use international payment" }
+    : { currency: "USD" as const, billingCountry: "INTL" as const, gateway: "PayPal (USD)", gatewayDescriptor: "Secure hosted checkout via Chargebee", countryLabel: "International", alternateLabel: "Use India payment" };
 }
 
 export function alternatePaymentRoute(route: PaymentRoute): PaymentRoute { return route === "INR" ? "USD" : "INR"; }

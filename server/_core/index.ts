@@ -149,8 +149,12 @@ app.get("/api/health", async (_req, res) => {
   );
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
+    // API catch-all: unmatched /api/* paths return JSON 404 instead of SPA HTML
+    app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
     await setupVite(app, server);
   } else {
+    // API catch-all: unmatched /api/* paths return JSON 404 instead of SPA HTML
+    app.use("/api", (_req, res) => res.status(404).json({ error: "Not found" }));
     serveStatic(app);
   }
 

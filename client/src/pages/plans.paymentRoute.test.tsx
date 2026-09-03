@@ -23,7 +23,7 @@ describe("Plans automatic payment route", () => {
     expect(screen.queryByText("Outside India · USD")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
     expect(screen.getByText("Pay ₹599/month")).toBeTruthy();
-    expect(screen.getByText(/Razorpay Domestic/)).toBeTruthy();
+    expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
     expect(screen.queryByText(/Global equivalent/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /max/i }));
     expect(screen.getByText("Pay ₹1,299/month")).toBeTruthy();
@@ -35,7 +35,7 @@ describe("Plans automatic payment route", () => {
     window.history.pushState({}, "", "/plans?role=job_seeker");
     render(<Plans />);
     expect(screen.getByText("Pay ₹599/month")).toBeTruthy();
-    expect(screen.getByText(/Razorpay Domestic/)).toBeTruthy();
+    expect(screen.getByText(/Razorpay \(INR\)/)).toBeTruthy();
     expect(screen.queryByText(/PayPal/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /different billing country.*use international payment/i }));
     expect(screen.getByText("Pay $7/month")).toBeTruthy();

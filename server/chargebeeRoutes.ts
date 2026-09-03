@@ -29,6 +29,10 @@ function roleFromBody(value: unknown): TokenRole {
   return value === "referrer" ? "referrer" : "job_seeker";
 }
 
+function isChargebeeNotConfigured(error: unknown): boolean {
+  return error instanceof Error && /Chargebee API key is not configured/.test(error.message);
+}
+
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   app.post("/api/chargebee/checkout", async (req, res) => {
@@ -63,6 +67,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] checkout error", error);
+      if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
       return res.status(502).json({ error: "Unable to start Chargebee checkout" });
     }
   });
@@ -98,6 +103,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] subscription checkout error", error);
+      if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
       return res.status(502).json({ error: "Unable to start the secure plan checkout" });
     }
   });
@@ -117,6 +123,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       return res.json({ status: result.status, currentTermEnd: result.currentTermEnd });
     } catch (error) {
       console.error("[Chargebee] subscription cancellation error", error);
+      if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
       return res.status(502).json({ error: "We could not schedule your cancellation. Please try again." });
     }
   });
@@ -152,6 +159,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       return res.json({ status: "requires_review", summary: await summary() });
     } catch (error) {
       console.error("[Chargebee] payment recovery error", error);
+      if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
       return res.status(502).json({ error: "We are still securely confirming this payment. No action is needed from you." });
     }
   });
