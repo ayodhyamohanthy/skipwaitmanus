@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AccountMenu } from "./AccountMenu";
 
 const signOut = vi.fn().mockResolvedValue(undefined);
@@ -26,19 +26,28 @@ describe("AccountMenu", () => {
     expect(screen.getByRole("button", { name: "Account menu" }).querySelector("img")).toBeNull();
   });
 
-  it("opens Settings and keeps My Company Inbox hidden without a verified company email", async () => {
+  it("opens Settings and keeps My Company Inbox and My impact hidden without a verified company email", async () => {
     render(<AccountMenu />);
     fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
     expect(screen.queryByRole("menuitem", { name: "My Company Inbox" })).toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "My impact" })).toBeNull();
     fireEvent.click(await screen.findByRole("menuitem", { name: "Settings" }));
     expect(window.location.pathname).toBe("/settings");
   });
 
-  it("shows My Company Inbox only after a verified company email is present", async () => {
+  it("shows My Company Inbox and the My impact dashboard link only after a verified company email is present", async () => {
     authUser.workEmailVerified = true;
     render(<AccountMenu />);
     fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
     expect(await screen.findByRole("menuitem", { name: "My Company Inbox" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("menuitem", { name: "My impact" }));
+    await waitFor(() => expect(window.location.pathname).toBe("/referrer/impact"));
+  });
+
+  it("signs out from the menu after a verified company email is present", async () => {
+    authUser.workEmailVerified = true;
+    render(<AccountMenu />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
     expect(signOut).toHaveBeenCalledTimes(1);
   });

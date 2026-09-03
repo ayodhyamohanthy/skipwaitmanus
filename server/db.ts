@@ -174,6 +174,27 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
   };
 }
 
+export type ReferrerImpactSummary = { acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
+
+export async function getReferrerImpactSummary(userId: number): Promise<ReferrerImpactSummary> {
+  const access = await getVerifiedWorkEmailAccess(userId);
+  if (!access) throw new Error("Verify your company email to view your private impact");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company, updatedAt: referralRequests.updatedAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.referrerId, userId));
+  const acceptedStatuses = new Set<ReferralStatus>(["approved", "intro_made", "interview", "offer", "closed"]);
+  const accepted = rows.filter(row => acceptedStatuses.has(row.status)).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+  const unreadRows = await db.select({ unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt)));
+  const wallet = await ensureTokenWallet(userId, "referrer");
+  return {
+    acceptedReferrals: accepted.length,
+    pendingRequests: rows.filter(row => row.status === "pending").length,
+    declinedRequests: rows.filter(row => row.status === "declined").length,
+    unreadMessages: Number(unreadRows[0]?.unreadMessageCount ?? 0),
+    creditsRemaining: Math.max(0, wallet.monthlyCreditsRemaining + wallet.balance),
+    recentAccepted: accepted.slice(0, 5).map(row => ({ id: row.id, companyDomain: row.companyDomain, acceptedAt: row.updatedAt.toISOString() })),
+  };
+}
+
 export type ReferrerFastTrackLink = { linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean };
 
 const createFastTrackCode = () => randomUUID().replace(/-/g, "");
