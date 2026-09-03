@@ -82,10 +82,19 @@ jobs:
           git add docs/SYNC_LOG.md
           if git diff --cached --quiet; then
             echo "no sync log change to commit"
-          else
-            git commit -m "Sync log: ${{ github.workflow }} ${{ github.sha }} ${{ job.status }} [skip ci]"
-            git push origin HEAD:main
+            exit 0
           fi
+          git commit -m "Sync log: ${{ github.workflow }} ${{ github.sha }} ${{ job.status }} [skip ci]"
+          # The API and Pages workflows push the log concurrently; rebase-retry
+          # so a simultaneous push cannot fail the job (non-fatal if it still fails).
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main 2>/dev/null; then echo "sync log pushed"; exit 0; fi
+            echo "push attempt $attempt collided — rebasing and retrying"
+            git fetch origin main --quiet
+            git rebase origin/main --autostash 2>/dev/null || git rebase --abort 2>/dev/null || true
+            sleep 5
+          done
+          echo "sync log push failed after retries (non-fatal)"; exit 0
 
       - name: Notify sync status
         if: always()
