@@ -18,6 +18,7 @@ describe("Referrer one-click review actions", () => {
     const reviews: Array<{ userId: number; requestId: number; decision: string; declineReason?: string }> = [];
     const consumed: string[] = [];
     const sent: Array<{ to: string; companyDomain: string; reviewUrl: string }> = [];
+    const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
     registerPrivateReferralRoutes(app, {
       resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf", createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }), getAccessibleReferralAttachment: async () => undefined,
@@ -28,8 +29,9 @@ describe("Referrer one-click review actions", () => {
       oneClickReviewReferralRequest: async (userId, input) => { if (userId !== 2) throw new Error("This referral request is no longer available"); reviews.push({ userId, ...input }); return { status: input.decision === "declined" ? "passed" : input.decision, companyDomain: "acme.com", declineReason: input.declineReason }; },
       resolveReferrerReviewEmailLink: async (userId, linkToken) => { if (userId !== 2 || linkToken !== token || consumed.includes(linkToken)) throw new Error("This private review link is unavailable"); return { requestId: 81 }; },
       consumeReferrerReviewEmailLink: async (_userId, linkToken) => { consumed.push(linkToken); },
+      recordActivity: async entry => { activity.push(entry); },
     });
-    return { app, reviews, consumed, sent };
+    return { app, reviews, consumed, sent, activity };
   }
 
   it("records dashboard acceptance or a bounded one-click decline reason only for an authenticated company employee", async () => {
@@ -41,6 +43,20 @@ describe("Referrer one-click review actions", () => {
     const declined = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "timing" });
     expect(declined.status).toBe(200); expect(declined.body).toEqual({ status: "passed", declineReason: "timing" });
     expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "approved", declineReason: undefined }, { userId: 2, requestId: 81, decision: "declined", declineReason: "timing" }]);
+  });
+
+  it("keeps an optional decline note out of the Job Seeker-visible response and off the approve path, recording it only in operational activity", async () => {
+    const { app, activity } = appFor();
+    const declined = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit", note: "Already covered by another team." });
+    expect(declined.status).toBe(200);
+    expect(declined.body).toEqual({ status: "passed", declineReason: "role_not_a_fit" });
+    expect(JSON.stringify(declined.body)).not.toContain("Already covered");
+    const declineEvent = activity.find(entry => entry.action === "company_referral.one_click_declined");
+    expect(declineEvent?.metadata).toMatchObject({ declineNote: "Already covered by another team." });
+    const accepted = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "approved", note: "ignored on approve" });
+    const approveEvent = activity.find(entry => entry.action === "company_referral.one_click_approved");
+    expect(accepted.status).toBe(200);
+    expect(approveEvent?.metadata).toMatchObject({ declineNote: null });
   });
 
   it("sends a company-only email handoff and completes its action once for the authenticated intended Referrer", async () => {

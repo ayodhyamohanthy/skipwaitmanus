@@ -55,7 +55,7 @@ describe("My Company Inbox employee access", () => {
     await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
   });
 
-  it("shows the matching candidate note, role link, and resume before direct acceptance or a concise one-click decline", async () => {
+  it("shows the matching candidate note, role link, and resume before direct acceptance or a two-step decline with concise reason chips", async () => {
     authState.signedIn = true;
     const inboxRequest = { id: 7, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false };
     const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : url.includes("one-click-review") ? { status: "approved" } : { requests: [inboxRequest] } }));
@@ -83,5 +83,28 @@ describe("My Company Inbox employee access", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Done" }));
     await waitFor(() => expect(screen.getByText("The Job Seeker sent 1 new private message.")).toBeTruthy());
     expect(screen.getByRole("button", { name: "Open conversation · 1 new" })).toBeTruthy();
+  });
+
+  it("requires an explicit two-step confirm before a decline reason is recorded, with an optional note that stays private", async () => {
+    authState.signedIn = true;
+    const inboxRequest = { id: 7, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false };
+    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : url.includes("one-click-review") ? { status: "declined", declineReason: "role_not_a_fit" } : { requests: [inboxRequest] } }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MyCompanyInbox />);
+    fireEvent.click(await screen.findByRole("button", { name: "Review candidate" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Not a fit" }));
+    // Tapping a reason chip only opens the confirm panel — it must not fire
+    // the decision request yet (this is the one-tap-decline safety fix).
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.anything());
+    const panel = await screen.findByRole("group", { name: "Confirm decline" });
+    expect(panel.textContent).toContain("Decline as");
+    expect(panel.textContent).toContain("never shown to the seeker");
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("group", { name: "Confirm decline" })).toBeNull());
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Not a fit" }));
+    fireEvent.change(await screen.findByPlaceholderText("Context for your own records…"), { target: { value: "Already covered by another team." } });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm decline" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "role_not_a_fit", note: "Already covered by another team." }) })));
   });
 });
