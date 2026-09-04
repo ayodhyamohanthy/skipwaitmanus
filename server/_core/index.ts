@@ -42,6 +42,7 @@ import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigure
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
+import { isSchemaReconciled, reconcileSchema } from "../schemaReconcile";
 
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -66,6 +67,10 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   const app = express();
   const server = createServer(app);
+  // Boot-time schema auto-reconcile: the running server owns its DATABASE_URL,
+  // so it heals missing columns itself. Fire-and-forget — a slow or unreachable
+  // DB must never delay or crash boot; /api/health reports the flag as-is.
+  void reconcileSchema().catch(() => {});
   // Managed deployments terminate TLS at a trusted reverse proxy. This lets
   // req.hostname reflect the canonical public host for host-scoped billing.
   app.set("trust proxy", true);
@@ -97,7 +102,9 @@ app.get("/api/health", async (_req, res) => {
   let commitSha = "";
   try { commitSha = (await readFile("commit-sha.txt", "utf8")).trim(); } catch { /* not baked */ }
   res.set("Cache-Control", "no-store");
-  res.json({ ok: true, service: "skipwait-api", commitSha });
+  // Boot-time schema reconcile runs fire-and-forget; report the flag as-is so
+  // CI can distinguish "not yet run" from "column heal applied".
+  res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled() });
 });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
