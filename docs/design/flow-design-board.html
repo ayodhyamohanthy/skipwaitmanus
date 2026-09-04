@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skipwait.me — Flow Design Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700;9..40,800&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#faf9f7; --ink:#101828; --ink-2:#475467; --ink-3:#98a2b3;
+  --brand:#0b57d0; --brand-soft:#e8f0fe; --brand-deep:#08379b;
+  --emerald:#15803d; --emerald-soft:#ecfdf3; --amber:#b45309; --amber-soft:#fffaeb;
+  --rose:#b91c1c; --rose-soft:#fef3f2; --line:#e7e5e0; --card:#ffffff;
+  --mono:'JetBrains Mono',monospace; --sans:'DM Sans',sans-serif; --display:'Fraunces',serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased;line-height:1.5}
+.board{max-width:1240px;margin:0 auto;padding:64px 40px 120px}
+/* ---------- header ---------- */
+.eyebrow{font-family:var(--mono);font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--brand)}
+h1{font-family:var(--display);font-size:clamp(44px,6vw,76px);font-weight:600;letter-spacing:-.02em;line-height:1.02;margin-top:14px}
+h1 em{font-style:italic;color:var(--brand)}
+.lede{max-width:560px;margin-top:18px;font-size:16px;color:var(--ink-2)}
+.meta{display:flex;gap:28px;margin-top:26px;flex-wrap:wrap}
+.meta div{font-family:var(--mono);font-size:11px;color:var(--ink-3)}
+.meta b{display:block;color:var(--ink);font-size:12px;margin-top:2px}
+.rule{height:1px;background:var(--ink);margin:52px 0;opacity:.85}
+/* ---------- section ---------- */
+.sec{margin-top:72px}
+.sec-head{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+.sec-no{font-family:var(--mono);font-size:12px;color:var(--brand);font-weight:600}
+h2{font-family:var(--display);font-size:34px;font-weight:600;letter-spacing:-.015em}
+.sec-sub{width:100%;max-width:640px;margin-top:8px;color:var(--ink-2);font-size:14.5px}
+/* ---------- flow strip ---------- */
+.flow{display:grid;grid-template-columns:repeat(auto-fill,minmax(218px,1fr));gap:26px;margin-top:34px}
+.frame-col{display:flex;flex-direction:column;gap:10px}
+.phone{width:100%;aspect-ratio:218/430;background:var(--card);border:1px solid var(--ink);border-radius:26px;padding:10px;box-shadow:4px 4px 0 rgba(16,24,40,.9);display:flex;flex-direction:column;overflow:hidden;position:relative}
+.screen{flex:1;border-radius:17px;overflow:hidden;display:flex;flex-direction:column;font-size:8.5px;line-height:1.35;background:#f8fafc}
+.sbar{display:flex;justify-content:space-between;padding:5px 10px 3px;font-size:6.5px;font-weight:700;color:#0f172a}
+.appbar{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;min-height:20px}
+.brandmark{font-weight:800;font-size:8px;letter-spacing:-.02em;color:#0f172a}
+.appbar .lnk{font-size:7px;font-weight:700;color:#0b57d0}
+.pad{padding:0 10px}
+.eyebrow-s{font-size:5.6px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#0b57d0}
+.h-s{font-family:var(--sans);font-weight:800;letter-spacing:-.035em;color:#0f172a}
+.p-s{color:#64748b}
+.btn-p{display:block;background:#0b57d0;color:#fff;font-weight:800;text-align:center;border-radius:7px;padding:6px 8px;font-size:7.5px}
+.btn-o{display:block;border:1px solid #cbd5e1;color:#334155;font-weight:700;text-align:center;border-radius:7px;padding:6px 8px;font-size:7.5px;background:#fff}
+.chip-s{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 6px;font-size:5.8px;font-weight:800}
+.input-s{border:1px solid #cbd5e1;border-radius:7px;background:#fff;padding:6px 7px;font-size:7.5px;color:#94a3b8}
+.card-s{background:#fff;border:1px solid #e2e8f0;border-radius:9px}
+.dot{width:4px;height:4px;border-radius:99px;display:inline-block}
+.footer-s{border-top:1px solid #e2e8f0;padding:6px 10px;margin-top:auto}
+/* state chips under frames */
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-family:var(--mono);font-size:8.5px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--ink-2);background:#fff}
+.tag.ok{color:var(--emerald);border-color:#a6e5c3;background:var(--emerald-soft)}
+.tag.warn{color:var(--amber);border-color:#f5d9a8;background:var(--amber-soft)}
+.tag.err{color:var(--rose);border-color:#f3c1bc;background:var(--rose-soft)}
+.tag.info{color:var(--brand);border-color:#bcd3f7;background:var(--brand-soft)}
+.frame-name{font-weight:800;font-size:13px;margin-top:2px}
+.frame-file{font-family:var(--mono);font-size:9px;color:var(--ink-3)}
+/* arrows between frames */
+.flownote{display:flex;align-items:center;gap:8px;margin-top:26px;font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+.flownote .arr{color:var(--brand);font-weight:700}
+/* tokens */
+.tokens{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:30px}
+.tok{border:1px solid var(--line);background:#fff;border-radius:14px;overflow:hidden}
+.tok .sw{height:56px}
+.tok .lab{padding:9px 11px;font-family:var(--mono);font-size:10px}
+.tok .lab b{display:block;font-family:var(--sans);font-size:12px}
+/* footer */
+.foot{margin-top:90px;border-top:1px solid var(--ink);padding-top:26px;display:flex;justify-content:space-between;gap:30px;flex-wrap:wrap;font-size:12.5px;color:var(--ink-2)}
+.foot b{color:var(--ink)}
+@media(max-width:640px){.board{padding:40px 18px 80px}}
+</style>
+</head>
+<body>
+<div class="board">
+
+<header>
+  <div class="eyebrow">skipwait.me · design board · v1.0 · 2026-09-04</div>
+  <h1>Every flow.<br>Every screen. <em>Every state.</em></h1>
+  <p class="lede">The complete high-fidelity design record of skipwait.me — a private job-referral network for job seekers, verified referrers, and admins. 24 screens across 4 flows, each with its full state coverage, in the production design language (DM Sans · brand blue #0B57D0 · rounded-12).</p>
+  <div class="meta">
+    <div>FLOWS<b>4 — seeker · referrer · shared · admin</b></div>
+    <div>SCREENS<b>24 mapped · 27 implemented</b></div>
+    <div>STATES<b>loading · empty · error · success</b></div>
+    <div>SYSTEM<b>DM Sans · #0B57D0 · r12</b></div>
+  </div>
+</header>
+<div class="rule"></div>
+
+<!-- ============ DESIGN SYSTEM ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-no">00</span><h2>Design system</h2></div>
+  <p class="sec-sub">One source of truth in <span style="font-family:var(--mono);font-size:12px">client/src/index.css</span> — every screen below is drawn only from these tokens and the shared components (StatusBadge, credit cards, MetricCard, Brand).</p>
+  <div class="tokens">
+    <div class="tok"><div class="sw" style="background:#0b57d0"></div><div class="lab"><b>Primary</b>#0B57D0</div></div>
+    <div class="tok"><div class="sw" style="background:#e8f0fe"></div><div class="lab"><b>Accent / chips</b>#E8F0FE</div></div>
+    <div class="tok"><div class="sw" style="background:#f8fafc;border-bottom:1px solid var(--line)"></div><div class="lab"><b>Background</b>#F8FAFC</div></div>
+    <div class="tok"><div class="sw" style="background:#0f172a"></div><div class="lab"><b>Ink</b>#0F172A</div></div>
+    <div class="tok"><div class="sw" style="background:#64748b"></div><div class="lab"><b>Muted</b>#64748B</div></div>
+    <div class="tok"><div class="sw" style="background:linear-gradient(90deg,#ecfdf3 50%,#15803d 50%)"></div><div class="lab"><b>Success</b>#ECFDF3 / #15803D</div></div>
+    <div class="tok"><div class="sw" style="background:linear-gradient(90deg,#fffaeb 50%,#b45309 50%)"></div><div class="lab"><b>Pending</b>#FFFAEB / #B45309</div></div>
+    <div class="tok"><div class="sw" style="background:linear-gradient(90deg,#fef3f2 50%,#b91c1c 50%)"></div><div class="lab"><b>Error</b>#FEF3F2 / #B91C1C</div></div>
+  </div>
+</section>
+
+<!-- ============ FLOW 1: SEEKER ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-no">01</span><h2>Job seeker — request a referral</h2></div>
+  <p class="sec-sub">From landing to a confirmed private request in 3 steps. Credits: 3 free monthly; withdraw (pending only) refunds the credit automatically.</p>
+  <div class="flow">
+
+    <!-- S1 Home -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">skipwait.me</span><span class="lnk">Request a referral</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="eyebrow-s">What brings you here?</div>
+          <div class="h-s" style="font-size:15px;margin-top:4px">Get referred.<br>Stay private.</div>
+          <div class="card-s" style="margin-top:10px;padding:8px;background:#0b57d0;border-color:#0b57d0;color:#fff">
+            <b style="font-size:8.5px">I need a referral</b>
+            <div style="opacity:.85;font-size:6.5px">Share the role. Add your resume.</div>
+            <div style="font-size:6.5px;font-weight:700;margin-top:4px">Ask for a referral →</div>
+          </div>
+          <div class="card-s" style="margin-top:7px;padding:8px">
+            <b style="font-size:8.5px">I give referrals</b>
+            <div class="p-s" style="font-size:6.5px">Review the request. Help your way.</div>
+            <div style="font-size:6.5px;font-weight:700;color:#0b57d0;margin-top:4px">Give a referral →</div>
+          </div>
+          <div style="display:flex;gap:5px;margin-top:9px">
+            <div class="card-s" style="flex:1;padding:6px;font-size:6px;font-weight:700">My requests</div>
+            <div class="card-s" style="flex:1;padding:6px;font-size:6px;font-weight:700">Company inbox</div>
+          </div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">3 requests included · You control every introduction</div>
+      </div></div>
+      <div><div class="frame-name">Landing / role choice</div><div class="frame-file">Home.tsx · /</div></div>
+      <div class="tags"><span class="tag ok">signed-out</span><span class="tag info">signed-in shortcuts</span></div>
+    </div>
+
+    <!-- S2 Step 1 -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="lnk">‹ Back</span><span style="font-size:6.5px;font-weight:800">🔔 &nbsp;◉</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="eyebrow-s">Step 1 of 3 · Referral request</div>
+          <div class="h-s" style="font-size:15px;margin-top:4px">Paste the job link.</div>
+          <p class="p-s" style="font-size:7px;margin-top:4px">We will match it privately to the company. Your resume comes next.</p>
+          <div class="input-s" style="margin-top:10px">https://careers.company.com/role</div>
+          <p style="font-size:6px;color:#b91c1c;margin-top:5px">That link didn't look like a job posting. Paste the full URL.</p>
+          <div class="btn-p" style="margin-top:10px">Continue</div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">Identity hidden · 1 credit reserved on send</div>
+      </div></div>
+      <div><div class="frame-name">Step 1 — job link</div><div class="frame-file">Onboarding.tsx · /start</div></div>
+      <div class="tags"><span class="tag info">validation error</span><span class="tag ok">company matched</span></div>
+    </div>
+
+    <!-- S3 Step 2 resume -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="lnk">‹ Back</span><span style="font-size:6.5px;font-weight:800">🔔 &nbsp;◉</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="eyebrow-s">Step 2 of 3 · Required</div>
+          <div class="h-s" style="font-size:15px;margin-top:4px">Add your resume.</div>
+          <p class="p-s" style="font-size:7px;margin-top:4px">This is the only document needed to send your private request.</p>
+          <div class="card-s" style="margin-top:10px;padding:10px;text-align:center;border-style:dashed">
+            <b style="font-size:8px">Add your resume</b>
+            <div class="p-s" style="font-size:6.3px;margin-top:2px">PDF · max 5 MB</div>
+          </div>
+          <div class="card-s" style="margin-top:7px;padding:7px;display:flex;align-items:center;gap:5px">
+            <span class="dot" style="background:#15803d"></span>
+            <div style="flex:1"><b style="font-size:7px">resume_2026.pdf</b><div class="p-s" style="font-size:6px">uploaded · verified size</div></div>
+          </div>
+          <div class="btn-p" style="margin-top:10px">You will sign in only when you send</div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">Draft saved — safe to leave</div>
+      </div></div>
+      <div><div class="frame-name">Step 2 — resume</div><div class="frame-file">ReferralRequest.tsx · /request</div></div>
+      <div class="tags"><span class="tag info">sign-in intercept + draft saved</span><span class="tag err">upload size mismatch</span></div>
+    </div>
+
+    <!-- S4 Success -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">skipwait.me</span><span style="font-size:6.5px;font-weight:800">🔔 &nbsp;◉</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <span style="width:16px;height:16px;border-radius:6px;background:#ecfdf3;color:#15803d;display:grid;place-items:center;font-size:9px">✓</span>
+          <div class="eyebrow-s" style="margin-top:8px">Private request created</div>
+          <div class="h-s" style="font-size:14px;margin-top:3px">Your request is with verified employees.</div>
+          <p class="p-s" style="font-size:6.8px;margin-top:5px">Eligible employees at <b>acme.com</b> were notified privately. Identity stays hidden unless someone claims your request.</p>
+          <div class="card-s" style="margin-top:9px;padding:8px">
+            <b style="font-size:6.8px;letter-spacing:.1em;color:#64748b">WHAT HAPPENS NEXT</b>
+            <div style="display:flex;gap:5px;margin-top:5px;font-size:6.3px"><b style="color:#0b57d0">1</b><span>Verified employees review your request.</span></div>
+            <div style="display:flex;gap:5px;margin-top:3px;font-size:6.3px"><b style="color:#0b57d0">2</b><span>When one accepts, chat privately.</span></div>
+            <div style="display:flex;gap:5px;margin-top:3px;font-size:6.3px"><b style="color:#0b57d0">3</b><span>Track everything in My requests.</span></div>
+          </div>
+          <div class="card-s" style="margin-top:7px;padding:7px;display:flex;justify-content:space-between;align-items:center">
+            <b style="font-size:7px">Credits · 2 of 3 left</b><span style="font-size:6px;color:#64748b">free plan</span>
+          </div>
+        </div>
+        <div class="footer-s"><div class="btn-p" style="margin-bottom:4px">Share your invite link</div><div class="btn-o" style="font-size:6.5px">Track my request</div></div>
+      </div></div>
+      <div><div class="frame-name">Confirmation + next steps</div><div class="frame-file">ReferralRequest.tsx · data-referral-success</div></div>
+      <div class="tags"><span class="tag ok">success</span><span class="tag info">milestone ordinal</span><span class="tag warn">credits exhausted → premium</span></div>
+    </div>
+
+    <!-- S5 My requests -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">My requests</span><span style="font-size:6.5px;font-weight:800">◉</span></div>
+        <div class="pad" style="flex:1">
+          <div class="eyebrow-s">Request 1 of 2</div>
+          <div class="card-s" style="margin-top:6px;padding:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <b style="font-size:8px">Product Designer</b>
+              <span class="chip-s" style="background:#fffaeb;color:#b45309"><span class="dot" style="background:#b45309"></span>Pending</span>
+            </div>
+            <div class="p-s" style="font-size:6.3px;margin-top:3px">acme.com · Ref-1007 · ₹12–18 LPA</div>
+            <div style="display:flex;gap:8px;margin-top:6px;font-size:6.3px;font-weight:700;color:#0b57d0">
+              <span style="border-bottom:2px solid #0b57d0;padding-bottom:2px">Sent</span><span style="color:#94a3b8">Matched</span><span style="color:#94a3b8">Reviewed</span>
+            </div>
+            <div style="display:flex;gap:5px;margin-top:7px">
+              <span class="btn-o" style="flex:1;font-size:6.3px;padding:4px">View details</span>
+              <span class="btn-o" style="flex:1;font-size:6.3px;padding:4px;color:#b91c1c;border-color:#f3c1bc">Withdraw</span>
+            </div>
+          </div>
+          <div class="card-s" style="margin-top:6px;padding:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <b style="font-size:8px">Data Analyst</b>
+              <span class="chip-s" style="background:#ecfdf3;color:#15803d"><span class="dot" style="background:#15803d"></span>Approved</span>
+            </div>
+            <div class="p-s" style="font-size:6.3px;margin-top:3px">globex.com · Ref-1003</div>
+          </div>
+        </div>
+        <div class="footer-s"><div class="btn-p">New referral request</div></div>
+      </div></div>
+      <div><div class="frame-name">Track + withdraw</div><div class="frame-file">MyRequests.tsx · /requests</div></div>
+      <div class="tags"><span class="tag info">loading · empty</span><span class="tag err">error + Try again / Keep request</span><span class="tag ok">withdraw refunds credit</span></div>
+    </div>
+
+    <!-- S6 states -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">My requests</span><span style="font-size:6.5px;font-weight:800">◉</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="eyebrow-s">Nothing pending</div>
+          <div class="h-s" style="font-size:13px;margin-top:3px">Your queue is clear.</div>
+          <p class="p-s" style="font-size:6.8px;margin-top:4px">When you request a referral it will appear here with live status.</p>
+          <div class="card-s" style="margin-top:10px;padding:10px;border-style:dashed;text-align:center">
+            <span style="width:14px;height:14px;border-radius:5px;background:#e8f0fe;color:#0b57d0;display:grid;place-items:center;font-size:8px;margin:0 auto">✦</span>
+            <b style="font-size:7px;display:block;margin-top:4px">Preview</b>
+          </div>
+          <div class="btn-p" style="margin-top:10px">Request a referral</div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">Private · verifiable · no spam</div>
+      </div></div>
+      <div><div class="frame-name">Empty / error pattern</div><div class="frame-file">shared empty + error card</div></div>
+      <div class="tags"><span class="tag info">empty</span><span class="tag err">error: Try again / Keep request</span><span class="tag">skeleton ≥300ms + 15s fallback</span></div>
+    </div>
+  </div>
+  <div class="flownote">entry <span class="arr">→</span> /start (step 1) <span class="arr">→</span> /request (steps 2–3) <span class="arr">→</span> success <span class="arr">→</span> /requests <span class="arr">↺</span> withdraw refunds credit</div>
+</section>
+
+<!-- ============ FLOW 2: REFERRER ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-no">02</span><h2>Referrer — review &amp; accept</h2></div>
+  <p class="sec-sub">Passwordless work-email OTP → the company inbox. One-tap decisions with reason chips; a race-safe accept; a new impact dashboard.</p>
+  <div class="flow">
+
+    <!-- R1 sign in -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">skipwait.me</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="eyebrow-s">Private referrer access</div>
+          <div class="h-s" style="font-size:14px;margin-top:4px">Use your company email.</div>
+          <p class="p-s" style="font-size:6.8px;margin-top:5px">Passwordless. We never send a code to another address or add it to a personal account.</p>
+          <div class="input-s" style="margin-top:10px">you@company.com</div>
+          <div class="btn-p" style="margin-top:8px">Send sign-in code</div>
+          <div class="input-s" style="margin-top:8px;text-align:center;letter-spacing:.3em">4 8 2 · 9 1 7</div>
+          <div class="btn-p" style="margin-top:8px;background:#15803d">Verify &amp; sign in</div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">Code expires in 10 min · personal domains rejected</div>
+      </div></div>
+      <div><div class="frame-name">Work-email OTP</div><div class="frame-file">Referrer.tsx · /referrer</div></div>
+      <div class="tags"><span class="tag err">wrong code · personal domain (400)</span><span class="tag ok">server enrolls profile on verify</span></div>
+    </div>
+
+    <!-- R2 inbox -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">Company inbox</span><span style="font-size:6.5px;font-weight:800">◉</span></div>
+        <div class="pad" style="flex:1">
+          <div style="display:flex;gap:8px;font-size:7px;font-weight:800;border-bottom:1px solid #e2e8f0;padding-bottom:4px">
+            <span style="color:#0b57d0;border-bottom:2px solid #0b57d0;padding-bottom:2px">New · 2</span>
+            <span style="color:#94a3b8">Saved · 1</span><span style="color:#94a3b8">Completed · 3</span>
+          </div>
+          <div class="card-s" style="margin-top:7px;padding:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <b style="font-size:8px">Ref-1007</b>
+              <span class="chip-s" style="background:#e8f0fe;color:#0b57d0"><span class="dot" style="background:#0b57d0"></span>Under review</span>
+            </div>
+            <div class="p-s" style="font-size:6.3px;margin-top:3px">Product Designer · acme.com</div>
+            <p style="font-size:6.3px;margin-top:4px;color:#334155">"I'm a product designer with 4 years in B2B SaaS — happy to walk through my work."</p>
+            <div style="display:flex;gap:4px;margin-top:6px">
+              <span class="chip-s" style="background:#f1f5f9;color:#475569">📄 Resume</span>
+              <span class="chip-s" style="background:#f1f5f9;color:#475569">🔗 Role link</span>
+              <span class="chip-s" style="background:#f1f5f9;color:#475569">₹12–18 LPA</span>
+            </div>
+            <div class="btn-p" style="margin-top:7px">Preview candidate</div>
+          </div>
+          <div class="card-s" style="margin-top:6px;padding:8px;opacity:.75">
+            <b style="font-size:8px">Ref-1004</b><div class="p-s" style="font-size:6.3px;margin-top:2px">Data Analyst · saved for later</div>
+          </div>
+        </div>
+        <div class="footer-s" style="display:flex;justify-content:space-between;font-size:6.5px"><span style="color:#0b57d0;font-weight:800">My impact →</span><span style="color:#94a3b8">Credits: 3</span></div>
+      </div></div>
+      <div><div class="frame-name">Company inbox</div><div class="frame-file">MyCompanyInbox.tsx · /inbox</div></div>
+      <div class="tags"><span class="tag info">loading · error retry</span><span class="tag ok">capacity-open empty state</span><span class="tag warn">race: accepted a moment earlier</span></div>
+    </div>
+
+    <!-- R3 preview + decline -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="lnk">‹ Inbox</span><span class="lnk">Update ✓</span></div>
+        <div class="pad" style="flex:1">
+          <div class="eyebrow-s">Candidate · Ref-1007</div>
+          <div class="h-s" style="font-size:13px;margin-top:3px">Product Designer</div>
+          <p class="p-s" style="font-size:6.5px;margin-top:3px">Identity hidden until you accept.</p>
+          <div class="card-s" style="margin-top:8px;padding:7px">
+            <b style="font-size:7px">Personal note</b>
+            <p style="font-size:6.3px;margin-top:2px;color:#334155">"4 years in B2B SaaS, led design systems…"</p>
+          </div>
+          <div class="card-s" style="margin-top:6px;padding:7px;display:flex;gap:5px;align-items:center">
+            <span class="dot" style="background:#15803d"></span><b style="font-size:7px;flex:1">resume_2026.pdf</b><span class="p-s" style="font-size:6px">preview</span>
+          </div>
+          <div style="margin-top:9px"><b style="font-size:6.8px">One-tap decision</b></div>
+          <div class="btn-p" style="margin-top:5px;background:#15803d">Accept &amp; submit referral</div>
+          <div style="display:flex;gap:4px;margin-top:5px">
+            <span class="btn-o" style="flex:1;font-size:6px;color:#b45309">Not my team</span>
+            <span class="btn-o" style="flex:1;font-size:6px;color:#b45309">Timing</span>
+            <span class="btn-o" style="flex:1;font-size:6px;color:#b45309">Can't assess</span>
+          </div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">Declining is private and never notifies the seeker</div>
+      </div></div>
+      <div><div class="frame-name">Preview + decisions</div><div class="frame-file">MyCompanyInbox.tsx · preview</div></div>
+      <div class="tags"><span class="tag ok">accept → conversation</span><span class="tag warn">decline chips + reason recorded</span></div>
+    </div>
+
+    <!-- R4 impact -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">My impact</span><span style="font-size:6.5px;font-weight:800">◉</span></div>
+        <div class="pad" style="flex:1">
+          <div class="eyebrow-s">Referrer impact</div>
+          <div class="h-s" style="font-size:13px;margin-top:3px">You've helped 4 people.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px">
+            <div class="card-s" style="padding:7px"><b style="font-size:12px;color:#15803d">4</b><div class="p-s" style="font-size:5.8px">Accepted referrals</div></div>
+            <div class="card-s" style="padding:7px"><b style="font-size:12px;color:#b45309">2</b><div class="p-s" style="font-size:5.8px">Pending decisions</div></div>
+            <div class="card-s" style="padding:7px"><b style="font-size:12px;color:#0b57d0">1</b><div class="p-s" style="font-size:5.8px">Unread messages</div></div>
+            <div class="card-s" style="padding:7px"><b style="font-size:12px">3</b><div class="p-s" style="font-size:5.8px">Credits remaining</div></div>
+          </div>
+          <b style="font-size:7px;display:block;margin-top:9px">Recent referrals</b>
+          <div class="card-s" style="margin-top:4px;padding:6px;display:flex;justify-content:space-between"><span style="font-size:6.5px;font-weight:700">acme.com</span><span class="p-s" style="font-size:6px">2d ago</span></div>
+          <div class="card-s" style="margin-top:4px;padding:6px;display:flex;justify-content:space-between"><span style="font-size:6.5px;font-weight:700">globex.com</span><span class="p-s" style="font-size:6px">5d ago</span></div>
+        </div>
+        <div class="footer-s"><div class="btn-p" style="margin-bottom:4px">Open my inbox</div><div class="btn-o" style="font-size:6.5px">Share skipwait.me</div></div>
+      </div></div>
+      <div><div class="frame-name">Impact dashboard (new)</div><div class="frame-file">ReferrerImpact.tsx · /referrer/impact</div></div>
+      <div class="tags"><span class="tag info">empty: "once you accept your first"</span><span class="tag err">error + Try again</span></div>
+    </div>
+  </div>
+  <div class="flownote">/referrer (OTP) <span class="arr">→</span> /inbox <span class="arr">→</span> preview <span class="arr">→</span> accept → /conversation/:id · decline chips → Completed <span class="arr">→</span> /referrer/impact</div>
+</section>
+
+<!-- ============ FLOW 3: SHARED ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-no">03</span><h2>Shared — wall, posting, invites, conversation</h2></div>
+  <p class="sec-sub">Discovery and private messaging. The wall now carries the honest compensation line; posting is a verified-employee-only 3-step flow.</p>
+  <div class="flow">
+
+    <!-- W1 wall -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">skipwait.me</span><span class="lnk">Request</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="eyebrow-s">Employee-shared opening · 1 of 3</div>
+          <div class="h-s" style="font-size:15px;margin-top:4px">Product Designer</div>
+          <p class="p-s" style="font-size:6.8px;margin-top:4px">A verified employee shared this company signal without exposing their identity.</p>
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <span class="chip-s" style="background:#e8f0fe;color:#0b57d0">✓ Private referrals open</span>
+            <span class="chip-s" style="background:#f1f5f9;color:#475569">Identity hidden</span>
+          </div>
+          <p style="font-size:6.8px;margin-top:7px;color:#334155"><b>acme.com</b></p>
+          <p style="font-size:6.8px;color:#334155">Compensation: ₹12–18 LPA</p>
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <span class="card-s" style="flex:1;padding:5px;font-size:6px;font-weight:700;text-align:center">📍 Bengaluru</span>
+            <span class="card-s" style="flex:1;padding:5px;font-size:6px;font-weight:700;text-align:center">🕓 Hiring now</span>
+          </div>
+        </div>
+        <div class="footer-s"><div class="btn-p" style="margin-bottom:4px">Use this opportunity →</div><div style="font-size:5.8px;font-weight:800;letter-spacing:.1em;color:#64748b;text-align:center">SHARE THIS OPENING · 𝕏 f in M</div></div>
+      </div></div>
+      <div><div class="frame-name">Opportunity wall</div><div class="frame-file">OpportunityWall.tsx · /wall</div></div>
+      <div class="tags"><span class="tag info">loading · pagination prev/next</span><span class="tag ok">empty + ZeroActivity card</span><span class="tag err">error + retry</span></div>
+    </div>
+
+    <!-- W2 post -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">skipwait.me</span><span class="lnk">‹ Wall</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+          <div class="eyebrow-s">Step 2 of 2 · Verified company opportunity</div>
+          <div class="h-s" style="font-size:14px;margin-top:4px">Add useful details.</div>
+          <div style="margin-top:8px">
+            <div class="input-s">https://careers.company.com/role</div>
+            <div class="input-s" style="margin-top:5px">Bengaluru or Remote</div>
+            <div class="input-s" style="margin-top:5px;color:#0f172a">₹12–18 LPA</div>
+            <div style="font-size:5.8px;color:#94a3b8;margin-top:3px">One line for the public pay range. Leave blank if you prefer not to share.</div>
+          </div>
+        </div>
+        <div class="footer-s"><div style="display:flex;gap:4px;font-size:5.8px;color:#64748b;margin-bottom:5px"><span style="color:#0b57d0">🔒</span>Your name and work email never appear on the card.</div><div class="btn-p">Publish privately →</div></div>
+      </div></div>
+      <div><div class="frame-name">Post opportunity</div><div class="frame-file">PostOpportunity.tsx · /post-opportunity</div></div>
+      <div class="tags"><span class="tag info">checking gate · verify-work-email gate</span><span class="tag ok">success: "Your opportunity is live"</span><span class="tag err">publish error (503 unconfigured)</span></div>
+    </div>
+
+    <!-- W3 conversation -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="lnk">‹ Back</span><span class="lnk">Update ✓</span></div>
+        <div class="pad" style="flex:1;display:flex;flex-direction:column">
+          <div class="eyebrow-s">Accepted referral</div>
+          <div class="h-s" style="font-size:12px;margin-top:2px">Private conversation</div>
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:4px;padding:8px 0">
+            <div style="align-self:flex-start;max-width:80%;background:#fff;border:1px solid #e2e8f0;border-radius:8px;border-bottom-left-radius:3px;padding:5px 7px;font-size:6.3px">Hi! I can refer you for the design role this week.</div>
+            <div style="align-self:flex-end;max-width:80%;background:#0b57d0;color:#fff;border-radius:8px;border-bottom-right-radius:3px;padding:5px 7px;font-size:6.3px">That's great — I'll share my portfolio link tonight.</div>
+            <div style="align-self:flex-start;max-width:80%;background:#fff;border:1px solid #e2e8f0;border-radius:8px;border-bottom-left-radius:3px;padding:5px 7px;font-size:6.3px">Perfect. Interview slot is Tuesday 3pm.</div>
+          </div>
+        </div>
+        <div class="footer-s"><div class="btn-o" style="font-size:6px;margin-bottom:4px;border-color:#bcd3f7;color:#0b57d0">Share this milestone</div><div class="input-s" style="display:flex;justify-content:space-between;align-items:center;color:#0f172a">Write a private message <b style="color:#fff;background:#0b57d0;border-radius:5px;padding:2px 4px">↑</b></div></div>
+      </div></div>
+      <div><div class="frame-name">Private conversation</div><div class="frame-file">ReferralConversation.tsx · /conversation/:id</div></div>
+      <div class="tags"><span class="tag info">sign-in gate · empty "Start the conversation"</span><span class="tag ok">progress milestones</span><span class="tag err">error → return to requests</span></div>
+    </div>
+
+    <!-- W4 notifications/settings -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">Notifications</span><span style="font-size:6.5px;font-weight:800">Mark all read</span></div>
+        <div class="pad" style="flex:1">
+          <div class="card-s" style="margin-top:5px;padding:7px;border-left:2px solid #0b57d0">
+            <b style="font-size:7px">Your request was claimed</b>
+            <div class="p-s" style="font-size:6.2px;margin-top:2px">A verified employee at acme.com accepted Ref-1007. Open the conversation to say hello.</div>
+            <div class="p-s" style="font-size:5.8px;margin-top:3px">2m ago · unread</div>
+          </div>
+          <div class="card-s" style="margin-top:5px;padding:7px">
+            <b style="font-size:7px">Decision recorded</b>
+            <div class="p-s" style="font-size:6.2px;margin-top:2px">Ref-1003 · Not my team this quarter.</div>
+          </div>
+        </div>
+        <div class="footer-s"><div class="btn-o" style="font-size:6.5px">Back to requests</div></div>
+      </div></div>
+      <div><div class="frame-name">Notifications</div><div class="frame-file">Notifications.tsx · /notifications</div></div>
+      <div class="tags"><span class="tag info">loading · error retry</span><span class="tag ok">empty</span><span class="tag">read/unread + mark-all</span></div>
+    </div>
+  </div>
+  <div class="flownote">/wall <span class="arr">→</span> /start (carries compensation) · /post-opportunity <span class="arr">→</span> wall · accepted <span class="arr">→</span> /conversation/:id <span class="arr">→</span> /notifications</div>
+</section>
+
+<!-- ============ FLOW 4: ADMIN ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-no">04</span><h2>Admin — moderation &amp; approvals</h2></div>
+  <p class="sec-sub">One unified queue across three record types (seeker request · referrer enrollment · credit-pack payment), a record detail with audited history, payments with refunds, and a revenue card.</p>
+  <div class="flow">
+
+    <!-- A1 queue -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">Admin · Approvals</span><span style="font-size:6.5px;font-weight:800">◉</span></div>
+        <div class="pad" style="flex:1">
+          <div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:2px">
+            <span class="chip-s" style="background:#0b57d0;color:#fff">All ▾</span>
+            <span class="chip-s" style="border:1px solid #e2e8f0;background:#fff;color:#475569">Role ▾</span>
+            <span class="chip-s" style="border:1px solid #e2e8f0;background:#fff;color:#475569">Recent ▾</span>
+            <span class="chip-s" style="background:#e8f0fe;color:#0b57d0">6 open</span>
+          </div>
+          <div class="card-s" style="margin-top:7px;padding:7px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <b style="font-size:7.5px">Ref-PMT-1004</b>
+              <span class="chip-s" style="background:#e8f0fe;color:#0b57d0">Under review</span>
+            </div>
+            <div class="p-s" style="font-size:6.2px;margin-top:2px">chargebee · $29.00 · 2d ago · user@x.com</div>
+            <p style="font-size:6.2px;margin-top:3px;color:#334155">Signature verified; ledger row pending correlation.</p>
+            <div style="display:flex;gap:4px;margin-top:6px">
+              <span class="btn-o" style="flex:1;font-size:6px">Open record</span>
+              <span class="btn-o" style="flex:1;font-size:6px;color:#15803d;border-color:#a6e5c3">Approve</span>
+              <span class="btn-o" style="flex:1;font-size:6px;color:#b91c1c;border-color:#f3c1bc">Reject</span>
+            </div>
+          </div>
+          <div class="card-s" style="margin-top:6px;padding:7px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <b style="font-size:7.5px">Ref-1009</b>
+              <span class="chip-s" style="background:#fffaeb;color:#b45309">Pending</span>
+            </div>
+            <div class="p-s" style="font-size:6.2px;margin-top:2px">seeker request · acme.com · 1h ago</div>
+          </div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">Approvals are recorded in the audit log</div>
+      </div></div>
+      <div><div class="frame-name">Unified approval queue</div><div class="frame-file">AdminApprovalQueue.tsx · /admin/approvals</div></div>
+      <div class="tags"><span class="tag info">loading · error retry</span><span class="tag ok">filtered-empty copy</span><span class="tag ok">optimistic badge update</span></div>
+    </div>
+
+    <!-- A2 record detail -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="lnk">‹ Approvals</span></div>
+        <div class="pad" style="flex:1">
+          <div class="eyebrow-s">Payment record · Ref-PMT-1004</div>
+          <div class="h-s" style="font-size:12px;margin-top:2px">Credit pack — Starter</div>
+          <div class="card-s" style="margin-top:7px;padding:7px">
+            <div style="display:flex;justify-content:space-between;font-size:6.5px"><span>Provider</span><b>chargebee</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:6.5px;margin-top:2px"><span>Amount</span><b>$29.00</b></div>
+            <div style="display:flex;justify-content:space-between;font-size:6.5px;margin-top:2px"><span>User</span><b>user@x.com</b></div>
+          </div>
+          <b style="font-size:6.8px;display:block;margin-top:8px">HISTORY</b>
+          <div style="margin-top:4px;border-left:1px solid #e2e8f0;padding-left:7px">
+            <div style="font-size:6.2px"><b>sync-bot</b> · payment captured · 2d</div>
+            <div style="font-size:6.2px;margin-top:3px"><b>system</b> · 10 credits reserved · 2d</div>
+          </div>
+          <div class="input-s" style="margin-top:8px;color:#0f172a">Decision note (optional)…</div>
+        </div>
+        <div class="footer-s"><div class="btn-p" style="background:#15803d;margin-bottom:4px">Approve</div><div class="btn-o" style="font-size:6.5px;color:#b91c1c;border-color:#f3c1bc">Reject</div></div>
+      </div></div>
+      <div><div class="frame-name">Record detail + history</div><div class="frame-file">AdminApprovalRecord.tsx</div></div>
+      <div class="tags"><span class="tag err">decision failed → unchanged + Retry</span><span class="tag ok">note recorded in audit log</span></div>
+    </div>
+
+    <!-- A3 flow health + payments -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">Flow health</span><span style="font-size:6.5px;font-weight:800">◉</span></div>
+        <div class="pad" style="flex:1">
+          <div class="eyebrow-s">Revenue</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:5px">
+            <div class="card-s" style="padding:7px"><b style="font-size:11px">$1,160</b><div class="p-s" style="font-size:5.8px">USD · 40 payments</div></div>
+            <div class="card-s" style="padding:7px"><b style="font-size:11px">₹84,500</b><div class="p-s" style="font-size:5.8px">INR · 112 payments</div></div>
+          </div>
+          <b style="font-size:7px;display:block;margin-top:9px">Refunded</b>
+          <div class="card-s" style="margin-top:4px;padding:6px;font-size:6.5px">2 refunds · $58.00 — always reconciled to the original payment</div>
+          <b style="font-size:7px;display:block;margin-top:9px">Coverage gaps</b>
+          <div class="card-s" style="margin-top:4px;padding:6px;font-size:6.5px">acme.com — 1 pending request, no eligible referrer</div>
+        </div>
+        <div class="footer-s"><div class="btn-o" style="font-size:6.5px">Payment reviews →</div></div>
+      </div></div>
+      <div><div class="frame-name">Flow health + revenue</div><div class="frame-file">AdminFlowHealth.tsx · /admin/flow-health</div></div>
+      <div class="tags"><span class="tag info">loading · error</span><span class="tag ok">empty revenue state</span></div>
+    </div>
+
+    <!-- A4 payments refund -->
+    <div class="frame-col">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>9:41</span><span>●●●</span></div>
+        <div class="appbar"><span class="brandmark">Payment reviews</span><span style="font-size:6.5px;font-weight:800">◉</span></div>
+        <div class="pad" style="flex:1">
+          <div class="eyebrow-s">Recently completed</div>
+          <div class="card-s" style="margin-top:6px;padding:7px">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <b style="font-size:7.5px">Ref-PMT-1002</b>
+              <span class="chip-s" style="background:#ecfdf3;color:#15803d">Credited</span>
+            </div>
+            <div class="p-s" style="font-size:6.2px;margin-top:2px">$29.00 · razorpay · 10 credits</div>
+            <div style="display:flex;gap:4px;margin-top:6px">
+              <span class="btn-o" style="flex:1;font-size:6px;color:#b91c1c;border-color:#f3c1bc">Refund</span>
+            </div>
+          </div>
+          <div class="card-s" style="margin-top:6px;padding:7px;opacity:.7">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <b style="font-size:7.5px">Ref-PMT-0998</b>
+              <span class="chip-s" style="background:#f1f5f9;color:#475569">Refunded</span>
+            </div>
+            <div class="p-s" style="font-size:6.2px;margin-top:2px">wallet deducted · ledger reconciled</div>
+          </div>
+        </div>
+        <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">Refund deducts credits and writes an audit row</div>
+      </div></div>
+      <div><div class="frame-name">Payments + refund</div><div class="frame-file">AdminPaymentsReview.tsx · /admin/payments</div></div>
+      <div class="tags"><span class="tag err">refund on non-credited → 409</span><span class="tag ok">status='credited' guard</span></div>
+    </div>
+  </div>
+  <div class="flownote">/admin/approvals <span class="arr">→</span> /admin/approvals/:kind/:id <span class="arr">→</span> decision → audit log · /admin/payments <span class="arr">→</span> refund → ledger</div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<div class="rule"></div>
+<div class="foot">
+  <div><b>Handoff.</b> Every screen above is implemented and live on skipwait.me — this board is the design record, not a mockup set. Source of truth: <span style="font-family:var(--mono);font-size:11px">client/src/pages/*</span>. Specs: <span style="font-family:var(--mono);font-size:11px">docs/DESIGN_SYSTEM_SPEC.md · docs/DESIGN_SCREEN_COVERAGE.md</span>.</div>
+  <div><b>Rollback.</b> Design changes are ordinary commits — <span style="font-family:var(--mono);font-size:11px">git revert &lt;sha&gt; &amp;&amp; git push</span>; the deploy pipeline self-verifies and the container keeps the previous good version until the new one rolls.</div>
+  <div><b>Latest.</b> <span style="font-family:var(--mono);font-size:11px">/components</span> gallery is linked from Settings. Auto-sync verified on every push.</div>
+</div>
+
+</div>
+</body>
+</html>
