@@ -1,0 +1,24 @@
+name: Design Gate (Impeccable)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "client/src/pages/**"
+      - "client/src/components/**"
+      - "client/src/index.css"
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run Impeccable detector on changed client surfaces
+        run: |
+          npx -y impeccable@latest detect client/src/pages client/src/components --quiet || true
+      - name: Record result
+        run: echo "Design gate run complete — findings are advisory; blocking rules reviewed in PR."
