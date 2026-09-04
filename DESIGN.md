@@ -34,3 +34,8 @@
 
 ## Motion
 - `prefers-reduced-motion` honored; transitions only on status change; skeleton ≥300ms + 15s error fallback
+
+## Detector exemptions (documented false positives / accepted infra)
+- **slate-900 on blue-50/70** (Premium payment note): flagged `gray-on-color`, but slate-900 is our near-black ink — measured contrast **16.4:1** (AA needs 4.5). Keep.
+- **transition: height in ui/sidebar.tsx**: unused shadcn component (bundled, never rendered). Remove the file if the sidebar is pruned; not user-facing.
+- **/wall flat-type ratio 1.7**: intentional — a mobile card wall needs close steps; the 11→19px range with weight contrast (400/800) carries hierarchy.
