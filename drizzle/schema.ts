@@ -16,7 +16,7 @@ export const users = mysqlTable("users", {
 export const profiles = mysqlTable("profiles", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  accountType: mysqlEnum("accountType", ["job_seeker", "referrer"]),
+  accountType: mysqlEnum("accountType", ["job_seeker", "referrer", "employer"]),
   headline: varchar("headline", { length: 180 }),
   location: varchar("location", { length: 120 }),
   bio: text("bio"),
@@ -30,6 +30,9 @@ export const profiles = mysqlTable("profiles", {
   expertise: text("expertise"),
   referralCapacity: int("referralCapacity").default(3),
   isOnboarded: boolean("isOnboarded").default(false).notNull(),
+  // Talent discovery is strictly opt-in: a seeker must explicitly turn this on
+  // before employers can ever see them in the anonymized talent list.
+  anonymityOptIn: boolean("anonymityOptIn").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("profiles_user_id_unique").on(table.userId)]);
@@ -64,9 +67,51 @@ export const companyOpportunities = mysqlTable("companyOpportunities", {
   walkInAt: timestamp("walkInAt"),
   walkInEndsAt: timestamp("walkInEndsAt"),
   isActive: boolean("isActive").default(true).notNull(),
+  // Sponsored Role Engine: paid placement window + tier. NULL while organic.
+  sponsoredUntil: timestamp("sponsoredUntil"),
+  sponsoredTier: mysqlEnum("sponsoredTier", ["standard", "featured", "spotlight"]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("company_opportunities_public_idx").on(table.isActive, table.createdAt), index("company_opportunities_domain_idx").on(table.companyDomain), index("company_opportunities_owner_idx").on(table.ownerId)]);
+}, table => [index("company_opportunities_public_idx").on(table.isActive, table.createdAt), index("company_opportunities_domain_idx").on(table.companyDomain), index("company_opportunities_owner_idx").on(table.ownerId), index("company_opportunities_sponsor_idx").on(table.sponsoredUntil)]);
+
+// B2B credit economy: one self-serve billing account per employer user.
+export const employerAccounts = mysqlTable("employerAccounts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyName: varchar("companyName", { length: 160 }).notNull(),
+  billingEmail: varchar("billingEmail", { length: 320 }).notNull(),
+  credits: int("credits").default(0).notNull(),
+  budgetMonthlyUsdCents: int("budgetMonthlyUsdCents").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employer_accounts_user_unique").on(table.userId)]);
+
+// Credit Economy ledger: one unlock row per (employer, seeker) pair, ever.
+export const profileUnlocks = mysqlTable("profileUnlocks", {
+  id: int("id").autoincrement().primaryKey(),
+  employerUserId: int("employerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seekerProfileUserId: int("seekerProfileUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  unlockedAt: timestamp("unlockedAt").defaultNow().notNull(),
+  creditsSpent: int("creditsSpent").notNull(),
+}, table => [uniqueIndex("profile_unlocks_employer_seeker_unique").on(table.employerUserId, table.seekerProfileUserId), index("profile_unlocks_seeker_idx").on(table.seekerProfileUserId)]);
+
+// Contextual High-Intent Partner Modules: admin-curated third-party tooling
+// slots rendered inside seeker-facing role feeds.
+export const partnerModules = mysqlTable("partnerModules", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerName: varchar("partnerName", { length: 120 }).notNull(),
+  category: mysqlEnum("category", ["interview_prep", "resume_vetting", "skill_assessment", "other"]).notNull(),
+  headline: varchar("headline", { length: 180 }).notNull(),
+  description: text("description"),
+  targetRoles: text("targetRoles"),
+  ctaLabel: varchar("ctaLabel", { length: 80 }).notNull(),
+  ctaUrl: varchar("ctaUrl", { length: 2048 }).notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  impressions: int("impressions").default(0).notNull(),
+  clicks: int("clicks").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("partner_modules_active_idx").on(table.isActive, table.createdAt)]);
 
 export const savedRoles = mysqlTable("savedRoles", {
   id: int("id").autoincrement().primaryKey(),
@@ -358,6 +403,10 @@ export type CompanyOpportunity = typeof companyOpportunities.$inferSelect;
 export type ReferralRequest = typeof referralRequests.$inferSelect;
 export type OperationalActivityLog = typeof operationalActivityLogs.$inferSelect;
 export type PrivacyRequest = typeof privacyRequests.$inferSelect;
+export type EmployerAccount = typeof employerAccounts.$inferSelect;
+export type ProfileUnlock = typeof profileUnlocks.$inferSelect;
+export type PartnerModule = typeof partnerModules.$inferSelect;
+export type PartnerModuleCategory = PartnerModule["category"];
 
 const longblob = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {

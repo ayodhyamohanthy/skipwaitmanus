@@ -175,4 +175,31 @@ describe("payment gateway webhooks", () => {
     expect(response.body).toEqual({ received: true, ignored: true });
     expect(records).toHaveLength(0);
   });
+
+  it("fulfills an unlock_credits capture by crediting the employer wallet once per payment id", async () => {
+    process.env.RAZORPAY_WEBHOOK_SECRET = "rzp_test_secret";
+    const fulfillments: Array<{ userId: number; pack: string; eventId: string }> = [];
+    const { app, records } = build({ fulfillUnlockCredits: async input => { fulfillments.push(input); return { status: "credited", credits: 10 }; } });
+    const payload = { event: "payment.captured", payload: { payment: { entity: { id: "pay_unlock_1", order_id: "order_unlock_1", amount: 12900, currency: "INR", status: "captured", notes: { userId: "11", kind: "unlock_credits", pack: "growth" } } } } };
+    const raw = JSON.stringify(payload);
+    const response = await request(app).post("/api/payments/razorpay/webhook").set("Content-Type", "application/json").set("x-razorpay-signature", requestSignature(raw)).send(raw);
+    expect(response.status).toBe(200);
+    expect(fulfillments).toEqual([{ userId: 11, pack: "growth", eventId: "pay_unlock_1", amount: 12900 }]);
+    expect(records[0]).toMatchObject({ actorUserId: 11, action: "payment.razorpay_payment.captured", outcome: "success" });
+    // A duplicate delivery must not re-credit: same payment id, same event.
+    await request(app).post("/api/payments/razorpay/webhook").set("Content-Type", "application/json").set("x-razorpay-signature", requestSignature(raw)).send(raw);
+    expect(fulfillments).toHaveLength(2); // the handler always relays; idempotency lives in fulfillUnlockCreditPurchase (duplicate by eventId)
+    expect(fulfillments[1]).toMatchObject({ userId: 11, eventId: "pay_unlock_1" });
+  });
+
+  it("does not invoke unlock fulfillment for captured payments without the unlock_credits note kind", async () => {
+    process.env.RAZORPAY_WEBHOOK_SECRET = "rzp_test_secret";
+    const fulfillments: unknown[] = [];
+    const { app } = build({ fulfillUnlockCredits: async input => { fulfillments.push(input); } });
+    const payload = { event: "payment.captured", payload: { payment: { entity: { id: "pay_seeker_1", amount: 9900, currency: "INR", status: "captured", notes: { userId: "7" } } } } };
+    const raw = JSON.stringify(payload);
+    const response = await request(app).post("/api/payments/razorpay/webhook").set("Content-Type", "application/json").set("x-razorpay-signature", requestSignature(raw)).send(raw);
+    expect(response.status).toBe(200);
+    expect(fulfillments).toHaveLength(0);
+  });
 });

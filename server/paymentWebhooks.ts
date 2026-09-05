@@ -72,7 +72,7 @@ async function verifyPayPalWebhookViaApi(input: { authAlgo?: string; certUrl?: s
   return ((await response.json()) as { verification_status?: string }).verification_status === "SUCCESS" ? "SUCCESS" : "FAILURE";
 }
 
-export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entry: ActivityInput) => Promise<void>; recordGatewayEvent?: (input: GatewayEventInput) => Promise<{ matched: boolean } | undefined>; verifyPayPalWebhook?: PayPalWebhookVerifier }) {
+export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entry: ActivityInput) => Promise<void>; recordGatewayEvent?: (input: GatewayEventInput) => Promise<{ matched: boolean } | undefined>; verifyPayPalWebhook?: PayPalWebhookVerifier; fulfillUnlockCredits?: (input: { userId: number; pack: string; eventId: string; amount?: number }) => Promise<unknown> }) {
   const paypalConfigured = () => Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET);
   const paypalVerificationConfigured = () => Boolean(process.env.PAYPAL_WEBHOOK_ID) && paypalConfigured();
 
@@ -88,6 +88,15 @@ export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entr
     const subject = (payment ?? refund) as Record<string, unknown> | undefined;
     const notes = (subject?.notes ?? {}) as Record<string, unknown>;
     const checkoutIntentId = typeof notes.checkoutIntentId === "string" ? notes.checkoutIntentId : undefined;
+    // B2B unlock-credit packs self-fulfill on verified capture: notes.kind =
+    // "unlock_credits" carries the pack id, and the handler credits the
+    // employer wallet (idempotent per payment id). Seeker token fulfillment
+    // still never happens here — Chargebee remains that pipeline's truth.
+    if (event === "payment.captured" && notes.kind === "unlock_credits" && deps.fulfillUnlockCredits) {
+      const unlockUserId = integerNote(notes.userId);
+      const pack = typeof notes.pack === "string" ? notes.pack : "";
+      if (unlockUserId && pack) await deps.fulfillUnlockCredits({ userId: unlockUserId, pack, eventId: String(payment?.id ?? `unlock:${Date.now()}`), amount: typeof payment?.amount === "number" ? payment.amount : undefined }).catch(() => undefined);
+    }
     // Correlation is a read-only lookup on paymentFulfillments (see
     // recordGatewayPaymentEvent): unmatched deliveries still ack 200 so
     // Razorpay does not retry forever, and nothing is ever fabricated.

@@ -1,21 +1,22 @@
-import { Activity, CheckSquare, CreditCard, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff } from "lucide-react";
+import { Activity, CheckSquare, CreditCard, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 
 /**
  * Shared administrator header (pending-screens spec §2.6 / §5 responsive).
  *
- * Every admin surface renders the same eight destinations in the same order,
+ * Every admin surface renders the same destinations in the same order,
  * so an operator never has to remember which page links where. The current
  * page is marked with `aria-current="page"` and the brand tint; the rest are
  * quiet pills. On narrow viewports the row scrolls horizontally instead of
  * wrapping into a wall of buttons.
  */
-export type AdminSection = "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users";
+export type AdminSection = "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners";
 
 const sections: Array<{ id: AdminSection; href: string; label: string; icon: LucideIcon }> = [
   { id: "approvals", href: "/admin/approvals", label: "Approvals", icon: CheckSquare },
   { id: "payments", href: "/admin/payments", label: "Payment reviews", icon: CreditCard },
+  { id: "partners", href: "/admin/partners", label: "Partners", icon: Handshake },
   { id: "privacy-requests", href: "/admin/privacy-requests", label: "Privacy requests", icon: EyeOff },
   { id: "token-recovery", href: "/admin/token-recovery", label: "Token recovery", icon: Wallet },
   { id: "activity", href: "/admin/activity", label: "Activity log", icon: Activity },

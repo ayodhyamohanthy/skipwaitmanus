@@ -9,6 +9,12 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "jobs", column: "compensation", definition: "TEXT NULL" },
   { table: "referralRequests", column: "savedAt", definition: "TIMESTAMP NULL" },
   { table: "users", column: "suspended", definition: "BOOLEAN NOT NULL DEFAULT false" },
+  // B2B monetization (0037). The profiles.accountType enum widening
+  // (append 'employer') is intentionally NOT here: ADD COLUMN cannot widen an
+  // existing ENUM, so it is applied by drizzle/0037_b2b_monetization.sql only.
+  { table: "profiles", column: "anonymityOptIn", definition: "BOOLEAN NOT NULL DEFAULT false" },
+  { table: "companyOpportunities", column: "sponsoredUntil", definition: "TIMESTAMP NULL" },
+  { table: "companyOpportunities", column: "sponsoredTier", definition: "ENUM('standard','featured','spotlight') NULL" },
 ];
 
 let reconciled = false;

@@ -253,6 +253,13 @@
       "when": 1797024000000,
       "tag": "0036_users_suspended",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1797110400000,
+      "tag": "0037_b2b_monetization",
+      "breakpoints": true
     }
   ]
 }

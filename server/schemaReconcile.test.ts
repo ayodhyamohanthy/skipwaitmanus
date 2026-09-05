@@ -24,7 +24,7 @@ async function loadReconcileModule() {
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
-  existingColumns = ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended"];
+  existingColumns = ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"];
   executeCalls = 0;
   alterStatements.length = 0;
   dbRef = {
@@ -57,13 +57,16 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended"],
+      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"],
       skipped: ["companyOpportunities.compensation"],
     });
     expect(alterStatements).toEqual([
       "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
       "ALTER TABLE `referralRequests` ADD COLUMN `savedAt` TIMESTAMP NULL",
       "ALTER TABLE `users` ADD COLUMN `suspended` BOOLEAN NOT NULL DEFAULT false",
+      "ALTER TABLE `profiles` ADD COLUMN `anonymityOptIn` BOOLEAN NOT NULL DEFAULT false",
+      "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredUntil` TIMESTAMP NULL",
+      "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredTier` ENUM('standard','featured','spotlight') NULL",
     ]);
     expect(isSchemaReconciled()).toBe(true);
   });
@@ -75,7 +78,7 @@ describe("boot-time schema reconcile", () => {
 
     expect(result).toEqual({
       applied: [],
-      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended"],
+      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"],
     });
     expect(alterStatements).toEqual([]);
     expect(isSchemaReconciled()).toBe(true);
@@ -86,13 +89,13 @@ describe("boot-time schema reconcile", () => {
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
 
     await reconcileSchema();
-    expect(alterStatements).toHaveLength(3);
+    expect(alterStatements).toHaveLength(6);
 
     executeCalls = 0;
     const again = await reconcileSchema();
     expect(again).toEqual({ applied: [], skipped: [] });
     expect(executeCalls).toBe(0);
-    expect(alterStatements).toHaveLength(3);
+    expect(alterStatements).toHaveLength(6);
     expect(isSchemaReconciled()).toBe(true);
   });
 

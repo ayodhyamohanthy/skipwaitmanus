@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -1563,4 +1563,261 @@ export async function resolveAdminApproval(adminUserId: number, itemKind: AdminA
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `admin.approval_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: String(itemId), companyDomain: row.companyDomain, metadata: JSON.stringify(trimmedNote ? { status: nextStatus, note: trimmedNote } : { status: nextStatus }) });
     return { kind: itemKind, id: itemId, status: nextStatus as AdminApprovalQueueStatus };
   });
+}
+
+// ---- B2B monetization (employer accounts, unlock credits, sponsored roles, partners) ----
+
+// One unlock costs 5 employer credits; sponsorships price per tier below.
+export const EMPLOYER_UNLOCK_CREDIT_COST = 5;
+export const SPONSOR_TIERS = {
+  featured: { days: 7, cost: 10 },
+  spotlight: { days: 30, cost: 25 },
+} as const;
+export type SponsorTier = keyof typeof SPONSOR_TIERS;
+export const UNLOCK_CREDIT_PACKS = {
+  starter: { credits: 10, amountInPaise: 2900 },
+  growth: { credits: 50, amountInPaise: 12900 },
+  scale: { credits: 200, amountInPaise: 39900 },
+} as const;
+export type UnlockCreditPackId = keyof typeof UNLOCK_CREDIT_PACKS;
+
+const talentDisplayRef = (userId: number) => `Talent-${String(userId).padStart(4, "0")}`;
+const firstSkillKeywords = (skills: string | null) => (skills ?? "").split(/[,;|]/).map(skill => skill.trim()).filter(Boolean).slice(0, 5);
+
+export async function ensureEmployerAccount(userId: number, companyName: string, billingEmail: string) {
+  const name = companyName.trim().slice(0, 160);
+  const email = billingEmail.trim().toLowerCase().slice(0, 320);
+  if (!name) throw new Error("Add your company name to open an employer account");
+  if (!email || !email.includes("@")) throw new Error("Add a billing email for your employer account");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1);
+  if (existing[0]) return existing[0];
+  await db.insert(profiles).values({ userId, accountType: "employer", company: name, isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "employer", company: name } });
+  try {
+    await db.insert(employerAccounts).values({ userId, companyName: name, billingEmail: email });
+  } catch (error) {
+    if ((error as { code?: string }).code !== "ER_DUP_ENTRY") throw error;
+  }
+  return (await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1))[0];
+}
+
+export async function getEmployerAccount(userId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  return (await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1))[0];
+}
+
+// Self-serve = employer role. ensureEmployerAccount flips the profile to
+// accountType "employer" (no work-email verification required per PRD).
+export async function isEmployer(userId: number) {
+  const profile = await getProfileByUserId(userId);
+  return profile?.accountType === "employer";
+}
+
+export async function spendEmployerUnlockCredit(employerUserId: number, seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, employerUserId)).limit(1).for("update"))[0];
+    if (!account) return { ok: false as const, reason: "no_employer_account" as const, credits: 0 };
+    if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
+    const alreadyUnlocked = await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
+    if (alreadyUnlocked[0]) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
+    const credits = account.credits - EMPLOYER_UNLOCK_CREDIT_COST;
+    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
+    await tx.insert(profileUnlocks).values({ employerUserId, seekerProfileUserId: seekerUserId, creditsSpent: EMPLOYER_UNLOCK_CREDIT_COST });
+    return { ok: true as const, remaining: credits };
+  });
+}
+
+// Anonymized talent discovery. HARD invariant: never selects name, email,
+// resumeUrl, phone, or any users column beyond the join key.
+export type AnonymizedSeekerProfile = { userId: number; displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
+
+export async function listAnonymizedSeekerProfiles(employerUserId: number, input: { query?: string; location?: string } = {}) {
+  const db = await getDb(); if (!db) return [] as AnonymizedSeekerProfile[];
+  const rows = await db.select({ userId: profiles.userId, headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience }).from(profiles).where(and(eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true)));
+  const unlocked = new Set((await db.select({ seekerId: profileUnlocks.seekerProfileUserId }).from(profileUnlocks).where(eq(profileUnlocks.employerUserId, employerUserId))).map(row => row.seekerId));
+  const term = input.query?.trim().toLowerCase();
+  const locationTerm = input.location?.trim().toLowerCase();
+  return rows
+    .filter(row => (!term || `${row.headline ?? ""} ${row.skills ?? ""} ${row.experience ?? ""}`.toLowerCase().includes(term)) && (!locationTerm || (row.location ?? "").toLowerCase().includes(locationTerm)))
+    .slice(0, 60)
+    .map(row => ({ userId: row.userId, displayRef: talentDisplayRef(row.userId), headline: row.headline, location: row.location, skills: firstSkillKeywords(row.skills), isUnlocked: unlocked.has(row.userId) }));
+}
+
+// Fuller profile for an unlocked pair — still never email, name, or resume.
+export async function getUnlockedProfile(employerUserId: number, seekerUserId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const unlocked = await db.select({ id: profileUnlocks.id, unlockedAt: profileUnlocks.unlockedAt }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
+  if (!unlocked[0]) return undefined;
+  const profile = await db.select({ headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience, expertise: profiles.expertise }).from(profiles).where(and(eq(profiles.userId, seekerUserId), eq(profiles.accountType, "job_seeker"))).limit(1);
+  if (!profile[0]) return undefined;
+  return { displayRef: talentDisplayRef(seekerUserId), headline: profile[0].headline, location: profile[0].location, skills: firstSkillKeywords(profile[0].skills), experience: profile[0].experience, expertise: profile[0].expertise, unlockedAt: unlocked[0].unlockedAt };
+}
+
+export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; isAdmin?: boolean }) {
+  const tierCost = SPONSOR_TIERS[input.tier];
+  if (!tierCost) throw new Error("Choose a featured or spotlight sponsorship tier");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const opportunity = (await tx.select({ id: companyOpportunities.id, ownerId: companyOpportunities.ownerId, companyDomain: companyOpportunities.companyDomain, roleTitle: companyOpportunities.roleTitle }).from(companyOpportunities).where(eq(companyOpportunities.id, opportunityId)).limit(1))[0];
+    if (!opportunity) throw new Error("This opportunity could not be found");
+    if (!input.isAdmin && opportunity.ownerId !== userId) throw new Error("Only the opportunity owner or an administrator can sponsor this role");
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1).for("update"))[0];
+    if (!account) throw new Error("Open an employer account before sponsoring a role");
+    if (account.credits < tierCost.cost) throw new Error(`Sponsoring costs ${tierCost.cost} unlock credits; you have ${account.credits}`);
+    const sponsoredUntil = new Date(Date.now() + tierCost.days * 24 * 60 * 60 * 1000);
+    await tx.update(companyOpportunities).set({ sponsoredUntil, sponsoredTier: input.tier }).where(eq(companyOpportunities.id, opportunityId));
+    const credits = account.credits - tierCost.cost;
+    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
+    const metadata: Record<string, string | number> = { tier: input.tier, days: tierCost.days, creditsSpent: tierCost.cost, creditsRemaining: credits };
+    await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "employer.opportunity_sponsored", outcome: "success", resourceType: "opportunity", resourceId: String(opportunityId), companyDomain: opportunity.companyDomain, metadata: JSON.stringify(metadata) });
+    return { opportunityId, tier: input.tier, sponsoredUntil, creditsSpent: tierCost.cost, credits };
+  });
+}
+
+export async function endCompanyOpportunitySponsorship(adminUserId: number, opportunityId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const updated = await db.update(companyOpportunities).set({ sponsoredUntil: null, sponsoredTier: null }).where(and(eq(companyOpportunities.id, opportunityId), isNotNull(companyOpportunities.sponsoredUntil)));
+  await db.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "admin.sponsorship_ended", outcome: Number(updated[0]?.affectedRows ?? 0) === 1 ? "success" : "failure", resourceType: "opportunity", resourceId: String(opportunityId) });
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This opportunity is not currently sponsored");
+  return { opportunityId, ended: true as const };
+}
+
+export async function listSponsoredCompanyOpportunities(limit = 50) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, roleTitle: companyOpportunities.roleTitle, sponsoredTier: companyOpportunities.sponsoredTier, sponsoredUntil: companyOpportunities.sponsoredUntil }).from(companyOpportunities).where(and(eq(companyOpportunities.isActive, true), isNotNull(companyOpportunities.sponsoredUntil))).orderBy(desc(companyOpportunities.sponsoredUntil)).limit(Math.max(1, Math.min(limit, 100)));
+}
+
+export async function listEmployerOpportunities(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, location: companyOpportunities.location, compensation: companyOpportunities.compensation, isActive: companyOpportunities.isActive, sponsoredTier: companyOpportunities.sponsoredTier, sponsoredUntil: companyOpportunities.sponsoredUntil, createdAt: companyOpportunities.createdAt }).from(companyOpportunities).where(eq(companyOpportunities.ownerId, userId)).orderBy(desc(companyOpportunities.createdAt)).limit(50);
+  const now = Date.now();
+  return rows.map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && row.sponsoredUntil.getTime() > now) }));
+}
+
+// Sponsored-first ordering: active sponsorships (longest window first), then
+// organic by recency. Pure so the ordering contract is testable without a DB.
+export function orderOpportunitiesSponsoredFirst<T extends { createdAt?: Date | string; sponsoredUntil?: Date | string | null }>(rows: T[]): T[] {
+  const now = Date.now();
+  const time = (value?: Date | string | null) => (value ? new Date(value).getTime() : 0);
+  return [...rows].sort((a, b) => {
+    const aSponsored = a.sponsoredUntil ? time(a.sponsoredUntil) > now : false;
+    const bSponsored = b.sponsoredUntil ? time(b.sponsoredUntil) > now : false;
+    if (aSponsored !== bSponsored) return aSponsored ? -1 : 1;
+    if (aSponsored && bSponsored && time(a.sponsoredUntil) !== time(b.sponsoredUntil)) return time(b.sponsoredUntil) - time(a.sponsoredUntil);
+    return time(b.createdAt) - time(a.createdAt);
+  });
+}
+
+export async function listPublicCompanyOpportunitiesWithSponsorship() {
+  const db = await getDb(); if (!db) return [];
+  const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
+  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+  try {
+    const rows = await attempt();
+    const now = Date.now();
+    return orderOpportunitiesSponsoredFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
+  } catch {
+    // Pre-migration fallback mirrors the organic list with sponsor flags off.
+    return (await listPublicCompanyOpportunities()).map(row => ({ ...row, sponsoredUntil: null as Date | null, sponsoredTier: null as "featured" | "spotlight" | null, isSponsored: false }));
+  }
+}
+
+export async function listPartnerModules(input: { category?: PartnerModuleCategory; roleKeywords?: string[]; limit?: number } = {}) {
+  const db = await getDb(); if (!db) return [];
+  const safeLimit = Math.max(1, Math.min(input.limit ?? 3, 12));
+  const rows = await db.select().from(partnerModules).where(eq(partnerModules.isActive, true)).orderBy(desc(partnerModules.createdAt)).limit(60);
+  const keywords = (input.roleKeywords ?? []).map(word => word.trim().toLowerCase()).filter(word => word.length >= 3);
+  const matchesRole = (module: typeof rows[number]) => {
+    if (!keywords.length) return true;
+    const haystack = `${module.targetRoles ?? ""} ${module.headline}`.toLowerCase();
+    return keywords.some(keyword => haystack.includes(keyword));
+  };
+  const categoryMatched = input.category ? rows.filter(module => module.category === input.category) : rows;
+  const roleMatched = categoryMatched.filter(matchesRole);
+  // Contextual first (keyword hits), then recent general modules; never repeat.
+  const ordered = [...roleMatched, ...categoryMatched.filter(module => !roleMatched.includes(module))];
+  return ordered.slice(0, safeLimit);
+}
+
+export async function listAllPartnerModules() {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(partnerModules).orderBy(desc(partnerModules.createdAt)).limit(100);
+}
+
+export async function createPartnerModule(input: { partnerName: string; category: PartnerModuleCategory; headline: string; description?: string; targetRoles?: string; ctaLabel: string; ctaUrl: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  try { new URL(input.ctaUrl); } catch { throw new Error("Use a valid https CTA link for the partner module"); }
+  const result = await db.insert(partnerModules).values({ partnerName: input.partnerName.trim().slice(0, 120), category: input.category, headline: input.headline.trim().slice(0, 180), description: input.description?.trim().slice(0, 600) || null, targetRoles: input.targetRoles?.trim().slice(0, 600) || null, ctaLabel: input.ctaLabel.trim().slice(0, 80), ctaUrl: input.ctaUrl.trim().slice(0, 2048) });
+  return { id: Number(result[0].insertId) };
+}
+
+export async function updatePartnerModule(moduleId: number, patch: { partnerName?: string; category?: PartnerModuleCategory; headline?: string; description?: string | null; targetRoles?: string | null; ctaLabel?: string; ctaUrl?: string; isActive?: boolean }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const clean: Record<string, unknown> = {};
+  if (patch.partnerName !== undefined) clean.partnerName = patch.partnerName.trim().slice(0, 120);
+  if (patch.category !== undefined) clean.category = patch.category;
+  if (patch.headline !== undefined) clean.headline = patch.headline.trim().slice(0, 180);
+  if (patch.description !== undefined) clean.description = patch.description === null ? null : patch.description.trim().slice(0, 600) || null;
+  if (patch.targetRoles !== undefined) clean.targetRoles = patch.targetRoles === null ? null : patch.targetRoles.trim().slice(0, 600) || null;
+  if (patch.ctaLabel !== undefined) clean.ctaLabel = patch.ctaLabel.trim().slice(0, 80);
+  if (patch.ctaUrl !== undefined) { try { new URL(patch.ctaUrl); } catch { throw new Error("Use a valid https CTA link for the partner module"); } clean.ctaUrl = patch.ctaUrl.trim().slice(0, 2048); }
+  if (patch.isActive !== undefined) clean.isActive = patch.isActive;
+  if (!Object.keys(clean).length) return { id: moduleId, updated: false };
+  const result = await db.update(partnerModules).set(clean).where(eq(partnerModules.id, moduleId));
+  return { id: moduleId, updated: Number(result[0]?.affectedRows ?? 0) === 1 };
+}
+
+export async function recordPartnerImpression(moduleId: number) {
+  const db = await getDb(); if (!db) return;
+  await db.update(partnerModules).set({ impressions: sql`${partnerModules.impressions} + 1` }).where(eq(partnerModules.id, moduleId));
+}
+
+export async function recordPartnerClick(moduleId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.update(partnerModules).set({ clicks: sql`${partnerModules.clicks} + 1` }).where(eq(partnerModules.id, moduleId));
+  return { recorded: Number(result[0]?.affectedRows ?? 0) === 1 };
+}
+
+// Razorpay unlock-credit purchase: credit the employer wallet on verified
+// capture. Idempotent per provider event via operationalActivityLogs key.
+export async function fulfillUnlockCreditPurchase(input: { eventId: string; userId: number; pack: UnlockCreditPackId; amount?: number }) {
+  const pack = UNLOCK_CREDIT_PACKS[input.pack];
+  if (!pack) return { status: "ignored" as const, reason: "unknown_pack" };
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select({ id: operationalActivityLogs.id }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.action, "employer.unlock_credits_fulfilled"), eq(operationalActivityLogs.resourceId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const, credits: pack.credits };
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, input.userId)).limit(1))[0];
+    if (!account) return { status: "ignored" as const, reason: "no_employer_account" };
+    if (input.amount !== undefined && input.amount !== pack.amountInPaise) return { status: "ignored" as const, reason: "checkout_amount_mismatch" };
+    const credits = account.credits + pack.credits;
+    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
+    const metadata: Record<string, string | number> = { pack: input.pack, creditsAdded: pack.credits, credits };
+    await tx.insert(operationalActivityLogs).values({ actorUserId: input.userId, action: "employer.unlock_credits_fulfilled", outcome: "success", resourceType: "employer_unlock_purchase", resourceId: input.eventId, metadata: JSON.stringify(metadata) });
+    return { status: "credited" as const, credits, creditsAdded: pack.credits };
+  });
+}
+
+// Open employer unlock-credit purchases against the operational-activity
+// ledger (intent written at order creation, fulfilled by the webhook above).
+export async function listEmployerSpendHistory(userId: number, limit = 50) {
+  const db = await getDb(); if (!db) return [];
+  const [unlocks, sponsorships, purchases] = await Promise.all([
+    db.select({ kind: sql<string>`'profile_unlock'`, creditsSpent: profileUnlocks.creditsSpent, seekerProfileUserId: profileUnlocks.seekerProfileUserId, createdAt: profileUnlocks.unlockedAt }).from(profileUnlocks).where(eq(profileUnlocks.employerUserId, userId)).orderBy(desc(profileUnlocks.unlockedAt)).limit(limit),
+    db.select({ action: operationalActivityLogs.action, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), inArray(operationalActivityLogs.action, ["employer.opportunity_sponsored", "employer.unlock_credits_fulfilled"]))).orderBy(desc(operationalActivityLogs.createdAt)).limit(limit),
+    (async () => [] as Array<{ kind: string; creditsSpent: number; seekerProfileUserId: number | null; createdAt: Date }>)(),
+  ]);
+  const sponsorRows = sponsorships.filter(row => row.action === "employer.opportunity_sponsored").map(row => {
+    let tier = "featured"; let cost: number = SPONSOR_TIERS.featured.cost;
+    try { const meta = JSON.parse(row.metadata ?? "{}") as { tier?: string; creditsSpent?: number }; tier = meta.tier ?? tier; cost = meta.creditsSpent ?? cost; } catch { /* keep defaults */ }
+    return { kind: "sponsorship" as const, creditsSpent: cost, opportunityId: row.resourceId ? Number(row.resourceId) : null, tier, createdAt: row.createdAt };
+  });
+  const creditRows = sponsorships.filter(row => row.action === "employer.unlock_credits_fulfilled").map(row => {
+    let creditsAdded = 0; let pack: string | null = null;
+    try { const meta = JSON.parse(row.metadata ?? "{}") as { creditsAdded?: number; pack?: string }; creditsAdded = meta.creditsAdded ?? 0; pack = meta.pack ?? null; } catch { /* keep zeros */ }
+    return { kind: "credit_purchase" as const, creditsAdded, pack, createdAt: row.createdAt };
+  });
+  const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: talentDisplayRef(row.seekerProfileUserId), createdAt: row.createdAt }));
+  return [...sponsorRows, ...creditRows, ...unlockRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
 }

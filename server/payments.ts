@@ -31,6 +31,20 @@ async function razorpayOrder(input: { amountInRupees: number; receipt: string; n
   return (await response.json()) as { id: string; amount: number; currency: string };
 }
 
+// Paise-native variant for fixed-price B2B packs (employer unlock credits),
+// where the price is already defined in the smallest currency unit.
+export async function razorpayOrderInPaise(input: { amountInPaise: number; receipt: string; notes?: Record<string, string> }) {
+  const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
+  const response = await fetch("https://api.razorpay.com/v1/orders", {
+    method: "POST",
+    headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ amount: Math.round(input.amountInPaise), currency: "INR", receipt: input.receipt, notes: input.notes }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!response.ok) throw new Error(`razorpay order failed: ${response.status}`);
+  return (await response.json()) as { id: string; amount: number; currency: string };
+}
+
 export async function paypalAccessToken(): Promise<string> {
   const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString("base64");
   const base = process.env.PAYPAL_ENV === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
