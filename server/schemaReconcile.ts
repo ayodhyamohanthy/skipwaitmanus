@@ -49,12 +49,15 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     const existingTables = new Set(rows.map(row => row.TABLE_NAME));
     for (const { table, column, definition } of DESIRED_COLUMNS) {
       if (existing.has(`${table}.${column}`)) { skipped.push(`${table}.${column}`); continue; }
-      await db.execute(sql.raw(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`));
+      const stmt = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
+      try { await db.execute(sql.raw(stmt)); }
+      catch (err) { throw new Error(`[${stmt}] ${err instanceof Error ? err.message : String(err)}`); }
       applied.push(`${table}.${column}`);
     }
     for (const { table, createSql } of DESIRED_TABLES) {
       if (existingTables.has(table)) { skipped.push(table); continue; }
-      await db.execute(sql.raw(createSql));
+      try { await db.execute(sql.raw(createSql)); }
+      catch (err) { throw new Error(`[${createSql.slice(0, 60)}…] ${err instanceof Error ? err.message : String(err)}`); }
       applied.push(`table:${table}`);
     }
     reconciled = true;
