@@ -14,6 +14,9 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
 let reconciled = false;
 
 export async function reconcileSchema(): Promise<{ applied: string[]; skipped: string[] }> {
+  // Success is cached forever. A failed or deferred attempt (DB connection not
+  // ready at boot) is retried on later calls — the information_schema probe
+  // makes every run idempotent, so retrying is safe.
   if (reconciled) return { applied: [], skipped: [] };
   const db = await getDb();
   if (!db) return { applied: [], skipped: [] };
