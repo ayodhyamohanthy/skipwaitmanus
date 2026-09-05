@@ -57,10 +57,10 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"],
+      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules"],
       skipped: ["companyOpportunities.compensation"],
     });
-    expect(alterStatements).toEqual([
+    expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([
       "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
       "ALTER TABLE `referralRequests` ADD COLUMN `savedAt` TIMESTAMP NULL",
       "ALTER TABLE `users` ADD COLUMN `suspended` BOOLEAN NOT NULL DEFAULT false",
@@ -68,6 +68,7 @@ describe("boot-time schema reconcile", () => {
       "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredUntil` TIMESTAMP NULL",
       "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredTier` ENUM('standard','featured','spotlight') NULL",
     ]);
+    expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(3);
     expect(isSchemaReconciled()).toBe(true);
   });
 
@@ -77,10 +78,11 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: [],
+      applied: ["table:employerAccounts", "table:profileUnlocks", "table:partnerModules"],
       skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"],
     });
-    expect(alterStatements).toEqual([]);
+    expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([]);
+    expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(3);
     expect(isSchemaReconciled()).toBe(true);
   });
 
@@ -89,13 +91,13 @@ describe("boot-time schema reconcile", () => {
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
 
     await reconcileSchema();
-    expect(alterStatements).toHaveLength(6);
+    expect(alterStatements).toHaveLength(9);
 
     executeCalls = 0;
     const again = await reconcileSchema();
     expect(again).toEqual({ applied: [], skipped: [] });
     expect(executeCalls).toBe(0);
-    expect(alterStatements).toHaveLength(6);
+    expect(alterStatements).toHaveLength(9);
     expect(isSchemaReconciled()).toBe(true);
   });
 
