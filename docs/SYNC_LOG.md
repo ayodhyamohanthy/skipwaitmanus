@@ -18,3 +18,4 @@ Machine-appended by CI after every deploy attempt. Columns: timestamp | workflow
 | 2026-09-04T09:51:43Z | Deploy API (Cloudflare Containers) | 054b337595c38eeb6f8cfb7eb02107a58a5a0973 | success |
 | 2026-09-04T14:48:35Z | Deploy Web (Cloudflare Pages) | b5d236d162d49ea9983da1abf46d0c9f9cbcf1e0 | success |
 | 2026-09-04T15:06:00Z | Deploy Web (Cloudflare Pages) | d4d63064f8bfa76e037ebc5a591ec1a0b4f392b3 | success |
+| 2026-09-05T11:48:28Z | Deploy Web (Cloudflare Pages) | edf4e8050fd9ad5e04487638e1bac695c0e8b193 | success |
