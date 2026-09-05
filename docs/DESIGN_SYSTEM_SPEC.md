@@ -45,7 +45,10 @@ All key pairs meet AA. Keyboard nav: visible focus ring; logical tab order; `rol
 - `/start` **Onboarding** — multi-step, error state
 - `/referrer` **Referrer sign-in** — empty/error/loading
 - `/email-review/:token` **EmailReviewAction** — error
-- `/privacy` **TrustPrivacy** — static
+- `/privacy` **TrustPrivacy** — static; policy footer nav
+- `/terms` **Terms** — static (PolicyPageShell; Draft pill until legal review)
+- `/refunds` **RefundPolicy** — static (PolicyPageShell; Draft pill until legal review)
+- `/support` **Support** — static; one mailto primary + self-serve links to `/premium`, `/requests`, `/settings`
 
 ### Job seeker
 - `/request` **ReferralRequest** — resume step, error, success (`data-referral-success`), compensation meta

@@ -84,8 +84,8 @@ h2{font-family:var(--display);font-size:34px;font-weight:600;letter-spacing:-.01
   <h1>Every flow.<br>Every screen. <em>Every state.</em></h1>
   <p class="lede">The complete high-fidelity design record of skipwait.me — a private job-referral network for job seekers, verified referrers, and admins. 24 screens across 4 flows, each with its full state coverage, in the production design language (DM Sans · brand blue #0B57D0 · rounded-12).</p>
   <div class="meta">
-    <div>FLOWS<b>4 — seeker · referrer · shared · admin</b></div>
-    <div>SCREENS<b>24 mapped · 27 implemented</b></div>
+    <div>FLOWS<b>5 — seeker · referrer · shared · admin · pending states</b></div>
+    <div>SCREENS<b>36 frames · 33 routes implemented</b></div>
     <div>STATES<b>loading · empty · error · success</b></div>
     <div>SYSTEM<b>DM Sans · #0B57D0 · r12</b></div>
   </div>
@@ -612,6 +612,197 @@ h2{font-family:var(--display);font-size:34px;font-weight:600;letter-spacing:-.01
     </div>
   </div>
   <div class="flownote">/admin/approvals <span class="arr">→</span> /admin/approvals/:kind/:id <span class="arr">→</span> decision → audit log · /admin/payments <span class="arr">→</span> refund → ledger</div>
+</section>
+
+<!-- ============ 05 PENDING STATES ============ -->
+<section class="sec">
+  <div class="sec-head"><span class="sec-no">05</span><h2>Pending states — loading, slow, empty, error, confirm</h2></div>
+  <p class="sec-sub">The states between “tapped” and “done”. Spec: <span style="font-family:var(--mono);font-size:11px">docs/design/pending-screens-handoff.md</span>. Shared parts: <span style="font-family:var(--mono);font-size:11px">LoadingSkeleton</span> (min 300 ms, honest line after 15 s) · <span style="font-family:var(--mono);font-size:11px">ActionErrorCard</span> (what → why → what’s still true → Try again + quiet exit) · <span style="font-family:var(--mono);font-size:11px">RequestStatusTimeline</span> · <span style="font-family:var(--mono);font-size:11px">AdminNav</span>. Rules: the list behind an error is never cleared; a destructive tap always has one confirm; nothing here names a Referrer.</p>
+  <div class="flow">
+
+    <!-- Seeker: loading → slow -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="lnk">← Back</span><span class="brandmark">skipwait.me</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">AK</span></div>
+      <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+        <div class="card-s" style="padding:8px">
+          <div style="display:flex;gap:6px;align-items:flex-start">
+            <span style="width:18px;height:18px;border-radius:6px;background:#e8f0fe;display:grid;place-items:center;color:#0b57d0;font-size:9px">◌</span>
+            <div><b style="font-size:7.5px">Loading your requests…</b><div class="p-s" style="font-size:6.2px">Routing checks usually take a second.</div></div>
+          </div>
+          <div style="margin-top:8px;display:grid;gap:4px"><span style="display:block;height:4px;width:75%;border-radius:99px;background:#f1f5f9"></span><span style="display:block;height:4px;width:100%;border-radius:99px;background:#f1f5f9"></span><span style="display:block;height:4px;width:85%;border-radius:99px;background:#f1f5f9"></span></div>
+          <div style="margin-top:8px;background:#fffbeb;color:#b45309;border-radius:6px;padding:5px 6px;font-size:6.2px;line-height:1.4">This is taking longer than expected. You can keep waiting or come back in a moment — nothing was lost.</div>
+        </div>
+      </div>
+      <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">aria-busy · role=status · after 15 000 ms</div>
+    </div></div>
+    <div><div class="frame-name">Seeker · loading → slow</div><div class="frame-file">MyRequests.tsx · LoadingSkeleton · /requests</div></div>
+    <div class="tags"><span class="tag info">min 300 ms skeleton</span><span class="tag warn">15 s slow notice</span><span class="tag ok">reduced-motion</span></div></div>
+
+    <!-- Seeker: empty -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="lnk">← Back</span><span class="brandmark">skipwait.me</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">AK</span></div>
+      <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center">
+        <div class="card-s" style="width:100%;padding:9px;border-style:dashed;border-color:#bcd3f7">
+          <div style="display:flex;justify-content:space-between"><span style="width:16px;height:16px;border-radius:6px;background:#e8f0fe"></span><span style="height:4px;width:28px;border-radius:99px;background:#f1f5f9;margin-top:6px"></span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:8px"><span style="height:18px;border-radius:6px;background:#f8fafc"></span><span style="height:18px;border-radius:6px;background:#f8fafc"></span><span style="height:18px;border-radius:6px;background:#f8fafc"></span></div>
+        </div>
+        <span style="width:16px;height:16px;border-radius:6px;background:#f1f5f9;display:grid;place-items:center;margin-top:10px;font-size:8px">✉</span>
+        <div class="h-s" style="font-size:10.5px;margin-top:5px">Nothing pending right now</div>
+        <div class="p-s" style="font-size:6.5px;margin-top:2px">Your sent requests and their outcomes will appear here.</div>
+        <div class="card-s" style="width:100%;padding:6px;margin-top:8px;font-size:6.2px;text-align:left"><b>Know someone hiring?</b><div class="p-s" style="font-size:6px">Share skipwait.me · WhatsApp · LinkedIn</div></div>
+      </div>
+      <div class="footer-s"><span class="btn-p">Request a referral →</span></div>
+    </div></div>
+    <div><div class="frame-name">Seeker · empty</div><div class="frame-file">MyRequests.tsx · /requests</div></div>
+    <div class="tags"><span class="tag ok">headline + value line</span><span class="tag info">one primary CTA</span></div></div>
+
+    <!-- Seeker: status history -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="lnk">← Back</span><span class="brandmark">skipwait.me</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">AK</span></div>
+      <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+        <div class="eyebrow-s">ethoslife.com · Ref-0007</div>
+        <div class="h-s" style="font-size:15px;line-height:1;margin-top:3px">Under review</div>
+        <div class="p-s" style="font-size:6.5px;margin-top:4px">A verified employee is reviewing your request. Their identity stays private.</div>
+        <div class="card-s" style="padding:7px;margin-top:8px">
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;text-align:center;font-size:6px"><div><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">1</span><div><b>Sent</b></div></div><div><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">2</span><div><b>Matched</b></div></div><div><span class="chip-s" style="background:#f1f5f9;color:#94a3b8">3</span><div>Reviewed</div></div></div>
+          <div style="border-top:1px solid #f1f5f9;margin-top:6px;padding-top:6px">
+            <div class="eyebrow-s" style="color:#64748b">Status history</div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:6.5px"><span><span class="dot" style="background:#15803d"></span> <b style="color:#15803d">Request sent</b></span><span class="p-s" style="font-size:6px">Sep 1, 9:41 AM</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:6.5px"><span><span class="dot" style="background:#0b57d0"></span> <b style="color:#0b57d0">Claimed by a verified employee</b></span><span class="p-s" style="font-size:6px">Sep 2, 2:05 PM</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px;font-size:6.5px"><span><span class="dot" style="background:#fff;box-shadow:inset 0 0 0 1px #94a3b8"></span> <span style="color:#64748b">Decision</span></span><span class="p-s" style="font-size:6px">waiting</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="footer-s"><span class="btn-o">View role</span></div>
+    </div></div>
+    <div><div class="frame-name">Seeker · status history</div><div class="frame-file">RequestStatusTimeline.tsx · /requests</div></div>
+    <div class="tags"><span class="tag ok">derived from createdAt/updatedAt/status</span><span class="tag info">never names Referrer</span></div></div>
+
+    <!-- Seeker: load error -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="lnk">← Back</span><span class="brandmark">skipwait.me</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">AK</span></div>
+      <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+        <div class="card-s" style="padding:8px;border-color:#f3c1bc;background:#fef3f2">
+          <b style="font-size:7.5px;color:#b91c1c">We couldn’t load your requests</b>
+          <div style="font-size:6.5px;color:#334155;margin-top:2px">Referral service is temporarily unavailable.</div>
+          <div style="font-size:6.5px;color:#334155;margin-top:2px">Your requests are still active and nothing was lost.</div>
+          <div style="display:flex;gap:4px;margin-top:7px"><span class="btn-p" style="flex:1">Try again</span><span class="btn-o" style="flex:1">Back to home</span></div>
+        </div>
+      </div>
+      <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">role=alert · list never cleared</div>
+    </div></div>
+    <div><div class="frame-name">Seeker · load error</div><div class="frame-file">ActionErrorCard.tsx · /requests</div></div>
+    <div class="tags"><span class="tag err">what · why · still true</span><span class="tag ok">retry + quiet exit</span></div></div>
+
+    <!-- Referrer: decline confirm -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="lnk">← Back</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">EM</span></div>
+      <div class="pad" style="flex:1;overflow:hidden">
+        <div class="h-s" style="font-size:14px;line-height:1;margin-top:4px">Priya Sharma</div>
+        <div class="lnk" style="font-size:6.5px;margin-top:4px;color:#0b57d0;font-weight:700">↗ careers.ethoslife.com/jobs/4412</div>
+        <div class="card-s" style="padding:7px;margin-top:7px"><div class="eyebrow-s" style="color:#64748b">Job Seeker’s note</div><div class="p-s" style="font-size:6.5px;margin-top:3px">Led design-system work at two fintechs; the posting matches my daily work.</div></div>
+        <div class="card-s" style="padding:7px;margin-top:5px"><div style="display:flex;justify-content:space-between"><span class="eyebrow-s" style="color:#64748b">Resume &amp; documents</span><span style="font-size:6px;color:#0b57d0;font-weight:700">1 attached</span></div><div style="background:#f8fafc;border-radius:6px;padding:5px;margin-top:4px;font-size:6.5px"><b>priya-sharma.pdf</b></div></div>
+      </div>
+      <div class="footer-s">
+        <div class="card-s" style="padding:7px">
+          <b style="font-size:7.5px">Decline as “Not a fit”?</b>
+          <div class="p-s" style="font-size:6.2px;margin-top:2px">The role and profile don’t line up. The Job Seeker sees a short private note — never your name — and their credit is returned.</div>
+          <div style="display:flex;gap:4px;margin-top:6px"><span class="btn-o" style="flex:1;color:#b91c1c;border-color:#f3c1bc">Confirm decline</span><span class="btn-o" style="flex:1">Cancel</span></div>
+        </div>
+      </div>
+    </div></div>
+    <div><div class="frame-name">Referrer · decline confirm</div><div class="frame-file">MyCompanyInbox.tsx · company-candidate-preview</div></div>
+    <div class="tags"><span class="tag warn">chip → confirm → POST</span><span class="tag ok">accept stays one tap</span><span class="tag info">role=group</span></div></div>
+
+    <!-- Referrer: race error on preview -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="lnk">← Back</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">EM</span></div>
+      <div class="pad" style="flex:1;overflow:hidden">
+        <div class="h-s" style="font-size:14px;line-height:1;margin-top:4px">Priya Sharma</div>
+        <div class="card-s" style="padding:7px;margin-top:8px;opacity:.6"><div class="eyebrow-s" style="color:#64748b">Job Seeker’s note</div><div class="p-s" style="font-size:6.5px;margin-top:3px">Led design-system work at two fintechs…</div></div>
+      </div>
+      <div class="footer-s">
+        <div class="card-s" style="padding:8px;border-color:#f3c1bc;background:#fef3f2">
+          <b style="font-size:7.5px;color:#b91c1c">Accept failed</b>
+          <div style="font-size:6.5px;color:#334155;margin-top:2px">Another employee accepted this request a moment earlier. Nothing was charged to your credits.</div>
+          <div style="display:flex;gap:4px;margin-top:7px"><span class="btn-o" style="flex:1">Back to queue</span></div>
+        </div>
+        <div class="card-s" style="padding:7px;margin-top:5px;border-color:#f3c1bc;background:#fef3f2"><b style="font-size:7px;color:#b91c1c">We couldn’t load your queue</b><div style="font-size:6px;color:#334155">Nothing changed on your side. Your queue is intact.</div><div style="display:flex;gap:4px;margin-top:4px"><span class="btn-p" style="flex:1;font-size:6.5px;padding:4px">Try again</span></div></div>
+      </div>
+    </div></div>
+    <div><div class="frame-name">Referrer · race + load error</div><div class="frame-file">MyCompanyInbox.tsx · /inbox</div></div>
+    <div class="tags"><span class="tag err">409 → no retry, refresh</span><span class="tag ok">load error → Try again</span></div></div>
+
+    <!-- Referrer: Fast-Track pause -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="lnk">← Back</span><span class="brandmark">skipwait.me</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">EM</span></div>
+      <div class="pad" style="flex:1;display:flex;flex-direction:column;justify-content:center">
+        <div class="card-s" style="padding:8px;border-color:#bcd3f7;background:#f3f7fe">
+          <div class="eyebrow-s">Your Fast-Track Link</div>
+          <div class="h-s" style="font-size:10px;margin-top:2px">Private referrals at ethoslife.com</div>
+          <div class="p-s" style="font-size:6.2px;margin-top:2px">Share in your LinkedIn bio. Your name stays hidden and you decide whether to review.</div>
+          <div style="display:flex;gap:4px;align-items:center;background:#fff;border:1px solid #bcd3f7;border-radius:6px;padding:4px;margin-top:6px;font-size:6.2px"><span style="flex:1;font-family:var(--mono)">skipwait.me/refer/ethoslife/ref-priya</span><span class="btn-p" style="padding:3px 6px;font-size:6px">Copy</span></div>
+          <span class="btn-o" style="margin-top:4px;color:#0b57d0;border-color:#bcd3f7">Copy for LinkedIn bio</span>
+          <div style="text-align:center;font-size:6.2px;color:#475569;margin-top:5px;font-weight:700">⏸ Pause link</div>
+        </div>
+        <div class="card-s" style="padding:8px;margin-top:8px;box-shadow:0 8px 24px rgba(16,24,40,.12)">
+          <b style="font-size:7.5px">Pause your Fast-Track Link?</b>
+          <div class="p-s" style="font-size:6.2px;margin-top:2px">The link in your bio stops opening a request form right away. Requests you already received stay in your inbox. To share again later you’ll get a new link.</div>
+          <div style="display:flex;gap:4px;margin-top:6px;justify-content:flex-end"><span class="btn-o" style="padding:4px 7px">Keep it live</span><span class="btn-o" style="padding:4px 7px;color:#0f172a">Pause link</span></div>
+        </div>
+      </div>
+      <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">paused → “Create a new link” primary</div>
+    </div></div>
+    <div><div class="frame-name">Referrer · pause Fast-Track</div><div class="frame-file">ReferrerFastTrackCard.tsx · /inbox</div></div>
+    <div class="tags"><span class="tag warn">AlertDialog confirm</span><span class="tag info">POST /me/deactivate</span><span class="tag ok">paused · error · active</span></div></div>
+
+    <!-- Admin: nav + slow + queue clear -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="brandmark">skipwait.me</span><span class="chip-s" style="background:#e8f0fe;color:#0b57d0">🛡 Admin</span></div>
+      <div class="pad">
+        <div style="display:flex;gap:3px;overflow:hidden;white-space:nowrap;margin-top:2px"><span class="chip-s" style="background:#0b57d0;color:#fff;border-radius:6px">Approvals</span><span class="chip-s" style="border:1px solid #e2e8f0;border-radius:6px">Payment reviews</span><span class="chip-s" style="border:1px solid #e2e8f0;border-radius:6px">Privacy</span><span class="chip-s" style="border:1px solid #e2e8f0;border-radius:6px">Tokens</span><span class="chip-s" style="border:1px solid #e2e8f0;border-radius:6px">Activity</span></div>
+        <div class="h-s" style="font-size:12px;margin-top:8px">Approval queue</div>
+        <div style="display:flex;gap:3px;margin-top:5px"><span class="chip-s" style="border:1px solid #e2e8f0;border-radius:6px">Status: All ▾</span><span class="chip-s" style="border:1px solid #e2e8f0;border-radius:6px">Kind: All ▾</span><span class="chip-s" style="border:1px solid #e2e8f0;border-radius:6px">Date ▾</span></div>
+        <div class="card-s" style="padding:7px;margin-top:8px">
+          <div style="display:flex;gap:5px;align-items:flex-start"><span style="width:16px;height:16px;border-radius:5px;background:#e8f0fe;display:grid;place-items:center;color:#0b57d0;font-size:8px">◌</span><div><b style="font-size:7px">Loading the approval queue…</b><div class="p-s" style="font-size:6px">Seeker requests, referrer enrollments, payments.</div></div></div>
+          <div style="margin-top:6px;background:#fffbeb;color:#b45309;border-radius:6px;padding:4px 5px;font-size:5.8px;line-height:1.4">Taking longer than expected. The queue is read-only until it loads — nothing has been decided or notified.</div>
+        </div>
+        <div class="card-s" style="padding:9px;margin-top:6px;border-style:dashed;text-align:center"><b style="font-size:7px">Queue clear — No items match these filters</b><div class="p-s" style="font-size:6px;margin-top:2px">Widen the date range or clear filters.</div><span class="btn-o" style="display:inline-block;margin-top:5px;padding:4px 8px;font-size:6.2px">Clear filters</span></div>
+      </div>
+      <div class="footer-s" style="font-size:6px;color:#94a3b8;text-align:center">aria-current=page on the active section</div>
+    </div></div>
+    <div><div class="frame-name">Admin · nav + slow + clear</div><div class="frame-file">AdminNav.tsx · AdminApprovalQueue.tsx · /admin/*</div></div>
+    <div class="tags"><span class="tag info">same 7 links on all 8 pages</span><span class="tag warn">15 s notice</span><span class="tag ok">Clear filters</span></div></div>
+
+    <!-- Legal: Terms / Refunds / Support -->
+    <div class="frame-col"><div class="phone"><div class="screen">
+      <div class="sbar"><span>9:41</span><span>●●●</span></div>
+      <div class="appbar"><span class="brandmark">skipwait.me</span><span class="lnk">← Back</span></div>
+      <div class="pad" style="flex:1;overflow:hidden">
+        <div class="card-s" style="padding:9px;border-color:#bcd3f7;margin-top:4px">
+          <div style="display:flex;justify-content:space-between"><span style="width:16px;height:16px;border-radius:6px;background:#e8f0fe"></span><span class="chip-s" style="background:#fffbeb;color:#b45309;border:1px solid #f5d9a8">Draft · pending legal review</span></div>
+          <div class="eyebrow-s" style="margin-top:6px">Refunds &amp; cancellation</div>
+          <div class="h-s" style="font-size:12px;line-height:1.05;margin-top:3px">You only pay for what actually happened.</div>
+          <div class="p-s" style="font-size:6.2px;margin-top:4px">Credits are reserved, not spent, until a Referrer acts. Subscriptions stop at the end of the cycle you already paid for.</div>
+        </div>
+        <div class="card-s" style="padding:7px;margin-top:5px"><div class="eyebrow-s">01</div><b style="font-size:7px">How a credit is used</b><div class="p-s" style="font-size:6px;margin-top:2px">Reserved on send · returned on withdraw or decline · used only on accept.</div></div>
+        <div class="card-s" style="padding:7px;margin-top:4px"><div class="eyebrow-s">03</div><b style="font-size:7px">Pro and Max subscriptions</b><div class="p-s" style="font-size:6px;margin-top:2px">Cancel renewal any time; access stays until cycle end.</div></div>
+      </div>
+      <div class="footer-s" style="font-size:6px;color:#64748b;text-align:center;font-weight:700">Terms · Privacy &amp; trust · Refunds · Support</div>
+    </div></div>
+    <div><div class="frame-name">Legal · Terms / Refunds / Support</div><div class="frame-file">Terms.tsx · RefundPolicy.tsx · Support.tsx · /terms /refunds /support</div></div>
+    <div class="tags"><span class="tag ok">P0 disclosure gate</span><span class="tag info">linked from Premium · Plans · Settings · 404</span><span class="tag warn">draft until legal review</span></div></div>
+
+  </div>
+  <div class="flownote">tap <span class="arr">→</span> skeleton (≥300 ms) <span class="arr">→</span> 15 s honest notice <span class="arr">→</span> data | empty | error (retry, list kept) · decline chip <span class="arr">→</span> confirm <span class="arr">→</span> POST · pause link <span class="arr">→</span> confirm <span class="arr">→</span> paused <span class="arr">→</span> new link</div>
 </section>
 
 <!-- ============ FOOTER ============ -->

@@ -62,4 +62,4 @@ Invalid job URL (Onboarding error) · withdraw on claimed request (safe error) �
 
 ## 8. Navigation map (updated)
 
-`/` → `/start`→`/request`→`/requests` → `/inbox` (referrer) · `/wall`→`/post-opportunity` · `/referrer` · `/premium`, `/plans` · `/share` · `/notifications` · `/settings` (→ `/components` new) · admin: `/admin/{activity,approvals,approvals/:id,payments,flow-health,privacy-requests,token-recovery}`.
+`/` → `/start`→`/request`→`/requests` → `/inbox` (referrer) · `/wall`→`/post-opportunity` · `/referrer` · `/premium`, `/plans` · `/share` · `/notifications` · `/settings` (→ `/components`, `/terms`, `/refunds`, `/support`) · `/privacy` ↔ `/terms` ↔ `/refunds` ↔ `/support` (policy footer nav) · `/premium`, `/plans` → `/refunds` · 404 → `/support` · admin: `/admin/{activity,approvals,approvals/:kind/:id,payments,flow-health,privacy-requests,token-recovery,users}` — all share `AdminNav` (2026-09-05).
