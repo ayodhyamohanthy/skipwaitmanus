@@ -105,6 +105,9 @@ app.get("/api/health", async (_req, res) => {
   res.set("Cache-Control", "no-store");
   // Boot-time schema reconcile runs fire-and-forget; report the flag as-is so
   // CI can distinguish "not yet run" from "column heal applied".
+  // Self-heal: if the boot-time reconcile failed (DB not ready), retry on
+  // health checks — the information_schema probe makes it idempotent.
+  if (!isSchemaReconciled()) void reconcileSchema().catch(() => {});
   res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled() });
 });
 
