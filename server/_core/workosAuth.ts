@@ -50,6 +50,9 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   await db.upsertUser({ openId, name, email, loginMethod: "workos", lastSignedIn: new Date() });
   const account = await db.getUserByOpenId(openId);
   if (!account) return undefined;
+  // Same suspension choke point as resolveDevIdentity: the WorkOS JWT path
+  // loads the row here, so a suspended account resolves as signed out.
+  if (account.suspended) return undefined;
   const primaryEmail: DevEmailAddress | null = email
     ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } }
     : null;

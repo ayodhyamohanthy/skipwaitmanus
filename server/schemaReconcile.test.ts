@@ -24,7 +24,7 @@ async function loadReconcileModule() {
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
-  existingColumns = ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt"];
+  existingColumns = ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended"];
   executeCalls = 0;
   alterStatements.length = 0;
   dbRef = {
@@ -57,12 +57,13 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["jobs.compensation", "referralRequests.savedAt"],
+      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended"],
       skipped: ["companyOpportunities.compensation"],
     });
     expect(alterStatements).toEqual([
       "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
       "ALTER TABLE `referralRequests` ADD COLUMN `savedAt` TIMESTAMP NULL",
+      "ALTER TABLE `users` ADD COLUMN `suspended` BOOLEAN NOT NULL DEFAULT false",
     ]);
     expect(isSchemaReconciled()).toBe(true);
   });
@@ -74,7 +75,7 @@ describe("boot-time schema reconcile", () => {
 
     expect(result).toEqual({
       applied: [],
-      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt"],
+      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended"],
     });
     expect(alterStatements).toEqual([]);
     expect(isSchemaReconciled()).toBe(true);
@@ -85,13 +86,13 @@ describe("boot-time schema reconcile", () => {
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
 
     await reconcileSchema();
-    expect(alterStatements).toHaveLength(2);
+    expect(alterStatements).toHaveLength(3);
 
     executeCalls = 0;
     const again = await reconcileSchema();
     expect(again).toEqual({ applied: [], skipped: [] });
     expect(executeCalls).toBe(0);
-    expect(alterStatements).toHaveLength(2);
+    expect(alterStatements).toHaveLength(3);
     expect(isSchemaReconciled()).toBe(true);
   });
 

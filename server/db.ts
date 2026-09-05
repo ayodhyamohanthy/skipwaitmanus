@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
@@ -65,6 +65,20 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
+export async function listUsersAdmin(limit = 100) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));
+}
+export async function setUserSuspended(userId: number, suspended: boolean) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.update(users).set({ suspended }).where(eq(users.id, userId));
+  return { userId, suspended };
+}
+export async function isUserSuspended(userId: number) {
+  const db = await getDb(); if (!db) return false;
+  const [row] = await db.select({ suspended: users.suspended }).from(users).where(eq(users.id, userId)).limit(1);
+  return Boolean(row?.suspended);
+}
 
 export async function createResumeUploadSession(ownerId: number, input: { fileName: string; mimeType: string; expectedSize: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -612,7 +626,7 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
     if (Number(updated[0].affectedRows) !== 1) throw new Error("This referral request has already been reviewed");
     await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: message || "Your Referrer has reviewed your Referral Request." });
     if (input.decision === "approved") await grantPendingActionRewards(userId, "referrer");
-    return { status: input.decision, companyDomain: current.companyDomain, declineReason: input.decision === "declined" ? input.declineReason ?? "cannot_support" : undefined };
+    return { status: input.decision, companyDomain: current.companyDomain, jobSeekerId: current.jobSeekerId, declineReason: input.decision === "declined" ? input.declineReason ?? "cannot_support" : undefined };
   });
 }
 
@@ -771,7 +785,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   const update = await db.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, requestId), isNull(referralRequests.referrerId)));
   if (Number(update[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
   await db.insert(notifications).values({ userId: request[0].jobSeekerId, category: "status", title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." });
-  return { requestId, claimed: true };
+  return { requestId, claimed: true, jobSeekerId: request[0].jobSeekerId, companyDomain: request[0].company };
 }
 
 export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
@@ -903,6 +917,20 @@ export async function listMessages(userId: number) { const db = await getDb(); i
 export async function sendMessage(userId: number, input: { recipientId: number; body: string; referralRequestId?: number }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(messages).values({ senderId: userId, recipientId: input.recipientId, body: input.body, referralRequestId: input.referralRequestId }); await db.insert(notifications).values({ userId: input.recipientId, category: "message", title: "New message", body: "You have a new message in Bridge." }); return { id: Number(result[0].insertId) }; }
 export async function listNotifications(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)); }
 export async function markNotificationRead(userId: number, notificationId: number) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId))); return { success: true }; }
+export async function countRecentMessagesBySender(userId: number, since: Date) {
+  const db = await getDb(); if (!db) return 0;
+  const [rows] = await db.select({ count: sql<number>`count(*)` }).from(messages).where(and(eq(messages.senderId, userId), gt(messages.createdAt, since)));
+  return Number(rows?.count ?? 0);
+}
+export async function getUserEmailById(userId: number) {
+  const db = await getDb(); if (!db) return null;
+  const [row] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  return row?.email ?? null;
+}
+export async function createNotification(userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) {
+  const db = await getDb(); if (!db) return;
+  await db.insert(notifications).values({ userId, category, title, body });
+}
 
 export async function getDashboardStats(userId: number) {
   const db = await getDb(); if (!db) return { savedRoles: 0, activeReferralRequests: 0, incomingReferralRequests: 0, introductionsMade: 0, conversationsStarted: 0, peopleHired: 0 };

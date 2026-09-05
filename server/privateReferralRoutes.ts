@@ -52,10 +52,14 @@ export type PrivateReferralRouteDeps = {
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
-  claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean }>;
+  claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
-  oneClickReviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: "role_not_a_fit" | "cannot_support" | "timing" }) => Promise<{ status: string; companyDomain: string; declineReason?: string }>;
+  oneClickReviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: "role_not_a_fit" | "cannot_support" | "timing" }) => Promise<{ status: string; companyDomain: string; jobSeekerId?: number; declineReason?: string }>;
+  countRecentMessagesBySender?: (userId: number, since: Date) => Promise<number>;
+  getUserEmailById?: (userId: number) => Promise<string | null>;
+  createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
+  sendEmail?: (input: { to: string; subject: string; html: string }) => Promise<{ sent: boolean; reason?: string }>;
   prepareReferrerReviewEmailNotifications?: (requestId: number) => Promise<Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }>>;
   resolveReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<{ requestId: number }>;
   consumeReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<void>;
@@ -98,10 +102,17 @@ export type PrivateReferralRouteDeps = {
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
   listAdminApprovalQueue?: (limit?: number) => Promise<unknown[]>;
   resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
+  listJobs?: (input: { query?: string; location?: string }) => Promise<unknown[]>;
+  listSavedRoles?: (userId: number) => Promise<unknown[]>;
+  toggleSavedRole?: (userId: number, jobId: number) => Promise<{ saved: boolean }>;
+  listUsersAdmin?: (limit?: number) => Promise<unknown[]>;
+  setUserSuspended?: (userId: number, suspended: boolean) => Promise<{ userId: number; suspended: boolean }>;
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  const notifyInApp = (userId: number | undefined, title: string, body: string) => { if (!userId) return; void deps.createNotification?.(userId, "status", title, body).catch(() => undefined); };
+  const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
   const privateDocumentMimeTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
   const parseRawPrivateDocument = express.raw({ type: privateDocumentMimeTypes, limit: "10mb" });
   const privateDocumentPrefix = (identity: Identity) => `skipwait/private-referrals/${identity.account.openId}/`;
@@ -142,6 +153,36 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   app.get("/api/opportunities", async (_req, res) => {
     try { res.json({ opportunities: await deps.listPublicCompanyOpportunities() }); } catch { res.status(500).json({ error: "We could not load opportunities right now" }); }
+  });
+  app.get("/api/jobs", async (req, res) => {
+    try {
+      const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined;
+      const location = typeof req.query.location === "string" ? req.query.location.slice(0, 120) : undefined;
+      const jobs = await deps.listJobs?.({ query, location }) ?? [];
+      res.set("Cache-Control", "public, max-age=60");
+      res.json({ jobs: jobs.slice(0, 50) });
+    } catch { res.status(500).json({ error: "We could not load the job list right now" }); }
+  });
+  app.get("/api/saved-roles", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to see your saved roles" });
+      if (!deps.listSavedRoles) return res.status(503).json({ error: "Saved roles are unavailable right now" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ saved: await deps.listSavedRoles(identity.account.id) });
+    } catch { res.status(500).json({ error: "We could not load your saved roles" }); }
+  });
+  app.post("/api/saved-roles/:jobId/toggle", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const jobId = Number(req.params.jobId);
+      if (!identity) return res.status(401).json({ error: "Sign in to save a role" });
+      if (!Number.isInteger(jobId) || jobId <= 0) return res.status(400).json({ error: "Invalid job reference" });
+      if (!deps.toggleSavedRole) return res.status(503).json({ error: "Saved roles are unavailable right now" });
+      const result = await deps.toggleSavedRole(identity.account.id, jobId);
+      record({ actorUserId: identity.account.id, action: result.saved ? "saved_role.saved" : "saved_role.removed", outcome: "success", resourceType: "saved_role", resourceId: jobId });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ saved: result.saved });
+    } catch { res.status(500).json({ error: "We could not update your saved roles" }); }
   });
   app.get("/api/notifications", async (req, res) => {
     try {
@@ -695,6 +736,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "One-click review is unavailable right now" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
       record({ actorUserId: identity.account.id, action: `company_referral.one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
+      if (decision === "approved") {
+        notifyInApp(result.jobSeekerId, `Your referral request was accepted at ${result.companyDomain}`, "A verified employee accepted your private request. Open My requests to continue the conversation.");
+        notifyEmail(result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
+      } else {
+        notifyInApp(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, "The employee can't help right now. Your request stays active for other employees.");
+        notifyEmail(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
+      }
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; res.status(/verify your work email|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
   });
@@ -708,6 +756,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId: link.requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
       await deps.consumeReferrerReviewEmailLink(identity.account.id, linkToken);
       record({ actorUserId: identity.account.id, action: `company_referral.email_one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: link.requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
+      if (decision === "approved") {
+        notifyInApp(result.jobSeekerId, `Your referral request was accepted at ${result.companyDomain}`, "A verified employee accepted your private request. Open My requests to continue the conversation.");
+        notifyEmail(result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
+      } else {
+        notifyInApp(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, "The employee can't help right now. Your request stays active for other employees.");
+        notifyEmail(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
+      }
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This private review link is unavailable"; res.status(/private review link|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
   });
@@ -757,6 +812,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to send a private message" });
       actorUserId = identity.account.id;
+      const recentCount = deps.countRecentMessagesBySender ? await deps.countRecentMessagesBySender(identity.account.id, new Date(Date.now() - 60 * 60 * 1000)) : 0;
+      if (recentCount >= 30) { record({ actorUserId: identity.account.id, action: "company_referral.conversation_rate_limited", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined }); return res.status(429).json({ error: "You're sending messages too quickly. Try again in a few minutes." }); }
       const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (!body) return res.status(400).json({ error: "Write a message before sending" });
@@ -812,7 +869,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to claim a referral request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId);
-      record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId });
+      record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain });
+      notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request. Open My requests to continue.`);
+      notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation. Their identity stays hidden until they choose to share it.</p>`);
       res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
@@ -849,6 +908,32 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const message = error instanceof Error ? error.message : "We could not record this approval decision";
       res.status(/already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
     }
+  });
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+      const users = await deps.listUsersAdmin?.(limit) ?? [];
+      record({ actorUserId: identity.account.id, action: "admin.users_viewed", outcome: "success", resourceType: "user_directory", metadata: { limit, userCount: users.length } });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ users });
+    } catch { res.status(500).json({ error: "We could not load the users directory" }); }
+  });
+  app.post("/api/admin/users/:userId/suspend", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); const userId = Number(req.params.userId);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      if (!Number.isInteger(userId) || userId <= 0) return res.status(400).json({ error: "Invalid user reference" });
+      if (typeof req.body?.suspended !== "boolean") return res.status(400).json({ error: "State whether the account should be suspended" });
+      if (userId === identity.account.id && req.body.suspended) return res.status(400).json({ error: "You cannot suspend your own administrator account" });
+      if (!deps.setUserSuspended) return res.status(503).json({ error: "User suspension is unavailable right now" });
+      const user = await deps.setUserSuspended(userId, req.body.suspended);
+      const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
+      record({ actorUserId: identity.account.id, action: req.body.suspended ? "admin.user_suspended" : "admin.user_unsuspended", outcome: "success", resourceType: "user", resourceId: userId, metadata: { note: typeof note === "string" ? note : null } });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ user });
+    } catch { res.status(500).json({ error: "We could not update this user account" }); }
   });
   app.get("/api/admin/payments/review", async (req, res) => {
     try {

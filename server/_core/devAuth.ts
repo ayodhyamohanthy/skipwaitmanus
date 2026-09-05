@@ -61,7 +61,7 @@ async function upsertDevUser(input: { openId: string; name: string; email: strin
   const existing = memoryAccounts.get(input.openId);
   const account: MemoryAccount = existing
     ? { ...existing, name: input.name, email: input.email, lastSignedIn: new Date() }
-    : { id: memoryAccounts.size + 1, openId: input.openId, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
+    : { id: memoryAccounts.size + 1, openId: input.openId, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), suspended: false, createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
   memoryAccounts.set(input.openId, account);
   return account;
 }
@@ -73,6 +73,12 @@ export async function resolveDevIdentity(req: Request): Promise<DevIdentity | un
     let account = (await db.getUserByOpenId(session.openId)) as MemoryAccount | undefined;
     if (!account && !(await databaseAvailable())) account = memoryAccounts.get(session.openId);
     if (!account) return undefined;
+    // Suspension choke point: every per-request identity (dev sessions, the
+    // WorkOS cookie fallback, tRPC createContext, and the private-route
+    // resolveIdentity wrapper) ends here, so a suspended account resolves as
+    // signed out everywhere with zero extra queries — the row is already in
+    // hand. Returning undefined maps to the routes' existing 401 handling.
+    if (account.suspended) return undefined;
     const primaryEmail = emailField(account.email);
     return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
   } catch {

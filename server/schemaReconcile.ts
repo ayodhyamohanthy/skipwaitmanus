@@ -8,6 +8,7 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "companyOpportunities", column: "compensation", definition: "TEXT NULL" },
   { table: "jobs", column: "compensation", definition: "TEXT NULL" },
   { table: "referralRequests", column: "savedAt", definition: "TIMESTAMP NULL" },
+  { table: "users", column: "suspended", definition: "BOOLEAN NOT NULL DEFAULT false" },
 ];
 
 let reconciled = false;

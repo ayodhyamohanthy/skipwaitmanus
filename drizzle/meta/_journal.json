@@ -246,6 +246,13 @@
       "when": 1796937600000,
       "tag": "0034_opportunity_compensation",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "5",
+      "when": 1797024000000,
+      "tag": "0036_users_suspended",
+      "breakpoints": true
     }
   ]
 }
