@@ -43,7 +43,7 @@ import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigure
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
-import { isSchemaReconciled, reconcileSchema } from "../schemaReconcile";
+import { getLastReconcileError, isSchemaReconciled, reconcileSchema } from "../schemaReconcile";
 
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -108,7 +108,7 @@ app.get("/api/health", async (_req, res) => {
   // Self-heal: if the boot-time reconcile failed (DB not ready), retry on
   // health checks — the information_schema probe makes it idempotent.
   if (!isSchemaReconciled()) void reconcileSchema().catch(() => {});
-  res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled() });
+  res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled(), schemaReconcileError: getLastReconcileError() });
 });
 
   // Dev session routes read JSON bodies, so they register after the parsers.

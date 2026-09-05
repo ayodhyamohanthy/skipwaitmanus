@@ -26,6 +26,7 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
 ];
 
 let reconciled = false;
+let lastError: string | null = null;
 let inFlight: Promise<{ applied: string[]; skipped: string[] }> | null = null;
 
 export async function reconcileSchema(): Promise<{ applied: string[]; skipped: string[] }> {
@@ -60,7 +61,8 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     console.log(`[schema-reconcile] applied=${applied.length} skipped=${skipped.length}${applied.length ? " -> " + applied.join(",") : ""}`);
   } catch (error) {
     // Never crash the server for reconcile failures; log and continue.
-    console.error("[schema-reconcile] failed (non-fatal):", error instanceof Error ? error.message : error);
+    lastError = error instanceof Error ? error.message : String(error);
+    console.error("[schema-reconcile] failed (non-fatal):", lastError);
   }
   return { applied, skipped };
   })();
@@ -69,3 +71,4 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
 }
 
 export function isSchemaReconciled() { return reconciled; }
+export function getLastReconcileError() { return lastError; }
