@@ -25,8 +25,14 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "companyOpportunities", column: "sponsoredTier", definition: "ENUM('standard','featured','spotlight') NULL" },
 ];
 
+// The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
+// from DESIRED_COLUMNS + DESIRED_TABLES above. Nothing request-controlled is
+// ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
+export type ReconcileStatementResult = { statement: string; ok: boolean; error?: string };
+
 let reconciled = false;
 let lastError: string | null = null;
+let lastResults: ReconcileStatementResult[] = [];
 let inFlight: Promise<{ applied: string[]; skipped: string[] }> | null = null;
 
 export async function reconcileSchema(): Promise<{ applied: string[]; skipped: string[] }> {
@@ -41,6 +47,12 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
   const run = (async () => {
   const applied: string[] = [];
   const skipped: string[] = [];
+  const results: ReconcileStatementResult[] = [];
+  // Each run reports only its own outcome: reset the per-statement results and
+  // the first-error pointer so a successful retry clears a previous failure.
+  lastError = null;
+  lastResults = results;
+  let failed = false;
   try {
     const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`);
     // mysql2's drizzle result HKT loses row typing on raw execute; cast like db.ts does.
@@ -51,17 +63,41 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       if (existing.has(`${table}.${column}`)) { skipped.push(`${table}.${column}`); continue; }
       const stmt = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
       try { await db.execute(sql.raw(stmt)); }
-      catch (err) { throw new Error(`[${stmt}] ${err instanceof Error ? err.message : String(err)}`); }
+      catch (err) {
+        // One failing statement must not hide the state of the rest: record it
+        // and keep going so a single metadata lock (or privilege) gap cannot
+        // leave the remaining DDL unattempted and unreported.
+        const error = err instanceof Error ? err.message : String(err);
+        results.push({ statement: stmt, ok: false, error });
+        if (!lastError) lastError = `[${stmt}] ${error}`;
+        failed = true;
+        console.error(`[schema-reconcile] statement failed (continuing): [${stmt}] ${error}`);
+        continue;
+      }
+      results.push({ statement: stmt, ok: true });
       applied.push(`${table}.${column}`);
     }
     for (const { table, createSql } of DESIRED_TABLES) {
       if (existingTables.has(table)) { skipped.push(table); continue; }
       try { await db.execute(sql.raw(createSql)); }
-      catch (err) { throw new Error(`[${createSql.slice(0, 60)}…] ${err instanceof Error ? err.message : String(err)}`); }
+      catch (err) {
+        const error = err instanceof Error ? err.message : String(err);
+        results.push({ statement: createSql, ok: false, error });
+        if (!lastError) lastError = `[${createSql.slice(0, 60)}…] ${error}`;
+        failed = true;
+        console.error(`[schema-reconcile] statement failed (continuing): [${createSql.slice(0, 60)}…] ${error}`);
+        continue;
+      }
+      results.push({ statement: createSql, ok: true });
       applied.push(`table:${table}`);
     }
-    reconciled = true;
-    console.log(`[schema-reconcile] applied=${applied.length} skipped=${skipped.length}${applied.length ? " -> " + applied.join(",") : ""}`);
+    // Only a run with zero statement failures counts as reconciled.
+    if (!failed) {
+      reconciled = true;
+      console.log(`[schema-reconcile] applied=${applied.length} skipped=${skipped.length}${applied.length ? " -> " + applied.join(",") : ""}`);
+    } else {
+      console.error(`[schema-reconcile] incomplete: applied=${applied.length} failed=${results.filter(item => !item.ok).length} skipped=${skipped.length}; will retry on the next trigger`);
+    }
   } catch (error) {
     // Never crash the server for reconcile failures; log and continue.
     lastError = error instanceof Error ? error.message : String(error);
@@ -75,3 +111,6 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
 
 export function isSchemaReconciled() { return reconciled; }
 export function getLastReconcileError() { return lastError; }
+// Per-statement outcome of the most recent run (empty until one has happened;
+// the array is reset at the start of every run).
+export function getLastReconcileResults() { return lastResults; }

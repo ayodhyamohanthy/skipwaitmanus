@@ -1,6 +1,7 @@
 import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { validatePrivateDocument } from "./documentValidation";
+import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
@@ -1045,6 +1046,31 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "admin.token_recovery_granted", outcome: "success", resourceType: "token_adjustment", resourceId: grant.adjustmentId, metadata: { recipientUserId, role, tokenCount } });
       res.status(201).json({ grant });
     } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "We could not create this token recovery grant" }); }
+  });
+  // Admin schema-migrate trigger: runs the reconciler's FIXED allowlist (the
+  // DESIRED_COLUMNS/DESIRED_TABLES DDL in schemaReconcile.ts) against the live
+  // DB on demand. No request input reaches the SQL layer, so there is no
+  // arbitrary-SQL surface; the admin guard is the only gate. Statement-level
+  // results come back so a partial run (e.g. one metadata-lock timeout) is
+  // diagnosable without shell access. GET is the no-run inspection snapshot.
+  const schemaSnapshot = () => ({ reconciled: isSchemaReconciled(), results: getLastReconcileResults(), firstError: getLastReconcileError() });
+  app.get("/api/admin/schema/reconcile", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      res.set("Cache-Control", "private, no-store");
+      res.json(schemaSnapshot());
+    } catch { res.status(500).json({ error: "We could not load the schema reconcile status" }); }
+  });
+  app.post("/api/admin/schema/reconcile", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      await reconcileSchema();
+      record({ actorUserId: identity.account.id, action: "admin.schema_reconcile_run", outcome: isSchemaReconciled() ? "success" : "failure", resourceType: "schema_reconcile", metadata: { statementCount: getLastReconcileResults().length, reconciled: isSchemaReconciled() } });
+      res.set("Cache-Control", "private, no-store");
+      res.json(schemaSnapshot());
+    } catch { res.status(500).json({ error: "We could not run the schema reconcile" }); }
   });
 }
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";

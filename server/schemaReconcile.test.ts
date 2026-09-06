@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Fake drizzle db: answers the information_schema probe from `existingColumns`,
-// records every ALTER TABLE, and is swappable per scenario (null / rejecting).
+// records every ALTER TABLE, and is swappable per scenario (null / rejecting /
+// failing one statement).
 type FakeDb = { execute: (query: unknown) => Promise<unknown> };
 
 let existingColumns: string[];
@@ -13,6 +14,16 @@ let dbRef: { current: FakeDb | null };
 const sqlText = (query: unknown): string => {
   const chunks = (query as { queryChunks?: Array<{ value?: string[] }> }).queryChunks ?? [];
   return chunks.map(chunk => (chunk?.value ?? []).join("")).join("");
+};
+
+const probeRows = (columns: string[]) => columns.map(column => {
+  const [TABLE_NAME, COLUMN_NAME] = column.split(".");
+  return { TABLE_NAME, COLUMN_NAME };
+});
+
+const probeAnswer = (query: unknown) => {
+  const text = sqlText(query);
+  return text.startsWith("SELECT TABLE_NAME") ? [probeRows(existingColumns), []] : null;
 };
 
 async function loadReconcileModule() {
@@ -31,13 +42,9 @@ beforeEach(() => {
     current: {
       execute: async (query: unknown) => {
         executeCalls += 1;
+        const probed = probeAnswer(query);
+        if (probed) return probed;
         const text = sqlText(query);
-        if (text.startsWith("SELECT TABLE_NAME")) {
-          return [existingColumns.map(column => {
-            const [TABLE_NAME, COLUMN_NAME] = column.split(".");
-            return { TABLE_NAME, COLUMN_NAME };
-          }), []];
-        }
         alterStatements.push(text);
         return [{}, []];
       },
@@ -52,7 +59,7 @@ afterEach(() => {
 describe("boot-time schema reconcile", () => {
   it("applies only the columns missing from information_schema", async () => {
     existingColumns = ["companyOpportunities.compensation"];
-    const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileResults } = await loadReconcileModule();
 
     const result = await reconcileSchema();
 
@@ -70,10 +77,12 @@ describe("boot-time schema reconcile", () => {
     ]);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(3);
     expect(isSchemaReconciled()).toBe(true);
+    expect(getLastReconcileResults()).toHaveLength(9);
+    expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
   });
 
   it("applies nothing when every desired column already exists", async () => {
-    const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileResults } = await loadReconcileModule();
 
     const result = await reconcileSchema();
 
@@ -84,6 +93,7 @@ describe("boot-time schema reconcile", () => {
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([]);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(3);
     expect(isSchemaReconciled()).toBe(true);
+    expect(getLastReconcileResults().map(entry => entry.ok)).toEqual([true, true, true]);
   });
 
   it("re-running after success is a silent no-op", async () => {
@@ -103,18 +113,101 @@ describe("boot-time schema reconcile", () => {
 
   it("is a silent no-op when no database is configured", async () => {
     dbRef.current = null;
-    const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileResults } = await loadReconcileModule();
 
     await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: [] });
     expect(isSchemaReconciled()).toBe(false);
+    expect(getLastReconcileResults()).toEqual([]);
   });
 
   it("never crashes when the database rejects the reconcile", async () => {
     dbRef.current = { execute: async () => { throw new Error("connection lost"); } };
-    const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
 
     await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: [] });
     expect(isSchemaReconciled()).toBe(false);
+    expect(getLastReconcileError()).toContain("connection lost");
+    expect(getLastReconcileResults()).toEqual([]);
     expect(vi.mocked(console.error).mock.calls[0]?.[0]).toBe("[schema-reconcile] failed (non-fatal):");
+  });
+
+  it("continues past a failing ALTER and reports per-statement results", async () => {
+    existingColumns = ["companyOpportunities.compensation"];
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        executeCalls += 1;
+        const probed = probeAnswer(query);
+        if (probed) return probed;
+        const text = sqlText(query);
+        if (text === "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL") throw new Error("Lock wait timeout exceeded; try restarting transaction");
+        alterStatements.push(text);
+        return [{}, []];
+      },
+    };
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
+
+    const result = await reconcileSchema();
+
+    // Statements after the failure still ran and were applied.
+    expect(result.applied).toEqual(["referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules"]);
+    // The failed statement is captured with its error, not applied.
+    const results = getLastReconcileResults();
+    expect(results).toHaveLength(9);
+    expect(results.filter(entry => entry.ok)).toHaveLength(8);
+    expect(results.find(entry => !entry.ok)).toEqual({
+      statement: "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
+      ok: false,
+      error: "Lock wait timeout exceeded; try restarting transaction",
+    });
+    // firstError names the failing statement; the run does not count as reconciled.
+    expect(getLastReconcileError()).toContain("ALTER TABLE `jobs` ADD COLUMN `compensation`");
+    expect(getLastReconcileError()).toContain("Lock wait timeout exceeded");
+    expect(isSchemaReconciled()).toBe(false);
+  });
+
+  it("keeps reconciled false and captures the first error when every statement fails", async () => {
+    existingColumns = []; // nothing pre-exists, so all 7 ALTERs + 3 CREATEs are attempted
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        const probed = probeAnswer(query);
+        if (probed) return probed;
+        throw new Error("Command denied to user");
+      },
+    };
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
+
+    await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: [] });
+    expect(isSchemaReconciled()).toBe(false);
+    expect(getLastReconcileError()).toContain("ALTER TABLE `companyOpportunities` ADD COLUMN `compensation`");
+    expect(getLastReconcileError()).toContain("Command denied to user");
+    const results = getLastReconcileResults();
+    expect(results).toHaveLength(10); // 7 columns + 3 tables attempted
+    expect(results.every(entry => !entry.ok)).toBe(true);
+  });
+
+  it("clears the recorded failure when a re-run succeeds", async () => {
+    existingColumns = ["companyOpportunities.compensation"];
+    let jobsAlterFails = true;
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        const probed = probeAnswer(query);
+        if (probed) return probed;
+        const text = sqlText(query);
+        if (text.includes("`jobs`") && jobsAlterFails) throw new Error("Lock wait timeout exceeded");
+        return [{}, []];
+      },
+    };
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
+
+    await reconcileSchema();
+    expect(isSchemaReconciled()).toBe(false);
+    expect(getLastReconcileError()).toContain("Lock wait timeout exceeded");
+
+    jobsAlterFails = false;
+    const retry = await reconcileSchema();
+    expect(retry.applied).toContain("jobs.compensation");
+    expect(getLastReconcileError()).toBeNull();
+    expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
+    expect(isSchemaReconciled()).toBe(true);
   });
 });

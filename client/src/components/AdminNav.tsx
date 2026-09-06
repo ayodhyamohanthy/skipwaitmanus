@@ -1,4 +1,4 @@
-import { Activity, CheckSquare, CreditCard, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake } from "lucide-react";
+import { Activity, CheckSquare, CreditCard, Database, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 
@@ -11,7 +11,7 @@ import { Brand } from "@/components/Brand";
  * quiet pills. On narrow viewports the row scrolls horizontally instead of
  * wrapping into a wall of buttons.
  */
-export type AdminSection = "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners";
+export type AdminSection = "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema";
 
 const sections: Array<{ id: AdminSection; href: string; label: string; icon: LucideIcon }> = [
   { id: "approvals", href: "/admin/approvals", label: "Approvals", icon: CheckSquare },
@@ -22,6 +22,7 @@ const sections: Array<{ id: AdminSection; href: string; label: string; icon: Luc
   { id: "activity", href: "/admin/activity", label: "Activity log", icon: Activity },
   { id: "flow-health", href: "/admin/flow-health", label: "Flow health", icon: HeartPulse },
   { id: "users", href: "/admin/users", label: "Users", icon: UsersRound },
+  { id: "schema", href: "/admin/schema", label: "Schema", icon: Database },
 ];
 
 export function AdminNav({ current, badge = "Admin only" }: { current: AdminSection; badge?: string }) {

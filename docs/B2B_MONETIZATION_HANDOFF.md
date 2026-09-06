@@ -60,6 +60,23 @@ tables (employerAccounts, profileUnlocks, partnerModules) and their columns are 
 3. After the tables/columns exist, the running app needs **no redeploy** — the
    endpoints work immediately (the reconciler/queries are live). Force the instance
    to pick it up by letting it idle ~10 min or via the Cloudflare dashboard restart.
+4. **In-app admin trigger** — while signed in as an admin, POST
+   `/api/admin/schema/reconcile` (or open `/admin/schema` in the UI) to run the
+   pending DDL from the app itself. Results per statement are returned
+   (`GET /api/admin/schema/reconcile` shows the last run's snapshot without
+   executing anything). The endpoint only ever runs the reconciler's fixed,
+   hardcoded allowlist (the expected columns + B2B tables in
+   `server/schemaReconcile.ts`) — no request input reaches the SQL layer — and
+   is guarded by the admin role check. It also continues past individual
+   statement failures now, so a single stuck statement no longer hides whether
+   the rest applied.
+   **Metadata-lock-timeout diagnosis:** if the failing statement times out
+   (`Lock wait timeout exceeded` on `ALTER TABLE companyOpportunities ADD
+   COLUMN compensation`), a long-running transaction/query on that table is
+   holding the metadata lock. Stop app traffic for ~2 minutes so open
+   transactions drain (or run the statement via the Azure Query Editor, which
+   bypasses app traffic entirely), then re-run the reconcile — every statement
+   is idempotent, so re-running only applies what is still missing.
 
 ## 5. Verification checklist once tables exist
 - `GET /api/partners` → 200 (empty list OK) — was 500.
