@@ -247,25 +247,25 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
   throw new Error("We could not create your Fast-Track Link");
 }
 
-export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true; referrerUserId: number } | undefined> {
   const normalizedCode = linkCode.trim().slice(0, 64);
   if (!normalizedCode) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true };
+  return { companyDomain: link.companyDomain, isActive: true, referrerUserId: link.referrerId };
 }
 
-export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<{ companyDomain: string; isActive: true; referrerUserId: number } | undefined> {
   const normalizedSlug = companySlug.trim().toLowerCase();
   const normalizedAlias = vanityAlias.trim().toLowerCase();
   if (!normalizedSlug || !isSafeFastTrackAlias(normalizedAlias)) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true };
+  return { companyDomain: link.companyDomain, isActive: true, referrerUserId: link.referrerId };
 }
 
 async function getActiveReferrerFastTrackLink(linkCode: string) {
@@ -912,6 +912,66 @@ export async function sendReferralConversationMessage(userId: number, requestId:
   await db.insert(notifications).values({ userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
   return { id: Number(result[0].insertId) };
 }
+
+export type DmThreadSummary = { counterpartUserId: number; counterpartLabel: string; lastMessageBody: string; lastMessageIsMine: boolean; lastMessageAt: Date; unreadCount: number };
+export type DmThreadMessage = { id: number; body: string; createdAt: Date; isMine: boolean };
+
+export async function dmCounterpartLabel(counterpartUserId: number) {
+  const db = await getDb(); if (!db) return "Member";
+  const rows = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain }).from(referrerFastTrackLinks).where(and(eq(referrerFastTrackLinks.referrerId, counterpartUserId), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  return rows[0] ? `Referrer · ${rows[0].companyDomain}` : "Member";
+}
+
+export async function hasActivePremiumSubscription(userId: number, now: Date = new Date()) {
+  const db = await getDb(); if (!db) return false;
+  const wallets = await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd }).from(tokenBalances).where(eq(tokenBalances.userId, userId));
+  return wallets.some(wallet => wallet.plan !== "free" && (wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing") && Boolean(wallet.subscriptionCurrentTermEnd && wallet.subscriptionCurrentTermEnd > now));
+}
+
+export async function dmThreadExists(userId: number, counterpartUserId: number) {
+  const db = await getDb(); if (!db) return false;
+  const rows = await db.select({ id: messages.id }).from(messages).where(and(isNull(messages.referralRequestId), or(and(eq(messages.senderId, userId), eq(messages.recipientId, counterpartUserId)), and(eq(messages.senderId, counterpartUserId), eq(messages.recipientId, userId))))).limit(1);
+  return rows.length > 0;
+}
+
+export async function dmRecipientExists(userId: number) {
+  const db = await getDb(); if (!db) return false;
+  const rows = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+  return rows.length > 0;
+}
+
+export async function listDmThreads(userId: number): Promise<DmThreadSummary[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: messages.id, body: messages.body, createdAt: messages.createdAt, senderId: messages.senderId, recipientId: messages.recipientId, readAt: messages.readAt }).from(messages).where(and(isNull(messages.referralRequestId), or(eq(messages.senderId, userId), eq(messages.recipientId, userId)))).orderBy(desc(messages.createdAt), desc(messages.id));
+  const threads = new Map<number, DmThreadSummary>();
+  for (const row of rows) {
+    const counterpartUserId = row.senderId === userId ? row.recipientId : row.senderId;
+    const existing = threads.get(counterpartUserId);
+    if (existing) { if (row.recipientId === userId && !row.readAt) existing.unreadCount += 1; continue; }
+    threads.set(counterpartUserId, { counterpartUserId, counterpartLabel: "Member", lastMessageBody: row.body.slice(0, 120), lastMessageIsMine: row.senderId === userId, lastMessageAt: row.createdAt, unreadCount: row.recipientId === userId && !row.readAt ? 1 : 0 });
+  }
+  await Promise.all(Array.from(threads.keys()).map(async counterpartUserId => {
+    const thread = threads.get(counterpartUserId);
+    if (thread) thread.counterpartLabel = await dmCounterpartLabel(counterpartUserId);
+  }));
+  return Array.from(threads.values());
+}
+
+export async function listDmThread(userId: number, counterpartUserId: number): Promise<{ counterpartUserId: number; counterpartLabel: string; messages: DmThreadMessage[] } | undefined> {
+  const db = await getDb(); if (!db) return undefined;
+  const rows = await db.select({ id: messages.id, body: messages.body, createdAt: messages.createdAt, senderId: messages.senderId }).from(messages).where(and(isNull(messages.referralRequestId), or(and(eq(messages.senderId, userId), eq(messages.recipientId, counterpartUserId)), and(eq(messages.senderId, counterpartUserId), eq(messages.recipientId, userId))))).orderBy(asc(messages.createdAt), asc(messages.id));
+  if (!rows.length) return undefined;
+  await db.update(messages).set({ readAt: new Date() }).where(and(isNull(messages.referralRequestId), eq(messages.recipientId, userId), eq(messages.senderId, counterpartUserId), isNull(messages.readAt)));
+  return { counterpartUserId, counterpartLabel: await dmCounterpartLabel(counterpartUserId), messages: rows.map(row => ({ id: row.id, body: row.body, createdAt: row.createdAt, isMine: row.senderId === userId })) };
+}
+
+export async function sendDirectMessage(userId: number, recipientId: number, body: string) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const result = await db.insert(messages).values({ senderId: userId, recipientId, body: body.slice(0, 3000), referralRequestId: null });
+  await db.insert(notifications).values({ userId: recipientId, category: "message", title: "New direct message", body: "You have a new message from a member." });
+  return { id: Number(result[0].insertId) };
+}
+
 
 export async function listMessages(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(messages).where(or(eq(messages.senderId, userId), eq(messages.recipientId, userId))).orderBy(desc(messages.createdAt)); }
 export async function sendMessage(userId: number, input: { recipientId: number; body: string; referralRequestId?: number }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(messages).values({ senderId: userId, recipientId: input.recipientId, body: input.body, referralRequestId: input.referralRequestId }); await db.insert(notifications).values({ userId: input.recipientId, category: "message", title: "New message", body: "You have a new message in Bridge." }); return { id: Number(result[0].insertId) }; }

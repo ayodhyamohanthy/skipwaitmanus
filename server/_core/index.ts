@@ -29,6 +29,7 @@ import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
+import { registerDmRoutes } from "../dmRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { materialErrorAlertMiddleware } from "../errorAlerting";
@@ -124,6 +125,10 @@ app.get("/api/health", async (_req, res) => {
   // B2B monetization surface: employer accounts, unlock credits, anonymized
   // talent discovery, sponsored roles, and contextual partner modules.
   registerEmployerRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, isEmployer: db.isEmployer, ensureEmployerAccount: db.ensureEmployerAccount, getEmployerAccount: db.getEmployerAccount, listAnonymizedSeekerProfiles: db.listAnonymizedSeekerProfiles, spendEmployerUnlockCredit: db.spendEmployerUnlockCredit, getUnlockedProfile: db.getUnlockedProfile, createNotification: db.createNotification, sponsorCompanyOpportunity: db.sponsorCompanyOpportunity, endCompanyOpportunitySponsorship: db.endCompanyOpportunitySponsorship, listSponsoredCompanyOpportunities: db.listSponsoredCompanyOpportunities, listEmployerOpportunities: db.listEmployerOpportunities, listPartnerModules: db.listPartnerModules, recordPartnerImpression: db.recordPartnerImpression, recordPartnerClick: db.recordPartnerClick, createPartnerModule: db.createPartnerModule, updatePartnerModule: db.updatePartnerModule, listAllPartnerModules: db.listAllPartnerModules, listEmployerSpendHistory: db.listEmployerSpendHistory, createRazorpayUnlockOrder: razorpayConfigured() ? razorpayOrderInPaise : undefined });
+  // Paid direct messages (X-style): premium (Pro/Max) members can DM referrers
+  // directly; replies inside an existing thread stay free for everyone.
+  registerDmRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, countRecentMessagesBySender: db.countRecentMessagesBySender });
+
   // Razorpay (INR domestic) + PayPal (USD global) checkout order creation.
   // Chargebee stays the fallback gateway for subscription management.
   registerPaymentRoutes(app, {
