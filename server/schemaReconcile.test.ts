@@ -64,7 +64,7 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules"],
+      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
       skipped: ["companyOpportunities.compensation"],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([
@@ -75,9 +75,9 @@ describe("boot-time schema reconcile", () => {
       "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredUntil` TIMESTAMP NULL",
       "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredTier` ENUM('standard','featured','spotlight') NULL",
     ]);
-    expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(3);
+    expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(4);
     expect(isSchemaReconciled()).toBe(true);
-    expect(getLastReconcileResults()).toHaveLength(9);
+    expect(getLastReconcileResults()).toHaveLength(10);
     expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
   });
 
@@ -87,13 +87,13 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["table:employerAccounts", "table:profileUnlocks", "table:partnerModules"],
+      applied: ["table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
       skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([]);
-    expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(3);
+    expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(4);
     expect(isSchemaReconciled()).toBe(true);
-    expect(getLastReconcileResults().map(entry => entry.ok)).toEqual([true, true, true]);
+    expect(getLastReconcileResults().map(entry => entry.ok)).toEqual([true, true, true, true]);
   });
 
   it("re-running after success is a silent no-op", async () => {
@@ -101,13 +101,13 @@ describe("boot-time schema reconcile", () => {
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
 
     await reconcileSchema();
-    expect(alterStatements).toHaveLength(9);
+    expect(alterStatements).toHaveLength(10);
 
     executeCalls = 0;
     const again = await reconcileSchema();
     expect(again).toEqual({ applied: [], skipped: [] });
     expect(executeCalls).toBe(0);
-    expect(alterStatements).toHaveLength(9);
+    expect(alterStatements).toHaveLength(10);
     expect(isSchemaReconciled()).toBe(true);
   });
 
@@ -149,11 +149,11 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     // Statements after the failure still ran and were applied.
-    expect(result.applied).toEqual(["referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules"]);
+    expect(result.applied).toEqual(["referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"]);
     // The failed statement is captured with its error, not applied.
     const results = getLastReconcileResults();
-    expect(results).toHaveLength(9);
-    expect(results.filter(entry => entry.ok)).toHaveLength(8);
+    expect(results).toHaveLength(10);
+    expect(results.filter(entry => entry.ok)).toHaveLength(9);
     expect(results.find(entry => !entry.ok)).toEqual({
       statement: "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
       ok: false,
@@ -181,7 +181,7 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileError()).toContain("ALTER TABLE `companyOpportunities` ADD COLUMN `compensation`");
     expect(getLastReconcileError()).toContain("Command denied to user");
     const results = getLastReconcileResults();
-    expect(results).toHaveLength(10); // 7 columns + 3 tables attempted
+    expect(results).toHaveLength(11); // 7 columns + 4 tables attempted
     expect(results.every(entry => !entry.ok)).toBe(true);
   });
 

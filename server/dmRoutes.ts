@@ -1,5 +1,5 @@
 import express, { type Express, type Request } from "express";
-import { dmRecipientExists, dmThreadExists, hasActivePremiumSubscription, listDmThread, listDmThreads, sendDirectMessage } from "./db";
+import { dmRecipientExists, dmThreadExists, hasActivePremiumSubscription, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -15,6 +15,7 @@ export type DmRouteDeps = {
   dmThreadExists?: typeof dmThreadExists;
   dmRecipientExists?: typeof dmRecipientExists;
   hasActivePremiumSubscription?: typeof hasActivePremiumSubscription;
+  isMutualFollow?: typeof isMutualFollow;
 };
 
 const DM_RATE_LIMIT_PER_HOUR = 30;
@@ -28,6 +29,7 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
   const threadExists = deps.dmThreadExists ?? dmThreadExists;
   const recipientExists = deps.dmRecipientExists ?? dmRecipientExists;
   const hasPremium = deps.hasActivePremiumSubscription ?? hasActivePremiumSubscription;
+  const mutualFollow = deps.isMutualFollow ?? isMutualFollow;
 
   app.get("/api/dms/compose/:userId", async (req, res) => {
     try {
@@ -38,9 +40,10 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (counterpartUserId === identity.account.id) return res.status(400).json({ error: "You cannot message yourself" });
       if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
       const existing = await threadExists(identity.account.id, counterpartUserId);
-      const allowed = existing || (await hasPremium(identity.account.id));
+      const isMutual = await mutualFollow(identity.account.id, counterpartUserId);
+      const allowed = existing || isMutual || (await hasPremium(identity.account.id));
       res.set("Cache-Control", "private, no-store");
-      res.json({ allowed, upgradeRequired: !allowed, threadExists: existing });
+      res.json({ allowed, upgradeRequired: !allowed, threadExists: existing, mutualFollow: isMutual });
     } catch { res.status(500).json({ error: "We could not check direct messaging" }); }
   });
 
@@ -82,7 +85,7 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
       if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
       const existing = await threadExists(actorUserId, counterpartUserId);
-      if (!existing && !(await hasPremium(actorUserId))) {
+      if (!existing && !(await hasPremium(actorUserId)) && !(await mutualFollow(actorUserId, counterpartUserId))) {
         record({ actorUserId, action: "dm.sent", outcome: "denied", resourceType: "direct_message", metadata: { reason: "premium_required" } });
         return res.status(402).json({ error: UPGRADE_ERROR, upgrade: true });
       }

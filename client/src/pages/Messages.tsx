@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, Crown, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/_core/auth";
 import { readApiJson } from "@/lib/apiResponse";
+import { FollowButton } from "@/components/FollowButton";
 
 type DmThreadSummary = { counterpartUserId: number; counterpartLabel: string; lastMessageBody: string; lastMessageIsMine: boolean; lastMessageAt: string; unreadCount: number };
 type DmThreadMessage = { id: number; body: string; createdAt: string; isMine: boolean };
@@ -21,7 +22,7 @@ function PaywallCard() {
   return <div data-skipwait-screen="dm-paywall" className="rounded-xl border border-blue-100 bg-blue-50/70 p-5">
     <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-[#0B57D0]"><Crown className="h-5 w-5" /></span>
     <h2 className="mt-4 text-xl font-semibold tracking-[-.02em] text-slate-900">Direct messaging is for members</h2>
-    <p className="mt-2 text-sm leading-6 text-slate-900">Pro members can message verified referrers directly and get answers faster. Pro includes 10 referral credits monthly — the core referral loop stays free for everyone.</p>
+    <p className="mt-2 text-sm leading-6 text-slate-900">Pro members can message verified referrers directly and get answers faster. Pro includes 10 referral credits monthly — the core referral loop stays free for everyone. Or follow each other to message free — many referrers follow back.</p>
     <Link href="/premium?role=job_seeker" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-3 text-sm font-bold text-white">Upgrade to Pro</Link>
   </div>;
 }

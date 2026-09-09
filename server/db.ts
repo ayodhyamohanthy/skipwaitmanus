@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -911,6 +911,62 @@ export async function sendReferralConversationMessage(userId: number, requestId:
   const result = await db.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
   await db.insert(notifications).values({ userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
   return { id: Number(result[0].insertId) };
+}
+
+
+export type FollowSummary = { followers: number; followingCount: number; isFollowingViewer: boolean; isFollowingTarget: boolean; isMutual: boolean; joinedMonthYear: string };
+export type FollowGraphEntry = { userId: number; label: string; followedAt: Date };
+
+export async function followUser(followerUserId: number, targetUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.insert(userFollows).values({ followerUserId, followingUserId: targetUserId }).onDuplicateKeyUpdate({ set: { followerUserId } });
+}
+
+export async function unfollowUser(followerUserId: number, targetUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.delete(userFollows).where(and(eq(userFollows.followerUserId, followerUserId), eq(userFollows.followingUserId, targetUserId)));
+}
+
+export async function isMutualFollow(userA: number, userB: number) {
+  const db = await getDb(); if (!db) return false;
+  const rows = await db.select({ followerUserId: userFollows.followerUserId, followingUserId: userFollows.followingUserId }).from(userFollows).where(and(inArray(userFollows.followerUserId, [userA, userB]), inArray(userFollows.followingUserId, [userA, userB])));
+  const aFollowsB = rows.some(row => row.followerUserId === userA && row.followingUserId === userB);
+  const bFollowsA = rows.some(row => row.followerUserId === userB && row.followingUserId === userA);
+  return aFollowsB && bFollowsA;
+}
+
+export async function followState(viewerUserId: number | undefined, targetUserId: number): Promise<FollowSummary> {
+  const db = await getDb();
+  const empty = { followers: 0, followingCount: 0, isFollowingViewer: false, isFollowingTarget: false, isMutual: false, joinedMonthYear: "" };
+  if (!db) return empty;
+  const [followersRows, followingRows, targetRows] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(userFollows).where(eq(userFollows.followingUserId, targetUserId)),
+    db.select({ count: sql<number>`count(*)` }).from(userFollows).where(eq(userFollows.followerUserId, targetUserId)),
+    db.select({ createdAt: users.createdAt }).from(users).where(eq(users.id, targetUserId)).limit(1),
+  ]);
+  const followers = Number(followersRows[0]?.count ?? 0);
+  const followingCount = Number(followingRows[0]?.count ?? 0);
+  let isFollowingViewer = false; let isFollowingTarget = false;
+  if (viewerUserId && viewerUserId !== targetUserId) {
+    const pairRows = await db.select({ followerUserId: userFollows.followerUserId, followingUserId: userFollows.followingUserId }).from(userFollows).where(and(inArray(userFollows.followerUserId, [viewerUserId, targetUserId]), inArray(userFollows.followingUserId, [viewerUserId, targetUserId])));
+    isFollowingViewer = pairRows.some(row => row.followerUserId === viewerUserId && row.followingUserId === targetUserId);
+    isFollowingTarget = pairRows.some(row => row.followerUserId === targetUserId && row.followingUserId === viewerUserId);
+  }
+  const joined = targetRows[0]?.createdAt;
+  const joinedMonthYear = joined ? joined.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }) : "";
+  return { followers, followingCount, isFollowingViewer, isFollowingTarget, isMutual: isFollowingViewer && isFollowingTarget, joinedMonthYear };
+}
+
+export async function listFollowers(userId: number): Promise<FollowGraphEntry[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ userId: userFollows.followerUserId, followedAt: userFollows.createdAt, companyDomain: referrerFastTrackLinks.companyDomain }).from(userFollows).leftJoin(referrerFastTrackLinks, and(eq(referrerFastTrackLinks.referrerId, userFollows.followerUserId), eq(referrerFastTrackLinks.isActive, true))).where(eq(userFollows.followingUserId, userId)).orderBy(desc(userFollows.createdAt)).limit(100);
+  return rows.map(row => ({ userId: row.userId, label: row.companyDomain ? `Referrer · ${row.companyDomain}` : "Member", followedAt: row.followedAt }));
+}
+
+export async function listFollowing(userId: number): Promise<FollowGraphEntry[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ userId: userFollows.followingUserId, followedAt: userFollows.createdAt, companyDomain: referrerFastTrackLinks.companyDomain }).from(userFollows).leftJoin(referrerFastTrackLinks, and(eq(referrerFastTrackLinks.referrerId, userFollows.followingUserId), eq(referrerFastTrackLinks.isActive, true))).where(eq(userFollows.followerUserId, userId)).orderBy(desc(userFollows.createdAt)).limit(100);
+  return rows.map(row => ({ userId: row.userId, label: row.companyDomain ? `Referrer · ${row.companyDomain}` : "Member", followedAt: row.followedAt }));
 }
 
 export type DmThreadSummary = { counterpartUserId: number; counterpartLabel: string; lastMessageBody: string; lastMessageIsMine: boolean; lastMessageAt: Date; unreadCount: number };

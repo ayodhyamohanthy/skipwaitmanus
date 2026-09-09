@@ -30,6 +30,7 @@ import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
+import { registerFollowRoutes } from "../followRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { materialErrorAlertMiddleware } from "../errorAlerting";
@@ -128,6 +129,8 @@ app.get("/api/health", async (_req, res) => {
   // Paid direct messages (X-style): premium (Pro/Max) members can DM referrers
   // directly; replies inside an existing thread stay free for everyone.
   registerDmRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, countRecentMessagesBySender: db.countRecentMessagesBySender });
+  // X-style follow graph: follow members, see counts, and unlock free mutual-follow messaging.
+  registerFollowRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
   // Razorpay (INR domestic) + PayPal (USD global) checkout order creation.
   // Chargebee stays the fallback gateway for subscription management.

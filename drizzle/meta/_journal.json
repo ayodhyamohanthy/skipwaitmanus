@@ -260,6 +260,13 @@
       "when": 1797110400000,
       "tag": "0037_b2b_monetization",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "5",
+      "when": 1797196800000,
+      "tag": "0038_user_follows",
+      "breakpoints": true
     }
   ]
 }

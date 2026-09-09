@@ -5,7 +5,7 @@ import { registerDmRoutes, type DmRouteDeps } from "./dmRoutes";
 
 type TestUser = { id: number };
 
-function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiumUsers?: number[]; existingThreads?: Array<[number, number]>; recentSendCount?: number } = {}) {
+function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiumUsers?: number[]; existingThreads?: Array<[number, number]>; recentSendCount?: number; mutualFollows?: Array<[number, number]> } = {}) {
   const app = express();
   app.use(express.json());
   const users = overrides.users ?? [{ id: 11 }, { id: 22 }, { id: 33 }];
@@ -22,6 +22,7 @@ function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiu
     dmThreadExists: async (userId, counterpartUserId) => threads.has([userId, counterpartUserId].sort((x, y) => x - y).join(":")),
     dmRecipientExists: async userId => users.some(user => user.id === userId),
     hasActivePremiumSubscription: async userId => premium.has(userId),
+    isMutualFollow: async (userA, userB) => (overrides.mutualFollows ?? []).some(([a, b]) => (a === userA && b === userB) || (a === userB && b === userA)),
     ...overrides,
   });
   return app;
@@ -72,6 +73,21 @@ describe("direct message paywall (X-style)", () => {
     const response = await request(buildApp({ premiumUsers: [11], recentSendCount: 30 })).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hi" });
     expect(response.status).toBe(429);
     expect(response.body.error).toMatch(/too quickly/i);
+  });
+
+  it("lets mutually-following non-premium members message for free (X-style)", async () => {
+    const app = buildApp({ mutualFollows: [[11, 22]] });
+    const sent = await request(app).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hey, we follow each other!" });
+    expect(sent.status).toBe(201);
+    const compose = await request(app).get("/api/dms/compose/22").set("x-test-user", "11");
+    expect(compose.body).toMatchObject({ allowed: true, upgradeRequired: false, mutualFollow: true });
+  });
+
+  it("still paywalls non-premium senders without a mutual follow", async () => {
+    const app = buildApp({ mutualFollows: [[33, 22]] });
+    const sent = await request(app).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hi" });
+    expect(sent.status).toBe(402);
+    expect(sent.body.upgrade).toBe(true);
   });
 
   it("requires sign-in for the inbox, thread, compose, and send surfaces", async () => {

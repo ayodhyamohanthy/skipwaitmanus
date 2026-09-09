@@ -1,4 +1,4 @@
-import { bigint, boolean, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar, customType } from "drizzle-orm/mysql-core";
+import { bigint, boolean, customType, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -196,6 +196,13 @@ export const referrerFastTrackLinks = mysqlTable("referrerFastTrackLinks", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   deactivatedAt: timestamp("deactivatedAt"),
 }, table => [uniqueIndex("referrer_fast_track_referrer_unique").on(table.referrerId), uniqueIndex("referrer_fast_track_code_unique").on(table.linkCode), uniqueIndex("referrer_fast_track_alias_unique").on(table.vanityAlias), index("referrer_fast_track_public_idx").on(table.linkCode, table.isActive), index("referrer_fast_track_alias_public_idx").on(table.vanityAlias, table.isActive), index("referrer_fast_track_company_idx").on(table.companyDomain, table.isActive)]);
+
+export const userFollows = mysqlTable("userFollows", {
+  id: int("id").autoincrement().primaryKey(),
+  followerUserId: int("followerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  followingUserId: int("followingUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("user_follows_pair_unique").on(table.followerUserId, table.followingUserId), index("user_follows_following_idx").on(table.followingUserId)]);
 
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),
