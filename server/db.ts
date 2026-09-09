@@ -1842,7 +1842,12 @@ export async function listPublicCompanyOpportunitiesWithSponsorship() {
 export async function listPartnerModules(input: { category?: PartnerModuleCategory; roleKeywords?: string[]; limit?: number } = {}) {
   const db = await getDb(); if (!db) return [];
   const safeLimit = Math.max(1, Math.min(input.limit ?? 3, 12));
-  const rows = await db.select().from(partnerModules).where(eq(partnerModules.isActive, true)).orderBy(desc(partnerModules.createdAt)).limit(60);
+  // The partner modules table can lag a fresh boot (self-heal applies it async);
+  // degrade to "no recommendations" instead of surfacing an error on the wall.
+  let rows: Array<typeof partnerModules.$inferSelect>;
+  try {
+    rows = await db.select().from(partnerModules).where(eq(partnerModules.isActive, true)).orderBy(desc(partnerModules.createdAt)).limit(60);
+  } catch { return []; }
   const keywords = (input.roleKeywords ?? []).map(word => word.trim().toLowerCase()).filter(word => word.length >= 3);
   const matchesRole = (module: typeof rows[number]) => {
     if (!keywords.length) return true;
