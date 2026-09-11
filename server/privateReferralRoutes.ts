@@ -71,9 +71,9 @@ export type PrivateReferralRouteDeps = {
   getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
   sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
   sendWorkEmailOtp?: (input: { email: string }) => Promise<{ sent: boolean; reason: string }>;
-  verifyWorkEmailOtp?: (input: { email: string; code: string }) => Promise<boolean>;
+  verifyWorkEmailOtp?: (input: { email: string; code: string; userId: number }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
-  hasVerifiedWorkEmailOtp?: (input: { email: string }) => Promise<boolean>;
+  hasVerifiedWorkEmailOtp?: (input: { email: string; userId: number }) => Promise<boolean>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
@@ -367,7 +367,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
       if (!deps.verifyWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
-      const verified = await deps.verifyWorkEmailOtp({ email, code });
+      const verified = await deps.verifyWorkEmailOtp({ email, code, userId: identity.account.id });
       if (verified) { record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ verified: true }); }
       await deps.registerWorkEmailOtpFailure?.({ email, code });
       record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
@@ -381,14 +381,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to verify a work email" });
       if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
       // Proof of ownership comes from exactly one of two authorities:
-      // 1. Server-side OTP proof: the verify endpoint consumed a valid code for
+      // 1. Server-side OTP proof: this exact account consumed a valid code for
       //    this exact address moments ago, and the OTP store still holds the
       //    receipt. This is checked against server state — the request body is
       //    never trusted to assert its own verification, because any client can
-      //    send `otpVerified: true` for an address it does not control.
+      //    send `otpVerified: true` for an address it does not control. The
+      //    receipt is matched on account id as well as address: a code consumed
+      //    by *anyone* for this address (the referrer login flow consumes one)
+      //    is not evidence that the caller controls it.
       // 2. The signed-in identity provider already reporting this address as
       //    verified on the authenticated user (AuthKit-managed email).
-      const otpProof = (await deps.hasVerifiedWorkEmailOtp?.({ email })) ?? false;
+      const otpProof = (await deps.hasVerifiedWorkEmailOtp?.({ email, userId: identity.account.id })) ?? false;
       const verifiedEmail: { emailAddress: string } | undefined = otpProof ? undefined : identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
       if (!otpProof && !verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
       if (otpProof) {

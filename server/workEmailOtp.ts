@@ -64,7 +64,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const delivery = await sendEmail({ to: email, code });
       return delivery.sent ? { sent: true, reason: "sent" } : { sent: false, reason: delivery.reason === "not_configured" ? "not_configured" : "delivery_failed" };
     },
-    async verifyCode(rawEmail: string, rawCode: string): Promise<boolean> {
+    async verifyCode(rawEmail: string, rawCode: string, options: { verifiedByUserId?: number } = {}): Promise<boolean> {
       const email = rawEmail.trim().toLowerCase();
       const code = rawCode.trim();
       if (!isValidWorkEmailOtpEmail(email) || !/^\d{6}$/.test(code)) return false;
@@ -75,7 +75,9 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       if (!row) return false;
       if (row.consumedAt !== null || row.expiresAt.getTime() <= now()) return false;
       if (row.attempts >= MAX_ATTEMPTS) return false;
-      await db.update(workEmailOtpCodes).set({ consumedAt: new Date(now()) }).where(eq(workEmailOtpCodes.id, row.id));
+      // Record WHO consumed the code alongside when. The receipt below is only
+      // meaningful if it can be attributed to a specific account.
+      await db.update(workEmailOtpCodes).set({ consumedAt: new Date(now()), verifiedByUserId: options.verifiedByUserId ?? null }).where(eq(workEmailOtpCodes.id, row.id));
       return true;
     },
     async registerFailedAttempt(rawEmail: string, rawCode: string): Promise<void> {
@@ -96,21 +98,30 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       }
     },
     /**
-     * Server-owned proof that this address completed the OTP flow.
+     * Server-owned proof that *this account* completed the OTP flow for an
+     * address.
      *
      * Enrollment must never trust a client-supplied "I verified this" flag: the
      * browser can send anything. `consumedAt` is written only by `verifyCode`
-     * after a correct, unexpired, un-exhausted code, so a recent timestamp here
-     * is genuine evidence the code was received and entered.
+     * after a correct, unexpired, un-exhausted code, so a recent timestamp is
+     * genuine evidence the code was received and entered.
+     *
+     * `userId` is required and matched against `verifiedByUserId`, because the
+     * address alone is not proof of anything: the referrer OTP login flow
+     * consumes a code for the same address, so a receipt keyed only on the email
+     * would let any signed-in account that merely *knows* a colleague's work
+     * address enroll as a verified employee of that company.
      */
-    async hasRecentVerification(rawEmail: string, withinMs: number = VERIFICATION_RECEIPT_MS): Promise<boolean> {
+    async hasRecentVerification(rawEmail: string, options: { userId: number; withinMs?: number }): Promise<boolean> {
+      const { userId, withinMs = VERIFICATION_RECEIPT_MS } = options;
+      if (!Number.isInteger(userId) || userId <= 0) return false;
       const email = rawEmail.trim().toLowerCase();
       if (!isValidWorkEmailOtpEmail(email)) return false;
       const db = await getDb();
       if (!db) return false;
       const rows = await db.select().from(workEmailOtpCodes).where(eq(workEmailOtpCodes.email, email));
       const timestamp = now();
-      return rows.some(row => row.consumedAt !== null && row.consumedAt.getTime() > timestamp - withinMs);
+      return rows.some(row => row.consumedAt !== null && row.verifiedByUserId === userId && row.consumedAt.getTime() > timestamp - withinMs);
     },
   };
 }

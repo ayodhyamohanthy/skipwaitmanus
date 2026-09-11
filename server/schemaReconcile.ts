@@ -24,6 +24,8 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "profiles", column: "anonymityOptIn", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "companyOpportunities", column: "sponsoredUntil", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "sponsoredTier", definition: "ENUM('standard','featured','spotlight') NULL" },
+  // 0039: binds a consumed work-email OTP to the account that consumed it.
+  { table: "workEmailOtpCodes", column: "verifiedByUserId", definition: "INT NULL" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

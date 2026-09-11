@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { setGlobalAccessToken } from "./accessToken";
+import { clearPrivateReferralBrowserData } from "@/lib/logoutPrivacy";
 import { trpc } from "@/lib/trpc";
 
 /**
@@ -94,6 +95,12 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     try { await auth.signOut(); } catch { /* already signed out */ }
     try { await fetch("/api/auth/workos/logout", { method: "POST", credentials: "include" }); } catch { /* best effort */ }
     try { sessionStorage.removeItem("manus-cookie"); } catch {}
+    // Clear the browser-side referral artifacts (saved attachments, the pending
+    // resume draft, and the target-role draft) before leaving. Without this a
+    // shared or public device keeps the previous user's uploaded resume metadata
+    // readable after sign-out, because ReferralRequest restores them from
+    // localStorage/sessionStorage on the next visit.
+    await clearPrivateReferralBrowserData();
     await utils.auth.me.invalidate();
     utils.auth.me.setData(undefined, null);
     window.location.href = "/";

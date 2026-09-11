@@ -267,6 +267,13 @@
       "when": 1797196800000,
       "tag": "0038_user_follows",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1797283200000,
+      "tag": "0039_work_email_otp_verified_by",
+      "breakpoints": true
     }
   ]
 }

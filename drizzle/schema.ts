@@ -162,6 +162,12 @@ export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   attempts: int("attempts").default(0).notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
   consumedAt: timestamp("consumedAt"),
+  // Which account consumed the code. A consumed code is proof that *somebody*
+  // received the address; binding it to the account that entered it is what
+  // makes it proof that *this* account controls the address. NULL for the
+  // referrer OTP login flow, which enrolls its own profile at sign-in and never
+  // needs to hand the receipt to a later request.
+  verifiedByUserId: int("verifiedByUserId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("work_email_otp_email_hash_idx").on(table.email, table.codeHash)]);
 

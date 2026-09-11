@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, Bookmark, CheckCircle2, ExternalLink, FileText, Inbox, LockKeyhole } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth, useUser } from "@/_core/auth";
 import { useLocation } from "wouter";
 import { AccountMenu } from "@/components/AccountMenu";
@@ -57,24 +57,37 @@ export default function MyCompanyInbox() {
     if (!response.ok) throw new Error(payload.error || "We could not complete that private company request");
     return payload;
   };
-  const loadInbox = async (nextScope = scope) => {
+  // `loadInbox` is fired from the scope effect and from every mutating action.
+  // Two guards keep those overlapping calls from corrupting the view: a
+  // monotonically increasing sequence number (only the newest call may commit
+  // its response, so a slow "New" response cannot overwrite a newer "Done" one)
+  // and a mounted flag (no state writes after unmount or sign-out).
+  const loadSeqRef = useRef(0);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; }, []);
+
+  const loadInbox = useCallback(async (nextScope: InboxScope = scope) => {
     if (!isSignedIn) return;
+    const seq = ++loadSeqRef.current;
+    const stale = () => !mountedRef.current || seq !== loadSeqRef.current;
     setLoading(true); setError(""); setLoadFailed(false);
     try {
       const payload = await companyFetch<{ requests?: CompanyInboxItem[] }>(`/api/company-referrals/inbox?scope=${nextScope}`);
+      if (stale()) return;
       setRequests(payload.requests || []);
-      try { const impactPayload = await companyFetch<{ summary?: PrivateImpactSummary }>("/api/referrer-impact/me"); setImpact(impactPayload.summary || null); } catch { setImpact(null); }
+      try { const impactPayload = await companyFetch<{ summary?: PrivateImpactSummary }>("/api/referrer-impact/me"); if (!stale()) setImpact(impactPayload.summary || null); } catch { if (!stale()) setImpact(null); }
       if (nextScope === "new") setNewRequestCount((payload.requests || []).length);
       else {
         const newPayload = await companyFetch<{ requests?: CompanyInboxItem[] }>("/api/company-referrals/inbox?scope=new");
+        if (stale()) return;
         setNewRequestCount((newPayload.requests || []).length);
       }
       setActiveIndex(0);
-    } catch (reason) { setLoadFailed(true); setError(reason instanceof Error ? reason.message : "We could not load your private company inbox"); }
-    finally { setLoading(false); }
-  };
+    } catch (reason) { if (stale()) return; setLoadFailed(true); setError(reason instanceof Error ? reason.message : "We could not load your private company inbox"); }
+    finally { if (!stale()) setLoading(false); }
+  }, [isSignedIn, scope]);
   const raceError = error.includes("Another employee accepted");
-  useEffect(() => { void loadInbox(scope); }, [isSignedIn, scope]);
+  useEffect(() => { void loadInbox(scope); }, [isSignedIn, scope, loadInbox]);
   const save = async (requestId: number, saved: boolean) => { setWorkingId(requestId); setError(""); try { await companyFetch(`/api/company-referrals/${requestId}/save`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ saved }) }); await loadInbox(scope); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not update this private request"); } finally { setWorkingId(null); } };
   const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
   const claim = async (requestId: number) => { setWorkingId(requestId); setError(""); try { await companyFetch(`/api/company-referrals/${requestId}/claim`, { method: "POST" }); go(`/referrer?request=${requestId}`); } catch (reason) { const message = reason instanceof Error ? reason.message : "This request is no longer available"; setError(message.includes("no longer available") ? "Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); } finally { setWorkingId(null); } };

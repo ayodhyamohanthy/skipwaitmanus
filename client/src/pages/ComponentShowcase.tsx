@@ -194,7 +194,8 @@ export default function ComponentsShowcase() {
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   const handleDialogSubmit = () => {
-    console.log("Dialog submitted with value:", dialogInput);
+    // No console.log here: this page is reachable from the app and the toast
+    // below already echoes the value, so logging it only leaked typed input.
     sonnerToast.success("Submitted successfully", {
       description: `Input: ${dialogInput}`,
     });

@@ -34,8 +34,41 @@ export function resolveWorkosOpenId(workosUserId: string): string {
 
 let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
 function workosJwks() {
-  if (!jwksCache) jwksCache = createRemoteJWKSet(new URL("https://api.workos.com/sso/jwks/client_01M17TTFJ6784B1CN6MHAHB60Y/"));
+  // The JWKS endpoint is per-client. Sourcing it from configuration (instead of
+  // the literal client id that used to be inlined here) keeps the trust anchor
+  // and the client the server claims to be in the same place — rotating
+  // WORKOS_CLIENT_ID without editing source no longer leaves the server
+  // verifying against a stale key set.
+  const clientId = process.env.WORKOS_CLIENT_ID;
+  if (!clientId) throw new Error("WORKOS_CLIENT_ID is not configured");
+  if (!jwksCache) jwksCache = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}/`));
   return jwksCache;
+}
+
+/**
+ * Resolve a post-sign-in redirect target from an OAuth `state` value.
+ *
+ * `state` is round-tripped through the identity provider, so it is fully
+ * attacker-controllable at the callback: anyone can hand a victim a crafted
+ * `/api/auth/workos/callback?...&state=return=<target>` link. Only same-origin
+ * absolute paths are therefore honoured; anything that could leave the origin
+ * (absolute URLs, protocol-relative `//host`, backslash variants browsers
+ * normalise into slashes, or embedded control characters) falls back.
+ */
+export function safeReturnPath(candidate: string | undefined | null, fallback: string): string {
+  if (!candidate) return fallback;
+  let decoded = candidate;
+  try {
+    decoded = decodeURIComponent(candidate);
+  } catch {
+    // Malformed percent-encoding: never hand a half-decoded value to redirect().
+    return fallback;
+  }
+  if (!decoded.startsWith("/")) return fallback;
+  // "//evil.com" and "/\evil.com" are treated as protocol-relative by browsers.
+  if (decoded.startsWith("//") || decoded.startsWith("/\\")) return fallback;
+  if (/[\u0000-\u001f\u007f\\]/.test(decoded)) return fallback;
+  return decoded;
 }
 
 /** Verify a WorkOS access JWT (Bearer) and map it to the app identity. */
@@ -131,7 +164,12 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
         const token = await sdkCreateSessionToken(openId, name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
-        const returnTo = state.startsWith("return=") ? decodeURIComponent(state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
+        // `state` is attacker-controllable at this point (see safeReturnPath),
+        // so the redirect target is validated rather than trusted.
+        const returnTo = safeReturnPath(
+          state.startsWith("return=") ? state.slice(7) : undefined,
+          safeReturnPath(process.env.WORKOS_POST_SIGNIN_PATH, "/")
+        );
         res.redirect(302, returnTo);
       } catch {
         res.status(502).send("We could not complete sign-in. Please try again.");

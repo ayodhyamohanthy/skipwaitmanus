@@ -532,7 +532,13 @@ export async function createReferrerReviewEmailLinks(requestId: number, recipien
 
 // ---- Opt-in private Slack triage delivery (encrypted at rest) ----
 function slackWebhookMasterKey(): Buffer {
-  const secret = process.env.JWT_SECRET || "skipwait-local-development-secret";
+  const secret = process.env.JWT_SECRET;
+  // Fail closed. This previously fell back to a literal committed to the repo,
+  // which meant that on any deployment where JWT_SECRET was unset every stored
+  // Slack webhook URL was encrypted under a publicly known key — anyone with
+  // database read access could decrypt the URLs of private referral triage
+  // channels and post into them.
+  if (!secret) throw new Error("JWT_SECRET is required to encrypt referrer Slack webhook URLs");
   return createHash("sha256").update(`skipwait:slack-webhook:${secret}`).digest();
 }
 function encryptSlackWebhookUrl(url: string): string {
