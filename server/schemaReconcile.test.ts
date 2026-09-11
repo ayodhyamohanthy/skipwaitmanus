@@ -211,4 +211,56 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
     expect(isSchemaReconciled()).toBe(true);
   });
+
+  it("reports the underlying driver error, not just drizzle's wrapper", async () => {
+    existingColumns = [];
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        const probed = probeAnswer(query);
+        if (probed) return probed;
+        // What drizzle-orm actually throws: the actionable MySQL error is on
+        // `.cause`, while `.message` is only "Failed query: ...\nparams: ".
+        const driver = new Error("ALTER command denied to user 'skipwait'@'%' for table 'companyOpportunities'");
+        const wrapped = new Error("Failed query: ALTER TABLE `companyOpportunities` ADD COLUMN `compensation` TEXT NULL\nparams: ");
+        (wrapped as { cause?: unknown }).cause = driver;
+        throw wrapped;
+      },
+    };
+    const { reconcileSchema, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
+
+    await reconcileSchema();
+
+    // Without the cause chain this was an undiagnosable "Failed query: ... params: ".
+    expect(getLastReconcileError()).toContain("ALTER command denied to user");
+    const failure = getLastReconcileResults().find(entry => !entry.ok);
+    expect(failure?.error).toContain("ALTER command denied to user");
+  });
+});
+
+describe("describeError", () => {
+  it("joins every distinct message in the cause chain", async () => {
+    const { describeError } = await loadReconcileModule();
+    const driver = new Error("Lock wait timeout exceeded; try restarting transaction");
+    const wrapped = new Error("Failed query: ALTER TABLE `x` ADD COLUMN `y` INT NULL\nparams: ");
+    (wrapped as { cause?: unknown }).cause = driver;
+
+    const described = describeError(wrapped);
+    expect(described).toContain("Failed query");
+    expect(described).toContain("Lock wait timeout exceeded");
+    expect(described.indexOf("Failed query")).toBeLessThan(described.indexOf("Lock wait timeout"));
+  });
+
+  it("does not repeat an identical nested message and terminates on cycles", async () => {
+    const { describeError } = await loadReconcileModule();
+    const error = new Error("same");
+    (error as { cause?: unknown }).cause = error;
+    expect(describeError(error)).toBe("same");
+  });
+
+  it("handles non-Error throwables and nullish input", async () => {
+    const { describeError } = await loadReconcileModule();
+    expect(describeError("boom")).toBe("boom");
+    expect(describeError(undefined)).toBe("Unknown error");
+    expect(describeError(null)).toBe("Unknown error");
+  });
 });
