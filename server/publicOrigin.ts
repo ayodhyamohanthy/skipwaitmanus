@@ -21,7 +21,9 @@ import type { Request } from "express";
  *     provider sends users back to.
  *  3. Request-derived — local development on arbitrary ports.
  */
-export function publicAppOrigin(req: Pick<Request, "protocol" | "get">): string {
+export function publicAppOrigin(
+  req: Pick<Request, "protocol" | "get">
+): string {
   const configured = process.env.PUBLIC_APP_ORIGIN?.trim();
   if (configured) return stripTrailingSlash(configured);
 

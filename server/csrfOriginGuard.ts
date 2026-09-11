@@ -29,10 +29,16 @@ import type { NextFunction, Request, Response } from "express";
  * `trust proxy` is enabled — a spoofable value is the wrong thing to trust here.
  */
 
+/** Returned to any caller whose Origin does not match the host it reached. */
+export const CROSS_SITE_BLOCKED_MESSAGE =
+  "This request was blocked because it came from another site.";
+
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 /** Extra hosts allowed to send state-changing requests, e.g. a staging origin. */
-export function allowedCsrfHosts(env: NodeJS.ProcessEnv = process.env): Set<string> {
+export function allowedCsrfHosts(
+  env: NodeJS.ProcessEnv = process.env
+): Set<string> {
   return new Set(
     (env.CSRF_ALLOWED_ORIGINS ?? "")
       .split(",")
@@ -44,7 +50,9 @@ export function allowedCsrfHosts(env: NodeJS.ProcessEnv = process.env): Set<stri
 }
 
 /** Host[:port] of an Origin/Referer-style value; undefined if it isn't a URL. */
-export function hostFromOriginLike(value: string | undefined | null): string | undefined {
+export function hostFromOriginLike(
+  value: string | undefined | null
+): string | undefined {
   if (!value) return undefined;
   try {
     const url = new URL(value);
@@ -54,14 +62,22 @@ export function hostFromOriginLike(value: string | undefined | null): string | u
   }
 }
 
-export function csrfOriginGuard(req: Request, res: Response, next: NextFunction) {
+export function csrfOriginGuard(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
   if (SAFE_METHODS.has(req.method)) return next();
 
   const originHeader = req.headers.origin;
   const refererHeader = req.headers.referer;
   // `Origin` is authoritative when present; some clients only send `Referer`.
   const candidate =
-    typeof originHeader === "string" ? originHeader : typeof refererHeader === "string" ? refererHeader : undefined;
+    typeof originHeader === "string"
+      ? originHeader
+      : typeof refererHeader === "string"
+        ? refererHeader
+        : undefined;
 
   if (candidate === undefined) return next();
 
@@ -73,5 +89,5 @@ export function csrfOriginGuard(req: Request, res: Response, next: NextFunction)
   if (candidateHost && candidateHost === requestHost) return next();
   if (candidateHost && allowedCsrfHosts().has(candidateHost)) return next();
 
-  return res.status(403).json({ error: "This request was blocked because it came from another site." });
+  return res.status(403).json({ error: CROSS_SITE_BLOCKED_MESSAGE });
 }

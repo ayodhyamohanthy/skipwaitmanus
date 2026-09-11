@@ -65,7 +65,9 @@ describe("work email OTP receipt is bound to the account that consumed it", () =
   it("records the consuming account id when a code is verified", async () => {
     reset([row()]);
     const service = createWorkEmailOtpService();
-    const verified = await service.verifyCode("ref@acme.com", "123456", { verifiedByUserId: 42 });
+    const verified = await service.verifyCode("ref@acme.com", "123456", {
+      verifiedByUserId: 42,
+    });
     expect(verified).toBe(true);
     expect(state.updates).toHaveLength(1);
     expect(state.updates[0]).toMatchObject({ verifiedByUserId: 42 });
@@ -77,27 +79,46 @@ describe("work email OTP receipt is bound to the account that consumed it", () =
     reset([row({ consumedAt, verifiedByUserId: 42 })]);
     const service = createWorkEmailOtpService();
     // Account 42 consumed the code; account 99 must not inherit the proof.
-    expect(await service.hasRecentVerification("ref@acme.com", { userId: 42 })).toBe(true);
-    expect(await service.hasRecentVerification("ref@acme.com", { userId: 99 })).toBe(false);
+    expect(
+      await service.hasRecentVerification("ref@acme.com", { userId: 42 })
+    ).toBe(true);
+    expect(
+      await service.hasRecentVerification("ref@acme.com", { userId: 99 })
+    ).toBe(false);
   });
 
   it("treats a receipt with no recorded account as unproven (login-flow and pre-migration rows)", async () => {
     reset([row({ consumedAt: new Date(), verifiedByUserId: null })]);
     const service = createWorkEmailOtpService();
-    expect(await service.hasRecentVerification("ref@acme.com", { userId: 42 })).toBe(false);
+    expect(
+      await service.hasRecentVerification("ref@acme.com", { userId: 42 })
+    ).toBe(false);
   });
 
   it("requires a caller identity before reporting any proof", async () => {
     reset([row({ consumedAt: new Date(), verifiedByUserId: 42 })]);
     const service = createWorkEmailOtpService();
-    expect(await service.hasRecentVerification("ref@acme.com", { userId: 0 })).toBe(false);
-    expect(await service.hasRecentVerification("ref@acme.com", { userId: -1 })).toBe(false);
-    expect(await service.hasRecentVerification("ref@acme.com", { userId: 1.5 })).toBe(false);
+    expect(
+      await service.hasRecentVerification("ref@acme.com", { userId: 0 })
+    ).toBe(false);
+    expect(
+      await service.hasRecentVerification("ref@acme.com", { userId: -1 })
+    ).toBe(false);
+    expect(
+      await service.hasRecentVerification("ref@acme.com", { userId: 1.5 })
+    ).toBe(false);
   });
 
   it("still expires a correctly-attributed receipt once the window has passed", async () => {
-    reset([row({ consumedAt: new Date(Date.now() - 11 * 60 * 1000), verifiedByUserId: 42 })]);
+    reset([
+      row({
+        consumedAt: new Date(Date.now() - 11 * 60 * 1000),
+        verifiedByUserId: 42,
+      }),
+    ]);
     const service = createWorkEmailOtpService();
-    expect(await service.hasRecentVerification("ref@acme.com", { userId: 42 })).toBe(false);
+    expect(
+      await service.hasRecentVerification("ref@acme.com", { userId: 42 })
+    ).toBe(false);
   });
 });

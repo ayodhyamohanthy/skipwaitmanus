@@ -11,7 +11,9 @@ import { safeReturnPath } from "./workosAuth";
 describe("safeReturnPath", () => {
   it("accepts same-origin absolute paths, including query and fragment", () => {
     expect(safeReturnPath("/dashboard", "/")).toBe("/dashboard");
-    expect(safeReturnPath("/requests?tab=open", "/")).toBe("/requests?tab=open");
+    expect(safeReturnPath("/requests?tab=open", "/")).toBe(
+      "/requests?tab=open"
+    );
     expect(safeReturnPath("/inbox#top", "/")).toBe("/inbox#top");
     expect(safeReturnPath("/", "/")).toBe("/");
   });
@@ -49,7 +51,11 @@ describe("safeReturnPath", () => {
 
   it("sanitises the configured fallback too, so a bad env value cannot redirect off-origin", () => {
     // Mirrors the callback wiring: the fallback is passed through the same guard.
-    expect(safeReturnPath(undefined, safeReturnPath("https://evil.example", "/"))).toBe("/");
-    expect(safeReturnPath(undefined, safeReturnPath("/settings", "/"))).toBe("/settings");
+    expect(
+      safeReturnPath(undefined, safeReturnPath("https://evil.example", "/"))
+    ).toBe("/");
+    expect(safeReturnPath(undefined, safeReturnPath("/settings", "/"))).toBe(
+      "/settings"
+    );
   });
 });
