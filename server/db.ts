@@ -501,15 +501,50 @@ export async function createCompanyReferralRequest(userId: number, input: { targ
   // A valid, private request always reserves one Job Seeker credit. Requests
   // without current coverage remain queued for manual administrator follow-up.
   const remaining = await spendToken(userId, "job_seeker");
-  const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
-  const jobId = Number(jobResult[0].insertId);
-  const isWaitingForCoverage = coverageStatus === "waiting_for_company_coverage";
-  const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, referrerId: fastTrackLink?.referrerId ?? null, personalPitch: input.personalPitch, status: "pending", waitingForCoverage: isWaitingForCoverage, coverageQueuedAt: isWaitingForCoverage ? new Date() : null });
-  const requestId = Number(requestResult[0].insertId);
-  for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
-  for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: fastTrackLink ? "A Fast-Track referral request is ready" : "A private referral request is available", body: fastTrackLink ? `A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.` : `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
-  const coverageInvite = !fastTrackLink && coverageStatus === "waiting_for_company_coverage" ? await createCompanyCoverageInvitation(userId, companyDomain) : undefined;
-  return { requestId, companyDomain, coverageStatus, coverageInviteCode: coverageInvite?.inviteCode, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining, fastTrack: Boolean(fastTrackLink) };
+  // spendToken commits its own transaction, and none of the writes below share
+  // it, so a failure here would leave the Job Seeker charged for a request that
+  // does not exist. Return the credit before surfacing the error.
+  let jobId: number | undefined;
+  let requestId: number | undefined;
+  try {
+    const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
+    jobId = Number(jobResult[0].insertId);
+    const isWaitingForCoverage = coverageStatus === "waiting_for_company_coverage";
+    const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, referrerId: fastTrackLink?.referrerId ?? null, personalPitch: input.personalPitch, status: "pending", waitingForCoverage: isWaitingForCoverage, coverageQueuedAt: isWaitingForCoverage ? new Date() : null });
+    requestId = Number(requestResult[0].insertId);
+    for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
+    for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: fastTrackLink ? "A Fast-Track referral request is ready" : "A private referral request is available", body: fastTrackLink ? `A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.` : `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
+    const coverageInvite = !fastTrackLink && coverageStatus === "waiting_for_company_coverage" ? await createCompanyCoverageInvitation(userId, companyDomain) : undefined;
+    return { requestId, companyDomain, coverageStatus, coverageInviteCode: coverageInvite?.inviteCode, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining, fastTrack: Boolean(fastTrackLink) };
+  } catch (error) {
+    await refundUnspentReferralCredit(userId).catch(refundError => console.error("[Credits] failed to refund a referral credit after a failed request:", refundError));
+    // The job row is only an orphan if the request row never landed; once the
+    // request exists it owns the job, so leave it alone.
+    if (jobId !== undefined && requestId === undefined) {
+      await db.delete(jobs).where(eq(jobs.id, jobId)).catch(() => undefined);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Compensating refund for a referral credit reserved by spendToken whose request
+ * never completed. Mirrors withdrawCompanyReferralRequest's rule — the credit
+ * returns to the monthly allowance when the cycle still matches and the
+ * allowance is not full, otherwise to the pack balance — so a failed send does
+ * not silently consume a paid credit.
+ */
+async function refundUnspentReferralCredit(userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update");
+    if (!wallet[0]) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
+    const refundToMonthly = wallet[0].monthlyCycleKey === currentMonthlyCycleKey() && wallet[0].monthlyCreditsRemaining < FREE_MONTHLY_ALLOWANCE;
+    const patch = refundToMonthly ? { monthlyCreditsRemaining: wallet[0].monthlyCreditsRemaining + 1 } : { balance: wallet[0].balance + 1 };
+    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet[0].id));
+    await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: 1, kind: "withdrawal_refund" });
+  });
 }
 
 const reviewEmailLifetimeMs = 7 * 24 * 60 * 60 * 1000;
@@ -1261,7 +1296,9 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
     if (!recipient[0]) throw new Error("That user account no longer exists");
     const duplicate = await tx.select({ id: adminTokenAdjustments.id }).from(adminTokenAdjustments).where(and(eq(adminTokenAdjustments.recipientUserId, input.recipientUserId), eq(adminTokenAdjustments.role, input.role), eq(adminTokenAdjustments.caseReference, caseReference))).limit(1);
     if (duplicate[0]) throw new Error("A recovery grant already exists for this user, role, and support reference");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1);
+    // Locked: newBalance is computed here and written as an absolute value, so a
+    // concurrent spend could otherwise be undone by this stale write.
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update");
     const newBalance = (wallet[0]?.balance ?? 0) + input.tokenCount;
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: newBalance }).where(eq(tokenBalances.id, wallet[0].id));
     else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: newBalance, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
@@ -1317,7 +1354,9 @@ export async function grantPendingActionRewards(userId: number, role: WalletRole
     await db.transaction(async tx => {
       const pending = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.kind, "invite_reward_pending")));
       if (pending.length === 0) return;
-      const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
+      // Locked for the same reason as spendToken: the balance is written back as
+      // an absolute value, so a concurrent write would be lost.
+      const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update");
       const total = pending.reduce((sum, row) => sum + Number(row.tokenCount), 0);
       if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + total }).where(eq(tokenBalances.id, wallet[0].id));
       else await tx.insert(tokenBalances).values({ userId, role, balance: total, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
@@ -1337,7 +1376,14 @@ export async function spendToken(userId: number, role: WalletRole) {
   if (!db) throw new Error("Database unavailable");
   await ensureTokenWallet(userId, role);
   return db.transaction(async tx => {
-    const current = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
+    // FOR UPDATE, not a plain read: the update below writes an absolute value
+    // computed here, so two concurrent spends (a double-tapped send button is
+    // enough) would both read the same balance, both compute the same decrement,
+    // and both write it — deducting one credit for two referral requests. The
+    // row lock makes the second transaction wait and re-read the fresh value.
+    // The employer equivalents (spendEmployerUnlockCredit, sponsorCompanyOpportunity)
+    // already lock for this reason.
+    const current = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update");
     if (!current[0]) throw new Error("No referral credit available");
     const normalized = normalizedWalletState(current[0]);
     const effective = { ...current[0], ...normalized.patch };
@@ -1427,7 +1473,12 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const rows = await tx.select().from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1);
+    // FOR UPDATE so two concurrent admin decisions (a double-submitted review,
+    // or two admins) cannot both pass the requires_review check below. The
+    // wallet credit is an atomic `balance + tokenCount` increment, so without
+    // the lock both increments would land and the user would be credited twice
+    // for one payment.
+    const rows = await tx.select().from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1).for("update");
     const row = rows[0];
     if (!row) throw new Error("This payment record does not exist");
     if (row.status !== "requires_review") throw new Error("This payment was already resolved");
@@ -1439,7 +1490,13 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
       else await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
       await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase" });
     }
-    await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? new Date() : null, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
+    const statusUpdate = await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? new Date() : null, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
+    // Belt and braces with the row lock above: if this decision lost the race,
+    // abort so the transaction rolls the wallet credit back rather than leaving
+    // a credit with no recorded decision.
+    if (Number((statusUpdate as unknown as Array<{ affectedRows: number }>)[0]?.affectedRows ?? 0) !== 1) {
+      throw new Error("This payment was already resolved");
+    }
     const metadata = { provider: row.provider, tokenCount: row.tokenCount, amount: row.amount, currency: row.currency, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
     return { paymentId, decision, tokenCount: row.tokenCount, userId: row.userId, role: row.role };
@@ -1458,7 +1515,9 @@ export async function refundCreditedPayment(adminUserId: number, paymentId: numb
     const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]), eq(paymentFulfillments.status, "credited"))).limit(1);
     const row = rows[0];
     if (!row) throw new Error("This payment cannot be refunded");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
+    // Locked: the debit is an absolute value derived from this read, so a
+    // concurrent credit would otherwise be lost by the stale write below.
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: Math.max(0, wallet[0].balance - row.tokenCount) }).where(eq(tokenBalances.id, wallet[0].id));
     await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment" });
     const updated = await tx.update(paymentFulfillments).set({ status: "refunded", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
@@ -1913,10 +1972,16 @@ export async function fulfillUnlockCreditPurchase(input: { eventId: string; user
   if (!pack) return { status: "ignored" as const, reason: "unknown_pack" };
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const duplicate = await tx.select({ id: operationalActivityLogs.id }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.action, "employer.unlock_credits_fulfilled"), eq(operationalActivityLogs.resourceId, input.eventId))).limit(1);
-    if (duplicate[0]) return { status: "duplicate" as const, credits: pack.credits };
-    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, input.userId)).limit(1))[0];
+    // Lock the employer row FIRST, then re-check for a duplicate delivery under
+    // that lock. Doing the duplicate check before taking the lock left a window
+    // where two concurrent deliveries of the same event both saw no log row and
+    // both credited the pack; and because the balance is written as an absolute
+    // value, a concurrent spendEmployerUnlockCredit (which does lock) could be
+    // overwritten, granting a free unlock. Serialising here closes both.
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, input.userId)).limit(1).for("update"))[0];
     if (!account) return { status: "ignored" as const, reason: "no_employer_account" };
+    const duplicate = await tx.select({ id: operationalActivityLogs.id }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.action, "employer.unlock_credits_fulfilled"), eq(operationalActivityLogs.resourceId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const, credits: account.credits };
     if (input.amount !== undefined && input.amount !== pack.amountInPaise) return { status: "ignored" as const, reason: "checkout_amount_mismatch" };
     const credits = account.credits + pack.credits;
     await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
