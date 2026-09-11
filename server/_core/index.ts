@@ -36,6 +36,7 @@ import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
+import { csrfOriginGuard } from "../csrfOriginGuard";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
 import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
@@ -100,6 +101,10 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // CSRF guard for cookie-authenticated mutations. Registered after the provider
+  // webhooks above (which authenticate by signature and are not browser-origin
+  // requests) and before every browser-facing route.
+  app.use(csrfOriginGuard);
 
 // Public health endpoint — returns the baked commit SHA for CI self-verification
 app.get("/api/health", async (_req, res) => {

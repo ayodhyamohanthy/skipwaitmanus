@@ -1,10 +1,12 @@
 import { WorkOS } from "@workos-inc/node";
 import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify } from "jose";
-import type { Express, Request } from "express";
+import { parse as parseCookieHeader } from "cookie";
+import { randomBytes, timingSafeEqual } from "node:crypto";
+import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./devAuth";
-import { getSessionCookieOptions } from "./cookies";
+import { getSessionCookieOptions, isSecureRequest } from "./cookies";
 
 /**
  * WorkOS AuthKit authentication for production skipwait.me.
@@ -71,6 +73,58 @@ export function safeReturnPath(candidate: string | undefined | null, fallback: s
   return decoded;
 }
 
+/**
+ * OAuth `state` binding.
+ *
+ * The callback used to accept whatever `state` arrived, so the flow had no CSRF
+ * protection: an attacker who completes their own AuthKit sign-in and captures
+ * the one-time `code` before it is consumed could lure a victim to the callback,
+ * and the victim's browser would receive a session cookie for the *attacker's*
+ * account — so anything the victim then uploaded landed in the attacker's
+ * account. It also let an attacker choose the post-sign-in redirect.
+ *
+ * `state` is now `<purpose>.<nonce>`, where the nonce is generated at flow start
+ * and stored in an httpOnly cookie. The callback refuses any `state` whose nonce
+ * does not match that cookie, which an attacker cannot set on the victim's
+ * browser.
+ */
+export const OAUTH_STATE_COOKIE = "skipwait_oauth_state";
+export const OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+const OAUTH_STATE_NONCE_BYTES = 16;
+
+export function createOAuthState(purpose: string): { state: string; nonce: string } {
+  const nonce = randomBytes(OAUTH_STATE_NONCE_BYTES).toString("hex");
+  return { state: `${purpose}.${nonce}`, nonce };
+}
+
+export function parseOAuthState(state: string): { purpose: string; nonce: string } | null {
+  // Split on the LAST dot: the purpose may be a `return=<path>` marker that
+  // itself contains dots, while the nonce is always trailing hex.
+  const index = state.lastIndexOf(".");
+  if (index <= 0) return null;
+  const purpose = state.slice(0, index);
+  const nonce = state.slice(index + 1);
+  if (!purpose || !/^[0-9a-f]{32}$/.test(nonce)) return null;
+  return { purpose, nonce };
+}
+
+/** Constant-time compare of two nonces, tolerating a missing or malformed one. */
+export function oauthNonceMatches(expected: string | undefined, received: string): boolean {
+  if (!expected || expected.length !== received.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(received));
+}
+
+export function oauthStateCookieOptions(req: Request) {
+  return {
+    httpOnly: true,
+    path: "/",
+    // Lax still sends the cookie on the provider's top-level GET redirect back
+    // to the callback, which is the only place it needs to arrive.
+    sameSite: "lax" as const,
+    secure: isSecureRequest(req),
+  };
+}
+
 /** Verify a WorkOS access JWT (Bearer) and map it to the app identity. */
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const { payload } = await jwtVerify(bearer, workosJwks(), { issuer: "https://api.workos.com" });
@@ -116,16 +170,22 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     const redirectUriFor = (req: { protocol: string; get: (h: string) => string | undefined }) =>
       configuredRedirectUri || `${req.protocol}://${req.get("host")}/api/auth/workos/callback`;
 
-    const authorizationUrl = (screenHint: "sign-in" | "sign-up", redirectUri: string, loginHint?: string) => workos.userManagement.getAuthorizationUrl({
-      provider: "authkit",
-      redirectUri,
-      state: "skipwait-auth",
-      screenHint,
-      ...(loginHint ? { loginHint } : {}),
-    });
+    // Begin a flow: mint the nonce, bind it to the caller's browser via a
+    // short-lived cookie, and hand the paired state to the provider.
+    const beginAuthorization = (req: Request, res: Response, screenHint: "sign-in" | "sign-up", purpose: string, loginHint?: string) => {
+      const { state, nonce } = createOAuthState(purpose);
+      res.cookie(OAUTH_STATE_COOKIE, nonce, { ...oauthStateCookieOptions(req), maxAge: OAUTH_STATE_TTL_MS });
+      return res.redirect(302, workos.userManagement.getAuthorizationUrl({
+        provider: "authkit",
+        redirectUri: redirectUriFor(req),
+        state,
+        screenHint,
+        ...(loginHint ? { loginHint } : {}),
+      }));
+    };
 
-    app.get("/api/auth/workos/sign-in", (req, res) => res.redirect(302, authorizationUrl("sign-in", redirectUriFor(req))));
-    app.get("/api/auth/workos/sign-up", (req, res) => res.redirect(302, authorizationUrl("sign-up", redirectUriFor(req))));
+    app.get("/api/auth/workos/sign-in", (req, res) => beginAuthorization(req, res, "sign-in", "skipwait-auth"));
+    app.get("/api/auth/workos/sign-up", (req, res) => beginAuthorization(req, res, "sign-up", "skipwait-auth"));
 
     // Administrator plane: only the durable skipwait.me admin identity may
     // proceed. Any other address is bounced before AuthKit is ever reached.
@@ -133,19 +193,24 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       const durableAdmin = (process.env.SKIPWAIT_ADMIN_EMAIL || "ayodhya@skipwait.me").trim().toLowerCase();
       const loginHint = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
       if (!loginHint || loginHint !== durableAdmin) return res.status(403).send("Administrator sign-in is restricted to the skipwait.me administrator account");
-      res.redirect(302, workos.userManagement.getAuthorizationUrl({
-        provider: "authkit",
-        redirectUri: redirectUriFor(req),
-        state: "skipwait-admin",
-        screenHint: "sign-in",
-        loginHint,
-      }));
+      return beginAuthorization(req, res, "sign-in", "skipwait-admin", loginHint);
     });
 
     app.get("/api/auth/workos/callback", async (req, res) => {
       const code = typeof req.query.code === "string" ? req.query.code : "";
       const state = typeof req.query.state === "string" ? req.query.state : "";
+      // The nonce is single-use: consume and clear it here, before any branch
+      // that can fail, so a replayed callback cannot reuse it.
+      const cookieNonce = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
+      res.clearCookie(OAUTH_STATE_COOKIE, oauthStateCookieOptions(req));
       if (!code) return res.status(400).send("Authentication could not be completed");
+      // CSRF binding: a `state` this browser did not initiate is refused, so a
+      // crafted callback link cannot sign the victim into the attacker's account.
+      const parsed = parseOAuthState(state);
+      if (!parsed || !oauthNonceMatches(cookieNonce, parsed.nonce)) {
+        console.warn("[Auth] WorkOS callback rejected: state did not match the initiating browser's nonce");
+        return res.status(400).send("This sign-in link is no longer valid. Start sign-in again from skipwait.me.");
+      }
       try {
         const auth = await workos.userManagement.authenticateWithCode({ clientId: process.env.WORKOS_CLIENT_ID!, code });
         const user = auth.user;
@@ -153,7 +218,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         // started from the admin gate (state=skipwait-admin), the authenticated
         // email must end precisely with the administrator domain. Anything else
         // is rejected here at the callback, not just the entry route.
-        if (state === "skipwait-admin") {
+        if (parsed.purpose === "skipwait-admin") {
           const adminDomain = (process.env.SKIPWAIT_ADMIN_EMAIL || "ayodhya@skipwait.me").split("@")[1]?.trim().toLowerCase() ?? "skipwait.me";
           const email = user.email.trim().toLowerCase();
           if (!email.endsWith(`@${adminDomain}`)) return res.status(403).send("Administrator sign-in requires a verified skipwait.me work email");
@@ -164,10 +229,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
         const token = await sdkCreateSessionToken(openId, name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
-        // `state` is attacker-controllable at this point (see safeReturnPath),
-        // so the redirect target is validated rather than trusted.
+        // The purpose marker is only reachable once the nonce has been verified
+        // above, and safeReturnPath still constrains it to a same-origin path.
         const returnTo = safeReturnPath(
-          state.startsWith("return=") ? state.slice(7) : undefined,
+          parsed.purpose.startsWith("return=") ? parsed.purpose.slice(7) : undefined,
           safeReturnPath(process.env.WORKOS_POST_SIGNIN_PATH, "/")
         );
         res.redirect(302, returnTo);
