@@ -1,101 +1,284 @@
-# skipwait.me — Design System & Screen Specification
+# skipwait.me — Brand-Level Design System Specification
+## Swiss Grid Clarity · Pentagram/Bierut Aesthetic
 
-_Coverage updated 2026-09-03 · Style: Breathing Space / calm professional (preset 11 Build) adapted to brand blue_
-_Screens live; specs below are the developer handoff contract._
+> "Typography is the voice of the brand. Grid is the architecture of trust."
 
 ---
 
-## 1. Design tokens (source of truth: `client/src/index.css` `@theme`)
+## 1. Design Philosophy
 
-| Token | Value | Notes |
+**Aesthetic**: Swiss Grid Clarity — Pentagram/Michael Bierut style
+**Mode**: Operate (task completion interface with brand authority)
+
+Core principles:
+- **Typography as language**: DM Sans with extreme weight/size hierarchy; headings carry personality, body carries clarity
+- **Grid as thought**: Mathematical 8px baseline grid; content on a 12-column responsive grid
+- **Restrained palette**: Black + white + one brand blue (#0B57D0); no decorative color
+- **Whitespace as structure**: 60%+ negative space ratio; every pixel earns its place
+- **Information architecture as decoration**: Visual hierarchy comes from content structure, not ornament
+
+---
+
+## 2. Color System
+
+### Primary Palette
+| Token | Hex | Usage |
 |---|---|---|
-| `--font-sans` / `--font-serif` | **DM Sans** | everywhere; body + headings |
-| `--color-background` | `#f8fafc` | app bg |
-| `--color-foreground` | `#0f172a` | body text |
-| `--color-card` / `--card-foreground` | `#ffffff` / `#0f172a` | cards, popovers |
-| `--color-primary` / `-foreground` | `#0b57d0` / `#ffffff` | brand blue, buttons, links |
-| `--color-secondary` / `-foreground` | `#f1f5f9` / `#334155` | secondary buttons |
-| `--color-muted` / `-foreground` | `#f8fafc` / `#64748b` | meta lines, helper text |
-| `--color-accent` / `-foreground` | `#e8f0fe` / `#0b57d0` | chips, selected states |
-| `--color-border` / `--color-input` | `#e2e8f0` | borders, inputs |
-| `--color-ring` | `#0b57d0` | focus ring |
-| `--radius` | `0.75rem` | rounded-12 surfaces |
+| `--color-background` | `#F8FAFC` | Page background — barely-there cool white |
+| `--color-foreground` | `#0F172A` | Primary text — near-black slate |
+| `--color-card` | `#FFFFFF` | Card/surface white |
+| `--color-primary` | `#0B57D0` | Brand blue — links, CTAs, accent |
+| `--color-primary-hover` | `#0847AD` | Hover state |
+| `--color-primary-light` | `#E8F0FE` | Tinted backgrounds |
+| `--color-primary-subtle` | `#DBEAFE` | Selection, focus rings |
 
-**Type** (see CSS rules): h1/h2 `font-weight:650; letter-spacing:-0.045em`; body normal; small/meta `text-sm` + muted-foreground.
+### Neutral Scale
+| Token | Hex | Usage |
+|---|---|---|
+| `--color-muted-foreground` | `#64748B` | Secondary text, labels |
+| `--color-border` | `#E2E8F0` | Borders, dividers |
+| `--color-input` | `#E2E8F0` | Input borders |
+| `--color-ring` | `#0B57D0` | Focus rings |
 
-**Focus**: `:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px }` on button/a/input. **Reduced motion**: `@media (prefers-reduced-motion: no-preference)` gates transitions; `prefers-reduced-motion` honored.
+### Semantic Colors
+| Token | Hex | Usage |
+|---|---|---|
+| `--color-success` | `#059669` | Success states, approved |
+| `--color-warning` | `#D97706` | Pending, attention |
+| `--color-error` | `#DC2626` | Errors, destructive |
+| `--color-info` | `#0B57D0` | Information (primary blue) |
 
-## 2. WCAG 2.1 AA contrast (verified)
+### Anti-Patterns (BANNED)
+- ❌ Violet → blue overrides already in place
+- ❌ Warm beige/tan backgrounds → cool white only
+- ❌ Decorative gradients on buttons
+- ❌ More than one accent color per view
 
-| Pair | Ratio | AA normal | AA large |
+---
+
+## 3. Typography
+
+### Font Stack
+```css
+--font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+```
+DM Sans is the voice: geometric, modern, slightly warm. No serif needed.
+
+### Type Scale (Swiss Hierarchy)
+| Level | Size | Weight | Letter-spacing | Line-height | Usage |
+|---|---|---|---|---|---|
+| Display | 3.5rem (56px) | 650 | -0.06em | 0.94 | Hero headline (Home only) |
+| H1 | 2.35rem (37px) | 650 | -0.06em | 0.96 | Page title |
+| H2 | 1.65rem (26px) | 650 | -0.055em | 0.98 | Section heading |
+| H3 | 1.25rem (20px) | 600 | -0.03em | 1.2 | Card title |
+| Body | 0.875rem (14px) | 400 | normal | 1.7 | Body text |
+| Caption | 0.6875rem (11px) | 700 | 0.13em | normal | Labels, badges (UPPERCASE) |
+| Micro | 0.625rem (10px) | 600 | 0.1em | normal | Timestamps, metadata |
+
+### Rules
+- **Heading weight**: 650 minimum (semi-bold+), never 400
+- **Body leading**: 1.6–1.7 for readability
+- **Label tracking**: +0.13em for uppercase 11px labels (the "Swiss kraft" feel)
+- **Never**: center-align body text, use script/decorative fonts
+
+---
+
+## 4. Spacing & Grid
+
+### Baseline: 8px Grid
+All spacing is multiples of 8px. Odd values (4px) for tight internal padding only.
+
+| Token | Value | Usage |
+|---|---|---|
+| `--space-1` | 4px | Inline icon gap |
+| `--space-2` | 8px | Tight internal padding |
+| `--space-3` | 12px | Input padding, small card padding |
+| `--space-4` | 16px | Card padding, list item gap |
+| `--space-5` | 20px | Section gap (mobile) |
+| `--space-6` | 24px | Section gap (desktop) |
+| `--space-8` | 32px | Major section divider |
+| `--space-10` | 40px | Page section gap |
+| `--space-12` | 48px | Hero section padding |
+| `--space-16` | 64px | Page top/bottom margin |
+
+### Layout Grid
+- **Max width**: 72rem (1152px) for main content; 32rem (512px) for single-column pages
+- **Columns**: 12-column grid with 24px gutters
+- **Breakpoints**: sm (640px), md (768px), lg (1024px)
+- **Card min-width**: 280px before wrapping
+
+---
+
+## 5. Components
+
+### 5.1 Buttons
+
+**Primary CTA** (one per section):
+```
+bg-[#0B57D0] text-white rounded-lg px-5 py-3 text-sm font-bold
+hover:bg-[#0847AD]
+min-height: 44px (touch target)
+```
+
+**Secondary**:
+```
+border border-slate-200 bg-white text-slate-900 rounded-lg px-4 py-2.5 text-sm font-semibold
+hover:border-blue-200 hover:bg-blue-50/30
+```
+
+**Ghost**:
+```
+text-sm font-semibold text-slate-600
+hover:text-slate-950
+```
+
+**Destructive**:
+```
+bg-rose-600 text-white rounded-lg px-4 py-2.5 text-sm font-bold
+hover:bg-rose-700
+```
+
+**Rules**:
+- One primary CTA per visible section — never two blue buttons side-by-side
+- Minimum touch target: 44×44px
+- Disabled: `opacity-35 cursor-not-allowed`
+
+### 5.2 Cards
+
+**Standard Card**:
+```
+rounded-xl border border-slate-200 bg-white p-5 shadow-sm
+```
+
+**Elevated Card** (interactive):
+```
+rounded-xl border border-slate-200 bg-white p-5 shadow-sm
+hover:border-blue-200 hover:bg-blue-50/30 transition
+```
+
+**Full-bleed Card** (wall items):
+```
+rounded-2xl border border-slate-200 bg-white p-7 shadow-sm
+```
+
+### 5.3 Inputs
+
+```
+w-full rounded-lg border border-slate-200 px-3 py-2.5 text-sm
+outline-none focus:border-[#0B57D0] focus:ring-2 focus:ring-blue-100
+placeholder:text-slate-400
+min-height: 44px
+```
+
+### 5.4 Badges & Tags
+
+**Status Badge**:
+```
+inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold
+```
+
+**Pill (kicker above heading)**: BANNED — no kicker-above-heading labels per design gate rules
+
+**Category Tag**:
+```
+inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700
+```
+
+### 5.5 Navigation
+
+**Desktop**: Horizontal links + primary CTA in header
+**Mobile**: Sheet (drawer) from right; hamburger icon with 44×44px touch target
+**Account menu**: Dropdown with avatar mark, role-labeled sections
+
+### 5.6 Skeleton Loading
+
+```
+animate-pulse rounded-xl border border-slate-200 bg-white p-4
+Inner: h-4 w-40 rounded bg-slate-100
+```
+
+---
+
+## 6. Iconography
+
+**Library**: Lucide React (tree-shakable, consistent stroke width)
+**Size**: 16px (inline), 20px (buttons), 24px (standalone), 28px (hero icons)
+**Color**: `currentColor` — inherits from text
+**Stroke width**: Default (1.5–2px)
+
+---
+
+## 7. Motion
+
+**Duration**: 150–200ms for micro-interactions; 300ms for page transitions
+**Easing**: `cubic-bezier(0.23, 1, 0.32, 1)` — smooth out, no bounce
+**Respect**: `prefers-reduced-motion: no-preference` guard on all animations
+
+---
+
+## 8. Responsive Rules
+
+| Breakpoint | Columns | Card layout | Nav |
 |---|---|---|---|
-| primary `#0b57d0` / white | 6.39 | ✅ | ✅ |
-| foreground `#0f172a` / card white | 17.85 | ✅ | ✅ |
-| muted-fg `#64748b` / card white | 4.76 | ✅ | ✅ |
-| muted-fg `#64748b` / bg `#f8fafc` | 4.55 | ✅ | ✅ |
-| accent-fg `#0b57d0` / accent `#e8f0fe` | 5.57 | ✅ | ✅ |
-| secondary `#334155` / `#f1f5f9` | 9.45 | ✅ | ✅ |
+| < 640px (mobile) | 1 | Stack | Hamburger + Sheet |
+| 640–1023px (tablet) | 2 | Grid 2-col | Horizontal links |
+| ≥ 1024px (desktop) | 2–3 | Grid 2–3 col | Full nav + sidebar |
 
-All key pairs meet AA. Keyboard nav: visible focus ring; logical tab order; `role`/`aria-label` on interactive surfaces (verified: MyRequests 3, Home 2, MyCompanyInbox + Referrer 1 each). Screen-reader: semantic headings, `aria-live` success regions (`data-referral-success`), labelled inputs.
+**Critical**: Every screen must be usable at 320px width. No horizontal scroll.
 
-## 3. Screen inventory (route → screen → states)
+---
 
-### Public / auth
-- `/` **Home** — marketing links; light states
-- `/start` **Onboarding** — multi-step, error state
-- `/referrer` **Referrer sign-in** — empty/error/loading
-- `/email-review/:token` **EmailReviewAction** — error
-- `/privacy` **TrustPrivacy** — static; policy footer nav
-- `/terms` **Terms** — static (PolicyPageShell; Draft pill until legal review)
-- `/refunds` **RefundPolicy** — static (PolicyPageShell; Draft pill until legal review)
-- `/support` **Support** — static; one mailto primary + self-serve links to `/premium`, `/requests`, `/settings`
+## 9. Accessibility
 
-### Job seeker
-- `/request` **ReferralRequest** — resume step, error, success (`data-referral-success`), compensation meta
-- `/requests` **MyRequests** — loading/empty/error/retry, withdraw dialog, progress, compensation
-- `/premium` **Premium** — ticket packs, error/retry
-- `/plans` **Plans** — subscription, error
-- `/wall` **OpportunityWall** — public opportunities, compensation meta, empty
-- `/conversation/:requestId` **ReferralConversation** — loading/error
+- **Contrast**: Text ≥ 4.5:1 against background (WCAG AA)
+- **Focus**: 3px solid `#BFDBFE` ring with 2px offset on all interactive elements
+- **Touch targets**: 44×44px minimum for all clickable elements
+- **Screen reader**: `aria-label` on icon-only buttons; `aria-live` on dynamic content
+- **Semantic HTML**: `<main>`, `<header>`, `<section>`, `<nav>`, `<footer>`
 
-### Referrer
-- `/inbox` **MyCompanyInbox** — tabs New/Saved/Completed, loading/empty/error, preview, decline chips, race copy, compensation
-- `/share` / `/share-card/:token` / `/fast/:linkCode` / `/refer/:company/:alias` — share/fast-track/vanity flows (error states)
+---
 
-### Admin
-- `/admin/activity` **AdminActivity** — activity log
-- `/admin/approvals` **AdminApprovalQueue** — unified queue, loading/empty/error/retry
-- `/admin/approvals/:kind/:id` **AdminApprovalRecord** — history, decision note
-- `/admin/flow-health` **AdminFlowHealth** — funnel stats + revenue
-- `/admin/payments` **AdminPaymentsReview** — payment review queue, refund
-- `/admin/privacy-requests` / `/admin/token-recovery` — admin tools
+## 10. Page-by-Page Design Direction
 
-### Shared components
-`Brand` · `StatusBadge` · `SeekerCreditsCard` / `ReferrerCreditsCard` (CreditMeter) · `MetricCard` · `CompanyInviteCard` · `ReferrerFastTrackCard` · `ZeroActivityShareCard` · `TokenTopUp`
+### Home (/)
+- **Mode**: Operate + Persuade hybrid
+- **Hero**: Display headline (56px), 2 clear paths (Seeker/Referrer), trust signals below fold
+- **Remove**: Decorative badges above heading
+- **Add**: Stronger typographic hierarchy, more whitespace, cleaner card borders
 
-## 4. State matrix (per AC: every screen has empty/loading/error/success)
+### Opportunity Wall (/wall)
+- **Mode**: Operate
+- **Card**: Company domain → role title (H1, 37px) → description → metadata badges
+- **Remove**: Multiple competing badges; reduce to one status indicator
+- **Add**: Bolder typography, clearer visual hierarchy
 
-| Screen | loading | empty | error | success |
-|---|---|---|---|---|
-| ReferralRequest | ✅ (skeleton) | — | ✅ | ✅ `data-referral-success` |
-| MyRequests | ✅ | ✅ | ✅ retry | ✅ (withdrawed state) |
-| MyCompanyInbox | ✅ | ✅ | ✅ | ✅ (accept/decline) |
-| Preemium/Plans | ✅ | ✅ | ✅ retry | ✅ |
-| OpportunityWall | ✅ | ✅ | ✅ | ✅ |
-| AdminApprovalQueue | ✅ | ✅ filtered-empty | ✅ retry | ✅ (optimistic badge) |
-| Settings | ✅ | "No verified work email yet" | ✅ | ✅ |
+### Job Explorer (/jobs)
+- **Mode**: Operate
+- **Grid**: 2-col card grid, each card with strong title hierarchy
+- **Search**: Prominent search bar, secondary location filter
+- **Add**: JobPosting structured data, better card design
 
-## 5. Reusable interaction patterns (from code)
+### Messages (/messages)
+- **Mode**: Operate
+- **Layout**: X-style thread list + conversation pane
+- **Cleaner**: Remove visual noise, stronger thread separation
 
-- **PendingItemCard**: Row1 title + StatusBadge(right) · Row2 muted (company · date · context) · Row3 summary · Row4 meta chips · Row5 actions.
-- **Optimistic admin decisions**: Approve/Reject update badge in-place, no full reload (API returns 409 on already-resolved → show `safeError`).
-- **One-tap referral accept + decline chips** with a confirm.
-- **Deterministic error surface**: `data-skipwait-error` cards with **Try again / Keep request**, plus `role="alert"`.
+### Settings (/settings)
+- **Mode**: Operate
+- **Sections**: Grouped by concern (Account, Notifications, Privacy, Billing)
+- **Cleaner**: Consistent card-based sections
 
-## 6. Compensation (added 2026-09-03, commit `5697760`)
+---
 
-A design audit found pay range absent from the whole flow + schema. Added end-to-end: free-text `compensation` on `jobs` + `companyOpportunities` (migration `0034`); surfaced on PostOpportunity (input), OpportunityWall (meta line), ReferralRequest (carried + submitted), MyRequests / MyCompanyInbox (meta line `normal-case`). Only rendered when present.
+## 11. Design Gate Compliance
 
-## 7. Responsive behavior
+Rules enforced by CI (`.github/workflows/design-gate.yml`):
+1. ❌ No kicker-above-heading labels
+2. ❌ No functional text < 11px
+3. ❌ No gray-on-tint contrast failures
+4. ❌ No `transition:height` animations
+5. ❌ One primary button per section
 
-`body { min-width: 320px }`; Tailwind utility responsive (sm/md/lg) throughout; touch-action manipulation; `-webkit-tap-highlight-color: transparent`. Key screens verified at 320px–desktop.
+---
+
+*Generated: 2026-09-12 · skipwait.me Design System v2.0*

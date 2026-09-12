@@ -58,6 +58,7 @@ export type PrivateReferralRouteDeps = {
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
   oneClickReviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: "role_not_a_fit" | "cannot_support" | "timing" }) => Promise<{ status: string; companyDomain: string; jobSeekerId?: number; declineReason?: string }>;
   countRecentMessagesBySender?: (userId: number, since: Date) => Promise<number>;
+  listReferralLedger?: () => Promise<Array<{ id: number; ref: string; status: string; company: string; jobTitle: string; jobLocation: string | null; seekerEmail: string | null; referrerEmail: string | null; createdAt: Date | string; updatedAt: Date | string }>>;
   getUserEmailById?: (userId: number) => Promise<string | null>;
   createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
   sendEmail?: (input: { to: string; subject: string; html: string }) => Promise<{ sent: boolean; reason?: string }>;
@@ -878,6 +879,22 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message });
     }
+  });
+  app.get("/api/admin/referrals/export.csv", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const rows = await (deps.listReferralLedger?.() ?? []);
+      const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+      const header = ["Ref", "Status", "Company", "Job title", "Location", "Seeker email", "Referrer email", "Created", "Updated"];
+      const lines = rows.map(row => [row.ref, row.status, row.company, row.jobTitle, row.jobLocation, row.seekerEmail, row.referrerEmail, row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt, row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt].map(escape).join(","));
+      const csv = [header.map(escape).join(","), ...lines].join("\n");
+      record({ actorUserId: identity.account.id, action: "admin.referral_ledger_exported", outcome: "success", resourceType: "referral_ledger", metadata: { rowCount: rows.length } });
+      res.set("Content-Type", "text/csv; charset=utf-8");
+      res.set("Content-Disposition", `attachment; filename="skipwait-referral-ledger-${new Date().toISOString().slice(0, 10)}.csv"`);
+      res.set("Cache-Control", "private, no-store");
+      res.send(csv);
+    } catch { res.status(500).json({ error: "We could not export the referral ledger" }); }
   });
   app.get("/api/admin/activity", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" }); const limit = Math.min(250, Math.max(1, Number(req.query.limit) || 100)); const action = typeof req.query.action === "string" ? req.query.action.slice(0, 100) : undefined; const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined; const outcome = req.query.outcome === "success" || req.query.outcome === "failure" || req.query.outcome === "denied" ? req.query.outcome : undefined; const events = await deps.listOperationalActivity?.({ limit, action, query, outcome }) ?? []; record({ actorUserId: identity.account.id, action: "admin.activity_viewed", outcome: "success", resourceType: "activity_log", metadata: { limit, filtered: Boolean(action || query || outcome) } }); res.json({ events }); } catch { res.status(500).json({ error: "We could not load operational activity" }); } });
   app.get("/api/admin/approval-queue", async (req, res) => {

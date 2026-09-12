@@ -914,6 +914,18 @@ export async function sendReferralConversationMessage(userId: number, requestId:
 }
 
 
+
+export type ReferralLedgerRow = { id: number; ref: string; status: string; company: string; jobTitle: string; jobLocation: string | null; seekerEmail: string | null; referrerEmail: string | null; createdAt: Date; updatedAt: Date };
+
+/** Queryable referral ledger for admin export: one row per referral request. */
+export async function listReferralLedger(limit = 1000): Promise<ReferralLedgerRow[]> {
+  const db = await getDb(); if (!db) return [];
+  const referrer = alias(users, "referrer");
+  const safeLimit = Math.max(1, Math.min(limit, 5000));
+  const rows = await db.select({ id: referralRequests.id, status: referralRequests.status, company: jobs.company, jobTitle: jobs.title, jobLocation: jobs.location, seekerEmail: users.email, referrerEmail: referrer.email, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referrer, eq(referralRequests.referrerId, referrer.id)).orderBy(desc(referralRequests.createdAt)).limit(safeLimit);
+  return rows.map(row => ({ ...row, ref: `Ref-${String(row.id).padStart(4, "0")}` }));
+}
+
 export type FollowSummary = { followers: number; followingCount: number; isFollowingViewer: boolean; isFollowingTarget: boolean; isMutual: boolean; joinedMonthYear: string };
 export type FollowGraphEntry = { userId: number; label: string; followedAt: Date };
 

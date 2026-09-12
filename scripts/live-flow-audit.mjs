@@ -18,6 +18,21 @@ mkdirSync(outDir, { recursive: true });
 
 const MOBILE = { width: 390, height: 844 };
 
+// Give the dev server (tsx watch + vite) time to finish booting before the
+// first navigation; without this the audit races cold-start transforms and
+// reports a false "landing renders" failure.
+const BOOT_TIMEOUT_MS = Number(process.env.AUDIT_BOOT_TIMEOUT_MS || 0);
+if (BOOT_TIMEOUT_MS > 0) {
+  const deadline = Date.now() + BOOT_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(base);
+      if (res.ok) break;
+    } catch {}
+    await new Promise(r => setTimeout(r, 500));
+  }
+}
+
 function stepLog(label, ok, detail = "") {
   console.log(`${ok ? "PASS" : "FAIL"}  ${label}${detail ? ` — ${detail}` : ""}`);
   return ok;
@@ -65,11 +80,11 @@ const browser = await chromium.launch({ headless: true });
 {
   const { context, page, errors, netFails } = await newPage(browser);
   await page.goto(`${base}/`, { waitUntil: "networkidle", timeout: 45000 }).catch(e => console.log("nav err", e.message));
-  await page.waitForTimeout(2500);
-  const info = await mountInfo(page);
-  const bodyText = await page.evaluate(() => document.body.innerText);
-  await page.screenshot({ path: `${outDir}/01-landing.png`, fullPage: true });
+  await page.waitForTimeout(2500).catch(() => {});
+  const info = await mountInfo(page).catch(() => ({ children: -1, textLength: 0, title: "" }));
+  await page.screenshot({ path: `${outDir}/01-landing.png`, fullPage: true }).catch(() => {});
 
+  const bodyText = await page.evaluate(() => document.body.innerText).catch(() => "");
   const hasSeekerCta = /I need a referral/i.test(bodyText);
   const hasReferrerCta = /I give referrals/i.test(bodyText);
   results.push(stepLog("F1 landing renders", info.children > 0 && info.textLength > 40, `root children=${info.children} text=${info.textLength}`));
@@ -77,52 +92,52 @@ const browser = await chromium.launch({ headless: true });
   results.push(stepLog("F1 'I give referrals' CTA present", hasReferrerCta));
   if (errors.length) console.log("   console errors:", errors.slice(0, 6));
   if (netFails.length) console.log("   network failures:", netFails.slice(0, 6));
-  await context.close();
+  await context.close().catch(() => {});
 }
 
 // ---------------------------------------------------------------- F1 onboarding: paste job URL
 {
   const { context, page, errors, netFails } = await newPage(browser);
   await page.goto(`${base}/start`, { waitUntil: "networkidle", timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2000);
-  const info = await mountInfo(page);
-  const bodyText = await page.evaluate(() => document.body.innerText);
-  await page.screenshot({ path: `${outDir}/02-start.png`, fullPage: true });
+  await page.waitForTimeout(2000).catch(() => {});
+  const info = await mountInfo(page).catch(() => ({ children: -1, textLength: 0, title: "" }));
+  const bodyText = await page.evaluate(() => document.body.innerText).catch(() => "");
+  await page.screenshot({ path: `${outDir}/02-start.png`, fullPage: true }).catch(() => {});
   results.push(stepLog("F2 /start renders", info.children > 0 && info.textLength > 30, `text=${info.textLength}`));
   console.log("   /start body snippet:", bodyText.replace(/\s+/g, " ").slice(0, 220));
 
   // Try typing an invalid URL, then a real job URL, and see if the app reacts.
   const input = page.locator("input[type=url], input[name=url], input[placeholder*='link' i], input[placeholder*='URL' i]").first();
-  if (await input.count()) {
+  if ((await input.count().catch(() => 0)) > 0) {
     // invalid first
-    await input.fill("not-a-url");
+    await input.fill("not-a-url").catch(() => {});
     const btn = page.locator("button", { hasText: /continue/i }).first();
-    if (await btn.count()) {
+    if ((await btn.count().catch(() => 0)) > 0) {
       await btn.click().catch(() => {});
-      await page.waitForTimeout(1800);
-      const afterInvalid = await page.evaluate(() => document.body.innerText);
+      await page.waitForTimeout(1800).catch(() => {});
+      const afterInvalid = await page.evaluate(() => document.body.innerText).catch(() => "");
       const showsError = /valid|invalid|enter a|http/i.test(afterInvalid);
       results.push(stepLog("F2 invalid URL shows validation", showsError));
-      await page.screenshot({ path: `${outDir}/03-start-invalid.png`, fullPage: true });
+      await page.screenshot({ path: `${outDir}/03-start-invalid.png`, fullPage: true }).catch(() => {});
     }
     // valid job URL
-    await input.fill("https://www.linkedin.com/jobs/view/4138190723");
+    await input.fill("https://www.linkedin.com/jobs/view/4138190723").catch(() => {});
     const btn2 = page.locator("button", { hasText: /continue/i }).first();
-    if (await btn2.count()) {
+    if ((await btn2.count().catch(() => 0)) > 0) {
       await btn2.click().catch(() => {});
-      await page.waitForTimeout(6000);
-      const afterValid = await page.evaluate(() => document.body.innerText);
+      await page.waitForTimeout(6000).catch(() => {});
+      const afterValid = await page.evaluate(() => document.body.innerText).catch(() => "");
       const urlNow = page.url();
       results.push(stepLog("F2 valid URL accepted / advanced", /company|identified|step 2|request/i.test(afterValid) || !urlNow.endsWith("/start"), `url=${urlNow}`));
       console.log("   after valid URL:", afterValid.replace(/\s+/g, " ").slice(0, 260));
-      await page.screenshot({ path: `${outDir}/04-start-valid.png`, fullPage: true });
+      await page.screenshot({ path: `${outDir}/04-start-valid.png`, fullPage: true }).catch(() => {});
     }
   } else {
     results.push(stepLog("F2 URL input present", false, "no url input found"));
   }
   if (errors.length) console.log("   console errors:", errors.slice(0, 6));
   if (netFails.length) console.log("   network failures:", netFails.slice(0, 8));
-  await context.close();
+  await context.close().catch(() => {});
 }
 
 // ---------------------------------------------------------------- signed-out gating on core surfaces
@@ -133,46 +148,48 @@ const gatedRoutes = [
   ["/referrer", /work email|company email|sign in|referral/i],
 ];
 for (const [route, expectRe] of gatedRoutes) {
-  const { context, page, errors, netFails } = await newPage(browser);
+  let context, page, errors, netFails;
+  try { ({ context, page, errors, netFails } = await newPage(browser)); } catch { results.push(stepLog(`route ${route} renders correct state`, false, "browser closed")); continue; }
   await page.goto(`${base}${route}`, { waitUntil: "networkidle", timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2200);
-  const info = await mountInfo(page);
-  const bodyText = await page.evaluate(() => document.body.innerText);
+  await page.waitForTimeout(2200).catch(() => {});
+  const info = await mountInfo(page).catch(() => ({ children: -1, textLength: 0, title: "" }));
+  const bodyText = await page.evaluate(() => document.body.innerText).catch(() => "");
   const screen = await page.evaluate(() => {
     const el = document.querySelector("[data-skipwait-screen]");
     return el ? el.getAttribute("data-skipwait-screen") : null;
-  });
-  await page.screenshot({ path: `${outDir}/route${route.replace(/\//g, "_")}.png`, fullPage: true });
+  }).catch(() => null);
+  await page.screenshot({ path: `${outDir}/route${route.replace(/\//g, "_")}.png`, fullPage: true }).catch(() => {});
   const ok = info.children > 0 && info.textLength > 30 && expectRe.test(bodyText);
   results.push(stepLog(`route ${route} renders correct state`, ok, `children=${info.children} screen=${screen} text=${info.textLength}`));
   if (!ok) console.log("   body:", bodyText.replace(/\s+/g, " ").slice(0, 240));
   if (errors.length) console.log("   console errors:", errors.slice(0, 5));
   if (netFails.length) console.log("   network failures:", netFails.slice(0, 5));
-  await context.close();
+  await context.close().catch(() => {});
 }
 
 // ---------------------------------------------------------------- public surfaces
 for (const route of ["/wall", "/share", "/privacy", "/premium", "/plans", "/settings", "/components", "/post-opportunity"]) {
-  const { context, page, errors, netFails } = await newPage(browser);
+  let context, page, errors, netFails;
+  try { ({ context, page, errors, netFails } = await newPage(browser)); } catch { results.push(stepLog(`route ${route} renders`, false, "browser closed")); continue; }
   await page.goto(`${base}${route}`, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2200);
-  const info = await mountInfo(page);
-  await page.screenshot({ path: `${outDir}/route${route.replace(/\//g, "_")}.png`, fullPage: true });
+  await page.waitForTimeout(2200).catch(() => {});
+  const info = await mountInfo(page).catch(() => ({ children: -1, textLength: 0, title: "" }));
+  await page.screenshot({ path: `${outDir}/route${route.replace(/\//g, "_")}.png`, fullPage: true }).catch(() => {});
   const ok = info.children > 0 && info.textLength > 30;
   results.push(stepLog(`route ${route} renders`, ok, `children=${info.children} text=${info.textLength}`));
   if (errors.length) console.log("   console errors:", errors.slice(0, 4));
   if (netFails.length) console.log("   network failures:", netFails.slice(0, 4));
-  await context.close();
+  await context.close().catch(() => {});
 }
 
 // ---------------------------------------------------------------- 404 route
 {
   const { context, page } = await newPage(browser);
   await page.goto(`${base}/definitely-not-a-route`, { waitUntil: "domcontentloaded", timeout: 45000 }).catch(() => {});
-  await page.waitForTimeout(2000);
-  const info = await mountInfo(page);
+  await page.waitForTimeout(2000).catch(() => {});
+  const info = await mountInfo(page).catch(() => ({ children: -1, textLength: 0, title: "" }));
   results.push(stepLog("unknown route shows NotFound (not blank)", info.children > 0 && info.textLength > 20, `text=${info.textLength}`));
-  await context.close();
+  await context.close().catch(() => {});
 }
 
 await browser.close();

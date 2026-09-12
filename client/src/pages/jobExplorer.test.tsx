@@ -28,7 +28,7 @@ function stubFetch(overrides: { jobsOk?: boolean; savedError?: boolean; toggleEr
 }
 
 beforeEach(() => { isSignedIn.value = true; stubFetch(); });
-afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); window.history.replaceState(null, "", "/"); });
 
 describe("JobExplorer", () => {
   it("renders job cards with the muted context line and a saved marker for already-saved roles", async () => {
@@ -76,5 +76,23 @@ describe("JobExplorer", () => {
     const card = screen.getByText("Senior Product Designer").closest("li")!;
     fireEvent.click(within(card).getByRole("button", { name: "Save" }));
     expect(await screen.findByText("Sign in to save roles.")).toBeTruthy();
+  });
+
+  it("seeds the search from ?q= and deep-links to ?job= for crawler traffic", async () => {
+    window.history.replaceState(null, "", "/jobs?q=Backend&job=12");
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/saved-roles") return { ok: true, json: async () => ({ saved: [] }) };
+      if (url.startsWith("/api/saved-roles/") && init?.method === "POST") return { ok: true, json: async () => ({ saved: true }) };
+      return { ok: true, json: async () => ({ jobs: url.includes("query=Backend") ? [jobs[1]] : jobs }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<JobExplorer />);
+    await waitFor(() => expect(screen.getByText("Backend Engineer")).toBeTruthy());
+    expect((screen.getByLabelText("Search roles") as HTMLInputElement).value).toBe("Backend");
+    expect(String(fetchMock.mock.calls[0][0])).toContain("query=Backend");
+    const card = screen.getByText("Backend Engineer").closest("li")!;
+    expect(card.id).toBe("job-12");
+    expect(card.className).toContain("ring-2");
   });
 });

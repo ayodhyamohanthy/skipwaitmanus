@@ -10,7 +10,8 @@ describe("skipwait.me metadata and route loading", () => {
     expect(html).toContain('<link rel="canonical" href="https://skipwait.me/"');
     expect(html).toContain('<meta property="og:url" content="https://skipwait.me/"');
     expect(html).toContain('<meta property="og:site_name" content="skipwait.me"');
-    expect(html).toContain('content="/manus-storage/skipwait-og_41bb73c1.png"');
+    expect(html).toContain('content="https://skipwait.me/og-skipwait.png"');
+    expect(html).not.toContain("manus-storage");
     expect(html).not.toMatch(/Sarah was just|fast-tracked|hiring guarantee/i);
   });
 
