@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { usePersistFn } from "./usePersistFn";
 
 export interface UseCompositionReturn<
@@ -71,6 +71,14 @@ export function useComposition<
   const isComposing = usePersistFn(() => {
     return c.current;
   });
+
+  // Both timers outlive the event that scheduled them, so an input unmounted
+  // mid-composition (navigating away while an IME candidate list is open) would
+  // otherwise leave a pending timer writing to a ref after unmount.
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current);
+    if (timer2.current) clearTimeout(timer2.current);
+  }, []);
 
   return {
     onCompositionStart,

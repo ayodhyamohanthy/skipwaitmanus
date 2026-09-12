@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isLiveChargebeeRequest, resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
+import { billingHost, isLiveChargebeeRequest, resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 
 describe("Chargebee environment boundary", () => {
   const env = {
@@ -37,5 +37,37 @@ describe("Chargebee environment boundary", () => {
 
   it("fails closed when a live host is enabled without a separate live API key", () => {
     expect(() => resolveChargebeeRuntime("skipwait.me", { ...env, CHARGEBEE_LIVE_API_KEY: undefined })).toThrow("Live Chargebee API key is not configured");
+  });
+
+  // The host drives which secret validates a webhook and which API key/site a
+  // checkout uses, so it must not be steerable by a request header. Express's
+  // req.hostname prefers the client-supplied X-Forwarded-Host when trust proxy
+  // is enabled; billingHost deliberately reads Host instead.
+  describe("billing host cannot be steered by a forwarding header", () => {
+    it("reads Host, ignoring a spoofed X-Forwarded-Host", () => {
+      const req = { headers: { host: "skipwait.me", "x-forwarded-host": "evil.example" } };
+      expect(billingHost(req)).toBe("skipwait.me");
+      expect(isLiveChargebeeRequest(billingHost(req), env)).toBe(true);
+    });
+
+    it("cannot downgrade the live webhook secret to the test secret", () => {
+      const spoofed = { headers: { host: "skipwait.me", "x-forwarded-host": "not-skipwait.me" } };
+      // Live is still selected, so a delivery signed with the test secret is rejected.
+      expect(resolveChargebeeWebhookSecret(billingHost(spoofed), env)).toBe("live-webhook");
+      expect(resolveChargebeeRuntime(billingHost(spoofed), env).environment).toBe("live");
+    });
+
+    it("cannot upgrade a non-live host onto the live secret", () => {
+      const spoofed = { headers: { host: "bridgeref-ybuthfmw.manus.space", "x-forwarded-host": "skipwait.me" } };
+      expect(resolveChargebeeWebhookSecret(billingHost(spoofed), env)).toBe("test-webhook");
+      expect(resolveChargebeeRuntime(billingHost(spoofed), env).environment).toBe("test");
+    });
+
+    it("treats a missing or repeated Host header as unknown and falls back to test", () => {
+      expect(billingHost({ headers: {} })).toBeUndefined();
+      expect(billingHost({ headers: { host: ["a.example", "b.example"] } })).toBeUndefined();
+      expect(resolveChargebeeWebhookSecret(billingHost({ headers: {} }), env)).toBe("test-webhook");
+      expect(isLiveChargebeeRequest(billingHost({ headers: {} }), env)).toBe(false);
+    });
   });
 });

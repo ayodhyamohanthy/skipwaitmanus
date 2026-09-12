@@ -1,7 +1,8 @@
 import type { Express, Request } from "express";
+import { publicAppOrigin } from "./publicOrigin";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, isTokenPackId, isTokenQuantity, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
-import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
+import { billingHost, resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
@@ -50,8 +51,8 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
       }
-      const origin = `${req.protocol}://${req.get("host")}`;
-      const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
+      const origin = publicAppOrigin(req);
+      const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(billingHost(req));
       const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,
         quantity,
@@ -84,8 +85,8 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if ((currency !== "INR" && currency !== "USD") || (billingCountry !== "IN" && billingCountry !== "INTL")) return res.status(400).json({ error: "Choose a supported billing route" });
       if ((billingCountry === "IN" && currency !== "INR") || (billingCountry === "INTL" && currency !== "USD")) return res.status(400).json({ error: "That currency is not available for the selected billing route" });
       const selectedCurrency = currency as "INR" | "USD";
-      const origin = `${req.protocol}://${req.get("host")}`;
-      const runtime = deps.createSubscriptionCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
+      const origin = publicAppOrigin(req);
+      const runtime = deps.createSubscriptionCheckout ? undefined : resolveChargebeeRuntime(billingHost(req));
       const checkout = await (deps.createSubscriptionCheckout ?? createChargebeeSubscriptionCheckout)({
         plan,
         currency: selectedCurrency,
@@ -116,7 +117,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const subscription = await deps.getUserSubscription?.(identity.account.id, role);
       if (!subscription) return res.status(404).json({ error: "No active subscription was found for this account" });
       if (subscription.status === "non_renewing") return res.json({ status: "non_renewing", currentTermEnd: subscription.currentTermEnd });
-      const runtime = deps.cancelSubscription ? undefined : resolveChargebeeRuntime(req.hostname);
+      const runtime = deps.cancelSubscription ? undefined : resolveChargebeeRuntime(billingHost(req));
       const result = await (deps.cancelSubscription ?? scheduleChargebeeSubscriptionCancellation)({ subscriptionId: subscription.subscriptionId, ...(runtime ? { site: runtime.site, apiKey: runtime.apiKey } : {}) });
       await deps.markSubscriptionNonRenewing?.(identity.account.id, role, subscription.subscriptionId, result.currentTermEnd);
       record({ actorUserId: identity.account.id, action: "billing.subscription_cancellation_scheduled", outcome: "success", resourceType: "subscription", resourceId: subscription.subscriptionId, metadata: { role, status: result.status } });
@@ -142,7 +143,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (payment.status === "credited") return res.json({ status: "credited", tokenCount: payment.tokenCount, summary: await summary() });
       if (payment.status === "requires_review") return res.json({ status: "requires_review", summary: await summary() });
 
-      const runtime = deps.retrieveHostedPage ? undefined : resolveChargebeeRuntime(req.hostname);
+      const runtime = deps.retrieveHostedPage ? undefined : resolveChargebeeRuntime(billingHost(req));
       const hostedPage = await (deps.retrieveHostedPage ?? retrieveChargebeeHostedPage)(hostedPageId, runtime ? { site: runtime.site, apiKey: runtime.apiKey } : undefined);
       if (!hostedPage) return res.json({ status: "pending", summary: await summary() });
       if (!hostedPage.passThruContent || !Number.isInteger(hostedPage.amount) || !hostedPage.currency) {
@@ -165,7 +166,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   });
 
   app.post("/api/chargebee/webhook", async (req, res) => {
-    const secret = resolveChargebeeWebhookSecret(req.hostname);
+    const secret = resolveChargebeeWebhookSecret(billingHost(req));
     if (!secret || !basicAuthMatches(req.header("authorization"), secret)) return res.status(401).send("Unauthorized");
     const subscription = parseSubscriptionEvent(req.body);
     if (subscription && deps.applySubscriptionEvent) {

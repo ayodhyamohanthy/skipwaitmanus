@@ -24,12 +24,35 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "profiles", column: "anonymityOptIn", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "companyOpportunities", column: "sponsoredUntil", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "sponsoredTier", definition: "ENUM('standard','featured','spotlight') NULL" },
+  // 0039: binds a consumed work-email OTP to the account that consumed it.
+  { table: "workEmailOtpCodes", column: "verifiedByUserId", definition: "INT NULL" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
 // from DESIRED_COLUMNS + DESIRED_TABLES above. Nothing request-controlled is
 // ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
 export type ReconcileStatementResult = { statement: string; ok: boolean; error?: string };
+
+/**
+ * Human-readable description of a failed statement.
+ *
+ * Drizzle wraps driver failures in a `DrizzleQueryError` whose own message is
+ * just "Failed query: <sql>\nparams: " — the actionable MySQL error (privilege
+ * denial, lock wait timeout, duplicate column) lives on `.cause`. Reporting only
+ * the wrapper is why a failed reconcile surfaced as an undiagnosable
+ * "Failed query" with no cause, both in the logs and on /api/health. Walk the
+ * cause chain and keep every distinct message.
+ */
+export function describeError(error: unknown): string {
+  const messages: string[] = [];
+  let current: unknown = error;
+  for (let depth = 0; current != null && depth < 5; depth += 1) {
+    const message = current instanceof Error ? current.message : String(current);
+    if (message && !messages.includes(message)) messages.push(message);
+    current = current instanceof Error ? (current as { cause?: unknown }).cause : undefined;
+  }
+  return messages.join(" | ") || "Unknown error";
+}
 
 let reconciled = false;
 let lastError: string | null = null;
@@ -68,7 +91,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
         // One failing statement must not hide the state of the rest: record it
         // and keep going so a single metadata lock (or privilege) gap cannot
         // leave the remaining DDL unattempted and unreported.
-        const error = err instanceof Error ? err.message : String(err);
+        const error = describeError(err);
         results.push({ statement: stmt, ok: false, error });
         if (!lastError) lastError = `[${stmt}] ${error}`;
         failed = true;
@@ -82,7 +105,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       if (existingTables.has(table)) { skipped.push(table); continue; }
       try { await db.execute(sql.raw(createSql)); }
       catch (err) {
-        const error = err instanceof Error ? err.message : String(err);
+        const error = describeError(err);
         results.push({ statement: createSql, ok: false, error });
         if (!lastError) lastError = `[${createSql.slice(0, 60)}…] ${error}`;
         failed = true;
@@ -101,7 +124,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     }
   } catch (error) {
     // Never crash the server for reconcile failures; log and continue.
-    lastError = error instanceof Error ? error.message : String(error);
+    lastError = describeError(error);
     console.error("[schema-reconcile] failed (non-fatal):", lastError);
   }
   return { applied, skipped };

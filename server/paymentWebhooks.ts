@@ -139,7 +139,10 @@ export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entr
     let verified = false;
     if (verifier) {
       try {
-        verified = (await verifier({ authAlgo: req.header("PAYPAL-AUTH-ALGO") ?? undefined, certUrl: req.header("PAYPAL-CERT-URL") ?? undefined, transmissionId: req.header("PAYPAL-TRANSMISSION-ID") ?? undefined, transmissionSig: req.header("PAYPAL-TRANSMISSION-SIG") ?? undefined, transmissionTime: req.header("PAYPAL-AUTH-TIMEOUT") ?? req.header("PAYPAL-TRANSMISSION-TIME") ?? undefined, event: req.body })) === "SUCCESS";
+        // PAYPAL-TRANSMISSION-TIME is the header PayPal signs; it was previously
+        // shadowed by a non-existent "PAYPAL-AUTH-TIMEOUT" header, which would
+        // have fed an undefined/garbage timestamp into signature verification.
+        verified = (await verifier({ authAlgo: req.header("PAYPAL-AUTH-ALGO") ?? undefined, certUrl: req.header("PAYPAL-CERT-URL") ?? undefined, transmissionId: req.header("PAYPAL-TRANSMISSION-ID") ?? undefined, transmissionSig: req.header("PAYPAL-TRANSMISSION-SIG") ?? undefined, transmissionTime: req.header("PAYPAL-TRANSMISSION-TIME") ?? undefined, event: req.body })) === "SUCCESS";
       } catch (error) {
         console.warn("[Payments] paypal webhook verification unavailable:", error);
       }

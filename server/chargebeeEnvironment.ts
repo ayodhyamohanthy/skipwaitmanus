@@ -6,6 +6,21 @@ export type ChargebeeRuntime = {
 
 export type ChargebeeEnvironment = Record<string, string | undefined>;
 
+/**
+ * Host used for the live/test billing decision.
+ *
+ * Deliberately the raw `Host` header rather than `req.hostname`. With
+ * `app.set("trust proxy", true)` Express derives `req.hostname` from the
+ * client-supplied `X-Forwarded-Host` in preference to `Host`, so a caller could
+ * choose whether the server validates a webhook delivery against the **live** or
+ * the **test** Chargebee secret — and which site/API key a checkout runs on. The
+ * proxy in front of this service controls `Host`; a caller does not.
+ */
+export function billingHost(req: { headers: { host?: string | string[] } }): string | undefined {
+  const host = req.headers.host;
+  return typeof host === "string" ? host : undefined;
+}
+
 function normalizeHost(value: string | undefined): string {
   return (value ?? "").trim().toLowerCase().replace(/:\d+$/, "").replace(/\.$/, "");
 }

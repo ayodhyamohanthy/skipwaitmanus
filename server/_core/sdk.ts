@@ -75,8 +75,12 @@ class SDKServer {
       // `name` is display-only and is legitimately empty when an identity
       // provider returns no display name. Requiring it here would reject a
       // valid session, so only the identity fields gate the session.
-      if (!isNonEmptyString(openId) || !isNonEmptyString(appId)) {
-        console.warn("[Auth] Session payload missing required fields");
+      // `appId` is compared against this deployment's own app id: accepting any
+      // non-empty value gave the claim the appearance of scoping without
+      // providing it, so a session minted for a different app that happens to
+      // share JWT_SECRET would have been accepted verbatim here.
+      if (!isNonEmptyString(openId) || !isNonEmptyString(appId) || appId !== ENV.appId) {
+        console.warn("[Auth] Session payload rejected (missing or mismatched claims)");
         return null;
       }
 

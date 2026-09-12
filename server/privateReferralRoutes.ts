@@ -1,4 +1,5 @@
 import { createDecipheriv } from "node:crypto";
+import { publicAppOrigin } from "./publicOrigin";
 import express, { type Express, type Request } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
@@ -71,9 +72,9 @@ export type PrivateReferralRouteDeps = {
   getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
   sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
   sendWorkEmailOtp?: (input: { email: string }) => Promise<{ sent: boolean; reason: string }>;
-  verifyWorkEmailOtp?: (input: { email: string; code: string }) => Promise<boolean>;
+  verifyWorkEmailOtp?: (input: { email: string; code: string; userId: number }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
-  hasVerifiedWorkEmailOtp?: (input: { email: string }) => Promise<boolean>;
+  hasVerifiedWorkEmailOtp?: (input: { email: string; userId: number }) => Promise<boolean>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
@@ -367,7 +368,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
       if (!deps.verifyWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
-      const verified = await deps.verifyWorkEmailOtp({ email, code });
+      const verified = await deps.verifyWorkEmailOtp({ email, code, userId: identity.account.id });
       if (verified) { record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ verified: true }); }
       await deps.registerWorkEmailOtpFailure?.({ email, code });
       record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
@@ -381,14 +382,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to verify a work email" });
       if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
       // Proof of ownership comes from exactly one of two authorities:
-      // 1. Server-side OTP proof: the verify endpoint consumed a valid code for
+      // 1. Server-side OTP proof: this exact account consumed a valid code for
       //    this exact address moments ago, and the OTP store still holds the
       //    receipt. This is checked against server state — the request body is
       //    never trusted to assert its own verification, because any client can
-      //    send `otpVerified: true` for an address it does not control.
+      //    send `otpVerified: true` for an address it does not control. The
+      //    receipt is matched on account id as well as address: a code consumed
+      //    by *anyone* for this address (the referrer login flow consumes one)
+      //    is not evidence that the caller controls it.
       // 2. The signed-in identity provider already reporting this address as
       //    verified on the authenticated user (AuthKit-managed email).
-      const otpProof = (await deps.hasVerifiedWorkEmailOtp?.({ email })) ?? false;
+      const otpProof = (await deps.hasVerifiedWorkEmailOtp?.({ email, userId: identity.account.id })) ?? false;
       const verifiedEmail: { emailAddress: string } | undefined = otpProof ? undefined : identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
       if (!otpProof && !verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
       if (otpProof) {
@@ -433,7 +437,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try {
           reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
           const reviewEmailSender = deps.sendReferrerReviewEmail ?? sendReferrerReviewEmail;
-          const origin = `${req.protocol}://${req.get("host")}`;
+          const origin = publicAppOrigin(req);
           const delivery = await Promise.all(reviewLinks.map(link => reviewEmailSender({ to: link.email, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` })));
           const sentCount = delivery.filter(item => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: sentCount === reviewLinks.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: reviewLinks.length, sentCount } });
@@ -443,7 +447,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try {
           const slackTargets = await deps.getActiveReferrerSlackWebhooks(reviewLinks.map(link => link.referrerId));
           const slackSender = deps.sendReferrerSlackDelivery ?? sendReferrerSlackDelivery;
-          const origin = `${req.protocol}://${req.get("host")}`;
+          const origin = publicAppOrigin(req);
           const slackDelivery = await Promise.all(slackTargets.map(target => {
             const link = reviewLinks.find(item => item.referrerId === target.referrerId);
             if (!link) return Promise.resolve({ sent: false as const, reason: "not_configured" as const });
@@ -514,7 +518,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to create a Fast-Track Link" });
       if (!deps.getOrCreateReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
       const link = await deps.getOrCreateReferrerFastTrackLink(identity.account.id);
-      const origin = `${req.protocol}://${req.get("host")}`;
+      const origin = publicAppOrigin(req);
       const url = `${origin}/fast/${encodeURIComponent(link.linkCode)}`;
       const vanityUrl = `${origin}/refer/${encodeURIComponent(link.companyDomain.split(".")[0] || link.companyDomain)}/${encodeURIComponent(link.vanityAlias)}`;
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_accessed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { active: link.isActive } });
@@ -575,7 +579,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to create a share card" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
       const card = await (deps.getOrCreateReferralShareCard ?? getOrCreateReferralShareCard)(identity.account.id, requestId);
-      const shareUrl = `${req.protocol}://${req.get("host")}/share-card/${encodeURIComponent(card.shareToken)}`;
+      const shareUrl = `${publicAppOrigin(req)}/share-card/${encodeURIComponent(card.shareToken)}`;
       record({ actorUserId: identity.account.id, action: "referral_share_card.created", outcome: "success", resourceType: "referral_share_card", resourceId: requestId, companyDomain: card.companyDomain, metadata: { status: card.status } });
       res.set("Cache-Control", "private, no-store"); res.status(201).json({ shareToken: card.shareToken, shareUrl, companyDomain: card.companyDomain, status: "accepted" });
     } catch (error) { const message = error instanceof Error ? error.message : "We could not create a share card"; res.status(/only available after approval|not part of this private referral/i.test(message) ? 403 : 500).json({ error: message }); }
@@ -615,7 +619,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!isOpaqueShareToken(req.params.shareToken)) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#475569;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
       const card = await (deps.getPublicReferralShareCard ?? getPublicReferralShareCard)(req.params.shareToken);
       if (!card) return res.status(404).type("html").send("<!doctype html><title>Share card unavailable</title><meta name=\"robots\" content=\"noindex\"><body style=\"margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif\"><main style=\"min-height:100dvh;display:grid;place-items:center;padding:24px;box-sizing:border-box\"><section style=\"max-width:420px;border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:28px;text-align:center\"><h1 style=\"margin:0;font-size:26px\">Share card unavailable</h1><p style=\"margin:12px 0 0;color:#475569;line-height:1.5\">This voluntary milestone card may have been removed.</p></section></main></body>");
-      const origin = `${req.protocol}://${req.get("host")}`; const canonicalUrl = `${origin}/share-card/${encodeURIComponent(req.params.shareToken)}`; const imageUrl = `${origin}/api/referral-share-cards/public/${encodeURIComponent(req.params.shareToken)}/image.png`; const companyDomain = escapeHtml(card.companyDomain);
+      const origin = publicAppOrigin(req); const canonicalUrl = `${origin}/share-card/${encodeURIComponent(req.params.shareToken)}`; const imageUrl = `${origin}/api/referral-share-cards/public/${encodeURIComponent(req.params.shareToken)}/image.png`; const companyDomain = escapeHtml(card.companyDomain);
       record({ action: "referral_share_card.viewed", outcome: "success", resourceType: "referral_share_card", companyDomain: card.companyDomain, metadata: { public: true } });
       res.set("Cache-Control", "no-store"); res.type("html").send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Accepted referral at ${companyDomain} | skipwait.me</title><meta name="description" content="A voluntarily shared referral acceptance milestone at ${companyDomain}. No hiring outcome is implied."><link rel="canonical" href="${canonicalUrl}"><meta property="og:type" content="website"><meta property="og:site_name" content="skipwait.me"><meta property="og:title" content="Accepted at ${companyDomain}"><meta property="og:description" content="Shared voluntarily. No hiring outcome is implied."><meta property="og:url" content="${canonicalUrl}"><meta property="og:image" content="${imageUrl}"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Accepted at ${companyDomain}"><meta name="twitter:description" content="Shared voluntarily. No hiring outcome is implied."><meta name="twitter:image" content="${imageUrl}"><style>body{margin:0;background:#f8fafc;color:#0f172a;font-family:Arial,sans-serif}.card{box-sizing:border-box;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px}.panel{width:min(100%,520px);border:1px solid #dbeafe;border-radius:24px;background:#fff;padding:32px;box-shadow:0 16px 40px rgba(15,23,42,.08)}.mark{display:grid;place-items:center;width:48px;height:48px;border-radius:14px;background:#0B57D0;color:#fff;font-weight:800}.eyebrow{margin:24px 0 0;color:#0B57D0;font-size:12px;font-weight:800;letter-spacing:.14em}.title{margin:12px 0 0;font-size:38px;line-height:1.02;letter-spacing:-.05em}.copy{margin:20px 0 0;color:#475569;font-size:16px;line-height:1.55}.note{margin:20px 0 0;border-radius:14px;background:#eff6ff;padding:14px;color:#1e3a8a;font-size:14px;line-height:1.45}</style></head><body><main class="card"><section class="panel" aria-label="Referral acceptance milestone"><div class="mark">↗</div><p class="eyebrow">SKIPWAIT.ME · PRIVATE REFERRAL</p><h1 class="title">Accepted at ${companyDomain}</h1><p class="copy">A private referral request was accepted at ${companyDomain}.</p><p class="note">Shared voluntarily. No hiring outcome is implied.</p></section></main></body></html>`);
     } catch { res.status(500).type("html").send("<!doctype html><title>Share card unavailable</title>"); }
@@ -675,7 +679,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         try {
           const recipients = await deps.getSlotOpenedAlertRecipients(identity.account.id, result.allocatedRequestIds);
           const sender = deps.sendSlotOpenedAlertEmail ?? sendSlotOpenedAlertEmail;
-          const origin = `${req.protocol}://${req.get("host")}`;
+          const origin = publicAppOrigin(req);
           const deliveries = await Promise.all(recipients.map(recipient => sender({ to: recipient.email ?? "", companyDomain: recipient.companyDomain, requestsUrl: `${origin}/requests` })));
           record({ actorUserId: identity.account.id, action: "company_referral.slot_open_alert_dispatched", outcome: deliveries.some(delivery => delivery.sent) ? "success" : "failure", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { allocatedCount: result.allocatedCount, alertRecipientCount: recipients.length, deliveredCount: deliveries.filter(delivery => delivery.sent).length } });
         } catch {

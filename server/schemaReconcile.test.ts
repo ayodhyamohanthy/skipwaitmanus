@@ -35,7 +35,7 @@ async function loadReconcileModule() {
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
-  existingColumns = ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"];
+  existingColumns = ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId"];
   executeCalls = 0;
   alterStatements.length = 0;
   dbRef = {
@@ -64,7 +64,7 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
+      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
       skipped: ["companyOpportunities.compensation"],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([
@@ -74,10 +74,11 @@ describe("boot-time schema reconcile", () => {
       "ALTER TABLE `profiles` ADD COLUMN `anonymityOptIn` BOOLEAN NOT NULL DEFAULT false",
       "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredUntil` TIMESTAMP NULL",
       "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredTier` ENUM('standard','featured','spotlight') NULL",
+      "ALTER TABLE `workEmailOtpCodes` ADD COLUMN `verifiedByUserId` INT NULL",
     ]);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(4);
     expect(isSchemaReconciled()).toBe(true);
-    expect(getLastReconcileResults()).toHaveLength(10);
+    expect(getLastReconcileResults()).toHaveLength(11);
     expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
   });
 
@@ -88,7 +89,7 @@ describe("boot-time schema reconcile", () => {
 
     expect(result).toEqual({
       applied: ["table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
-      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier"],
+      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId"],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([]);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(4);
@@ -101,13 +102,13 @@ describe("boot-time schema reconcile", () => {
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
 
     await reconcileSchema();
-    expect(alterStatements).toHaveLength(10);
+    expect(alterStatements).toHaveLength(11);
 
     executeCalls = 0;
     const again = await reconcileSchema();
     expect(again).toEqual({ applied: [], skipped: [] });
     expect(executeCalls).toBe(0);
-    expect(alterStatements).toHaveLength(10);
+    expect(alterStatements).toHaveLength(11);
     expect(isSchemaReconciled()).toBe(true);
   });
 
@@ -149,11 +150,11 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     // Statements after the failure still ran and were applied.
-    expect(result.applied).toEqual(["referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"]);
+    expect(result.applied).toEqual(["referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"]);
     // The failed statement is captured with its error, not applied.
     const results = getLastReconcileResults();
-    expect(results).toHaveLength(10);
-    expect(results.filter(entry => entry.ok)).toHaveLength(9);
+    expect(results).toHaveLength(11);
+    expect(results.filter(entry => entry.ok)).toHaveLength(10);
     expect(results.find(entry => !entry.ok)).toEqual({
       statement: "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
       ok: false,
@@ -166,7 +167,7 @@ describe("boot-time schema reconcile", () => {
   });
 
   it("keeps reconciled false and captures the first error when every statement fails", async () => {
-    existingColumns = []; // nothing pre-exists, so all 7 ALTERs + 3 CREATEs are attempted
+    existingColumns = []; // nothing pre-exists, so all 8 ALTERs + 4 CREATEs are attempted
     dbRef.current = {
       execute: async (query: unknown) => {
         const probed = probeAnswer(query);
@@ -181,7 +182,7 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileError()).toContain("ALTER TABLE `companyOpportunities` ADD COLUMN `compensation`");
     expect(getLastReconcileError()).toContain("Command denied to user");
     const results = getLastReconcileResults();
-    expect(results).toHaveLength(11); // 7 columns + 4 tables attempted
+    expect(results).toHaveLength(12); // 8 columns + 4 tables attempted
     expect(results.every(entry => !entry.ok)).toBe(true);
   });
 
@@ -209,5 +210,57 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileError()).toBeNull();
     expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
     expect(isSchemaReconciled()).toBe(true);
+  });
+
+  it("reports the underlying driver error, not just drizzle's wrapper", async () => {
+    existingColumns = [];
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        const probed = probeAnswer(query);
+        if (probed) return probed;
+        // What drizzle-orm actually throws: the actionable MySQL error is on
+        // `.cause`, while `.message` is only "Failed query: ...\nparams: ".
+        const driver = new Error("ALTER command denied to user 'skipwait'@'%' for table 'companyOpportunities'");
+        const wrapped = new Error("Failed query: ALTER TABLE `companyOpportunities` ADD COLUMN `compensation` TEXT NULL\nparams: ");
+        (wrapped as { cause?: unknown }).cause = driver;
+        throw wrapped;
+      },
+    };
+    const { reconcileSchema, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
+
+    await reconcileSchema();
+
+    // Without the cause chain this was an undiagnosable "Failed query: ... params: ".
+    expect(getLastReconcileError()).toContain("ALTER command denied to user");
+    const failure = getLastReconcileResults().find(entry => !entry.ok);
+    expect(failure?.error).toContain("ALTER command denied to user");
+  });
+});
+
+describe("describeError", () => {
+  it("joins every distinct message in the cause chain", async () => {
+    const { describeError } = await loadReconcileModule();
+    const driver = new Error("Lock wait timeout exceeded; try restarting transaction");
+    const wrapped = new Error("Failed query: ALTER TABLE `x` ADD COLUMN `y` INT NULL\nparams: ");
+    (wrapped as { cause?: unknown }).cause = driver;
+
+    const described = describeError(wrapped);
+    expect(described).toContain("Failed query");
+    expect(described).toContain("Lock wait timeout exceeded");
+    expect(described.indexOf("Failed query")).toBeLessThan(described.indexOf("Lock wait timeout"));
+  });
+
+  it("does not repeat an identical nested message and terminates on cycles", async () => {
+    const { describeError } = await loadReconcileModule();
+    const error = new Error("same");
+    (error as { cause?: unknown }).cause = error;
+    expect(describeError(error)).toBe("same");
+  });
+
+  it("handles non-Error throwables and nullish input", async () => {
+    const { describeError } = await loadReconcileModule();
+    expect(describeError("boom")).toBe("boom");
+    expect(describeError(undefined)).toBe("Unknown error");
+    expect(describeError(null)).toBe("Unknown error");
   });
 });
