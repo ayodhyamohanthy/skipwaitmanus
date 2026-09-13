@@ -362,9 +362,9 @@ These are real, but each needs a decision I shouldn't make unilaterally — or c
 
 **Update:** the first two items below (OAuth `state` binding and CSRF) were originally listed here. They are now **fixed** — see §2.7 and §2.8 — because they're both implementable with a deterministic test and the branch doesn't deploy. The `trust proxy` / Chargebee host item is also fixed (§2.9), as is the outbound-link downgrade (§2.10). The remainder still need a decision that's yours to make.
 
-### 4.1 `trust proxy` is still set to `true`
+### 4.1 `trust proxy` — now configurable (was: still set to `true`)
 
-The billing and link-generation trust decisions no longer depend on request headers (§2.9, §2.10), so the concrete exploits are closed. `app.set("trust proxy", true)` remains, which still means `req.ip` is client-influenced — relevant to any future rate limiting or abuse attribution. Pinning it to the actual number of proxy hops is the right long-term fix, but it depends on your network topology, which I can't see from the repo. Low urgency now that nothing security-relevant reads a forwarded header.
+**Updated in the second pass.** The billing and link-generation trust decisions no longer depend on request headers (§2.9, §2.10), so the concrete exploits are closed. `app.set("trust proxy", …)` now reads `TRUST_PROXY_HOPS`: a non-negative integer pins the hop count, and anything else (including unset) preserves the previous trust-all behaviour. Setting it to your real hop count (one, behind a single CDN/load balancer) stops `req.ip` being client-influenced through `X-Forwarded-For` — relevant to rate limiting and abuse attribution. Documented in `.env.example`. I left the default as trust-all because changing it silently could alter rate-limit behaviour in a way I can't verify from the repo; the env var lets you make that call deliberately.
 
 ### 4.2 `ComponentShowcase` ships to anonymous visitors
 
