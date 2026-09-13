@@ -23,7 +23,10 @@ function metadataNote(metadata: string | null, note: string | null | undefined):
 function buildHistory(item: AdminApprovalQueueItem, activity: ActivityEvent[]): HistoryEvent[] {
   const events: HistoryEvent[] = [];
   const push = (key: string, label: string, actor: string, time: string | Date | null | undefined, note?: string) => { if (!time) return; events.push({ id: `${key}-${new Date(time).getTime()}`, label, actor, time, note }); };
-  const recordEvents = activity.filter(event => event.resourceId === String(item.id) && activityResourceTypes[item.kind].includes(event.resourceType ?? ""));
+  // `item.kind` is typed, but it originates from the :kind route param and the API,
+  // so an unrecognised value must not throw here — that crashed the whole page
+  // (caught by the route error boundary) instead of rendering a plain record.
+  const recordEvents = activity.filter(event => event.resourceId === String(item.id) && (activityResourceTypes[item.kind] ?? []).includes(event.resourceType ?? ""));
   const presentActions = new Set(recordEvents.map(event => event.action));
   if (item.kind === "referral_request") {
     if (!presentActions.has("company_referral.created")) push("created", "Request created", item.meta.seekerName || "Job seeker", item.createdAt);

@@ -18,9 +18,13 @@ export function FollowButton({ targetUserId, compact }: { targetUserId: number; 
   useEffect(() => {
     let active = true;
     void fetch(`/api/users/${targetUserId}/follow-state`, { credentials: "include" }).then(async response => {
-      const payload = await readApiJson<FollowState & { viewerSignedIn?: boolean }>(response, "");
+      const payload = await readApiJson<FollowState & { viewerSignedIn?: boolean; error?: string }>(response, "");
+      // A failure must never render as a successful empty state. Previously a 500
+      // carrying an {error} body fell through to `followers: 0`, showing "0
+      // followers / Follow" for a member who actually has followers.
+      if (!response.ok) throw new Error(payload.error || "We could not load follow info");
       if (active) setState({ followers: payload.followers ?? 0, followingCount: payload.followingCount ?? 0, isFollowingViewer: payload.isFollowingViewer ?? false, isMutual: payload.isMutual ?? false, joinedMonthYear: payload.joinedMonthYear ?? "" });
-    }).catch(() => { if (active) setState({ followers: 0, followingCount: 0, isFollowingViewer: false, isMutual: false, joinedMonthYear: "" }); });
+    }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : "We could not load follow info"); });
     return () => { active = false; };
   }, [targetUserId]);
 

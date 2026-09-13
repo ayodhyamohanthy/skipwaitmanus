@@ -37,7 +37,11 @@ export default function AdminUsers() {
 
   const setSuspension = async (user: AdminUserRow, suspended: boolean) => {
     setWorkingId(user.id); setRowError(null);
-    const previous = users;
+    // Capture only THIS row's prior value. Restoring a whole-array snapshot (the
+    // previous behaviour) also reverted any other row that was toggled while this
+    // request was in flight, so a change that had actually succeeded silently
+    // disappeared from the UI.
+    const previousSuspended = user.suspended;
     setUsers(current => current.map(row => row.id === user.id ? { ...row, suspended } : row));
     try {
       const token = await getToken();
@@ -45,7 +49,7 @@ export default function AdminUsers() {
       const payload = await readApiJson<{ user?: { suspended?: boolean }; error?: string }>(response, "We could not update this user account");
       if (!response.ok) throw new Error(payload.error || "We could not update this user account");
     } catch (suspendError) {
-      setUsers(previous);
+      setUsers(current => current.map(row => row.id === user.id ? { ...row, suspended: previousSuspended } : row));
       setRowError({ userId: user.id, message: suspendError instanceof Error ? suspendError.message : "We could not update this user account", suspended });
     }
     finally { setWorkingId(null); }

@@ -15,6 +15,9 @@ type ReferralSubmissionResponse = { error?: string; creditSummary?: unknown; rem
 
 const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
 const pendingResumeSubmissionKey = "skipwait-pending-resume-submit";
+// How long a "Send" intent survives a sign-in round trip. Long enough for a real
+// OAuth detour, short enough that a stale intent cannot fire days later.
+const PENDING_RESUME_SUBMISSION_TTL_MS = 30 * 60 * 1000;
 const FREE_MONTHLY_ALLOWANCE = 3;
 const UPLOAD_REQUEST_TIMEOUT_MS = 30_000;
 const documentMimeByExtension: Record<string, string> = { ".pdf": "application/pdf", ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg" };
@@ -202,8 +205,20 @@ export default function ReferralRequest() {
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "We could not send this private referral request"); } finally { setSubmitting(false); }
   };
 
-  const handleSend = async () => { if (!attachmentCount) { resumeInputRef.current?.click(); return; } if (!isSignedIn) { sessionStorage.setItem(pendingResumeSubmissionKey, "true"); await savePendingResumeFiles(pendingFiles).catch(() => undefined); openSignIn(); return; } void send(); };
-  useEffect(() => { if (!isSignedIn || !pendingFilesRestored || sessionStorage.getItem(pendingResumeSubmissionKey) !== "true") return; sessionStorage.removeItem(pendingResumeSubmissionKey); void send(); }, [isSignedIn, pendingFilesRestored]);
+  const handleSend = async () => { if (!attachmentCount) { resumeInputRef.current?.click(); return; } if (!isSignedIn) { sessionStorage.setItem(pendingResumeSubmissionKey, String(Date.now())); await savePendingResumeFiles(pendingFiles).catch(() => undefined); openSignIn(); return; } void send(); };
+  useEffect(() => {
+    if (!isSignedIn || !pendingFilesRestored) return;
+    const requestedAt = Number(sessionStorage.getItem(pendingResumeSubmissionKey));
+    if (!Number.isFinite(requestedAt) || requestedAt <= 0) return;
+    // Consume the flag unconditionally, so it can never fire twice.
+    sessionStorage.removeItem(pendingResumeSubmissionKey);
+    // Only honour the intent within a short window. This used to be a permanent
+    // "true": a user who abandoned the sign-in redirect and later signed in another
+    // way would get a referral request submitted — and a credit spent — with no
+    // action of their own.
+    if (Date.now() - requestedAt > PENDING_RESUME_SUBMISSION_TTL_MS) return;
+    void send();
+  }, [isSignedIn, pendingFilesRestored]);
 
   if (submitted && !coveragePending) return <ReferralRequestSuccess summary={summary} companyDomain={companyDomain} lifetimeRequestCount={lifetimeRequestCount} />;
 

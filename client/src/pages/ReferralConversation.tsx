@@ -38,6 +38,8 @@ export default function ReferralConversation() {
   const [shareCardBusy, setShareCardBusy] = useState(false);
   const [shareCardStatus, setShareCardStatus] = useState("");
   const messageListRef = useRef<HTMLDivElement>(null);
+  // Only the newest conversation load may commit its result.
+  const conversationRequestSeq = useRef(0);
 
   const request = async (path: string, init?: RequestInit) => {
     const token = await getToken();
@@ -48,10 +50,17 @@ export default function ReferralConversation() {
   };
   const loadConversation = async () => {
     if (!isSignedIn || !Number.isInteger(requestId) || requestId <= 0) return;
+    const requestToken = ++conversationRequestSeq.current;
     setLoading(true); setError("");
-    try { const payload = await request(`/api/company-referrals/${requestId}/conversation`); setMessages(payload.messages || []); if (isPostApprovalReferralStatus(payload.progressStatus)) setProgressStatus(payload.progressStatus); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "We could not open this private conversation"); }
-    finally { setLoading(false); }
+    try {
+      const payload = await request(`/api/company-referrals/${requestId}/conversation`);
+      // Only the newest load may commit, so a slow earlier conversation cannot
+      // overwrite the one the user has since navigated to.
+      if (requestToken !== conversationRequestSeq.current) return;
+      setMessages(payload.messages || []); if (isPostApprovalReferralStatus(payload.progressStatus)) setProgressStatus(payload.progressStatus);
+    }
+    catch (reason) { if (requestToken === conversationRequestSeq.current) setError(reason instanceof Error ? reason.message : "We could not open this private conversation"); }
+    finally { if (requestToken === conversationRequestSeq.current) setLoading(false); }
   };
   useEffect(() => { void loadConversation(); }, [isSignedIn, requestId]);
   useEffect(() => {

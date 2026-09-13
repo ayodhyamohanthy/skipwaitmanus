@@ -54,10 +54,8 @@ export default function Premium() {
     const checkout = readPendingCheckout(role);
     if (!checkout) { setRecovery("pending"); return; }
     let active = true;
-    let attempts = 0;
     const reconcile = async () => {
-      if (!active || attempts >= 3) return;
-      attempts += 1;
+      if (!active) return;
       try {
         const sessionToken = await getToken();
         const response = await fetch("/api/chargebee/credit-recovery", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, body: JSON.stringify({ hostedPageId: checkout.hostedPageId, role }) });
@@ -78,7 +76,12 @@ export default function Premium() {
     void reconcile();
     const secondAttempt = window.setTimeout(() => { void reconcile(); }, 2500);
     const thirdAttempt = window.setTimeout(() => { void reconcile(); }, 7500);
-    const retryOnFocus = () => { void reconcile(); };
+    // Returning to the tab is the ONLY retry that matters after a hosted checkout,
+    // which always takes longer than the 7.5s of scheduled attempts. The focus
+    // handler used to share their `attempts` budget, so it was a silent no-op and
+    // the page sat on "confirming your payment" forever even though the webhook had
+    // already credited the account.
+    const retryOnFocus = () => { if (document.visibilityState !== "hidden") void reconcile(); };
     window.addEventListener("focus", retryOnFocus);
     return () => { active = false; window.clearTimeout(secondAttempt); window.clearTimeout(thirdAttempt); window.removeEventListener("focus", retryOnFocus); };
   }, [getToken, isSignedIn, recovery, role, status]);

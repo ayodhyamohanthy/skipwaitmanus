@@ -63,8 +63,13 @@ export default function MyRequests() {
         const payload = await readApiJson<{ requests?: ReferralRequest[]; error?: string }>(response, "We could not load your referral requests");
         if (!response.ok) throw new Error(payload.error || "We could not load your referral requests");
         if (active) { setRequests(payload.requests || []); setActiveIndex(0); }
-        const creditsResponse = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (creditsResponse.ok && active) { const creditsData = await creditsResponse.json() as { summary?: SeekerCredits }; if (creditsData.summary) setCredits(creditsData.summary); }
+        // The credits meter is secondary. It used to share this try block, so a 500
+        // or a malformed body on /api/credits/summary set the page-level error and
+        // replaced the user's actual requests with "we could not load your requests".
+        try {
+          const creditsResponse = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+          if (creditsResponse.ok && active) { const creditsData = await creditsResponse.json() as { summary?: SeekerCredits }; if (creditsData.summary) setCredits(creditsData.summary); }
+        } catch { /* leave the requests view intact */ }
       } catch (reason) { if (active) setError(reason instanceof Error ? reason.message : "We could not load your referral requests"); }
       finally { if (active) setLoading(false); }
     })();
