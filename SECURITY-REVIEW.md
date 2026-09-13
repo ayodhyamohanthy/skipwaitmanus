@@ -1,7 +1,7 @@
 # skipwaitmanus — Code Review & Fix Pass
 
 **Repo:** `github.com/ayodhyamohanthy/skipwaitmanus` (private)
-**Branch pushed:** `fix/security-and-quality-review` — 6 commits, 31 files, +1270/-120
+**Branch pushed:** `fix/security-and-quality-review` — 13 commits, 47 files, +2057/-196
 **PR:** [#18](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/18) — OPEN, mergeable
 **Date:** 12 September 2026
 
@@ -236,7 +236,7 @@ Found by auditing the credit and payment accounting lifecycle. The same bug shap
 
 Also locked: `grantPendingActionRewards`, `grantAdminTokenAdjustment`, `refundCreditedPayment`.
 
-**Not fixed, needs your call:** the Razorpay and PayPal order routes in `server/payments.ts` create real chargeable orders with notes `{ userId, planId }`, but fulfillment only handles `notes.kind === "unlock_credits"`. A caller paying through those two routes is charged and receives no tokens. The React client never calls them, so it's reachable only by a direct API caller — but it becomes a live "pay and get nothing" bug the moment any client uses them.
+**Fixed in §2.14** (originally "not fixed, needs your call"): the Razorpay and PayPal order routes in `server/payments.ts` created real chargeable orders with notes `{ userId, planId }`, but fulfillment only handles `notes.kind === "unlock_credits"`. A caller paying through those two routes was charged and received no tokens. The React client never calls them, so it was reachable only by a direct API caller — but it was a live "pay and get nothing" bug the moment any client used them. They now fail closed.
 
 **Two dead helpers** (`addCoverageRewardCredit`, `addPersonalReferralRewardCredit`) are defined but never called — the real credit path is `grantPendingActionRewards` via the `invite_reward_pending` ledger. I left them alone rather than adding locks to code that never runs; worth deleting separately.
 
@@ -271,6 +271,48 @@ Also locked: `grantPendingActionRewards`, `grantAdminTokenAdjustment`, `refundCr
 **One hardening note (not a live finding).** Both `/api/documents/by-key/:key` and the `/manus-storage/*` proxy gate access by *key-prefix allowlists*. The DB route serves `skipwait/private-referrals/` and `private/` keys (ownership-checked); the public proxy only blocks `skipwait/private-referrals/`. If any other private document prefix is ever introduced, it would be world-readable through the proxy. No such prefix exists in the current code, so there is no live exposure — but the prefix list should be the single source of truth for "private" rather than an allowlist in one place and a blocklist in another.
 
 **Net:** the one genuine authorization bug in this codebase is the cross-account work-email enrollment fixed in §2.3. The secondary routers are correctly scoped and the IDOR class is not present.
+
+---
+
+## 2.14 Second bug-hunt pass — defects in the surfaces the first pass had not covered
+
+A follow-up sweep of what §2 and §2.13 had not touched: `server/routers.ts` (tRPC), the service modules, `server/db.ts` beyond the credit races, and the React client. Every item below was traced end-to-end through the code before being changed.
+
+### Data layer — `server/db.ts`
+
+- **Unauthenticated PII leak: every referrer's email address.** `community.listReferrers` is a `publicProcedure`, and `listReferrers` selected `users.email`. An anonymous `GET /api/trpc/community.listReferrers` returned the email, user id, name and company of **every** referrer — a ready-made phishing list aimed at precisely the verified employees the product depends on. `getAiWorkspaceContext` already stripped `email` from this result, which shows the field was never meant to leave the server. The projection no longer includes it. (No client code calls this procedure at all.)
+- **Unguarded status writes — six of them.** `reviewReferralRequest`, `updateReferralProgress`, `claimCompanyReferralRequest`, `saveCompanyReferralRequest`, `reviewPrivacyRequest` and `completeResumeUploadSession` each validated a condition against a **stale read**, then wrote `WHERE id = ?` with no status guard and ignored `affectedRows`. Concrete consequences: two concurrent reviews both landed (an admin `approved` could be flipped to `declined`); a milestone could regress and a request closed concurrently was silently reopened; a `withdrawn` request could still be claimed; a completed GDPR erasure could be moved back to `in_review`; a double-submitted resume upload reported success while writing nothing. Each now re-asserts the condition on the write and throws when `affectedRows !== 1`.
+- **`withdrawCompanyReferralRequest` carried the same lost-update shape as the credit races in §2.12.** Its refund writes an absolute balance computed from an unlocked read, so a concurrent `spendToken` (which does lock) could be overwritten — leaving the user holding a credit they had already spent. The wallet row is now locked with `.for("update")`.
+- **`getReferralFlowHealth` counted unverified referrers as coverage.** `accountType` is self-selected through `saveProfile`, so any user could inflate apparent coverage and hide a real gap in the funnel. Now requires `workEmailVerifiedAt`.
+
+### Employer-domain resolution
+
+- **`labels.slice(-2)` broke every multi-label public suffix.** `careers.acme.co.in` resolved to the employer domain `co.in` (likewise `co.uk`, `com.au`, `co.jp`). No verified referrer can hold a `co.in` work domain, so the request was permanently stuck in `waiting_for_company_coverage` with no way out. New `registrableDomainFromHost` / `registrableNameFromHost` in `shared/referralUrl.ts` strip the whole public suffix; both `directEmployerDomainFromTargetUrl` and the job-board handle match now use them.
+- **The handle match contradicted its own comment.** `handle.length >= 4 && name.startsWith(handle)` meant the handle `ethos` matched `ethoslife` — exactly the "ethos-in-a-different-name" case the comment promised to avoid. It is now a whole-label comparison: `ethoslife` still matches `ethoslife.com` and `ethoslife.co.in`, but `ethos` no longer matches `ethoslife`.
+
+### tRPC
+
+- **`ai.draftHiringManagerEmail` was a `publicProcedure`** while every sibling AI procedure was protected — an unauthenticated, unmetered, caller-steerable paid model call. Now `protectedProcedure`. No client page calls it, so nothing breaks.
+
+### Payments
+
+- **"Pay and get nothing" is now impossible.** This pass implemented the fix flagged in §2.12. The Razorpay/PayPal order routes created real chargeable orders whose `notes` carry no `kind`, and nothing fulfills that shape — the gateway webhooks only self-fulfill `unlock_credits`, and Chargebee is the token source of truth. They now refuse **before** the order is minted, behind an explicit `planPurchaseFulfillmentEnabled` capability flag, and record a denied activity. `server/payments.test.ts` (5 tests) asserts the gateway is never contacted — the decisive proof that no money can move.
+
+### Services
+
+- **`isTokenPackId` used the `in` operator**, which walks the prototype chain, so `"constructor"`, `"toString"` and `"__proto__"` all passed the guard. Now an own-property check.
+- **Administrator error alerts silently stopped on a ZeptoMail-only deployment.** `errorAlerting.ts` hardcoded Resend while every other path prefers ZeptoMail, and the failure surfaced only as a `console.warn`. It now routes through the shared `createTransactionalEmailSender` (ZeptoMail first, Resend fallback), with an injectable sender for tests.
+
+### Client
+
+- **False payment confirmation.** `EmployerBilling` passed no `handler` and no `modal.ondismiss` to Razorpay, so `openRazorpayCheckout` resolved the moment the modal *opened*. Cancelling still toasted "Payment captured. N unlock credits are being added to your account." It now resolves on the real outcome, and a dismissal is a no-op.
+- **A referral credit could be permanently lost.** `PersonalInviteAttribution` removed the invite code in `.finally` — i.e. regardless of HTTP status or a network failure — and had no `.catch()`. A 5xx or a flaky connection destroyed the code with no retry path. The code is now kept unless the server actually adjudicated it (`status < 500`).
+- **A second subscription could be started.** `Plans`' guard was `summary?.plan !== "free" && (…)`, which is `false` when `summary` is `null` — and the summary fetch swallowed its errors, so `null` could persist indefinitely. A subscriber on a slow connection saw an enabled "Choose Pro" button. It now fails closed when the summary is unknown, and the button stays disabled until it loads.
+- **Unbounded refetch loop.** In the AuthKit downgrade branch the fallback `sdkAuth` object was rebuilt on every render, so `getToken` (a `useCallback` over `getAccessToken`) changed identity every render, and effects keyed on it refetched and called `setState` on every render. The fallback is now memoised, fixing every consumer at the root.
+- **A failed access check was rendered as "no work email".** `ReferrerImpact` and `Settings` set `companyAccess` to `null` on any error, so a verified referrer was told to re-verify — with no error shown and no retry. Both now render an error state with a retry, and `Settings` no longer files the failure under the privacy card.
+- **Missing request sequencing / in-flight guards.** `Messages.openThread` (a slow thread overwrote the conversation being read), `JobExplorer.loadJobs` (a slow search overwrote a newer one) and `JobExplorer.toggleSave` (the endpoint is a *toggle*, so two rapid clicks flipped the server twice while the UI flipped once — now reconciled against the server's authoritative answer). `TalentDiscovery` tracked only a single in-flight unlock, so a finishing request re-enabled a still-running row's button and a second click could spend another credit pack.
+
+**Verification for this pass:** `tsc --noEmit` clean; full suite **459 passed / 5 skipped** (113 files), up from 452 — the 7 new tests are `payments.test.ts` (5) and two added to `companyRouting.test.ts`; `pnpm build` succeeds (`dist/index.js` 480.6 kB).
 
 ---
 
@@ -347,6 +389,14 @@ One thing worth knowing if you do run it: `prettier --write` is **not idempotent
 ### 4.5 One reported bug that turned out not to be real
 
 `ReferralConversation.tsx` was flagged for coercing the route param with `Number(...)` and passing `NaN` to the API. Reading it, `loadConversation` already guards with `Number.isInteger(requestId) && requestId > 0`. The agent's claim was wrong; I verified before changing anything. (The only residual issue is that `/conversation/abc` renders an empty page rather than a 404 — cosmetic.)
+
+### 4.6 A non-Slack host is allowed as a Slack webhook — needs your one-line answer
+
+`server/referrerSlackDelivery.ts` accepts `hooks.slack-trusted.com` alongside `hooks.slack.com`, and `referrerSlackDelivery.test.ts:9` asserts it **deliberately**. Slack does not operate that domain.
+
+If it is an internal relay you control, this is fine — ignore it. If it is a typo or a leftover, it widens the allowlist so a referrer can point their own review-link delivery at a domain Slack does not own (the impact is limited: they configure the webhook themselves, and the URL validation already forbids credentials, query strings and fragments).
+
+I deliberately did **not** change it, because a test encodes it as intentional and I cannot verify your infrastructure from here. One line from you settles it.
 
 ---
 
