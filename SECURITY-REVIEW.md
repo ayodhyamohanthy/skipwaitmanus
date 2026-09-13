@@ -1,7 +1,7 @@
 # skipwaitmanus — Code Review & Fix Pass
 
 **Repo:** `github.com/ayodhyamohanthy/skipwaitmanus` (private)
-**Branch pushed:** `fix/security-and-quality-review` — 13 commits, 47 files, +2057/-196
+**Branch pushed:** `fix/security-and-quality-review` — 19 commits, 59 files, +2232/-224
 **PR:** [#18](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/18) — OPEN, mergeable
 **Date:** 12 September 2026
 
@@ -316,6 +316,35 @@ A follow-up sweep of what §2 and §2.13 had not touched: `server/routers.ts` (t
 
 ---
 
+## 2.15 Third pass — a further sweep of the client and the auth plumbing
+
+Two more parallel investigations over files the earlier passes had not reached. Same rule throughout: every finding was verified by reading the code before anything was changed.
+
+### Server
+
+- **The public health endpoint leaked the database error.** `/api/health` is unauthenticated and returned the full schema-reconcile error — the failing DDL plus the raw MySQL message, which can name the database user and host (e.g. `ALTER command denied to user 'skipwait'@'%'`). That exposure was *deliberate* (`docs/B2B_MONETIZATION_HANDOFF.md` documents it as the diagnostic path), so I did not simply delete it: it is now **redacted by default**, with `HEALTH_DETAIL_TOKEN` + an `x-health-token` header to retrieve the raw cause. The `schemaReconciled` flag CI reads is untouched, and `/admin/schema` still shows the detail to admins.
+- **`isSecureRequest` disagreed with Express about `X-Forwarded-Proto`.** It used `.some()` across the comma-separated list, while Express derives `req.protocol` from the **first** entry. A header like `http, https` — from a hop that appends rather than replaces — therefore looked secure, and the session cookie was emitted with `Secure; SameSite=None` over plain http. Browsers reject that, so the user was silently never signed in and logout could not clear the stale cookie. Now reads the first entry.
+- **Authentication failures were swallowed with no log.** `createContext` caught every identity-resolution error and set `user = null`, making a JWKS fetch failure or a database outage indistinguishable from "not signed in": every `protectedProcedure` simply returns `UNAUTHORIZED`, with nothing in the logs to explain it. Now logged.
+- **`ai.matchReferrers` trusted the model's `userId`s.** Matches were type-checked but never verified against the candidates the caller was actually given, so a hallucinated or prompt-steered id could surface a **non-consenting member** as a referral target. Matches are now intersected with the real candidate list, and the displayed name comes from the candidate row rather than the model.
+
+### Client
+
+- **Payment confirmation could never recover.** `Premium`'s reconcile ran three scheduled attempts plus a `focus` retry, all sharing one `attempts` budget. A hosted checkout always takes longer than the last scheduled attempt (7.5 s), so by the time the user returned the budget was spent and the focus retry — the only one that mattered — was a silent no-op. The page sat on "We're confirming your payment" forever even though the account had been credited. The budget no longer gates the focus retry.
+- **A cosmetic failure blanked the page.** `MyRequests` fetched the credits meter inside the same `try` as the request list, so a 500 or malformed body on `/api/credits/summary` replaced the user's actual requests with "we could not load your requests". Now isolated.
+- **A referral credit could be spent with no user action.** `ReferralRequest` stored a permanent `"true"` flag when a signed-out user pressed Send, cleared only on success — so a user who abandoned the sign-in redirect and later signed in another way had a request submitted, and a credit spent, the next time they opened `/request`. The intent is now timestamped, always consumed, and honoured only within 30 minutes.
+- **A load failure looked like "no employer account".** `EmployerDashboard` left `account` null on error and rendered the "Become an employer" sign-up form, so an existing employer could POST `/api/employer/account` again and risk a duplicate record. Now an error state with a retry.
+- **A failed toggle reverted other rows.** `AdminUsers` captured the whole `users` array before an optimistic suspension and restored that snapshot on failure, silently reverting any *other* row toggled while the request was in flight. Now rolls back only its own row.
+- **A one-click email decision could be lost.** `EmailReviewAction` set its started-ref before the request and never reset it, so any network hiccup left the decision unrecorded with only "Open My Company Inbox" — no retry. A retry is now offered.
+- **An unrecognised `:kind` crashed the admin page.** `AdminApprovalRecord` indexed `activityResourceTypes[item.kind]` and called `.includes` on the result; an unknown kind (the `:kind` param is caller-controlled) threw and took down the whole route. Now defaults to an empty list.
+- **A failure was rendered as an empty success.** `FollowButton` never checked `res.ok`, so a 500 produced "0 followers / Follow" for a member who had followers. It now surfaces the error and leaves the button disabled while the state is unknown.
+- **Missing sequencing.** `ReferralConversation` could let a slow earlier conversation overwrite the one the user had navigated to.
+
+**Verification for this pass:** `tsc --noEmit` clean; full suite **459 passed / 5 skipped**; `pnpm build` succeeds.
+
+**Honest gap:** the test count did not move, because this pass fixed UI/flow behaviour that the existing suite does not exercise — and I did not add tests for it. The §2.12 and §2.14 server fixes are similarly reasoned rather than reproduced (see §2.12's testing note). If you want these locked in, the highest-value additions would be a behavioural test for the `db.ts` status transitions (needs a real MySQL, since `db.ts` has no injection seam) and component tests for the `Premium` and `EmployerBilling` recovery paths.
+
+---
+
 ## 3. Code-quality and correctness fixes
 
 ### 3.1 Sign-out never cleared private browser data — `client/src/_core/auth.tsx`
@@ -397,6 +426,14 @@ One thing worth knowing if you do run it: `prettier --write` is **not idempotent
 If it is an internal relay you control, this is fine — ignore it. If it is a typo or a leftover, it widens the allowlist so a referrer can point their own review-link delivery at a domain Slack does not own (the impact is limited: they configure the webhook themselves, and the URL validation already forbids credentials, query strings and fragments).
 
 I deliberately did **not** change it, because a test encodes it as intentional and I cannot verify your infrastructure from here. One line from you settles it.
+
+### 4.7 TLS certificate verification is disabled on the database connection — needs your CA
+
+Both `server/db.ts` and `server/storageDb.ts` open MySQL with `ssl: { rejectUnauthorized: false }`. The driver therefore does **not** validate the server certificate, so a network-positioned attacker (or a hostile DNS/proxy path) could MITM the production database connection and read credentials and documents in flight.
+
+The comment above it explains why TLS is *forced* — Azure Database for MySQL enforces it, and mysql2 ignores `ssl` params in the URL — but not why validation is off.
+
+I deliberately did **not** flip it. Doing that correctly requires the provider's CA bundle (`ssl: { ca: <pem>, rejectUnauthorized: true }`); setting `rejectUnauthorized: true` without the CA would break the live database connection, which is the same class of risk as the `mysql2` bump in §0. It is a few lines once you have the CA file (Azure's documented path is to download the CA and pass it as `ca`).
 
 ---
 
