@@ -1,5 +1,6 @@
 import type { RequestHandler } from "express";
 import { recordOperationalActivity } from "./db";
+import { createTransactionalEmailSender, type TransactionalEmailInput, type TransactionalEmailResult } from "./emailDelivery";
 
 const ADMIN_ERROR_RECIPIENT = "ayodhya@skipwait.me";
 const DEDUPLICATION_WINDOW_MS = 10 * 60 * 1000;
@@ -15,6 +16,8 @@ type AlertDependencies = {
   fetchImpl?: typeof fetch;
   recordActivity?: typeof recordOperationalActivity;
   now?: () => number;
+  /** Injectable for tests; defaults to the shared ZeptoMail-then-Resend sender. */
+  sendEmail?: (input: TransactionalEmailInput) => Promise<TransactionalEmailResult>;
 };
 
 function normalizedPath(path: string) {
@@ -27,9 +30,13 @@ function alertKey(input: AlertInput) {
 }
 
 export function createMaterialErrorEscalator(dependencies: AlertDependencies = {}) {
-  const fetchImpl = dependencies.fetchImpl ?? fetch;
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   const now = dependencies.now ?? Date.now;
+  // Route through the shared transactional plane (ZeptoMail first, legacy Resend
+  // fallback). Hardcoding Resend here meant administrator error alerts silently
+  // stopped on a ZeptoMail-only deployment while every other email path kept
+  // working — the failure was only a console.warn.
+  const sendEmail = dependencies.sendEmail ?? createTransactionalEmailSender({ fetchImpl: dependencies.fetchImpl });
   const recentAlerts = new Map<string, number>();
 
   return async function escalateMaterialError(input: AlertInput) {
@@ -54,23 +61,8 @@ export function createMaterialErrorEscalator(dependencies: AlertDependencies = {
     ].join("\n");
 
     try {
-      const apiKey = process.env.RESEND_API_KEY;
-      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
-      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
-
-      const response = await fetchImpl("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
-        signal: AbortSignal.timeout(10_000),
-      });
-      if (!response.ok) {
-        const detail = (await response.text().catch(() => "")).slice(0, 500);
-        throw new Error(`Resend responded with ${response.status}${detail ? `: ${detail}` : ""}`);
-      }
+      const delivery = await sendEmail({ to: ADMIN_ERROR_RECIPIENT, subject, text });
+      if (!delivery.sent) throw new Error(delivery.reason === "not_configured" ? "Error alert delivery is not configured" : "Error alert delivery failed");
 
       await recordActivity({
         action: "system.error_alert_sent",

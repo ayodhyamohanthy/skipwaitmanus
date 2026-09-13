@@ -55,7 +55,9 @@ export type ChargebeeBillingAddress = {
 };
 
 export function isTokenPackId(value: unknown): value is ChargebeeTokenPackId {
-  return typeof value === "string" && value in CHARGEBEE_TOKEN_PACKS;
+  // `in` walks the prototype chain, so "constructor" / "toString" / "__proto__"
+  // would pass the guard. Use an own-property check instead.
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(CHARGEBEE_TOKEN_PACKS, value);
 }
 
 export function isTokenQuantity(value: unknown): value is number {
