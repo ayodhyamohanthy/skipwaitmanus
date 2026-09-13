@@ -26,7 +26,11 @@ export async function createContext(
       user = (identity?.account as User | undefined) ?? null;
     }
   } catch (error) {
-    // Authentication is optional for public procedures.
+    // Authentication is optional for public procedures, so a failure here must not
+    // throw. It must not be silent either: without a log, a JWKS fetch failure or a
+    // database outage is indistinguishable from "not signed in" — every
+    // protectedProcedure simply returns UNAUTHORIZED with nothing in the logs.
+    console.error("[Auth] Identity resolution failed; treating this request as signed out:", error instanceof Error ? error.message : error);
     user = null;
   }
 

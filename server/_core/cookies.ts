@@ -10,7 +10,12 @@ export function isSecureRequest(req: Request) {
     ? forwardedProto
     : forwardedProto.split(",");
 
-  return protoList.some(proto => proto.trim().toLowerCase() === "https");
+  // Express derives req.protocol from the FIRST X-Forwarded-Proto entry, so read the
+  // first here too. `.some()` treated a header like "http, https" (a hop that
+  // appends rather than replaces) as secure, which emitted the session cookie with
+  // Secure + SameSite=None over plain http — browsers then reject it, so the user
+  // was silently never signed in and logout could not clear the stale cookie.
+  return protoList[0]?.trim().toLowerCase() === "https";
 }
 
 export function getSessionCookieOptions(
