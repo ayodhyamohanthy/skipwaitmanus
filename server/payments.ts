@@ -78,7 +78,26 @@ type PlanPricing = { inrAmount: number; usdAmount: number };
 
 export type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> };
 
-export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId: string, tokens: number) => PlanPricing | undefined; resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>; record: (entry: ActivityInput) => Promise<void> }) {
+export function registerPaymentRoutes(
+  app: Express,
+  deps: {
+    planPricing: (planId: string, tokens: number) => PlanPricing | undefined;
+    resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>;
+    record: (entry: ActivityInput) => Promise<void>;
+    /**
+     * Set true ONLY once a fulfillment path exists for seeker plan purchases
+     * made through these gateways. Until then the order routes fail closed.
+     *
+     * Why: the Razorpay/PayPal webhooks deliberately never credit tokens (see
+     * paymentWebhooks.ts — only `notes.kind === "unlock_credits"` self-fulfills)
+     * and Chargebee remains the billing source of truth for subscriptions. An
+     * order minted here carries `notes: { userId, planId }`, which nothing
+     * fulfills, so the user would be charged and receive nothing.
+     */
+    planPurchaseFulfillmentEnabled?: boolean;
+  }
+) {
+  const fulfillmentAvailable = deps.planPurchaseFulfillmentEnabled === true;
   app.post("/api/payments/razorpay/order", async (req, res) => {
     try {
       if (!razorpayConfigured()) return res.status(503).json({ error: "Razorpay is not configured" });
@@ -88,6 +107,11 @@ export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId
       const tokens = Number(req.body?.tokens);
       const pricing = deps.planPricing(planId, tokens);
       if (!pricing) return res.status(400).json({ error: "Unknown plan" });
+      // Fail closed: refuse BEFORE the order is minted, so no money can move.
+      if (!fulfillmentAvailable) {
+        await deps.record({ actorUserId: identity.account.id, action: "payment.razorpay_order_blocked", outcome: "denied", resourceType: "payment", metadata: { planId, reason: "no_fulfillment_path" } });
+        return res.status(501).json({ error: "Card checkout for credit packs is not available yet. Use the subscription checkout instead." });
+      }
       const order = await razorpayOrder({ amountInRupees: pricing.inrAmount, receipt: `skipwait_${identity.account.id}_${Date.now()}`, notes: { userId: String(identity.account.id), planId } });
       await deps.record({ actorUserId: identity.account.id, action: "payment.razorpay_order_created", outcome: "success", resourceType: "payment", metadata: { planId, orderId: order.id } });
       res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID });
@@ -106,6 +130,11 @@ export function registerPaymentRoutes(app: Express, deps: { planPricing: (planId
       const tokens = Number(req.body?.tokens);
       const pricing = deps.planPricing(planId, tokens);
       if (!pricing) return res.status(400).json({ error: "Unknown plan" });
+      // Fail closed — see the Razorpay route above and the deps doc comment.
+      if (!fulfillmentAvailable) {
+        await deps.record({ actorUserId: identity.account.id, action: "payment.paypal_order_blocked", outcome: "denied", resourceType: "payment", metadata: { planId, reason: "no_fulfillment_path" } });
+        return res.status(501).json({ error: "PayPal checkout for credit packs is not available yet. Use the subscription checkout instead." });
+      }
       const order = await paypalOrder({ amountUsd: pricing.usdAmount, reference: `skipwait-${identity.account.id}-${Date.now()}` });
       await deps.record({ actorUserId: identity.account.id, action: "payment.paypal_order_created", outcome: "success", resourceType: "payment", metadata: { planId, orderId: order.id } });
       res.json({ orderId: order.id, status: order.status });
