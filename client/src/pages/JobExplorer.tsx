@@ -1,5 +1,5 @@
 import { AlertCircle, ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { SignInButton, useAuth } from "@/_core/auth";
@@ -20,17 +20,26 @@ export default function JobExplorer() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [signInGate, setSignInGate] = useState(false);
+  // Only the newest jobs search may commit its result; and a save toggle already in
+  // flight for a job is ignored on re-click, because the endpoint toggles rather
+  // than sets.
+  const jobsRequestSeq = useRef(0);
+  const pendingSaves = useRef<Set<number>>(new Set());
 
   const loadJobs = async (nextQuery = query, nextLocation = location) => {
+    const requestId = ++jobsRequestSeq.current;
     setLoading(true); setError("");
     try {
       const params = new URLSearchParams(); if (nextQuery.trim()) params.set("query", nextQuery.trim()); if (nextLocation.trim()) params.set("location", nextLocation.trim());
       const response = await fetch(`/api/jobs${params.size ? `?${params.toString()}` : ""}`);
       const payload = await readApiJson<{ jobs?: JobRow[]; error?: string }>(response, "We could not load the job list");
       if (!response.ok) throw new Error(payload.error || "We could not load the job list");
+      // Only the newest search may commit, so a slow earlier query cannot overwrite
+      // the results for the query the user actually typed.
+      if (requestId !== jobsRequestSeq.current) return;
       setJobs(payload.jobs || []);
-    } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "We could not load the job list"); }
-    finally { setLoading(false); }
+    } catch (loadError) { if (requestId === jobsRequestSeq.current) setError(loadError instanceof Error ? loadError.message : "We could not load the job list"); }
+    finally { if (requestId === jobsRequestSeq.current) setLoading(false); }
   };
   useEffect(() => { void loadJobs(); }, []);
   useEffect(() => {
@@ -44,16 +53,23 @@ export default function JobExplorer() {
 
   const toggleSave = async (jobId: number) => {
     if (!isSignedIn) { setSignInGate(true); return; }
+    // The endpoint is a TOGGLE. Two rapid clicks used to both read the same
+    // wasSaved, flip the UI once, and flip the server twice — leaving the UI
+    // showing "saved" while the server had it unsaved.
+    if (pendingSaves.current.has(jobId)) return;
+    pendingSaves.current.add(jobId);
     const wasSaved = savedIds.has(jobId);
     setSavedIds(current => { const next = new Set(current); if (wasSaved) next.delete(jobId); else next.add(jobId); return next; });
     try {
       const response = await fetch(`/api/saved-roles/${jobId}/toggle`, { method: "POST", credentials: "include" });
       const payload = await readApiJson<{ saved?: boolean; error?: string }>(response, "We could not update your saved roles");
       if (!response.ok) throw new Error(payload.error || "We could not update your saved roles");
+      // Reconcile with the server's authoritative result.
+      if (typeof payload.saved === "boolean") setSavedIds(current => { const next = new Set(current); if (payload.saved) next.add(jobId); else next.delete(jobId); return next; });
     } catch (toggleError) {
       setSavedIds(current => { const next = new Set(current); if (wasSaved) next.add(jobId); else next.delete(jobId); return next; });
       toast(toggleError instanceof Error ? toggleError.message : "We could not update your saved roles");
-    }
+    } finally { pendingSaves.current.delete(jobId); }
   };
 
   const visibleJobs = useMemo(() => (savedOnly ? jobs.filter(job => savedIds.has(job.id)) : jobs), [jobs, savedOnly, savedIds]);

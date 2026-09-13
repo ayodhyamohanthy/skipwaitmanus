@@ -38,6 +38,8 @@ export default function Messages() {
   const [sending, setSending] = useState(false);
   const [paywalled, setPaywalled] = useState(false);
   const composerRef = useRef<HTMLInputElement>(null);
+  // Monotonic token so only the newest openThread request may commit its result.
+  const threadRequestSeq = useRef(0);
 
   const authedFetch = async (path: string, init?: RequestInit) => {
     const token = await getToken();
@@ -57,12 +59,17 @@ export default function Messages() {
 
   const openThread = async (counterpartUserId: number) => {
     setThreadError(""); setPaywalled(false);
+    const requestId = ++threadRequestSeq.current;
     try {
       const response = await authedFetch(`/api/dms/threads/${counterpartUserId}`);
       const payload = await readApiJson<{ thread?: DmThread; error?: string }>(response, "We could not open this conversation");
       if (!response.ok) throw new Error(payload.error || "We could not open this conversation");
+      // Only the newest open request may commit. Without this, opening thread A
+      // then B let A's slower response overwrite B — the user would read and reply
+      // into a conversation that was not the one they clicked.
+      if (requestId !== threadRequestSeq.current) return;
       setThread(payload.thread ?? null);
-    } catch (reason) { setThreadError(reason instanceof Error ? reason.message : "We could not open this conversation"); }
+    } catch (reason) { if (requestId === threadRequestSeq.current) setThreadError(reason instanceof Error ? reason.message : "We could not open this conversation"); }
   };
 
   const send = async () => {

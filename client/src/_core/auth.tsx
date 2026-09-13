@@ -160,14 +160,20 @@ class AuthKitErrorDowngrade extends React.Component<{ children: (downgrade: bool
 
 function AuthKitInner({ children, downgrade }: { children: React.ReactNode; downgrade: boolean }) {
   const auth = useWorkOSAuth();
+  // This fallback surface MUST be referentially stable. `getToken` is derived from
+  // `getAccessToken` through useCallback, and consumers key their effects on
+  // `getToken` (e.g. Plans.tsx, Notifications.tsx). A fresh object literal here made
+  // getToken change identity on every render, so those effects refetched and called
+  // setState on every render — an unbounded request loop.
+  const downgradedAuth = useMemo(() => ({
+    isLoading: false,
+    user: null,
+    signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
+    getAccessToken: async () => null,
+    signOut: async () => {},
+  }), []);
   if (downgrade) {
-    return <CompatShell sdkAuth={{
-      isLoading: false,
-      user: null,
-      signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
-      getAccessToken: async () => null,
-      signOut: async () => {},
-    }}>{children}</CompatShell>;
+    return <CompatShell sdkAuth={downgradedAuth}>{children}</CompatShell>;
   }
   return <CompatShell sdkAuth={auth}>{children}</CompatShell>;
 }

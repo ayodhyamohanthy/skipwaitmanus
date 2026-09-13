@@ -17,7 +17,11 @@ const money = (amountInPaise: number) => `₹${(amountInPaise / 100).toFixed(0)}
 type SpendRow = { kind: "profile_unlock" | "sponsorship" | "credit_purchase"; creditsSpent?: number; creditsAdded?: number; displayRef?: string; tier?: string | null; pack?: string | null; opportunityId?: number | null; createdAt: string | Date };
 
 // Razorpay checkout.js loaded on demand; resolves the order server-side first.
-async function openRazorpayCheckout(input: { orderId: string; amount: number; keyId?: string; description: string }) {
+// Resolves only once the modal reports a real outcome: `handler` fires on a
+// successful payment, `modal.ondismiss` when the user closes it. Previously this
+// resolved as soon as the modal was *displayed*, so cancelling still showed a
+// "payment captured" toast.
+async function openRazorpayCheckout(input: { orderId: string; amount: number; keyId?: string; description: string }): Promise<"paid" | "dismissed"> {
   await new Promise<void>((resolve, reject) => {
     if (typeof window === "undefined") return reject(new Error("Checkout is unavailable"));
     if ((window as unknown as { Razorpay?: unknown }).Razorpay) return resolve();
@@ -29,16 +33,26 @@ async function openRazorpayCheckout(input: { orderId: string; amount: number; ke
   });
   const RazorpayCtor = (window as unknown as { Razorpay?: new (options: Record<string, unknown>) => { open: () => void } }).Razorpay;
   if (!RazorpayCtor) throw new Error("We could not open the Razorpay checkout");
-  const razorpay = new RazorpayCtor({
-    key: input.keyId,
-    amount: input.amount,
-    currency: "INR",
-    name: "skipwait.me",
-    description: input.description,
-    order_id: input.orderId,
-    theme: { color: "#0B57D0" },
+  return new Promise<"paid" | "dismissed">((resolve, reject) => {
+    let settled = false;
+    const settle = (outcome: "paid" | "dismissed") => { if (!settled) { settled = true; resolve(outcome); } };
+    try {
+      const razorpay = new RazorpayCtor({
+        key: input.keyId,
+        amount: input.amount,
+        currency: "INR",
+        name: "skipwait.me",
+        description: input.description,
+        order_id: input.orderId,
+        theme: { color: "#0B57D0" },
+        handler: () => settle("paid"),
+        modal: { ondismiss: () => settle("dismissed") },
+      });
+      razorpay.open();
+    } catch (openError) {
+      reject(openError instanceof Error ? openError : new Error("We could not open the Razorpay checkout"));
+    }
   });
-  razorpay.open();
 }
 
 export default function EmployerBilling() {
@@ -71,7 +85,9 @@ export default function EmployerBilling() {
       const response = await fetch("/api/employer/unlock-credits/purchase", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pack: pack.id }) });
       const payload = await readApiJson<{ orderId?: string; amount?: number; keyId?: string; error?: string }>(response, "We could not start the Razorpay checkout");
       if (!response.ok || !payload.orderId) throw new Error(payload.error || "We could not start the Razorpay checkout");
-      await openRazorpayCheckout({ orderId: payload.orderId, amount: payload.amount ?? pack.amountInPaise, keyId: payload.keyId, description: `${pack.credits} unlock credits` });
+      const outcome = await openRazorpayCheckout({ orderId: payload.orderId, amount: payload.amount ?? pack.amountInPaise, keyId: payload.keyId, description: `${pack.credits} unlock credits` });
+      // Only claim success on a real capture. Closing the Razorpay modal is a no-op.
+      if (outcome === "dismissed") return;
       toast(`Payment captured. ${pack.credits} unlock credits are being added to your account.`);
     } catch (buyError) { setError(buyError instanceof Error ? buyError.message : "We could not start the Razorpay checkout"); }
     finally { setBuying(null); }
