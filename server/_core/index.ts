@@ -76,9 +76,15 @@ async function startServer() {
   // so it heals missing columns itself. Fire-and-forget — a slow or unreachable
   // DB must never delay or crash boot; /api/health reports the flag as-is.
   void reconcileSchema().catch(() => {});
-  // Managed deployments terminate TLS at a trusted reverse proxy. This lets
-  // req.hostname reflect the canonical public host for host-scoped billing.
-  app.set("trust proxy", true);
+  // Managed deployments terminate TLS at a trusted reverse proxy, so Express must
+  // trust forwarded headers to report the real client IP. Default preserves the
+  // historical behaviour (trust every hop); set TRUST_PROXY_HOPS to the actual
+  // number of proxies to stop req.ip being client-influenced. Nothing
+  // security-relevant reads a forwarded header any more (billing and outbound
+  // links use billingHost()/publicAppOrigin()), so this is defence-in-depth for
+  // rate limiting and abuse attribution rather than a live vulnerability.
+  const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS);
+  app.set("trust proxy", Number.isInteger(trustProxyHops) && trustProxyHops >= 0 ? trustProxyHops : true);
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
   // Provider gateway webhooks (Razorpay HMAC, PayPal signature API) register
