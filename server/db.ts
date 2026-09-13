@@ -8,8 +8,8 @@ import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
-import { normalizeTargetRoleUrl } from "../shared/referralUrl";
-import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { normalizeTargetRoleUrl, registrableNameFromHost } from "../shared/referralUrl";
+import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, normalizedEmployerKey, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -110,7 +110,11 @@ export async function appendResumeUploadChunk(ownerId: number, input: { sessionI
 
 export async function completeResumeUploadSession(ownerId: number, sessionId: string, attachmentId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.update(resumeUploadSessions).set({ status: "completed", attachmentId }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "active")));
+  const result = await db.update(resumeUploadSessions).set({ status: "completed", attachmentId }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "active")));
+  // The guarded write matches only an "active" session. Ignoring affectedRows let
+  // a double-submitted completion report success while writing nothing (and the
+  // caller had already created a second attachment row).
+  if (Number(result[0]?.affectedRows ?? 0) !== 1) throw new Error("This resume upload was already completed");
 }
 
 export async function exportUserData(userId: number) {
@@ -157,11 +161,16 @@ export async function listAdminPrivacyRequests(limit: number = 100) {
 
 export async function reviewPrivacyRequest(adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const existing = await db.select({ id: privacyRequests.id, userId: privacyRequests.userId, kind: privacyRequests.kind }).from(privacyRequests).where(eq(privacyRequests.id, requestId)).limit(1);
+  const existing = await db.select({ id: privacyRequests.id, userId: privacyRequests.userId, kind: privacyRequests.kind, status: privacyRequests.status }).from(privacyRequests).where(eq(privacyRequests.id, requestId)).limit(1);
   if (!existing[0]) return undefined;
+  // A resolved request is terminal: without this, a completed/declined erasure
+  // could be moved back to in_review (reopening a closed GDPR request) and two
+  // concurrent reviews would both report success.
+  if (existing[0].status === "completed" || existing[0].status === "declined") throw new Error("This privacy request has already been resolved");
   const resolution = input.resolution?.trim().slice(0, 500) || null;
   const activeKey = input.status === "completed" || input.status === "declined" ? null : `${existing[0].kind}:${existing[0].userId}`;
-  await db.update(privacyRequests).set({ status: input.status, activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(eq(privacyRequests.id, requestId));
+  const updated = await db.update(privacyRequests).set({ status: input.status, activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(and(eq(privacyRequests.id, requestId), eq(privacyRequests.status, existing[0].status)));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This privacy request changed while you were reviewing it");
   return { id: requestId, status: input.status, resolution };
 }
 
@@ -355,19 +364,19 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
   // Aggregators like LinkedIn label jobs with a brand display name ("Ethos") whose
   // domain key ("ethos") can differ from the company's email domain ("ethoslife").
   // The company profile handle (linkedin.com/company/ethoslife) is the stronger
-  // signal, so prefix-match verified referrer domains against it: handle
-  // "ethoslife" matches ethoslife.com exactly, or ethoslife.co.in style country
-  // TLDs, but never ethos-in-a-different-name domains.
+  // signal, so match it against the domain's registrable label with the public
+  // suffix stripped: handle "ethoslife" matches ethoslife.com and ethoslife.co.in,
+  // but never an unrelated longer name ("ethos" must not match "ethoslife").
   const handleCandidates = Array.from(new Set([...urlCandidates, ...pageEvidence.candidates]));
   if (handleCandidates.length > 0) {
     const handleMatches = verifiedDomains
       .map(row => row.domain?.trim().toLowerCase())
       .filter((domain): domain is string => Boolean(domain))
       .filter(domain => {
-        const labels = domain.split(".");
-        if (labels.length < 2) return false;
-        const name = labels.slice(0, -1).join("");
-        return handleCandidates.some(handle => handle === name || (handle.length >= 4 && name.startsWith(handle)));
+        const name = registrableNameFromHost(domain);
+        if (!name) return false;
+        const key = normalizedEmployerKey(name);
+        return handleCandidates.some(handle => handle === name || handle === key);
       });
     const uniqueMatches = Array.from(new Set(handleMatches)).filter(domain => !isBoardDomain(domain));
     if (uniqueMatches.length === 1) return uniqueMatches[0];
@@ -455,7 +464,12 @@ export async function listJobs(input: { query?: string; company?: string; locati
 
 export async function listReferrers(input: { query?: string; company?: string; role?: string }) {
   const db = await getDb(); if (!db) return [];
-  const rows = await db.select({ profileId: profiles.id, userId: users.id, name: users.name, email: users.email, company: profiles.company, title: profiles.currentTitle, location: profiles.location, expertise: profiles.expertise, capacity: profiles.referralCapacity, headline: profiles.headline }).from(profiles).innerJoin(users, eq(profiles.userId, users.id)).where(eq(profiles.accountType, "referrer"));
+  // NOTE: deliberately does NOT select `users.email`. This feeds a public
+  // (unauthenticated) tRPC directory via `community.listReferrers`, so returning
+  // member email addresses would let anyone harvest every referrer's address for
+  // phishing. `getAiWorkspaceContext` already strips `email` from this result, so
+  // nothing downstream needs it.
+  const rows = await db.select({ profileId: profiles.id, userId: users.id, name: users.name, company: profiles.company, title: profiles.currentTitle, location: profiles.location, expertise: profiles.expertise, capacity: profiles.referralCapacity, headline: profiles.headline }).from(profiles).innerJoin(users, eq(profiles.userId, users.id)).where(eq(profiles.accountType, "referrer"));
   const term = input.query?.trim().toLowerCase();
   return rows.filter(row => (!term || `${row.name ?? ""} ${row.company ?? ""} ${row.title ?? ""} ${row.expertise ?? ""}`.toLowerCase().includes(term)) && (!input.company || row.company === input.company) && (!input.role || (row.title ?? "").toLowerCase().includes(input.role.toLowerCase())));
 }
@@ -715,7 +729,10 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const request = await db.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, requestId)).limit(1);
   if (!request[0] || request[0].companyDomain !== profile.workEmailDomain || request[0].status !== "pending" || request[0].referrerId) throw new Error("This private referral request is no longer available to save");
-  await db.update(referralRequests).set({ savedAt: saved ? new Date() : null }).where(eq(referralRequests.id, requestId));
+  // Re-assert the same conditions on the write: the read above is a snapshot, so a
+  // concurrent claim could otherwise have savedAt stamped onto a claimed request.
+  const updated = await db.update(referralRequests).set({ savedAt: saved ? new Date() : null }).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This private referral request is no longer available to save");
   return { requestId, saved };
 }
 
@@ -726,7 +743,10 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     const current = request[0];
     if (!current) throw new Error("This referral request is not in your account");
     if (current.status !== "pending" || current.referrerId !== null) throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1);
+    // Lock the wallet row: the refund below writes an absolute balance derived
+    // from this read, so an unlocked read lets a concurrent spendToken (which does
+    // lock) be overwritten — leaving the user holding a credit they already spent.
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update");
     if (!wallet[0]) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
     // Credit timing rule: reserved at creation, refunded on withdraw. The refund
     // returns the monthly credit first (same cycle, under the free allowance);
@@ -793,7 +813,9 @@ export async function getReferralFlowHealth() {
   if (!db) return { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
   const [requests, verifiedProfiles, activities] = await Promise.all([
     db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
-    db.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.accountType, "referrer")),
+    // Only verified referrers count as coverage. `accountType` is self-selected via
+    // saveProfile, so counting unverified profiles hid real coverage gaps.
+    db.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(and(eq(profiles.accountType, "referrer"), isNotNull(profiles.workEmailVerifiedAt))),
     db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome }).from(operationalActivityLogs).orderBy(desc(operationalActivityLogs.createdAt)).limit(1000),
   ]);
   const coverageByCompany = new Map<string, number>();
@@ -823,7 +845,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, company: jobs.company, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)))).limit(1);
   if (!request[0] || !isVerifiedEmployeeOfCompany(profile, request[0].company)) throw new Error("This referral request is no longer available");
   if (request[0].referrerId === userId) return { requestId, claimed: true };
-  const update = await db.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, requestId), isNull(referralRequests.referrerId)));
+  const update = await db.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
   if (Number(update[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
   await db.insert(notifications).values({ userId: request[0].jobSeekerId, category: "status", title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." });
   return { requestId, claimed: true, jobSeekerId: request[0].jobSeekerId, companyDomain: request[0].company };
@@ -865,7 +887,12 @@ export async function reviewReferralRequest(userId: number, input: { requestId: 
   const existing = await db.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1);
   if (!existing[0] || existing[0].referrerId !== userId) throw new Error("Referral Request not found");
   if (existing[0].status !== "pending") throw new Error("This Referral Request has already been reviewed");
-  await db.update(referralRequests).set({ status: input.decision, referrerMessage: input.message ?? null }).where(eq(referralRequests.id, input.requestId));
+  // Guard the write on the same condition the read validated. Without it, two
+  // concurrent reviews (or a race with oneClickReviewReferralRequest /
+  // resolveAdminApproval) both matched by id, so both landed — the second
+  // overwrote the first (an approved request could be flipped to declined).
+  const updated = await db.update(referralRequests).set({ status: input.decision, referrerMessage: input.message ?? null }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.referrerId, userId), eq(referralRequests.status, "pending")));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This Referral Request has already been reviewed");
   await db.insert(notifications).values({ userId: existing[0].jobSeekerId, category: "status", title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: input.message || "Your Referrer has reviewed your Referral Request." });
   return { status: input.decision };
 }
@@ -886,7 +913,12 @@ export async function updateReferralProgress(userId: number, input: { requestId:
   const nextIndex = referralProgressUpdateStatuses.indexOf(input.status);
   const canClose = input.status === "closed";
   if (!canClose && (nextIndex < 0 || nextIndex <= currentIndex)) throw new Error("Choose a later real progress milestone");
-  await db.update(referralRequests).set({ status: input.status }).where(eq(referralRequests.id, input.requestId));
+  // Optimistic guard on the status the ordering was validated against. Without it
+  // the UPDATE matched by id alone, so a concurrent write could regress the
+  // milestone, and a request closed concurrently was silently reopened by a stale
+  // "intro_made" write — while still reporting changed: true.
+  const updated = await db.update(referralRequests).set({ status: input.status }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, existing.status)));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This referral request changed while you were updating it. Reload and try again.");
   await db.insert(notifications).values({ userId: recipientId, category: "status", title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." });
   return { status: input.status, changed: true };
 }
