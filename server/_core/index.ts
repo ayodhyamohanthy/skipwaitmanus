@@ -113,7 +113,7 @@ async function startServer() {
   app.use(csrfOriginGuard);
 
 // Public health endpoint — returns the baked commit SHA for CI self-verification
-app.get("/api/health", async (_req, res) => {
+app.get("/api/health", async (req, res) => {
   let commitSha = "";
   try { commitSha = (await readFile("commit-sha.txt", "utf8")).trim(); } catch { /* not baked */ }
   res.set("Cache-Control", "no-store");
@@ -122,7 +122,15 @@ app.get("/api/health", async (_req, res) => {
   // Self-heal: if the boot-time reconcile failed (DB not ready), retry on
   // health checks — the information_schema probe makes it idempotent.
   if (!isSchemaReconciled()) void reconcileSchema().catch(() => {});
-  res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled(), schemaReconcileError: getLastReconcileError() });
+  // This route is public and unauthenticated, but the reconcile error carries the
+  // failing DDL statement plus the raw MySQL message — which can name the database
+  // user and host (e.g. "ALTER command denied to user 'skipwait'@'%'"). Redact it
+  // by default. Set HEALTH_DETAIL_TOKEN and send it as `x-health-token` to get the
+  // raw cause for diagnosis; admins can always see it at /admin/schema.
+  const reconcileError = getLastReconcileError();
+  const detailToken = process.env.HEALTH_DETAIL_TOKEN;
+  const detailAllowed = Boolean(detailToken) && req.header("x-health-token") === detailToken;
+  res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled(), schemaReconcileError: reconcileError ? (detailAllowed ? reconcileError : "Schema reconcile failed; see /admin/schema for the failing statement.") : null });
 });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
