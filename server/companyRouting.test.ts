@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { companyDomainFromTargetUrl, isVerifiedEmployeeOfCompany, isWorkEmailDomain, resolveEmployerDomainFromTargetUrl } from "./db";
+import { registrableDomainFromHost, registrableNameFromHost } from "../shared/referralUrl";
 import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 describe("company routing from Target Role URLs", () => {
@@ -87,5 +88,27 @@ describe("company routing from Target Role URLs", () => {
     expect(isVerifiedEmployeeOfCompany(verifiedAcmeReferrer, "other.com")).toBe(false);
     expect(isVerifiedEmployeeOfCompany({ ...verifiedAcmeReferrer, accountType: "job_seeker" }, "acme.com")).toBe(false);
     expect(isVerifiedEmployeeOfCompany({ ...verifiedAcmeReferrer, workEmailVerifiedAt: null }, "acme.com")).toBe(false);
+  });
+
+  it("strips the whole public suffix so country-code employers resolve to a real company domain", () => {
+    // Regression: `labels.slice(-2)` produced the meaningless "co.in" here, so no
+    // verified referrer could ever match and the request was stuck forever.
+    expect(companyDomainFromTargetUrl("https://careers.acme.co.in/jobs/product-designer")).toBe("acme.co.in");
+    expect(companyDomainFromTargetUrl("https://jobs.acme.co.uk/1")).toBe("acme.co.uk");
+    expect(companyDomainFromTargetUrl("https://acme.com.au/careers/1")).toBe("acme.com.au");
+    // Single-label suffixes keep working unchanged.
+    expect(companyDomainFromTargetUrl("https://careers.acme.com/jobs/1")).toBe("acme.com");
+    expect(companyDomainFromTargetUrl("https://acme.com/careers")).toBe("acme.com");
+  });
+
+  it("derives a whole-label employer handle instead of a loose prefix match", () => {
+    expect(registrableNameFromHost("acme.co.in")).toBe("acme");
+    expect(registrableNameFromHost("careers.acme.com")).toBe("acme");
+    expect(registrableNameFromHost("ethoslife.com")).toBe("ethoslife");
+    // The previous rule matched the handle "ethos" against "ethoslife" via
+    // startsWith, routing requests to an unrelated company. The handle is a whole
+    // label, not a prefix.
+    expect(registrableNameFromHost("ethoslife.com")).not.toBe("ethos");
+    expect(registrableDomainFromHost("careers.acme.co.in")).toBe("acme.co.in");
   });
 });

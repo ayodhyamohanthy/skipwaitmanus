@@ -1,4 +1,4 @@
-import { reviewedEmployerFromTargetRoleUrl } from "../shared/referralUrl";
+import { registrableDomainFromHost, reviewedEmployerFromTargetRoleUrl } from "../shared/referralUrl";
 
 const hostedJobPlatforms = [
   "linkedin.com", "indeed.com", "glassdoor.com", "greenhouse.io", "lever.co", "ashbyhq.com",
@@ -28,8 +28,9 @@ export function directEmployerDomainFromTargetUrl(targetRoleUrl: string): string
   try {
     const hostname = normalizedHost(new URL(targetRoleUrl).hostname);
     if (!hostname || isHostedJobPlatform(hostname)) return undefined;
-    const labels = hostname.split(".");
-    return labels.length > 2 ? labels.slice(-2).join(".") : hostname;
+    // Strips the whole public suffix, so `careers.acme.co.in` resolves to
+    // `acme.co.in` rather than the meaningless `co.in` that `slice(-2)` produced.
+    return registrableDomainFromHost(hostname);
   } catch {
     return undefined;
   }
