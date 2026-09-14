@@ -81,6 +81,17 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
   });
 
+  it("uses Azure-compatible CURRENT_TIMESTAMP clauses in generated CREATE DDL", async () => {
+    const { reconcileSchema } = await loadReconcileModule();
+    await reconcileSchema();
+    const creates = alterStatements.filter(statement => statement.startsWith("CREATE TABLE IF NOT EXISTS"));
+    expect(creates).toHaveLength(4);
+    expect(creates.join("\n")).not.toContain("DEFAULT (now())");
+    expect(creates.join("\n")).not.toContain("ON UPDATE NOW");
+    expect(creates.every(statement => statement.includes("DEFAULT CURRENT_TIMESTAMP"))).toBe(true);
+    expect(creates.filter(statement => statement.includes("`updatedAt`")).every(statement => statement.includes("ON UPDATE CURRENT_TIMESTAMP"))).toBe(true);
+  });
+
   it("applies nothing when every desired column already exists", async () => {
     const { reconcileSchema, isSchemaReconciled, getLastReconcileResults } = await loadReconcileModule();
 
