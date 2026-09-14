@@ -1,3 +1,4 @@
+import { registerAdminSmokeFixture } from "../adminSmokeFixture";
 import "./envBoot";
 import { readFile } from "node:fs/promises";
 import express from "express";
@@ -116,6 +117,8 @@ app.get("/api/health", async (_req, res) => {
   if (!isSchemaReconciled()) void reconcileSchema().catch(() => {});
   res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled(), schemaReconcileError: getLastReconcileError() });
 });
+
+  registerAdminSmokeFixture(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
