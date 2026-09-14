@@ -31,6 +31,32 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
 // ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
 export type ReconcileStatementResult = { statement: string; ok: boolean; error?: string };
 
+// Drizzle surfaces driver failures as DrizzleQueryError("Failed query: …
+// params: …") with the real MySQL error on `cause` (code/errno/sqlState).
+// Recording only err.message discards the diagnosis (missing table vs denied
+// DDL vs no database selected vs lock timeout), so unwrap the cause chain.
+export function describeReconcileError(err: unknown): string {
+  const top = err instanceof Error ? err.message : String(err);
+  const causes: string[] = [];
+  const seen = new Set<unknown>();
+  let current: unknown = err instanceof Error ? (err as { cause?: unknown }).cause : undefined;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    if (current instanceof Error) {
+      const code = (current as { code?: unknown }).code;
+      const errno = (current as { errno?: unknown }).errno;
+      const sqlState = (current as { sqlState?: unknown }).sqlState;
+      const qualifier = [typeof code === "string" && code ? code : null, typeof errno === "number" ? `errno ${errno}` : null, typeof sqlState === "string" && sqlState ? `sqlstate ${sqlState}` : null].filter(Boolean).join(" ");
+      causes.push(qualifier ? `${qualifier}: ${current.message}` : current.message);
+      current = (current as { cause?: unknown }).cause;
+    } else {
+      causes.push(String(current));
+      break;
+    }
+  }
+  return causes.length ? `${top} | cause: ${causes.join(" <- ")}` : top;
+}
+
 let reconciled = false;
 let lastError: string | null = null;
 let lastResults: ReconcileStatementResult[] = [];
@@ -58,6 +84,12 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`);
     // mysql2's drizzle result HKT loses row typing on raw execute; cast like db.ts does.
     const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string }>;
+    if (rows.length === 0) {
+      // Zero visible columns means the follow-on ALTERs will all fail: either
+      // a genuinely fresh database (run the drizzle migrations) or the
+      // connection sees no tables (DATABASE_URL database name / privileges).
+      console.error("[schema-reconcile] information_schema probe returned 0 columns; check DATABASE_URL database selection and grants before trusting per-statement errors below");
+    }
     const existing = new Set(rows.map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
     const existingTables = new Set(rows.map(row => row.TABLE_NAME));
     for (const { table, column, definition } of DESIRED_COLUMNS) {
@@ -68,7 +100,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
         // One failing statement must not hide the state of the rest: record it
         // and keep going so a single metadata lock (or privilege) gap cannot
         // leave the remaining DDL unattempted and unreported.
-        const error = err instanceof Error ? err.message : String(err);
+        const error = describeReconcileError(err);
         results.push({ statement: stmt, ok: false, error });
         if (!lastError) lastError = `[${stmt}] ${error}`;
         failed = true;
@@ -82,7 +114,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       if (existingTables.has(table)) { skipped.push(table); continue; }
       try { await db.execute(sql.raw(createSql)); }
       catch (err) {
-        const error = err instanceof Error ? err.message : String(err);
+        const error = describeReconcileError(err);
         results.push({ statement: createSql, ok: false, error });
         if (!lastError) lastError = `[${createSql.slice(0, 60)}…] ${error}`;
         failed = true;
@@ -101,7 +133,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     }
   } catch (error) {
     // Never crash the server for reconcile failures; log and continue.
-    lastError = error instanceof Error ? error.message : String(error);
+    lastError = describeReconcileError(error);
     console.error("[schema-reconcile] failed (non-fatal):", lastError);
   }
   return { applied, skipped };

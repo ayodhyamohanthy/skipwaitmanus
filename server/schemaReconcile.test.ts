@@ -210,4 +210,34 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
     expect(isSchemaReconciled()).toBe(true);
   });
+
+  it("unwraps the driver cause so missing-table failures stay diagnosable", async () => {
+    existingColumns = [];
+    const driverError = Object.assign(new Error("Table 'skipwait.companyOpportunities' doesn't exist"), { code: "ER_NO_SUCH_TABLE", errno: 1146, sqlState: "42S02" });
+    const wrapped = Object.assign(new Error("Failed query: ALTER TABLE `companyOpportunities` ADD COLUMN `compensation` TEXT NULL\nparams: "), { cause: driverError });
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        const probed = probeAnswer(query);
+        if (probed) return probed;
+        throw wrapped;
+      },
+    };
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
+
+    await reconcileSchema();
+
+    expect(isSchemaReconciled()).toBe(false);
+    const firstError = getLastReconcileError() ?? "";
+    expect(firstError).toContain("ALTER TABLE `companyOpportunities` ADD COLUMN `compensation`");
+    expect(firstError).toContain("ER_NO_SUCH_TABLE");
+    expect(firstError).toContain("1146");
+    expect(firstError).toContain("doesn't exist");
+    expect(getLastReconcileResults().find(entry => !entry.ok)?.error).toContain("ER_NO_SUCH_TABLE");
+  });
+
+  it("describeReconcileError handles plain errors and non-errors without a cause", async () => {
+    const { describeReconcileError } = await loadReconcileModule();
+    expect(describeReconcileError(new Error("boom"))).toBe("boom");
+    expect(describeReconcileError("plain string")).toBe("plain string");
+  });
 });
