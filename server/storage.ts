@@ -95,3 +95,15 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
   const { url } = (await resp.json()) as { url: string };
   return url;
 }
+
+/**
+ * Direct server-side byte read (presigned GET URLs are absolute, so plain
+ * fetch is safe here). Mirrors the R2/DB adapters for the upload-complete
+ * reassembly path.
+ */
+export async function storageGetBytes(relKey: string): Promise<Buffer> {
+  const url = await storageGetSignedUrl(relKey);
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Storage object was not found");
+  return Buffer.from(await response.arrayBuffer());
+}

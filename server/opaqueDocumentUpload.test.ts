@@ -50,4 +50,55 @@ describe("opaque private-document upload route", () => {
     const completed = await request(app).post(`/api/documents/uploads/${started.body.sessionId}/complete`).set("x-test-user", "seeker").send({}); expect(completed.status).toBe(201); expect(completed.body).toMatchObject({ fileName: "resume.pdf", fileSize: pdf.length });
     expect((await request(app).post(`/api/documents/uploads/${started.body.sessionId}/complete`).set("x-test-user", "seeker").send({})).body.id).toBe(completed.body.id);
   });
+
+  it("reassembles upload chunks through direct byte reads when signed URLs are relative DB routes", async () => {
+    // Regression: the DB storage fallback resolves to a relative
+    // /api/documents/by-key route that server-side fetch cannot parse
+    // ("Failed to parse URL"). Completion must read bytes directly and never
+    // leak that internal error to the Job Seeker.
+    const app = express(); app.use(express.json({ limit: "50mb" })); const sessions = new Map<string, any>(); const privateBytes = new Map<string, Buffer>(); let attachmentId = 80;
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "workos-seeker" } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("unused"), sanitizeDocumentName: value => value,
+      storagePut: async (key, data) => { privateBytes.set(key, data); return { key }; },
+      storageGetSignedUrl: async key => `/api/documents/by-key/${encodeURIComponent(key)}`,
+      storageGetBytes: async key => privateBytes.get(key),
+      createReferralAttachment: async (_ownerId, input) => ({ id: attachmentId++, fileName: input.fileName, mimeType: input.mimeType, fileSize: input.fileSize, fileKey: input.fileKey }), getAccessibleReferralAttachment: async () => undefined,
+      createResumeUploadSession: async (ownerId, input) => { const id = "session-relative"; sessions.set(id, { id, ownerId, ...input, receivedSize: 0, nextChunkIndex: 0, status: "active", attachmentId: null, chunks: [] }); return { id }; },
+      getResumeUploadSession: async (ownerId, id) => { const session = sessions.get(id); return session?.ownerId === ownerId ? session : undefined; },
+      appendResumeUploadChunk: async (ownerId, input) => { const session = sessions.get(input.sessionId); if (!session || session.ownerId !== ownerId || input.chunkIndex !== session.nextChunkIndex) throw new Error("Resume upload chunks arrived out of order"); session.chunks.push(input); session.nextChunkIndex += 1; session.receivedSize += input.byteSize; return { nextChunkIndex: session.nextChunkIndex, receivedSize: session.receivedSize, alreadyStored: false }; },
+      completeResumeUploadSession: async (ownerId, id, idOfAttachment) => { const session = sessions.get(id); if (session?.ownerId === ownerId) { session.status = "completed"; session.attachmentId = idOfAttachment; } },
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+    // No fetch stub: any server-side HTTP read would throw, proving the
+    // direct-read path is used.
+    const pdf = Buffer.from("%PDF-1.4\n% relative-url reassembly test\n");
+    const started = await request(app).post("/api/documents/uploads").set("x-test-user", "seeker").send({ fileName: "resume.pdf", mimeType: "application/pdf", fileSize: pdf.length });
+    expect(started.status).toBe(201);
+    expect((await request(app).post(`/api/documents/uploads/${started.body.sessionId}/chunks`).set("x-test-user", "seeker").send({ chunkIndex: 0, ...encryptForTransport(pdf) })).status).toBe(200);
+    const completed = await request(app).post(`/api/documents/uploads/${started.body.sessionId}/complete`).set("x-test-user", "seeker").send({});
+    expect(completed.status).toBe(201); expect(completed.body).toMatchObject({ fileName: "resume.pdf", fileSize: pdf.length });
+  });
+
+  it("returns a user-safe error when an upload fragment is missing", async () => {
+    const app = express(); app.use(express.json({ limit: "50mb" })); const sessions = new Map<string, any>();
+    sessions.set("session-missing", { id: "session-missing", ownerId: 12, fileName: "resume.pdf", mimeType: "application/pdf", expectedSize: 10, receivedSize: 10, nextChunkIndex: 1, status: "active", attachmentId: null, chunks: [{ chunkIndex: 0, storageKey: "missing-key", byteSize: 10 }] });
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") === "seeker" ? { account: { id: 12, openId: "workos-seeker" } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("unused"), sanitizeDocumentName: value => value,
+      storagePut: async key => ({ key }),
+      storageGetSignedUrl: async key => `/api/documents/by-key/${encodeURIComponent(key)}`,
+      storageGetBytes: async () => undefined,
+      createReferralAttachment: async () => ({ id: 81, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 10, fileKey: "k" }), getAccessibleReferralAttachment: async () => undefined,
+      createResumeUploadSession: async (ownerId, input) => { const id = "session-missing"; sessions.set(id, { id, ownerId, ...input, expectedSize: 10, receivedSize: 10, nextChunkIndex: 1, status: "active", attachmentId: null, chunks: [{ chunkIndex: 0, storageKey: "missing-key", byteSize: 10 }] }); return { id }; },
+      getResumeUploadSession: async (ownerId, id) => { const session = sessions.get(id); return session?.ownerId === ownerId ? session : undefined; },
+      appendResumeUploadChunk: async () => { throw new Error("unexpected"); },
+      completeResumeUploadSession: async () => undefined,
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+    const completed = await request(app).post("/api/documents/uploads/session-missing/complete").set("x-test-user", "seeker").send({});
+    expect(completed.status).toBe(500);
+    expect(completed.body.error).toMatch(/fragment was not found/i);
+    expect(completed.body.error).not.toMatch(/Failed to parse URL/i);
+  });
 });

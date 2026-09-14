@@ -62,6 +62,20 @@ export async function storageGetSignedUrl(relKey: string): Promise<string> {
   return s3GetSignedUrl(client(), new GetObjectCommand({ Bucket: process.env.R2_BUCKET!, Key: key }), { expiresIn: 900 });
 }
 
+/**
+ * Direct server-side byte read for the upload-complete reassembly path.
+ * Signed URLs work for browser redirects, but the DB fallback resolves to a
+ * relative /api/documents/by-key route that server-side fetch cannot parse —
+ * reading bytes here keeps completion independent of HTTP and URL shape.
+ */
+export async function storageGetBytes(relKey: string): Promise<Buffer> {
+  const key = normalizeKey(relKey);
+  const result = await client().send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
+  const bytes = await result.Body?.transformToByteArray();
+  if (!bytes) throw new Error("Storage object was not found");
+  return Buffer.from(bytes);
+}
+
 export async function storageGet(relKey: string): Promise<{ key: string; url: string }> {
   return { key: normalizeKey(relKey), url: await storageGetSignedUrl(relKey) };
 }

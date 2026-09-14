@@ -22,6 +22,12 @@ export type PrivateReferralRouteDeps = {
   sanitizeDocumentName: (fileName: string) => string;
   storagePut: (key: string, data: Buffer, mimeType: string) => Promise<{ key: string }>;
   storageGetSignedUrl: (key: string) => Promise<string>;
+  // Direct server-side chunk read for upload reassembly. Preferred over
+  // fetching the signed URL: the DB fallback resolves to a relative
+  // /api/documents/by-key route that server-side fetch cannot parse (and
+  // staging keys are not yet authorized on that route anyway). Optional so
+  // existing injected-dependency callers keep working via the fetch fallback.
+  storageGetBytes?: (key: string) => Promise<Buffer | Uint8Array | undefined>;
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
   createResumeUploadSession?: (ownerId: number, input: { fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
@@ -317,7 +323,20 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const session = await deps.getResumeUploadSession(identity.account.id, req.params.sessionId); if (!session) return res.status(404).json({ error: "This private upload is no longer available" });
       if (session.status === "completed" && session.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` });
       if (session.status !== "active" || session.receivedSize !== session.expectedSize || session.chunks.length !== session.nextChunkIndex) return res.status(400).json({ error: "Your resume upload is incomplete. Please retry it." });
-      const pieces = await Promise.all(session.chunks.map(async (chunk, index) => { if (chunk.chunkIndex !== index) throw new Error("Resume upload chunks are incomplete"); const signedUrl = await deps.storageGetSignedUrl(chunk.storageKey); const response = await fetch(signedUrl); if (!response.ok) throw new Error("Resume upload fragment was not found"); return Buffer.from(await response.arrayBuffer()); }));
+      const pieces = await Promise.all(session.chunks.map(async (chunk, index) => {
+        if (chunk.chunkIndex !== index) throw new Error("Resume upload chunks are incomplete");
+        if (deps.storageGetBytes) {
+          const bytes = await deps.storageGetBytes(chunk.storageKey).catch(() => undefined);
+          if (!bytes) throw new Error("Resume upload fragment was not found");
+          return Buffer.from(bytes);
+        }
+        const signedUrl = await deps.storageGetSignedUrl(chunk.storageKey);
+        let response: Response;
+        try { response = await fetch(signedUrl); }
+        catch { throw new Error("Resume upload fragment was not found"); }
+        if (!response.ok) throw new Error("Resume upload fragment was not found");
+        return Buffer.from(await response.arrayBuffer());
+      }));
       const buffer = Buffer.concat(pieces); if (buffer.length !== session.expectedSize) throw new Error("Resume upload size could not be verified");
       const attachment = await createPrivateAttachment(identity, session.fileName, session.mimeType, buffer); await deps.completeResumeUploadSession(identity.account.id, session.id, attachment.id);
       res.status(201).json(attachment);

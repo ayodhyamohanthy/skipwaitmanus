@@ -39,10 +39,15 @@ export async function dbStoragePut(key: string, data: Buffer): Promise<{ key: st
 }
 
 export async function dbStorageGet(key: string): Promise<{ data: Buffer } | undefined> {
+  const data = await dbStorageGetBytes(key);
+  return data ? { data } : undefined;
+}
+
+export async function dbStorageGetBytes(key: string): Promise<Buffer | undefined> {
   const d = db();
   const rows = await d.select().from(documentBlobs).where(eq(documentBlobs.fileKey, key)).limit(1);
   const row = rows[0];
-  return row ? { data: Buffer.from(row.data) } : undefined;
+  return row ? Buffer.from(row.data) : undefined;
 }
 
 import { eq } from "drizzle-orm";
