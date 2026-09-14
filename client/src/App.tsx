@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { SmokeProvider } from "./contexts/SmokeContext";
 import { markSecureSessionVerified, readReferralDraft } from "./lib/pwaContinuity";
 import Home from "./pages/Home";
 import Onboarding from "./pages/Onboarding";
@@ -66,4 +67,4 @@ function PwaSessionContinuity(){const {isLoaded,isSignedIn}=useAuth();useEffect(
 const personalInviteStorageKey="skipwait:personal-invite-code";
 function PersonalInviteAttribution(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(typeof window==="undefined")return;const inviteCode=new URLSearchParams(window.location.search).get("invite")?.trim()??"";if(/^r\d+-[a-f0-9]{8}$/i.test(inviteCode))sessionStorage.setItem(personalInviteStorageKey,inviteCode)},[]);useEffect(()=>{if(!isLoaded||!isSignedIn)return;const inviteCode=sessionStorage.getItem(personalInviteStorageKey);if(!inviteCode)return;void fetch("/api/personal-invites/claim",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({inviteCode})}).finally(()=>sessionStorage.removeItem(personalInviteStorageKey))},[isLoaded,isSignedIn]);return null}
 function OfflineNotice(){const [online,setOnline]=useState(()=>typeof navigator==="undefined"||navigator.onLine);useEffect(()=>{const restore=()=>setOnline(true);const lose=()=>setOnline(false);window.addEventListener("online",restore);window.addEventListener("offline",lose);return()=>{window.removeEventListener("online",restore);window.removeEventListener("offline",lose)}},[]);if(online)return null;const hasDraft=Boolean(readReferralDraft());return <div role="status" aria-live="polite" className="fixed inset-x-0 top-0 z-50 bg-[#2B2823] px-4 py-2 text-center text-xs font-medium text-[#FFF7EC]">{hasDraft?"You’re offline. Your referral draft is saved on this device; reconnect before sending.":"You’re offline. Saved pages remain available; reconnect before sending a request."}</div>}
-export default function App(){return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><Toaster/><Router/></TooltipProvider></ThemeProvider></ErrorBoundary>}
+export default function App(){return <ErrorBoundary><ThemeProvider defaultTheme="light"><SmokeProvider><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><Toaster/><Router/></TooltipProvider></SmokeProvider></ThemeProvider></ErrorBoundary>}
