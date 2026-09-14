@@ -22,6 +22,11 @@ pnpm build            # client PWA + server bundle -> dist/
 ./scripts/sync-check.sh   # repo sync guard (run after work sessions)
 ```
 
+## Working agreement (user rule)
+- When a prompt's work is done and verified (`pnpm check` + affected
+  `vitest` files pass), commit and push to `main` without being asked again.
+  Push triggers both Cloudflare deploys; no local Docker needed.
+
 ## Environment
 - Copy `.env.example` → `.env`. Minimum for local dev: `JWT_SECRET` (any random
   string) and `VITE_APP_ID=skipwait` (session payloads REQUIRE a non-empty appId).

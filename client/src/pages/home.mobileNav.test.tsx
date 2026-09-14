@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Home from "./Home";
 
-vi.mock("@/_core/auth", () => ({ SignedIn: ({ children }: { children?: React.ReactNode }) => null, SignedOut: ({ children }: { children?: React.ReactNode }) => children }));
+vi.mock("@/_core/auth", () => ({ SignedIn: ({ children }: { children?: React.ReactNode }) => null, SignedOut: ({ children }: { children?: React.ReactNode }) => children, useUser: () => ({ user: null }) }));
 
 const { go } = vi.hoisted(() => ({ go: vi.fn() }));
 
