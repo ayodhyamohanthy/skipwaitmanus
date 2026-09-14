@@ -183,6 +183,20 @@ export function useUser() {
 
 export function SignInButton({ children, className }: { children?: React.ReactNode; className?: string }) {
   const compat = useCompat("SignInButton");
+  // Many sign-in gates pass their own styled <button> as the child. Rendering
+  // it inside our <button> would nest interactive elements (invalid HTML,
+  // React DOM errors, unreliable clicks), so adopt a button child instead:
+  // keep its styling/content and add the sign-in action to its own node.
+  if (React.isValidElement(children) && children.type === "button") {
+    const child = children as React.ReactElement<{ onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void; className?: string }>;
+    return React.cloneElement(child, {
+      className: [child.props.className, className].filter(Boolean).join(" ") || undefined,
+      onClick: (event: React.MouseEvent<HTMLButtonElement>) => {
+        child.props.onClick?.(event);
+        if (!event.defaultPrevented) compat.openSignIn();
+      },
+    });
+  }
   return <button type="button" className={className} onClick={compat.openSignIn}>{children ?? "Sign in"}</button>;
 }
 

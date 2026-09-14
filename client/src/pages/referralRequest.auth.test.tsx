@@ -180,4 +180,26 @@ describe("ReferralRequest secure resume handoff", () => {
     render(<ReferralRequest />);
     expect(screen.getByText("Compensation: ₹12–18 LPA")).toBeTruthy();
   });
+
+  it("keeps the selected resume pending when the signed-in upload fails so sending can retry", async () => {
+    authState.signedIn = true;
+    let uploadAttempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (String(input).includes("/api/documents/uploads")) { uploadAttempts += 1; return { ok: false, json: async () => ({ error: "We could not prepare your private resume upload. Please try again." }) }; }
+      return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) };
+    }));
+    render(<ReferralRequest />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["resume"], "kept-resume.pdf", { type: "application/pdf" })] } });
+    await waitFor(() => expect(screen.getByText("We could not prepare your private resume upload. Please try again.")).toBeTruthy());
+    // The selection survives as a pending file instead of being discarded.
+    expect(screen.getByText("kept-resume.pdf")).toBeTruthy();
+    expect(pendingResume.save).toHaveBeenCalled();
+    const send = await screen.findByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
+    await waitFor(() => expect(send.disabled).toBe(false));
+    const attemptsBefore = uploadAttempts;
+    fireEvent.click(send);
+    await waitFor(() => expect(uploadAttempts).toBeGreaterThan(attemptsBefore));
+    vi.unstubAllGlobals();
+  });
 });

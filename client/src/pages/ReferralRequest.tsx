@@ -160,7 +160,14 @@ export default function ReferralRequest() {
 
   const selectFiles = (files: FileList | null) => {
     const selected = Array.from(files || []); if (!selected.length) return; const unsupported = selected.find(file => !acceptedDocumentMime(file)); if (unsupported) { setError("Use a PDF, Word document, PNG, or JPEG resume."); return; } setError("");
-    if (isSignedIn) { void uploadFiles(selected).catch(() => undefined); return; }
+    if (isSignedIn) {
+      // A transient upload failure (offline, server hiccup) must not discard
+      // the selection: keep the files pending so sending retries the upload.
+      void uploadFiles(selected).catch(() => {
+        setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
+      });
+      return;
+    }
     setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
   };
   const createSmartPitch = async () => {
