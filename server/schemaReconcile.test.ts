@@ -165,6 +165,30 @@ describe("boot-time schema reconcile", () => {
     expect(isSchemaReconciled()).toBe(false);
   });
 
+  it("treats duplicate-column races as idempotent skips", async () => {
+    existingColumns = ["companyOpportunities.compensation"];
+    const duplicate = Object.assign(new Error("Duplicate column name 'compensation'"), { code: "ER_DUP_FIELDNAME", errno: 1060, sqlState: "42S21" });
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        const probed = probeAnswer(query);
+        if (probed) return probed;
+        const text = sqlText(query);
+        if (text === "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL") throw Object.assign(new Error("Failed query"), { cause: duplicate });
+        alterStatements.push(text);
+        return [{}, []];
+      },
+    };
+    const { reconcileSchema, isSchemaReconciled, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
+
+    const result = await reconcileSchema();
+
+    expect(result.skipped).toContain("jobs.compensation");
+    expect(result.applied).not.toContain("jobs.compensation");
+    expect(isSchemaReconciled()).toBe(true);
+    expect(getLastReconcileError()).toBeNull();
+    expect(getLastReconcileResults().find(item => item.statement.includes("`jobs`"))).toEqual({ statement: "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL", ok: true });
+  });
+
   it("keeps reconciled false and captures the first error when every statement fails", async () => {
     existingColumns = []; // nothing pre-exists, so all 7 ALTERs + 3 CREATEs are attempted
     dbRef.current = {

@@ -35,6 +35,20 @@ export type ReconcileStatementResult = { statement: string; ok: boolean; error?:
 // params: …") with the real MySQL error on `cause` (code/errno/sqlState).
 // Recording only err.message discards the diagnosis (missing table vs denied
 // DDL vs no database selected vs lock timeout), so unwrap the cause chain.
+export function isDuplicateColumnError(err: unknown): boolean {
+  const seen = new Set<unknown>();
+  let current: unknown = err;
+  while (current && !seen.has(current)) {
+    seen.add(current);
+    if (typeof current === "object") {
+      const typed = current as { code?: unknown; errno?: unknown; sqlState?: unknown; cause?: unknown };
+      if (typed.code === "ER_DUP_FIELDNAME" || typed.errno === 1060 || typed.sqlState === "42S21") return true;
+      current = typed.cause;
+    } else break;
+  }
+  return false;
+}
+
 export function describeReconcileError(err: unknown): string {
   const top = err instanceof Error ? err.message : String(err);
   const causes: string[] = [];
@@ -97,6 +111,13 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       const stmt = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
       try { await db.execute(sql.raw(stmt)); }
       catch (err) {
+        // Another instance may add the column between the information_schema
+        // probe and ALTER. MySQL duplicate-column is the successful end state.
+        if (isDuplicateColumnError(err)) {
+          results.push({ statement: stmt, ok: true });
+          skipped.push(`${table}.${column}`);
+          continue;
+        }
         // One failing statement must not hide the state of the rest: record it
         // and keep going so a single metadata lock (or privilege) gap cannot
         // leave the remaining DDL unattempted and unreported.

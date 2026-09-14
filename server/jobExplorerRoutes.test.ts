@@ -43,6 +43,17 @@ describe("job explorer routes", () => {
     expect(response.body.jobs).toHaveLength(50);
   });
 
+  it("never exposes private referral target rows from /api/jobs", async () => {
+    const app = buildApp(baseDeps({ listJobs: async () => [
+      { id: 1, title: "Product Designer", description: "Public catalog role" },
+      { id: 2, title: "Role from shared job link", description: "Private referral request routed from a Target Role URL." },
+      { id: 3, title: "Another role", description: "Private referral request routed from a Target Role URL." },
+    ] }));
+    const response = await request(app).get("/api/jobs");
+    expect(response.status).toBe(200);
+    expect(response.body.jobs).toEqual([{ id: 1, title: "Product Designer", description: "Public catalog role" }]);
+  });
+
   it("requires sign-in for saved roles and returns the saver's list", async () => {
     const signedOut = buildApp(baseDeps({ resolveIdentity: async () => undefined }));
     expect((await request(signedOut).get("/api/saved-roles")).status).toBe(401);
