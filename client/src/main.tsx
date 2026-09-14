@@ -10,6 +10,7 @@ import { startLogin } from "./const";
 import { getGlobalAccessToken } from "./_core/accessToken";
 import { resolveDeviceLocale } from "./lib/device";
 import "./index.css";
+import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
 
 const queryClient = new QueryClient();
 
@@ -93,7 +94,7 @@ const trpcClient = trpc.createClient({
         return {};
       },
       fetch(input, init) {
-        return globalThis.fetch(input, {
+        return smokeFetch(input, {
           ...(init ?? {}),
           credentials: "include",
         });
@@ -102,7 +103,7 @@ const trpcClient = trpc.createClient({
   ],
 });
 
-createRoot(document.getElementById("root")!).render(
+const mount=()=>createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       {/* Auth reads the server session via tRPC (works for both the
@@ -112,4 +113,6 @@ createRoot(document.getElementById("root")!).render(
       </AuthProvider>
     </trpc.Provider>
   </QueryClientProvider>
-);
+);;
+const nativeFetch=globalThis.fetch.bind(globalThis);
+void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount()});

@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
+import { smokeState } from "@/contexts/smokeRuntime";
 
 /**
  * WorkOS AuthKit provider exposing the app's auth hook surface.
@@ -45,14 +46,17 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
   // Server cookie session is the source of truth: it works for BOTH auth planes
   // (WorkOS AuthKit sign-in AND the referrer work-email OTP login). The AuthKit
   // SDK only knows its own PKCE session, so OTP users would look signed out.
-  const meQuery = trpc.auth.me.useQuery(undefined, { retry: false, refetchOnWindowFocus: false });
+  const synthetic = smokeState().active ? smokeState().identity : undefined;
+  const meQuery = trpc.auth.me.useQuery(undefined, { retry: false, refetchOnWindowFocus: false, enabled: !synthetic });
   const utils = trpc.useUtils();
 
   const serverUser = meQuery.data ?? null;
-  const signedIn = Boolean(serverUser) || Boolean(auth.user);
-  const isLoaded = !meQuery.isLoading && !auth.isLoading;
+  const signedIn = Boolean(synthetic) || Boolean(serverUser) || Boolean(auth.user);
+  const isLoaded = synthetic ? true : !meQuery.isLoading && !auth.isLoading;
 
-  const user: CompatUser = auth.user
+  const user: CompatUser = synthetic
+    ? { id:String(synthetic.id), fullName:`Synthetic ${synthetic.role}`, imageUrl:null, primaryEmailAddress:{emailAddress:synthetic.email}, emailAddresses:[{emailAddress:synthetic.email,verification:{status:"verified"}}] }
+    : auth.user
     ? {
         id: auth.user.id,
         fullName: [auth.user.firstName, auth.user.lastName].filter(Boolean).join(" ") || null,
