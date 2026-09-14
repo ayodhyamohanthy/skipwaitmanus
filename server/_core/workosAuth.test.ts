@@ -35,7 +35,8 @@ const baseEnv = {
   WORKOS_CLIENT_ID: "client_test",
   WORKOS_API_KEY: "sk_test_key",
   WORKOS_COOKIE_PASSWORD: "c".repeat(32),
-  SKIPWAIT_ADMIN_EMAIL: undefined,
+  SKIPWAIT_ADMIN_EMAIL: "ayodhya@skipwait.me",
+  ENABLE_ADMIN_BOOTSTRAP: undefined,
 };
 
 describe("role-aware WorkOS sign-in entries", () => {
@@ -50,7 +51,17 @@ describe("role-aware WorkOS sign-in entries", () => {
     expect(denied.status).toBe(403);
     const deniedNoEmail = await request(app).get("/api/auth/workos/admin");
     expect(deniedNoEmail.status).toBe(403);
+    const wrongLocalPart = await request(app).get("/api/auth/workos/admin?email=someone@skipwait.me");
+    expect(wrongLocalPart.status).toBe(403);
     expect(authUrl).toHaveBeenCalledTimes(1);
+    restore();
+  });
+
+
+  it("uses sign-up only while the one-time bootstrap flag is explicitly enabled", { timeout: 20000 }, async () => {
+    const { app, restore } = await buildApp({ ...baseEnv, ENABLE_ADMIN_BOOTSTRAP: "true" });
+    expect((await request(app).get("/api/auth/workos/admin?email=ayodhya@skipwait.me")).status).toBe(302);
+    expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up", state: "skipwait-admin-bootstrap", loginHint: "ayodhya@skipwait.me" }));
     restore();
   });
 
@@ -66,4 +77,9 @@ describe("role-aware WorkOS sign-in entries", () => {
     expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up" }));
     restore();
   });
+});
+
+describe("administrator callback equality",()=>{
+ it("accepts only the provider-returned exact configured address",async()=>{const {adminCallbackAllowed}=await import("./workosAuth");expect(adminCallbackAllowed({email:"ayodhya@skipwait.me",state:"skipwait-admin",configuredEmail:"ayodhya@skipwait.me"})).toBe(true);expect(adminCallbackAllowed({email:"someone@skipwait.me",state:"skipwait-admin",configuredEmail:"ayodhya@skipwait.me"})).toBe(false);expect(adminCallbackAllowed({email:"ayodhya@gmail.com",state:"skipwait-admin",configuredEmail:"ayodhya@skipwait.me"})).toBe(false)});
+ it("rejects a stale bootstrap callback after the flag is removed",async()=>{const {adminCallbackAllowed}=await import("./workosAuth");expect(adminCallbackAllowed({email:"ayodhya@skipwait.me",state:"skipwait-admin-bootstrap",configuredEmail:"ayodhya@skipwait.me",bootstrapEnabled:false})).toBe(false);expect(adminCallbackAllowed({email:"ayodhya@skipwait.me",state:"skipwait-admin-bootstrap",configuredEmail:"ayodhya@skipwait.me",bootstrapEnabled:true})).toBe(true)});
 });

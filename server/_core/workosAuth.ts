@@ -28,6 +28,13 @@ export function workosConfigured(): boolean {
   return Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD);
 }
 
+export function adminCallbackAllowed(input:{email:string;state:string;configuredEmail?:string;bootstrapEnabled?:boolean}){
+  if(input.state!=="skipwait-admin"&&input.state!=="skipwait-admin-bootstrap")return true;
+  const expected=(input.configuredEmail||"").trim().toLowerCase();
+  if(!expected||input.email.trim().toLowerCase()!==expected)return false;
+  return input.state!=="skipwait-admin-bootstrap"||input.bootstrapEnabled===true;
+}
+
 export function resolveWorkosOpenId(workosUserId: string): string {
   return `workos_${workosUserId}`.slice(0, 64);
 }
@@ -97,14 +104,15 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     // Administrator plane: only the durable skipwait.me admin identity may
     // proceed. Any other address is bounced before AuthKit is ever reached.
     app.get("/api/auth/workos/admin", (req, res) => {
-      const durableAdmin = (process.env.SKIPWAIT_ADMIN_EMAIL || "ayodhya@skipwait.me").trim().toLowerCase();
+      const durableAdmin = (process.env.SKIPWAIT_ADMIN_EMAIL || "").trim().toLowerCase();
       const loginHint = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
-      if (!loginHint || loginHint !== durableAdmin) return res.status(403).send("Administrator sign-in is restricted to the skipwait.me administrator account");
+      if (!durableAdmin || !loginHint || loginHint !== durableAdmin) return res.status(403).send("Administrator sign-in is restricted to the configured administrator account");
+      const bootstrap = process.env.ENABLE_ADMIN_BOOTSTRAP === "true";
       res.redirect(302, workos.userManagement.getAuthorizationUrl({
         provider: "authkit",
         redirectUri: redirectUriFor(req),
-        state: "skipwait-admin",
-        screenHint: "sign-in",
+        state: bootstrap ? "skipwait-admin-bootstrap" : "skipwait-admin",
+        screenHint: bootstrap ? "sign-up" : "sign-in",
         loginHint,
       }));
     });
@@ -118,12 +126,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         const user = auth.user;
         // Administrator plane strict match (defense-in-depth): when the flow
         // started from the admin gate (state=skipwait-admin), the authenticated
-        // email must end precisely with the administrator domain. Anything else
+        // email must exactly match the configured administrator address. Anything else
         // is rejected here at the callback, not just the entry route.
-        if (state === "skipwait-admin") {
-          const adminDomain = (process.env.SKIPWAIT_ADMIN_EMAIL || "ayodhya@skipwait.me").split("@")[1]?.trim().toLowerCase() ?? "skipwait.me";
-          const email = user.email.trim().toLowerCase();
-          if (!email.endsWith(`@${adminDomain}`)) return res.status(403).send("Administrator sign-in requires a verified skipwait.me work email");
+        if (state === "skipwait-admin" || state === "skipwait-admin-bootstrap") {
+          if (!adminCallbackAllowed({ email:user.email, state, configuredEmail:process.env.SKIPWAIT_ADMIN_EMAIL, bootstrapEnabled:process.env.ENABLE_ADMIN_BOOTSTRAP === "true" })) return res.status(403).send("Administrator sign-in requires the exact configured administrator email and an enabled bootstrap flow");
         }
         const openId = resolveWorkosOpenId(user.id);
         const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
