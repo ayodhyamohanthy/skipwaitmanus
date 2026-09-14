@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Home from "./Home";
 
@@ -12,31 +12,30 @@ vi.mock("wouter", () => ({
 }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
-let mockedUser: { emailAddresses: Array<{ emailAddress: string; verification: { status: string } }> } | null = null;
-
 vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   SignedOut: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
-  useUser: () => ({ user: mockedUser }),
+  useUser: () => ({ user: null }),
 }));
 
-afterEach(() => { cleanup(); mockedUser = null; });
+afterEach(() => { cleanup(); go.mockReset(); });
 
-describe("signed-in company inbox entry", () => {
-  it("shows My company inbox only for a verified work email", () => {
-    mockedUser = { emailAddresses: [{ emailAddress: "priya@acme.com", verification: { status: "verified" } }] };
-    const { unmount } = render(<Home />);
-    expect(screen.getByRole("button", { name: /My company inbox/i })).toBeTruthy();
-    unmount();
-
-    mockedUser = { emailAddresses: [{ emailAddress: "seeker@gmail.com", verification: { status: "verified" } }] };
+describe("signed-in quick actions", () => {
+  it("shows My requests, My company inbox, and Internal openings once the user is signed in", () => {
     render(<Home />);
-    expect(screen.queryByRole("button", { name: /My company inbox/i })).toBeNull();
-  });
 
-  it("hides My company inbox when the company email is unverified", () => {
-    mockedUser = { emailAddresses: [{ emailAddress: "priya@acme.com", verification: { status: "unverified" } }] };
-    render(<Home />);
-    expect(screen.queryByRole("button", { name: /My company inbox/i })).toBeNull();
+    const requests = screen.getByRole("button", { name: /My requests/i });
+    const inbox = screen.getByRole("button", { name: /My company inbox/i });
+    // The desktop header also links to Internal openings; pick the rounded
+    // quick-action card like the mobile-first referral choices do.
+    const openings = screen.getAllByRole("button", { name: /Internal openings/i }).find(element => element.className.includes("rounded-xl"));
+    expect(openings).toBeTruthy();
+
+    fireEvent.click(requests);
+    expect(go).toHaveBeenCalledWith("/requests");
+    fireEvent.click(inbox);
+    expect(go).toHaveBeenCalledWith("/inbox");
+    fireEvent.click(openings!);
+    expect(go).toHaveBeenCalledWith("/wall");
   });
 });
