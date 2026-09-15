@@ -5,6 +5,7 @@ function run(paths:string[],extra:string[]=[]){const d=mkdtempSync(join(tmpdir()
 it("poll helper validates without deploy",()=>expect(run(["scripts/poll-cloudflare-readiness.sh"])).toContain("classification=pipeline"));
 it("workflow-only validates without deploy",()=>expect(run([".github/workflows/deploy-api.yml"])).toContain("classification=pipeline"));
 it("docs and sync logs skip all",()=>expect(run(["docs/SYNC_LOG.md"])).toContain("classification=skip"));
+it("verifier tests validate pipeline without deploy",()=>expect(run(["server/cloudflareContainerRelease.test.ts"])).toContain("classification=pipeline"));
 it("server changes deploy",()=>expect(run(["server/x.ts"])).toContain("classification=runtime"));
 it.each(["Dockerfile",".dockerignore","pnpm-lock.yaml","patches/x.patch"])("%s deploys",p=>expect(run([p])).toContain("classification=runtime"));
 it("mixed changes deploy",()=>expect(run([".github/workflows/deploy-api.yml","server/x.ts"])).toContain("classification=runtime"));

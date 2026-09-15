@@ -10,12 +10,13 @@ else base="${head_sha}^"
 fi
 files=$(git diff --name-only "$base" "$head_sha")
 runtime='^(server/|shared/|drizzle/|src/worker\.ts$|Dockerfile$|\.dockerignore$|package\.json$|pnpm-lock\.yaml$|patches/|wrangler\.jsonc$|tsconfig\.json$|vite\.config\.ts$)'
-if grep -Eq "$runtime" <<<"$files"; then classification=runtime
+if grep -Eq '^server/cloudflareContainerRelease\.test\.ts$' <<<"$files" && ! grep -Eqv '^(server/cloudflareContainerRelease\.test\.ts|scripts/|.github/workflows/)' <<<"$files"; then classification=pipeline
+elif grep -Eq "$runtime" <<<"$files"; then classification=runtime
 elif [ -z "$files" ] || ! grep -Eqv '^(docs/|README\.md$)' <<<"$files"; then classification=skip
 else classification=pipeline
 fi
 # Workflow and deploy-script changes validate the pipeline, while unrelated
 # non-runtime source changes remain pipeline-only rather than deploying API.
-if [ "$classification" = pipeline ] && ! grep -Eq '^(.github/workflows/deploy-api\.yml|scripts/(classify-api-changes|verify-cloudflare-container-release|poll-cloudflare-readiness|assert-api-workflow-selection)\.sh)$' <<<"$files"; then classification=skip; fi
+if [ "$classification" = pipeline ] && ! grep -Eq '^(.github/workflows/deploy-api\.yml|scripts/(classify-api-changes|verify-cloudflare-container-release|poll-cloudflare-readiness|assert-api-workflow-selection)\.sh|server/cloudflareContainerRelease\.test\.ts)$' <<<"$files"; then classification=skip; fi
 printf 'classification=%s\nbase=%s\n' "$classification" "$base"
 printf '%s\n' "$files" >&2
