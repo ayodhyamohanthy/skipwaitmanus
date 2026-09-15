@@ -43,7 +43,7 @@ export type PrivateReferralRouteDeps = {
   getOrCreateReferralShareCard?: (userId: number, requestId: number) => Promise<{ shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean }>;
   revokeReferralShareCard?: (userId: number, requestId: number) => Promise<{ revoked: boolean }>;
   getPublicReferralShareCard?: (shareToken: string) => Promise<{ companyDomain: string; status: ReferralStatus } | undefined>;
-  createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; fastTrack?: boolean }>;
+  createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; fastTrack?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
   getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -457,7 +457,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
-      const { targetRoleUrl, attachmentIds, candidateMessage, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias } = req.body as { targetRoleUrl?: string; attachmentIds?: number[]; candidateMessage?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
+      const { targetRoleUrl, attachmentIds, candidateMessage, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias } = req.body as { targetRoleUrl?: string; attachmentIds?: number[]; candidateMessage?: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
       if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
       if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
       const personalPitch = typeof candidateMessage === "string" && candidateMessage.trim() ? candidateMessage.trim().slice(0, 2000) : "No personal note was included with this referral request.";
@@ -467,7 +467,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const safeFastTrackAlias = typeof fastTrackAlias === "string" && /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(fastTrackAlias) ? fastTrackAlias : undefined;
       if ((fastTrackCompanySlug || fastTrackAlias) && (!safeFastTrackCompanySlug || !safeFastTrackAlias)) return res.status(400).json({ error: "This private referral alias is invalid" });
       if (fastTrackCode && !safeFastTrackCode) return res.status(400).json({ error: "This private referral link is invalid" });
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias });
       let reviewLinks: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
       if (deps.prepareReferrerReviewEmailNotifications) {
         try {

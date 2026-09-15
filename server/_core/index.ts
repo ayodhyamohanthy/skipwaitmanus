@@ -1,3 +1,4 @@
+import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
 import { registerAdminSmokeFixture } from "../adminSmokeFixture";
 import "./envBoot";
 import { readFile } from "node:fs/promises";
@@ -102,7 +103,8 @@ async function startServer() {
     if (!identity) return undefined;
     return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
   };
-  // Public control-plane bodies stay small. The two deprecated JSON document
+  registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
+    // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.
   const smallJson = express.json({ limit: "256kb" });
   app.use((req, res, next) => {

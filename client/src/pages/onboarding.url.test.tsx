@@ -1,16 +1,16 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Onboarding from "./Onboarding";
 
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => null }));
 
 describe("Onboarding Target Role URL", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => { localStorage.clear(); vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ canonicalUrl: "https://careers.example.com/jobs/product-designer", status: "fresh", employerConfidence: "direct-domain", companyDomain: "example.com", reason: "Company identified", recoveryAction: "Continue" }) }))); });
   afterEach(() => cleanup());
 
-  it("blocks arbitrary text and enables continue only for a complete HTTP(S) job link", () => {
+  it("blocks arbitrary text and enables continue only after a safe preview", async () => {
     render(<Onboarding />);
     expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeNull();
@@ -26,23 +26,23 @@ describe("Onboarding Target Role URL", () => {
 
     fireEvent.change(input, { target: { value: "https://careers.example.com/jobs/product-designer" } });
     expect(screen.queryByRole("alert")).toBeNull();
-    expect(continueButton).toHaveProperty("disabled", false);
+    await waitFor(() => expect(continueButton).toHaveProperty("disabled", false));
     expect(screen.queryByText("Fix the link above to continue")).toBeNull();
   });
 
-  it("restores the included balance when a legacy reset marker exists without a stored token balance", () => {
+  it("restores the included balance when a legacy reset marker exists without a stored token balance", async () => {
     localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
   });
 
-  it("allows URL progression even when the current local credit balance is explicitly zero", () => {
+  it("allows URL progression even when the current local credit balance is explicitly zero", async () => {
     localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
     localStorage.setItem("bridge-tokens", "0");
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
   });
 
   it("confirms the reviewed employer for the reported Wellfound listing before the user continues", () => {

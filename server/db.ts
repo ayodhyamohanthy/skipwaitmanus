@@ -10,6 +10,7 @@ import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralS
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
+import { fetchPublicJobLink } from "./jobLinkPreview";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -320,9 +321,7 @@ async function employerPageEvidence(targetRoleUrl: string) {
     const url = new URL(targetRoleUrl);
     if (!isHostedJobPlatform(url.hostname)) return { candidates: [], officialDomains: [] };
     const candidateSets = await Promise.all(publicEmployerPageUrls(targetRoleUrl).map(async pageUrl => {
-      const response = await fetch(pageUrl, { headers: { "User-Agent": "skipwait.me employer routing" }, redirect: "manual", signal: AbortSignal.timeout(4_000) });
-      if (!response.ok) return { candidates: [], officialDomains: [] };
-      const html = (await response.text()).slice(0, 512_000);
+      const { body: html } = await fetchPublicJobLink(pageUrl);
       return { candidates: employerCandidatesFromJobPageHtml(html), officialDomains: officialEmployerDomainsFromJobPageHtml(html) };
     }));
     return {
@@ -353,26 +352,7 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
   if (pageEvidence.officialDomains.length === 1 && !isBoardDomain(pageEvidence.officialDomains[0])) return pageEvidence.officialDomains[0];
   const matchedFromPage = verifiedEmployerDomainFromCandidates([...urlCandidates, ...pageEvidence.candidates], verifiedDomains.map(row => row.domain));
   if (matchedFromPage) return matchedFromPage;
-  // Aggregators like LinkedIn label jobs with a brand display name ("Ethos") whose
-  // domain key ("ethos") can differ from the company's email domain ("ethoslife").
-  // The company profile handle (linkedin.com/company/ethoslife) is the stronger
-  // signal, so prefix-match verified referrer domains against it: handle
-  // "ethoslife" matches ethoslife.com exactly, or ethoslife.co.in style country
-  // TLDs, but never ethos-in-a-different-name domains.
-  const handleCandidates = Array.from(new Set([...urlCandidates, ...pageEvidence.candidates]));
-  if (handleCandidates.length > 0) {
-    const handleMatches = verifiedDomains
-      .map(row => row.domain?.trim().toLowerCase())
-      .filter((domain): domain is string => Boolean(domain))
-      .filter(domain => {
-        const labels = domain.split(".");
-        if (labels.length < 2) return false;
-        const name = labels.slice(0, -1).join("");
-        return handleCandidates.some(handle => handle === name || (handle.length >= 4 && name.startsWith(handle)));
-      });
-    const uniqueMatches = Array.from(new Set(handleMatches)).filter(domain => !isBoardDomain(domain));
-    if (uniqueMatches.length === 1) return uniqueMatches[0];
-  }
+  // Approximate/brand-prefix evidence is suggestion-only. Routing requires an exact normalized label match.
   return undefined;
 }
 
@@ -493,8 +473,11 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) {
-  const companyDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) {
+  const resolvedDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+  const confirmedDomain = input.confirmedCompanyDomain ? directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`) : undefined;
+  if (resolvedDomain && confirmedDomain && resolvedDomain !== confirmedDomain) throw new Error("The confirmed company domain does not match this job link.");
+  const companyDomain = resolvedDomain ?? confirmedDomain;
   if (!companyDomain) throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
   const compensation = input.compensation?.trim().slice(0, 80) || null;
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
