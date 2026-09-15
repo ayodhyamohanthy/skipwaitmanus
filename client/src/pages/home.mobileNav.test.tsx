@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import Home from "./Home";
 
 vi.mock("@/_core/auth", () => ({
@@ -15,7 +15,7 @@ const { go } = vi.hoisted(() => ({ go: vi.fn() }));
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/", go],
-  Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
@@ -27,8 +27,9 @@ describe("Home mobile navigation", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open navigation menu" }));
 
     expect(screen.getByRole("dialog", { name: "Menu" })).toBeTruthy();
-    expect(screen.getByText("How it works")).toBeTruthy();
-    expect(screen.getByText("Privacy")).toBeTruthy();
+    const menu = within(screen.getByRole("dialog", { name: "Menu" }));
+    expect(menu.getByText("How it works")).toBeTruthy();
+    expect(menu.getByText("Privacy")).toBeTruthy();
   });
 
   it("keeps the two role entry points prominent and routed to their flows", () => {

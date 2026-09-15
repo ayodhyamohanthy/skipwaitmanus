@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Home from "./Home";
 
@@ -21,9 +21,10 @@ describe("landing discovery entry", () => {
     expect(screen.queryByRole("button", { name: /^Internal openings$/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /My requests/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /My company inbox/i })).toBeNull();
-    expect(screen.getByText("How it works")).toBeTruthy();
-    expect(screen.getByText("Privacy")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Sign in/i })).toBeNull();
+    const menu = within(screen.getByRole("dialog", { name: "Menu" }));
+    expect(menu.getByText("How it works")).toBeTruthy();
+    expect(menu.getByText("Privacy")).toBeTruthy();
+    expect(menu.getByRole("button", { name: /Sign in/i })).toBeTruthy();
     expect(screen.queryByText(/Use saved device sign-in/i)).toBeNull();
   });
 });
