@@ -13,7 +13,7 @@ if git grep -nE 'ADMIN_SMOKE_SECRET[[:space:]]*=[[:space:]]*[^$]' -- ':!server/a
 fi
 block=$(sed -n '/name: Ensure admin smoke signing secret exists/,/name: Assert smoke secret hygiene/p' "$workflow")
 grep -q 'set +x' <<<"$block"
-grep -q 'wrangler secret list --json' <<<"$block"
+grep -q 'wrangler secret list' <<<"$block"
 grep -q 'openssl rand -base64 32 | npx wrangler secret put ADMIN_SMOKE_SECRET >/dev/null' <<<"$block"
 if grep -Eq 'echo .*ADMIN_SMOKE_SECRET|set -x' <<<"$block"; then
   echo "Smoke secret provisioning must not echo values or enable tracing" >&2

@@ -96,7 +96,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           set +x
-          if ! npx wrangler secret list --json | jq -e '.[] | select(.name == "ADMIN_SMOKE_SECRET")' >/dev/null; then
+          if ! npx wrangler secret list | jq -e '.[] | select(.name == "ADMIN_SMOKE_SECRET")' >/dev/null; then
             openssl rand -base64 32 | npx wrangler secret put ADMIN_SMOKE_SECRET >/dev/null
           fi
 
