@@ -30,6 +30,22 @@ describe("Onboarding Target Role URL", () => {
     expect(screen.queryByText("Fix the link above to continue")).toBeNull();
   });
 
+  it("allows a deterministic employer when the page is unreachable and warns the user", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ canonicalUrl: "https://careers.example.com/jobs/product-designer", status: "unreachable", employerConfidence: "direct-domain", companyDomain: "example.com", reason: "unreachable", recoveryAction: "check" }) })));
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
+    expect(screen.getByRole("status").textContent).toContain("Company identified as example.com; we couldn't verify this page is still open. Check the link before sending.");
+  });
+
+  it("blocks an unreachable link without a safely identified employer", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ canonicalUrl: "https://jobs.lever.co/unknown/1", status: "unreachable", employerConfidence: "unreachable", reason: "We could not reach this job link.", recoveryAction: "Check the link and try again." }) })));
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://jobs.lever.co/unknown/1" } });
+    await waitFor(() => expect(screen.getByRole("status")).toBeTruthy());
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
+  });
+
   it("restores the included balance when a legacy reset marker exists without a stored token balance", async () => {
     localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
     render(<Onboarding />);
