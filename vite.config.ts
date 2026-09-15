@@ -151,80 +151,16 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [
-  react(),
-  tailwindcss(),
+const productionPlugins = [react(), tailwindcss()];
+const developmentPlugins = [
+  ...productionPlugins,
   jsxLocPlugin(),
   vitePluginManusRuntime(),
   vitePluginManusDebugCollector(),
-  // PWA temporarily disabled: SW cached-shell caused intermittent blank lazy routes (see docs/ui-flow-audit.md)
-		// VitePWA({
-//     includeAssets: ["skipwait-icon.svg"],
-//       manifest: {
-//         name: "skipwait.me",
-//         short_name: "skipwait",
-//         description: "Thoughtful job referrals without the awkwardness.",
-//         theme_color: "#0B57D0",
-//         background_color: "#F8FAFC",
-//         display: "standalone",
-//         display_override: ["standalone", "minimal-ui", "browser"],
-//         start_url: "/",
-//         scope: "/",
-//         lang: "en",
-//         shortcuts: [
-//           { name: "Request a referral", short_name: "Request", url: "/start" },
-//           { name: "Give referrals", short_name: "Give", url: "/referrer" },
-//         ],
-//         icons: [
-//         {
-//           src: "/skipwait-icon.svg",
-//           sizes: "any",
-//           type: "image/svg+xml",
-//           purpose: "any maskable",
-//         },
-//       ],
-//     },
-//     workbox: {
-//       // Preload lazy route chunks too; a missing chunk after a deploy would
-//       // otherwise blank the route with no recovery path.
-//       globPatterns: ["assets/**/*.{js,css,svg,png,ico,json}"],
-//       // Navigations must always validate against the network first: a cached
-//       // index.html from an older deploy references purged chunk hashes, which
-//       // 404s and leaves lazy routes permanently blank.
-//       navigateFallbackDenylist: [/^.*$/],
-//       cleanupOutdatedCaches: true,
-//       clientsClaim: true,
-//       runtimeCaching: [
-//         {
-//           urlPattern: /\/assets\/.*\.js$/i,
-//           handler: "CacheFirst",
-//           options: {
-//             cacheName: "hashed-assets",
-//             // Hashed filenames are immutable, but only cache what we know exists;
-//             // cacheableResponse keeps 404s (purged chunks) out of the cache.
-//             cacheableResponse: { statuses: [200] },
-//           },
-//         },
-//         {
-//           urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*$/i,
-//           handler: "StaleWhileRevalidate",
-//           options: { cacheName: "google-fonts-stylesheets" },
-//         },
-//         {
-//           urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*$/i,
-//           handler: "CacheFirst",
-//           options: {
-//             cacheName: "google-fonts-webfonts",
-//             expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 },
-//           },
-//         },
-//       ],
-//     },
-//   }),
 ];
 
-export default defineConfig({
-  plugins,
+export default defineConfig(({ mode }) => ({
+  plugins: mode === "development" ? developmentPlugins : productionPlugins,
   resolve: {
     alias: [
       { find: "@", replacement: path.resolve(import.meta.dirname, "client", "src") },
@@ -255,4 +191,4 @@ export default defineConfig({
       deny: ["**/.*"],
     },
   },
-});
+}));
