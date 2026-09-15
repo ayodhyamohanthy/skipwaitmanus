@@ -35,6 +35,20 @@ describe("AccountMenu", () => {
     expect(window.location.pathname).toBe("/settings");
   });
 
+  it("routes My requests and Internal openings from the profile menu", async () => {
+    render(<AccountMenu />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "My requests" }));
+    expect(window.location.pathname).toBe("/requests");
+  });
+
+  it("routes Internal openings to the employee-shared wall from the profile menu", async () => {
+    render(<AccountMenu />);
+    fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Internal openings" }));
+    expect(window.location.pathname).toBe("/wall");
+  });
+
   it("shows My Company Inbox and the My impact dashboard link only after a verified company email is present", async () => {
     authUser.workEmailVerified = true;
     render(<AccountMenu />);

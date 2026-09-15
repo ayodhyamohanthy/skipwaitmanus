@@ -20,22 +20,21 @@ vi.mock("@/_core/auth", () => ({
 
 afterEach(() => { cleanup(); go.mockReset(); });
 
-describe("signed-in quick actions", () => {
-  it("shows My requests, My company inbox, and Internal openings once the user is signed in", () => {
+describe("homepage profile entries", () => {
+  it("keeps workspace links out of the homepage for signed-in users", () => {
     render(<Home />);
 
-    const requests = screen.getByRole("button", { name: /My requests/i });
-    const inbox = screen.getByRole("button", { name: /My company inbox/i });
-    // The desktop header also links to Internal openings; pick the rounded
-    // quick-action card like the mobile-first referral choices do.
-    const openings = screen.getAllByRole("button", { name: /Internal openings/i }).find(element => element.className.includes("rounded-xl"));
-    expect(openings).toBeTruthy();
+    // Profile destinations live in the account menu on inner pages, never on
+    // the landing page — no quick-action cards, header links, or menu items.
+    expect(screen.queryByRole("button", { name: /My requests/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /My company inbox/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Internal openings/i })).toBeNull();
+  });
 
-    fireEvent.click(requests);
-    expect(go).toHaveBeenCalledWith("/requests");
-    fireEvent.click(inbox);
-    expect(go).toHaveBeenCalledWith("/inbox");
-    fireEvent.click(openings!);
-    expect(go).toHaveBeenCalledWith("/wall");
+  it("keeps the two role entry points routing to their flows", () => {
+    render(<Home />);
+
+    fireEvent.click(screen.getByRole("button", { name: /I need a referral/i }));
+    expect(go).toHaveBeenCalledWith("/start");
   });
 });
