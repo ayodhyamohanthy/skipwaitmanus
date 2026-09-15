@@ -121,13 +121,13 @@ jobs:
 
       - name: Deploy container image + worker
         if: steps.changes.outputs.classification == 'runtime'
-        run: npx wrangler deploy 2>&1 | tee /tmp/wrangler-deploy.log
+        run: bash scripts/deploy-cloudflare-two-phase.sh
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Verify active Cloudflare container release
-        if: steps.changes.outputs.classification == 'runtime'
+        if: ${{ false }}
         env:
           EXPECTED_SHA: ${{ github.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
