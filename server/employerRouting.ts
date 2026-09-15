@@ -1,3 +1,4 @@
+import { getDomain } from "tldts";
 import { reviewedEmployerFromTargetRoleUrl } from "../shared/referralUrl";
 
 const hostedJobPlatforms = [
@@ -26,10 +27,11 @@ export function isHostedJobPlatform(hostname: string) {
 
 export function directEmployerDomainFromTargetUrl(targetRoleUrl: string): string | undefined {
   try {
-    const hostname = normalizedHost(new URL(targetRoleUrl).hostname);
-    if (!hostname || isHostedJobPlatform(hostname)) return undefined;
-    const labels = hostname.split(".");
-    return labels.length > 2 ? labels.slice(-2).join(".") : hostname;
+    const url = new URL(targetRoleUrl);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return undefined;
+    const hostname = normalizedHost(url.hostname);
+    if (!hostname || hostname === "localhost" || isHostedJobPlatform(hostname)) return undefined;
+    return getDomain(hostname, { allowPrivateDomains: false, detectIp: true }) || undefined;
   } catch {
     return undefined;
   }
