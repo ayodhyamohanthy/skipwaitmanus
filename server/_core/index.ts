@@ -101,9 +101,15 @@ async function startServer() {
     if (!identity) return undefined;
     return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
   };
-  // Configure body parser with larger size limit for file uploads
-  app.use(express.json({ limit: "50mb" }));
-  app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Public control-plane bodies stay small. The two deprecated JSON document
+  // routes opt into their own authenticated, bounded parser at registration.
+  const smallJson = express.json({ limit: "256kb" });
+  app.use((req, res, next) => {
+    if (req.path === "/api/documents" || req.path === "/api/documents/opaque") return next();
+    smallJson(req, res, error => error ? res.status(413).json({ error: "Request body is too large" }) : next());
+  });
+  const smallForm = express.urlencoded({ limit: "256kb", extended: true });
+  app.use((req, res, next) => smallForm(req, res, error => error ? res.status(413).json({ error: "Request body is too large" }) : next()));
 
 // Public health endpoint — returns the baked commit SHA for CI self-verification
 app.get("/api/health", async (_req, res) => {

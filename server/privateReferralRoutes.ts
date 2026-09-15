@@ -123,6 +123,21 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
   const privateDocumentMimeTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
   const parseRawPrivateDocument = express.raw({ type: privateDocumentMimeTypes, limit: "10mb" });
+  const parseLegacyDocumentJson = express.json({ limit: "14mb" });
+  const legacyDocumentBody = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const identity = await deps.resolveIdentity(req).catch(() => undefined);
+    if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
+    const declared = Number(req.header("content-length") || 0);
+    if (Number.isFinite(declared) && declared > 14 * 1024 * 1024) return res.status(413).json({ error: "Documents must be 10 MB or smaller" });
+    parseLegacyDocumentJson(req, res, error => error ? res.status(413).json({ error: "Documents must be 10 MB or smaller" }) : next());
+  };
+  const rawDocumentBody = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const identity = await deps.resolveIdentity(req).catch(() => undefined);
+    if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
+    const declared = Number(req.header("content-length") || 0);
+    if (Number.isFinite(declared) && declared > 10 * 1024 * 1024) return res.status(413).json({ error: "Documents must be 10 MB or smaller" });
+    parseRawPrivateDocument(req, res, error => error ? res.status(413).json({ error: "Documents must be 10 MB or smaller" }) : next());
+  };
   const privateDocumentPrefix = (identity: Identity) => `skipwait/private-referrals/${identity.account.openId}/`;
   const opaqueDocumentBuffer = (input: { encryptedContent?: string; encryptionKey?: string; initializationVector?: string }) => {
     if (!input.encryptedContent || !input.encryptionKey || !input.initializationVector) throw new Error("Resume upload data is incomplete");
@@ -265,16 +280,16 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(201).json({ opportunity });
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not publish that opportunity" }); }
   });
-  app.post("/api/documents", async (req, res) => {
+  app.post("/api/documents", legacyDocumentBody, async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
       const { fileName, mimeType, dataUrl } = req.body as { fileName?: string; mimeType?: string; dataUrl?: string };
       if (!fileName || !mimeType || !dataUrl) return res.status(400).json({ error: "Document details are required" });
       const buffer = deps.dataUrlToBuffer(dataUrl);
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, buffer));
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); res.status(/smaller than 10 MB/i.test(message) ? 413 : isValidationError ? 400 : 500).json({ error: message }); }
   });
-  app.post("/api/documents/raw", (req, res, next) => parseRawPrivateDocument(req, res, error => error ? res.status(413).json({ error: "Documents must be smaller than 10 MB" }) : next()), async (req, res) => {
+  app.post("/api/documents/raw", rawDocumentBody, async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
       const encodedName = req.header("x-resume-filename") || "";
@@ -282,15 +297,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const mimeType = (req.header("content-type") || "").split(";", 1)[0]?.trim() || "";
       if (!fileName || !privateDocumentMimeTypes.includes(mimeType) || !Buffer.isBuffer(req.body)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, req.body));
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than/i.test(message); res.status(/smaller than 10 MB/i.test(message) ? 413 : isValidationError ? 400 : 500).json({ error: message }); }
   });
-  app.post("/api/documents/opaque", async (req, res) => {
+  app.post("/api/documents/opaque", legacyDocumentBody, async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
       const { fileName, mimeType, encryptedContent, encryptionKey, initializationVector } = req.body as { fileName?: string; mimeType?: string; encryptedContent?: string; encryptionKey?: string; initializationVector?: string };
       if (!fileName || !mimeType || !privateDocumentMimeTypes.includes(mimeType)) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume" });
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector })));
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); res.status(isValidationError ? 400 : 500).json({ error: message }); }
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); res.status(/smaller than 10 MB/i.test(message) ? 413 : isValidationError ? 400 : 500).json({ error: message }); }
   });
   app.post("/api/documents/uploads", async (req, res) => {
     try {
@@ -310,7 +325,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const safeChunkIndex = typeof chunkIndex === "number" && Number.isInteger(chunkIndex) && chunkIndex >= 0 ? chunkIndex : null;
       if (!deps.getResumeUploadSession || !deps.appendResumeUploadChunk || safeChunkIndex === null) return res.status(400).json({ error: "This resume chunk could not be verified" });
       const session = await deps.getResumeUploadSession(identity.account.id, req.params.sessionId); if (!session || session.status !== "active") return res.status(404).json({ error: "This private upload is no longer available" });
-      const chunk = opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector }); if (chunk.length > 48 * 1024) return res.status(400).json({ error: "Resume upload chunk is too large" });
+      const chunk = opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector }); if (chunk.length > 48 * 1024) return res.status(413).json({ error: "Resume upload chunk is too large" });
       const { key } = await deps.storagePut(`${privateDocumentPrefix(identity)}staging/${session.id}/${safeChunkIndex}`, chunk, "application/octet-stream");
       const progress = await deps.appendResumeUploadChunk(identity.account.id, { sessionId: session.id, chunkIndex: safeChunkIndex, storageKey: key, byteSize: chunk.length });
       res.set("Cache-Control", "private, no-store"); res.json(progress);
