@@ -181,6 +181,13 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(screen.getByText("Compensation: ₹12–18 LPA")).toBeTruthy();
   });
 
+  it("tells signed-in seekers the resume stays private instead of promising a later sign-in", () => {
+    authState.signedIn = true;
+    render(<ReferralRequest />);
+    expect(screen.getByText("Only you and the assigned referrer can open it.")).toBeTruthy();
+    expect(screen.queryByText("You will sign in only when you send.")).toBeNull();
+  });
+
   it("keeps the selected resume pending when the signed-in upload fails so sending can retry", async () => {
     authState.signedIn = true;
     let uploadAttempts = 0;
