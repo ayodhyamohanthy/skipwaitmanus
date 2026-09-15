@@ -16,6 +16,6 @@ else classification=pipeline
 fi
 # Workflow and deploy-script changes validate the pipeline, while unrelated
 # non-runtime source changes remain pipeline-only rather than deploying API.
-if [ "$classification" = pipeline ] && ! grep -Eq '^(.github/workflows/deploy-api\.yml|scripts/(classify-api-changes|verify-cloudflare-container-release|assert-api-workflow-selection)\.sh)$' <<<"$files"; then classification=skip; fi
+if [ "$classification" = pipeline ] && ! grep -Eq '^(.github/workflows/deploy-api\.yml|scripts/(classify-api-changes|verify-cloudflare-container-release|poll-cloudflare-readiness|assert-api-workflow-selection)\.sh)$' <<<"$files"; then classification=skip; fi
 printf 'classification=%s\nbase=%s\n' "$classification" "$base"
 printf '%s\n' "$files" >&2
