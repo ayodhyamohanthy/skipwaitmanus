@@ -12,7 +12,7 @@ vi.mock("@/_core/auth", () => ({
 }));
 
 describe("AccountMenu", () => {
-  afterEach(() => { cleanup(); signOut.mockClear(); authUser.imageUrl = "https://images.example.test/avery.png"; authUser.workEmailVerified = false; window.history.replaceState({}, "", "/"); });
+  afterEach(() => { cleanup(); signOut.mockReset(); signOut.mockResolvedValue(undefined); localStorage.clear(); sessionStorage.clear(); authUser.imageUrl = "https://images.example.test/avery.png"; authUser.workEmailVerified = false; window.history.replaceState({}, "", "/"); });
 
   it("uses the signed-in profile image as the compact menu trigger", () => {
     render(<AccountMenu />);
@@ -49,6 +49,12 @@ describe("AccountMenu", () => {
     render(<AccountMenu />);
     fireEvent.pointerDown(screen.getByRole("button", { name: "Account menu" }), { button: 0, ctrlKey: false });
     fireEvent.click(await screen.findByRole("menuitem", { name: "Sign out" }));
-    expect(signOut).toHaveBeenCalledTimes(1);
+    await waitFor(()=>expect(signOut).toHaveBeenCalledTimes(1));
+  });
+
+  it("clears private browser data before sign-out and keeps it cleared on rejection", async () => {
+    localStorage.setItem("bridge-company-confirmation","private"); localStorage.setItem("bridge-target-compensation","private"); localStorage.setItem("theme","dark"); sessionStorage.setItem("skipwait.pending-chargebee-checkout","private");
+    signOut.mockRejectedValueOnce(new Error("network")); render(<AccountMenu/>); fireEvent.pointerDown(screen.getByRole("button",{name:"Account menu"}),{button:0,ctrlKey:false}); fireEvent.click(await screen.findByRole("menuitem",{name:"Sign out"}));
+    await waitFor(()=>expect(signOut).toHaveBeenCalledTimes(1)); expect(localStorage.getItem("bridge-company-confirmation")).toBeNull(); expect(localStorage.getItem("bridge-target-compensation")).toBeNull(); expect(sessionStorage.getItem("skipwait.pending-chargebee-checkout")).toBeNull(); expect(localStorage.getItem("theme")).toBe("dark"); expect((await screen.findByRole("alert")).textContent).toContain("Sign out failed. Try again.");
   });
 });

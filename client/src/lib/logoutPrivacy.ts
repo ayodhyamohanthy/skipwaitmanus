@@ -4,6 +4,9 @@ import { clearReferralDraft } from "@/lib/pwaContinuity";
 const referralLocalStorageKeys = [
   "bridge-name",
   "bridge-target-url",
+  "bridge-company-confirmation",
+  "bridge-target-compensation",
+  "bridge-referrer-paid-tokens",
   "bridge-seeker-attachments",
   "bridge-request-sent",
   "bridge-tokens",
@@ -11,7 +14,7 @@ const referralLocalStorageKeys = [
   "manus-runtime-user-info",
 ] as const;
 
-const referralSessionStorageKeys = ["skipwait-pending-resume-submit", "skipwait:employee-sign-in-email", "skipwait:company-coverage-invite"] as const;
+const referralSessionStorageKeys = ["skipwait-pending-resume-submit", "skipwait:employee-sign-in-email", "skipwait:company-coverage-invite", "skipwait.pending-chargebee-checkout", "skipwait:personal-invite", "manus-cookie"] as const;
 
 /** Removes browser-side artifacts that must never cross a signed-out boundary. */
 export async function clearPrivateReferralBrowserData(): Promise<void> {
