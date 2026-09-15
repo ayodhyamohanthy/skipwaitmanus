@@ -22,36 +22,15 @@ if jq -e --arg n "$expected_name" '.[] | select(.name==$n and ((.version? // nul
   echo "::warning::Release identity exists but Cloudflare reports an inactive/null-version instance; runtime readiness decides convergence"
 fi
 
-check_ready() {
-  local response body status parsed_sha state service
-  response=$(curl -sS --max-time 90 -w $'\n%{http_code}' "$READY_URL") || return 2
-  status=${response##*$'\n'}; body=${response%$'\n'*}
-  jq -e . >/dev/null 2>&1 <<<"$body" || { echo "Readiness returned non-JSON (HTTP $status)"; return 3; }
-  service=$(jq -r '.service // empty' <<<"$body"); parsed_sha=$(jq -r '.commitSha // empty' <<<"$body"); state=$(jq -r '.state // empty' <<<"$body")
-  echo "Runtime readiness HTTP=$status service=$service sha=${parsed_sha:0:12} state=$state"
-  [ "$service" = "skipwait-api" ] || return 3
-  [ "$parsed_sha" = "$EXPECTED_SHA" ] || { echo "::error::Runtime SHA mismatch: got $parsed_sha expected $EXPECTED_SHA"; return 4; }
-  if [ "$status" = 200 ] && [ "$state" = ready ]; then return 0; fi
-  if [ "$status" = 503 ] && [ "$state" = reconciling ]; then return 5; fi
-  return 3
-}
+. "$(dirname "$0")/poll-cloudflare-readiness.sh"
 
-set +e; check_ready; result=$?; set -e
+set +e; poll_cloudflare_readiness "$READY_URL" "$EXPECTED_SHA"; result=$?; set -e
 if [ "$result" -eq 0 ]; then
   instances=$(npx wrangler containers instances "$app_id" --json)
   jq -e --arg n "$expected_name" '.[] | select(.name==$n)' <<<"$instances" >/dev/null || { echo "::error::Exact runtime SHA is ready but release-scoped identity $expected_name is absent"; exit 1; }
-  echo "RUNTIME CONVERGED: exact release $EXPECTED_SHA is ready"; exit 0
+  echo "RUNTIME CONVERGED: exact release $EXPECTED_SHA is ready after bounded reconciliation"; exit 0
 fi
-if [ "$result" -eq 5 ]; then
-  sleep 5
-  set +e; check_ready; result=$?; set -e
-  if [ "$result" -eq 0 ]; then echo "RUNTIME CONVERGED: exact release $EXPECTED_SHA is ready after reconciliation"; exit 0; fi
-fi
-[ "$result" -eq 4 ] && exit 1
-
-echo "Runtime was unreachable or invalid; waiting one idle window without HTTP probes"
-sleep 660
-set +e; check_ready; result=$?; set -e
-[ "$result" -eq 0 ] && { echo "RUNTIME CONVERGED: exact release $EXPECTED_SHA is ready after idle recycle"; exit 0; }
-echo "::error::Cloudflare image=$image version=$current exists, but runtime did not converge to ready SHA $EXPECTED_SHA"
-exit 1
+instances=$(npx wrangler containers instances "$app_id" --json)
+echo "Final Cloudflare application=$app_id deploymentVersion=$current image=$image"
+jq -c '.[] | {name,state,version:(.version? // null),created}' <<<"$instances"
+exit "$result"
