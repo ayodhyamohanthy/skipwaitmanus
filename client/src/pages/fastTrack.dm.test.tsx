@@ -13,13 +13,13 @@ vi.mock("wouter", () => ({
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-describe("Fast-track link DM surface", () => {
-  it("shows the paywall to signed-out visitors instead of a composer", async () => {
+describe("Fast-track link landing", () => {
+  it("leads with the free referral request and never pitches Pro to signed-out visitors", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ link: { companyDomain: "acme.com", isActive: true, referrerUserId: 22 } }) })));
     render(<FastTrackLink />);
     expect(await screen.findByText(/Request a referral at acme\.com/)).toBeTruthy();
-    expect(await screen.findByText(/Direct messaging is for members/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Upgrade to Pro" }).getAttribute("href")).toBe("/premium?role=job_seeker");
+    expect(screen.queryByText(/Direct messaging is for members/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
     expect(screen.queryByLabelText("Message")).toBeNull();
     expect(screen.getByRole("button", { name: /Start private request/ })).toBeTruthy();
   });

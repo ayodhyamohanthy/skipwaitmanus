@@ -74,4 +74,31 @@ describe("Referrer Fast-Track Link card", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("skipwait.me/refer/acme/ref-priya")).toBeTruthy();
   });
+
+  it("copies only the link URL on Copy and the full bio on Copy for LinkedIn bio", async () => {
+    const written: string[] = [];
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText: async (value: string) => { written.push(value); } } });
+    const opened: string[] = [];
+    const originalOpen = window.open;
+    window.open = vi.fn(((url: string) => { opened.push(url); return null; }) as unknown as typeof window.open);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ link }) })));
+    try {
+      render(<ReferrerFastTrackCard />);
+      expect(await screen.findByText("skipwait.me/refer/acme/ref-priya")).toBeTruthy();
+      // The bio preview shows the exact message and URL that will be pasted.
+      expect(screen.getByText("Private referral requests at acme.com via Skipwait.me.")).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Copy" }));
+      await waitFor(() => expect(written).toEqual(["https://skipwait.me/refer/acme/ref-priya"]));
+      expect(toast).toHaveBeenCalledWith("Link copied.");
+
+      fireEvent.click(screen.getByRole("button", { name: "Copy for LinkedIn bio" }));
+      await waitFor(() => expect(written).toEqual(["https://skipwait.me/refer/acme/ref-priya", "Private referral requests at acme.com via Skipwait.me.\nhttps://skipwait.me/refer/acme/ref-priya"]));
+      expect(toast).toHaveBeenCalledWith("Bio copied — paste it in your LinkedIn bio.");
+      expect(opened).toEqual(["https://www.linkedin.com/in/me/"]);
+    } finally {
+      window.open = originalOpen;
+      vi.unstubAllGlobals();
+    }
+  });
 });
