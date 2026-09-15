@@ -74,7 +74,8 @@ jobs:
       - name: Stamp release identity into Cloudflare configuration
         env:
           EXPECTED_SHA: ${{ github.sha }}
-        run: node -e 'const fs=require("fs");const p="wrangler.jsonc";let s=fs.readFileSync(p,"utf8");s=s.replace(/"API_RELEASE":\s*"[^"]+"/, `"API_RELEASE": "${process.env.EXPECTED_SHA}"`);fs.writeFileSync(p,s)'
+        run: |
+          node -e 'const fs=require("fs");const p="wrangler.jsonc";let s=fs.readFileSync(p,"utf8");s=s.replace(/"API_RELEASE":\s*"[^"]+"/, `"API_RELEASE": "${process.env.EXPECTED_SHA}"`);fs.writeFileSync(p,s)'
 
       - name: Deploy container image + worker
         run: npx wrangler deploy 2>&1 | tee /tmp/wrangler-deploy.log
