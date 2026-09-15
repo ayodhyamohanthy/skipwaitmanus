@@ -58,10 +58,10 @@ describe("role-aware WorkOS sign-in entries", () => {
   });
 
 
-  it("uses sign-up only while the one-time bootstrap flag is explicitly enabled", { timeout: 20000 }, async () => {
+  it("uses sign-in while the one-time bootstrap flag is explicitly enabled", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv, ENABLE_ADMIN_BOOTSTRAP: "true" });
     expect((await request(app).get("/api/auth/workos/admin?email=ayodhya@skipwait.me")).status).toBe(302);
-    expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up", state: "skipwait-admin-bootstrap", loginHint: "ayodhya@skipwait.me" }));
+    expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-in", state: "skipwait-admin-bootstrap", loginHint: "ayodhya@skipwait.me" }));
     restore();
   });
 
