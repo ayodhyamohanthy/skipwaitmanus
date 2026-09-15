@@ -160,6 +160,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       if(process.env.ENABLE_ADMIN_BOOTSTRAP!=="true"||req.header("x-admin-secret")!==process.env.ADMIN_SMOKE_SECRET)return res.status(404).send("Not found");
       const diagnostic=authDiagnostics.get(req.params.id);return diagnostic?res.set("Cache-Control","no-store").json(diagnostic):res.status(404).send("Not found");
     });
+    app.get("/api/auth/workos/runtime-diagnostic",(req,res)=>{
+      if(process.env.ENABLE_ADMIN_BOOTSTRAP!=="true"||!process.env.ADMIN_SMOKE_SECRET||req.header("x-admin-secret")!==process.env.ADMIN_SMOKE_SECRET)return res.status(404).send("Not found");
+      return res.set("Cache-Control","no-store").json({workosApiKeyPresent:Boolean(process.env.WORKOS_API_KEY)});
+    });
 
     app.post("/api/auth/workos/logout", (req, res) => {
       res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
