@@ -51,7 +51,7 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.sha }}
         run: |
-          last=$(git rev-parse refs/tags/api-runtime 2>/dev/null || true)
+          last=$(git rev-parse --verify refs/tags/api-runtime^{commit} 2>/dev/null || true)
           result=$(LAST_DEPLOYED_SHA="$last" bash scripts/classify-api-changes.sh)
           echo "$result" >> "$GITHUB_OUTPUT"
           echo "$result"
@@ -139,7 +139,7 @@ jobs:
 
       - name: Report pipeline-only validation
         if: steps.changes.outputs.classification == 'pipeline'
-        run: echo "PIPELINE VALIDATED; runtime unchanged at $(git rev-parse refs/tags/api-runtime 2>/dev/null || echo unknown)"
+        run: echo "PIPELINE VALIDATED; runtime unchanged at $(git rev-parse --verify refs/tags/api-runtime^{commit} 2>/dev/null || echo unknown)"
 
       - name: Update deployed runtime marker
         if: steps.changes.outputs.classification == 'runtime'
