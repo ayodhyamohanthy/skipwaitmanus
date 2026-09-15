@@ -3,8 +3,8 @@ import fs from "fs";
 import { type Server } from "http";
 import { nanoid } from "nanoid";
 import path from "path";
-import { createServer as createViteServer } from "vite";
-import viteConfig from "../../vite.config";
+import { createServer as createViteServer, type UserConfig } from "vite";
+import viteConfigExport from "../../vite.config";
 
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
@@ -13,8 +13,14 @@ export async function setupVite(app: Express, server: Server) {
     allowedHosts: true as const,
   };
 
+  // vite.config.ts exports a mode-dependent factory (defineConfig with a
+  // function). Spreading the factory itself yields an empty object and
+  // silently drops root/aliases/plugins, so resolve it for development here.
+  const baseConfig: UserConfig = typeof viteConfigExport === "function"
+    ? await (viteConfigExport as unknown as (env: { mode: string; command: string }) => UserConfig | Promise<UserConfig>)({ mode: "development", command: "serve" })
+    : (viteConfigExport as UserConfig);
   const vite = await createViteServer({
-    ...viteConfig,
+    ...baseConfig,
     configFile: false,
     server: serverOptions,
     appType: "custom",
