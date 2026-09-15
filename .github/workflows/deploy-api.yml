@@ -53,6 +53,9 @@ jobs:
         run: |
           last=$(git rev-parse --verify refs/tags/api-runtime^{commit} 2>/dev/null || true)
           result=$(LAST_DEPLOYED_SHA="$last" bash scripts/classify-api-changes.sh)
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            result="classification=runtime"
+          fi
           echo "$result" >> "$GITHUB_OUTPUT"
           echo "$result"
 
