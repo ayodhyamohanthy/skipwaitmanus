@@ -112,7 +112,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         provider: "authkit",
         redirectUri: redirectUriFor(req),
         state: bootstrap ? "skipwait-admin-bootstrap" : "skipwait-admin",
-        screenHint: bootstrap ? "sign-up" : "sign-in",
+        screenHint: "sign-in",
         loginHint,
       }));
     });
@@ -121,8 +121,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       const code = typeof req.query.code === "string" ? req.query.code : "";
       const state = typeof req.query.state === "string" ? req.query.state : "";
       if (!code) return res.status(400).send("Authentication could not be completed");
+      let stage = "authenticate";
       try {
         const auth = await workos.userManagement.authenticateWithCode({ clientId: process.env.WORKOS_CLIENT_ID!, code });
+        stage = "authorize";
         const user = auth.user;
         // Administrator plane strict match (defense-in-depth): when the flow
         // started from the admin gate (state=skipwait-admin), the authenticated
@@ -133,13 +135,17 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         }
         const openId = resolveWorkosOpenId(user.id);
         const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
+        stage = "upsert";
         await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
+        stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
         const token = await sdkCreateSessionToken(openId, name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
         const returnTo = state.startsWith("return=") ? decodeURIComponent(state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
         res.redirect(302, returnTo);
-      } catch {
+      } catch (error) {
+        const code = error instanceof Error ? error.name : "unknown";
+        console.error("[workos-callback]", { stage, code });
         res.status(502).send("We could not complete sign-in. Please try again.");
       }
     });
