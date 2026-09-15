@@ -1,72 +1,291 @@
 @import "tailwindcss";
 
-@theme inline {
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0f172a;
-  --color-primary: #0b57d0;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f1f5f9;
-  --color-secondary-foreground: #334155;
-  --color-muted: #f8fafc;
-  --color-muted-foreground: #64748b;
-  --color-accent: #e8f0fe;
-  --color-accent-foreground: #0b57d0;
-  --color-border: #e2e8f0;
-  --color-input: #e2e8f0;
-  --color-ring: #0b57d0;
+/* ============================================================================
+   skipwait.me — brand system
+   ----------------------------------------------------------------------------
+   Read `.impeccable.md` before changing anything here.
+
+   The brand is **warm editorial, quietly confident**: terracotta on warm paper,
+   deep warm-brown ink, deep pine as the cool counterpoint for trust states.
+
+   This file is the single source of truth for colour and type. The previous
+   version of this file layered a second palette over the first with `!important`
+   overrides, which is how the app ended up wearing two brands at once (a
+   terracotta identity in the markup, Google blue painted on top). Do not
+   reintroduce that pattern — add a token instead.
+
+   Two deliberate mappings make the existing markup brand-correct without a
+   component-by-component rewrite:
+
+     1. The `slate` and `stone` scales ARE the warm neutral ramp. They were mixed
+        (cool slate + warm stone) which is what made the greys look muddy. Both
+        names now resolve to the same warm ramp, so 1,300+ existing neutral
+        utilities become warm in one move.
+     2. The ramp INVERTS in dark mode (slate-50 becomes the darkest value,
+        slate-950 the lightest). That is what lets the pervasive
+        `bg-slate-50 text-slate-950` page pattern flip to a dark theme correctly
+        with no component changes.
+   ========================================================================== */
+
+/* Class-based dark mode. `index.html` sets `.dark` from the system preference so
+   the two can never disagree. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* --- Type ---------------------------------------------------------------
+     Fraunces is a variable serif with optical sizing — warm, editorial, and the
+     single strongest signal that this is a product with a point of view rather
+     than a template. Instrument Sans carries the UI. Note that `--font-serif`
+     is now REAL; it previously aliased the sans stack. */
+  --font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Fraunces", ui-serif, Georgia, "Times New Roman", serif;
+
   --radius: 0.75rem;
+
+  /* --- Warm neutral ramp (light) ------------------------------------------
+     Derived from the paper/ink pair, never from a cool grey. Values 500 and
+     darker are AA-checked as text on --color-slate-50. */
+  --color-slate-50: #faf7f2;
+  --color-slate-100: #f4eee5;
+  --color-slate-200: #e9dfd2;
+  --color-slate-300: #d8c9b5;
+  --color-slate-400: #b0a08a;
+  --color-slate-500: #7a6a59;
+  --color-slate-600: #615347;
+  --color-slate-700: #4a3f35;
+  --color-slate-800: #362d26;
+  --color-slate-900: #2a241d;
+  --color-slate-950: #1a1611;
+
+  /* `stone` was the second, warmer grey family in use. Unify it onto the same
+     ramp so the palette has exactly one neutral. */
+  --color-stone-50: #faf7f2;
+  --color-stone-100: #f4eee5;
+  --color-stone-200: #e9dfd2;
+  --color-stone-300: #d8c9b5;
+  --color-stone-400: #b0a08a;
+  --color-stone-500: #7a6a59;
+  --color-stone-600: #615347;
+  --color-stone-700: #4a3f35;
+  --color-stone-800: #362d26;
+  --color-stone-900: #2a241d;
+  --color-stone-950: #1a1611;
+
+  /* --- Brand --------------------------------------------------------------
+     Terracotta. Distinct from the Google blue this app used to wear. */
+  --color-primary: #c0562f;
+  --color-primary-hover: #a5451f;
+  --color-primary-tint: #f7e8de;
+  --color-primary-tint-strong: #efd6c6;
+  --color-primary-ink: #8e3a1a;
+  --color-on-primary: #ffffff;
+
+  /* Deep pine — the cool counterpoint. Reserved for trust and verified states,
+     so "verified" reads as calm and authoritative rather than celebratory. */
+  --color-pine: #1f4d46;
+  --color-pine-tint: #e2ece9;
+
+  /* --- Status ------------------------------------------------------------ */
+  --color-success: #3d6b4a;
+  --color-success-hover: #33593e;
+  --color-success-tint: #e6efe7;
+  --color-warning: #8a5e12;
+  --color-warning-tint: #f8eedc;
+  --color-danger: #a33325;
+  --color-danger-hover: #8a2a1e;
+  --color-danger-tint: #fbeae7;
+  --color-danger-border: #efc8c1;
+
+  /* --- Surfaces ----------------------------------------------------------
+     `--color-surface` is what components should use for cards. It is a token
+     rather than `bg-white` so dark mode can flip it without also flipping
+     `text-white`, which must stay white because it sits on coloured surfaces. */
+  --color-surface: #ffffff;
+  --color-surface-2: #f4eee5;
+  --color-border: #e9dfd2;
+  --color-on-dark: #fff7ec;
+
+  /* --- Legacy remap ------------------------------------------------------
+     `violet-*` survives only in components that nothing imports (MvpOffer,
+     VerifiedMemberStories, TokenTopUp, SectionHeading, MetricCard, AvatarMark,
+     demoData). Remapped rather than deleted so those files stay on-brand if they
+     are ever revived. */
+  --color-violet-50: #f7e8de;
+  --color-violet-100: #f7e8de;
+  --color-violet-200: #efd6c6;
+  --color-violet-300: #e8bfa6;
+  --color-violet-500: #c0562f;
+  --color-violet-600: #c0562f;
+  --color-violet-700: #a5451f;
+  --color-violet-900: #8e3a1a;
+  --color-violet-950: #7a3116;
 }
 
-* { border-color: var(--color-border); }
-html { scroll-behavior: smooth; background: #f8fafc; }
-body { margin: 0; min-width: 320px; background: #f8fafc; color: #0f172a; font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; overscroll-behavior-y: contain; }
-h1, h2 { font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif; font-weight: 650; letter-spacing: -0.045em; }
-button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
-button, a { touch-action: manipulation; }
-button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #bfdbfe; outline-offset: 2px; }
-button { cursor: pointer; }
-button:disabled { cursor: not-allowed; }
-::selection { background: #dbeafe; color: #0b57d0; }
-@media (prefers-reduced-motion: no-preference) { button, a { transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1); } }
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background: var(--color-slate-50);
+  }
 
-@keyframes referral-success-pop {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
+  body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--color-slate-50);
+    color: var(--color-slate-950);
+    font-family: var(--font-sans);
+    overscroll-behavior-y: contain;
+  }
 
-@media (prefers-reduced-motion: no-preference) {
-  .referral-success-mark { animation: referral-success-pop 200ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+  /* Display type is the brand's voice. Fraunces carries optical sizing, so it
+     stays elegant at large sizes and legible at small ones. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-variation-settings: "SOFT" 0, "WONK" 0;
+    letter-spacing: -0.02em;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button,
+  a {
+    touch-action: manipulation;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  /* Warm focus ring — visible, but not the default browser blue, which fights
+     the palette. */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 3px solid var(--color-primary-tint-strong);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--color-primary-tint-strong);
+    color: var(--color-primary-ink);
+  }
+
+  /* --- Dark theme --------------------------------------------------------
+     The neutral ramp inverts, so every existing `bg-slate-50 text-slate-950`
+     surface becomes dark paper with light ink automatically. */
+  .dark {
+    --color-slate-50: #171310;
+    --color-slate-100: #1f1a16;
+    --color-slate-200: #2c251e;
+    --color-slate-300: #3a3128;
+    --color-slate-400: #574a3e;
+    --color-slate-500: #8c7c6b;
+    --color-slate-600: #a79885;
+    --color-slate-700: #c0b2a0;
+    --color-slate-800: #d8ccbc;
+    --color-slate-900: #ede4d8;
+    --color-slate-950: #f7f1e7;
+
+    --color-stone-50: #171310;
+    --color-stone-100: #1f1a16;
+    --color-stone-200: #2c251e;
+    --color-stone-300: #3a3128;
+    --color-stone-400: #574a3e;
+    --color-stone-500: #8c7c6b;
+    --color-stone-600: #a79885;
+    --color-stone-700: #c0b2a0;
+    --color-stone-800: #d8ccbc;
+    --color-stone-900: #ede4d8;
+    --color-stone-950: #f7f1e7;
+
+    /* Lifted terracotta so it holds contrast on dark paper, with dark ink on it
+       rather than white — white on #e28054 is only ~2.6:1 and fails AA. */
+    --color-primary: #e28054;
+    --color-primary-hover: #ee9068;
+    --color-primary-tint: #3a241a;
+    --color-primary-tint-strong: #4a2e20;
+    --color-primary-ink: #f0b498;
+    --color-on-primary: #1a120c;
+
+    --color-pine: #7fbdaf;
+    --color-pine-tint: #1e2e2b;
+
+    --color-success: #7fb88c;
+    --color-success-hover: #93c79e;
+    --color-success-tint: #1d2a20;
+    --color-warning: #d9a94e;
+    --color-warning-tint: #2e2517;
+    --color-danger: #e2796b;
+    --color-danger-hover: #ec8d80;
+    --color-danger-tint: #2e1b18;
+    --color-danger-border: #4a2a24;
+
+    --color-surface: #1f1a16;
+    --color-surface-2: #241e19;
+    --color-border: #332b23;
+
+    --color-violet-50: #3a241a;
+    --color-violet-100: #3a241a;
+    --color-violet-200: #4a2e20;
+    --color-violet-300: #6b4229;
+    --color-violet-500: #e28054;
+    --color-violet-600: #e28054;
+    --color-violet-700: #ee9068;
+    --color-violet-900: #f0b498;
+    --color-violet-950: #f5c9b2;
+
+    color-scheme: dark;
+  }
+
+  /* Filled primary surfaces must carry dark ink in dark mode. `--color-primary`
+     is lifted to #e28054 so it holds contrast against dark paper (5.8:1), but
+     white text on that is only ~2.6:1 and fails AA. Components hardcode
+     `text-white` on primary buttons, so this corrects them in one place rather
+     than rewriting every call site. */
+  .dark .bg-primary,
+  .dark .hover\:bg-primary-hover:hover {
+    color: var(--color-on-primary);
+  }
 }
 
 @layer utilities {
-  .bg-violet-500, .bg-violet-600 { background-color: #0b57d0 !important; }
-  .hover\:bg-violet-700:hover { background-color: #0847ad !important; }
-  .bg-violet-50, .bg-violet-50\/60 { background-color: #e8f0fe !important; }
-  .text-violet-300 { color: #bfdbfe !important; }
-  .text-violet-600, .text-violet-700, .text-violet-900, .text-violet-950 { color: #0b57d0 !important; }
-  .border-violet-100, .border-violet-200, .border-violet-300 { border-color: #bfdbfe !important; }
-  .hover\:border-violet-200:hover { border-color: #93c5fd !important; }
-  .hover\:text-violet-700:hover { color: #0847ad !important; }
-  .focus\:border-violet-500:focus { border-color: #0b57d0 !important; }
-  .focus\:ring-violet-100:focus { --tw-ring-color: #dbeafe !important; }
+  @keyframes referral-success-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
 
-  .bg-\[\#FBF4E8\] { background-color: #f8fafc !important; }
-  .bg-\[\#FFFCF6\], .bg-\[\#FFFDF8\], .bg-\[\#FFFBF4\] { background-color: #ffffff !important; }
-  .bg-\[\#FFF9F0\], .bg-\[\#FFF4E8\] { background-color: #f8fafc !important; }
-  .bg-\[\#F6E2CC\] { background-color: #e8f0fe !important; }
-  .bg-\[\#2B2823\] { background-color: #0f172a !important; }
-  .bg-\[\#D85F3C\] { background-color: #0b57d0 !important; }
-  .hover\:bg-\[\#B7472A\]:hover { background-color: #0847ad !important; }
-  .text-\[\#A6462B\], .text-\[\#B74D2E\] { color: #0b57d0 !important; }
-  .text-\[\#26231F\], .text-\[\#302A25\], .text-\[\#3C352F\] { color: #0f172a !important; }
-  .text-\[\#665B50\], .text-\[\#75685C\], .text-\[\#9A8C7D\] { color: #64748b !important; }
-  .border-\[\#EADBCB\], .border-\[\#E8D9C9\], .border-\[\#E4CDB6\], .border-\[\#E0C9B2\] { border-color: #e2e8f0 !important; }
-  .border-\[\#E0A77D\], .border-\[\#EEC69F\] { border-color: #bfdbfe !important; }
-  .text-\[\#FFD9BE\] { color: #bfdbfe !important; }
+  @media (prefers-reduced-motion: no-preference) {
+    .referral-success-mark {
+      animation: referral-success-pop 200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    button,
+    a {
+      transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+  }
 }
