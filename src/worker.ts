@@ -2,30 +2,36 @@
 // Worker entry: routes requests to the Container running the Express app.
 import { Container, getContainer } from "@cloudflare/containers";
 
+const WORKOS_CONTAINER_KEYS = [
+  "WORKOS_API_KEY",
+  "WORKOS_CLIENT_ID",
+  "WORKOS_COOKIE_PASSWORD",
+  "WORKOS_REDIRECT_URI",
+  "WORKOS_POST_SIGNIN_PATH",
+  "ADMIN_SMOKE_SECRET",
+] as const;
+
 /**
  * SkipwaitApi container.
  *
- * Cloudflare Containers do NOT inherit Worker secrets automatically: the
- * Express app only sees what is passed through envVars at container start.
- * We forward the Worker's whole env (wrangler vars + `wrangler secret put`
- * secrets) so the app receives WORKOS_*, DATABASE_URL, ZEPTOMAIL_*, JWT_SECRET
- * at runtime — exactly the values configured on the Worker.
+ * Cloudflare Containers do not inherit Worker bindings automatically. Keep
+ * this allowlist explicit so the container receives only the WorkOS values it
+ * needs, including secret bindings that may not appear in Object.entries(env).
  */
 export class SkipwaitApi extends Container {
   defaultPort = 3000;
   sleepAfter = "10m";
   envVars: Record<string, string> = {};
 
-  // Called by the runtime on each start; merge the live Worker env so secret
-  // rotations apply without an image rebuild.
   constructor(
     ctx: DurableObject["ctx"],
-    env: Record<string, string>,
+    env: Record<string, unknown>,
     options?: ConstructorParameters<typeof Container>[2]
   ) {
     super(ctx, env, options);
-    for (const [key, value] of Object.entries(env)) {
-      if (typeof value === "string") this.envVars[key] = value;
+    for (const key of WORKOS_CONTAINER_KEYS) {
+      const value = env[key];
+      if (typeof value === "string" && value.length > 0) this.envVars[key] = value;
     }
   }
 }
