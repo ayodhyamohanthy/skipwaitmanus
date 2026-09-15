@@ -12,9 +12,10 @@ export function globalSecurityHeaders(req: Request, res: Response, next: NextFun
   // No skipwait.me surface is meant to be embedded, so refuse framing outright
   // rather than only same-origin framing.
   res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Content-Security-Policy-Report-Only", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
   // Only meaningful over TLS, and browsers ignore it on plain http.
   if (isSecureRequest(req)) {
-    res.setHeader("Strict-Transport-Security", `max-age=${HSTS_MAX_AGE_SECONDS}`);
+    res.setHeader("Strict-Transport-Security", `max-age=${HSTS_MAX_AGE_SECONDS}; includeSubDomains`);
   }
   next();
 }
