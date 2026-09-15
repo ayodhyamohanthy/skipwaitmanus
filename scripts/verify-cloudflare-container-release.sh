@@ -10,6 +10,12 @@ instances=$(npx wrangler containers instances "$app_id" --json)
 current=$(jq -r '.current_version // .version // empty' <<<"$info")
 image=$(jq -r '.configuration.image // .image // empty' <<<"$info")
 expected_name="skipwaitmanus-api-${EXPECTED_SHA:0:12}"
+# Route exactly one non-health request to create the release-scoped Durable
+# Object/container. This forces replacement without repeatedly extending a
+# stale instance's idle lifetime; convergence itself is judged below only
+# from Cloudflare control-plane state.
+curl -sS --max-time 90 -o /dev/null https://skipwait.me/api/admin/domain-integrity || true
+instances=$(npx wrangler containers instances "$app_id" --json)
 echo "Cloudflare application=$app_id deploymentVersion=$current image=$image"
 jq -c '.[] | {name,state,version,created}' <<<"$instances"
 # A current-version instance with the release-scoped name proves Cloudflare is
