@@ -75,10 +75,10 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
       : null;
 
   const openSignIn = useCallback(() => {
-    // AuthKit SDK PKCE when it can run (returns into the SPA); server 302 flow
-    // otherwise. Both end at the same app_session_id cookie verified by tRPC.
-    auth.signIn().catch(() => { window.location.href = "/api/auth/workos/sign-in"; });
-  }, [auth.signIn]);
+    // The server owns the canonical registered callback and app_session_id.
+    // Do not start SDK PKCE first: its origin-only redirect is not registered.
+    window.location.href = "/api/auth/workos/sign-in";
+  }, []);
 
   // Publish the SDK access token for non-React API clients (tRPC link).
   useEffect(() => {
