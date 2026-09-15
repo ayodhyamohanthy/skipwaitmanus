@@ -22,8 +22,8 @@ export const policyLinks = [
 ] as const;
 
 export function PolicySection({ number, title, children }: { number: string; title: string; children: ReactNode }) {
-  return <section aria-labelledby={`policy-${number}`} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-    <p className="text-[11px] font-bold uppercase tracking-[.16em] text-[#0B57D0]">{number}</p>
+  return <section aria-labelledby={`policy-${number}`} className="rounded-2xl border border-slate-200 bg-surface p-5 shadow-sm sm:p-6">
+    <p className="text-[11px] font-bold uppercase tracking-[.16em] text-primary">{number}</p>
     <h2 id={`policy-${number}`} className="mt-1 text-base font-semibold text-slate-900">{title}</h2>
     <div className="mt-3 space-y-3 text-sm leading-6 text-slate-600 [&_li]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_strong]:text-slate-800">{children}</div>
   </section>;
@@ -43,12 +43,12 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
   return <main data-skipwait-screen={screen} className="min-h-screen bg-slate-50 px-5 py-5 text-slate-950 sm:px-6 sm:py-8">
     <div className="mx-auto max-w-3xl">
       <header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-slate-600 hover:text-slate-950"><ArrowLeft className="h-4 w-4" />Back</Link></header>
-      <section className="mt-8 rounded-2xl border border-blue-100 bg-white p-6 shadow-sm sm:p-9">
+      <section className="mt-8 rounded-2xl border border-blue-100 bg-surface p-6 shadow-sm sm:p-9">
         <div className="flex items-start justify-between gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-50 text-[#0B57D0]"><Icon className="h-5 w-5" /></span>
-          {status === "draft" ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-bold text-[#b45309]">Draft · pending legal review</span> : null}
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-50 text-primary"><Icon className="h-5 w-5" /></span>
+          {status === "draft" ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-bold text-warning">Draft · pending legal review</span> : null}
         </div>
-        <p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-[#0B57D0]">{eyebrow}</p>
+        <p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-primary">{eyebrow}</p>
         <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-[-.05em]">{title}</h1>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">{intro}</p>
         <p className="mt-4 text-xs font-semibold text-slate-500">Last updated {updated}</p>

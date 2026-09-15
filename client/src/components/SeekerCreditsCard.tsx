@@ -37,7 +37,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
       className={`rounded-xl border border-blue-100 bg-blue-50/70 ${compact ? "p-3" : "p-4"}`}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-[.12em] text-[#0B57D0]">
+        <p className="text-xs font-bold uppercase tracking-[.12em] text-primary">
           {isFreePlan ? "Free plan" : `${credits.plan} plan`}
           {hasPurchased ? <span className="ml-1 font-semibold text-slate-500">+ pack credits</span> : null}
         </p>
@@ -55,7 +55,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100"
       >
         <span
-          className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-[#0B57D0]"}`}
+          className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-primary"}`}
           style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }}
         />
       </div>
@@ -77,13 +77,13 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
           <>
             <Link
               href="/premium?role=job_seeker"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-3 text-sm font-semibold text-white"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"
             >
               <CreditCard className="h-4 w-4" /> Add a credit for $1 <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/plans?role=job_seeker"
-              className="text-center text-sm font-semibold text-[#0B57D0]"
+              className="text-center text-sm font-semibold text-primary"
             >
               Or upgrade for more monthly referrals
             </Link>
@@ -91,7 +91,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         ) : (
           <Link
             href="/start"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-3 text-sm font-semibold text-white"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white"
           >
             Ask another referral <ArrowRight className="h-4 w-4" />
           </Link>

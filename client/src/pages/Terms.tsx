@@ -37,7 +37,7 @@ export default function Terms() {
       <ul>
         <li>Every Job Seeker account includes <strong>3 free referral credits each month</strong>. One credit is reserved when a request is sent and <strong>returned automatically</strong> if you withdraw before a Referrer claims it, or if a Referrer declines.</li>
         <li>Additional credits can be bought individually and never expire. Pro and Max plans add a monthly allowance that renews each cycle.</li>
-        <li>Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Credits are added only after the payment is verified. Refund and cancellation rules are in the <Link href="/refunds" className="font-semibold text-[#0B57D0]">Refunds & cancellation policy</Link>.</li>
+        <li>Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Credits are added only after the payment is verified. Refund and cancellation rules are in the <Link href="/refunds" className="font-semibold text-primary">Refunds & cancellation policy</Link>.</li>
         <li>Reviewing and accepting referrals is always free for Referrers.</li>
       </ul>
     </PolicySection>
@@ -46,7 +46,7 @@ export default function Terms() {
       <ul>
         <li>Your resume and note are visible only to you and verified employees of the target company, and then only to the single Referrer who claims your request.</li>
         <li>Referrer identities are hidden from Job Seekers until the Referrer accepts and chooses to message.</li>
-        <li>Conversations open only after acceptance and are never public. Details are in our <Link href="/privacy" className="font-semibold text-[#0B57D0]">Privacy & trust</Link> page.</li>
+        <li>Conversations open only after acceptance and are never public. Details are in our <Link href="/privacy" className="font-semibold text-primary">Privacy & trust</Link> page.</li>
       </ul>
     </PolicySection>
 
@@ -63,7 +63,7 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="08" title="Contact">
-      <p>Questions about these terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-[#0B57D0]">{SUPPORT_EMAIL}</a>, or visit the <Link href="/support" className="font-semibold text-[#0B57D0]">Support</Link> page.</p>
+      <p>Questions about these terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-primary">{SUPPORT_EMAIL}</a>, or visit the <Link href="/support" className="font-semibold text-primary">Support</Link> page.</p>
     </PolicySection>
   </PolicyPageShell>;
 }
