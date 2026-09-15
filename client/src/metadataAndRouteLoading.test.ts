@@ -16,11 +16,11 @@ describe("skipwait.me metadata and route loading", () => {
   });
 
   it("uses a fixed-viewport loading shell while dashboard-heavy screens are imported on demand", () => {
-    expect(app).toContain('import MyRequests from "./pages/MyRequests"');
-    expect(app).toContain('import MyCompanyInbox from "./pages/MyCompanyInbox"');
+    expect(app).toContain('lazy(() => import("./pages/MyRequests")');
+    expect(app).toContain('lazy(() => import("./pages/MyCompanyInbox")');
+    expect(app).toContain('<Suspense');
     expect(app).toContain('data-skipwait-screen="route-loading"');
     expect(app).toContain('h-dvh min-h-dvh overflow-hidden');
     expect(app).toContain('RouteErrorBoundary');
-  expect(app).not.toContain('lazy(');
   });
 });

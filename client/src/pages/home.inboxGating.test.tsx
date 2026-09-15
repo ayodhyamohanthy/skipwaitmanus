@@ -16,6 +16,7 @@ vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   SignedOut: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   useUser: () => ({ user: null }),
+  SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 
 afterEach(() => { cleanup(); go.mockReset(); });
@@ -25,7 +26,7 @@ describe("homepage profile entries", () => {
     render(<Home />);
 
     // Profile destinations live in the account menu on inner pages, never on
-    // the landing page — no quick-action cards, header links, or menu items.
+    // the landing page.
     expect(screen.queryByRole("button", { name: /My requests/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /My company inbox/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Internal openings/i })).toBeNull();
@@ -36,5 +37,7 @@ describe("homepage profile entries", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /I need a referral/i }));
     expect(go).toHaveBeenCalledWith("/start");
+    fireEvent.click(screen.getByRole("button", { name: /I can refer someone/i }));
+    expect(go).toHaveBeenCalledWith("/referrer");
   });
 });

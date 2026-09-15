@@ -8,15 +8,17 @@ const source = (relativePath: string) => readFileSync(path.join(root, relativePa
 describe("comprehensive mobile-PWA audit safeguards", () => {
   it("ships installed-app metadata, safe-area support, display fallback, and quick actions", () => {
     const html = source("client/index.html");
-    const viteConfig = source("vite.config.ts");
+    const main = source("client/src/main.tsx");
     const css = source("client/src/index.css");
 
     expect(html).toContain("viewport-fit=cover");
     expect(html).toContain('name="mobile-web-app-capable" content="yes"');
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
-    expect(viteConfig).toContain('display_override: ["standalone", "minimal-ui", "browser"]');
-    expect(viteConfig).toContain('name: "Request a referral"');
-    expect(viteConfig).toContain('name: "Give referrals"');
+    // The PWA shell is deliberately disabled (a cached shell blanked lazy
+    // routes after deploys): every boot unregisters stale workers and purges
+    // caches so browsers heal instead of serving purged chunks.
+    expect(main).toContain("registration.unregister()");
+    expect(main).toContain("caches.delete(k)");
     expect(css).toContain("overscroll-behavior-y: contain");
     expect(css).toContain("touch-action: manipulation");
     expect(css).toContain("focus-visible");
