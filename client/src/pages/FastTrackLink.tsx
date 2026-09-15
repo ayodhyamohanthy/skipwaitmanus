@@ -3,7 +3,7 @@ import { Link, useLocation, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { readApiJson } from "@/lib/apiResponse";
 
-type FastTrackState = { companyDomain: string; isActive: true; referrerUserId: number };
+type FastTrackState = { companyDomain: string; isActive: true };
 
 export default function FastTrackLink() {
   const [, params] = useRoute("/fast/:linkCode");
