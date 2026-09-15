@@ -112,7 +112,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         provider: "authkit",
         redirectUri: redirectUriFor(req),
         state: bootstrap ? "skipwait-admin-bootstrap" : "skipwait-admin",
-        screenHint: "sign-in",
+        screenHint: bootstrap ? "sign-up" : "sign-in",
         loginHint,
       }));
     });
