@@ -8,7 +8,7 @@ import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
 import { getGlobalAccessToken } from "./_core/accessToken";
-import { resolveDeviceLocale } from "./lib/device";
+import { initializeDevicePreferences } from "./lib/device";
 import "./index.css";
 import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
 
@@ -16,9 +16,9 @@ const queryClient = new QueryClient();
 
 function initializeDeviceDefaults() {
   if (typeof window === "undefined") return;
-  const locale = resolveDeviceLocale(navigator);
-  document.documentElement.lang = locale;
-  document.documentElement.dataset.deviceLocale = locale;
+  // Keep locale available to Intl consumers without declaring the English-only
+  // interface translated or exposing the device preference in the DOM.
+  initializeDevicePreferences(navigator, document.documentElement);
 }
 
 initializeDeviceDefaults();
