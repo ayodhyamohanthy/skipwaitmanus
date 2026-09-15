@@ -33,10 +33,11 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       if (!isWorkEmailDomain(domain)) {
         return res.status(400).json({ error: "Referrers sign in with a company email. Personal email providers are not accepted." });
       }
-      const result = await workEmailOtpService.sendCode(email);
+      const result = await workEmailOtpService.sendCode(email, { ip: req.ip || req.header("cf-connecting-ip") || req.header("x-forwarded-for") || "unknown" });
       if (!result.sent) console.warn("[OTP] send failed:", result.reason, "| zepto key len:", (process.env.ZEPTOMAIL_API_KEY || "").length, "| from:", process.env.ZEPTOMAIL_FROM_EMAIL);
       if (result.sent) return res.json({ sent: true });
-      if (result.reason === "rate_limited") return res.status(429).json({ error: "A code was sent recently. Wait a minute before requesting another.", retryAfterSeconds: 60 });
+      if (result.reason === "rate_limited") { res.set("Retry-After", "600"); return res.status(429).json({ error: "Too many code requests. Wait before trying again.", retryAfterSeconds: 600 }); }
+      if (result.reason === "invalid_domain") return res.status(400).json({ error: "Enter a deliverable work email address" });
       if (result.reason === "not_configured") return res.status(503).json({ error: "Email delivery is not configured yet" });
       return res.status(502).json({ error: "We could not deliver the code. Try again shortly." });
     } catch {
