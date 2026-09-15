@@ -90,6 +90,7 @@ export type PrivateReferralRouteDeps = {
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
   getReferralFlowHealth?: () => Promise<unknown>;
+  getDomainIntegrity?: (limit?: number) => Promise<unknown>;
   findUsersForTokenRecovery?: (query: string) => Promise<unknown[]>;
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
   grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
@@ -1049,6 +1050,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "admin.privacy_request_reviewed", outcome: "success", resourceType: "privacy_request", resourceId: requestId, metadata: { status } });
       res.json({ request });
     } catch { res.status(500).json({ error: "We could not update this privacy request" }); }
+  });
+  app.get("/api/admin/domain-integrity", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 200));
+      const diagnostic = await deps.getDomainIntegrity?.(limit) ?? { affectedCount: 0, aggregates: {}, affectedRows: [], evidence: { affectedCount: 0, aggregates: {}, affectedRows: [] } };
+      res.set("Cache-Control", "private, no-store");
+      record({ actorUserId: identity.account.id, action: "admin.domain_integrity_viewed", outcome: "success", resourceType: "domain_integrity" });
+      res.json({ diagnostic });
+    } catch { res.status(500).json({ error: "We could not load domain integrity" }); }
   });
   app.get("/api/admin/flow-health", async (req, res) => {
     try {

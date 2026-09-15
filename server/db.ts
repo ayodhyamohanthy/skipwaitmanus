@@ -9,6 +9,7 @@ import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isP
 import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
+import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -753,13 +754,30 @@ export async function getPublicReferralImpact(): Promise<PublicReferralImpact> {
   return { acceptedReferrals: Number(result[0]?.acceptedReferrals ?? 0) };
 }
 
+export async function getDomainIntegrity(limit = 100) {
+  const db = await getDb();
+  if (!db) return buildDomainIntegrityReport([], limit);
+  const result = await db.execute(sql`
+    SELECT 'profiles' AS tableName, CAST(id AS CHAR) AS rowId, workEmailDomain AS storedDomain, 0 AS evidenceOnly FROM profiles WHERE workEmailDomain IS NOT NULL
+    UNION SELECT 'jobs', CAST(id AS CHAR), company, 0 FROM jobs WHERE title = 'Role from shared job link' OR description = 'Private referral request routed from a Target Role URL.'
+    UNION SELECT 'companyOpportunities', CAST(id AS CHAR), companyDomain, 0 FROM companyOpportunities
+    UNION SELECT 'referralAvailabilitySlots', CAST(id AS CHAR), companyDomain, 0 FROM referralAvailabilitySlots
+    UNION SELECT 'referrerFastTrackLinks', CAST(id AS CHAR), companyDomain, 0 FROM referrerFastTrackLinks
+    UNION SELECT 'companyCoverageInvitations', CAST(id AS CHAR), companyDomain, 0 FROM companyCoverageInvitations
+    UNION SELECT 'operationalActivityLogs', CAST(id AS CHAR), companyDomain, 1 FROM operationalActivityLogs WHERE companyDomain IS NOT NULL
+  `);
+  const rows = (result[0] as unknown as Array<{ tableName: string; rowId: string; storedDomain: string; evidenceOnly: number }>).map(row => ({ table: row.tableName, rowId: row.rowId, storedDomain: row.storedDomain, evidenceOnly: Boolean(row.evidenceOnly) })) satisfies StoredDomainRow[];
+  return buildDomainIntegrityReport(rows, limit);
+}
+
 export async function getReferralFlowHealth() {
   const db = await getDb();
   if (!db) return { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
-  const [requests, verifiedProfiles, activities] = await Promise.all([
+  const [requests, verifiedProfiles, activities, domainIntegrity] = await Promise.all([
     db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
     db.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.accountType, "referrer")),
     db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome }).from(operationalActivityLogs).orderBy(desc(operationalActivityLogs.createdAt)).limit(1000),
+    getDomainIntegrity(1),
   ]);
   const coverageByCompany = new Map<string, number>();
   for (const profile of verifiedProfiles) if (profile.workEmailDomain) coverageByCompany.set(profile.workEmailDomain, (coverageByCompany.get(profile.workEmailDomain) ?? 0) + 1);
@@ -777,6 +795,7 @@ export async function getReferralFlowHealth() {
     instrumentation: {
       uploadedDocuments: activities.filter(activity => activity.action === "document.uploaded" && activity.outcome === "success").length,
       recordedFailures: activities.filter(activity => activity.outcome === "failure" || activity.outcome === "denied").length,
+      domainIntegrityAffected: domainIntegrity.affectedCount,
     },
   };
 }

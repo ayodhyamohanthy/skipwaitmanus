@@ -13,6 +13,7 @@ describe("referral operating-system routes", () => {
       ["admin", { account: { id: 4, openId: "admin", role: "admin" as const } }],
     ]);
     const savedRequests: Array<{ requestId: number; saved: boolean }> = [];
+    const activities: any[] = [];
     const reviews: Array<{ userId: number; requestId: number; decision: string; message?: string }> = [];
     const listInboxByState = vi.fn(async (_userId: number, state: string) => [{ id: 18, companyDomain: "acme.com", status: state === "completed" ? "approved" : "pending", inboxState: state }]);
     registerPrivateReferralRoutes(app, {
@@ -24,6 +25,8 @@ describe("referral operating-system routes", () => {
       saveCompanyReferralRequest: async (_userId, requestId, saved) => { savedRequests.push({ requestId, saved }); return { requestId, saved }; }, claimCompanyReferralRequest: async requestId => ({ requestId, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       reviewReferralRequest: async (userId, input) => { reviews.push({ userId, requestId: input.requestId, decision: input.decision, message: input.message }); return { status: input.decision }; },
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+      getDomainIntegrity: async () => ({ affectedCount: 2, aggregates: { public_suffix_only: 1, malformed_ip_localhost: 1 }, affectedRows: [{ table: "jobs", rowId: "9", storedDomain: "co.uk", classification: "public_suffix_only" }], evidence: { affectedCount: 0, aggregates: {}, affectedRows: [] } }),
+      recordActivity: async input => { activities.push(input); },
       getReferralFlowHealth: async () => ({ funnel: { requestsCreated: 5, requestsClaimed: 3, decisionsRecorded: 2, waitingForCoverage: 2 }, coverageGaps: [{ companyDomain: "acme.com", waitingRequests: 2, verifiedCoverage: 0 }], instrumentation: { uploadedDocuments: 5, recordedFailures: 1 } }),
     });
 
@@ -41,7 +44,10 @@ describe("referral operating-system routes", () => {
     expect((await request(app).post("/api/company-referrals/18/review").set("x-test-user", "employee").send({ decision: "maybe" })).status).toBe(400);
 
     expect((await request(app).get("/api/admin/flow-health").set("x-test-user", "member")).status).toBe(403);
+    expect((await request(app).get("/api/admin/domain-integrity").set("x-test-user", "member")).status).toBe(403);
+    const diagnostic = await request(app).get("/api/admin/domain-integrity").set("x-test-user", "admin");
+    expect(diagnostic.status).toBe(200); expect(diagnostic.header["cache-control"]).toBe("private, no-store"); expect(diagnostic.body.diagnostic).toMatchObject({ affectedCount: 2, affectedRows: [{ table: "jobs", rowId: "9", storedDomain: "co.uk", classification: "public_suffix_only" }] });
     const health = await request(app).get("/api/admin/flow-health").set("x-test-user", "admin");
-    expect(health.status).toBe(200); expect(health.body.health.funnel).toMatchObject({ requestsCreated: 5, waitingForCoverage: 2 }); expect(health.body.health.coverageGaps[0]).toMatchObject({ companyDomain: "acme.com", verifiedCoverage: 0 });
+    expect(health.status).toBe(200); expect(activities.map(item => item.action)).toContain("admin.domain_integrity_viewed"); expect(health.body.health.funnel).toMatchObject({ requestsCreated: 5, waitingForCoverage: 2 }); expect(health.body.health.coverageGaps[0]).toMatchObject({ companyDomain: "acme.com", verifiedCoverage: 0 });
   });
 });
