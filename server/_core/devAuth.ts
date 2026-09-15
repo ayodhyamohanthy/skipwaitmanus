@@ -1,4 +1,4 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import { parse as parseCookieHeader } from "cookie";
 import type { Express, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
@@ -61,7 +61,7 @@ async function upsertDevUser(input: { openId: string; name: string; email: strin
   const existing = memoryAccounts.get(input.openId);
   const account: MemoryAccount = existing
     ? { ...existing, name: input.name, email: input.email, lastSignedIn: new Date() }
-    : { id: memoryAccounts.size + 1, openId: input.openId, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), suspended: false, createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
+    : { id: memoryAccounts.size + 1, openId: input.openId, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), suspended: false, sessionsValidAfter: new Date(), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
   memoryAccounts.set(input.openId, account);
   return account;
 }
@@ -117,12 +117,13 @@ export function registerDevAuthRoutes(app: Express) {
       res.status(500).json({ error: "Dev session could not be created" });
       return;
     }
-    const sessionToken = await sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
-    res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+    const sessionToken = await sdk.createSessionToken(openId, { name });
+    res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
     res.json({ signedIn: true, account: { id: account.id, name: account.name, email: account.email, role: account.role } });
   });
 
-  app.post("/api/dev-auth/logout", (req: Request, res: Response) => {
+  app.post("/api/dev-auth/logout", async (req: Request, res: Response) => {
+    await sdk.revokeSession(readSessionToken(req));
     res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
     res.json({ signedIn: false });
   });

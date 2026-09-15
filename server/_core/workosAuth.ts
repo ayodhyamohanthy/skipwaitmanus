@@ -1,5 +1,5 @@
 import { WorkOS } from "@workos-inc/node";
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Express, Request } from "express";
 import * as db from "../db";
@@ -141,9 +141,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         stage = "upsert";
         await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
         stage = "session";
-        if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+        if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         const token = await sdkCreateSessionToken(openId, name);
-        res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+        res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         const returnTo = state === "skipwait-admin" || state === "skipwait-admin-bootstrap"
           ? "/admin/users"
           : state.startsWith("return=") ? decodeURIComponent(state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
@@ -167,7 +167,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       return res.set("Cache-Control","no-store").json({workosApiKeyPresent:Boolean(process.env.WORKOS_API_KEY)});
     });
 
-    app.post("/api/auth/workos/logout", (req, res) => {
+    app.post("/api/auth/workos/logout", async (req, res) => {
+      const token = req.headers.cookie?.match(/(?:^|;\s*)app_session_id=([^;]+)/)?.[1];
+      await (await import("./sdk")).sdk.revokeSession(token);
       res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
       res.clearCookie("workos_session", getSessionCookieOptions(req));
       res.json({ signedOut: true });
@@ -177,5 +179,5 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
 
 async function sdkCreateSessionToken(openId: string, name: string): Promise<string> {
   const { sdk } = await import("./sdk");
-  return sdk.createSessionToken(openId, { name, expiresInMs: ONE_YEAR_MS });
+  return sdk.createSessionToken(openId, { name });
 }

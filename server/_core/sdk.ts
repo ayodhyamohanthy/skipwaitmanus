@@ -1,95 +1,35 @@
-import { ONE_YEAR_MS } from "@shared/const";
-import { SignJWT, jwtVerify } from "jose";
+import { decodeJwt, SignJWT, jwtVerify } from "jose";
+import { randomUUID } from "node:crypto";
 import { ENV } from "./env";
-
-// Utility function
-const isNonEmptyString = (value: unknown): value is string =>
-  typeof value === "string" && value.length > 0;
-
-export type SessionPayload = {
-  openId: string;
-  appId: string;
-  name: string;
-};
-
+import * as db from "../db";
+const ACCESS_TTL_MS = 30 * 60_000;
+const ISSUER = "https://skipwait.me";
+const AUDIENCE = "skipwait-web";
+const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.length > 0;
+export type SessionPayload = { openId: string; appId: string; name: string };
 class SDKServer {
-  private getSessionSecret() {
-    const secret = ENV.cookieSecret;
-    return new TextEncoder().encode(secret);
+  private getSessionSecret(){return new TextEncoder().encode(ENV.cookieSecret)}
+  async createSessionToken(openId:string,options:{expiresInMs?:number;name?:string}={}){return this.signSession({openId,appId:ENV.appId,name:options.name||""},options)}
+  async signSession(payload:SessionPayload,options:{expiresInMs?:number}={}){
+    if(payload.appId!==ENV.appId) throw new Error("Session app ID mismatch");
+    const issuedAt=Math.floor(Date.now()/1000), expiresInMs=Math.min(options.expiresInMs??ACCESS_TTL_MS,ACCESS_TTL_MS);
+    return new SignJWT({openId:payload.openId,appId:payload.appId,name:payload.name}).setProtectedHeader({alg:"HS256",typ:"JWT"}).setIssuer(ISSUER).setAudience(AUDIENCE).setSubject(payload.openId).setIssuedAt(issuedAt).setJti(randomUUID()).setExpirationTime(issuedAt+Math.floor(expiresInMs/1000)).sign(this.getSessionSecret());
   }
-
-  /**
-   * Create a session token for a user openId
-   * @example
-   * const sessionToken = await sdk.createSessionToken(userInfo.openId);
-   */
-  async createSessionToken(
-    openId: string,
-    options: { expiresInMs?: number; name?: string } = {}
-  ): Promise<string> {
-    return this.signSession(
-      {
-        openId,
-        appId: ENV.appId,
-        name: options.name || "",
-      },
-      options
-    );
+  async verifySession(cookieValue:string|undefined|null){
+    if(!cookieValue)return null;
+    try{
+      const {payload}=await jwtVerify(cookieValue,this.getSessionSecret(),{algorithms:["HS256"],issuer:ISSUER,audience:AUDIENCE});
+      const {openId,appId,name}=payload as Record<string,unknown>;
+      if(!isNonEmptyString(openId)||appId!==ENV.appId||payload.sub!==openId||typeof payload.iat!=="number"||!isNonEmptyString(payload.jti))return null;
+      const account=await db.getUserByOpenId(openId);
+      if(account?.sessionsValidAfter&&payload.iat*1000<account.sessionsValidAfter.getTime())return null;
+      return {openId,appId,name:typeof name==="string"?name:""};
+    }catch{return null}
   }
-
-  async signSession(
-    payload: SessionPayload,
-    options: { expiresInMs?: number } = {}
-  ): Promise<string> {
-    const issuedAt = Date.now();
-    const expiresInMs = options.expiresInMs ?? ONE_YEAR_MS;
-    const expirationSeconds = Math.floor((issuedAt + expiresInMs) / 1000);
-    const secretKey = this.getSessionSecret();
-
-    return new SignJWT({
-      openId: payload.openId,
-      appId: payload.appId,
-      name: payload.name,
-    })
-      .setProtectedHeader({ alg: "HS256", typ: "JWT" })
-      .setExpirationTime(expirationSeconds)
-      .sign(secretKey);
-  }
-
-  async verifySession(
-    cookieValue: string | undefined | null
-  ): Promise<{ openId: string; appId: string; name: string } | null> {
-    if (!cookieValue) {
-      // Not a warning: every anonymous visitor arrives without a session
-      // cookie, so logging here would emit a line per public request.
-      return null;
-    }
-
-    try {
-      const secretKey = this.getSessionSecret();
-      const { payload } = await jwtVerify(cookieValue, secretKey, {
-        algorithms: ["HS256"],
-      });
-      const { openId, appId, name } = payload as Record<string, unknown>;
-
-      // `name` is display-only and is legitimately empty when an identity
-      // provider returns no display name. Requiring it here would reject a
-      // valid session, so only the identity fields gate the session.
-      if (!isNonEmptyString(openId) || !isNonEmptyString(appId)) {
-        console.warn("[Auth] Session payload missing required fields");
-        return null;
-      }
-
-      return {
-        openId,
-        appId,
-        name: typeof name === "string" ? name : "",
-      };
-    } catch (error) {
-      console.warn("[Auth] Session verification failed", String(error));
-      return null;
-    }
+  async revokeSession(cookieValue:string|undefined|null){
+    if(!cookieValue)return;
+    try{const p=decodeJwt(cookieValue);if(typeof p.sub==="string")await db.revokeUserSessions(p.sub)}catch{}
   }
 }
-
-export const sdk = new SDKServer();
+export const sdk=new SDKServer();
+export const SESSION_ACCESS_TTL_MS=ACCESS_TTL_MS;

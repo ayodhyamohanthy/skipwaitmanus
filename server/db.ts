@@ -66,6 +66,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 }
 
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
+export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; await db.update(users).set({ sessionsValidAfter: new Date() }).where(eq(users.openId, openId)); }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
 export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];

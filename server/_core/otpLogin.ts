@@ -1,4 +1,4 @@
-import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
+import { COOKIE_NAME } from "@shared/const";
 import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { isWorkEmailDomain } from "../db";
@@ -72,15 +72,17 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       if (!existingProfile?.workEmailDomain) {
         await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);
       }
-      const token = await sdk.createSessionToken(openId, { name: account.name ?? email, expiresInMs: ONE_YEAR_MS });
-      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: ONE_YEAR_MS });
+      const token = await sdk.createSessionToken(openId, { name: account.name ?? email });
+      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
       res.json({ signedIn: true, role: account.role, email });
     } catch {
       res.status(500).json({ error: "We could not verify the code" });
     }
   });
 
-  app.post("/api/auth/otp/logout", (req: Request, res: Response) => {
+  app.post("/api/auth/otp/logout", async (req: Request, res: Response) => {
+    const token = req.headers.cookie?.match(/(?:^|;\s*)app_session_id=([^;]+)/)?.[1];
+    await sdk.revokeSession(token);
     res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
     res.json({ signedOut: true });
   });
