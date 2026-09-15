@@ -44,5 +44,6 @@
     "ERROR_ALERT_FROM_EMAIL": "noreply@skipwait.me",
     "VITE_APP_ID": "skipwait",
     "AI_MODEL": ""
-  }
+  },
+  "observability": { "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true }, "traces": { "enabled": false } }
 }
