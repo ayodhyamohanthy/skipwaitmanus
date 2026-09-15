@@ -52,3 +52,17 @@ describe("Onboarding Target Role URL", () => {
     expect(document.querySelector("[data-reviewed-employer='true']")).toBeTruthy();
   });
 });
+
+
+
+describe("Onboarding preview race safety", () => {
+  afterEach(() => cleanup());
+  it("clears confirmation and requires the current canonical preview", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_url, init:any) => { const value=JSON.parse(init.body).url; return {ok:true,json:async()=>({canonicalUrl:value,status:"fresh",employerConfidence:value.includes("lever")?"ambiguous":"direct-domain",companyDomain:value.includes("lever")?undefined:"beta.com",reason:"ok",recoveryAction:"continue"})}; }));
+    render(<Onboarding/>); const input=screen.getByLabelText("Target Role URL"); const button=screen.getByRole("button",{name:"Continue"});
+    fireEvent.change(input,{target:{value:"https://jobs.lever.co/meta/1"}}); await waitFor(()=>expect(screen.getByLabelText("Company domain")).toBeTruthy(),{timeout:1200});
+    fireEvent.change(screen.getByLabelText("Company domain"),{target:{value:"meta.com"}}); fireEvent.change(input,{target:{value:"https://careers.beta.com/jobs/2"}});
+    expect(screen.queryByLabelText("Company domain")).toBeNull(); expect(button).toHaveProperty("disabled",true);
+    await waitFor(()=>expect(button).toHaveProperty("disabled",false),{timeout:1200});
+  });
+});
