@@ -130,6 +130,16 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
+      - name: Verify administrator sign-in gate
+        if: steps.changes.outputs.classification == 'runtime'
+        run: |
+          expected=$(node -e 'let s=require("fs").readFileSync("wrangler.jsonc","utf8");process.stdout.write(s.match(/"SKIPWAIT_ADMIN_EMAIL":\s*"([^"]+)"/)?.[1]||"")')
+          test -n "$expected"
+          allowed=$(curl -sS -o /dev/null -w '%{http_code}' --get --data-urlencode "email=$expected" https://skipwait.me/api/auth/workos/admin)
+          denied=$(curl -sS -o /dev/null -w '%{http_code}' --get --data-urlencode 'email=wrong-admin@example.com' https://skipwait.me/api/auth/workos/admin)
+          test "$allowed" = 302 || { echo "::error::Configured admin gate returned $allowed, expected 302"; exit 1; }
+          test "$denied" = 403 || { echo "::error::Wrong admin gate returned $denied, expected 403"; exit 1; }
+
       - name: Verify active Cloudflare container release
         if: ${{ false }}
         env:

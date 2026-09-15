@@ -35,7 +35,7 @@ const baseEnv = {
   WORKOS_CLIENT_ID: "client_test",
   WORKOS_API_KEY: "sk_test_key",
   WORKOS_COOKIE_PASSWORD: "c".repeat(32),
-  SKIPWAIT_ADMIN_EMAIL: "ayodhya@skipwait.me",
+  SKIPWAIT_ADMIN_EMAIL: "ayodhyamohanthy@gmail.com",
   ENABLE_ADMIN_BOOTSTRAP: undefined,
 };
 
@@ -44,9 +44,9 @@ describe("role-aware WorkOS sign-in entries", () => {
 
   it("sends the administrator gate to AuthKit with the admin state marker and login hint for the durable admin only", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
-    const allowed = await request(app).get("/api/auth/workos/admin?email=ayodhya@skipwait.me");
+    const allowed = await request(app).get("/api/auth/workos/admin?email=ayodhyamohanthy@gmail.com");
     expect(allowed.status).toBe(302);
-    expect(authUrl).toHaveBeenCalledWith(expect.objectContaining({ loginHint: "ayodhya@skipwait.me", screenHint: "sign-in", state: "skipwait-admin" }));
+    expect(authUrl).toHaveBeenCalledWith(expect.objectContaining({ loginHint: "ayodhyamohanthy@gmail.com", screenHint: "sign-in", state: "skipwait-admin" }));
     const denied = await request(app).get("/api/auth/workos/admin?email=someone@gmail.com");
     expect(denied.status).toBe(403);
     const deniedNoEmail = await request(app).get("/api/auth/workos/admin");
@@ -60,8 +60,8 @@ describe("role-aware WorkOS sign-in entries", () => {
 
   it("uses sign-in while the one-time bootstrap flag is explicitly enabled", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv, ENABLE_ADMIN_BOOTSTRAP: "true" });
-    expect((await request(app).get("/api/auth/workos/admin?email=ayodhya@skipwait.me")).status).toBe(302);
-    expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-in", state: "skipwait-admin-bootstrap", loginHint: "ayodhya@skipwait.me" }));
+    expect((await request(app).get("/api/auth/workos/admin?email=ayodhyamohanthy@gmail.com")).status).toBe(302);
+    expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-in", state: "skipwait-admin-bootstrap", loginHint: "ayodhyamohanthy@gmail.com" }));
     restore();
   });
 
