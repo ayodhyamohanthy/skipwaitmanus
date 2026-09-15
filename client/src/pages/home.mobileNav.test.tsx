@@ -29,7 +29,7 @@ describe("Home mobile navigation", () => {
   it("keeps the supplied mobile-first referral choices prominent and routed to their role flows", () => {
     render(<Home />);
 
-    expect(screen.getByText("Choose your referral path.")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /skip the wait/i })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /I need a referral/i }));
     expect(go).toHaveBeenCalledWith("/start");
 
@@ -43,7 +43,8 @@ describe("Home mobile navigation", () => {
   it("shows only a truthful aggregate referral-impact indicator, never named or queue-based activity", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ acceptedReferrals: 17 }) })));
     render(<Home />);
-    await waitFor(() => expect(screen.getByText("17 referrals accepted")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("17")).toBeTruthy());
+    expect(screen.getByText("Accepted")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/sarah|netflix|minutes ago|fast-tracked|queue|rank/i);
   });
 });

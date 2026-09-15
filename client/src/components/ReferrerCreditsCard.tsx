@@ -42,22 +42,22 @@ export function ReferrerCreditsCard({ compact = false }: { compact?: boolean }) 
   const outOfCredits = credits.totalAvailable <= 0;
 
   return (
-    <section aria-label="Referral credits" className={`rounded-xl border border-blue-100 bg-blue-50/70 ${compact ? "p-3" : "p-4"}`}>
+    <section aria-label="Referral credits" className={`rounded-xl border border-[#F3D5C7] bg-[#F9E4DE]/70 ${compact ? "p-3" : "p-4"}`}>
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.12em] text-[#0B57D0]">
+        <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.12em] text-[#191713]">
           <HeartHandshake className="h-3.5 w-3.5" /> Referral credits
         </p>
-        <p className="text-sm font-bold text-slate-900" aria-live="polite">{credits.totalAvailable} left</p>
+        <p className="text-sm font-bold text-[#191713]" aria-live="polite">{credits.totalAvailable} left</p>
       </div>
-      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100">
-        <span className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-[#0B57D0]"}`} style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }} />
+      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-[#F3D5C7]">
+        <span className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-[#191713]"}`} style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }} />
       </div>
-      <p className="mt-3 text-sm leading-5 text-slate-700">
+      <p className="mt-3 text-sm leading-5 text-[#3F3B33]">
         {used} of {credits.monthlyAllowance} free credits used this month.
-        {credits.purchasedCreditsRemaining > 0 ? <span className="block pt-1 text-slate-600">{credits.purchasedCreditsRemaining} purchased credit{credits.purchasedCreditsRemaining === 1 ? "" : "s"} — never expire.</span> : null}
+        {credits.purchasedCreditsRemaining > 0 ? <span className="block pt-1 text-[#625D52]">{credits.purchasedCreditsRemaining} purchased credit{credits.purchasedCreditsRemaining === 1 ? "" : "s"} — never expire.</span> : null}
       </p>
       {outOfCredits ? (
-        <a href="/plans?role=referrer" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0B57D0] px-4 py-3 text-sm font-semibold text-white">
+        <a href="/plans?role=referrer" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#191713] px-4 py-3 text-sm font-semibold text-white">
           Increase your referral allowance <ArrowRight className="h-4 w-4" />
         </a>
       ) : null}

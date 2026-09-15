@@ -11,7 +11,7 @@ import type { ReferralStatus } from "@shared/referral";
  */
 export type TimelineEntry = { label: string; date: string | null; tone: "green" | "blue" | "red" | "slate" | "amber"; state: "done" | "waiting" };
 
-const toneColor: Record<TimelineEntry["tone"], string> = { green: "#15803d", blue: "#0B57D0", red: "#b91c1c", slate: "#57534e", amber: "#b45309" };
+const toneColor: Record<TimelineEntry["tone"], string> = { green: "#15803d", blue: "#191713", red: "#b91c1c", slate: "#3F3B33", amber: "#b45309" };
 
 function formatStamp(value: string | null) {
   if (!value) return null;
@@ -38,12 +38,12 @@ export function buildRequestTimeline(request: { status: ReferralStatus; referrer
 export function RequestStatusTimeline({ entries, label = "Status history" }: { entries: TimelineEntry[]; label?: string }) {
   return <ol aria-label={label} className="space-y-2.5">
     {entries.map((entry, index) => {
-      const color = entry.state === "waiting" ? "#94a3b8" : toneColor[entry.tone];
+      const color = entry.state === "waiting" ? "#8A8478" : toneColor[entry.tone];
       const stamp = formatStamp(entry.date);
       return <li key={`${entry.label}-${index}`} className="flex items-baseline gap-2.5 text-sm">
-        <span aria-hidden="true" className="relative top-[-1px] inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color, boxShadow: entry.state === "waiting" ? "inset 0 0 0 1.5px #94a3b8, inset 0 0 0 3px #fff" : undefined }} />
-        <span className={entry.state === "waiting" ? "font-medium text-slate-500" : "font-semibold"} style={entry.state === "waiting" ? undefined : { color }}>{entry.label}</span>
-        <span className="ml-auto shrink-0 text-xs text-slate-500">{stamp ?? (entry.state === "waiting" ? "waiting" : "")}</span>
+        <span aria-hidden="true" className="relative top-[-1px] inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color, boxShadow: entry.state === "waiting" ? "inset 0 0 0 1.5px #8A8478, inset 0 0 0 3px #fff" : undefined }} />
+        <span className={entry.state === "waiting" ? "font-medium text-[#625D52]" : "font-semibold"} style={entry.state === "waiting" ? undefined : { color }}>{entry.label}</span>
+        <span className="ml-auto shrink-0 text-xs text-[#625D52]">{stamp ?? (entry.state === "waiting" ? "waiting" : "")}</span>
       </li>;
     })}
   </ol>;
