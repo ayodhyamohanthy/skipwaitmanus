@@ -3,7 +3,7 @@ import { Link, useLocation, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { readApiJson } from "@/lib/apiResponse";
 
-type VanityFastTrackState = { companyDomain: string; isActive: true; referrerUserId: number };
+type VanityFastTrackState = { companyDomain: string; isActive: true };
 
 export default function VanityFastTrackLink() {
   const [, params] = useRoute("/refer/:companySlug/:vanityAlias");

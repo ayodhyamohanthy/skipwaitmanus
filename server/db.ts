@@ -249,17 +249,17 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
   throw new Error("We could not create your Fast-Track Link");
 }
 
-export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true; referrerUserId: number } | undefined> {
+export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
   const normalizedCode = linkCode.trim().slice(0, 64);
   if (!normalizedCode) return undefined;
   const db = await getDb(); if (!db) return undefined;
   const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true, referrerUserId: link.referrerId };
+  return { companyDomain: link.companyDomain, isActive: true };
 }
 
-export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<{ companyDomain: string; isActive: true; referrerUserId: number } | undefined> {
+export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
   const normalizedSlug = companySlug.trim().toLowerCase();
   const normalizedAlias = vanityAlias.trim().toLowerCase();
   if (!normalizedSlug || !isSafeFastTrackAlias(normalizedAlias)) return undefined;
@@ -267,7 +267,7 @@ export async function getPublicReferrerFastTrackVanityLink(companySlug: string, 
   const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true, referrerUserId: link.referrerId };
+  return { companyDomain: link.companyDomain, isActive: true };
 }
 
 async function getActiveReferrerFastTrackLink(linkCode: string) {
