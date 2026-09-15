@@ -119,6 +119,7 @@ export type PrivateReferralRouteDeps = {
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
+  app.use("/api/admin", (req, res, next) => { if (req.method === "GET") res.set("Cache-Control", "private, no-store"); next(); });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   const notifyInApp = (userId: number | undefined, title: string, body: string) => { if (!userId) return; void deps.createNotification?.(userId, "status", title, body).catch(() => undefined); };
   const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
@@ -1057,7 +1058,6 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       const limit = Math.max(1, Math.min(Number(req.query.limit) || 100, 200));
       const diagnostic = await deps.getDomainIntegrity?.(limit) ?? { affectedCount: 0, aggregates: {}, affectedRows: [], evidence: { affectedCount: 0, aggregates: {}, affectedRows: [] } };
-      res.set("Cache-Control", "private, no-store");
       record({ actorUserId: identity.account.id, action: "admin.domain_integrity_viewed", outcome: "success", resourceType: "domain_integrity" });
       res.json({ diagnostic });
     } catch { res.status(500).json({ error: "We could not load domain integrity" }); }
