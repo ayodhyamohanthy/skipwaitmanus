@@ -15,7 +15,7 @@ expected_name="skipwaitmanus-api-${EXPECTED_SHA:0:12}"
 if [ -n "${BEFORE_VERSION:-}" ] && [ "$current" = "$BEFORE_VERSION" ] && [ "$image" = "${BEFORE_IMAGE:-}" ]; then
   echo "::warning::Cloudflare application image/version snapshot has not changed yet; exact baked runtime SHA remains the hard gate"
 fi
-jq -e --arg n "$expected_name" '.[] | select(.name==$n)' <<<"$instances" >/dev/null || { echo "::error::Release-scoped identity $expected_name is absent"; exit 1; }
+if ! jq -e --arg n "$expected_name" '.[] | select(.name==$n)' <<<"$instances" >/dev/null; then echo "::warning::Release-scoped identity is not visible before first readiness request"; fi
 echo "Cloudflare application=$app_id deploymentVersion=$current image=$image"
 jq -c '.[] | {name,state,version:(.version? // null),created}' <<<"$instances"
 if jq -e --arg n "$expected_name" '.[] | select(.name==$n and ((.version? // null)==null or (.state=="inactive")))' <<<"$instances" >/dev/null; then
@@ -37,7 +37,11 @@ check_ready() {
 }
 
 set +e; check_ready; result=$?; set -e
-if [ "$result" -eq 0 ]; then echo "RUNTIME CONVERGED: exact release $EXPECTED_SHA is ready"; exit 0; fi
+if [ "$result" -eq 0 ]; then
+  instances=$(npx wrangler containers instances "$app_id" --json)
+  jq -e --arg n "$expected_name" '.[] | select(.name==$n)' <<<"$instances" >/dev/null || { echo "::error::Exact runtime SHA is ready but release-scoped identity $expected_name is absent"; exit 1; }
+  echo "RUNTIME CONVERGED: exact release $EXPECTED_SHA is ready"; exit 0
+fi
 if [ "$result" -eq 5 ]; then
   sleep 5
   set +e; check_ready; result=$?; set -e
