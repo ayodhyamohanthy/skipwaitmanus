@@ -607,7 +607,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "smart_pitch.drafted", outcome: "success", resourceType: "attachment", resourceId: attachment.id, companyDomain: requestedCompany, metadata: { pdfUsed: Boolean(resumeUrl) } });
       res.set("Cache-Control", "private, no-store");
       res.json({ draft });
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not create a starting draft"; res.status(/private resume is unavailable/i.test(message) ? 403 : 500).json({ error: message }); }
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not create a starting draft"; const status = /private resume is unavailable/i.test(message) ? 403 : 500; const safeMessage = status === 403 || /resume|draft|upload|document|PDF|Word|PNG|JPEG/i.test(message) ? message : "We could not create a starting draft"; res.status(status).json({ error: safeMessage }); }
   });
   app.post("/api/referral-share-cards/:requestId", async (req, res) => {
     try {

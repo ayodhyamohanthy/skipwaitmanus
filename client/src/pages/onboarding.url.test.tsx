@@ -46,6 +46,27 @@ describe("Onboarding Target Role URL", () => {
     expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
   });
 
+  it("shows a retryable error instead of stranding Continue when the preview service fails", async () => {
+    const fetchMock = vi.fn(async () => { throw new Error("network down"); });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://jobs.lever.co/unknown/1" } });
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("We couldn't verify this job link");
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
+    const callsBefore = fetchMock.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+
+  it("falls back to the reviewed employer when the preview service fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new Error("network down"); }));
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile" } });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
+    expect(screen.getByRole("alert").textContent).toContain("We couldn't verify this job link");
+  });
+
   it("restores the included balance when a legacy reset marker exists without a stored token balance", async () => {
     localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
     render(<Onboarding />);

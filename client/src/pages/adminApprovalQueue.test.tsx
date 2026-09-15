@@ -6,7 +6,7 @@ import AdminApprovalQueue from "./AdminApprovalQueue";
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }), SignInButton: ({ children }: { children: React.ReactNode }) => children }));
 const go = vi.fn();
-vi.mock("wouter", () => ({ useLocation: () => ["/admin/approvals", go] }));
+vi.mock("wouter", () => ({ useLocation: () => ["/admin/approvals", go], Link: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
 const requestItem = { kind: "referral_request", id: 501, status: "under_review", companyDomain: "acme.com", createdAt: "2026-09-01T09:00:00.000Z", updatedAt: "2026-09-01T09:00:00.000Z", summary: "I led a measurable product design launch.", meta: { claimTime: "2026-09-01T09:00:00.000Z", seekerName: "Avery", targetRoleUrl: "https://careers.acme.com/jobs/design", tokenCount: 1, creditReserved: true } };

@@ -5,7 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import AdminApprovalRecord from "./AdminApprovalRecord";
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }), SignInButton: ({ children }: { children: React.ReactNode }) => children }));
-vi.mock("wouter", () => ({ useRoute: () => [true, { kind: "referral_request", id: "501" }] }));
+vi.mock("wouter", () => ({ useRoute: () => [true, { kind: "referral_request", id: "501" }], Link: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
 const requestItem = { kind: "referral_request", id: 501, status: "under_review", companyDomain: "acme.com", createdAt: "2026-09-01T09:00:00.000Z", updatedAt: "2026-09-01T09:00:00.000Z", summary: "I led a measurable product design launch.", meta: { claimTime: "2026-09-01T09:05:00.000Z", seekerName: "Avery", seekerEmail: "avery@example.com", referrerName: "Blake", referrerEmail: "blake@acme.com", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", tokenCount: 1, creditReserved: true, pitch: "I led a measurable product design launch." } };
