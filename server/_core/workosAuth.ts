@@ -3,6 +3,9 @@ import { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Express, Request } from "express";
 import * as db from "../db";
+import { randomUUID } from "node:crypto";
+import { BoundedTtlCache } from "../boundedTtlCache";
+const authDiagnostics = new BoundedTtlCache<string,{stage:string;errorName:string;safeMessage:string;timestamp:string}>(100);
 import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./devAuth";
 import { getSessionCookieOptions } from "./cookies";
 
@@ -144,10 +147,18 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         const returnTo = state.startsWith("return=") ? decodeURIComponent(state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
         res.redirect(302, returnTo);
       } catch (error) {
-        const code = error instanceof Error ? error.name : "unknown";
-        console.error("[workos-callback]", { stage, code });
-        res.status(502).send("We could not complete sign-in. Please try again.");
+        const errorName = error instanceof Error ? error.name : "unknown";
+        const safeMessage = error instanceof Error ? error.message.slice(0,160).replace(/[\w.+-]+@[\w.-]+/g,"[redacted]") : "unknown";
+        const correlationId = randomUUID();
+        authDiagnostics.set(correlationId,{stage,errorName,safeMessage,timestamp:new Date().toISOString()},15*60_000);
+        console.error("[workos-callback]", { stage, code:errorName, correlationId });
+        const bootstrapDiagnostic = process.env.ENABLE_ADMIN_BOOTSTRAP === "true" && state === "skipwait-admin-bootstrap" ? ` (${stage}:${errorName}; ${correlationId})` : "";
+        res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
       }
+    });
+    app.get("/api/auth/workos/admin-diagnostic/:id",(req,res)=>{
+      if(process.env.ENABLE_ADMIN_BOOTSTRAP!=="true"||req.header("x-admin-secret")!==process.env.ADMIN_SMOKE_SECRET)return res.status(404).send("Not found");
+      const diagnostic=authDiagnostics.get(req.params.id);return diagnostic?res.set("Cache-Control","no-store").json(diagnostic):res.status(404).send("Not found");
     });
 
     app.post("/api/auth/workos/logout", (req, res) => {
