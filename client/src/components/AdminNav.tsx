@@ -1,6 +1,7 @@
 import { Activity, CheckSquare, CreditCard, Database, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
+import { Link } from "wouter";
 
 /**
  * Shared administrator header (pending-screens spec §2.6 / §5 responsive).
@@ -37,9 +38,9 @@ export function AdminNav({ current, badge = "Admin only" }: { current: AdminSect
           const active = section.id === current;
           const Icon = section.icon;
           return <li key={section.id}>
-            <a href={section.href} aria-current={active ? "page" : undefined} className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${active ? "border-[#0B57D0] bg-[#0B57D0] text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50"}`}>
+            <Link href={section.href} aria-current={active ? "page" : undefined} className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${active ? "border-[#0B57D0] bg-[#0B57D0] text-white" : "border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:bg-blue-50"}`}>
               <Icon className={`h-4 w-4 ${active ? "text-white" : "text-[#0B57D0]"}`} />{section.label}
-            </a>
+            </Link>
           </li>;
         })}
       </ul>
