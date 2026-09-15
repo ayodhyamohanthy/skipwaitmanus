@@ -48,6 +48,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Assert API workflow selection
+        run: bash scripts/assert-api-workflow-selection.sh
+
       - name: Typecheck
         run: npx tsc --noEmit
 
@@ -83,7 +86,7 @@ jobs:
           # to poll the container (polling the health endpoint RESETS the
           # 10m idle timer and prevents recycling).
           echo "Deployment recorded: $EXPECTED_SHA was pushed to Cloudflare."
-          echo "SYNC ACCEPTED: commit $EXPECTED_SHA is deployed (container recycles on idle)."; exit 0
+          echo "SYNC ACCEPTED: API commit $EXPECTED_SHA is deployed to Cloudflare Containers (container recycles on idle)."; exit 0
       - name: Append sync log
         if: always()
         run: bash scripts/append-sync-log.sh "${{ github.workflow }}" "${{ github.sha }}" "${{ job.status }}"
