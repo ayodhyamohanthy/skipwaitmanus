@@ -33,6 +33,9 @@
   ],
   "vars": {
     "NODE_ENV": "production",
+    "SKIPWAIT_ADMIN_EMAIL": "ayodhya@skipwait.me",
+    "ENABLE_ADMIN_BOOTSTRAP": "true",
+    "ENABLE_ADMIN_SMOKE_FIXTURE": "true",
     "WORKOS_CLIENT_ID": "client_01M17TTFJ6784B1CN6MHAHB60Y",
     "WORKOS_REDIRECT_URI": "https://skipwait.me/api/auth/workos/callback",
     "WORKOS_POST_SIGNIN_PATH": "/",
