@@ -17,6 +17,12 @@ export const onRequest: PagesFunction<{ API_ORIGIN?: string }> = async (context)
     redirect: "manual",
   });
   const responseHeaders = new Headers(upstream.headers);
+  responseHeaders.set("Strict-Transport-Security", "max-age=15552000; includeSubDomains");
+  responseHeaders.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  responseHeaders.set("X-Frame-Options", "DENY");
+  responseHeaders.set("X-Content-Type-Options", "nosniff");
+  responseHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  responseHeaders.set("Content-Security-Policy-Report-Only", "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'");
   const location = responseHeaders.get("location");
   if (location && location.startsWith(apiOrigin)) {
     responseHeaders.set("location", location.replace(apiOrigin, url.origin));
