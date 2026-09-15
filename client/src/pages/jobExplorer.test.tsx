@@ -37,6 +37,8 @@ describe("JobExplorer", () => {
     expect(screen.getByText("Acme · Bengaluru · Senior · Hybrid")).toBeTruthy();
     const savedCard = screen.getByText("Backend Engineer").closest("li")!;
     expect(savedCard.textContent).toContain("Saved");
+    expect(savedCard.textContent).toContain("Globex · Remote · Mid");
+    expect(savedCard.textContent).not.toContain("Remote · Mid · Remote");
   });
 
   it("toggles save optimistically and reverts with a toast when the server fails", async () => {
