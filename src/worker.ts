@@ -33,10 +33,11 @@ export class SkipwaitApi extends Container {
 export default {
   async fetch(
     request: Request,
-    env: Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace },
+    env: Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string },
     ctx: ExecutionContext
   ): Promise<Response> {
     // Single-instance API: all requests to one container for session affinity.
-    return getContainer(env.SkipwaitApi, "skipwaitmanus-api", true).fetch(request);
+    const release = typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
+    return getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`, true).fetch(request);
   },
 };

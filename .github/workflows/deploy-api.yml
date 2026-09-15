@@ -71,22 +71,23 @@ jobs:
       - name: Assert smoke secret hygiene
         run: bash scripts/assert-smoke-secret-hygiene.sh
 
+      - name: Stamp release identity into Cloudflare configuration
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+        run: node -e 'const fs=require("fs");const p="wrangler.jsonc";let s=fs.readFileSync(p,"utf8");s=s.replace(/"API_RELEASE":\s*"[^"]+"/, `"API_RELEASE": "${process.env.EXPECTED_SHA}"`);fs.writeFileSync(p,s)'
+
       - name: Deploy container image + worker
-        run: npx wrangler deploy
+        run: npx wrangler deploy 2>&1 | tee /tmp/wrangler-deploy.log
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Verify deployment recorded (Cloudflare API)
+      - name: Verify active Cloudflare container release
         env:
           EXPECTED_SHA: ${{ github.sha }}
-        run: |
-          # The wrangler deploy step above succeeded, which uploads the new
-          # image.  Cloudflare records that deployment immediately — no need
-          # to poll the container (polling the health endpoint RESETS the
-          # 10m idle timer and prevents recycling).
-          echo "Deployment recorded: $EXPECTED_SHA was pushed to Cloudflare."
-          echo "SYNC ACCEPTED: API commit $EXPECTED_SHA is deployed to Cloudflare Containers (container recycles on idle)."; exit 0
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bash scripts/verify-cloudflare-container-release.sh
       - name: Append sync log
         if: always()
         run: bash scripts/append-sync-log.sh "${{ github.workflow }}" "${{ github.sha }}" "${{ job.status }}"

@@ -33,6 +33,7 @@
   ],
   "vars": {
     "NODE_ENV": "production",
+    "API_RELEASE": "legacy",
     "SKIPWAIT_ADMIN_EMAIL": "ayodhya@skipwait.me",
     "ENABLE_ADMIN_BOOTSTRAP": "true",
     "ENABLE_ADMIN_SMOKE_FIXTURE": "true",
