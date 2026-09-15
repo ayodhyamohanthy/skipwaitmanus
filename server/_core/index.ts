@@ -51,6 +51,7 @@ import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { getLastReconcileError, isSchemaReconciled, reconcileSchema } from "../schemaReconcile";
+import { registerHealthRoutes } from "../healthRoutes";
 
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -111,18 +112,9 @@ async function startServer() {
   const smallForm = express.urlencoded({ limit: "256kb", extended: true });
   app.use((req, res, next) => smallForm(req, res, error => error ? res.status(413).json({ error: "Request body is too large" }) : next()));
 
-// Public health endpoint — returns the baked commit SHA for CI self-verification
-app.get("/api/health", async (_req, res) => {
-  let commitSha = "";
-  try { commitSha = (await readFile("commit-sha.txt", "utf8")).trim(); } catch { /* not baked */ }
-  res.set("Cache-Control", "no-store");
-  // Boot-time schema reconcile runs fire-and-forget; report the flag as-is so
-  // CI can distinguish "not yet run" from "column heal applied".
-  // Self-heal: if the boot-time reconcile failed (DB not ready), retry on
-  // health checks — the information_schema probe makes it idempotent.
-  if (!isSchemaReconciled()) void reconcileSchema().catch(() => {});
-  res.json({ ok: true, service: "skipwait-api", commitSha, schemaReconciled: isSchemaReconciled(), schemaReconcileError: getLastReconcileError() });
-});
+// Liveness is process-only; readiness gates on schema reconciliation. The
+// legacy endpoint stays 200-compatible for existing SHA verification clients.
+registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError,retry:reconcileSchema});
 
   registerAdminSmokeFixture(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
