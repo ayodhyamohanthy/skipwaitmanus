@@ -61,4 +61,29 @@ describe("Smart Pitch and referral share cards", () => {
     expect((await request(app).delete("/api/referral-share-cards/901").set("x-test-user", "referrer")).body).toEqual({ revoked: true }); expect(revokeCalls).toEqual([2]);
     expect((await request(app).get(`/api/referral-share-cards/public/${"a".repeat(32)}`)).status).toBe(404);
   });
+
+  it("attributes public share-card joins to the sharer through their existing invite code", async () => {
+    const { app } = appFor();
+    const plain = await request(app).get(`/api/referral-share-cards/public/${"a".repeat(32)}`);
+    expect(plain.body).toEqual({ card: { companyDomain: "acme.com", status: "accepted" } });
+    expect(plain.body.card).not.toHaveProperty("inviteCode");
+  });
+
+  it("passes the sharer invite code through public resolution and the SSR join link without leaking internals", async () => {
+    const app = express(); app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async () => undefined, dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "k" }), storageGetSignedUrl: async () => "https://signed.example/k",
+      createReferralAttachment: async () => ({ id: 1, fileName: "r.pdf", mimeType: "application/pdf", fileSize: 1 }), getAccessibleReferralAttachment: async () => undefined,
+      getPublicReferralShareCard: async () => ({ companyDomain: "acme.com", status: "approved", inviteCode: "r1-deadbeef" }),
+    });
+    const resolved = await request(app).get(`/api/referral-share-cards/public/${"b".repeat(32)}`);
+    expect(resolved.status).toBe(200);
+    expect(resolved.body).toEqual({ card: { companyDomain: "acme.com", status: "accepted", inviteCode: "r1-deadbeef" } });
+    expect(JSON.stringify(resolved.body)).not.toMatch(/token|requestId|userId|email|queue/i);
+    const page = await request(app).get(`/share-card/${"b".repeat(32)}`);
+    expect(page.status).toBe(200);
+    expect(page.text).toContain("/start?invite=r1-deadbeef");
+    expect(page.text).toContain("Get your own referral");
+  });
 });

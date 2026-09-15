@@ -12,6 +12,7 @@ describe("ZeroActivityShareCard", () => {
   it("gives a Job Seeker direct WhatsApp, email, and social sharing links instead of a generic empty-state prompt", () => {
     render(<ZeroActivityShareCard audience="job_seeker" />);
     expect(screen.getByRole("link", { name: "Share on WhatsApp" }).getAttribute("href")).toContain("wa.me/?text=");
+    expect(screen.getByRole("link", { name: "Share on Telegram" }).getAttribute("href")).toContain("t.me/share/url?url=");
     expect(screen.getByRole("link", { name: "Share by email" }).getAttribute("href")).toContain("mailto:");
     expect(screen.getByRole("link", { name: "Share on LinkedIn" }).getAttribute("href")).toContain("linkedin.com/sharing");
     expect(screen.getByRole("link", { name: "Share on X" }).getAttribute("href")).toContain("x.com/intent/post");

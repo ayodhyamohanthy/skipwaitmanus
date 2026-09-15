@@ -29,6 +29,7 @@ describe("ShareHub personal invites", () => {
     expect(screen.getByRole("button", { name: "Share invite on X" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share invite on Facebook" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share invite on LinkedIn" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Share invite on Telegram" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share invite on Medium" })).toBeTruthy();
     expect(screen.getByText(/Self-invites and duplicate accounts are not eligible/i)).toBeTruthy();
     const content = document.querySelector('[data-skipwait-share-content="true"]');

@@ -1,4 +1,4 @@
-import { Copy, Linkedin, Mail, MessageCircleMore, MoreHorizontal, ShieldCheck, UsersRound } from "lucide-react";
+import { Copy, Linkedin, Mail, MessageCircleMore, MoreHorizontal, Send, ShieldCheck, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 
 type CompanyInviteCardProps = {
@@ -41,6 +41,7 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
       : "Invite one trusted employee to join private company coverage. They choose whether to verify their work email; your request and documents stay private.";
 
   const shareToWhatsApp = () => openShareUrl(`https://wa.me/?text=${encodeURIComponent(inviteText)}`);
+  const shareToTelegram = () => openShareUrl(`https://t.me/share/url?url=${encodeURIComponent(inviteLink)}&text=${encodeURIComponent(inviteText)}`);
   const shareToEmail = () => openShareUrl(`mailto:?subject=${encodeURIComponent(`Private company coverage at ${companyDomain}`)}&body=${encodeURIComponent(inviteText)}`);
   const shareToLinkedIn = () => {
     void copyText(inviteText, "Invite copied. Paste it into a LinkedIn message.");
@@ -68,8 +69,9 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
       <span className="min-w-0 truncate text-sm font-semibold text-[#625D52]">{inviteLink.replace(/^https?:\/\//, "")}</span>
       <button type="button" onClick={() => { void copyText(inviteText, "Private company invite copied."); }} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#191713] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#2E2B25] active:scale-[.98]"><Copy className="h-3.5 w-3.5" />Copy</button>
     </div>
-    <div className={`mt-3 grid gap-2 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-4"}`}>
+    <div className={`mt-3 grid gap-2 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
       <button type="button" onClick={shareToWhatsApp} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><MessageCircleMore className="h-4 w-4 text-[#191713]" />WhatsApp</button>
+      <button type="button" onClick={shareToTelegram} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><Send className="h-4 w-4 text-[#229ED9]" />Telegram</button>
       <button type="button" onClick={shareToLinkedIn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><Linkedin className="h-4 w-4 text-[#191713]" />LinkedIn</button>
       <button type="button" onClick={shareToEmail} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><Mail className="h-4 w-4 text-[#191713]" />Email</button>
       {!compact && <><button type="button" onClick={shareToX} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]">X</button><button type="button" onClick={shareMore} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><MoreHorizontal className="h-4 w-4 text-[#191713]" />More apps</button></>}

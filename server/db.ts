@@ -896,11 +896,16 @@ export async function revokeReferralShareCard(userId: number, requestId: number)
   return { revoked: Number(result[0].affectedRows) > 0 };
 }
 
-export async function getPublicReferralShareCard(shareToken: string): Promise<{ companyDomain: string; status: ReferralStatus } | undefined> {
+export async function getPublicReferralShareCard(shareToken: string): Promise<{ companyDomain: string; status: ReferralStatus; inviteCode?: string | null } | undefined> {
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: jobs.company, status: referralRequests.status }).from(referralShareCards).innerJoin(referralRequests, eq(referralShareCards.referralRequestId, referralRequests.id)).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralShareCards.shareToken, shareToken), eq(referralShareCards.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: jobs.company, status: referralRequests.status, createdByUserId: referralShareCards.createdByUserId }).from(referralShareCards).innerJoin(referralRequests, eq(referralShareCards.referralRequestId, referralRequests.id)).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralShareCards.shareToken, shareToken), eq(referralShareCards.isActive, true))).limit(1);
   const card = result[0];
-  return card && isPostApprovalReferralStatus(card.status) ? { companyDomain: card.companyDomain, status: card.status as ReferralStatus } : undefined;
+  if (!card || !isPostApprovalReferralStatus(card.status)) return undefined;
+  // Attribute joins back to the sharer through their existing personal invite
+  // code (lookup only — a public view must never create invite rows). The
+  // standard claim safeguards (self-invite, duplicates, timing) still apply.
+  const invite = card.createdByUserId ? (await db.select({ inviteCode: personalReferralInvites.inviteCode }).from(personalReferralInvites).where(eq(personalReferralInvites.inviterUserId, card.createdByUserId)).limit(1))[0] : undefined;
+  return { companyDomain: card.companyDomain, status: card.status as ReferralStatus, inviteCode: invite?.inviteCode ?? null };
 }
 
 export type ReferralConversationMessage = { id: number; body: string; createdAt: Date; isMine: boolean };

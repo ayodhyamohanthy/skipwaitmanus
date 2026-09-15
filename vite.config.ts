@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
+import { execSync } from "node:child_process";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
 import { VitePWA } from "vite-plugin-pwa";
@@ -151,13 +152,32 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const productionPlugins = [react(), tailwindcss()];
+const productionPlugins = [react(), tailwindcss(), gitCommitMetaPlugin()];
 const developmentPlugins = [
   ...productionPlugins,
   jsxLocPlugin(),
   vitePluginManusRuntime(),
   vitePluginManusDebugCollector(),
 ];
+
+/** Bakes the deployed commit into the git-commit meta tag (dev: live HEAD). */
+function gitCommitMetaPlugin(): Plugin {
+  let sha = "dev";
+  try {
+    sha = fs.readFileSync(path.join(PROJECT_ROOT, "commit-sha.txt"), "utf8").trim() || sha;
+  } catch {
+    try {
+      sha = execSync("git rev-parse --short HEAD", { cwd: PROJECT_ROOT }).toString().trim() || sha;
+    } catch { /* detached source tree; keep dev */ }
+  }
+  return {
+    name: "skipwait-git-commit-meta",
+    transformIndexHtml(html) {
+      if (html.includes("%VITE_GIT_COMMIT_SHA%")) return html.replaceAll("%VITE_GIT_COMMIT_SHA%", sha);
+      return html;
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => ({
   plugins: mode === "development" ? developmentPlugins : productionPlugins,
