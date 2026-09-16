@@ -1,7 +1,7 @@
 # skipwaitmanus — Code Review & Fix Pass
 
 **Repo:** `github.com/ayodhyamohanthy/skipwaitmanus` (private)
-**Branch pushed:** `fix/security-and-quality-review` — 19 commits, 59 files, +2232/-224
+**Branch pushed:** `fix/security-and-quality-review` — 29 commits, 122 files, +3364/-581
 **PR:** [#18](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/18) — OPEN, mergeable
 **Date:** 12 September 2026
 
@@ -342,6 +342,43 @@ Two more parallel investigations over files the earlier passes had not reached. 
 **Verification for this pass:** `tsc --noEmit` clean; full suite **459 passed / 5 skipped**; `pnpm build` succeeds.
 
 **Honest gap:** the test count did not move, because this pass fixed UI/flow behaviour that the existing suite does not exercise — and I did not add tests for it. The §2.12 and §2.14 server fixes are similarly reasoned rather than reproduced (see §2.12's testing note). If you want these locked in, the highest-value additions would be a behavioural test for the `db.ts` status transitions (needs a real MySQL, since `db.ts` has no injection seam) and component tests for the `Premium` and `EmployerBilling` recovery paths.
+
+## 2.16 Fourth pass — full-app audit, including my own work
+
+An audit of everything still unreviewed: the Cloudflare Pages Function, `src/`, `client/src/lib`, build/deploy config, the remaining server modules, the DB schema — **and the brand change I had just made**, which had rewritten the entire visual layer and deserved scrutiny. It found more defects in my own work than anywhere else.
+
+### The most serious find: my earlier "fix" broke production
+
+`functions/api/[[path]].ts` proxies `/api/*` and calls `headers.delete("host")` — because **Cloudflare forbids setting `Host` on an outbound fetch**, so the proxy forwards the browser's host as `X-Forwarded-Host` and the container sees `Host: <container>.workers.dev` on every request. My earlier change read the raw `Host` on the stated assumption that *"the proxy controls `Host`."* It does not. Two things were silently broken:
+
+1. **`csrfOriginGuard` returned 403 for every state-changing browser request** — it compared `Origin: https://skipwait.me` against `Host: <container>.workers.dev`.
+2. **Live billing never engaged** — `billingHost` drove the live-vs-test decision, so `isLiveChargebeeRequest` was always false: production checkouts ran on the **test** Chargebee site with the test API key, and live webhooks were verified against the **test** secret.
+
+Fixed with a centralised `server/_core/publicHost.ts`. The forwarded host is honoured when the proxy proves it forwarded the request (`PROXY_SHARED_SECRET` + `x-skipwait-proxy`), and falls back to the raw `Host` when a secret is configured but the proof is absent — so a caller still cannot steer which secret validates their webhook. With no secret it is honoured anyway, because otherwise no mutation can succeed; that residual risk is confined to server-to-server callers (a browser cannot attach a custom forwarding header without a CORS preflight, and the session cookie is scoped to the public domain). A boot warning flags the un-hardened state. **Setting `PROXY_SHARED_SECRET` in both the Pages project and the container is still outstanding.**
+
+### My brand rewrite had five defects
+
+- **Dark mode was dead.** `ThemeProvider` initialised to `"light"` unconditionally, so the mount effect stripped the `.dark` class `index.html` adds pre-paint. The initialiser now reads the DOM class first; the storage key is unified; a live `prefers-color-scheme` listener follows the system until the user chooses; persistence happens only on an explicit toggle.
+- **~300 utilities generated no CSS.** Rewriting `index.css` dropped the legacy shadcn tokens, so `text-muted-foreground` (73 uses), `bg-accent` (44), `text-accent-foreground` (33) and others resolved to nothing — `ui/button.tsx`'s default variant had no text colour at all. All are re-declared in both themes.
+- **The dark-mode ink bridge was dead code** — it sat in `@layer base` while `.text-white` lives in `@layer utilities`, and a later layer beats an earlier one regardless of specificity. Moved and extended to the status fills.
+- **`bg-slate-950` inverts to near-white**, putting white text on it at 1.12:1 (13 elements, including the offline banner). New `--color-inverse` / `--color-on-inverse` pair.
+- **~600 legacy colour utilities never inverted** (`blue`/`rose`/`emerald`/`amber`/`sky`/`indigo`). Migrated to brand status tokens: 670 replacements across 59 files, none left.
+
+**Verified numerically:** a script computes WCAG contrast for 29 token pairs in both themes — **0 failures** (weakest 4.78:1).
+
+### Other fixes
+
+- **HTML injection in outbound email.** `referrerReviewEmail` / `slotOpenedAlertEmail` interpolated the review URL, headline and body raw. The URL is the dangerous one: its token alone approves or declines a referral. New `server/htmlEscape.ts`, with hrefs restricted to http(s).
+- **Those emails and the public OG share card still wore the deleted Google-blue palette**, and the share card drew a **plus sign** as its logo while the app's mark is converging chevrons.
+- `StatusBadge` / `RequestStatusTimeline` had hardcoded tone colours with 10% alpha tints that could not invert (dark contrast ~1.5:1).
+
+### A verification mistake of mine, worth recording
+
+I reported "Google blue fully removed" from a grep using `'0B57D0\|0b57d0'`. **BSD `grep` does not support `\|` alternation in BRE** — it matches a literal `|`, so the check returned zero and I reported success. Five real references survived. **Use `grep -E` for alternation on macOS.**
+
+### Testing note
+
+Three *different* test files failed across three consecutive full runs, each passing 3/3 in isolation. `uptime` showed **load average 19.7 / 101 / 143** on a 6-core machine — up to 12× oversubscription — with suite duration swinging 49 s → 124 s. The failures were environmental, not regressions. Fixed by raising both Testing Library's `asyncUtilTimeout` and vitest's `testTimeout` (raising only the former just moved the failure). **Check `uptime` before chasing a flaky test on this machine.**
 
 ---
 
