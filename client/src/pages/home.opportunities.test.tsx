@@ -7,6 +7,7 @@ import Home from "./Home";
 vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children?: React.ReactNode }) => null,
   SignedOut: ({ children }: { children?: React.ReactNode }) => children,
+  useAuth: () => ({ isSignedIn: false }),
   useUser: () => ({ user: null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));

@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import Home from "./Home";
 
-const { go } = vi.hoisted(() => ({ go: vi.fn() }));
+const { go, signedIn } = vi.hoisted(() => ({ go: vi.fn(), signedIn: { value: false } }));
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/", go],
@@ -15,6 +15,7 @@ vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   SignedOut: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
+  useAuth: () => ({ isSignedIn: signedIn.value }),
   useUser: () => ({ user: null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
@@ -22,11 +23,23 @@ vi.mock("@/_core/auth", () => ({
 afterEach(() => { cleanup(); go.mockReset(); });
 
 describe("homepage profile entries", () => {
-  it("keeps workspace links out of the homepage for signed-in users", () => {
+  it("surfaces the signed-in workspace next to the main referral actions", () => {
+    signedIn.value = true;
     render(<Home />);
 
-    // Profile destinations live in the account menu on inner pages, never on
-    // the landing page.
+    expect(screen.getByRole("navigation", { name: "Your workspace" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "My requests" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "My company inbox" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Internal openings" })).toBeTruthy();
+    signedIn.value = false;
+  });
+
+  it("keeps workspace links off the landing page when signed out", () => {
+    render(<Home />);
+
+    // Signed-out visitors use the public role cards; the signed-in workspace
+    // appears only after sign-in.
+    expect(screen.queryByRole("navigation", { name: "Your workspace" })).toBeNull();
     expect(screen.queryByRole("button", { name: /My requests/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /My company inbox/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /Internal openings/i })).toBeNull();

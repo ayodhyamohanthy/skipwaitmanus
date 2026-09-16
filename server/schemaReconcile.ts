@@ -46,6 +46,20 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "companyCoverageInvitations", column: "referralRequestId", definition: "INT NULL" },
 ];
 
+// Unique indexes the idempotency/atomic-spend contracts depend on. Applied
+// idempotently at boot: a missing index is created, a same-named non-unique
+// index (NON_UNIQUE = 1) is dropped and recreated unique, and an existing
+// unique index is skipped. Keep in sync with drizzle/schema.ts.
+export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: string }> = [
+  { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
+  { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
+  { table: "referralRequests", name: "referral_requests_seeker_idempotency_unique", columns: "`jobSeekerId`,`idempotencyKey`" },
+  { table: "tokenTransactions", name: "token_transactions_debit_reference_unique", columns: "`userId`,`role`,`kind`,`referenceType`,`referenceId`" },
+  { table: "tokenTransactions", name: "token_transactions_idempotency_kind_unique", columns: "`userId`,`role`,`idempotencyKey`,`kind`" },
+  { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
+  { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
+];
+
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
 // from DESIRED_COLUMNS + DESIRED_TABLES above. Nothing request-controlled is
 // ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
@@ -164,16 +178,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       results.push({ statement: stmt, ok: true });
       applied.push(`${table}.${column}`);
     }
-    const desiredIndexes = [
-      { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
-      { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
-      { table: "referralRequests", name: "referral_requests_seeker_idempotency_unique", columns: "`jobSeekerId`,`idempotencyKey`" },
-      { table: "tokenTransactions", name: "token_transactions_debit_reference_unique", columns: "`userId`,`role`,`kind`,`referenceType`,`referenceId`" },
-      { table: "tokenTransactions", name: "token_transactions_idempotency_kind_unique", columns: "`userId`,`role`,`idempotencyKey`,`kind`" },
-      { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
-      { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
-    ];
-    for (const index of desiredIndexes) {
+    for (const index of DESIRED_INDEXES) {
       const key = `${index.table}.${index.name}`; if (existingIndexes.get(key) === 0) { skipped.push(`index:${key}`); continue; }
       const stmt = `CREATE UNIQUE INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
       try {

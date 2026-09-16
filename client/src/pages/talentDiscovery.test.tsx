@@ -20,11 +20,11 @@ const talent = [
 function stubFetch(overrides: { talent?: typeof talent; unlockStatus?: number; unlockBody?: Record<string, unknown>; profileBody?: Record<string, unknown> } = {}) {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url === "/api/employer/talent/22/unlock" && init?.method === "POST") {
+    if (url === "/api/employer/talent/Talent-0022/unlock" && init?.method === "POST") {
       const status = overrides.unlockStatus ?? 201;
       return { ok: status < 400, status, json: async () => overrides.unlockBody ?? { unlocked: true, remaining: 20 } };
     }
-    if (/\/api\/employer\/talent\/\d+$/.test(url) && !init?.method) return { ok: true, status: 200, json: async () => overrides.profileBody ?? { profile: { displayRef: "Talent-0033", headline: "Backend engineer", location: "Remote", skills: ["node"], experience: "6 years", expertise: null } } };
+    if (/\/api\/employer\/talent\/Talent-\d+$/.test(url) && !init?.method) return { ok: true, status: 200, json: async () => overrides.profileBody ?? { profile: { displayRef: "Talent-0033", headline: "Backend engineer", location: "Remote", skills: ["node"], experience: "6 years", expertise: null } } };
     if (url.startsWith("/api/employer/talent")) return { ok: true, status: 200, json: async () => ({ talent: overrides.talent ?? talent }) };
     if (url === "/api/employer/account") return { ok: true, status: 200, json: async () => ({ account: { credits: 25 } }) };
     return { ok: true, status: 200, json: async () => ({}) };
@@ -62,7 +62,7 @@ describe("TalentDiscovery", () => {
   it("unlocks optimistically: credits decrement and the card flips to unlocked before the response lands", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url === "/api/employer/talent/22/unlock" && init?.method === "POST") return new Promise(() => undefined); // never resolves
+      if (url === "/api/employer/talent/Talent-0022/unlock" && init?.method === "POST") return new Promise(() => undefined); // never resolves
       if (url.startsWith("/api/employer/talent")) return { ok: true, status: 200, json: async () => ({ talent }) };
       if (url === "/api/employer/account") return { ok: true, status: 200, json: async () => ({ account: { credits: 25 } }) };
       return { ok: true, status: 200, json: async () => ({}) };

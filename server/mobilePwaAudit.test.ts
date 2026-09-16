@@ -6,19 +6,24 @@ const root = path.resolve(import.meta.dirname, "..");
 const source = (relativePath: string) => readFileSync(path.join(root, relativePath), "utf8");
 
 describe("comprehensive mobile-PWA audit safeguards", () => {
-  it("ships installed-app metadata, safe-area support, display fallback, and quick actions", () => {
+  it("ships installed-app metadata, manifest icons, and a real service worker", () => {
     const html = source("client/index.html");
     const main = source("client/src/main.tsx");
+    const manifest = source("client/public/manifest.webmanifest");
+    const sw = source("client/public/sw.js");
     const css = source("client/src/index.css");
 
     expect(html).toContain("viewport-fit=cover");
     expect(html).toContain('name="mobile-web-app-capable" content="yes"');
     expect(html).toContain('name="apple-mobile-web-app-capable" content="yes"');
-    // The PWA shell is deliberately disabled (a cached shell blanked lazy
-    // routes after deploys): every boot unregisters stale workers and purges
-    // caches so browsers heal instead of serving purged chunks.
-    expect(main).toContain("registration.unregister()");
-    expect(main).toContain("caches.delete(k)");
+    expect(html).toContain('<link rel="manifest" href="/manifest.webmanifest"');
+    expect(main).toContain('register("/sw.js")');
+    expect(main).toContain('getRegistrations()');
+    expect(manifest).toContain('"display":"standalone"');
+    expect(manifest).toContain('"sizes":"192x192"');
+    expect(manifest).toContain('"sizes":"512x512"');
+    expect(manifest).toContain('"purpose":"maskable"');
+    expect(sw).toContain("offline");
     expect(css).toContain("overscroll-behavior-y: contain");
     expect(css).toContain("touch-action: manipulation");
     expect(css).toContain("focus-visible");
