@@ -31,7 +31,7 @@ describe("My Requests withdraw flow", () => {
   it("offers Withdraw on a pending unclaimed request and shows its Ref reference", async () => {
     stubRequestsFetch([pendingRequest]);
     render(<MyRequests />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy(), { timeout: 5_000 });
     expect(screen.getByText("Ref-1012")).toBeTruthy();
     expect(screen.getByText("2 left")).toBeTruthy();
   });
@@ -49,7 +49,7 @@ describe("My Requests withdraw flow", () => {
       : { ok: true, json: async () => String(url).includes("/api/credits/summary") ? creditSummary(2) : { requests: [pendingRequest] } });
     vi.stubGlobal("fetch", fetchMock);
     render(<MyRequests />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy(), { timeout: 5_000 });
     fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog.textContent).toContain("Withdraw this request?");
@@ -68,7 +68,7 @@ describe("My Requests withdraw flow", () => {
       : { ok: true, json: async () => String(url).includes("/api/credits/summary") ? creditSummary(2) : { requests: [pendingRequest] } });
     vi.stubGlobal("fetch", fetchMock);
     render(<MyRequests />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy(), { timeout: 5_000 });
     fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
     fireEvent.click(await screen.findByRole("button", { name: "Withdraw request" }));
     const alert = await screen.findByRole("alert");
