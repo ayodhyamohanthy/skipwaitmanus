@@ -43,11 +43,11 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).get("/api/company-referrals/501").set("x-test-user", "outsider")).status).toBe(404);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "outsider")).status).toBe(404);
     const preview = await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee");
-    expect(preview.status).toBe(200); expect(preview.body.request).toMatchObject({ candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0].url).toBe("https://signed.example/resume.pdf"); expect(preview.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    expect(preview.status).toBe(200); expect(preview.body.request).toMatchObject({ candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0]).toMatchObject({ availability: "after_claim", fileName: "resume.pdf" }); expect(preview.body.request.attachments[0]).not.toHaveProperty("url"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
     expect((await request(app).post("/api/company-referrals/501/claim").set("x-test-user", "employee")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee")).status).toBe(404);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
-    expect(detail.status).toBe(200); expect(detail.body.request.attachments[0].url).toBe("https://signed.example/resume.pdf"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    expect(detail.status).toBe(200); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
     const securedDocument = await request(app).get("/api/documents/77").set("x-test-user", "employee");
     expect(securedDocument.status).toBe(307); expect(securedDocument.headers.location).toBe("https://signed.example/resume.pdf");
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));

@@ -40,15 +40,19 @@ describe("opaque private-document upload route", () => {
       createResumeUploadSession: async (ownerId, input) => { const id = "session-1"; sessions.set(id, { id, ownerId, ...input, receivedSize: 0, nextChunkIndex: 0, status: "active", attachmentId: null, chunks: [] }); return { id }; },
       getResumeUploadSession: async (ownerId, id) => { const session = sessions.get(id); return session?.ownerId === ownerId ? session : undefined; },
       appendResumeUploadChunk: async (ownerId, input) => { const session = sessions.get(input.sessionId); if (!session || session.ownerId !== ownerId || input.chunkIndex !== session.nextChunkIndex) throw new Error("Resume upload chunks arrived out of order"); session.chunks.push(input); session.nextChunkIndex += 1; session.receivedSize += input.byteSize; return { nextChunkIndex: session.nextChunkIndex, receivedSize: session.receivedSize, alreadyStored: false }; },
-      completeResumeUploadSession: async (ownerId, id, idOfAttachment) => { const session = sessions.get(id); if (session?.ownerId === ownerId) { session.status = "completed"; session.attachmentId = idOfAttachment; } },
+      claimResumeUploadFinalization: async (ownerId, id, finalizationOwner) => { const session = sessions.get(id); if (!session || session.ownerId !== ownerId) return { outcome: "missing" as const }; if (session.status === "completed") return { outcome: "completed" as const, session }; if (session.status === "finalizing") return { outcome: "finalizing" as const, session }; session.status = "finalizing"; session.finalizationOwner = finalizationOwner; return { outcome: "claimed" as const, session }; },
+      completeResumeUploadSession: async (ownerId, id, finalizationOwner, input) => { const session = sessions.get(id); if (!session || session.ownerId !== ownerId || session.finalizationOwner !== finalizationOwner) throw new Error("lease changed"); const attachment = { id: attachmentId++, ...input }; session.status = "completed"; session.attachmentId = attachment.id; return attachment; },
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
     });
     vi.stubGlobal("fetch", vi.fn(async (url: string) => new Response(privateBytes.get(decodeURIComponent(url.split("/").pop() || "")), { status: 200 })));
     const pdf = Buffer.from("%PDF-1.4\n% fragmented secure test\n"); const started = await request(app).post("/api/documents/uploads").set("x-test-user", "seeker").send({ fileName: "resume.pdf", mimeType: "application/pdf", fileSize: pdf.length });
     expect(started.status).toBe(201); expect((await request(app).post(`/api/documents/uploads/${started.body.sessionId}/chunks`).set("x-test-user", "outsider").send({ chunkIndex: 0, ...encryptForTransport(pdf) })).status).toBe(404);
     const appended = await request(app).post(`/api/documents/uploads/${started.body.sessionId}/chunks`).set("x-test-user", "seeker").send({ chunkIndex: 0, ...encryptForTransport(pdf) }); expect(appended.status).toBe(200);
-    const completed = await request(app).post(`/api/documents/uploads/${started.body.sessionId}/complete`).set("x-test-user", "seeker").send({}); expect(completed.status).toBe(201); expect(completed.body).toMatchObject({ fileName: "resume.pdf", fileSize: pdf.length });
-    expect((await request(app).post(`/api/documents/uploads/${started.body.sessionId}/complete`).set("x-test-user", "seeker").send({})).body.id).toBe(completed.body.id);
+    const completions = await Promise.all(Array.from({ length: 10 }, () => request(app).post(`/api/documents/uploads/${started.body.sessionId}/complete`).set("x-test-user", "seeker").send({})));
+    expect(completions.every(response => response.status === 201)).toBe(true);
+    expect(new Set(completions.map(response => response.body.id)).size).toBe(1);
+    expect(completions[0].body).toMatchObject({ fileName: "resume.pdf", fileSize: pdf.length });
+    expect((await request(app).post(`/api/documents/uploads/${started.body.sessionId}/complete`).set("x-test-user", "seeker").send({})).body.id).toBe(completions[0].body.id);
   });
 
   it("reassembles upload chunks through direct byte reads when signed URLs are relative DB routes", async () => {
@@ -67,7 +71,8 @@ describe("opaque private-document upload route", () => {
       createResumeUploadSession: async (ownerId, input) => { const id = "session-relative"; sessions.set(id, { id, ownerId, ...input, receivedSize: 0, nextChunkIndex: 0, status: "active", attachmentId: null, chunks: [] }); return { id }; },
       getResumeUploadSession: async (ownerId, id) => { const session = sessions.get(id); return session?.ownerId === ownerId ? session : undefined; },
       appendResumeUploadChunk: async (ownerId, input) => { const session = sessions.get(input.sessionId); if (!session || session.ownerId !== ownerId || input.chunkIndex !== session.nextChunkIndex) throw new Error("Resume upload chunks arrived out of order"); session.chunks.push(input); session.nextChunkIndex += 1; session.receivedSize += input.byteSize; return { nextChunkIndex: session.nextChunkIndex, receivedSize: session.receivedSize, alreadyStored: false }; },
-      completeResumeUploadSession: async (ownerId, id, idOfAttachment) => { const session = sessions.get(id); if (session?.ownerId === ownerId) { session.status = "completed"; session.attachmentId = idOfAttachment; } },
+      claimResumeUploadFinalization: async (ownerId, id, finalizationOwner) => { const session = sessions.get(id); if (!session || session.ownerId !== ownerId) return { outcome: "missing" as const }; if (session.status === "completed") return { outcome: "completed" as const, session }; if (session.status === "finalizing") return { outcome: "finalizing" as const, session }; session.status = "finalizing"; session.finalizationOwner = finalizationOwner; return { outcome: "claimed" as const, session }; },
+      completeResumeUploadSession: async (ownerId, id, finalizationOwner, input) => { const session = sessions.get(id); if (!session || session.ownerId !== ownerId || session.finalizationOwner !== finalizationOwner) throw new Error("lease changed"); const attachment = { id: attachmentId++, ...input }; session.status = "completed"; session.attachmentId = attachment.id; return attachment; },
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
     });
     // No fetch stub: any server-side HTTP read would throw, proving the
@@ -93,7 +98,8 @@ describe("opaque private-document upload route", () => {
       createResumeUploadSession: async (ownerId, input) => { const id = "session-missing"; sessions.set(id, { id, ownerId, ...input, expectedSize: 10, receivedSize: 10, nextChunkIndex: 1, status: "active", attachmentId: null, chunks: [{ chunkIndex: 0, storageKey: "missing-key", byteSize: 10 }] }); return { id }; },
       getResumeUploadSession: async (ownerId, id) => { const session = sessions.get(id); return session?.ownerId === ownerId ? session : undefined; },
       appendResumeUploadChunk: async () => { throw new Error("unexpected"); },
-      completeResumeUploadSession: async () => undefined,
+      claimResumeUploadFinalization: async () => ({ outcome: "claimed" as const }),
+      completeResumeUploadSession: async () => ({ id: 81, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 10, fileKey: "k" }),
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
     });
     const completed = await request(app).post("/api/documents/uploads/session-missing/complete").set("x-test-user", "seeker").send({});
@@ -101,4 +107,18 @@ describe("opaque private-document upload route", () => {
     expect(completed.body.error).toMatch(/fragment was not found/i);
     expect(completed.body.error).not.toMatch(/Failed to parse URL/i);
   });
+  it("reuses a client upload identity when the browser starts the same upload twice", async () => {
+    const app = express(); app.use(express.json()); const sessions = new Map<string, any>();
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 12, openId: "workos-seeker" } }), dataUrlToBuffer: () => Buffer.from("unused"), sanitizeDocumentName: value => value,
+      storagePut: async key => ({ key }), storageGetSignedUrl: async key => key, createReferralAttachment: async (_ownerId, input) => ({ id: 1, ...input }), getAccessibleReferralAttachment: async () => undefined,
+      createResumeUploadSession: async (ownerId, input) => { const id = input.sessionId || "generated"; const existing = sessions.get(id); if (existing) return existing; const session = { id, ownerId, ...input, status: "active", receivedSize: 0, nextChunkIndex: 0, attachmentId: null, chunks: [] }; sessions.set(id, session); return session; },
+      getResumeUploadSession: async () => undefined, appendResumeUploadChunk: async () => ({ nextChunkIndex: 1, receivedSize: 1, alreadyStored: false }), claimResumeUploadFinalization: async () => ({ outcome: "missing" as const }), completeResumeUploadSession: async () => ({ id: 1, fileName: "resume.pdf", fileKey: "k", mimeType: "application/pdf", fileSize: 1 }),
+      saveVerifiedWorkEmail: async () => ({}), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+    const body = { clientUploadId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 99 };
+    const [first, second] = await Promise.all([request(app).post("/api/documents/uploads").send(body), request(app).post("/api/documents/uploads").send(body)]);
+    expect(first.status).toBe(201); expect(second.status).toBe(201); expect(first.body.sessionId).toBe(second.body.sessionId); expect(sessions.size).toBe(1);
+  });
+
 });

@@ -83,10 +83,14 @@ export async function isUserSuspended(userId: number) {
   return Boolean(row?.suspended);
 }
 
-export async function createResumeUploadSession(ownerId: number, input: { fileName: string; mimeType: string; expectedSize: number }) {
+export async function createResumeUploadSession(ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const id = randomUUID(); await db.insert(resumeUploadSessions).values({ id, ownerId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize });
-  return { id, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize, receivedSize: 0, nextChunkIndex: 0, status: "active" as const, attachmentId: null };
+  const id = randomUUID(); const clientUploadId = input.sessionId;
+  await db.insert(resumeUploadSessions).values({ id, ownerId, clientUploadId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize }).onDuplicateKeyUpdate({ set: { clientUploadId } });
+  const selected = clientUploadId ? await db.select({ id: resumeUploadSessions.id }).from(resumeUploadSessions).where(and(eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.clientUploadId, clientUploadId))).limit(1) : [{ id }];
+  const existing = await getResumeUploadSession(ownerId, selected[0]?.id || id);
+  if (!existing || existing.fileName !== input.fileName || existing.mimeType !== input.mimeType || existing.expectedSize !== input.expectedSize) throw new Error("Upload identity is already in use");
+  return existing;
 }
 
 export async function getResumeUploadSession(ownerId: number, sessionId: string) {
@@ -111,9 +115,42 @@ export async function appendResumeUploadChunk(ownerId: number, input: { sessionI
   return { nextChunkIndex: session.nextChunkIndex + 1, receivedSize: session.receivedSize + input.byteSize, alreadyStored: false };
 }
 
-export async function completeResumeUploadSession(ownerId: number, sessionId: string, attachmentId: number) {
+export async function claimResumeUploadFinalization(ownerId: number, sessionId: string, finalizationOwner: string) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.update(resumeUploadSessions).set({ status: "completed", attachmentId }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "active")));
+  const leaseUntil = new Date(Date.now() + 2 * 60 * 1000);
+  const result = await db.update(resumeUploadSessions).set({ status: "finalizing", finalizationOwner, finalizationLeaseUntil: leaseUntil })
+    .where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), or(eq(resumeUploadSessions.status, "active"), and(eq(resumeUploadSessions.status, "finalizing"), or(isNull(resumeUploadSessions.finalizationLeaseUntil), sql`${resumeUploadSessions.finalizationLeaseUntil} < NOW()`)))));
+  const session = await getResumeUploadSession(ownerId, sessionId);
+  if (!session) return { outcome: "missing" as const };
+  if (session.status === "completed" && session.attachmentId) return { outcome: "completed" as const, session };
+  if (Number(result[0].affectedRows) === 1 && session.finalizationOwner === finalizationOwner) return { outcome: "claimed" as const, session };
+  return { outcome: "finalizing" as const, session };
+}
+
+export async function completeResumeUploadSession(ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    await tx.insert(referralAttachments).values({ ownerId, uploadSessionId: sessionId, ...input }).onDuplicateKeyUpdate({ set: { uploadSessionId: sessionId } });
+    const rows = await tx.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.uploadSessionId, sessionId)).limit(1);
+    const attachment = rows[0]; if (!attachment) throw new Error("Finalized attachment could not be bound");
+    const result = await tx.update(resumeUploadSessions).set({ status: "completed", attachmentId: attachment.id, permanentStorageKey: input.fileKey, finalizationOwner: null, finalizationLeaseUntil: null }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "finalizing"), eq(resumeUploadSessions.finalizationOwner, finalizationOwner)));
+    if (Number(result[0].affectedRows) !== 1) {
+      const current = await tx.select({ attachmentId: resumeUploadSessions.attachmentId }).from(resumeUploadSessions).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId))).limit(1);
+      if (current[0]?.attachmentId !== attachment.id) throw new Error("Resume upload finalization lease changed; retry completion");
+    }
+    await tx.delete(resumeUploadChunks).where(eq(resumeUploadChunks.sessionId, sessionId));
+    return attachment;
+  });
+}
+
+export async function clearUnattachedResumeUploads(ownerId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const attachments = await tx.select({ id: referralAttachments.id, fileKey: referralAttachments.fileKey }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
+    if (attachments.length) await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
+    await tx.delete(resumeUploadSessions).where(eq(resumeUploadSessions.ownerId, ownerId));
+    return { cleared: attachments.length, fileKeys: attachments.map(item => item.fileKey) };
+  });
 }
 
 export async function exportUserData(userId: number) {
@@ -158,14 +195,14 @@ export async function listAdminPrivacyRequests(limit: number = 100) {
   return db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, source: privacyRequests.source, resolution: privacyRequests.resolution, createdAt: privacyRequests.createdAt, updatedAt: privacyRequests.updatedAt, userId: privacyRequests.userId, requesterName: users.name, requesterEmail: users.email, reviewedByUserId: privacyRequests.reviewedByUserId, reviewedAt: privacyRequests.reviewedAt }).from(privacyRequests).innerJoin(users, eq(privacyRequests.userId, users.id)).orderBy(desc(privacyRequests.createdAt)).limit(safeLimit);
 }
 
-export async function reviewPrivacyRequest(adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) {
+export async function reviewPrivacyRequest(adminUserId: number, requestId: number, input: { status: "in_review"; resolution?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = await db.select({ id: privacyRequests.id, userId: privacyRequests.userId, kind: privacyRequests.kind }).from(privacyRequests).where(eq(privacyRequests.id, requestId)).limit(1);
   if (!existing[0]) return undefined;
-  const resolution = input.resolution?.trim().slice(0, 500) || null;
-  const activeKey = input.status === "completed" || input.status === "declined" ? null : `${existing[0].kind}:${existing[0].userId}`;
-  await db.update(privacyRequests).set({ status: input.status, activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(eq(privacyRequests.id, requestId));
-  return { id: requestId, status: input.status, resolution };
+  const resolution = input.resolution?.trim().slice(0, 500) || "Blocked: awaiting verified erasure inventory and per-resource evidence.";
+  const activeKey = `${existing[0].kind}:${existing[0].userId}`;
+  await db.update(privacyRequests).set({ status: "in_review", activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(and(eq(privacyRequests.id, requestId), inArray(privacyRequests.status, ["requested", "in_review"])));
+  return { id: requestId, status: "in_review" as const, resolution };
 }
 
 export async function getVerifiedWorkEmailAccess(userId: number) {
@@ -799,7 +836,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
 
 export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const request = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, candidateName: users.name, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.referrerId, userId))).limit(1);
+  const request = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, candidateName: users.name, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.referrerId, userId), inArray(referralRequests.status, ["pending", "approved", "intro_made", "interview", "offer", "closed"]))).limit(1);
   if (!request[0]) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
   return { ...request[0], attachments };
@@ -813,7 +850,7 @@ export async function createReferralAttachment(ownerId: number, input: { fileNam
 
 export async function getAccessibleReferralAttachment(userId: number, attachmentId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId }).from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id)).where(and(eq(referralAttachments.id, attachmentId), or(eq(referralAttachments.ownerId, userId), eq(referralRequests.referrerId, userId)))).limit(1);
+  const result = await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId }).from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id)).where(and(eq(referralAttachments.id, attachmentId), or(eq(referralAttachments.ownerId, userId), and(eq(referralRequests.referrerId, userId), inArray(referralRequests.status, ["pending", "approved", "intro_made", "interview", "offer", "closed"]))))).limit(1);
   return result[0];
 }
 
@@ -1471,21 +1508,22 @@ export async function listRecentPayments(limit = 20) {
   if (!db) return [];
   return db.select({ id: paymentFulfillments.id, status: paymentFulfillments.status, provider: paymentFulfillments.provider, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(inArray(paymentFulfillments.status, ["credited", "refunded"])).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 250)));
 }
-export async function refundCreditedPayment(adminUserId: number, paymentId: number, note?: string) {
+export async function revokeCreditedPaymentCredits(adminUserId: number, paymentId: number, note?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]), eq(paymentFulfillments.status, "credited"))).limit(1);
     const row = rows[0];
-    if (!row) throw new Error("This payment cannot be refunded");
+    if (!row) throw new Error("Credits cannot be revoked for this payment");
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
-    if (wallet[0]) await tx.update(tokenBalances).set({ balance: Math.max(0, wallet[0].balance - row.tokenCount) }).where(eq(tokenBalances.id, wallet[0].id));
+    if (!wallet[0] || wallet[0].balance < row.tokenCount) throw new Error("Credits from this payment have been spent; ledger-only revocation is blocked");
+    await tx.update(tokenBalances).set({ balance: wallet[0].balance - row.tokenCount }).where(eq(tokenBalances.id, wallet[0].id));
     await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment" });
-    const updated = await tx.update(paymentFulfillments).set({ status: "refunded", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
-    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment cannot be refunded");
+    const updated = await tx.update(paymentFulfillments).set({ status: "rejected", reconciliationReason: "credits_revoked_no_provider_refund", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
+    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("Credits cannot be revoked for this payment");
     const metadata = { provider: row.provider, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
-    await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "payment.refunded", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
-    return { paymentId, refunded: true, tokenCount: row.tokenCount, userId: row.userId, role: row.role, provider: row.provider, amount: row.amount, currency: row.currency };
+    await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "payment.credits_revoked", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
+    return { paymentId, creditsRevoked: true, tokenCount: row.tokenCount, userId: row.userId, role: row.role, provider: row.provider, amount: row.amount, currency: row.currency };
   });
 }
 export async function getRevenueSummary() {

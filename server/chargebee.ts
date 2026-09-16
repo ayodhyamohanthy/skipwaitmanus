@@ -27,6 +27,10 @@ export type VerifiedChargebeeHostedPage = {
   passThruContent?: string;
   amount?: number;
   currency?: string;
+  pageState: string;
+  invoiceStatus?: string;
+  paymentStatus?: string;
+  paid: boolean;
 };
 
 export type ParsedSubscriptionEvent = {
@@ -131,21 +135,28 @@ export async function retrieveChargebeeHostedPage(hostedPageId: string, input: {
   const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
   const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
   if (!apiKey) throw new Error("Chargebee API key is not configured");
-  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/${encodeURIComponent(hostedPageId)}`, {
-    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
-    signal: AbortSignal.timeout(8_000),
-  });
+  const authorization = `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`;
+  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/${encodeURIComponent(hostedPageId)}`, { headers: { Authorization: authorization }, signal: AbortSignal.timeout(8_000) });
   if (!response.ok) return undefined;
   const hostedPage = (await response.json().catch(() => ({})))?.hosted_page;
-  if (!hostedPage || hostedPage.id !== hostedPageId || hostedPage.state !== "succeeded") return undefined;
-  const invoice = hostedPage.content?.invoice;
-  return {
-    hostedPageId,
-    invoiceId: typeof invoice?.id === "string" ? invoice.id : undefined,
-    passThruContent: typeof hostedPage.pass_thru_content === "string" ? hostedPage.pass_thru_content : undefined,
-    amount: Number.isInteger(invoice?.total) ? invoice.total : undefined,
-    currency: typeof invoice?.currency_code === "string" ? invoice.currency_code.toUpperCase() : undefined,
-  };
+  if (!hostedPage || hostedPage.id !== hostedPageId) return undefined;
+  const embeddedInvoice = hostedPage.content?.invoice;
+  const invoiceId = typeof embeddedInvoice?.id === "string" ? embeddedInvoice.id : undefined;
+  let invoice = embeddedInvoice;
+  // Recovery credits require the invoice source of truth, not a checkout page
+  // snapshot alone. Missing/ambiguous invoice state always stays uncredited.
+  if (invoiceId) {
+    const invoiceResponse = await fetch(`https://${site}.chargebee.com/api/v2/invoices/${encodeURIComponent(invoiceId)}`, { headers: { Authorization: authorization }, signal: AbortSignal.timeout(8_000) });
+    if (invoiceResponse.ok) invoice = (await invoiceResponse.json().catch(() => ({})))?.invoice;
+    else invoice = undefined;
+  }
+  const pageState = typeof hostedPage.state === "string" ? hostedPage.state.toLowerCase() : "unknown";
+  const invoiceStatus = typeof invoice?.status === "string" ? invoice.status.toLowerCase() : undefined;
+  const paymentStatus = typeof invoice?.payment_status === "string" ? invoice.payment_status.toLowerCase() : undefined;
+  const total = Number(invoice?.total); const amountPaid = Number(invoice?.amount_paid);
+  const invoicePaid = invoiceStatus === "paid" && Number.isInteger(total) && total > 0 && Number.isInteger(amountPaid) && amountPaid >= total;
+  const paymentSucceeded = paymentStatus === undefined || ["paid", "succeeded", "success"].includes(paymentStatus);
+  return { hostedPageId, invoiceId, passThruContent: typeof hostedPage.pass_thru_content === "string" ? hostedPage.pass_thru_content : undefined, amount: Number.isInteger(total) ? total : undefined, currency: typeof invoice?.currency_code === "string" ? invoice.currency_code.toUpperCase() : undefined, pageState, invoiceStatus, paymentStatus, paid: pageState === "succeeded" && invoicePaid && paymentSucceeded };
 }
 
 export async function resolveChargebeeHostedPageForPayment(input: { invoiceId?: string; amount: number; currency: string; pendingHostedPageIds: string[] }) {

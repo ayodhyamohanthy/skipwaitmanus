@@ -18,7 +18,7 @@ type Deps = {
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
   cancelSubscription?: typeof scheduleChargebeeSubscriptionCancellation;
-  resolveHostedPage?: (input: { invoiceId?: string; amount: number; currency: string }) => Promise<{ hostedPageId: string; invoiceId?: string; passThruContent?: string; amount?: number; currency?: string } | undefined>;
+  resolveHostedPage?: (input: { invoiceId?: string; amount: number; currency: string }) => Promise<{ hostedPageId: string; invoiceId?: string; passThruContent?: string; amount?: number; currency?: string; pageState: string; invoiceStatus?: string; paymentStatus?: string; paid: boolean } | undefined>;
   getPaymentRecovery?: (userId: number, role: TokenRole, hostedPageId: string) => Promise<{ id: number; status: "pending" | "credited" | "requires_review" | "rejected" | "refunded"; hostedPageId: string | null; checkoutIntentId: string | null; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null } | undefined>;
   markPaymentForReview?: (paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected") => Promise<unknown>;
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
@@ -145,6 +145,9 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const runtime = deps.retrieveHostedPage ? undefined : resolveChargebeeRuntime(req.hostname);
       const hostedPage = await (deps.retrieveHostedPage ?? retrieveChargebeeHostedPage)(hostedPageId, runtime ? { site: runtime.site, apiKey: runtime.apiKey } : undefined);
       if (!hostedPage) return res.json({ status: "pending", summary: await summary() });
+      // Recovery is a convenience read, never an alternate trust path: only an
+      // explicitly succeeded page with a paid source-of-truth invoice can credit.
+      if (!hostedPage.paid) return res.json({ status: "pending", summary: await summary() });
       if (!hostedPage.passThruContent || !Number.isInteger(hostedPage.amount) || !hostedPage.currency) {
         await deps.markPaymentForReview?.(payment.id, "provider_page_incomplete");
         return res.json({ status: "requires_review", summary: await summary() });

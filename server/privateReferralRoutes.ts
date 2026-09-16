@@ -30,10 +30,12 @@ export type PrivateReferralRouteDeps = {
   storageGetBytes?: (key: string) => Promise<Buffer | Uint8Array | undefined>;
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
-  createResumeUploadSession?: (ownerId: number, input: { fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
-  getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
+  createResumeUploadSession?: (ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
+  getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "finalizing" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
   appendResumeUploadChunk?: (ownerId: number, input: { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number }) => Promise<{ nextChunkIndex: number; receivedSize: number; alreadyStored: boolean }>;
-  completeResumeUploadSession?: (ownerId: number, sessionId: string, attachmentId: number) => Promise<void>;
+  claimResumeUploadFinalization?: (ownerId: number, sessionId: string, finalizationOwner: string) => Promise<{ outcome: "missing" | "claimed" | "finalizing" | "completed"; session?: { attachmentId: number | null } }>;
+  clearUnattachedResumeUploads?: (ownerId: number) => Promise<{ cleared: number; fileKeys: string[] }>;
+  completeResumeUploadSession?: (ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
   getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
@@ -101,13 +103,13 @@ export type PrivateReferralRouteDeps = {
   listMyPrivacyRequests?: (userId: number) => Promise<unknown[]>;
   createPrivacyErasureRequest?: (userId: number) => Promise<{ id: number; kind: "erasure"; status: string; createdAt: Date; alreadyRequested: boolean }>;
   listAdminPrivacyRequests?: (limit?: number) => Promise<unknown[]>;
-  reviewPrivacyRequest?: (adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) => Promise<unknown>;
+  reviewPrivacyRequest?: (adminUserId: number, requestId: number, input: { status: "in_review"; resolution?: string }) => Promise<unknown>;
   listNotifications?: (userId: number) => Promise<PrivateNotification[]>;
   markNotificationRead?: (userId: number, notificationId: number) => Promise<{ success: boolean }>;
   listRequiresReviewPayments?: (limit?: number) => Promise<unknown[]>;
   resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) => Promise<{ paymentId: number; decision: string; tokenCount: number; userId: number; role: string }>;
   listRecentPayments?: (limit?: number) => Promise<unknown[]>;
-  refundCreditedPayment?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; refunded: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
+  revokeCreditedPaymentCredits?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; creditsRevoked: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
   listAdminApprovalQueue?: (limit?: number) => Promise<unknown[]>;
   resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
@@ -312,11 +314,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/documents/uploads", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
-      const { fileName, mimeType, fileSize } = req.body as { fileName?: string; mimeType?: string; fileSize?: number };
+      const { fileName, mimeType, fileSize, clientUploadId } = req.body as { fileName?: string; mimeType?: string; fileSize?: number; clientUploadId?: string };
       const safeFileSize = typeof fileSize === "number" && Number.isInteger(fileSize) && fileSize > 0 && fileSize <= 10 * 1024 * 1024 ? fileSize : null;
       if (!fileName || !mimeType || !privateDocumentMimeTypes.includes(mimeType) || safeFileSize === null) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume smaller than 10 MB" });
       if (!deps.createResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
-      const session = await deps.createResumeUploadSession(identity.account.id, { fileName: deps.sanitizeDocumentName(fileName), mimeType, expectedSize: safeFileSize });
+      const safeClientUploadId = typeof clientUploadId === "string" && /^[a-f0-9-]{20,64}$/i.test(clientUploadId) ? clientUploadId : undefined;
+      const session = await deps.createResumeUploadSession(identity.account.id, { sessionId: safeClientUploadId, fileName: deps.sanitizeDocumentName(fileName), mimeType, expectedSize: safeFileSize });
+      record({ actorUserId: identity.account.id, action: "document.upload_started", outcome: "success", resourceType: "upload_session", resourceId: session.id, metadata: { clientUploadId: safeClientUploadId || null, fileName: deps.sanitizeDocumentName(fileName) } });
       res.set("Cache-Control", "private, no-store"); res.status(201).json({ sessionId: session.id, chunkBytes: 48 * 1024 });
     } catch { res.status(500).json({ error: "We could not prepare your private resume upload. Please try again." }); }
   });
@@ -336,28 +340,38 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/documents/uploads/:sessionId/complete", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
-      if (!deps.getResumeUploadSession || !deps.completeResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
-      const session = await deps.getResumeUploadSession(identity.account.id, req.params.sessionId); if (!session) return res.status(404).json({ error: "This private upload is no longer available" });
+      if (!deps.getResumeUploadSession || !deps.claimResumeUploadFinalization || !deps.completeResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
+      const initialSession = await deps.getResumeUploadSession(identity.account.id, req.params.sessionId); if (!initialSession) return res.status(404).json({ error: "This private upload is no longer available" });
+      let session: typeof initialSession | undefined = initialSession;
       if (session.status === "completed" && session.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` });
-      if (session.status !== "active" || session.receivedSize !== session.expectedSize || session.chunks.length !== session.nextChunkIndex) return res.status(400).json({ error: "Your resume upload is incomplete. Please retry it." });
+      if ((session.status !== "active" && session.status !== "finalizing") || session.receivedSize !== session.expectedSize || session.chunks.length !== session.nextChunkIndex) return res.status(400).json({ error: "Your resume upload is incomplete. Please retry it." });
+      const finalizationOwner = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const claim = await deps.claimResumeUploadFinalization(identity.account.id, session.id, finalizationOwner);
+      if (claim.outcome === "missing") return res.status(404).json({ error: "This private upload is no longer available" });
+      if (claim.outcome === "completed") { session = await deps.getResumeUploadSession(identity.account.id, session.id); if (session?.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` }); }
+      if (claim.outcome === "finalizing") {
+        const sessionId = initialSession.id;
+        for (let attempt = 0; attempt < 40; attempt += 1) { await new Promise(resolve => setTimeout(resolve, 50)); session = await deps.getResumeUploadSession(identity.account.id, sessionId); if (session?.status === "completed" && session.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` }); }
+        return res.status(409).json({ error: "Your resume is still finishing. Retry completion." });
+      }
+      if (!session) return res.status(404).json({ error: "This private upload is no longer available" });
       const pieces = await Promise.all(session.chunks.map(async (chunk, index) => {
         if (chunk.chunkIndex !== index) throw new Error("Resume upload chunks are incomplete");
-        if (deps.storageGetBytes) {
-          const bytes = await deps.storageGetBytes(chunk.storageKey).catch(() => undefined);
-          if (!bytes) throw new Error("Resume upload fragment was not found");
-          return Buffer.from(bytes);
-        }
-        const signedUrl = await deps.storageGetSignedUrl(chunk.storageKey);
-        let response: Response;
-        try { response = await fetch(signedUrl); }
-        catch { throw new Error("Resume upload fragment was not found"); }
-        if (!response.ok) throw new Error("Resume upload fragment was not found");
-        return Buffer.from(await response.arrayBuffer());
+        if (deps.storageGetBytes) { const bytes = await deps.storageGetBytes(chunk.storageKey).catch(() => undefined); if (!bytes) throw new Error("Resume upload fragment was not found"); return Buffer.from(bytes); }
+        const signedUrl = await deps.storageGetSignedUrl(chunk.storageKey); let response: Response; try { response = await fetch(signedUrl); } catch { throw new Error("Resume upload fragment was not found"); }
+        if (!response.ok) throw new Error("Resume upload fragment was not found"); return Buffer.from(await response.arrayBuffer());
       }));
       const buffer = Buffer.concat(pieces); if (buffer.length !== session.expectedSize) throw new Error("Resume upload size could not be verified");
-      const attachment = await createPrivateAttachment(identity, session.fileName, session.mimeType, buffer); await deps.completeResumeUploadSession(identity.account.id, session.id, attachment.id);
-      res.status(201).json(attachment);
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not finish your resume upload"; res.status(/incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : 500).json({ error: message }); }
+      const validated = validatePrivateDocument({ fileName: session.fileName, mimeType: session.mimeType, buffer });
+      const permanentKey = `${privateDocumentPrefix(identity)}uploads/${session.id}/${deps.sanitizeDocumentName(validated.fileName)}`;
+      const stored = await deps.storagePut(permanentKey, buffer, validated.mimeType);
+      const attachment = await deps.completeResumeUploadSession(identity.account.id, session.id, finalizationOwner, { fileName: validated.fileName, fileKey: stored.key, mimeType: validated.mimeType, fileSize: buffer.length });
+      res.status(201).json({ ...attachment, url: `/api/documents/${attachment.id}` });
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not finish your resume upload"; res.status(/incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : /still finishing|lease changed/i.test(message) ? 409 : 500).json({ error: message }); }
+  });
+  app.delete("/api/documents/draft", async (req, res) => {
+    try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to clear your private draft" }); if (!deps.clearUnattachedResumeUploads) return res.status(503).json({ error: "Draft cleanup is temporarily unavailable" }); const result = await deps.clearUnattachedResumeUploads(identity.account.id); record({ actorUserId: identity.account.id, action: "document.draft_cleared", outcome: "success", resourceType: "attachment", metadata: { cleared: result.cleared } }); res.json({ cleared: result.cleared }); }
+    catch { res.status(500).json({ error: "We could not clear your private draft" }); }
   });
   app.get("/api/documents/:attachmentId", async (req, res) => {
     try {
@@ -878,8 +892,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.getUnclaimedCompanyReferralPreview) return res.status(501).json({ error: "Candidate preview is not available yet" });
       const request = await deps.getUnclaimedCompanyReferralPreview(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not available to your verified company account" });
-      const attachments = await Promise.all(request.attachments.map(async attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, url: attachment.fileKey ? await deps.storageGetSignedUrl(attachment.fileKey) : `/api/documents/${attachment.id}` })));
-      record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length } });
+      const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, availability: "after_claim" as const }));
+      record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only" } });
       res.set("Cache-Control", "private, no-store");
       res.json({ request: { ...request, attachments } });
     } catch { res.status(500).json({ error: "We could not load this private candidate preview" }); }
@@ -892,13 +906,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       const request = await deps.getClaimedCompanyReferralDetail(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not assigned to your verified employee account" });
-      const attachments = await Promise.all(request.attachments.map(async attachment => ({
-        id: attachment.id,
-        fileName: attachment.fileName,
-        mimeType: attachment.mimeType,
-        fileSize: attachment.fileSize,
-        url: attachment.fileKey ? await deps.storageGetSignedUrl(attachment.fileKey).catch(() => `/api/documents/${attachment.id}`) : `/api/documents/${attachment.id}`,
-      })));
+      const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, url: `/api/documents/${attachment.id}` }));
       record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length } });
       res.json({ request: { ...request, attachments } });
     } catch {
@@ -1004,17 +1012,18 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ payments });
     } catch { res.status(500).json({ error: "We could not load the payment review queue" }); }
   });
-  app.post("/api/admin/payments/review/:paymentId/refund", async (req, res) => {
+  app.post("/api/admin/payments/review/:paymentId/refund", async (_req, res) => res.status(410).json({ error: "This legacy action did not refund provider money and is disabled. Use the separate credit-revocation action or a provider-confirmed refund workflow." }));
+  app.post("/api/admin/payments/review/:paymentId/revoke-credits", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
-      if (!deps.refundCreditedPayment) return res.status(501).json({ error: "Payment refunds are not available yet" });
+      if (!deps.revokeCreditedPaymentCredits) return res.status(501).json({ error: "Credit revocation is unavailable" });
       const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
-      const refund = await deps.refundCreditedPayment(identity.account.id, paymentId, note);
-      record({ actorUserId: identity.account.id, action: "payment.refunded", outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { provider: refund.provider, amount: refund.amount, currency: refund.currency, tokenCount: refund.tokenCount, note: typeof note === "string" ? note : null } });
-      res.json({ refunded: true, paymentId });
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not refund this payment"; res.status(409).json({ error: message }); }
+      const result = await deps.revokeCreditedPaymentCredits(identity.account.id, paymentId, note);
+      record({ actorUserId: identity.account.id, action: "payment.credits_revoked", outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { provider: result.provider, amount: result.amount, currency: result.currency, tokenCount: result.tokenCount, note: note || null } });
+      res.json({ creditsRevoked: true, paymentId });
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not revoke these credits"; res.status(409).json({ error: message }); }
   });
   app.post("/api/admin/payments/review/:paymentId", async (req, res) => {
     try {
@@ -1047,7 +1056,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid privacy request" });
       const status = req.body?.status; const resolution = typeof req.body?.resolution === "string" ? req.body.resolution.slice(0, 500) : undefined;
-      if (status !== "in_review" && status !== "completed" && status !== "declined") return res.status(400).json({ error: "Choose a valid privacy request status" });
+      if (status !== "in_review") return res.status(409).json({ error: "Completion is blocked until a verified erasure workflow records every resource step and retained-data exception. This endpoint can only start review." });
       const request = await deps.reviewPrivacyRequest?.(identity.account.id, requestId, { status, resolution }); if (!request) return res.status(404).json({ error: "Privacy request not found" });
       record({ actorUserId: identity.account.id, action: "admin.privacy_request_reviewed", outcome: "success", resourceType: "privacy_request", resourceId: requestId, metadata: { status } });
       res.json({ request });

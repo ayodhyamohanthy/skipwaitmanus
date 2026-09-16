@@ -6,56 +6,22 @@ import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
 const adminIdentity = () => ({ account: { id: 9, openId: "workos-admin", role: "admin" as const } });
 const memberIdentity = () => ({ account: { id: 8, openId: "workos-member", role: "user" as const } });
 
-describe("admin payment refund and revenue routes", () => {
-  it("refunds a credited payment: wallet deducted, transaction inserted, activity recorded, status refunded", async () => {
-    const app = express(); app.use(express.json());
-    let wallet = 10;
-    let status = "credited";
-    const ledger: Array<{ userId: number; role: string; tokenCount: number; kind: string }> = [];
-    const activity: Array<{ action: string; actorUserId?: number; resourceId?: string | number; metadata?: Record<string, unknown> }> = [];
-    registerPrivateReferralRoutes(app, {
-      resolveIdentity: async () => adminIdentity(),
-      refundCreditedPayment: async (adminUserId, paymentId, note) => {
-        expect(adminUserId).toBe(9); expect(paymentId).toBe(41); expect(note).toBe("Customer requested a refund");
-        expect(status).toBe("credited");
-        wallet = Math.max(0, wallet - 4);
-        ledger.push({ userId: 7, role: "job_seeker", tokenCount: -4, kind: "admin_adjustment" });
-        status = "refunded";
-        return { paymentId, refunded: true, tokenCount: 4, userId: 7, role: "job_seeker", provider: "chargebee", amount: 39_600, currency: "INR" };
-      },
-      recordActivity: async input => { activity.push(input); },
-    });
-    const response = await request(app).post("/api/admin/payments/review/41/refund").send({ note: "Customer requested a refund" });
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ refunded: true, paymentId: 41 });
-    expect(wallet).toBe(6);
-    expect(ledger).toEqual([{ userId: 7, role: "job_seeker", tokenCount: -4, kind: "admin_adjustment" }]);
-    expect(status).toBe("refunded");
-    expect(activity).toContainEqual(expect.objectContaining({ actorUserId: 9, action: "payment.refunded", outcome: "success", resourceType: "payment_fulfillment", resourceId: 41, metadata: expect.objectContaining({ provider: "chargebee", amount: 39_600, currency: "INR", tokenCount: 4, note: "Customer requested a refund" }) }));
+describe("admin payment credit revocation and revenue routes", () => {
+  it("disables the legacy route and never claims money was refunded", async () => {
+    const app=express(); app.use(express.json()); registerPrivateReferralRoutes(app,{resolveIdentity:async()=>adminIdentity()});
+    const response=await request(app).post("/api/admin/payments/review/41/refund").send({});
+    expect(response.status).toBe(410); expect(response.body.refunded).not.toBe(true); expect(response.body.error).toMatch(/did not refund provider money/i);
   });
-
-  it("returns 409 when the payment is pending or requires review and cannot be refunded", async () => {
-    const app = express(); app.use(express.json());
-    registerPrivateReferralRoutes(app, {
-      resolveIdentity: async () => adminIdentity(),
-      refundCreditedPayment: async () => { throw new Error("This payment cannot be refunded"); },
-    });
-    const response = await request(app).post("/api/admin/payments/review/41/refund").send({});
-    expect(response.status).toBe(409);
-    expect(response.body.error).toBe("This payment cannot be refunded");
+  it("names ledger-only revocation honestly", async () => {
+    const app=express(); app.use(express.json());
+    registerPrivateReferralRoutes(app,{resolveIdentity:async()=>adminIdentity(),revokeCreditedPaymentCredits:async()=>({paymentId:41,creditsRevoked:true,tokenCount:4,userId:7,role:"job_seeker",provider:"chargebee",amount:39600,currency:"INR"})});
+    const response=await request(app).post("/api/admin/payments/review/41/revoke-credits").send({note:"support correction"});
+    expect(response.status).toBe(200); expect(response.body).toEqual({creditsRevoked:true,paymentId:41}); expect(response.body.refunded).toBeUndefined();
   });
-
-  it("denies non-administrators on refund and revenue endpoints before any db call", async () => {
-    const app = express(); app.use(express.json());
-    let refundCalled = false;
-    registerPrivateReferralRoutes(app, {
-      resolveIdentity: async () => memberIdentity(),
-      refundCreditedPayment: async () => { refundCalled = true; return { paymentId: 41, refunded: true, tokenCount: 4, userId: 7, role: "job_seeker", provider: "chargebee", amount: 39_600, currency: "INR" }; },
-      getRevenueSummary: async () => ({ byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: new Date() }),
-    });
-    expect((await request(app).post("/api/admin/payments/review/41/refund").send({})).status).toBe(403);
-    expect((await request(app).get("/api/admin/revenue")).status).toBe(403);
-    expect(refundCalled).toBe(false);
+  it("denies non-administrators on credit revocation and revenue endpoints", async () => {
+    const app=express(); app.use(express.json()); let called=false;
+    registerPrivateReferralRoutes(app,{resolveIdentity:async()=>memberIdentity(),revokeCreditedPaymentCredits:async()=>{called=true; throw new Error("no");},getRevenueSummary:async()=>({byProvider:[],totalsByCurrency:[],refundedTotalByCurrency:[],recordedAt:new Date()})});
+    expect((await request(app).post("/api/admin/payments/review/41/revoke-credits").send({})).status).toBe(403); expect((await request(app).get("/api/admin/revenue")).status).toBe(403); expect(called).toBe(false);
   });
 
   it("returns revenue aggregates and records the admin revenue view", async () => {

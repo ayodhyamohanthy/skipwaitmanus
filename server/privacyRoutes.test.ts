@@ -25,5 +25,7 @@ describe("privacy HTTP routes", () => {
     expect((await request(app).get("/api/admin/privacy-requests").set("x-test-user", "admin")).body.requests).toHaveLength(1);
     const reviewed = await request(app).post("/api/admin/privacy-requests/7/review").set("x-test-user", "admin").send({ status: "in_review", resolution: "Identity review started" });
     expect(reviewed.status).toBe(200); expect(reviewed.body.request).toMatchObject({ id: 7, status: "in_review" });
+    const falselyCompleted = await request(app).post("/api/admin/privacy-requests/7/review").set("x-test-user", "admin").send({ status: "completed" });
+    expect(falselyCompleted.status).toBe(409); expect(falselyCompleted.body.error).toMatch(/Completion is blocked/);
   });
 });

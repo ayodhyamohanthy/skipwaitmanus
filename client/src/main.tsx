@@ -30,13 +30,14 @@ if (import.meta.env.DEV) {
     registrations.forEach((registration) => { void registration.unregister(); });
   });
 } else {
-  // PWA SW disabled (cached-shell intermittently blanked lazy routes after
-  // deploys). Unregister any previously installed worker and purge caches so
-  // every browser heals on next visit. Keep manifest for installability.
-  navigator.serviceWorker?.getRegistrations().then((registrations) => {
-    registrations.forEach((registration) => { void registration.unregister(); });
-  });
-  if ("caches" in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+  // Navigation is network-first in the worker, so deep links always prefer the
+  // current deploy and only fall back to the cached shell when offline.
+  void navigator.serviceWorker?.register("/sw.js").then(registration => {
+    registration.update().catch(() => undefined);
+    navigator.serviceWorker?.addEventListener("controllerchange", () => {
+      if (!sessionStorage.getItem("skipwait:sw-reloaded")) { sessionStorage.setItem("skipwait:sw-reloaded", "1"); window.location.reload(); }
+    });
+  }).catch(() => undefined);
 }
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {

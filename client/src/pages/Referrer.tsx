@@ -15,7 +15,7 @@ type ClaimedCompanyRequest = { id: number; targetRoleUrl: string; companyDomain:
 type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; request?: ClaimedCompanyRequest; requests?: CompanyInboxItem[] };
 
 function ReferrerFlowHeader({ backHref = "/", right }: { backHref?: string; right?: React.ReactNode }) {
-  return <header className="flex h-10 shrink-0 items-center justify-between gap-3"><Link href={backHref} className="inline-flex items-center gap-1 text-sm font-bold text-[#625D52]"><ArrowLeft className="h-4 w-4" />Back</Link>{right ? <div className="shrink-0">{right}</div> : <AccountMenu />}</header>;
+  return <header className="flex h-10 shrink-0 items-center justify-between gap-3"><Link href={backHref} className="inline-flex min-h-11 min-w-11 items-center gap-1 text-sm font-bold text-[#625D52]"><ArrowLeft className="h-4 w-4" />Back</Link>{right ? <div className="shrink-0">{right}</div> : <AccountMenu />}</header>;
 }
 
 export default function Referrer() {
