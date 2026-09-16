@@ -41,6 +41,9 @@ async function uploadFetch(path: string, init: RequestInit, timeoutMessage: stri
   finally { window.clearTimeout(timeout); }
 }
 
+const fileFingerprint = (file: File) => `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
+function dedupeFiles(files: File[]) { const seen=new Set<string>(); return files.filter(file=>{const key=fileFingerprint(file);if(seen.has(key))return false;seen.add(key);return true;}); }
+
 function getSavedAttachments(): Attachment[] { try { return JSON.parse(localStorage.getItem("bridge-seeker-attachments") || "[]") as Attachment[]; } catch { return []; } }
 function fallbackSummary(total: number): CreditSummary { const safe = Math.max(0, total); return { plan: "free", monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCreditsRemaining: Math.min(safe, FREE_MONTHLY_ALLOWANCE), purchasedCreditsRemaining: Math.max(0, safe - FREE_MONTHLY_ALLOWANCE), totalAvailable: safe, cycleKey: "", subscriptionStatus: null, subscriptionCurrentTermEnd: null }; }
 function isCreditSummary(value: unknown): value is CreditSummary { if (!value || typeof value !== "object") return false; const candidate = value as Partial<CreditSummary>; return (candidate.plan === "free" || candidate.plan === "pro" || candidate.plan === "max") && typeof candidate.monthlyAllowance === "number" && typeof candidate.monthlyCreditsRemaining === "number" && typeof candidate.purchasedCreditsRemaining === "number" && typeof candidate.totalAvailable === "number"; }
@@ -115,7 +118,7 @@ export default function ReferralRequest() {
 
   useEffect(() => {
     let active = true;
-    void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => current.length ? current : files); }).catch(() => undefined).finally(() => { if (active) setPendingFilesRestored(true); });
+    void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => dedupeFiles(current.length ? current : files)); }).catch(() => undefined).finally(() => { if (active) setPendingFilesRestored(true); });
     return () => { active = false; };
   }, []);
 
@@ -140,7 +143,7 @@ export default function ReferralRequest() {
       const sessionToken = await getToken();
       const headers = { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) };
       const uploadOne = (file: File) => {
-        const fingerprint = `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
+        const fingerprint = fileFingerprint(file);
         const existing = activeResumeUploads.get(fingerprint); if (existing) return existing;
         // Register the shared promise synchronously before hashing or any other
         // await. A second change/input dispatch in the same tick must see it.
@@ -181,11 +184,11 @@ export default function ReferralRequest() {
       // A transient upload failure (offline, server hiccup) must not discard
       // the selection: keep the files pending so sending retries the upload.
       void uploadFiles(selected).catch(() => {
-        setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
+        setPendingFiles(current => { const next = dedupeFiles([...current, ...selected]); void savePendingResumeFiles(next).catch(() => undefined); return next; });
       });
       return;
     }
-    setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
+    setPendingFiles(current => { const next = dedupeFiles([...current, ...selected]); void savePendingResumeFiles(next).catch(() => undefined); return next; });
   };
   const createSmartPitch = async () => {
     const attachment = attachments[0]; const targetRoleUrl = localStorage.getItem("bridge-target-url");
