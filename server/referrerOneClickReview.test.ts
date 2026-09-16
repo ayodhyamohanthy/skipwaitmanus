@@ -25,7 +25,7 @@ describe("Referrer one-click review actions", () => {
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
       prepareReferrerReviewEmailNotifications: async requestId => requestId === 81 ? [{ referrerId: 2, email: "employee@acme.com", linkToken: token, companyDomain: "acme.com" }] : [],
       sendReferrerReviewEmail: async input => { sent.push(input); return { sent: true, reason: "sent" }; },
-      oneClickReviewReferralRequest: async (userId, input) => { if (userId !== 2) throw new Error("This referral request is no longer available"); reviews.push({ userId, ...input }); return { status: input.decision, companyDomain: "acme.com", declineReason: input.declineReason }; },
+      oneClickReviewReferralRequest: async (userId, input) => { if (userId !== 2) throw new Error("This referral request is no longer available"); reviews.push({ userId, ...input }); return { status: input.decision === "declined" ? "passed" : input.decision, companyDomain: "acme.com", declineReason: input.declineReason }; },
       resolveReferrerReviewEmailLink: async (userId, linkToken) => { if (userId !== 2 || linkToken !== token || consumed.includes(linkToken)) throw new Error("This private review link is unavailable"); return { requestId: 81 }; },
       consumeReferrerReviewEmailLink: async (_userId, linkToken) => { consumed.push(linkToken); },
     });
@@ -39,7 +39,7 @@ describe("Referrer one-click review actions", () => {
     const accepted = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "approved" });
     expect(accepted.status).toBe(200); expect(accepted.body).toEqual({ status: "approved" });
     const declined = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "timing" });
-    expect(declined.status).toBe(200); expect(declined.body).toEqual({ status: "declined", declineReason: "timing" });
+    expect(declined.status).toBe(200); expect(declined.body).toEqual({ status: "passed", declineReason: "timing" });
     expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "approved", declineReason: undefined }, { userId: 2, requestId: 81, decision: "declined", declineReason: "timing" }]);
   });
 
@@ -50,7 +50,7 @@ describe("Referrer one-click review actions", () => {
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).send({ decision: "approved" })).status).toBe(401);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "outsider").send({ decision: "approved" })).status).toBe(409);
     const acted = await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" });
-    expect(acted.status).toBe(200); expect(acted.body).toEqual({ status: "declined", declineReason: "role_not_a_fit" }); expect(JSON.stringify(acted.body)).not.toMatch(/request|email|token|company/i); expect(consumed).toEqual([token]);
+    expect(acted.status).toBe(200); expect(acted.body).toEqual({ status: "passed", declineReason: "role_not_a_fit" }); expect(JSON.stringify(acted.body)).not.toMatch(/request|email|token|company/i); expect(consumed).toEqual([token]);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" })).status).toBe(409);
     expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "role_not_a_fit" }]);
   });
