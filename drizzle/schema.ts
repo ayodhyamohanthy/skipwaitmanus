@@ -263,23 +263,6 @@ export const messages = mysqlTable("messages", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId)]);
 
-
-export const notificationOutbox = mysqlTable("notificationOutbox", {
-  id: int("id").autoincrement().primaryKey(),
-  dedupeKey: varchar("dedupeKey", { length: 160 }).notNull(),
-  channel: mysqlEnum("channel", ["email", "slack"]).notNull(),
-  destination: varchar("destination", { length: 1024 }).notNull(),
-  payload: text("payload").notNull(),
-  status: mysqlEnum("status", ["pending", "processing", "delivered", "failed"]).default("pending").notNull(),
-  attemptCount: int("attemptCount").default(0).notNull(),
-  availableAt: timestamp("availableAt").defaultNow().notNull(),
-  leaseUntil: timestamp("leaseUntil"),
-  lastError: varchar("lastError", { length: 500 }),
-  deliveredAt: timestamp("deliveredAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("notification_outbox_dedupe_unique").on(table.dedupeKey), index("notification_outbox_dispatch_idx").on(table.status, table.availableAt)]);
-
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
