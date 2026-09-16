@@ -18,5 +18,10 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./vitest.setup.ts"],
     include: ["server/**/*.test.ts", "server/**/*.spec.ts", "client/src/**/*.test.ts", "client/src/**/*.test.tsx"],
+    // The suite runs in parallel and the client tests render whole pages with
+    // several sequential awaits before first paint. The 5s default was tight
+    // enough that a fully loaded machine produced timeouts that pass in isolation.
+    testTimeout: 20_000,
+    hookTimeout: 20_000,
   },
 });
