@@ -107,7 +107,7 @@ export type PrivateReferralRouteDeps = {
   listRequiresReviewPayments?: (limit?: number) => Promise<unknown[]>;
   resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) => Promise<{ paymentId: number; decision: string; tokenCount: number; userId: number; role: string }>;
   listRecentPayments?: (limit?: number) => Promise<unknown[]>;
-  refundCreditedPayment?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; refunded: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
+  revokeCreditedPaymentCredits?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; creditsRevoked: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
   listAdminApprovalQueue?: (limit?: number) => Promise<unknown[]>;
   resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
@@ -1004,17 +1004,18 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ payments });
     } catch { res.status(500).json({ error: "We could not load the payment review queue" }); }
   });
-  app.post("/api/admin/payments/review/:paymentId/refund", async (req, res) => {
+  app.post("/api/admin/payments/review/:paymentId/refund", async (_req, res) => res.status(410).json({ error: "This legacy action did not refund provider money and is disabled. Use the separate credit-revocation action or a provider-confirmed refund workflow." }));
+  app.post("/api/admin/payments/review/:paymentId/revoke-credits", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
-      if (!deps.refundCreditedPayment) return res.status(501).json({ error: "Payment refunds are not available yet" });
+      if (!deps.revokeCreditedPaymentCredits) return res.status(501).json({ error: "Credit revocation is unavailable" });
       const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
-      const refund = await deps.refundCreditedPayment(identity.account.id, paymentId, note);
-      record({ actorUserId: identity.account.id, action: "payment.refunded", outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { provider: refund.provider, amount: refund.amount, currency: refund.currency, tokenCount: refund.tokenCount, note: typeof note === "string" ? note : null } });
-      res.json({ refunded: true, paymentId });
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not refund this payment"; res.status(409).json({ error: message }); }
+      const result = await deps.revokeCreditedPaymentCredits(identity.account.id, paymentId, note);
+      record({ actorUserId: identity.account.id, action: "payment.credits_revoked", outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { provider: result.provider, amount: result.amount, currency: result.currency, tokenCount: result.tokenCount, note: note || null } });
+      res.json({ creditsRevoked: true, paymentId });
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not revoke these credits"; res.status(409).json({ error: message }); }
   });
   app.post("/api/admin/payments/review/:paymentId", async (req, res) => {
     try {

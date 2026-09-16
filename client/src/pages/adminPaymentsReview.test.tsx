@@ -12,7 +12,7 @@ vi.mock("@/_core/auth", () => ({
 const queuePayment = { id: 1, provider: "chargebee", providerHostedPageId: "hp_1", checkoutIntentId: "intent_1", userId: 7, role: "job_seeker", tokenCount: 4, amount: 39600, currency: "INR", reconciliationReason: "provider_page_mismatch", createdAt: "2026-09-01T00:00:00.000Z", userEmail: "avery@example.com" };
 const creditedPayment = { id: 2, provider: "chargebee", providerHostedPageId: "hp_2", checkoutIntentId: "intent_2", userId: 8, role: "job_seeker", tokenCount: 4, amount: 39600, currency: "INR", reconciliationReason: null, createdAt: "2026-08-30T00:00:00.000Z", userEmail: "blake@example.com", status: "credited" };
 
-describe("administrator payment review refunds", () => {
+describe("administrator payment credit revocation", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
@@ -23,15 +23,15 @@ describe("administrator payment review refunds", () => {
   });
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-  it("shows a Refund action only on credited rows, opens a confirm dialog, and calls the refund route", async () => {
+  it("shows a ledger-only action on credited rows, explains it is not a provider refund, and calls the revocation route", async () => {
     render(<AdminPaymentsReview />);
     await waitFor(() => expect(screen.getByText("Recently completed payments")).toBeTruthy());
-    const refundButton = screen.getByRole("button", { name: /^Refund$/ });
+    const refundButton = screen.getByRole("button", { name: /^Revoke credits$/ });
     fireEvent.click(refundButton);
-    expect(screen.getByText(/Refund INR 396 to the user's credit balance\?/i)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Confirm refund/i }));
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url) === "/api/admin/payments/review/2/refund" && (init as RequestInit)?.method === "POST")).toBe(true));
-    await waitFor(() => expect(screen.getByText("Refunded")).toBeTruthy());
-    expect(screen.queryByRole("button", { name: /^Refund$/ })).toBeNull();
+    expect(screen.getByText(/This does not refund provider money/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Confirm credit revocation/i }));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url) === "/api/admin/payments/review/2/revoke-credits" && (init as RequestInit)?.method === "POST")).toBe(true));
+    await waitFor(() => expect(screen.getByText("Credited payment rows.")).toBeTruthy());
+    expect(screen.queryByRole("button", { name: /^Revoke credits$/ })).toBeNull();
   });
 });

@@ -1471,21 +1471,22 @@ export async function listRecentPayments(limit = 20) {
   if (!db) return [];
   return db.select({ id: paymentFulfillments.id, status: paymentFulfillments.status, provider: paymentFulfillments.provider, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(inArray(paymentFulfillments.status, ["credited", "refunded"])).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 250)));
 }
-export async function refundCreditedPayment(adminUserId: number, paymentId: number, note?: string) {
+export async function revokeCreditedPaymentCredits(adminUserId: number, paymentId: number, note?: string) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]), eq(paymentFulfillments.status, "credited"))).limit(1);
     const row = rows[0];
-    if (!row) throw new Error("This payment cannot be refunded");
+    if (!row) throw new Error("Credits cannot be revoked for this payment");
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
-    if (wallet[0]) await tx.update(tokenBalances).set({ balance: Math.max(0, wallet[0].balance - row.tokenCount) }).where(eq(tokenBalances.id, wallet[0].id));
+    if (!wallet[0] || wallet[0].balance < row.tokenCount) throw new Error("Credits from this payment have been spent; ledger-only revocation is blocked");
+    await tx.update(tokenBalances).set({ balance: wallet[0].balance - row.tokenCount }).where(eq(tokenBalances.id, wallet[0].id));
     await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment" });
-    const updated = await tx.update(paymentFulfillments).set({ status: "refunded", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
-    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment cannot be refunded");
+    const updated = await tx.update(paymentFulfillments).set({ status: "rejected", reconciliationReason: "credits_revoked_no_provider_refund", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
+    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("Credits cannot be revoked for this payment");
     const metadata = { provider: row.provider, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
-    await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "payment.refunded", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
-    return { paymentId, refunded: true, tokenCount: row.tokenCount, userId: row.userId, role: row.role, provider: row.provider, amount: row.amount, currency: row.currency };
+    await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "payment.credits_revoked", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
+    return { paymentId, creditsRevoked: true, tokenCount: row.tokenCount, userId: row.userId, role: row.role, provider: row.provider, amount: row.amount, currency: row.currency };
   });
 }
 export async function getRevenueSummary() {
