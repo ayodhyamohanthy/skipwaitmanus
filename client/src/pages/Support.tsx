@@ -30,9 +30,9 @@ export default function Support() {
     status="published"
     footnote="We never ask for passwords, one-time codes, or card numbers by email. Anything asking for those is not from us."
   >
-    <section aria-label="Contact support" className="rounded-2xl border border-[#F3D5C7] bg-white p-5 shadow-sm sm:p-6">
+    <section aria-label="Contact support" className="rounded-2xl border border-[#DBEAFE] bg-white p-5 shadow-sm sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F9E4DE] text-[#191713]"><Mail className="h-5 w-5" /></span>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E8F0FE] text-[#191713]"><Mail className="h-5 w-5" /></span>
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold text-[#191713]">Email support</h2>
           <p className="mt-1 text-sm leading-6 text-[#625D52]">Write from the email on your account and include a reference (Ref-0007, a payment id, or the link you opened). We reply from <span className="font-semibold text-[#2E2B25]">{SUPPORT_EMAIL}</span>.</p>

@@ -42,14 +42,14 @@ export function ReferrerCreditsCard({ compact = false }: { compact?: boolean }) 
   const outOfCredits = credits.totalAvailable <= 0;
 
   return (
-    <section aria-label="Referral credits" className={`rounded-xl border border-[#F3D5C7] bg-[#F9E4DE]/70 ${compact ? "p-3" : "p-4"}`}>
+    <section aria-label="Referral credits" className={`rounded-xl border border-[#DBEAFE] bg-[#E8F0FE]/70 ${compact ? "p-3" : "p-4"}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.12em] text-[#191713]">
           <HeartHandshake className="h-3.5 w-3.5" /> Referral credits
         </p>
         <p className="text-sm font-bold text-[#191713]" aria-live="polite">{credits.totalAvailable} left</p>
       </div>
-      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-[#F3D5C7]">
+      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-[#DBEAFE]">
         <span className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-[#191713]"}`} style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }} />
       </div>
       <p className="mt-3 text-sm leading-5 text-[#3F3B33]">

@@ -56,7 +56,7 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
     void copyText(inviteText, "Invite copied. Paste it into any app you prefer.");
   };
 
-  return <section className={`rounded-2xl border border-[#F3D5C7] bg-[#F9E4DE]/60 ${compact ? "p-4" : "p-5 sm:p-6"}`} aria-label={`Private invitation for ${companyDomain}`}>
+  return <section className={`rounded-2xl border border-[#DBEAFE] bg-[#E8F0FE]/60 ${compact ? "p-4" : "p-5 sm:p-6"}`} aria-label={`Private invitation for ${companyDomain}`}>
     <div className="flex items-start justify-between gap-4">
       <div>
         <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-[#191713]"><UsersRound className="h-3.5 w-3.5" />Private company invitation</p>
@@ -65,16 +65,16 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
       </div>
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#191713] shadow-sm"><ShieldCheck className="h-5 w-5" /></span>
     </div>
-    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-[#F3D5C7] bg-white p-3">
+    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-[#DBEAFE] bg-white p-3">
       <span className="min-w-0 truncate text-sm font-semibold text-[#625D52]">{inviteLink.replace(/^https?:\/\//, "")}</span>
       <button type="button" onClick={() => { void copyText(inviteText, "Private company invite copied."); }} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#191713] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#2E2B25] active:scale-[.98]"><Copy className="h-3.5 w-3.5" />Copy</button>
     </div>
     <div className={`mt-3 grid gap-2 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
-      <button type="button" onClick={shareToWhatsApp} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><MessageCircleMore className="h-4 w-4 text-[#191713]" />WhatsApp</button>
-      <button type="button" onClick={shareToTelegram} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><Send className="h-4 w-4 text-[#229ED9]" />Telegram</button>
-      <button type="button" onClick={shareToLinkedIn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><Linkedin className="h-4 w-4 text-[#191713]" />LinkedIn</button>
-      <button type="button" onClick={shareToEmail} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><Mail className="h-4 w-4 text-[#191713]" />Email</button>
-      {!compact && <><button type="button" onClick={shareToX} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]">X</button><button type="button" onClick={shareMore} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#EAC0B2] hover:bg-[#F9E4DE] active:scale-[.98]"><MoreHorizontal className="h-4 w-4 text-[#191713]" />More apps</button></>}
+      <button type="button" onClick={shareToWhatsApp} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#BFDBFE] hover:bg-[#E8F0FE] active:scale-[.98]"><MessageCircleMore className="h-4 w-4 text-[#191713]" />WhatsApp</button>
+      <button type="button" onClick={shareToTelegram} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#BFDBFE] hover:bg-[#E8F0FE] active:scale-[.98]"><Send className="h-4 w-4 text-[#229ED9]" />Telegram</button>
+      <button type="button" onClick={shareToLinkedIn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#BFDBFE] hover:bg-[#E8F0FE] active:scale-[.98]"><Linkedin className="h-4 w-4 text-[#191713]" />LinkedIn</button>
+      <button type="button" onClick={shareToEmail} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#BFDBFE] hover:bg-[#E8F0FE] active:scale-[.98]"><Mail className="h-4 w-4 text-[#191713]" />Email</button>
+      {!compact && <><button type="button" onClick={shareToX} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#BFDBFE] hover:bg-[#E8F0FE] active:scale-[.98]">X</button><button type="button" onClick={shareMore} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-[#E2DDD2] bg-white px-3 text-sm font-bold text-[#3F3B33] transition hover:border-[#BFDBFE] hover:bg-[#E8F0FE] active:scale-[.98]"><MoreHorizontal className="h-4 w-4 text-[#191713]" />More apps</button></>}
     </div>
     <p className="mt-4 text-xs leading-5 text-[#625D52]">This invitation only asks someone to verify a matching work email. It never includes a candidate name, role link, request state, or document.</p>
   </section>;
