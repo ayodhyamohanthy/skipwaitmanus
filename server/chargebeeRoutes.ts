@@ -1,3 +1,4 @@
+import { canonicalPublicOrigin } from "./publicOrigin";
 import type { Express, Request } from "express";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, isTokenPackId, isTokenQuantity, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
@@ -50,7 +51,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
       }
-      const origin = `${req.protocol}://${req.get("host")}`;
+      const origin = canonicalPublicOrigin();
       const runtime = deps.createCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
       const checkout = await (deps.createCheckout ?? createChargebeeCheckout)({
         itemPriceId,
@@ -84,7 +85,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if ((currency !== "INR" && currency !== "USD") || (billingCountry !== "IN" && billingCountry !== "INTL")) return res.status(400).json({ error: "Choose a supported billing route" });
       if ((billingCountry === "IN" && currency !== "INR") || (billingCountry === "INTL" && currency !== "USD")) return res.status(400).json({ error: "That currency is not available for the selected billing route" });
       const selectedCurrency = currency as "INR" | "USD";
-      const origin = `${req.protocol}://${req.get("host")}`;
+      const origin = canonicalPublicOrigin();
       const runtime = deps.createSubscriptionCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
       const checkout = await (deps.createSubscriptionCheckout ?? createChargebeeSubscriptionCheckout)({
         plan,
