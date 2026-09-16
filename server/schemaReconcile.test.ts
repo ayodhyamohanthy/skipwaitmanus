@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 type FakeDb = { execute: (query: unknown) => Promise<unknown> };
 
 let existingColumns: string[];
+let existingIndexes: string[];
 let executeCalls: number;
 const alterStatements: string[] = [];
 let dbRef: { current: FakeDb | null };
@@ -21,10 +22,48 @@ const probeRows = (columns: string[]) => columns.map(column => {
   return { TABLE_NAME, COLUMN_NAME };
 });
 
+const indexProbeRows = (indexes: string[]) => indexes.map(index => {
+  const [TABLE_NAME, INDEX_NAME] = index.split(".");
+  return { TABLE_NAME, INDEX_NAME };
+});
+
 const probeAnswer = (query: unknown) => {
   const text = sqlText(query);
-  return text.startsWith("SELECT TABLE_NAME") ? [probeRows(existingColumns), []] : null;
+  if (!text.startsWith("SELECT TABLE_NAME")) return null;
+  // BOTH probes select TABLE_NAME, so they are distinguished by which
+  // information_schema view they read: COLUMNS for columns, STATISTICS for indexes.
+  return text.includes("information_schema.STATISTICS")
+    ? [indexProbeRows(existingIndexes), []]
+    : [probeRows(existingColumns), []];
 };
+
+// The index reconciliation, in DESIRED_INDEXES order. These exist because
+// `CREATE TABLE IF NOT EXISTS` never fixes an existing table, so a database built
+// by an earlier version kept its missing (and load-bearing) unique keys forever.
+const INDEX_APPLIED = [
+  "employerAccounts.employer_accounts_user_unique",
+  "profileUnlocks.profile_unlocks_employer_seeker_unique",
+  "profileUnlocks.profile_unlocks_seeker_idx",
+  "partnerModules.partner_modules_active_idx",
+  "companyOpportunities.company_opportunities_sponsor_idx",
+  "messages.messages_sender_idx",
+  "referralRequests.referral_requests_job_idx",
+  "profiles.profiles_work_email_domain_idx",
+];
+
+const INDEX_ALTERS = [
+  "ALTER TABLE `employerAccounts` ADD UNIQUE INDEX `employer_accounts_user_unique`(`userId`)",
+  "ALTER TABLE `profileUnlocks` ADD UNIQUE INDEX `profile_unlocks_employer_seeker_unique`(`employerUserId`, `seekerProfileUserId`)",
+  "ALTER TABLE `profileUnlocks` ADD INDEX `profile_unlocks_seeker_idx`(`seekerProfileUserId`)",
+  "ALTER TABLE `partnerModules` ADD INDEX `partner_modules_active_idx`(`isActive`, `createdAt`)",
+  "ALTER TABLE `companyOpportunities` ADD INDEX `company_opportunities_sponsor_idx`(`sponsoredUntil`)",
+  "ALTER TABLE `messages` ADD INDEX `messages_sender_idx`(`senderId`)",
+  "ALTER TABLE `referralRequests` ADD INDEX `referral_requests_job_idx`(`jobId`)",
+  "ALTER TABLE `profiles` ADD INDEX `profiles_work_email_domain_idx`(`workEmailDomain`)",
+];
+
+const indexAlters = () => alterStatements.filter(st => st.includes("ADD INDEX") || st.includes("ADD UNIQUE INDEX"));
+const columnAlters = () => alterStatements.filter(st => st.includes("ADD COLUMN"));
 
 async function loadReconcileModule() {
   vi.resetModules();
@@ -36,6 +75,7 @@ beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
   existingColumns = ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId"];
+  existingIndexes = [];
   executeCalls = 0;
   alterStatements.length = 0;
   dbRef = {
@@ -64,10 +104,10 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
+      applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows", ...INDEX_APPLIED],
       skipped: ["companyOpportunities.compensation"],
     });
-    expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([
+    expect(columnAlters()).toEqual([
       "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
       "ALTER TABLE `referralRequests` ADD COLUMN `savedAt` TIMESTAMP NULL",
       "ALTER TABLE `users` ADD COLUMN `suspended` BOOLEAN NOT NULL DEFAULT false",
@@ -76,9 +116,10 @@ describe("boot-time schema reconcile", () => {
       "ALTER TABLE `companyOpportunities` ADD COLUMN `sponsoredTier` ENUM('standard','featured','spotlight') NULL",
       "ALTER TABLE `workEmailOtpCodes` ADD COLUMN `verifiedByUserId` INT NULL",
     ]);
+    expect(indexAlters()).toEqual(INDEX_ALTERS);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(4);
     expect(isSchemaReconciled()).toBe(true);
-    expect(getLastReconcileResults()).toHaveLength(11);
+    expect(getLastReconcileResults()).toHaveLength(19);
     expect(getLastReconcileResults().every(entry => entry.ok)).toBe(true);
   });
 
@@ -88,13 +129,30 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     expect(result).toEqual({
-      applied: ["table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
+      applied: ["table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows", ...INDEX_APPLIED],
       skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId"],
     });
-    expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([]);
+    expect(columnAlters()).toEqual([]);
+    expect(indexAlters()).toEqual(INDEX_ALTERS);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(4);
     expect(isSchemaReconciled()).toBe(true);
-    expect(getLastReconcileResults().map(entry => entry.ok)).toEqual([true, true, true, true]);
+    expect(getLastReconcileResults().map(entry => entry.ok)).toEqual(Array(12).fill(true));
+  });
+
+  it("adds a missing index to an existing table, and skips one already present", async () => {
+    // The whole point of reconciling indexes separately: `CREATE TABLE IF NOT
+    // EXISTS` is a no-op on an existing table, so a database created before the
+    // unique keys were declared kept their absence forever.
+    existingIndexes = ["employerAccounts.employer_accounts_user_unique"];
+    const { reconcileSchema } = await loadReconcileModule();
+
+    const result = await reconcileSchema();
+
+    // The duplicate-unlock guard is added to the existing table...
+    expect(indexAlters()).toContain("ALTER TABLE `profileUnlocks` ADD UNIQUE INDEX `profile_unlocks_employer_seeker_unique`(`employerUserId`, `seekerProfileUserId`)");
+    // ...and the one that is already there is not re-added.
+    expect(indexAlters()).not.toContain("ALTER TABLE `employerAccounts` ADD UNIQUE INDEX `employer_accounts_user_unique`(`userId`)");
+    expect(result.skipped).toContain("employerAccounts.employer_accounts_user_unique");
   });
 
   it("re-running after success is a silent no-op", async () => {
@@ -102,13 +160,13 @@ describe("boot-time schema reconcile", () => {
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
 
     await reconcileSchema();
-    expect(alterStatements).toHaveLength(11);
+    expect(alterStatements).toHaveLength(19);
 
     executeCalls = 0;
     const again = await reconcileSchema();
     expect(again).toEqual({ applied: [], skipped: [] });
     expect(executeCalls).toBe(0);
-    expect(alterStatements).toHaveLength(11);
+    expect(alterStatements).toHaveLength(19);
     expect(isSchemaReconciled()).toBe(true);
   });
 
@@ -150,11 +208,11 @@ describe("boot-time schema reconcile", () => {
     const result = await reconcileSchema();
 
     // Statements after the failure still ran and were applied.
-    expect(result.applied).toEqual(["referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows"]);
+    expect(result.applied).toEqual(["referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "workEmailOtpCodes.verifiedByUserId", "table:employerAccounts", "table:profileUnlocks", "table:partnerModules", "table:userFollows", ...INDEX_APPLIED]);
     // The failed statement is captured with its error, not applied.
     const results = getLastReconcileResults();
-    expect(results).toHaveLength(11);
-    expect(results.filter(entry => entry.ok)).toHaveLength(10);
+    expect(results).toHaveLength(19);
+    expect(results.filter(entry => entry.ok)).toHaveLength(18);
     expect(results.find(entry => !entry.ok)).toEqual({
       statement: "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
       ok: false,
@@ -182,7 +240,7 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileError()).toContain("ALTER TABLE `companyOpportunities` ADD COLUMN `compensation`");
     expect(getLastReconcileError()).toContain("Command denied to user");
     const results = getLastReconcileResults();
-    expect(results).toHaveLength(12); // 8 columns + 4 tables attempted
+    expect(results).toHaveLength(20); // 8 columns + 4 tables + 8 indexes attempted
     expect(results.every(entry => !entry.ok)).toBe(true);
   });
 

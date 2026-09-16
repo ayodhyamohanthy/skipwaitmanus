@@ -7,10 +7,46 @@ import { getDb } from "./db";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
-  { table: "employerAccounts", createSql: `CREATE TABLE IF NOT EXISTS \`employerAccounts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`companyName\` varchar(160) NOT NULL, \`billingEmail\` varchar(320) NOT NULL, \`credits\` int NOT NULL DEFAULT 0, \`budgetMonthlyUsdCents\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE NOW, CONSTRAINT \`employerAccounts_id\` PRIMARY KEY(\`id\`))` },
-  { table: "profileUnlocks", createSql: `CREATE TABLE IF NOT EXISTS \`profileUnlocks\` (\`id\` int AUTO_INCREMENT NOT NULL, \`employerUserId\` int NOT NULL, \`seekerProfileUserId\` int NOT NULL, \`unlockedAt\` timestamp NOT NULL DEFAULT (now()), \`creditsSpent\` int NOT NULL, CONSTRAINT \`profileUnlocks_id\` PRIMARY KEY(\`id\`))` },
-  { table: "partnerModules", createSql: `CREATE TABLE IF NOT EXISTS \`partnerModules\` (\`id\` int AUTO_INCREMENT NOT NULL, \`partnerName\` varchar(160) NOT NULL, \`category\` ENUM('interview_prep','resume_vetting','skill_assessment','other') NOT NULL, \`headline\` varchar(255) NOT NULL, \`description\` text NOT NULL, \`targetRoles\` text, \`ctaLabel\` varchar(80) NOT NULL, \`ctaUrl\` varchar(1024) NOT NULL, \`isActive\` boolean NOT NULL DEFAULT true, \`impressions\` int NOT NULL DEFAULT 0, \`clicks\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE NOW, CONSTRAINT \`partnerModules_id\` PRIMARY KEY(\`id\`))` },
+  // The UNIQUE keys below are load-bearing, not decorative. Without
+  // `employer_accounts_user_unique` one user can accumulate duplicate billing
+  // accounts; without `profile_unlocks_employer_seeker_unique` the same
+  // (employer, seeker) unlock can be inserted twice and the employer charged
+  // twice. drizzle/0037 creates them, but this module exists precisely for the
+  // case where that migration never ran — so it must create them too.
+  { table: "employerAccounts", createSql: `CREATE TABLE IF NOT EXISTS \`employerAccounts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`companyName\` varchar(160) NOT NULL, \`billingEmail\` varchar(320) NOT NULL, \`credits\` int NOT NULL DEFAULT 0, \`budgetMonthlyUsdCents\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE NOW, CONSTRAINT \`employerAccounts_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`employer_accounts_user_unique\`(\`userId\`))` },
+  { table: "profileUnlocks", createSql: `CREATE TABLE IF NOT EXISTS \`profileUnlocks\` (\`id\` int AUTO_INCREMENT NOT NULL, \`employerUserId\` int NOT NULL, \`seekerProfileUserId\` int NOT NULL, \`unlockedAt\` timestamp NOT NULL DEFAULT (now()), \`creditsSpent\` int NOT NULL, CONSTRAINT \`profileUnlocks_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`profile_unlocks_employer_seeker_unique\`(\`employerUserId\`, \`seekerProfileUserId\`), INDEX \`profile_unlocks_seeker_idx\`(\`seekerProfileUserId\`))` },
+  // Column widths/nullability here must match drizzle/schema.ts. They did not:
+  // `description` was NOT NULL here but nullable in the schema, so a module with
+  // no description failed with MySQL 1048, and `ctaUrl` was 1024 here vs 2048 in
+  // the schema, so a longer URL failed with 1406.
+  { table: "partnerModules", createSql: `CREATE TABLE IF NOT EXISTS \`partnerModules\` (\`id\` int AUTO_INCREMENT NOT NULL, \`partnerName\` varchar(120) NOT NULL, \`category\` ENUM('interview_prep','resume_vetting','skill_assessment','other') NOT NULL, \`headline\` varchar(180) NOT NULL, \`description\` text, \`targetRoles\` text, \`ctaLabel\` varchar(80) NOT NULL, \`ctaUrl\` varchar(2048) NOT NULL, \`isActive\` boolean NOT NULL DEFAULT true, \`impressions\` int NOT NULL DEFAULT 0, \`clicks\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT (now()), \`updatedAt\` timestamp NOT NULL DEFAULT (now()) ON UPDATE NOW, CONSTRAINT \`partnerModules_id\` PRIMARY KEY(\`id\`), INDEX \`partner_modules_active_idx\`(\`isActive\`, \`createdAt\`))` },
   { table: "userFollows", createSql: `CREATE TABLE IF NOT EXISTS \`userFollows\` (\`id\` int AUTO_INCREMENT NOT NULL, \`followerUserId\` int NOT NULL, \`followingUserId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT (now()), CONSTRAINT \`userFollows_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`user_follows_pair_unique\`(\`followerUserId\`, \`followingUserId\`), INDEX \`user_follows_following_idx\`(\`followingUserId\`))` },
+];
+
+/**
+ * Indexes the running code expects, reconciled separately from the tables.
+ *
+ * `CREATE TABLE IF NOT EXISTS` is a no-op on a table that already exists, so a
+ * database built by an earlier version of DESIRED_TABLES (or by a migration that
+ * was never applied) kept its missing keys forever. These are applied
+ * idempotently by probing information_schema.STATISTICS.
+ *
+ * A UNIQUE index on a table that already holds duplicates will fail — correctly.
+ * That is a data problem an operator has to see, not something to swallow, so the
+ * failure is recorded and leaves the run "incomplete" rather than reconciled.
+ */
+const DESIRED_INDEXES: Array<{ table: string; index: string; createSql: string }> = [
+  { table: "employerAccounts", index: "employer_accounts_user_unique", createSql: "ALTER TABLE `employerAccounts` ADD UNIQUE INDEX `employer_accounts_user_unique`(`userId`)" },
+  { table: "profileUnlocks", index: "profile_unlocks_employer_seeker_unique", createSql: "ALTER TABLE `profileUnlocks` ADD UNIQUE INDEX `profile_unlocks_employer_seeker_unique`(`employerUserId`, `seekerProfileUserId`)" },
+  { table: "profileUnlocks", index: "profile_unlocks_seeker_idx", createSql: "ALTER TABLE `profileUnlocks` ADD INDEX `profile_unlocks_seeker_idx`(`seekerProfileUserId`)" },
+  { table: "partnerModules", index: "partner_modules_active_idx", createSql: "ALTER TABLE `partnerModules` ADD INDEX `partner_modules_active_idx`(`isActive`, `createdAt`)" },
+  { table: "companyOpportunities", index: "company_opportunities_sponsor_idx", createSql: "ALTER TABLE `companyOpportunities` ADD INDEX `company_opportunities_sponsor_idx`(`sponsoredUntil`)" },
+  // Missing indexes on hot query paths: every message list filters on senderId,
+  // nearly every referral query joins on jobId, and the slot-opened alert
+  // recipients filter on workEmailDomain.
+  { table: "messages", index: "messages_sender_idx", createSql: "ALTER TABLE `messages` ADD INDEX `messages_sender_idx`(`senderId`)" },
+  { table: "referralRequests", index: "referral_requests_job_idx", createSql: "ALTER TABLE `referralRequests` ADD INDEX `referral_requests_job_idx`(`jobId`)" },
+  { table: "profiles", index: "profiles_work_email_domain_idx", createSql: "ALTER TABLE `profiles` ADD INDEX `profiles_work_email_domain_idx`(`workEmailDomain`)" },
 ];
 
 const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -83,6 +119,11 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string }>;
     const existing = new Set(rows.map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
     const existingTables = new Set(rows.map(row => row.TABLE_NAME));
+    // Index names live in STATISTICS, not COLUMNS. Probed in the same run so a
+    // table created moments ago gets its indexes added immediately.
+    const indexResult = await db.execute(sql`SELECT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
+    const indexRows = indexResult[0] as unknown as Array<{ TABLE_NAME: string; INDEX_NAME: string }>;
+    const existingIndexes = new Set(indexRows.map(row => `${row.TABLE_NAME}.${row.INDEX_NAME}`));
     for (const { table, column, definition } of DESIRED_COLUMNS) {
       if (existing.has(`${table}.${column}`)) { skipped.push(`${table}.${column}`); continue; }
       const stmt = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
@@ -114,6 +155,20 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       }
       results.push({ statement: createSql, ok: true });
       applied.push(`table:${table}`);
+    }
+    for (const { table, index, createSql } of DESIRED_INDEXES) {
+      if (existingIndexes.has(`${table}.${index}`)) { skipped.push(`${table}.${index}`); continue; }
+      try { await db.execute(sql.raw(createSql)); }
+      catch (err) {
+        const error = describeError(err);
+        results.push({ statement: createSql, ok: false, error });
+        if (!lastError) lastError = `[${createSql}] ${error}`;
+        failed = true;
+        console.error(`[schema-reconcile] statement failed (continuing): [${createSql}] ${error}`);
+        continue;
+      }
+      results.push({ statement: createSql, ok: true });
+      applied.push(`${table}.${index}`);
     }
     // Only a run with zero statement failures counts as reconciled.
     if (!failed) {
