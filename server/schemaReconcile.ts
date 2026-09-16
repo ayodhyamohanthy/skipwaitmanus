@@ -56,6 +56,12 @@ export function isDuplicateColumnError(err: unknown): boolean {
   return false;
 }
 
+export function isDuplicateEntryError(err: unknown): boolean {
+  const seen = new Set<unknown>(); let current: unknown = err;
+  while (current && !seen.has(current)) { seen.add(current); if (typeof current === "object") { const typed=current as {code?:unknown;errno?:unknown;sqlState?:unknown;cause?:unknown}; if (typed.code === "ER_DUP_ENTRY" || typed.errno === 1062 || typed.sqlState === "23000") return true; current=typed.cause; } else break; }
+  return false;
+}
+
 export function describeReconcileError(err: unknown): string {
   const top = err instanceof Error ? err.message : String(err);
   const causes: string[] = [];
@@ -146,11 +152,18 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       const key = `${index.table}.${index.name}`; if (existingIndexes.has(key)) { skipped.push(`index:${key}`); continue; }
       const stmt = `CREATE UNIQUE INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
       try {
-        if (index.name === "resume_upload_sessions_owner_client_unique") await db.execute(sql.raw("UPDATE `resumeUploadSessions` s JOIN `resumeUploadSessions` canonical ON canonical.ownerId=s.ownerId AND canonical.clientUploadId=s.clientUploadId AND canonical.id<s.id SET s.clientUploadId=NULL WHERE s.clientUploadId IS NOT NULL"));
-        if (index.name === "referral_attachments_upload_session_unique") await db.execute(sql.raw("UPDATE `referralAttachments` a JOIN `referralAttachments` canonical ON canonical.uploadSessionId=a.uploadSessionId AND canonical.id<a.id SET a.uploadSessionId=NULL WHERE a.uploadSessionId IS NOT NULL"));
-        await db.execute(sql.raw(stmt)); results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`);
+        const dedupe = index.name === "resume_upload_sessions_owner_client_unique"
+          ? "UPDATE `resumeUploadSessions` s JOIN (SELECT ownerId,clientUploadId,MIN(id) canonicalId FROM (SELECT id,ownerId,clientUploadId FROM `resumeUploadSessions`) source WHERE clientUploadId IS NOT NULL GROUP BY ownerId,clientUploadId HAVING COUNT(*)>1) duplicates ON duplicates.ownerId=s.ownerId AND duplicates.clientUploadId=s.clientUploadId SET s.clientUploadId=NULL WHERE s.id<>duplicates.canonicalId"
+          : "UPDATE `referralAttachments` a JOIN (SELECT uploadSessionId,MIN(id) canonicalId FROM (SELECT id,uploadSessionId FROM `referralAttachments`) source WHERE uploadSessionId IS NOT NULL GROUP BY uploadSessionId HAVING COUNT(*)>1) duplicates ON duplicates.uploadSessionId=a.uploadSessionId SET a.uploadSessionId=NULL WHERE a.id<>duplicates.canonicalId";
+        let created = false;
+        for (let attempt=1; attempt<=3 && !created; attempt++) {
+          await db.execute(sql.raw(dedupe));
+          try { await db.execute(sql.raw(stmt)); created=true; }
+          catch (err) { if (!isDuplicateEntryError(err) || attempt===3) throw err; }
+        }
+        results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`);
       }
-      catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; }
+      catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; console.error(`[schema-reconcile] index failed: [${stmt}] ${error}`); }
     }
     for (const { table, createSql } of DESIRED_TABLES) {
       if (existingTables.has(table)) { skipped.push(table); continue; }
