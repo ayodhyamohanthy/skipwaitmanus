@@ -39,7 +39,6 @@
     "ENABLE_ADMIN_SMOKE_FIXTURE": "true",
     "WORKOS_CLIENT_ID": "client_01M17TTFJ6784B1CN6MHAHB60Y",
     "WORKOS_REDIRECT_URI": "https://skipwait.me/api/auth/workos/callback",
-    "PUBLIC_ORIGIN": "https://skipwait.me",
     "WORKOS_POST_SIGNIN_PATH": "/",
     "ZEPTOMAIL_FROM_EMAIL": "noreply@skipwait.me",
     "ERROR_ALERT_FROM_EMAIL": "noreply@skipwait.me",
