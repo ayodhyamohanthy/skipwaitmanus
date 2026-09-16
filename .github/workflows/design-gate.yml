@@ -9,6 +9,12 @@ on:
       - "client/src/components/**"
       - "client/src/index.css"
 
+# Least privilege. Without an explicit block the job inherits the repository
+# default, which is write-all on many repos — and the step below executes
+# third-party code fetched at run time.
+permissions:
+  contents: read
+
 jobs:
   detect:
     runs-on: ubuntu-latest
@@ -18,7 +24,10 @@ jobs:
         with:
           node-version: 22
       - name: Run Impeccable detector on changed client surfaces
+        # Pinned, not @latest: this downloads and executes third-party code inside
+        # CI, so the version should only change deliberately. `|| true` keeps the
+        # gate advisory — a detector failure must not block a deploy.
         run: |
-          npx -y impeccable@latest detect client/src/pages client/src/components --quiet || true
+          npx -y impeccable@4.1.0 detect client/src/pages client/src/components --quiet || true
       - name: Record result
         run: echo "Design gate run complete — findings are advisory; blocking rules reviewed in PR."

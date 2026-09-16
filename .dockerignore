@@ -2,8 +2,10 @@ node_modules
 dist
 .openclaw
 structure.txt
-.env
-.env.local
 *.log
 docs
 research
+# Every dotenv variant, not just .env/.env.local: `COPY . .` in the build stage
+# would otherwise bake a .env.production or .env.staging into the image.
+.env*
+!.env.example

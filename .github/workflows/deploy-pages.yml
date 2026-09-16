@@ -29,6 +29,12 @@ permissions:
 
 jobs:
   deploy:
+    # `workflow_dispatch` can be started from ANY branch, and the deploy step below
+    # hardcodes `--branch main` — which forces whatever ref the operator picked
+    # onto the production Pages branch. The verify step then confirms that SHA is
+    # live, so it passes. Gate the job on main so a manual dispatch from a feature
+    # branch cannot ship unreviewed code to production.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
