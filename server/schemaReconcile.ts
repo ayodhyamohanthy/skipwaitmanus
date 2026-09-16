@@ -146,7 +146,11 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     for (const index of desiredIndexes) {
       const key = `${index.table}.${index.name}`; if (existingIndexes.has(key)) { skipped.push(`index:${key}`); continue; }
       const stmt = `CREATE UNIQUE INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
-      try { await db.execute(sql.raw(stmt)); results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`); }
+      try {
+        if (index.name === "resume_upload_sessions_owner_client_unique") await db.execute(sql.raw("UPDATE `resumeUploadSessions` s JOIN `resumeUploadSessions` canonical ON canonical.ownerId=s.ownerId AND canonical.clientUploadId=s.clientUploadId AND canonical.id<s.id SET s.clientUploadId=NULL WHERE s.clientUploadId IS NOT NULL"));
+        if (index.name === "referral_attachments_upload_session_unique") await db.execute(sql.raw("UPDATE `referralAttachments` a JOIN `referralAttachments` canonical ON canonical.uploadSessionId=a.uploadSessionId AND canonical.id<a.id SET a.uploadSessionId=NULL WHERE a.uploadSessionId IS NOT NULL"));
+        await db.execute(sql.raw(stmt)); results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`);
+      }
       catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; }
     }
     for (const { table, createSql } of DESIRED_TABLES) {
