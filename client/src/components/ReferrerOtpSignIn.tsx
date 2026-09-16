@@ -37,13 +37,14 @@ export function ReferrerOtpSignIn() {
   if (stage === "email") {
     return (
       <div className="w-full">
+        <div className="mb-4 text-sm leading-5 text-[#3F3B33]"><p className="font-semibold">See the role, resume, and forwardable note before you choose. Decline or ask for context. Nothing is sent from your account.</p><p className="mt-2 text-xs text-[#625D52]">Work email verifies company access; it stays private.</p></div>
         <label htmlFor="otp-referrer-email" className="block text-xs font-semibold text-[#3F3B33]">Company email</label>
         <input id="otp-referrer-email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} inputMode="email" placeholder="you@company.com" value={email}
           onChange={event => { setEmail(event.target.value); setError(""); }}
           onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void send(); } }}
-          className="mt-1.5 w-full rounded-lg border border-[#E2DDD2] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#191713]" />
+          className="mt-1.5 min-h-12 w-full rounded-lg border border-[#E2DDD2] bg-white px-3 py-2.5 text-sm outline-none focus:border-[#191713]" />
         {error && <p role="alert" className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
-        <button type="button" disabled={busy || !email.trim()} onClick={() => { void send(); }} className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-[#191713] px-5 py-3.5 text-sm font-semibold text-white disabled:opacity-40">
+        <button type="button" disabled={busy || !email.trim()} onClick={() => { void send(); }} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-lg bg-[#191713] px-5 py-3.5 text-sm font-semibold text-white disabled:opacity-40">
           {busy ? "Sending code…" : "Send sign-in code"}
         </button>
       </div>
@@ -57,13 +58,13 @@ export function ReferrerOtpSignIn() {
       <input id="otp-referrer-code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={code}
         onChange={event => { setCode(event.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }}
         onKeyDown={event => { if (event.key === "Enter" && code.length === 6) { event.preventDefault(); void verify(); } }}
-        className="mt-1.5 w-full rounded-lg border border-[#F3D5C7] bg-white px-3 py-2.5 text-sm font-semibold tracking-[.3em] outline-none focus:border-[#191713]" />
+        className="mt-1.5 min-h-12 w-full rounded-lg border border-[#F3D5C7] bg-white px-3 py-2.5 text-sm font-semibold tracking-[.3em] outline-none focus:border-[#191713]" />
       {error && <p role="alert" className="mt-3 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button type="button" disabled={busy || code.length !== 6} onClick={() => { void verify(); }} className="inline-flex flex-1 items-center justify-center rounded-lg bg-[#191713] px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">
+        <button type="button" disabled={busy || code.length !== 6} onClick={() => { void verify(); }} className="inline-flex min-h-12 flex-1 items-center justify-center rounded-lg bg-[#191713] px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">
           {busy ? "Verifying…" : "Verify & sign in"}
         </button>
-        <button type="button" onClick={() => { setStage("email"); setCode(""); setNotice(""); }} className="rounded-lg border border-[#E2DDD2] bg-white px-4 py-3 text-sm font-semibold text-[#625D52]">Change email</button>
+        <button type="button" onClick={() => { setStage("email"); setCode(""); setNotice(""); }} className="min-h-12 rounded-lg border border-[#E2DDD2] bg-white px-4 py-3 text-sm font-semibold text-[#625D52]">Change email</button>
       </div>
     </div>
   );
