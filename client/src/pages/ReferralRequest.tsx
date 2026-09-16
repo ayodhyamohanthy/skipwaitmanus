@@ -17,6 +17,7 @@ const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,appli
 const pendingResumeSubmissionKey = "skipwait-pending-resume-submit";
 const FREE_MONTHLY_ALLOWANCE = 3;
 const UPLOAD_REQUEST_TIMEOUT_MS = 30_000;
+const activeResumeUploads = new Map<string, Promise<Attachment>>();
 const documentMimeByExtension: Record<string, string> = { ".pdf": "application/pdf", ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg" };
 
 function acceptedDocumentMime(file: File) {
@@ -108,7 +109,6 @@ export default function ReferralRequest() {
   const [smartPitchStatus, setSmartPitchStatus] = useState("");
   const { isSignedIn, getToken, openSignIn } = useAuth();
   const resumeInputRef = useRef<HTMLInputElement>(null);
-  const uploadPromisesRef = useRef(new Map<string, Promise<Attachment>>());
   const uploadIdsRef = useRef(new Map<string, string>());
   const attachmentCount = attachments.length + pendingFiles.length;
   const summary = creditSummary ?? fallbackSummary(tokens);
@@ -141,12 +141,12 @@ export default function ReferralRequest() {
       const headers = { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) };
       const uploadOne = (file: File) => {
         const fingerprint = `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
-        const existing = uploadPromisesRef.current.get(fingerprint); if (existing) return existing;
+        const existing = activeResumeUploads.get(fingerprint); if (existing) return existing;
         // Register the shared promise synchronously before hashing or any other
         // await. A second change/input dispatch in the same tick must see it.
         let resolveUpload!: (attachment: Attachment) => void; let rejectUpload!: (reason: unknown) => void;
         const guarded = new Promise<Attachment>((resolve, reject) => { resolveUpload = resolve; rejectUpload = reject; });
-        uploadPromisesRef.current.set(fingerprint, guarded);
+        activeResumeUploads.set(fingerprint, guarded);
         void (async () => {
           try {
           const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()))).map(byte => byte.toString(16).padStart(2, "0")).join("");
@@ -165,7 +165,7 @@ export default function ReferralRequest() {
           setUploadProgress({ completed: totalChunks, total: totalChunks, status: "Checking your resume securely…" });
           const completeResponse = await uploadFetch(`/api/documents/uploads/${start.sessionId}/complete`, { method: "POST", headers, credentials: "include" }, "We could not finish checking your resume in time. Please try again.");
           const payload = await readApiJson<Attachment & { error?: string }>(completeResponse, "We could not verify your uploaded resume. Please try again."); if (!completeResponse.ok) throw new Error(payload.error || "We could not verify your uploaded resume. Please try again."); resolveUpload(payload);
-          } catch (reason) { uploadPromisesRef.current.delete(fingerprint); rejectUpload(reason); }
+          } catch (reason) { activeResumeUploads.delete(fingerprint); rejectUpload(reason); }
         })();
         return guarded;
       };
