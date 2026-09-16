@@ -682,7 +682,7 @@ export async function prepareReferrerReviewEmailNotifications(requestId: number)
 
 export async function resolveReferrerReviewEmailLink(userId: number, linkToken: string) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const link = await db.select({ referralRequestId: referrerReviewEmailLinks.referralRequestId, expiresAt: referrerReviewEmailLinks.expiresAt, consumedAt: referrerReviewEmailLinks.consumedAt, status: referralRequests.status, assignedReferrerId: referralRequests.referrerId }).from(referrerReviewEmailLinks).innerJoin(referralRequests, eq(referralRequests.id, referrerReviewEmailLinks.referralRequestId)).where(and(eq(referrerReviewEmailLinks.linkToken, linkToken), eq(referrerReviewEmailLinks.referrerId, userId))).limit(1);
+  const link = await db.select({ referralRequestId: referrerReviewEmailLinks.referralRequestId, expiresAt: referrerReviewEmailLinks.expiresAt, consumedAt: referrerReviewEmailLinks.consumedAt, status: referralRequests.status, assignedReferrerId: referralRequests.referrerId }).from(referrerReviewEmailLinks).innerJoin(referralRequests, eq(referralRequests.id, referrerReviewEmailLinks.referralRequestId)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referrerReviewEmailLinks.linkToken, linkToken), eq(referrerReviewEmailLinks.referrerId, userId),isNull(referralRequestPasses.id))).limit(1);
   if (!link[0] || link[0].consumedAt || link[0].expiresAt.getTime() < Date.now() || link[0].status !== "pending" || (link[0].assignedReferrerId !== null && link[0].assignedReferrerId !== userId)) throw new Error("This private review link is unavailable");
   return { requestId: link[0].referralRequestId };
 }
@@ -707,6 +707,9 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
       if (current.referrerId !== null) throw new Error("An allocated referral must be released through the queue workflow");
       const reason = input.declineReason ?? "cannot_support";
       await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: userId, reason }).onDuplicateKeyUpdate({ set: { reason } });
+      await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,userId)));
+      await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt)));
+      await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,userId),eq(referralAvailabilitySlots.status,"allocated")));
       return { status: "passed" as const, companyDomain: current.companyDomain, declineReason: reason };
     }
     const previousPass = await tx.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId, input.requestId), eq(referralRequestPasses.referrerId, userId))).limit(1);
@@ -754,7 +757,7 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const request = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, candidateName: users.name, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain))).limit(1);
+  const request = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, candidateName: users.name, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id))).limit(1);
   if (!request[0]) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
   return { ...request[0], attachments };
@@ -933,7 +936,7 @@ export async function createReferralAttachment(ownerId: number, input: { fileNam
 
 export async function getAccessibleReferralAttachment(userId: number, attachmentId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId, requestStatus: referralRequests.status }).from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralAttachments.id, attachmentId)).limit(1);
+  const result = await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId, requestStatus: referralRequests.status }).from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralAttachments.id, attachmentId),or(eq(referralAttachments.ownerId,userId),isNull(referralRequestPasses.id)))).limit(1);
   const attachment = result[0];
   return attachment && canAccessReferralAttachment(userId, attachment) ? attachment : undefined;
 }
