@@ -46,7 +46,7 @@ describe("Home mobile navigation", () => {
   it("shows only a truthful aggregate referral-impact indicator, never named or queue-based activity", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ acceptedReferrals: 17 }) })));
     render(<Home />);
-    await waitFor(() => expect(screen.getByText("17 referral requests accepted on SkipWait")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Referral requests are private and acceptance is recorded on SkipWait")).toBeTruthy());
     expect(document.body.textContent).not.toMatch(/sarah|netflix|minutes ago|fast-tracked|queue|rank/i);
   });
 });
