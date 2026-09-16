@@ -14,9 +14,9 @@ poll_cloudflare_readiness(){
       service=$(jq -r .service "$body");sha=$(jq -r .commitSha "$body");state=$(jq -r .state "$body");last_sha=$sha;last_state=$state;last_status=$status
       echo "Runtime readiness attempt=$attempt elapsed=$((($(now_ms)-start_ms)/1000))s HTTP=$status service=$service sha=${sha:0:12} state=$state"
       [[ "$service" == skipwait-api ]]||{ echo '::error::Unexpected readiness service/schema';rm -f "$headers" "$body";return 3;}
-      [[ "$state" == failed ]]&&{ echo '::error::Runtime reported failed';rm -f "$headers" "$body";return 3;}
+      [[ "$state" == failed && "$sha" == "$expected" ]]&&{ echo '::error::Expected runtime reported failed';rm -f "$headers" "$body";return 3;}
       [[ "$status" == 200 && "$sha" == "$expected" && "$state" == ready ]]&&{ rm -f "$headers" "$body";return 0;}
-      [[ "$status" == 503 || "$sha" != "$expected" || "$state" == reconciling ]]||{ echo '::error::Unexpected readiness state';rm -f "$headers" "$body";return 3;}
+      [[ "$status" == 503 || "$sha" != "$expected" || "$state" == reconciling || "$state" == failed ]]||{ echo '::error::Unexpected readiness state';rm -f "$headers" "$body";return 3;}
     elif ((rc==0)) && [[ "$status" == 401 || "$status" == 403 || "$status" == 200 ]];then echo "::error::Invalid readiness response HTTP=$status content-type=${content_type:-missing}";rm -f "$headers" "$body";return 3
     else echo "Runtime readiness attempt=$attempt elapsed=$((($(now_ms)-start_ms)/1000))s HTTP=${status:-000} transient"
     fi
