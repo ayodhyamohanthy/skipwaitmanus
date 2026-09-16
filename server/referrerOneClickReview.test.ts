@@ -60,6 +60,6 @@ describe("Referrer one-click review actions", () => {
     let body = "";
     const sender = createReferrerReviewEmailSender({ fetchImpl: async (_url, init) => { body = String(init?.body || ""); return new Response("{}", { status: 200 }); } });
     await expect(sender({ to: "employee@acme.com", companyDomain: "acme.com", reviewUrl: `https://skipwait.me/email-review/${token}` })).resolves.toEqual({ sent: true, reason: "sent" });
-    expect(body).toContain("acme.com"); expect(body).toContain("decision=approved"); expect(body).toContain("reason=timing"); expect(body).not.toMatch(/candidate|resume|document|queue|hiring outcome guaranteed/i);
+    expect(body).toContain("acme.com"); expect(body).toContain(`/email-review/${token}`); expect(body).not.toContain("decision="); expect(body).not.toContain("reason="); expect(body).not.toMatch(/candidate|resume|document|queue|hiring outcome guaranteed/i);
   });
 });
