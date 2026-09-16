@@ -1,7 +1,7 @@
 # skipwaitmanus — Code Review & Fix Pass
 
 **Repo:** `github.com/ayodhyamohanthy/skipwaitmanus` (private)
-**Branch pushed:** `fix/security-and-quality-review` — 29 commits, 122 files, +3364/-581
+**Branch pushed:** `fix/security-and-quality-review` — 33 commits, 129 files, +3642/-609
 **PR:** [#18](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/18) — OPEN, mergeable
 **Date:** 12 September 2026
 
@@ -379,6 +379,31 @@ I reported "Google blue fully removed" from a grep using `'0B57D0\|0b57d0'`. **B
 ### Testing note
 
 Three *different* test files failed across three consecutive full runs, each passing 3/3 in isolation. `uptime` showed **load average 19.7 / 101 / 143** on a 6-core machine — up to 12× oversubscription — with suite duration swinging 49 s → 124 s. The failures were environmental, not regressions. Fixed by raising both Testing Library's `asyncUtilTimeout` and vitest's `testTimeout` (raising only the former just moved the failure). **Check `uptime` before chasing a flaky test on this machine.**
+
+## 2.17 Fifth pass — schema, storage, and deploy pipeline
+
+### The schema could silently corrupt billing
+
+`server/schemaReconcile.ts` creates tables at boot, and its `CREATE TABLE` statements omitted the **UNIQUE keys `drizzle/schema.ts` declares** — on the exact path meant for databases where `drizzle/0037` never ran. Without `employer_accounts_user_unique` one user accumulates duplicate billing accounts; without `profile_unlocks_employer_seeker_unique` the same (employer, seeker) unlock inserts twice and **the employer is charged twice**.
+
+Fixing the DDL alone would not have healed a live database, because `CREATE TABLE IF NOT EXISTS` is a **no-op on an existing table**. So the module now reconciles indexes separately via `information_schema.STATISTICS` (`DESIRED_INDEXES`). That also adds the three missing hot-path indexes (`messages.senderId`, `referralRequests.jobId`, `profiles.workEmailDomain`) plus `company_opportunities_sponsor_idx`. A UNIQUE index over a table that already holds duplicates fails *correctly* — recorded, leaving the run "incomplete" and visible rather than swallowed.
+
+Also fixed `partnerModules` column drift: `description` was `NOT NULL` here but nullable in the schema (MySQL 1048), `ctaUrl` was 1024 vs 2048 (1406).
+
+### Database connection
+
+- **TLS validation was off** in both `db.ts` and `storageDb.ts` (`rejectUnauthorized: false`). Now opt-in via `DATABASE_SSL_CA` in a new shared `_core/databaseSsl.ts`; set the provider CA and validation turns on. **Still needs the CA to actually be configured.**
+- `storageDb` threw a bare `TypeError: Invalid URL` when `DATABASE_URL` was absent — and that adapter is the default with no object store, so it is reached on a no-database deployment. Now a clear configuration error.
+
+### Deploy pipeline
+
+- **Either workflow could ship any branch to production.** `workflow_dispatch` lets the operator choose a ref; the Pages job then hardcodes `--branch main`, forcing that ref onto the production branch, and its verify step confirms the SHA is live — so it passed. Both jobs are now gated on `github.ref == 'refs/heads/main'`.
+- **The API deploy "verification" was a no-op** that printed `SYNC ACCEPTED` for a deployment it never checked, so a container that failed to boot still reported success. Renamed and made honest, with the manual check to run. It deliberately does not poll `/api/health`, because polling resets the container's 10-minute idle timer and costs money.
+- **`Dockerfile` ran as root** (any RCE owned the container) → `USER node`; and `COPY commit-sha.txt` failed on a local build because that file is gitignored → the build stage now creates it if absent.
+- **`.dockerignore` only excluded `.env`/`.env.local`**, so `COPY . .` baked a `.env.production` into the build stage → now `.env*` with `.env.example` kept.
+- **`design-gate.yml` ran unpinned third-party code with no `permissions:` block** → `contents: read`, and pinned to `impeccable@4.1.0` (confirmed against the npm registry).
+
+**Verification:** `tsc --noEmit` clean; full suite **465 passed / 5 skipped** (113 files) under constrained parallelism; `pnpm build` OK. Adding `DESIRED_INDEXES` changed the reconcile statement count (12→20), so `schemaReconcile.test.ts` was updated — note its fake DB must distinguish the two `information_schema` probes, because **both begin with `SELECT TABLE_NAME`**.
 
 ---
 
