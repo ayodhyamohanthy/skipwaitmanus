@@ -72,6 +72,7 @@ export type PrivateReferralRouteDeps = {
   getUserEmailById?: (userId: number) => Promise<string | null>;
   createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
   sendEmail?: (input: { to: string; subject: string; html: string }) => Promise<{ sent: boolean; reason?: string }>;
+  enqueueNotificationDelivery?: (input: { dedupeKey: string; channel: "email" | "slack"; destination: string; payload: { kind: "transactional_email" | "review_email" | "slot_email" | "review_slack"; subject?: string; html?: string; text?: string; companyDomain?: string; url?: string } }) => Promise<void>;
   prepareReferrerReviewEmailNotifications?: (requestId: number) => Promise<Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }>>;
   resolveReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<{ requestId: number }>;
   consumeReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<void>;
@@ -128,7 +129,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.use("/api/admin", (req, res, next) => { if (req.method === "GET") res.set("Cache-Control", "private, no-store"); next(); });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   const notifyInApp = (userId: number | undefined, title: string, body: string) => { if (!userId) return; void deps.createNotification?.(userId, "status", title, body).catch(() => undefined); };
-  const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
+  const notifyEmail = (dedupeKey: string, userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; if(deps.enqueueNotificationDelivery)await deps.enqueueNotificationDelivery({dedupeKey,channel:"email",destination:email,payload:{kind:"transactional_email",subject,html,text:html.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim()}});else await deps.sendEmail?.({to:email,subject,html}); })().catch(() => undefined); };
   const privateDocumentMimeTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
   const parseRawPrivateDocument = express.raw({ type: privateDocumentMimeTypes, limit: "10mb" });
   const parseLegacyDocumentJson = express.json({ limit: "14mb" });
@@ -502,9 +503,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (deps.prepareReferrerReviewEmailNotifications) {
         try {
           reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
-          const reviewEmailSender = deps.sendReferrerReviewEmail ?? sendReferrerReviewEmail;
           const origin = canonicalPublicOrigin();
-          const delivery = await Promise.all(reviewLinks.map(link => reviewEmailSender({ to: link.email, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` })));
+          const delivery = await Promise.all(reviewLinks.map(async link => { const reviewUrl=`${origin}/email-review/${encodeURIComponent(link.linkToken)}`; if(deps.enqueueNotificationDelivery){await deps.enqueueNotificationDelivery({dedupeKey:`referral:${result.requestId}:review-email:${link.referrerId}`,channel:"email",destination:link.email,payload:{kind:"review_email",companyDomain:link.companyDomain,url:reviewUrl}});return {sent:true};} const sender=deps.sendReferrerReviewEmail??sendReferrerReviewEmail;return sender({to:link.email,companyDomain:link.companyDomain,reviewUrl}); }));
           const sentCount = delivery.filter(item => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: sentCount === reviewLinks.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: reviewLinks.length, sentCount } });
         } catch { record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain }); }
@@ -517,7 +517,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
           const slackDelivery = await Promise.all(slackTargets.map(target => {
             const link = reviewLinks.find(item => item.referrerId === target.referrerId);
             if (!link) return Promise.resolve({ sent: false as const, reason: "not_configured" as const });
-            return slackSender({ to: target.webhookUrl, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` }).catch(() => ({ sent: false as const, reason: "delivery_failed" as const }));
+            const reviewUrl=`${origin}/email-review/${encodeURIComponent(link.linkToken)}`; if(deps.enqueueNotificationDelivery)return deps.enqueueNotificationDelivery({dedupeKey:`referral:${result.requestId}:review-slack:${target.referrerId}`,channel:"slack",destination:target.webhookUrl,payload:{kind:"review_slack",companyDomain:link.companyDomain,url:reviewUrl}}).then(()=>({sent:true as const,reason:"queued" as const})); return slackSender({to:target.webhookUrl,companyDomain:link.companyDomain,reviewUrl}).catch(()=>({sent:false as const,reason:"delivery_failed" as const}));
           }));
           const slackSentCount = slackDelivery.filter((item: { sent: boolean }) => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: slackSentCount === slackTargets.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: slackTargets.length, sentCount: slackSentCount } });
@@ -747,7 +747,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
           const recipients = await deps.getSlotOpenedAlertRecipients(identity.account.id, result.allocatedRequestIds);
           const sender = deps.sendSlotOpenedAlertEmail ?? sendSlotOpenedAlertEmail;
           const origin = canonicalPublicOrigin();
-          const deliveries = await Promise.all(recipients.map(recipient => sender({ to: recipient.email ?? "", companyDomain: recipient.companyDomain, requestsUrl: `${origin}/requests` })));
+          const deliveries = await Promise.all(recipients.map(async recipient=>{const destination=recipient.email??"",url=`${origin}/requests`;if(deps.enqueueNotificationDelivery&&destination){await deps.enqueueNotificationDelivery({dedupeKey:`referral:${recipient.requestId}:slot-open-email`,channel:"email",destination,payload:{kind:"slot_email",companyDomain:recipient.companyDomain,url}});return {sent:true,reason:"queued"};}return sender({to:destination,companyDomain:recipient.companyDomain,requestsUrl:url});}));
           record({ actorUserId: identity.account.id, action: "company_referral.slot_open_alert_dispatched", outcome: deliveries.some(delivery => delivery.sent) ? "success" : "failure", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { allocatedCount: result.allocatedCount, alertRecipientCount: recipients.length, deliveredCount: deliveries.filter(delivery => delivery.sent).length } });
         } catch {
           record({ actorUserId: identity.account.id, action: "company_referral.slot_open_alert_dispatched", outcome: "failure", resourceType: "referral_availability", companyDomain: result.companyDomain, metadata: { allocatedCount: result.allocatedCount } });
@@ -810,10 +810,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: `company_referral.one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
       if (decision === "approved") {
         notifyInApp(result.jobSeekerId, `Your referral request was accepted at ${result.companyDomain}`, "A verified employee accepted your private request. Open My requests to continue the conversation.");
-        notifyEmail(result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
+        notifyEmail(`referral:${requestId}:one-click:${decision}:email`, result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
       } else {
         notifyInApp(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, "The employee can't help right now. Your request stays active for other employees.");
-        notifyEmail(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
+        notifyEmail(`referral:${requestId}:one-click:${decision}:email`, result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
       }
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; res.status(/verify your work email|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
@@ -831,10 +831,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: `company_referral.email_one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: link.requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
       if (decision === "approved") {
         notifyInApp(result.jobSeekerId, `Your referral request was accepted at ${result.companyDomain}`, "A verified employee accepted your private request. Open My requests to continue the conversation.");
-        notifyEmail(result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
+        notifyEmail(`referral:${link.requestId}:email-review:${decision}:email`, result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
       } else {
         notifyInApp(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, "The employee can't help right now. Your request stays active for other employees.");
-        notifyEmail(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
+        notifyEmail(`referral:${link.requestId}:email-review:${decision}:email`, result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
       }
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This private review link is unavailable"; res.status(/private review link|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
@@ -938,7 +938,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId);
       record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain });
       notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request. Open My requests to continue.`);
-      notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation. Their identity stays hidden until they choose to share it.</p>`);
+      notifyEmail(`referral:${requestId}:claimed:email`, result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation. Their identity stays hidden until they choose to share it.</p>`);
       res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
