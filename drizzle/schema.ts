@@ -90,6 +90,15 @@ export const employerAccounts = mysqlTable("employerAccounts", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employer_accounts_user_unique").on(table.userId)]);
 
+// Employer-scoped random references are the only talent identifiers exposed to clients.
+export const employerTalentRefs = mysqlTable("employerTalentRefs", {
+  id: int("id").autoincrement().primaryKey(),
+  employerUserId: int("employerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seekerProfileUserId: int("seekerProfileUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  publicRef: varchar("publicRef", { length: 64 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("employer_talent_refs_public_unique").on(table.publicRef), uniqueIndex("employer_talent_refs_pair_unique").on(table.employerUserId, table.seekerProfileUserId), index("employer_talent_refs_scope_idx").on(table.employerUserId, table.publicRef)]);
+
 // Credit Economy ledger: one unlock row per (employer, seeker) pair, ever.
 export const profileUnlocks = mysqlTable("profileUnlocks", {
   id: int("id").autoincrement().primaryKey(),
@@ -98,6 +107,14 @@ export const profileUnlocks = mysqlTable("profileUnlocks", {
   unlockedAt: timestamp("unlockedAt").defaultNow().notNull(),
   creditsSpent: int("creditsSpent").notNull(),
 }, table => [uniqueIndex("profile_unlocks_employer_seeker_unique").on(table.employerUserId, table.seekerProfileUserId), index("profile_unlocks_seeker_idx").on(table.seekerProfileUserId)]);
+
+// A separate, consent-based intro request. Unlock purchases never double as intros.
+export const employerTalentIntroRequests = mysqlTable("employerTalentIntroRequests", {
+  id: int("id").autoincrement().primaryKey(),
+  employerUserId: int("employerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  seekerProfileUserId: int("seekerProfileUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("employer_talent_intro_pair_unique").on(table.employerUserId, table.seekerProfileUserId)]);
 
 // Contextual High-Intent Partner Modules: admin-curated third-party tooling
 // slots rendered inside seeker-facing role feeds.

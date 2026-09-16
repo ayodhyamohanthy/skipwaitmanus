@@ -18,8 +18,10 @@ export type EmployerRouteDeps = {
   ensureEmployerAccount: (userId: number, companyName: string, billingEmail: string) => Promise<unknown>;
   getEmployerAccount: (userId: number) => Promise<unknown>;
   listAnonymizedSeekerProfiles: (employerUserId: number, input: { query?: string; location?: string }) => Promise<unknown[]>;
-  spendEmployerUnlockCredit: (employerUserId: number, seekerUserId: number) => Promise<{ ok: boolean; reason?: string; remaining?: number; credits?: number }>;
+  resolveEmployerTalentRef: (employerUserId: number, displayRef: string) => Promise<number | undefined>;
+  spendEmployerUnlockCredit: (employerUserId: number, seekerUserId: number) => Promise<{ ok: boolean; reason?: string; remaining?: number; credits?: number; alreadyUnlocked?: boolean }>;
   getUnlockedProfile: (employerUserId: number, seekerUserId: number) => Promise<unknown>;
+  requestEmployerTalentIntro: (employerUserId: number, seekerUserId: number) => Promise<{ ok: boolean; reason?: string; created?: boolean }>;
   createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
   sponsorCompanyOpportunity: (userId: number, opportunityId: number, input: { tier: "featured" | "spotlight"; isAdmin?: boolean }) => Promise<unknown>;
   endCompanyOpportunitySponsorship: (adminUserId: number, opportunityId: number) => Promise<unknown>;
@@ -126,35 +128,40 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
     } catch { res.status(500).json({ error: "We could not load the talent list" }); }
   });
 
-  app.post("/api/employer/talent/:seekerUserId/unlock", async (req, res) => {
+  app.post("/api/employer/talent/:displayRef/unlock", async (req, res) => {
     try {
-      const gate = await requireEmployer(req);
-      if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
-      const seekerUserId = Number(req.params.seekerUserId);
-      if (!Number.isInteger(seekerUserId) || seekerUserId <= 0) return res.status(400).json({ error: "Invalid talent reference" });
+      const gate = await requireEmployer(req); if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
+      const displayRef = req.params.displayRef; const seekerUserId = await deps.resolveEmployerTalentRef(gate.identity.account.id, displayRef);
+      if (!seekerUserId) return res.status(404).json({ error: "Talent profile not found" });
       const result = await deps.spendEmployerUnlockCredit(gate.identity.account.id, seekerUserId);
-      if (!result.ok) {
-        if (result.reason === "insufficient_credits") return res.status(402).json({ error: "Not enough unlock credits", credits: result.credits ?? 0 });
-        return res.status(409).json({ error: "Open an employer account before unlocking talent" });
-      }
-      record({ actorUserId: gate.identity.account.id, action: "employer.talent_unlocked", outcome: "success", resourceType: "profile_unlock", resourceId: seekerUserId, metadata: { remainingCredits: result.remaining } });
-      // The seeker always stays in control: the unlock only notifies them.
-      await deps.createNotification?.(seekerUserId, "referral", "An employer unlocked your profile", "An employer on skipwait.me unlocked your anonymized profile and wants to connect — you choose whether to respond.");
-      res.status(201).json({ unlocked: true, remaining: result.remaining });
+      if (!result.ok) { if (result.reason === "insufficient_credits") return res.status(402).json({ error: "Not enough unlock credits", credits: result.credits ?? 0 }); return res.status(409).json({ error: "Open an employer account before unlocking talent" }); }
+      record({ actorUserId: gate.identity.account.id, action: "employer.talent_unlocked", outcome: "success", resourceType: "profile_unlock", resourceId: displayRef, metadata: { remainingCredits: result.remaining } });
+      if (!result.alreadyUnlocked) await deps.createNotification?.(seekerUserId, "referral", "An employer unlocked your profile", "An employer on skipwait.me unlocked your anonymized profile. You stay in control of contact requests.");
+      res.status(result.alreadyUnlocked ? 200 : 201).json({ unlocked: true, remaining: result.remaining });
     } catch { res.status(500).json({ error: "We could not unlock this profile" }); }
   });
 
-  app.get("/api/employer/talent/:seekerUserId", async (req, res) => {
+  app.get("/api/employer/talent/:displayRef", async (req, res) => {
     try {
-      const gate = await requireEmployer(req);
-      if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
-      const seekerUserId = Number(req.params.seekerUserId);
-      if (!Number.isInteger(seekerUserId) || seekerUserId <= 0) return res.status(400).json({ error: "Invalid talent reference" });
+      const gate = await requireEmployer(req); if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
+      const seekerUserId = await deps.resolveEmployerTalentRef(gate.identity.account.id, req.params.displayRef);
+      if (!seekerUserId) return res.status(404).json({ error: "Talent profile not found" });
       const profile = await deps.getUnlockedProfile(gate.identity.account.id, seekerUserId);
       if (!profile) return res.status(402).json({ error: "Unlock this profile with credits before viewing it" });
-      res.set("Cache-Control", "private, no-store");
-      res.json({ profile });
+      res.set("Cache-Control", "private, no-store"); res.json({ profile });
     } catch { res.status(500).json({ error: "We could not load this profile" }); }
+  });
+
+  app.post("/api/employer/talent/:displayRef/intro", async (req, res) => {
+    try {
+      const gate = await requireEmployer(req); if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
+      const displayRef = req.params.displayRef; const seekerUserId = await deps.resolveEmployerTalentRef(gate.identity.account.id, displayRef);
+      if (!seekerUserId) return res.status(404).json({ error: "Talent profile not found" });
+      const result = await deps.requestEmployerTalentIntro(gate.identity.account.id, seekerUserId);
+      if (!result.ok) return res.status(409).json({ error: "Unlock this profile before requesting an intro" });
+      if (result.created) await deps.createNotification?.(seekerUserId, "referral", "An employer requested an introduction", "An employer on skipwait.me requested an introduction. You choose whether to respond.");
+      res.status(result.created ? 201 : 200).json({ requested: true });
+    } catch { res.status(500).json({ error: "We could not send the intro request" }); }
   });
 
   app.post("/api/employer/opportunities/:opportunityId/sponsor", async (req, res) => {

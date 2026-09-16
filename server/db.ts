@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -1723,7 +1723,6 @@ export const UNLOCK_CREDIT_PACKS = {
 } as const;
 export type UnlockCreditPackId = keyof typeof UNLOCK_CREDIT_PACKS;
 
-const talentDisplayRef = (employerUserId: number, userId: number) => `tal_${createHash("sha256").update(`${ENV.cookieSecret}:talent:${employerUserId}:${userId}`).digest("hex").slice(0, 24)}`;
 const firstSkillKeywords = (skills: string | null) => (skills ?? "").split(/[,;|]/).map(skill => skill.trim()).filter(Boolean).slice(0, 5);
 
 export async function ensureEmployerAccount(userId: number, companyName: string, billingEmail: string) {
@@ -1762,9 +1761,11 @@ export async function spendEmployerUnlockCredit(employerUserId: number, seekerUs
   return db.transaction(async tx => {
     const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, employerUserId)).limit(1).for("update"))[0];
     if (!account) return { ok: false as const, reason: "no_employer_account" as const, credits: 0 };
-    if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
+    // Check idempotency while the account row is locked, before balance. A
+    // repeated unlock succeeds even if the remaining balance is now below 5.
     const alreadyUnlocked = await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
     if (alreadyUnlocked[0]) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
+    if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
     const credits = account.credits - EMPLOYER_UNLOCK_CREDIT_COST;
     await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
     await tx.insert(profileUnlocks).values({ employerUserId, seekerProfileUserId: seekerUserId, creditsSpent: EMPLOYER_UNLOCK_CREDIT_COST });
@@ -1776,26 +1777,49 @@ export async function spendEmployerUnlockCredit(employerUserId: number, seekerUs
 // resumeUrl, phone, or any users column beyond the join key.
 export type AnonymizedSeekerProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
 
+async function ensureTalentRef(employerUserId: number, seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId))).limit(1);
+  if (existing[0]) return existing[0].publicRef;
+  const publicRef = `tal_${randomBytes(18).toString("base64url")}`;
+  try { await db.insert(employerTalentRefs).values({ employerUserId, seekerProfileUserId: seekerUserId, publicRef }); }
+  catch (error) { if ((error as { code?: string }).code !== "ER_DUP_ENTRY") throw error; }
+  return (await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId))).limit(1))[0]?.publicRef ?? publicRef;
+}
+
+export async function resolveEmployerTalentRef(employerUserId: number, publicRef: string) {
+  if (!/^tal_[A-Za-z0-9_-]{20,60}$/.test(publicRef)) return undefined;
+  const db = await getDb(); if (!db) return undefined;
+  const row = await db.select({ seekerUserId: employerTalentRefs.seekerProfileUserId }).from(employerTalentRefs).innerJoin(profiles, eq(profiles.userId, employerTalentRefs.seekerProfileUserId)).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.publicRef, publicRef), eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true))).limit(1);
+  return row[0]?.seekerUserId;
+}
+
 export async function listAnonymizedSeekerProfiles(employerUserId: number, input: { query?: string; location?: string } = {}) {
   const db = await getDb(); if (!db) return [] as AnonymizedSeekerProfile[];
   const rows = await db.select({ userId: profiles.userId, headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience }).from(profiles).where(and(eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true)));
   const unlocked = new Set((await db.select({ seekerId: profileUnlocks.seekerProfileUserId }).from(profileUnlocks).where(eq(profileUnlocks.employerUserId, employerUserId))).map(row => row.seekerId));
-  const term = input.query?.trim().toLowerCase();
-  const locationTerm = input.location?.trim().toLowerCase();
-  return rows
-    .filter(row => (!term || `${row.headline ?? ""} ${row.skills ?? ""} ${row.experience ?? ""}`.toLowerCase().includes(term)) && (!locationTerm || (row.location ?? "").toLowerCase().includes(locationTerm)))
-    .slice(0, 60)
-    .map(row => ({ displayRef: talentDisplayRef(employerUserId, row.userId), headline: row.headline, location: row.location, skills: firstSkillKeywords(row.skills), isUnlocked: unlocked.has(row.userId) }));
+  const term = input.query?.trim().toLowerCase(); const locationTerm = input.location?.trim().toLowerCase();
+  const filtered = rows.filter(row => (!term || `${row.headline ?? ""} ${row.skills ?? ""} ${row.experience ?? ""}`.toLowerCase().includes(term)) && (!locationTerm || (row.location ?? "").toLowerCase().includes(locationTerm))).slice(0, 60);
+  return Promise.all(filtered.map(async row => ({ displayRef: await ensureTalentRef(employerUserId, row.userId), headline: row.headline, location: row.location, skills: firstSkillKeywords(row.skills), isUnlocked: unlocked.has(row.userId) })));
 }
 
-// Fuller profile for an unlocked pair — still never email, name, or resume.
+// Fuller profile for an unlocked, currently opted-in pair.
 export async function getUnlockedProfile(employerUserId: number, seekerUserId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const unlocked = await db.select({ id: profileUnlocks.id, unlockedAt: profileUnlocks.unlockedAt }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
+  const unlocked = await db.select({ unlockedAt: profileUnlocks.unlockedAt }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
   if (!unlocked[0]) return undefined;
-  const profile = await db.select({ headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience, expertise: profiles.expertise }).from(profiles).where(and(eq(profiles.userId, seekerUserId), eq(profiles.accountType, "job_seeker"))).limit(1);
+  const profile = await db.select({ headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience, expertise: profiles.expertise }).from(profiles).where(and(eq(profiles.userId, seekerUserId), eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true))).limit(1);
   if (!profile[0]) return undefined;
-  return { displayRef: talentDisplayRef(employerUserId, seekerUserId), headline: profile[0].headline, location: profile[0].location, skills: firstSkillKeywords(profile[0].skills), experience: profile[0].experience, expertise: profile[0].expertise, unlockedAt: unlocked[0].unlockedAt };
+  const displayRef = await ensureTalentRef(employerUserId, seekerUserId);
+  return { displayRef, headline: profile[0].headline, location: profile[0].location, skills: firstSkillKeywords(profile[0].skills), experience: profile[0].experience, expertise: profile[0].expertise, unlockedAt: unlocked[0].unlockedAt };
+}
+
+export async function requestEmployerTalentIntro(employerUserId: number, seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const unlocked = await db.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
+  if (!unlocked[0]) return { ok: false as const, reason: "locked" as const };
+  try { await db.insert(employerTalentIntroRequests).values({ employerUserId, seekerProfileUserId: seekerUserId }); return { ok: true as const, created: true as const }; }
+  catch (error) { if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { ok: true as const, created: false as const }; throw error; }
 }
 
 export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; isAdmin?: boolean }) {
@@ -1967,6 +1991,6 @@ export async function listEmployerSpendHistory(userId: number, limit = 50) {
     try { const meta = JSON.parse(row.metadata ?? "{}") as { creditsAdded?: number; pack?: string }; creditsAdded = meta.creditsAdded ?? 0; pack = meta.pack ?? null; } catch { /* keep zeros */ }
     return { kind: "credit_purchase" as const, creditsAdded, pack, createdAt: row.createdAt };
   });
-  const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: talentDisplayRef(userId, row.seekerProfileUserId), createdAt: row.createdAt }));
+  const unlockRows = await Promise.all(unlocks.map(async row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: await ensureTalentRef(userId, row.seekerProfileUserId), createdAt: row.createdAt })));
   return [...sponsorRows, ...creditRows, ...unlockRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
 }

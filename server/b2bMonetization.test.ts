@@ -15,8 +15,10 @@ function baseDeps(overrides: Partial<EmployerRouteDeps> = {}): EmployerRouteDeps
     ensureEmployerAccount: async (userId, companyName, billingEmail) => ({ userId, companyName, billingEmail, credits: 0, budgetMonthlyUsdCents: 0 }),
     getEmployerAccount: async () => ({ id: 1, userId: 11, companyName: "Acme", billingEmail: "hiring@acme.com", credits: 20, budgetMonthlyUsdCents: 0 }),
     listAnonymizedSeekerProfiles: async () => [],
+    resolveEmployerTalentRef: async (_employerId, displayRef) => displayRef === "tal_candidate_reference_12345" ? 22 : undefined,
     spendEmployerUnlockCredit: async () => ({ ok: true, remaining: 15 }),
-    getUnlockedProfile: async () => ({ displayRef: "Talent-0022", headline: "Frontend engineer", skills: ["react"] }),
+    getUnlockedProfile: async () => ({ displayRef: "tal_candidate_reference_12345", headline: "Frontend engineer", skills: ["react"] }),
+    requestEmployerTalentIntro: async () => ({ ok: true, created: true }),
     sponsorCompanyOpportunity: async (_userId, opportunityId, input) => ({ opportunityId, tier: input.tier, creditsSpent: SPONSOR_TIERS[input.tier].cost }),
     endCompanyOpportunitySponsorship: async (_adminUserId, opportunityId) => ({ opportunityId, ended: true }),
     listSponsoredCompanyOpportunities: async () => [],
@@ -147,7 +149,7 @@ describe("talent discovery", () => {
       spendEmployerUnlockCredit: async (employerUserId, seekerUserId) => { unlocks.push([employerUserId, seekerUserId]); return { ok: true, remaining: 15 }; },
       createNotification: async (userId, category, title) => { notifications.push({ userId, category, title }); },
     }));
-    const response = await request(app).post("/api/employer/talent/22/unlock");
+    const response = await request(app).post("/api/employer/talent/tal_candidate_reference_12345/unlock");
     expect(response.status).toBe(201);
     expect(response.body).toEqual({ unlocked: true, remaining: 15 });
     expect(unlocks).toEqual([[11, 22]]);
@@ -155,20 +157,58 @@ describe("talent discovery", () => {
     expect(notifications[0]).toMatchObject({ userId: 22, category: "referral", title: "An employer unlocked your profile" });
   });
 
+
+  it("uses only opaque employer-scoped references across unlock and profile URLs", async () => {
+    const seen: Array<[number, string]> = [];
+    const app = buildApp(baseDeps({ resolveEmployerTalentRef: async (employerId, ref) => { seen.push([employerId, ref]); return ref === "tal_candidate_reference_12345" ? 22 : undefined; } }));
+    const unlock = await request(app).post("/api/employer/talent/tal_candidate_reference_12345/unlock");
+    const profile = await request(app).get("/api/employer/talent/tal_candidate_reference_12345");
+    expect(unlock.status).toBe(201); expect(profile.status).toBe(200);
+    expect(seen).toEqual([[11, "tal_candidate_reference_12345"], [11, "tal_candidate_reference_12345"]]);
+    expect(JSON.stringify([unlock.body, profile.body])).not.toMatch(/(?:userId|seekerUserId|\/22(?:\/|$))/);
+  });
+
+  it("returns 404 without spending when a reference is missing, cross-employer, or opted out", async () => {
+    let spends = 0;
+    const app = buildApp(baseDeps({ resolveEmployerTalentRef: async () => undefined, spendEmployerUnlockCredit: async () => { spends += 1; return { ok: true, remaining: 15 }; } }));
+    expect((await request(app).post("/api/employer/talent/tal_other_employer_reference/unlock")).status).toBe(404);
+    expect((await request(app).get("/api/employer/talent/tal_opted_out_reference_123")).status).toBe(404);
+    expect(spends).toBe(0);
+  });
+
+  it("keeps repeated unlock idempotent and sends one notification", async () => {
+    let calls = 0; const notified: number[] = [];
+    const app = buildApp(baseDeps({
+      spendEmployerUnlockCredit: async () => ({ ok: true, remaining: 15, alreadyUnlocked: calls++ > 0 }),
+      createNotification: async userId => { notified.push(userId); },
+    }));
+    expect((await request(app).post("/api/employer/talent/tal_candidate_reference_12345/unlock")).status).toBe(201);
+    expect((await request(app).post("/api/employer/talent/tal_candidate_reference_12345/unlock")).status).toBe(200);
+    expect(notified).toEqual([22]);
+  });
+
+  it("uses a dedicated idempotent intro endpoint rather than unlock purchase reuse", async () => {
+    const notifications: number[] = []; let intros = 0;
+    const app = buildApp(baseDeps({ requestEmployerTalentIntro: async () => ({ ok: true, created: intros++ === 0 }), createNotification: async userId => { notifications.push(userId); } }));
+    expect((await request(app).post("/api/employer/talent/tal_candidate_reference_12345/intro")).status).toBe(201);
+    expect((await request(app).post("/api/employer/talent/tal_candidate_reference_12345/intro")).status).toBe(200);
+    expect(notifications).toEqual([22]);
+  });
+
   it("answers insufficient credits with 402 and the current balance", async () => {
     const app = buildApp(baseDeps({ spendEmployerUnlockCredit: async () => ({ ok: false, reason: "insufficient_credits", credits: 3 }) }));
-    const response = await request(app).post("/api/employer/talent/22/unlock");
+    const response = await request(app).post("/api/employer/talent/tal_candidate_reference_12345/unlock");
     expect(response.status).toBe(402);
     expect(response.body).toEqual({ error: "Not enough unlock credits", credits: 3 });
   });
 
   it("serves the fuller unlocked profile only after an unlock", async () => {
     const app = buildApp(baseDeps());
-    const unlocked = await request(app).get("/api/employer/talent/22");
+    const unlocked = await request(app).get("/api/employer/talent/tal_candidate_reference_12345");
     expect(unlocked.status).toBe(200);
-    expect(unlocked.body.profile.displayRef).toBe("Talent-0022");
+    expect(unlocked.body.profile.displayRef).toBe("tal_candidate_reference_12345");
     const lockedApp = buildApp(baseDeps({ getUnlockedProfile: async () => undefined }));
-    const locked = await request(lockedApp).get("/api/employer/talent/22");
+    const locked = await request(lockedApp).get("/api/employer/talent/tal_candidate_reference_12345");
     expect(locked.status).toBe(402);
     expect(locked.body.error).toContain("Unlock this profile");
   });
@@ -177,7 +217,8 @@ describe("talent discovery", () => {
 describe("sponsored roles", () => {
   it("lets an employer sponsor their own opportunity and reports the tier cost", async () => {
     const sponsorships: Array<[number, { tier: string }]> = [];
-    const app = buildApp(baseDeps({ sponsorCompanyOpportunity: async (userId, opportunityId, input) => { sponsorships.push([opportunityId, input]); return { opportunityId, tier: input.tier, creditsSpent: 10 }; } }));
+    const app = buildApp(baseDeps({ requestEmployerTalentIntro: async () => ({ ok: true, created: true }),
+    sponsorCompanyOpportunity: async (userId, opportunityId, input) => { sponsorships.push([opportunityId, input]); return { opportunityId, tier: input.tier, creditsSpent: 10 }; } }));
     const response = await request(app).post("/api/employer/opportunities/7/sponsor").send({ tier: "featured" });
     expect(response.status).toBe(201);
     expect(response.body.sponsorship).toMatchObject({ tier: "featured", creditsSpent: 10 });
