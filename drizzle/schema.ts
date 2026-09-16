@@ -367,7 +367,6 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "cascade" }),
   ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  clientUploadId: varchar("clientUploadId", { length: 64 }),
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileKey: varchar("fileKey", { length: 1024 }).notNull(),
   mimeType: varchar("mimeType", { length: 120 }).notNull(),
