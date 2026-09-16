@@ -26,6 +26,11 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "profiles", column: "anonymityOptIn", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "companyOpportunities", column: "sponsoredUntil", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "sponsoredTier", definition: "ENUM('standard','featured','spotlight') NULL" },
+  { table: "resumeUploadSessions", column: "clientUploadId", definition: "VARCHAR(64) NULL" },
+  { table: "resumeUploadSessions", column: "finalizationOwner", definition: "VARCHAR(64) NULL" },
+  { table: "resumeUploadSessions", column: "finalizationLeaseUntil", definition: "TIMESTAMP NULL" },
+  { table: "resumeUploadSessions", column: "permanentStorageKey", definition: "VARCHAR(1024) NULL" },
+  { table: "referralAttachments", column: "uploadSessionId", definition: "VARCHAR(64) NULL" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
