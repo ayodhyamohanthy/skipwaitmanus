@@ -75,6 +75,12 @@ describe("employer account routes", () => {
     expect(activities).toContain("employer.account_created");
   });
 
+  it("rejects a typed billing identity that differs from verified sign-in email", async () => {
+    const app = buildApp(baseDeps());
+    const response = await request(app).post("/api/employer/account").send({ companyName: "Acme", billingEmail: "attacker@other.test" });
+    expect(response.status).toBe(400);
+  });
+
   it("returns the existing account on GET", async () => {
     const app = buildApp(baseDeps());
     const response = await request(app).get("/api/employer/account");
@@ -115,7 +121,7 @@ describe("unlock credit purchases", () => {
 });
 
 describe("talent discovery", () => {
-  const anonymizedRow = { userId: 22, displayRef: "Talent-0022", headline: "Frontend engineer", location: "Bengaluru", skills: ["react", "typescript"], isUnlocked: false };
+  const anonymizedRow = { displayRef: "tal_opaque_test", headline: "Frontend engineer", location: "Bengaluru", skills: ["react", "typescript"], isUnlocked: false };
 
   it("returns the anonymized list and never leaks name, email, or resume fields", async () => {
     const app = buildApp(baseDeps({ listAnonymizedSeekerProfiles: async () => [anonymizedRow] }));
@@ -123,8 +129,8 @@ describe("talent discovery", () => {
     expect(response.status).toBe(200);
     expect(response.body.talent).toHaveLength(1);
     const row = response.body.talent[0];
-    for (const forbidden of ["name", "email", "resumeUrl", "phone", "experience", "bio"]) expect(row).not.toHaveProperty(forbidden);
-    expect(row).toMatchObject({ displayRef: "Talent-0022", headline: "Frontend engineer" });
+    for (const forbidden of ["userId", "name", "email", "resumeUrl", "phone", "experience", "bio"]) expect(row).not.toHaveProperty(forbidden);
+    expect(row).toMatchObject({ displayRef: "tal_opaque_test", headline: "Frontend engineer" });
   });
 
   it("passes the search filters through to the list function", async () => {

@@ -73,8 +73,11 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
     try {
       const gate = await requireIdentity(req);
       if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
-      const companyName = typeof req.body?.companyName === "string" ? req.body.companyName : "";
-      const billingEmail = typeof req.body?.billingEmail === "string" && req.body.billingEmail.includes("@") ? req.body.billingEmail : gate.identity.primaryEmail?.emailAddress ?? "";
+      const companyName = typeof req.body?.companyName === "string" ? req.body.companyName.trim() : "";
+      const verifiedEmail = gate.identity.primaryEmail?.emailAddress?.trim().toLowerCase() ?? "";
+      const billingEmail = typeof req.body?.billingEmail === "string" ? req.body.billingEmail.trim().toLowerCase() : verifiedEmail;
+      if (!verifiedEmail || billingEmail !== verifiedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(billingEmail)) return res.status(400).json({ error: "Use your verified sign-in email for employer review" });
+      if (!companyName || companyName.length < 2) return res.status(400).json({ error: "Add your company name for employer review" });
       const account = await deps.ensureEmployerAccount(gate.identity.account.id, companyName, billingEmail);
       record({ actorUserId: gate.identity.account.id, action: "employer.account_created", outcome: "success", resourceType: "employer_account" });
       res.status(201).json({ account });

@@ -83,6 +83,9 @@ export const employerAccounts = mysqlTable("employerAccounts", {
   billingEmail: varchar("billingEmail", { length: 320 }).notNull(),
   credits: int("credits").default(0).notNull(),
   budgetMonthlyUsdCents: int("budgetMonthlyUsdCents").default(0).notNull(),
+  approvalStatus: mysqlEnum("approvalStatus", ["pending", "approved", "rejected"]).default("pending").notNull(),
+  approvedAt: timestamp("approvedAt"),
+  approvedByUserId: int("approvedByUserId").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employer_accounts_user_unique").on(table.userId)]);

@@ -1723,7 +1723,7 @@ export const UNLOCK_CREDIT_PACKS = {
 } as const;
 export type UnlockCreditPackId = keyof typeof UNLOCK_CREDIT_PACKS;
 
-const talentDisplayRef = (userId: number) => `Talent-${String(userId).padStart(4, "0")}`;
+const talentDisplayRef = (employerUserId: number, userId: number) => `tal_${createHash("sha256").update(`${ENV.cookieSecret}:talent:${employerUserId}:${userId}`).digest("hex").slice(0, 24)}`;
 const firstSkillKeywords = (skills: string | null) => (skills ?? "").split(/[,;|]/).map(skill => skill.trim()).filter(Boolean).slice(0, 5);
 
 export async function ensureEmployerAccount(userId: number, companyName: string, billingEmail: string) {
@@ -1734,9 +1734,10 @@ export async function ensureEmployerAccount(userId: number, companyName: string,
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1);
   if (existing[0]) return existing[0];
-  await db.insert(profiles).values({ userId, accountType: "employer", company: name, isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "employer", company: name } });
+  // Employer access is additive and review-gated. Never overwrite the person's
+  // seeker/referrer profile role when they request employer capability.
   try {
-    await db.insert(employerAccounts).values({ userId, companyName: name, billingEmail: email });
+    await db.insert(employerAccounts).values({ userId, companyName: name, billingEmail: email, approvalStatus: "pending" });
   } catch (error) {
     if ((error as { code?: string }).code !== "ER_DUP_ENTRY") throw error;
   }
@@ -1748,11 +1749,12 @@ export async function getEmployerAccount(userId: number) {
   return (await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1))[0];
 }
 
-// Self-serve = employer role. ensureEmployerAccount flips the profile to
-// accountType "employer" (no work-email verification required per PRD).
+// Talent access is an additive, approved capability. A typed company or
+// billing address never grants it and existing seeker/referrer roles survive.
 export async function isEmployer(userId: number) {
-  const profile = await getProfileByUserId(userId);
-  return profile?.accountType === "employer";
+  const db = await getDb(); if (!db) return false;
+  const row = await db.select({ status: employerAccounts.approvalStatus }).from(employerAccounts).where(and(eq(employerAccounts.userId, userId), eq(employerAccounts.approvalStatus, "approved"))).limit(1);
+  return row[0]?.status === "approved";
 }
 
 export async function spendEmployerUnlockCredit(employerUserId: number, seekerUserId: number) {
@@ -1772,7 +1774,7 @@ export async function spendEmployerUnlockCredit(employerUserId: number, seekerUs
 
 // Anonymized talent discovery. HARD invariant: never selects name, email,
 // resumeUrl, phone, or any users column beyond the join key.
-export type AnonymizedSeekerProfile = { userId: number; displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
+export type AnonymizedSeekerProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
 
 export async function listAnonymizedSeekerProfiles(employerUserId: number, input: { query?: string; location?: string } = {}) {
   const db = await getDb(); if (!db) return [] as AnonymizedSeekerProfile[];
@@ -1783,7 +1785,7 @@ export async function listAnonymizedSeekerProfiles(employerUserId: number, input
   return rows
     .filter(row => (!term || `${row.headline ?? ""} ${row.skills ?? ""} ${row.experience ?? ""}`.toLowerCase().includes(term)) && (!locationTerm || (row.location ?? "").toLowerCase().includes(locationTerm)))
     .slice(0, 60)
-    .map(row => ({ userId: row.userId, displayRef: talentDisplayRef(row.userId), headline: row.headline, location: row.location, skills: firstSkillKeywords(row.skills), isUnlocked: unlocked.has(row.userId) }));
+    .map(row => ({ displayRef: talentDisplayRef(employerUserId, row.userId), headline: row.headline, location: row.location, skills: firstSkillKeywords(row.skills), isUnlocked: unlocked.has(row.userId) }));
 }
 
 // Fuller profile for an unlocked pair — still never email, name, or resume.
@@ -1793,7 +1795,7 @@ export async function getUnlockedProfile(employerUserId: number, seekerUserId: n
   if (!unlocked[0]) return undefined;
   const profile = await db.select({ headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience, expertise: profiles.expertise }).from(profiles).where(and(eq(profiles.userId, seekerUserId), eq(profiles.accountType, "job_seeker"))).limit(1);
   if (!profile[0]) return undefined;
-  return { displayRef: talentDisplayRef(seekerUserId), headline: profile[0].headline, location: profile[0].location, skills: firstSkillKeywords(profile[0].skills), experience: profile[0].experience, expertise: profile[0].expertise, unlockedAt: unlocked[0].unlockedAt };
+  return { displayRef: talentDisplayRef(employerUserId, seekerUserId), headline: profile[0].headline, location: profile[0].location, skills: firstSkillKeywords(profile[0].skills), experience: profile[0].experience, expertise: profile[0].expertise, unlockedAt: unlocked[0].unlockedAt };
 }
 
 export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; isAdmin?: boolean }) {
@@ -1965,6 +1967,6 @@ export async function listEmployerSpendHistory(userId: number, limit = 50) {
     try { const meta = JSON.parse(row.metadata ?? "{}") as { creditsAdded?: number; pack?: string }; creditsAdded = meta.creditsAdded ?? 0; pack = meta.pack ?? null; } catch { /* keep zeros */ }
     return { kind: "credit_purchase" as const, creditsAdded, pack, createdAt: row.createdAt };
   });
-  const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: talentDisplayRef(row.seekerProfileUserId), createdAt: row.createdAt }));
+  const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: talentDisplayRef(userId, row.seekerProfileUserId), createdAt: row.createdAt }));
   return [...sponsorRows, ...creditRows, ...unlockRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
 }
