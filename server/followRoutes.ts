@@ -1,5 +1,5 @@
 import express, { type Express, type Request } from "express";
-import { followState, followUser, listFollowers, listFollowing, unfollowUser, type FollowGraphEntry, type FollowSummary } from "./db";
+import { followState, followUser, listFollowers, listFollowing, unfollowUser, type FollowSummary } from "./db";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -61,31 +61,36 @@ export function registerFollowRoutes(app: Express, deps: FollowRouteDeps) {
   app.get("/api/users/:userId/follow-state", async (req, res) => {
     const targetUserId = parseUserId(req.params.userId);
     try {
-      if (!targetUserId) return res.status(400).json({ error: "Invalid member" });
       const identity = await deps.resolveIdentity(req).catch(() => undefined);
-      const state = await stateFor(identity?.account.id, targetUserId);
+      if (!identity) return res.status(401).json({ error: "Sign in to view follow info" });
+      if (!targetUserId || !(await exists(targetUserId))) return res.status(404).json({ error: "This member is not available" });
+      const state = await stateFor(identity.account.id, targetUserId);
       res.set("Cache-Control", "private, no-store");
-      res.json({ ...state, viewerSignedIn: Boolean(identity) });
+      res.json({ ...state, viewerSignedIn: true });
     } catch { res.status(500).json({ error: "We could not load follow info" }); }
   });
 
   app.get("/api/users/:userId/followers", async (req, res) => {
     const targetUserId = parseUserId(req.params.userId);
     try {
-      if (!targetUserId) return res.status(400).json({ error: "Invalid member" });
-      const followers: FollowGraphEntry[] = await followersOf(targetUserId);
+      const identity = await deps.resolveIdentity(req).catch(() => undefined);
+      if (!identity) return res.status(401).json({ error: "Sign in to view followers" });
+      if (!targetUserId || !(await exists(targetUserId))) return res.status(404).json({ error: "This member is not available" });
+      const followers = await followersOf(targetUserId);
       res.set("Cache-Control", "private, no-store");
-      res.json({ followers });
+      res.json({ followers: followers.map(() => ({ label: "Member" })) });
     } catch { res.status(500).json({ error: "We could not load followers" }); }
   });
 
   app.get("/api/users/:userId/following", async (req, res) => {
     const targetUserId = parseUserId(req.params.userId);
     try {
-      if (!targetUserId) return res.status(400).json({ error: "Invalid member" });
-      const following: FollowGraphEntry[] = await followingOf(targetUserId);
+      const identity = await deps.resolveIdentity(req).catch(() => undefined);
+      if (!identity) return res.status(401).json({ error: "Sign in to view following" });
+      if (!targetUserId || !(await exists(targetUserId))) return res.status(404).json({ error: "This member is not available" });
+      const following = await followingOf(targetUserId);
       res.set("Cache-Control", "private, no-store");
-      res.json({ following });
+      res.json({ following: following.map(() => ({ label: "Member" })) });
     } catch { res.status(500).json({ error: "We could not load following" }); }
   });
 }

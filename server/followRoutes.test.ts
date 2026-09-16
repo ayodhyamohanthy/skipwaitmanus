@@ -58,12 +58,19 @@ describe("follow graph (X-style)", () => {
 
   it("serves follower and following lists with anonymous-safe labels", async () => {
     const app = buildApp({ follows: [[11, 22], [33, 22]] });
-    const followers = await request(app).get("/api/users/22/followers");
+    const followers = await request(app).get("/api/users/22/followers").set("x-test-user", "11");
     expect(followers.status).toBe(200);
     expect(followers.body.followers).toHaveLength(2);
     expect(JSON.stringify(followers.body)).not.toMatch(/@/);
-    expect(followers.body.followers[0].label).toBe("Member");
-    const following = await request(app).get("/api/users/11/following");
+    expect(followers.body.followers[0]).toEqual({ label: "Member" });
+    expect(JSON.stringify(followers.body)).not.toMatch(/userId|followedAt|company/i);
+    const following = await request(app).get("/api/users/11/following").set("x-test-user", "22");
     expect(following.body.following).toHaveLength(1);
   });
+  it("requires auth for graph reads and makes missing IDs indistinguishable", async () => {
+    const app = buildApp({ follows: [[11, 22]] });
+    for (const path of ["/api/users/22/follow-state", "/api/users/22/followers", "/api/users/22/following"]) expect((await request(app).get(path)).status).toBe(401);
+    for (const path of ["/api/users/nope/follow-state", "/api/users/99/follow-state"]) expect((await request(app).get(path).set("x-test-user", "11")).status).toBe(404);
+  });
+
 });
