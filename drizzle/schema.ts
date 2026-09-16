@@ -367,6 +367,7 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "cascade" }),
   ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  clientUploadId: varchar("clientUploadId", { length: 64 }),
   fileName: varchar("fileName", { length: 255 }).notNull(),
   fileKey: varchar("fileKey", { length: 1024 }).notNull(),
   mimeType: varchar("mimeType", { length: 120 }).notNull(),
@@ -378,6 +379,7 @@ export const referralAttachments = mysqlTable("referralAttachments", {
 export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   id: varchar("id", { length: 64 }).primaryKey(),
   ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  clientUploadId: varchar("clientUploadId", { length: 64 }),
   fileName: varchar("fileName", { length: 255 }).notNull(),
   mimeType: varchar("mimeType", { length: 120 }).notNull(),
   expectedSize: int("expectedSize").notNull(),
@@ -390,7 +392,7 @@ export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   attachmentId: int("attachmentId").references(() => referralAttachments.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("resume_upload_sessions_owner_status_idx").on(table.ownerId, table.status, table.createdAt)]);
+}, table => [index("resume_upload_sessions_owner_status_idx").on(table.ownerId, table.status, table.createdAt), uniqueIndex("resume_upload_sessions_owner_client_unique").on(table.ownerId, table.clientUploadId)]);
 
 export const resumeUploadChunks = mysqlTable("resumeUploadChunks", {
   id: int("id").autoincrement().primaryKey(),

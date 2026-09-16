@@ -142,8 +142,10 @@ export default function ReferralRequest() {
       const uploadOne = (file: File) => {
         const fingerprint = `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
         const existing = uploadPromisesRef.current.get(fingerprint); if (existing) return existing;
-        const clientUploadId = uploadIdsRef.current.get(fingerprint) || crypto.randomUUID(); uploadIdsRef.current.set(fingerprint, clientUploadId);
         const promise = (async () => {
+          const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()))).map(byte => byte.toString(16).padStart(2, "0")).join("");
+          const clientUploadId = `${digest.slice(0,8)}-${digest.slice(8,12)}-4${digest.slice(13,16)}-8${digest.slice(17,20)}-${digest.slice(20,32)}`;
+          uploadIdsRef.current.set(fingerprint, clientUploadId);
           const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
           const startResponse = await uploadFetch("/api/documents/uploads", { method: "POST", headers, credentials: "include", body: JSON.stringify({ clientUploadId, fileName: file.name, mimeType, fileSize: file.size }) }, "Your resume upload took too long to start. Check your connection and try again.");
           const start = await readApiJson<{ sessionId?: string; chunkBytes?: number; error?: string }>(startResponse, "We could not prepare your private resume upload. Please try again."); if (!startResponse.ok || !start.sessionId || !start.chunkBytes) throw new Error(start.error || "We could not prepare your private resume upload. Please try again.");

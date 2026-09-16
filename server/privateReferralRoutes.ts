@@ -34,6 +34,7 @@ export type PrivateReferralRouteDeps = {
   getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "finalizing" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
   appendResumeUploadChunk?: (ownerId: number, input: { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number }) => Promise<{ nextChunkIndex: number; receivedSize: number; alreadyStored: boolean }>;
   claimResumeUploadFinalization?: (ownerId: number, sessionId: string, finalizationOwner: string) => Promise<{ outcome: "missing" | "claimed" | "finalizing" | "completed"; session?: { attachmentId: number | null } }>;
+  clearUnattachedResumeUploads?: (ownerId: number) => Promise<{ cleared: number; fileKeys: string[] }>;
   completeResumeUploadSession?: (ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
@@ -319,6 +320,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.createResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
       const safeClientUploadId = typeof clientUploadId === "string" && /^[a-f0-9-]{20,64}$/i.test(clientUploadId) ? clientUploadId : undefined;
       const session = await deps.createResumeUploadSession(identity.account.id, { sessionId: safeClientUploadId, fileName: deps.sanitizeDocumentName(fileName), mimeType, expectedSize: safeFileSize });
+      record({ actorUserId: identity.account.id, action: "document.upload_started", outcome: "success", resourceType: "upload_session", resourceId: session.id, metadata: { clientUploadId: safeClientUploadId || null, fileName: deps.sanitizeDocumentName(fileName) } });
       res.set("Cache-Control", "private, no-store"); res.status(201).json({ sessionId: session.id, chunkBytes: 48 * 1024 });
     } catch { res.status(500).json({ error: "We could not prepare your private resume upload. Please try again." }); }
   });
@@ -366,6 +368,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const attachment = await deps.completeResumeUploadSession(identity.account.id, session.id, finalizationOwner, { fileName: validated.fileName, fileKey: stored.key, mimeType: validated.mimeType, fileSize: buffer.length });
       res.status(201).json({ ...attachment, url: `/api/documents/${attachment.id}` });
     } catch (error) { const message = error instanceof Error ? error.message : "We could not finish your resume upload"; res.status(/incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : /still finishing|lease changed/i.test(message) ? 409 : 500).json({ error: message }); }
+  });
+  app.delete("/api/documents/draft", async (req, res) => {
+    try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to clear your private draft" }); if (!deps.clearUnattachedResumeUploads) return res.status(503).json({ error: "Draft cleanup is temporarily unavailable" }); const result = await deps.clearUnattachedResumeUploads(identity.account.id); record({ actorUserId: identity.account.id, action: "document.draft_cleared", outcome: "success", resourceType: "attachment", metadata: { cleared: result.cleared } }); res.json({ cleared: result.cleared }); }
+    catch { res.status(500).json({ error: "We could not clear your private draft" }); }
   });
   app.get("/api/documents/:attachmentId", async (req, res) => {
     try {

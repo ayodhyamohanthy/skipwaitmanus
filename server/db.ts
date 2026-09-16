@@ -85,9 +85,10 @@ export async function isUserSuspended(userId: number) {
 
 export async function createResumeUploadSession(ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const id = input.sessionId || randomUUID();
-  await db.insert(resumeUploadSessions).values({ id, ownerId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize }).onDuplicateKeyUpdate({ set: { id } });
-  const existing = await getResumeUploadSession(ownerId, id);
+  const id = randomUUID(); const clientUploadId = input.sessionId;
+  await db.insert(resumeUploadSessions).values({ id, ownerId, clientUploadId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize }).onDuplicateKeyUpdate({ set: { clientUploadId } });
+  const selected = clientUploadId ? await db.select({ id: resumeUploadSessions.id }).from(resumeUploadSessions).where(and(eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.clientUploadId, clientUploadId))).limit(1) : [{ id }];
+  const existing = await getResumeUploadSession(ownerId, selected[0]?.id || id);
   if (!existing || existing.fileName !== input.fileName || existing.mimeType !== input.mimeType || existing.expectedSize !== input.expectedSize) throw new Error("Upload identity is already in use");
   return existing;
 }
@@ -139,6 +140,16 @@ export async function completeResumeUploadSession(ownerId: number, sessionId: st
     }
     await tx.delete(resumeUploadChunks).where(eq(resumeUploadChunks.sessionId, sessionId));
     return attachment;
+  });
+}
+
+export async function clearUnattachedResumeUploads(ownerId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const attachments = await tx.select({ id: referralAttachments.id, fileKey: referralAttachments.fileKey }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
+    if (attachments.length) await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
+    await tx.delete(resumeUploadSessions).where(eq(resumeUploadSessions.ownerId, ownerId));
+    return { cleared: attachments.length, fileKeys: attachments.map(item => item.fileKey) };
   });
 }
 
