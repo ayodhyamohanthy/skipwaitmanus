@@ -9,5 +9,9 @@ export function LogoMark(_: { dark?: boolean }) {
 }
 
 export function Brand({ dark = false }: { dark?: boolean }) {
-  return <Link href="/" className="inline-flex items-center gap-2.5 group" aria-label="skipwait.me home"><span className="transition-transform group-hover:-rotate-3"><PublicBrandMark dark={dark} /></span><span className={`text-[19px] font-semibold tracking-[-0.045em] ${dark ? "text-white" : "text-slate-950"}`}>skipwait<span className="text-primary">.me</span></span></Link>;
+  // The wordmark follows the supplied logo: "skip" in ink, "wait" in the brand
+  // green, no ".me" suffix. The green is `--color-brand`, which holds the exact
+  // sampled logo green (#548A4E) rather than the slightly deeper `--color-primary`
+  // used for interactive fills, where white text needs 4.5:1.
+  return <Link href="/" className="inline-flex items-center gap-2.5 group" aria-label="skipwait.me home"><span className="transition-transform group-hover:-rotate-3"><PublicBrandMark dark={dark} /></span><span className={`text-[19px] font-semibold tracking-[-0.045em] ${dark ? "text-white" : "text-slate-950"}`}>skip<span className="text-brand">wait</span></span></Link>;
 }

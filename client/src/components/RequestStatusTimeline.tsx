@@ -11,7 +11,10 @@ import type { ReferralStatus } from "@shared/referral";
  */
 export type TimelineEntry = { label: string; date: string | null; tone: "green" | "blue" | "red" | "slate" | "amber"; state: "done" | "waiting" };
 
-const toneColor: Record<TimelineEntry["tone"], string> = { green: "#15803d", blue: "#0B57D0", red: "#b91c1c", slate: "#57534e", amber: "#b45309" };
+// Theme tokens, not literals: the previous values were hardcoded (including
+// #0B57D0, the Google blue the brand dropped) and could not invert, so the
+// timeline lost contrast in dark mode.
+const toneColor: Record<TimelineEntry["tone"], string> = { green: "var(--color-success)", blue: "var(--color-primary)", red: "var(--color-danger)", slate: "var(--color-slate-500)", amber: "var(--color-warning)" };
 
 function formatStamp(value: string | null) {
   if (!value) return null;

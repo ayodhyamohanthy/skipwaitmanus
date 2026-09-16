@@ -5,8 +5,9 @@
    ----------------------------------------------------------------------------
    Read `.impeccable.md` before changing anything here.
 
-   The brand is **warm editorial, quietly confident**: terracotta on warm paper,
-   deep warm-brown ink, deep pine as the cool counterpoint for trust states.
+   The brand is **warm editorial, quietly confident**: the logo's forest green
+   (#548A4E) on warm paper, deep warm ink, and a deeper pine green for trust and
+   verified states.
 
    This file is the single source of truth for colour and type. The previous
    version of this file layered a second palette over the first with `!important`
@@ -72,12 +73,20 @@
   --color-stone-950: #1a1611;
 
   /* --- Brand --------------------------------------------------------------
-     Terracotta. Distinct from the Google blue this app used to wear. */
-  --color-primary: #c0562f;
-  --color-primary-hover: #a5451f;
-  --color-primary-tint: #f7e8de;
-  --color-primary-tint-strong: #efd6c6;
-  --color-primary-ink: #8e3a1a;
+     The brand green, sampled from the supplied wordmark (skip in ink, wait in
+     green): #548A4E at hue 114. Two greens, deliberately:
+
+       --color-brand   the exact logo green — wordmark, logo tile, large marks.
+       --color-primary a slightly deepened green for interactive fills and text,
+                       because white on #548A4E is only 4.09:1, and #548A4E as
+                       text on paper is 3.76:1 — both below AA. #457A3F clears
+                       both (5.10:1 with white text, 4.70:1 as text on paper). */
+  --color-brand: #548a4e;
+  --color-primary: #457a3f;
+  --color-primary-hover: #38632f;
+  --color-primary-tint: #e7efe4;
+  --color-primary-tint-strong: #cfe0c9;
+  --color-primary-ink: #2f5429;
   --color-on-primary: #ffffff;
 
   /* Deep pine — the cool counterpoint. Reserved for trust and verified states,
@@ -110,15 +119,15 @@
      VerifiedMemberStories, TokenTopUp, SectionHeading, MetricCard, AvatarMark,
      demoData). Remapped rather than deleted so those files stay on-brand if they
      are ever revived. */
-  --color-violet-50: #f7e8de;
-  --color-violet-100: #f7e8de;
-  --color-violet-200: #efd6c6;
-  --color-violet-300: #e8bfa6;
-  --color-violet-500: #c0562f;
-  --color-violet-600: #c0562f;
-  --color-violet-700: #a5451f;
-  --color-violet-900: #8e3a1a;
-  --color-violet-950: #7a3116;
+  --color-violet-50: #e7efe4;
+  --color-violet-100: #e7efe4;
+  --color-violet-200: #cfe0c9;
+  --color-violet-300: #b3cdab;
+  --color-violet-500: #457a3f;
+  --color-violet-600: #457a3f;
+  --color-violet-700: #38632f;
+  --color-violet-900: #2f5429;
+  --color-violet-950: #26451f;
 }
 
 @layer base {
@@ -216,13 +225,15 @@
     --color-stone-900: #ede4d8;
     --color-stone-950: #f7f1e7;
 
-    /* Lifted terracotta so it holds contrast on dark paper, with dark ink on it
-       rather than white — white on #e28054 is only ~2.6:1 and fails AA. */
-    --color-primary: #e28054;
-    --color-primary-hover: #ee9068;
-    --color-primary-tint: #3a241a;
-    --color-primary-tint-strong: #4a2e20;
-    --color-primary-ink: #f0b498;
+    /* Lifted greens so they hold contrast on dark paper. `--color-on-primary` is
+       dark ink rather than white: white on #7fb473 is only ~2.3:1 and would fail
+       AA. */
+    --color-brand: #6fa863;
+    --color-primary: #7fb473;
+    --color-primary-hover: #8fc384;
+    --color-primary-tint: #1f2b1c;
+    --color-primary-tint-strong: #2b3b27;
+    --color-primary-ink: #b6d5ac;
     --color-on-primary: #1a120c;
 
     --color-pine: #7fbdaf;
@@ -242,15 +253,15 @@
     --color-surface-2: #241e19;
     --color-border: #332b23;
 
-    --color-violet-50: #3a241a;
-    --color-violet-100: #3a241a;
-    --color-violet-200: #4a2e20;
-    --color-violet-300: #6b4229;
-    --color-violet-500: #e28054;
-    --color-violet-600: #e28054;
-    --color-violet-700: #ee9068;
-    --color-violet-900: #f0b498;
-    --color-violet-950: #f5c9b2;
+    --color-violet-50: #1f2b1c;
+    --color-violet-100: #1f2b1c;
+    --color-violet-200: #2b3b27;
+    --color-violet-300: #3d5236;
+    --color-violet-500: #7fb473;
+    --color-violet-600: #7fb473;
+    --color-violet-700: #8fc384;
+    --color-violet-900: #b6d5ac;
+    --color-violet-950: #cfe4c8;
 
     color-scheme: dark;
   }

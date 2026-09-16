@@ -1,15 +1,19 @@
 import { referralStatusLabels, type ReferralStatus } from "@shared/referral";
 
 // Design 1.1 status vocabulary: one badge per item, dot + text label (never
-// color-only), identical mapping on every surface. bg is a 10% alpha tint and
-// the text color passes 4.5:1 on white per the accessibility baseline.
+// color-only), identical mapping on every surface.
+//
+// These reference theme tokens rather than literals. The previous values were
+// hardcoded (including #0B57D0, the Google blue the brand dropped) with 10% alpha
+// tints that could not invert, so in dark mode the tint stayed light while the
+// text stayed dark and contrast collapsed to ~1.5:1.
 export type StatusTone = "amber" | "blue" | "green" | "red" | "slate";
 export const statusToneColors: Record<StatusTone, { bg: string; text: string; dot: string }> = {
-  amber: { bg: "rgba(180,83,9,.1)", text: "#b45309", dot: "#b45309" },
-  blue: { bg: "rgba(11,87,208,.1)", text: "#0B57D0", dot: "#0B57D0" },
-  green: { bg: "rgba(21,128,61,.1)", text: "#15803d", dot: "#15803d" },
-  red: { bg: "rgba(185,28,28,.1)", text: "#b91c1c", dot: "#b91c1c" },
-  slate: { bg: "rgba(28,27,25,.08)", text: "#57534e", dot: "#78716c" },
+  amber: { bg: "var(--color-warning-tint)", text: "var(--color-warning)", dot: "var(--color-warning)" },
+  blue: { bg: "var(--color-primary-tint)", text: "var(--color-primary-ink)", dot: "var(--color-primary)" },
+  green: { bg: "var(--color-success-tint)", text: "var(--color-success)", dot: "var(--color-success)" },
+  red: { bg: "var(--color-danger-tint)", text: "var(--color-danger)", dot: "var(--color-danger)" },
+  slate: { bg: "var(--color-slate-100)", text: "var(--color-slate-600)", dot: "var(--color-slate-500)" },
 };
 export const referralStatusTones: Record<ReferralStatus, StatusTone> = { pending: "amber", approved: "green", declined: "red", intro_made: "blue", interview: "blue", offer: "green", closed: "slate", withdrawn: "slate" };
 export type StatusBadgeLabel = { label: string; tone: StatusTone };

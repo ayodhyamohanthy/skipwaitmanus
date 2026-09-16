@@ -44,7 +44,10 @@ async function openRazorpayCheckout(input: { orderId: string; amount: number; ke
         name: "skipwait.me",
         description: input.description,
         order_id: input.orderId,
-        theme: { color: "#0B57D0" },
+        // Razorpay renders its own modal, so this is the only place the brand
+        // colour reaches it. Uses the exact logo green, not the AA-tuned
+        // interactive green, because Razorpay paints the accents on white.
+        theme: { color: "#548A4E" },
         handler: () => settle("paid"),
         modal: { ondismiss: () => settle("dismissed") },
       });
