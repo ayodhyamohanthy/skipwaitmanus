@@ -33,9 +33,9 @@ describe("private referral HTTP routes", () => {
 
     const upload = await request(app).post("/api/documents").set("x-test-user", "seeker").send({ fileName: "resume.pdf", mimeType: "application/pdf", dataUrl: "data:application/pdf;base64,cGRm" });
     expect(upload.status).toBe(201); expect(upload.body.url).toBe("/api/documents/77");
-    const malformed = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "acme product designer", attachmentIds: [77] });
+    const malformed = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "acme product designer", attachmentIds: [77] });
     expect(malformed.status).toBe(400); expect(malformed.body.error).toMatch(/complete job link/i);
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", compensation: "₹12–18 LPA" });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [77], candidateMessage: "I led a measurable product design launch.", compensation: "₹12–18 LPA" });
     expect(created.status).toBe(201); expect(created.body.companyDomain).toBe("acme.com"); expect(created.body.lifetimeRequestCount).toBe(3);
     expect(submittedCandidateMessage).toBe("I led a measurable product design launch.");
     expect(submittedCompensation).toBe("₹12–18 LPA");
@@ -92,7 +92,7 @@ describe("private referral HTTP routes", () => {
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }), recordActivity: async entry => { activity.push(entry); },
     });
 
-    const response = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
+    const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ requestId: 880, notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2 });
     expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: true } }));
@@ -221,14 +221,14 @@ describe("private referral HTTP routes", () => {
     const publicLink = await request(app).get(`/api/referrer-fast-track/${"a".repeat(32)}`);
     expect(publicLink.status).toBe(200); expect(publicLink.body).toEqual({ link: { companyDomain: "acme-corp.com", isActive: true } }); expect(JSON.stringify(publicLink.body)).not.toContain("referrerId");
     expect((await request(app).get("/api/referrer-fast-track/inactive-link")).status).toBe(404);
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCode: "a".repeat(32) });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCode: "a".repeat(32) });
     expect(created.status).toBe(201); expect(created.body).toMatchObject({ requestId: 802, companyDomain: "acme-corp.com", fastTrack: true }); expect(receivedFastTrackCode).toBe("a".repeat(32)); expect(JSON.stringify(created.body)).not.toContain("workos-acme");
     const vanity = await request(app).get("/api/referrer-fast-track/vanity/acme-corp/ref-a1b2c3d4e5");
     expect(vanity.status).toBe(200); expect(vanity.body).toEqual({ link: { companyDomain: "acme-corp.com", isActive: true } }); expect(JSON.stringify(vanity.body)).not.toContain("referrerId");
     expect((await request(app).get("/api/referrer-fast-track/vanity/google/ref-a1b2c3d4e5")).status).toBe(404);
-    const vanityCreated = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp", fastTrackAlias: "ref-a1b2c3d4e5" });
+    const vanityCreated = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp", fastTrackAlias: "ref-a1b2c3d4e5" });
     expect(vanityCreated.status).toBe(201); expect(receivedVanity).toEqual({ companySlug: "acme-corp", alias: "ref-a1b2c3d4e5" });
-    expect((await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp" })).status).toBe(400);
+    expect((await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme-corp.com/jobs/design", attachmentIds: [1], fastTrackCompanySlug: "acme-corp" })).status).toBe(400);
     expect(activity).toContainEqual(expect.objectContaining({ action: "referrer_fast_track.link_accessed", companyDomain: "acme-corp.com" }));
   });
 
@@ -241,7 +241,7 @@ describe("private referral HTTP routes", () => {
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async (_userId, input) => { receivedTargetRoleUrl = input.targetRoleUrl; return { requestId: 1, companyDomain: "chatfin.ai", notifiedEmployees: 0 }; }, listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
       listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
     });
-    const created = await request(app).post("/api/company-referrals").send({ targetRoleUrl: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile#details", attachmentIds: [1] });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").send({ targetRoleUrl: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile#details", attachmentIds: [1] });
     expect(created.status).toBe(201); expect(receivedTargetRoleUrl).toBe("https://wellfound.com/jobs/3971835-account-executive");
   });
 

@@ -45,7 +45,7 @@ export type PrivateReferralRouteDeps = {
   getOrCreateReferralShareCard?: (userId: number, requestId: number) => Promise<{ shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean }>;
   revokeReferralShareCard?: (userId: number, requestId: number) => Promise<{ revoked: boolean }>;
   getPublicReferralShareCard?: (shareToken: string) => Promise<{ companyDomain: string; status: ReferralStatus; inviteCode?: string | null } | undefined>;
-  createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; fastTrack?: boolean }>;
+  createCompanyReferralRequest: (userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) => Promise<{ requestId: number; companyDomain: string; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; fastTrack?: boolean; replayed?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
   getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -90,8 +90,10 @@ export type PrivateReferralRouteDeps = {
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
   publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date }) => Promise<unknown>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
+  listMyUploadStarts?: (userId: number, since: Date) => Promise<Array<{ sessionId: string | null; clientUploadId: string | null; fileName: string | null; createdAt: Date }>>;
   listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
   getReferralFlowHealth?: () => Promise<unknown>;
+  getCreditLedgerAudit?: (limit?: number) => Promise<unknown>;
   getDomainIntegrity?: (limit?: number) => Promise<unknown>;
   findUsersForTokenRecovery?: (query: string) => Promise<unknown[]>;
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
@@ -311,6 +313,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector })));
     } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); res.status(/smaller than 10 MB/i.test(message) ? 413 : isValidationError ? 400 : 500).json({ error: message }); }
   });
+  app.get("/api/documents/debug/upload-starts", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to inspect your upload attempts" }); const starts = await deps.listMyUploadStarts?.(identity.account.id, new Date(Date.now() - 15 * 60 * 1000)) ?? []; res.set("Cache-Control", "private, no-store"); res.json({ starts }); } catch { res.status(500).json({ error: "Upload diagnostics are unavailable" }); } });
   app.post("/api/documents/uploads", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
@@ -472,6 +475,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
       const { targetRoleUrl, attachmentIds, candidateMessage, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias } = req.body as { targetRoleUrl?: string; attachmentIds?: number[]; candidateMessage?: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
+      const idempotencyKey = typeof req.get("Idempotency-Key") === "string" ? req.get("Idempotency-Key")!.trim() : "";
+      if (!/^[\x21-\x7E]{16,64}$/.test(idempotencyKey)) return res.status(428).json({ error: "A valid Idempotency-Key header is required" });
       if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
       if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
       const personalPitch = typeof candidateMessage === "string" && candidateMessage.trim() ? candidateMessage.trim().slice(0, 2000) : "No personal note was included with this referral request.";
@@ -481,7 +486,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const safeFastTrackAlias = typeof fastTrackAlias === "string" && /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(fastTrackAlias) ? fastTrackAlias : undefined;
       if ((fastTrackCompanySlug || fastTrackAlias) && (!safeFastTrackCompanySlug || !safeFastTrackAlias)) return res.status(400).json({ error: "This private referral alias is invalid" });
       if (fastTrackCode && !safeFastTrackCode) return res.status(400).json({ error: "This private referral link is invalid" });
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias });
       let reviewLinks: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
       if (deps.prepareReferrerReviewEmailNotifications) {
         try {
@@ -513,8 +518,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (result.coverageStatus === "waiting_for_company_coverage") {
         record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: true } });
       }
-      res.status(201).json({ ...result, ...(lifetimeRequestCount ? { lifetimeRequestCount } : {}) });
-    } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
+      res.status(result.replayed ? 200 : 201).json({ ...result, ...(lifetimeRequestCount ? { lifetimeRequestCount } : {}) });
+    } catch (error) { res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
   });
   app.get("/api/credits/summary", async (req, res) => {
     try {
@@ -802,6 +807,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; res.status(/verify your work email|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
   });
+  app.get("/api/referrer-review-links/:linkToken", async (req,res)=>{try{const identity=await deps.resolveIdentity(req);const linkToken=req.params.linkToken;if(!identity)return res.status(401).json({error:"Sign in with your verified company email to use this private review link"});if(!isOpaqueReviewLinkToken(linkToken))return res.status(400).json({error:"This private review link is invalid"});if(!deps.resolveReferrerReviewEmailLink)return res.status(503).json({error:"Email review is unavailable right now"});await deps.resolveReferrerReviewEmailLink(identity.account.id,linkToken);res.set("Cache-Control","private, no-store");res.json({review:{ready:true,decisions:["approved","role_not_a_fit","cannot_support","timing"]}});}catch(error){const message=error instanceof Error?error.message:"This private review link is unavailable";res.status(409).json({error:message});}});
   app.post("/api/referrer-review-links/:linkToken/decision", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); const linkToken = req.params.linkToken; const decision = req.body?.decision; const declineReason = req.body?.declineReason;
@@ -1072,6 +1078,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ diagnostic });
     } catch { res.status(500).json({ error: "We could not load domain integrity" }); }
   });
+  app.get("/api/admin/credit-ledger-audit", async (req,res)=>{try{const identity=await deps.resolveIdentity(req);if(!identity||identity.account.role!=="admin")return res.status(403).json({error:"Administrator access required"});const audit=await deps.getCreditLedgerAudit?.(Math.min(Number(req.query.limit)||200,500));res.set("Cache-Control","private, no-store");res.json(audit??{checkedWallets:0,mismatches:[],integrity:[],readOnly:true});}catch(error){res.status(500).json({error:error instanceof Error?error.message:"Credit ledger audit failed"});}});
   app.get("/api/admin/flow-health", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);

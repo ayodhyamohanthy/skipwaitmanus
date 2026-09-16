@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import Onboarding from "./Onboarding";
 
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => null }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }), useUser: () => ({ isLoaded: true, user: null }), SignInButton: ({ children }: { children: React.ReactNode }) => <>{children}</> }));
 
 describe("Onboarding Target Role URL", () => {
   beforeEach(() => { localStorage.clear(); vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ canonicalUrl: "https://careers.example.com/jobs/product-designer", status: "fresh", employerConfidence: "direct-domain", companyDomain: "example.com", reason: "Company identified", recoveryAction: "Continue" }) }))); });

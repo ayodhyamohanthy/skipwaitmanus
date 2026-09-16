@@ -15,6 +15,8 @@ type ReferralSubmissionResponse = { error?: string; creditSummary?: unknown; rem
 
 const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
 const pendingResumeSubmissionKey = "skipwait-pending-resume-submit";
+const referralIdempotencyKey = "skipwait-referral-idempotency-key";
+function getReferralIdempotencyKey() { const existing=sessionStorage.getItem(referralIdempotencyKey); if(existing)return existing; const created=crypto.randomUUID(); sessionStorage.setItem(referralIdempotencyKey,created); return created; }
 const FREE_MONTHLY_ALLOWANCE = 3;
 const UPLOAD_REQUEST_TIMEOUT_MS = 30_000;
 const activeResumeUploads = new Map<string, Promise<Attachment>>();
@@ -40,6 +42,9 @@ async function uploadFetch(path: string, init: RequestInit, timeoutMessage: stri
   catch (error) { if (error instanceof DOMException && error.name === "AbortError") throw new Error(timeoutMessage); throw error; }
   finally { window.clearTimeout(timeout); }
 }
+
+const fileFingerprint = (file: File) => `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
+function dedupeFiles(files: File[]) { const seen=new Set<string>(); return files.filter(file=>{const key=fileFingerprint(file);if(seen.has(key))return false;seen.add(key);return true;}); }
 
 function getSavedAttachments(): Attachment[] { try { return JSON.parse(localStorage.getItem("bridge-seeker-attachments") || "[]") as Attachment[]; } catch { return []; } }
 function fallbackSummary(total: number): CreditSummary { const safe = Math.max(0, total); return { plan: "free", monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCreditsRemaining: Math.min(safe, FREE_MONTHLY_ALLOWANCE), purchasedCreditsRemaining: Math.max(0, safe - FREE_MONTHLY_ALLOWANCE), totalAvailable: safe, cycleKey: "", subscriptionStatus: null, subscriptionCurrentTermEnd: null }; }
@@ -115,7 +120,7 @@ export default function ReferralRequest() {
 
   useEffect(() => {
     let active = true;
-    void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => current.length ? current : files); }).catch(() => undefined).finally(() => { if (active) setPendingFilesRestored(true); });
+    void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => dedupeFiles(current.length ? current : files)); }).catch(() => undefined).finally(() => { if (active) setPendingFilesRestored(true); });
     return () => { active = false; };
   }, []);
 
@@ -140,7 +145,7 @@ export default function ReferralRequest() {
       const sessionToken = await getToken();
       const headers = { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) };
       const uploadOne = (file: File) => {
-        const fingerprint = `${file.name}:${file.size}:${file.lastModified}:${file.type}`;
+        const fingerprint = fileFingerprint(file);
         const existing = activeResumeUploads.get(fingerprint); if (existing) return existing;
         // Register the shared promise synchronously before hashing or any other
         // await. A second change/input dispatch in the same tick must see it.
@@ -181,11 +186,11 @@ export default function ReferralRequest() {
       // A transient upload failure (offline, server hiccup) must not discard
       // the selection: keep the files pending so sending retries the upload.
       void uploadFiles(selected).catch(() => {
-        setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
+        setPendingFiles(current => { const next = dedupeFiles([...current, ...selected]); void savePendingResumeFiles(next).catch(() => undefined); return next; });
       });
       return;
     }
-    setPendingFiles(current => { const next = [...current, ...selected]; void savePendingResumeFiles(next).catch(() => undefined); return next; });
+    setPendingFiles(current => { const next = dedupeFiles([...current, ...selected]); void savePendingResumeFiles(next).catch(() => undefined); return next; });
   };
   const createSmartPitch = async () => {
     const attachment = attachments[0]; const targetRoleUrl = localStorage.getItem("bridge-target-url");
@@ -215,14 +220,14 @@ export default function ReferralRequest() {
       const allAttachments = [...attachments, ...newlyUploaded];
       const sessionToken = await getToken();
       const referralParams = new URLSearchParams(window.location.search); const fastTrackCode = referralParams.get("fast")?.trim(); const fastTrackCompanySlug = referralParams.get("referCompany")?.trim(); const fastTrackAlias = referralParams.get("referAlias")?.trim();
-      const response = await fetch("/api/company-referrals", { method: "POST", headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, credentials: "include", body: JSON.stringify({ targetRoleUrl, attachmentIds: allAttachments.map(attachment => Number(attachment.id)).filter(Number.isInteger), candidateMessage: candidateMessage.trim(), confirmedCompanyDomain: (() => { try { const bound=JSON.parse(localStorage.getItem("bridge-company-confirmation")||"{}"); return bound.canonicalUrl===targetRoleUrl?bound.confirmedDomain||undefined:undefined; } catch { return undefined; } })(), ...(compensation ? { compensation } : {}), ...(fastTrackCode ? { fastTrackCode } : {}), ...(fastTrackCompanySlug && fastTrackAlias ? { fastTrackCompanySlug, fastTrackAlias } : {}) }) });
+      const response = await fetch("/api/company-referrals", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": getReferralIdempotencyKey(), ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, credentials: "include", body: JSON.stringify({ targetRoleUrl, attachmentIds: allAttachments.map(attachment => Number(attachment.id)).filter(Number.isInteger), candidateMessage: candidateMessage.trim(), confirmedCompanyDomain: (() => { try { const bound=JSON.parse(localStorage.getItem("bridge-company-confirmation")||"{}"); return bound.canonicalUrl===targetRoleUrl?bound.confirmedDomain||undefined:undefined; } catch { return undefined; } })(), ...(compensation ? { compensation } : {}), ...(fastTrackCode ? { fastTrackCode } : {}), ...(fastTrackCompanySlug && fastTrackAlias ? { fastTrackCompanySlug, fastTrackAlias } : {}) }) });
       const payload = await readApiJson<ReferralSubmissionResponse>(response, "We could not send this private referral request"); if (!response.ok) throw new Error(payload.error || "We could not send this private referral request");
       const nextSummary = isCreditSummary(payload.creditSummary) ? payload.creditSummary : fallbackSummary(Number.isFinite(Number(payload.remainingTokens)) ? Number(payload.remainingTokens) : Math.max(0, summary.totalAvailable - TOKEN_ACTION_COST));
       setCreditSummary(nextSummary); setTokens(nextSummary.totalAvailable); setJobSeekerTokens(nextSummary.totalAvailable);
       setPendingFiles([]); void clearPendingResumeFiles().catch(() => undefined); sessionStorage.removeItem(pendingResumeSubmissionKey);
       setCoveragePending(payload.coverageStatus === "waiting_for_company_coverage");
       setCoverageInviteCode(typeof payload.coverageInviteCode === "string" ? payload.coverageInviteCode : "");
-      setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(typeof payload.lifetimeRequestCount === "number" && Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.removeItem("bridge-target-compensation"); setCompensation(""); localStorage.setItem("bridge-request-sent", "true"); setSubmitted(true);
+      setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(typeof payload.lifetimeRequestCount === "number" && Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.removeItem("bridge-target-compensation"); setCompensation(""); localStorage.setItem("bridge-request-sent", "true"); sessionStorage.removeItem(referralIdempotencyKey); setSubmitted(true);
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "We could not send this private referral request"); } finally { setSubmitting(false); }
   };
 

@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -341,6 +341,12 @@ export async function recordOperationalActivity(input: OperationalActivityInput)
   const metadata = input.metadata ? JSON.stringify(Object.fromEntries(Object.entries(input.metadata).filter(([, value]) => value !== undefined))) : null;
   await db.insert(operationalActivityLogs).values({ actorUserId: input.actorUserId ?? null, action: input.action.slice(0, 100), outcome: input.outcome, resourceType: input.resourceType?.slice(0, 80) ?? null, resourceId: input.resourceId === undefined ? null : String(input.resourceId).slice(0, 120), companyDomain: input.companyDomain?.toLowerCase().slice(0, 255) ?? null, metadata });
 }
+export async function listMyUploadStarts(userId: number, since: Date) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ sessionId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), eq(operationalActivityLogs.action, "document.upload_started"), gt(operationalActivityLogs.createdAt, since))).orderBy(desc(operationalActivityLogs.createdAt)).limit(30);
+  return rows.map(row => { let metadata: Record<string, unknown> = {}; try { metadata = row.metadata ? JSON.parse(row.metadata) : {}; } catch {} return { sessionId: row.sessionId, clientUploadId: typeof metadata.clientUploadId === "string" ? metadata.clientUploadId : null, fileName: typeof metadata.fileName === "string" ? metadata.fileName : null, createdAt: row.createdAt }; });
+}
+
 export async function listOperationalActivity(input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" } = {}) {
   const db = await getDb(); if (!db) return [];
   const limit = Math.max(1, Math.min(input.limit ?? 100, 250));
@@ -511,33 +517,48 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export async function createCompanyReferralRequest(userId: number, input: { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string }) {
-  const resolvedDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
-  const confirmedDomain = input.confirmedCompanyDomain ? directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`) : undefined;
-  if (resolvedDomain && confirmedDomain && resolvedDomain !== confirmedDomain) throw new Error("The confirmed company domain does not match this job link.");
-  const companyDomain = resolvedDomain ?? confirmedDomain;
-  if (!companyDomain) throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
-  const compensation = input.compensation?.trim().slice(0, 80) || null;
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  if (input.fastTrackCode && (input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
-  const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : input.fastTrackCompanySlug && input.fastTrackAlias ? await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug, input.fastTrackAlias) : undefined;
-  if ((input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias) && !fastTrackLink) throw new Error("This private referral link is no longer active");
-  if (fastTrackLink && !fastTrackLinkMatchesCompany(fastTrackLink.companyDomain, companyDomain)) throw new Error("Use a job link for the same company as this private referral link");
-  const eligibleCandidates = fastTrackLink ? await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(eq(profiles.userId, fastTrackLink.referrerId)) : await db.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, email: users.email }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
-  const eligible = eligibleCandidates.filter(profile => isVerifiedEmployeeOfCompany(profile, companyDomain));
-  const coverageStatus = companyCoverageStatus(eligible.length);
-  // A valid, private request always reserves one Job Seeker credit. Requests
-  // without current coverage remain queued for manual administrator follow-up.
-  const remaining = await spendToken(userId, "job_seeker");
-  const jobResult = await db.insert(jobs).values({ title: "Role from shared job link", company: companyDomain, location: "Not specified", compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", publishedAt: new Date() });
-  const jobId = Number(jobResult[0].insertId);
-  const isWaitingForCoverage = coverageStatus === "waiting_for_company_coverage";
-  const requestResult = await db.insert(referralRequests).values({ jobId, jobSeekerId: userId, referrerId: fastTrackLink?.referrerId ?? null, personalPitch: input.personalPitch, status: "pending", waitingForCoverage: isWaitingForCoverage, coverageQueuedAt: isWaitingForCoverage ? new Date() : null });
-  const requestId = Number(requestResult[0].insertId);
-  for (const attachmentId of input.attachmentIds) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
-  for (const employee of eligible) await db.insert(notifications).values({ userId: employee.userId, category: "referral", title: fastTrackLink ? "A Fast-Track referral request is ready" : "A private referral request is available", body: fastTrackLink ? `A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.` : `A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.` });
-  const coverageInvite = !fastTrackLink && coverageStatus === "waiting_for_company_coverage" ? await createCompanyCoverageInvitation(userId, companyDomain) : undefined;
-  return { requestId, companyDomain, coverageStatus, coverageInviteCode: coverageInvite?.inviteCode, notifiedEmployees: eligible.length, remainingTokens: remaining.totalAvailable, creditSummary: remaining, fastTrack: Boolean(fastTrackLink) };
+export type CreateCompanyReferralInput = { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
+export class ReferralIdempotencyConflictError extends Error { constructor() { super("This submission key was already used for a different referral request"); this.name="ReferralIdempotencyConflictError"; } }
+function companyReferralFingerprint(input: CreateCompanyReferralInput, companyDomain: string) {
+  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null};
+  return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
+}
+
+export async function createCompanyReferralRequest(userId: number, input: CreateCompanyReferralInput) {
+  const resolvedDomain=await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+  const confirmedDomain=input.confirmedCompanyDomain?directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`):undefined;
+  if(resolvedDomain&&confirmedDomain&&resolvedDomain!==confirmedDomain)throw new Error("The confirmed company domain does not match this job link.");
+  const companyDomain=resolvedDomain??confirmedDomain;if(!companyDomain)throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
+  const compensation=input.compensation?.trim().slice(0,80)||null;const fingerprint=companyReferralFingerprint(input,companyDomain);
+  const db=await getDb();if(!db)throw new Error("Database unavailable");
+  if(input.fastTrackCode&&(input.fastTrackCompanySlug||input.fastTrackAlias))throw new Error("Use one private referral link at a time");
+  const fastTrackLink=input.fastTrackCode?await getActiveReferrerFastTrackLink(input.fastTrackCode):input.fastTrackCompanySlug&&input.fastTrackAlias?await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug,input.fastTrackAlias):undefined;
+  if((input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias)&&!fastTrackLink)throw new Error("This private referral link is no longer active");
+  if(fastTrackLink&&!fastTrackLinkMatchesCompany(fastTrackLink.companyDomain,companyDomain))throw new Error("Use a job link for the same company as this private referral link");
+  await grantPendingActionRewards(userId,"job_seeker");await ensureTokenWallet(userId,"job_seeker");
+  return db.transaction(async tx=>{
+    // The wallet lock is the per-seeker serialization point for both same-key
+    // replay and different-key credit races.
+    const lockedWallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!lockedWallet)throw new Error("No referral credit available");
+    const duplicate=await tx.select({id:referralRequests.id,fingerprint:referralRequests.requestFingerprint,companyDomain:jobs.company,waiting:referralRequests.waitingForCoverage,referrerId:referralRequests.referrerId}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(eq(referralRequests.jobSeekerId,userId),eq(referralRequests.idempotencyKey,input.idempotencyKey))).limit(1).for("update");
+    if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,fastTrack:Boolean(duplicate[0].referrerId),replayed:true as const};}
+    const uniqueAttachmentIds=Array.from(new Set(input.attachmentIds));
+    const owned=await tx.select({id:referralAttachments.id}).from(referralAttachments).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId))).for("update");
+    if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
+    const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
+    const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));const coverageStatus=companyCoverageStatus(eligible.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    const wallet=lockedWallet;
+    const normalized=normalizedWalletState(wallet);const effective={...wallet,...normalized.patch};if(effective.monthlyCreditsRemaining+effective.balance<1)throw new Error("You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.");
+    const source=effective.monthlyCreditsRemaining>0?"monthly_allowance":"purchased_balance";const patch={...normalized.patch,monthlyCreditsRemaining:source==="monthly_allowance"?effective.monthlyCreditsRemaining-1:effective.monthlyCreditsRemaining,balance:source==="purchased_balance"?effective.balance-1:effective.balance};
+    const jobResult=await tx.insert(jobs).values({title:"Role from shared job link",company:companyDomain,location:"Not specified",compensation,description:"Private referral request routed from a Target Role URL.",targetRoleUrl:input.targetRoleUrl,workMode:"Not specified",seniority:"Not specified",employmentType:"Not specified",publishedAt:new Date()});const jobId=Number(jobResult[0].insertId);
+    const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint});const requestId=Number(requestResult[0].insertId);
+    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id,wallet.id));
+    const debit=await tx.insert(tokenTransactions).values({userId,role:"job_seeker",tokenCount:-1,kind:"direct_request",source,sourceCycleKey:effective.monthlyCycleKey,referenceType:"referral_request",referenceId:String(requestId),idempotencyKey:input.idempotencyKey,balanceAfter:patch.balance,monthlyCreditsAfter:patch.monthlyCreditsRemaining});const debitId=Number(debit[0].insertId);await tx.update(referralRequests).set({debitTransactionId:debitId}).where(eq(referralRequests.id,requestId));
+    const bound=await tx.update(referralAttachments).set({referralRequestId:requestId}).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId)));if(Number(bound[0]?.affectedRows??0)!==uniqueAttachmentIds.length)throw new Error("One or more resume documents changed during submission");
+    for(const employee of eligible)await tx.insert(notifications).values({userId:employee.userId,category:"referral",title:fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
+    let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
+    const remaining=creditSummaryFromWallet({...effective,...patch});return{requestId,companyDomain,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:eligible.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,fastTrack:Boolean(fastTrackLink),replayed:false as const};
+  });
 }
 
 const reviewEmailLifetimeMs = 7 * 24 * 60 * 60 * 1000;
@@ -707,24 +728,20 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
 }
 
 export async function withdrawCompanyReferralRequest(userId: number, requestId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
-    const request = await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1);
-    const current = request[0];
-    if (!current) throw new Error("This referral request is not in your account");
-    if (current.status !== "pending" || current.referrerId !== null) throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1);
-    if (!wallet[0]) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
-    // Credit timing rule: reserved at creation, refunded on withdraw. The refund
-    // returns the monthly credit first (same cycle, under the free allowance);
-    // a rolled cycle or a full monthly allowance refunds to the pack balance.
-    const refundToMonthly = wallet[0].monthlyCycleKey === currentMonthlyCycleKey() && wallet[0].monthlyCreditsRemaining < FREE_MONTHLY_ALLOWANCE;
-    const patch = refundToMonthly ? { monthlyCreditsRemaining: wallet[0].monthlyCreditsRemaining + 1 } : { balance: wallet[0].balance + 1 };
-    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet[0].id));
-    await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: 1, kind: "withdrawal_refund" });
-    const updated = await tx.update(referralRequests).set({ status: "withdrawn" }).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
-    if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
-    return { withdrawn: true as const, requestId, status: "withdrawn" as const, creditSummary: creditSummaryFromWallet({ ...wallet[0], ...patch }) };
+  const db=await getDb();if(!db)throw new Error("Database unavailable");
+  return db.transaction(async tx=>{
+    const current=(await tx.select({id:referralRequests.id,status:referralRequests.status,referrerId:referralRequests.referrerId,debitTransactionId:referralRequests.debitTransactionId}).from(referralRequests).where(and(eq(referralRequests.id,requestId),eq(referralRequests.jobSeekerId,userId))).limit(1).for("update"))[0];
+    if(!current)throw new Error("This referral request is not in your account");if(current.status==="withdrawn"){const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return{withdrawn:true as const,requestId,status:"withdrawn" as const,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};}
+    if(current.status!=="pending"||current.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
+    const debit=current.debitTransactionId?(await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.id,current.debitTransactionId),eq(tokenTransactions.userId,userId),eq(tokenTransactions.kind,"direct_request"))).limit(1).for("update"))[0]:undefined;if(!debit||!debit.source)throw new Error("The original referral credit debit is unavailable; contact support before withdrawing");
+    const existing=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId,debit.id)).limit(1))[0];
+    const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!wallet)throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
+    if(existing){await tx.update(referralRequests).set({status:"withdrawn"}).where(eq(referralRequests.id,requestId));return{withdrawn:true as const,requestId,status:"withdrawn" as const,creditSummary:creditSummaryFromWallet(wallet)};}
+    let patch:{balance:number;monthlyCreditsRemaining:number}={balance:wallet.balance,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining};
+    if(debit.source==="purchased_balance")patch.balance+=1;else if(debit.source==="monthly_allowance"&&debit.sourceCycleKey===wallet.monthlyCycleKey)patch.monthlyCreditsRemaining=Math.min(wallet.monthlyAllowance,patch.monthlyCreditsRemaining+1);
+    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id,wallet.id));await tx.insert(tokenTransactions).values({userId,role:"job_seeker",tokenCount:debit.source==="monthly_allowance"&&debit.sourceCycleKey!==wallet.monthlyCycleKey?0:1,kind:"withdrawal_refund",source:debit.source,sourceCycleKey:debit.sourceCycleKey,referenceType:"referral_request",referenceId:String(requestId),reversesTransactionId:debit.id,balanceAfter:patch.balance,monthlyCreditsAfter:patch.monthlyCreditsRemaining});
+    const updated=await tx.update(referralRequests).set({status:"withdrawn"}).where(and(eq(referralRequests.id,requestId),eq(referralRequests.status,"pending"),isNull(referralRequests.referrerId)));if(Number(updated[0]?.affectedRows??0)!==1)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
+    return{withdrawn:true as const,requestId,status:"withdrawn" as const,creditSummary:creditSummaryFromWallet({...wallet,...patch})};
   });
 }
 
@@ -819,6 +836,20 @@ export async function getReferralFlowHealth() {
       domainIntegrityAffected: domainIntegrity.affectedCount,
     },
   };
+}
+
+export async function getCreditLedgerAudit(limit = 200) {
+  const db=await getDb();if(!db)return {mismatches:[],integrity:[],checkedWallets:0};
+  const wallets=await db.select().from(tokenBalances).orderBy(desc(tokenBalances.updatedAt)).limit(Math.max(1,Math.min(limit,500)));
+  const mismatches:Array<Record<string,unknown>>=[];const integrity:Array<Record<string,unknown>>=[];
+  for(const wallet of wallets){const rows=await db.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId,wallet.userId),eq(tokenTransactions.role,wallet.role))).orderBy(desc(tokenTransactions.id));
+    const purchased=rows.filter(row=>row.source==="purchased_balance"||(["purchase","admin_adjustment","company_coverage_reward","personal_referral_reward","invite_reward_granted"].includes(row.kind)&&!row.source)).reduce((sum,row)=>sum+row.tokenCount,0);
+    if(purchased!==wallet.balance)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"purchased_balance",expected:purchased,actual:wallet.balance,delta:wallet.balance-purchased,lastTransactionId:rows[0]?.id??null,referenceId:rows[0]?.referenceId??null});
+    if(wallet.balance<0||wallet.monthlyCreditsRemaining<0)integrity.push({type:"negative_bucket",userId:wallet.userId,role:wallet.role,balance:wallet.balance,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining});
+  }
+  const orphanRequests=await db.select({id:referralRequests.id,userId:referralRequests.jobSeekerId}).from(referralRequests).where(and(isNotNull(referralRequests.idempotencyKey),isNull(referralRequests.debitTransactionId))).limit(200);for(const row of orphanRequests)integrity.push({type:"request_without_debit",...row});
+  const orphanDebits=await db.select({id:tokenTransactions.id,referenceId:tokenTransactions.referenceId,userId:tokenTransactions.userId}).from(tokenTransactions).leftJoin(referralRequests,eq(sql`CAST(${referralRequests.id} AS CHAR)`,tokenTransactions.referenceId)).where(and(eq(tokenTransactions.kind,"direct_request"),isNotNull(tokenTransactions.referenceId),isNull(referralRequests.id))).limit(200);for(const row of orphanDebits)integrity.push({type:"debit_without_request",...row});
+  return {checkedWallets:wallets.length,mismatches,integrity,readOnly:true};
 }
 
 export async function claimCompanyReferralRequest(userId: number, requestId: number) {
@@ -1990,23 +2021,43 @@ export async function recordPartnerClick(moduleId: number) {
   return { recorded: Number(result[0]?.affectedRows ?? 0) === 1 };
 }
 
-// Razorpay unlock-credit purchase: credit the employer wallet on verified
-// capture. Idempotent per provider event via operationalActivityLogs key.
-export async function fulfillUnlockCreditPurchase(input: { eventId: string; userId: number; pack: UnlockCreditPackId; amount?: number }) {
-  const pack = UNLOCK_CREDIT_PACKS[input.pack];
-  if (!pack) return { status: "ignored" as const, reason: "unknown_pack" };
+// Durable Razorpay order intent. The provider order is bound to the authenticated
+// employer, selected pack and exact amount before any webhook may credit it.
+export async function recordUnlockCreditOrderIntent(input: { orderId: string; userId: number; pack: UnlockCreditPackId; amount: number; currency: string }) {
+  const expected = UNLOCK_CREDIT_PACKS[input.pack];
+  if (!expected || input.amount !== expected.amountInPaise || input.currency.toUpperCase() !== "INR") throw new Error("Razorpay order does not match the selected pack");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.insert(employerPaymentFulfillments).values({ provider: "razorpay", providerOrderId: input.orderId, userId: input.userId, pack: input.pack, amount: input.amount, currency: "INR", status: "pending" }).onDuplicateKeyUpdate({ set: { providerOrderId: input.orderId } });
+  return { orderId: input.orderId, status: "pending" as const };
+}
+
+// Verified captures are fulfilled in one database transaction. The guarded
+// pending->processing transition is the single winner for concurrent retries;
+// credits and the terminal state commit together, so a crash rolls both back.
+export async function fulfillUnlockCreditPurchase(input: { paymentId: string; orderId: string; userId: number; pack: UnlockCreditPackId; amount: number; currency: string }) {
+  const expected = UNLOCK_CREDIT_PACKS[input.pack];
+  if (!expected) return { status: "requires_review" as const, reason: "unknown_pack" };
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const duplicate = await tx.select({ id: operationalActivityLogs.id }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.action, "employer.unlock_credits_fulfilled"), eq(operationalActivityLogs.resourceId, input.eventId))).limit(1);
-    if (duplicate[0]) return { status: "duplicate" as const, credits: pack.credits };
-    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, input.userId)).limit(1))[0];
-    if (!account) return { status: "ignored" as const, reason: "no_employer_account" };
-    if (input.amount !== undefined && input.amount !== pack.amountInPaise) return { status: "ignored" as const, reason: "checkout_amount_mismatch" };
-    const credits = account.credits + pack.credits;
-    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
-    const metadata: Record<string, string | number> = { pack: input.pack, creditsAdded: pack.credits, credits };
-    await tx.insert(operationalActivityLogs).values({ actorUserId: input.userId, action: "employer.unlock_credits_fulfilled", outcome: "success", resourceType: "employer_unlock_purchase", resourceId: input.eventId, metadata: JSON.stringify(metadata) });
-    return { status: "credited" as const, credits, creditsAdded: pack.credits };
+    const intent = (await tx.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.provider, "razorpay"), eq(employerPaymentFulfillments.providerOrderId, input.orderId))).limit(1))[0];
+    if (!intent) return { status: "requires_review" as const, reason: "unknown_order" };
+    if (intent.status === "credited") return intent.providerPaymentId === input.paymentId ? { status: "duplicate" as const, creditsAdded: expected.credits } : { status: "requires_review" as const, reason: "order_already_paid" };
+    const exact = intent.userId === input.userId && intent.pack === input.pack && intent.amount === input.amount && intent.currency === input.currency.toUpperCase() && input.amount === expected.amountInPaise;
+    if (!exact) {
+      await tx.update(employerPaymentFulfillments).set({ status: "requires_review", providerPaymentId: input.paymentId, lastError: "capture_does_not_match_order" }).where(and(eq(employerPaymentFulfillments.id, intent.id), eq(employerPaymentFulfillments.status, "pending")));
+      return { status: "requires_review" as const, reason: "capture_does_not_match_order" };
+    }
+    const claimed = await tx.update(employerPaymentFulfillments).set({ status: "processing", providerPaymentId: input.paymentId, attemptCount: sql`${employerPaymentFulfillments.attemptCount} + 1`, lastError: null }).where(and(eq(employerPaymentFulfillments.id, intent.id), eq(employerPaymentFulfillments.status, "pending"), isNull(employerPaymentFulfillments.providerPaymentId)));
+    if (Number(claimed[0]?.affectedRows ?? 0) !== 1) {
+      const current = (await tx.select().from(employerPaymentFulfillments).where(eq(employerPaymentFulfillments.id, intent.id)).limit(1))[0];
+      return current?.status === "credited" && current.providerPaymentId === input.paymentId ? { status: "duplicate" as const, creditsAdded: expected.credits } : { status: "busy" as const };
+    }
+    const credited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} + ${expected.credits}` }).where(eq(employerAccounts.userId, intent.userId));
+    if (Number(credited[0]?.affectedRows ?? 0) !== 1) throw new Error("Employer account unavailable for captured payment");
+    const done = await tx.update(employerPaymentFulfillments).set({ status: "credited", creditedAt: new Date() }).where(and(eq(employerPaymentFulfillments.id, intent.id), eq(employerPaymentFulfillments.status, "processing"), eq(employerPaymentFulfillments.providerPaymentId, input.paymentId)));
+    if (Number(done[0]?.affectedRows ?? 0) !== 1) throw new Error("Captured payment fulfillment lost its claim");
+    await tx.insert(operationalActivityLogs).values({ actorUserId: intent.userId, action: "employer.unlock_credits_fulfilled", outcome: "success", resourceType: "employer_unlock_purchase", resourceId: input.paymentId, metadata: JSON.stringify({ orderId: input.orderId, pack: input.pack, creditsAdded: expected.credits }) });
+    return { status: "credited" as const, creditsAdded: expected.credits };
   });
 }
 

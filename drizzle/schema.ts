@@ -152,9 +152,12 @@ export const referralRequests = mysqlTable("referralRequests", {
   coverageQueuedAt: timestamp("coverageQueuedAt"),
   referrerMessage: text("referrerMessage"),
   savedAt: timestamp("savedAt"),
+  idempotencyKey: varchar("idempotencyKey", { length: 64 }),
+  requestFingerprint: varchar("requestFingerprint", { length: 64 }),
+  debitTransactionId: int("debitTransactionId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
 export const referralShareCards = mysqlTable("referralShareCards", {
   id: int("id").autoincrement().primaryKey(),
@@ -269,19 +272,28 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
   kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund"]).notNull(),
+  source: varchar("source", { length: 40 }),
+  sourceCycleKey: varchar("sourceCycleKey", { length: 16 }),
+  referenceType: varchar("referenceType", { length: 40 }),
+  referenceId: varchar("referenceId", { length: 80 }),
+  idempotencyKey: varchar("idempotencyKey", { length: 64 }),
+  reversesTransactionId: int("reversesTransactionId"),
+  balanceAfter: int("balanceAfter"),
+  monthlyCreditsAfter: int("monthlyCreditsAfter"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("token_transactions_user_idx").on(table.userId)]);
+}, table => [index("token_transactions_user_idx").on(table.userId), uniqueIndex("token_transactions_debit_reference_unique").on(table.userId, table.role, table.kind, table.referenceType, table.referenceId), uniqueIndex("token_transactions_idempotency_kind_unique").on(table.userId, table.role, table.idempotencyKey, table.kind), uniqueIndex("token_transactions_reversal_unique").on(table.reversesTransactionId)]);
 
 export const companyCoverageInvitations = mysqlTable("companyCoverageInvitations", {
   id: int("id").autoincrement().primaryKey(),
   inviteCode: varchar("inviteCode", { length: 64 }).notNull(),
   inviterUserId: int("inviterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
+  referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "cascade" }),
   status: mysqlEnum("status", ["active", "completed", "ineligible"]).default("active").notNull(),
   joinerUserId: int("joinerUserId").references(() => users.id, { onDelete: "set null" }),
   completedAt: timestamp("completedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("coverage_invite_code_unique").on(table.inviteCode), index("coverage_invite_inviter_idx").on(table.inviterUserId), index("coverage_invite_company_status_idx").on(table.companyDomain, table.status)]);
+}, table => [uniqueIndex("coverage_invite_code_unique").on(table.inviteCode), index("coverage_invite_inviter_idx").on(table.inviterUserId), index("coverage_invite_company_status_idx").on(table.companyDomain, table.status), uniqueIndex("coverage_invite_request_unique").on(table.referralRequestId)]);
 
 export const companyCoverageRewards = mysqlTable("companyCoverageRewards", {
   id: int("id").autoincrement().primaryKey(),
@@ -338,6 +350,23 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   creditedAt: timestamp("creditedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("payment_fulfillments_provider_event_unique").on(table.provider, table.providerEventId), index("payment_fulfillments_user_idx").on(table.userId), index("payment_fulfillments_user_status_idx").on(table.userId, table.role, table.status), index("payment_fulfillments_intent_idx").on(table.provider, table.checkoutIntentId)]);
+
+export const employerPaymentFulfillments = mysqlTable("employerPaymentFulfillments", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 32 }).notNull(),
+  providerOrderId: varchar("providerOrderId", { length: 255 }).notNull(),
+  providerPaymentId: varchar("providerPaymentId", { length: 255 }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pack: mysqlEnum("pack", ["starter", "growth", "scale"]).notNull(),
+  amount: int("amount").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  status: mysqlEnum("status", ["pending", "processing", "credited", "requires_review"]).default("pending").notNull(),
+  attemptCount: int("attemptCount").default(0).notNull(),
+  lastError: varchar("lastError", { length: 500 }),
+  creditedAt: timestamp("creditedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employer_payment_provider_order_unique").on(table.provider, table.providerOrderId), uniqueIndex("employer_payment_provider_payment_unique").on(table.provider, table.providerPaymentId), index("employer_payment_user_status_idx").on(table.userId, table.status)]);
 
 export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutIntents", {
   id: int("id").autoincrement().primaryKey(),

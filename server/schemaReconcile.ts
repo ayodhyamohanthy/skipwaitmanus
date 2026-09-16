@@ -6,7 +6,8 @@ import { getDb } from "./db";
 // information_schema first). Add new columns here AND to drizzle/schema.ts.
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
-const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+  { table: "employerPaymentFulfillments", createSql: `CREATE TABLE IF NOT EXISTS \`employerPaymentFulfillments\` (\`id\` int AUTO_INCREMENT NOT NULL, \`provider\` varchar(32) NOT NULL, \`providerOrderId\` varchar(255) NOT NULL, \`providerPaymentId\` varchar(255), \`userId\` int NOT NULL, \`pack\` ENUM('starter','growth','scale') NOT NULL, \`amount\` int NOT NULL, \`currency\` varchar(3) NOT NULL, \`status\` ENUM('pending','processing','credited','requires_review') NOT NULL DEFAULT 'pending', \`attemptCount\` int NOT NULL DEFAULT 0, \`lastError\` varchar(500), \`creditedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`employerPaymentFulfillments_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`employer_payment_provider_order_unique\`(\`provider\`,\`providerOrderId\`), UNIQUE INDEX \`employer_payment_provider_payment_unique\`(\`provider\`,\`providerPaymentId\`), INDEX \`employer_payment_user_status_idx\`(\`userId\`,\`status\`))` },
   { table: "employerAccounts", createSql: `CREATE TABLE IF NOT EXISTS \`employerAccounts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`companyName\` varchar(160) NOT NULL, \`billingEmail\` varchar(320) NOT NULL, \`credits\` int NOT NULL DEFAULT 0, \`budgetMonthlyUsdCents\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`employerAccounts_id\` PRIMARY KEY(\`id\`))` },
   { table: "employerTalentRefs", createSql: `CREATE TABLE IF NOT EXISTS \`employerTalentRefs\` (\`id\` int AUTO_INCREMENT NOT NULL, \`employerUserId\` int NOT NULL, \`seekerProfileUserId\` int NOT NULL, \`publicRef\` varchar(64) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`employerTalentRefs_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`employer_talent_refs_public_unique\` UNIQUE(\`publicRef\`), CONSTRAINT \`employer_talent_refs_pair_unique\` UNIQUE(\`employerUserId\`,\`seekerProfileUserId\`), INDEX \`employer_talent_refs_scope_idx\` (\`employerUserId\`,\`publicRef\`))` },
   { table: "employerTalentIntroRequests", createSql: `CREATE TABLE IF NOT EXISTS \`employerTalentIntroRequests\` (\`id\` int AUTO_INCREMENT NOT NULL, \`employerUserId\` int NOT NULL, \`seekerProfileUserId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`employerTalentIntroRequests_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`employer_talent_intro_pair_unique\` UNIQUE(\`employerUserId\`,\`seekerProfileUserId\`))` },
@@ -15,7 +16,7 @@ const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "userFollows", createSql: `CREATE TABLE IF NOT EXISTS \`userFollows\` (\`id\` int AUTO_INCREMENT NOT NULL, \`followerUserId\` int NOT NULL, \`followingUserId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`userFollows_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`user_follows_pair_unique\`(\`followerUserId\`, \`followingUserId\`), INDEX \`user_follows_following_idx\`(\`followingUserId\`))` },
 ];
 
-const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
+export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
   { table: "companyOpportunities", column: "compensation", definition: "TEXT NULL" },
   { table: "jobs", column: "compensation", definition: "TEXT NULL" },
   { table: "referralRequests", column: "savedAt", definition: "TIMESTAMP NULL" },
@@ -31,12 +32,24 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "resumeUploadSessions", column: "finalizationLeaseUntil", definition: "TIMESTAMP NULL" },
   { table: "resumeUploadSessions", column: "permanentStorageKey", definition: "VARCHAR(1024) NULL" },
   { table: "referralAttachments", column: "uploadSessionId", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequests", column: "idempotencyKey", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequests", column: "requestFingerprint", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequests", column: "debitTransactionId", definition: "INT NULL" },
+  { table: "tokenTransactions", column: "source", definition: "VARCHAR(40) NULL" },
+  { table: "tokenTransactions", column: "sourceCycleKey", definition: "VARCHAR(16) NULL" },
+  { table: "tokenTransactions", column: "referenceType", definition: "VARCHAR(40) NULL" },
+  { table: "tokenTransactions", column: "referenceId", definition: "VARCHAR(80) NULL" },
+  { table: "tokenTransactions", column: "idempotencyKey", definition: "VARCHAR(64) NULL" },
+  { table: "tokenTransactions", column: "reversesTransactionId", definition: "INT NULL" },
+  { table: "tokenTransactions", column: "balanceAfter", definition: "INT NULL" },
+  { table: "tokenTransactions", column: "monthlyCreditsAfter", definition: "INT NULL" },
+  { table: "companyCoverageInvitations", column: "referralRequestId", definition: "INT NULL" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
 // from DESIRED_COLUMNS + DESIRED_TABLES above. Nothing request-controlled is
 // ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
-export type ReconcileStatementResult = { statement: string; ok: boolean; error?: string };
+export type ReconcileStatementResult = { statement: string; ok: boolean; error?: string; errorCode?: string };
 
 // Drizzle surfaces driver failures as DrizzleQueryError("Failed query: …
 // params: …") with the real MySQL error on `cause` (code/errno/sqlState).
@@ -54,6 +67,19 @@ export function isDuplicateColumnError(err: unknown): boolean {
     } else break;
   }
   return false;
+}
+
+export function isDuplicateEntryError(err: unknown): boolean {
+  const seen = new Set<unknown>(); let current: unknown = err;
+  while (current && !seen.has(current)) { seen.add(current); if (typeof current === "object") { const typed=current as {code?:unknown;errno?:unknown;sqlState?:unknown;cause?:unknown}; if (typed.code === "ER_DUP_ENTRY" || typed.errno === 1062 || typed.sqlState === "23000") return true; current=typed.cause; } else break; }
+  return false;
+}
+
+
+export function reconcileErrorCode(err: unknown): string | undefined {
+  const seen=new Set<unknown>(); let current:unknown=err;
+  while(current&&!seen.has(current)){seen.add(current);if(typeof current==="object"){const typed=current as {code?:unknown;errno?:unknown;cause?:unknown};if(typeof typed.code==="string"&&typed.code.startsWith("ER_"))return typed.code;if(typeof typed.errno==="number")return `MYSQL_${typed.errno}`;current=typed.cause;}else break;}
+  return undefined;
 }
 
 export function describeReconcileError(err: unknown): string {
@@ -99,19 +125,19 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
   // Each run reports only its own outcome: reset the per-statement results and
   // the first-error pointer so a successful retry clears a previous failure.
   lastError = null;
-  lastResults = results;
   let failed = false;
   try {
-    const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()`);
+    const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
     // mysql2's drizzle result HKT loses row typing on raw execute; cast like db.ts does.
-    const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string }>;
+    const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; INDEX_NAME?: string | null; NON_UNIQUE?: number | string | null }>;
     if (rows.length === 0) {
       // Zero visible columns means the follow-on ALTERs will all fail: either
       // a genuinely fresh database (run the drizzle migrations) or the
       // connection sees no tables (DATABASE_URL database name / privileges).
       console.error("[schema-reconcile] information_schema probe returned 0 columns; check DATABASE_URL database selection and grants before trusting per-statement errors below");
     }
-    const existing = new Set(rows.map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
+    const existing = new Set(rows.filter(row => row.COLUMN_NAME).map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
+    const existingIndexes = new Map(rows.filter(row => row.INDEX_NAME).map(row => [`${row.TABLE_NAME}.${row.INDEX_NAME}`, Number(row.NON_UNIQUE ?? 0)]));
     const existingTables = new Set(rows.map(row => row.TABLE_NAME));
     for (const { table, column, definition } of DESIRED_COLUMNS) {
       if (existing.has(`${table}.${column}`)) { skipped.push(`${table}.${column}`); continue; }
@@ -137,6 +163,37 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       }
       results.push({ statement: stmt, ok: true });
       applied.push(`${table}.${column}`);
+    }
+    const desiredIndexes = [
+      { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
+      { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
+      { table: "referralRequests", name: "referral_requests_seeker_idempotency_unique", columns: "`jobSeekerId`,`idempotencyKey`" },
+      { table: "tokenTransactions", name: "token_transactions_debit_reference_unique", columns: "`userId`,`role`,`kind`,`referenceType`,`referenceId`" },
+      { table: "tokenTransactions", name: "token_transactions_idempotency_kind_unique", columns: "`userId`,`role`,`idempotencyKey`,`kind`" },
+      { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
+      { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
+    ];
+    for (const index of desiredIndexes) {
+      const key = `${index.table}.${index.name}`; if (existingIndexes.get(key) === 0) { skipped.push(`index:${key}`); continue; }
+      const stmt = `CREATE UNIQUE INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
+      try {
+        const dedupe = index.name === "resume_upload_sessions_owner_client_unique"
+          ? "UPDATE `resumeUploadSessions` s JOIN (SELECT ownerId,clientUploadId,MIN(id) canonicalId FROM (SELECT id,ownerId,clientUploadId FROM `resumeUploadSessions`) source WHERE clientUploadId IS NOT NULL GROUP BY ownerId,clientUploadId HAVING COUNT(*)>1) duplicates ON duplicates.ownerId=s.ownerId AND duplicates.clientUploadId=s.clientUploadId SET s.clientUploadId=NULL WHERE s.id<>duplicates.canonicalId"
+          : index.name === "referral_attachments_upload_session_unique" ? "UPDATE `referralAttachments` a JOIN (SELECT uploadSessionId,MIN(id) canonicalId FROM (SELECT id,uploadSessionId FROM `referralAttachments`) source WHERE uploadSessionId IS NOT NULL GROUP BY uploadSessionId HAVING COUNT(*)>1) duplicates ON duplicates.uploadSessionId=a.uploadSessionId SET a.uploadSessionId=NULL WHERE a.id<>duplicates.canonicalId" : null;
+        let created = false;
+        if (existingIndexes.get(key) === 1) await db.execute(sql.raw(`DROP INDEX \`${index.name}\` ON \`${index.table}\``));
+        for (let attempt=1; attempt<=3 && !created; attempt++) {
+          if (dedupe) await db.execute(sql.raw(dedupe));
+          try { await db.execute(sql.raw(stmt)); created=true; }
+          catch (err) {
+            const code=reconcileErrorCode(err);
+            if (code === "ER_DUP_KEYNAME" && attempt===1) { await db.execute(sql.raw(`DROP INDEX \`${index.name}\` ON \`${index.table}\``)); continue; }
+            if (!isDuplicateEntryError(err) || attempt===3) throw err;
+          }
+        }
+        results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`);
+      }
+      catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error, errorCode: reconcileErrorCode(err) }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; console.error(`[schema-reconcile] index failed: [${stmt}] ${error}`); }
     }
     for (const { table, createSql } of DESIRED_TABLES) {
       if (existingTables.has(table)) { skipped.push(table); continue; }
@@ -164,6 +221,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     lastError = describeReconcileError(error);
     console.error("[schema-reconcile] failed (non-fatal):", lastError);
   }
+  lastResults = results;
   return { applied, skipped };
   })();
   inFlight = run;

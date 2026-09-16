@@ -45,7 +45,7 @@ describe("Referrer one-click review actions", () => {
 
   it("sends a company-only email handoff and completes its action once for the authenticated intended Referrer", async () => {
     const { app, reviews, consumed, sent } = appFor();
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [1] });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [1] });
     expect(created.status).toBe(201); expect(sent).toEqual([{ to: "employee@acme.com", companyDomain: "acme.com", reviewUrl: expect.stringMatching(new RegExp(`/email-review/${token}$`)) }]); expect(JSON.stringify(sent)).not.toMatch(/resume|candidate|requestId|queue/i);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).send({ decision: "approved" })).status).toBe(401);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "outsider").send({ decision: "approved" })).status).toBe(409);
@@ -60,6 +60,6 @@ describe("Referrer one-click review actions", () => {
     let body = "";
     const sender = createReferrerReviewEmailSender({ fetchImpl: async (_url, init) => { body = String(init?.body || ""); return new Response("{}", { status: 200 }); } });
     await expect(sender({ to: "employee@acme.com", companyDomain: "acme.com", reviewUrl: `https://skipwait.me/email-review/${token}` })).resolves.toEqual({ sent: true, reason: "sent" });
-    expect(body).toContain("acme.com"); expect(body).toContain("decision=approved"); expect(body).toContain("reason=timing"); expect(body).not.toMatch(/candidate|resume|document|queue|hiring outcome guaranteed/i);
+    expect(body).toContain("acme.com"); expect(body).toContain(`/email-review/${token}`); expect(body).not.toContain("decision="); expect(body).not.toContain("reason="); expect(body).not.toMatch(/candidate|resume|document|queue|hiring outcome guaranteed/i);
   });
 });

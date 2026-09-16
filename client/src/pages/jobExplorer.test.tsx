@@ -3,6 +3,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import JobExplorer from "./JobExplorer";
+import { readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
 
 const { isSignedIn } = vi.hoisted(() => ({ isSignedIn: { value: true } }));
 const go = vi.fn();
@@ -27,10 +28,39 @@ function stubFetch(overrides: { jobsOk?: boolean; savedError?: boolean; toggleEr
   }));
 }
 
-beforeEach(() => { isSignedIn.value = true; stubFetch(); });
+beforeEach(() => { localStorage.clear(); isSignedIn.value = true; stubFetch(); });
 afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); window.history.replaceState(null, "", "/"); });
 
 describe("JobExplorer", () => {
+  it("carries the selected job into the referral draft and clears stale role context", async () => {
+    const targetRoleUrl = "https://careers.example.com/jobs/designer";
+    saveReferralDraft({ name: "Alex", targetUrl: "https://other.example.com/jobs/old" });
+    localStorage.setItem("bridge-target-compensation", "Old salary");
+    localStorage.setItem("bridge-company-confirmation", "old company");
+    localStorage.setItem("skipwait-job-source", "sample");
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ jobs: [{ ...jobs[0], targetRoleUrl }], saved: [] }) })));
+    render(<JobExplorer />);
+    await screen.findByText("Senior Product Designer");
+    fireEvent.click(screen.getByRole("button", { name: "Request referral" }));
+    expect(readReferralDraft()).toMatchObject({ name: "Alex", targetUrl: targetRoleUrl });
+    expect(localStorage.getItem("bridge-target-url")).toBe(targetRoleUrl);
+    expect(localStorage.getItem("bridge-target-compensation")).toBeNull();
+    expect(localStorage.getItem("bridge-company-confirmation")).toBeNull();
+    expect(localStorage.getItem("skipwait-job-source")).toBeNull();
+    expect(go).toHaveBeenCalledWith("/start");
+  });
+
+  it("does not reuse a previous draft for a role without a job link", async () => {
+    saveReferralDraft({ name: "Alex", targetUrl: "https://other.example.com/jobs/old" });
+    render(<JobExplorer />);
+    await screen.findByText("Senior Product Designer");
+    const button = screen.getAllByRole("button", { name: "Request referral" })[0];
+    expect(button).toHaveProperty("disabled", true);
+    fireEvent.click(button);
+    expect(go).not.toHaveBeenCalled();
+    expect(readReferralDraft()?.targetUrl).toBe("https://other.example.com/jobs/old");
+  });
+
   it("renders job cards with the muted context line and a saved marker for already-saved roles", async () => {
     render(<JobExplorer />);
     await waitFor(() => expect(screen.getByText("Senior Product Designer")).toBeTruthy());
