@@ -83,10 +83,13 @@ export async function isUserSuspended(userId: number) {
   return Boolean(row?.suspended);
 }
 
-export async function createResumeUploadSession(ownerId: number, input: { fileName: string; mimeType: string; expectedSize: number }) {
+export async function createResumeUploadSession(ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const id = randomUUID(); await db.insert(resumeUploadSessions).values({ id, ownerId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize });
-  return { id, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize, receivedSize: 0, nextChunkIndex: 0, status: "active" as const, attachmentId: null };
+  const id = input.sessionId || randomUUID();
+  await db.insert(resumeUploadSessions).values({ id, ownerId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize }).onDuplicateKeyUpdate({ set: { id } });
+  const existing = await getResumeUploadSession(ownerId, id);
+  if (!existing || existing.fileName !== input.fileName || existing.mimeType !== input.mimeType || existing.expectedSize !== input.expectedSize) throw new Error("Upload identity is already in use");
+  return existing;
 }
 
 export async function getResumeUploadSession(ownerId: number, sessionId: string) {

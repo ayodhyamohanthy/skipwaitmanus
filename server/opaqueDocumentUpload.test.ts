@@ -107,4 +107,18 @@ describe("opaque private-document upload route", () => {
     expect(completed.body.error).toMatch(/fragment was not found/i);
     expect(completed.body.error).not.toMatch(/Failed to parse URL/i);
   });
+  it("reuses a client upload identity when the browser starts the same upload twice", async () => {
+    const app = express(); app.use(express.json()); const sessions = new Map<string, any>();
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 12, openId: "workos-seeker" } }), dataUrlToBuffer: () => Buffer.from("unused"), sanitizeDocumentName: value => value,
+      storagePut: async key => ({ key }), storageGetSignedUrl: async key => key, createReferralAttachment: async (_ownerId, input) => ({ id: 1, ...input }), getAccessibleReferralAttachment: async () => undefined,
+      createResumeUploadSession: async (ownerId, input) => { const id = input.sessionId || "generated"; const existing = sessions.get(id); if (existing) return existing; const session = { id, ownerId, ...input, status: "active", receivedSize: 0, nextChunkIndex: 0, attachmentId: null, chunks: [] }; sessions.set(id, session); return session; },
+      getResumeUploadSession: async () => undefined, appendResumeUploadChunk: async () => ({ nextChunkIndex: 1, receivedSize: 1, alreadyStored: false }), claimResumeUploadFinalization: async () => ({ outcome: "missing" as const }), completeResumeUploadSession: async () => ({ id: 1, fileName: "resume.pdf", fileKey: "k", mimeType: "application/pdf", fileSize: 1 }),
+      saveVerifiedWorkEmail: async () => ({}), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
+    });
+    const body = { clientUploadId: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 99 };
+    const [first, second] = await Promise.all([request(app).post("/api/documents/uploads").send(body), request(app).post("/api/documents/uploads").send(body)]);
+    expect(first.status).toBe(201); expect(second.status).toBe(201); expect(first.body.sessionId).toBe(second.body.sessionId); expect(sessions.size).toBe(1);
+  });
+
 });

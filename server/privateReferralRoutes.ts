@@ -30,7 +30,7 @@ export type PrivateReferralRouteDeps = {
   storageGetBytes?: (key: string) => Promise<Buffer | Uint8Array | undefined>;
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
-  createResumeUploadSession?: (ownerId: number, input: { fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
+  createResumeUploadSession?: (ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
   getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "finalizing" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
   appendResumeUploadChunk?: (ownerId: number, input: { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number }) => Promise<{ nextChunkIndex: number; receivedSize: number; alreadyStored: boolean }>;
   claimResumeUploadFinalization?: (ownerId: number, sessionId: string, finalizationOwner: string) => Promise<{ outcome: "missing" | "claimed" | "finalizing" | "completed"; session?: { attachmentId: number | null } }>;
@@ -313,11 +313,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/documents/uploads", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
-      const { fileName, mimeType, fileSize } = req.body as { fileName?: string; mimeType?: string; fileSize?: number };
+      const { fileName, mimeType, fileSize, clientUploadId } = req.body as { fileName?: string; mimeType?: string; fileSize?: number; clientUploadId?: string };
       const safeFileSize = typeof fileSize === "number" && Number.isInteger(fileSize) && fileSize > 0 && fileSize <= 10 * 1024 * 1024 ? fileSize : null;
       if (!fileName || !mimeType || !privateDocumentMimeTypes.includes(mimeType) || safeFileSize === null) return res.status(400).json({ error: "Use a PDF, Word document, PNG, or JPEG resume smaller than 10 MB" });
       if (!deps.createResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
-      const session = await deps.createResumeUploadSession(identity.account.id, { fileName: deps.sanitizeDocumentName(fileName), mimeType, expectedSize: safeFileSize });
+      const safeClientUploadId = typeof clientUploadId === "string" && /^[a-f0-9-]{20,64}$/i.test(clientUploadId) ? clientUploadId : undefined;
+      const session = await deps.createResumeUploadSession(identity.account.id, { sessionId: safeClientUploadId, fileName: deps.sanitizeDocumentName(fileName), mimeType, expectedSize: safeFileSize });
       res.set("Cache-Control", "private, no-store"); res.status(201).json({ sessionId: session.id, chunkBytes: 48 * 1024 });
     } catch { res.status(500).json({ error: "We could not prepare your private resume upload. Please try again." }); }
   });
