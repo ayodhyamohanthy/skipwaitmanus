@@ -1,3 +1,4 @@
+import { resolveTrustedClientIp } from "./_core/trustedClientIp";
 import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { validatePrivateDocument } from "./documentValidation";
@@ -80,7 +81,7 @@ export type PrivateReferralRouteDeps = {
   getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
   sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
   sendWorkEmailOtp?: (input: { email: string }) => Promise<{ sent: boolean; reason: string }>;
-  verifyWorkEmailOtp?: (input: { email: string; code: string }) => Promise<boolean>;
+  verifyWorkEmailOtp?: (input: { email: string; code: string; ip?: string }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
   hasVerifiedWorkEmailOtp?: (input: { email: string }) => Promise<boolean>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
@@ -424,9 +425,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
       if (!deps.verifyWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
-      const verified = await deps.verifyWorkEmailOtp({ email, code });
+      const verified = await deps.verifyWorkEmailOtp({ email, code, ip: resolveTrustedClientIp(req) });
       if (verified) { record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ verified: true }); }
-      await deps.registerWorkEmailOtpFailure?.({ email, code });
       record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
       res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
     } catch { res.status(500).json({ error: "We could not verify the code" }); }

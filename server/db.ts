@@ -65,6 +65,23 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   await db.insert(users).values(values).onDuplicateKeyUpdate({ set: { name: values.name, email: values.email, loginMethod: values.loginMethod, lastSignedIn: values.lastSignedIn, role: values.role } });
 }
 
+export async function provisionWorkEmailIdentity(emailInput: string) {
+  const email = emailInput.trim().toLowerCase();
+  const domain = email.split("@")[1];
+  if (!domain || !isWorkEmailDomain(domain)) throw new Error("A verified work email is required");
+  const openId = `workemail_${email}`;
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const current = await tx.select({ id: users.id, name: users.name, role: users.role }).from(users).where(eq(users.openId, openId)).limit(1);
+    const role = resolveSyncedUserRole({ openId, email, existingRole: current[0]?.role, loginMethod: "otp_work_email" });
+    await tx.insert(users).values({ openId, name: current[0]?.name ?? email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date(), role }).onDuplicateKeyUpdate({ set: { email, loginMethod: "otp_work_email", lastSignedIn: new Date(), role } });
+    const account = (await tx.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
+    if (!account) throw new Error("Work email account could not be provisioned");
+    await tx.insert(profiles).values({ userId: account.id, accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true } });
+    return account;
+  });
+}
+
 export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
 export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; await db.update(users).set({ sessionsValidAfter: new Date() }).where(eq(users.openId, openId)); }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }

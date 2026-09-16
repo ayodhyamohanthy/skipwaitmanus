@@ -7,6 +7,7 @@ import { getDb } from "./db";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+  { table: "workEmailOtpRateLimits", createSql: `CREATE TABLE IF NOT EXISTS \`workEmailOtpRateLimits\` (\`id\` int AUTO_INCREMENT NOT NULL, \`limiterKey\` varchar(96) NOT NULL, \`windowStart\` timestamp NOT NULL, \`hitCount\` int NOT NULL DEFAULT 1, \`expiresAt\` timestamp NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`workEmailOtpRateLimits_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`work_email_otp_rate_window_unique\`(\`limiterKey\`,\`windowStart\`), INDEX \`work_email_otp_rate_expiry_idx\`(\`expiresAt\`))` },
   { table: "employerPaymentFulfillments", createSql: `CREATE TABLE IF NOT EXISTS \`employerPaymentFulfillments\` (\`id\` int AUTO_INCREMENT NOT NULL, \`provider\` varchar(32) NOT NULL, \`providerOrderId\` varchar(255) NOT NULL, \`providerPaymentId\` varchar(255), \`userId\` int NOT NULL, \`pack\` ENUM('starter','growth','scale') NOT NULL, \`amount\` int NOT NULL, \`currency\` varchar(3) NOT NULL, \`status\` ENUM('pending','processing','credited','requires_review') NOT NULL DEFAULT 'pending', \`attemptCount\` int NOT NULL DEFAULT 0, \`lastError\` varchar(500), \`creditedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`employerPaymentFulfillments_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`employer_payment_provider_order_unique\`(\`provider\`,\`providerOrderId\`), UNIQUE INDEX \`employer_payment_provider_payment_unique\`(\`provider\`,\`providerPaymentId\`), INDEX \`employer_payment_user_status_idx\`(\`userId\`,\`status\`))` },
   { table: "employerAccounts", createSql: `CREATE TABLE IF NOT EXISTS \`employerAccounts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`companyName\` varchar(160) NOT NULL, \`billingEmail\` varchar(320) NOT NULL, \`credits\` int NOT NULL DEFAULT 0, \`budgetMonthlyUsdCents\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`employerAccounts_id\` PRIMARY KEY(\`id\`))` },
   { table: "employerTalentRefs", createSql: `CREATE TABLE IF NOT EXISTS \`employerTalentRefs\` (\`id\` int AUTO_INCREMENT NOT NULL, \`employerUserId\` int NOT NULL, \`seekerProfileUserId\` int NOT NULL, \`publicRef\` varchar(64) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`employerTalentRefs_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`employer_talent_refs_public_unique\` UNIQUE(\`publicRef\`), CONSTRAINT \`employer_talent_refs_pair_unique\` UNIQUE(\`employerUserId\`,\`seekerProfileUserId\`), INDEX \`employer_talent_refs_scope_idx\` (\`employerUserId\`,\`publicRef\`))` },
@@ -165,6 +166,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       applied.push(`${table}.${column}`);
     }
     const desiredIndexes = [
+      { table: "workEmailOtpCodes", name: "work_email_otp_active_idx", columns: "`email`,`consumedAt`,`expiresAt`,`createdAt`", nonUnique: true },
       { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
       { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
       { table: "referralRequests", name: "referral_requests_seeker_idempotency_unique", columns: "`jobSeekerId`,`idempotencyKey`" },
@@ -175,7 +177,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     ];
     for (const index of desiredIndexes) {
       const key = `${index.table}.${index.name}`; if (existingIndexes.get(key) === 0) { skipped.push(`index:${key}`); continue; }
-      const stmt = `CREATE UNIQUE INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
+      const stmt = `CREATE ${index.nonUnique ? "" : "UNIQUE "}INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
       try {
         const dedupe = index.name === "resume_upload_sessions_owner_client_unique"
           ? "UPDATE `resumeUploadSessions` s JOIN (SELECT ownerId,clientUploadId,MIN(id) canonicalId FROM (SELECT id,ownerId,clientUploadId FROM `resumeUploadSessions`) source WHERE clientUploadId IS NOT NULL GROUP BY ownerId,clientUploadId HAVING COUNT(*)>1) duplicates ON duplicates.ownerId=s.ownerId AND duplicates.clientUploadId=s.clientUploadId SET s.clientUploadId=NULL WHERE s.id<>duplicates.canonicalId"

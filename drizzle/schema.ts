@@ -187,7 +187,17 @@ export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   expiresAt: timestamp("expiresAt").notNull(),
   consumedAt: timestamp("consumedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("work_email_otp_email_hash_idx").on(table.email, table.codeHash)]);
+}, table => [index("work_email_otp_email_hash_idx").on(table.email, table.codeHash), index("work_email_otp_active_idx").on(table.email, table.consumedAt, table.expiresAt, table.createdAt)]);
+
+export const workEmailOtpRateLimits = mysqlTable("workEmailOtpRateLimits", {
+  id: int("id").autoincrement().primaryKey(),
+  limiterKey: varchar("limiterKey", { length: 96 }).notNull(),
+  windowStart: timestamp("windowStart").notNull(),
+  hitCount: int("hitCount").default(1).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("work_email_otp_rate_window_unique").on(table.limiterKey, table.windowStart), index("work_email_otp_rate_expiry_idx").on(table.expiresAt)]);
 
 export const referrerSlackWebhooks = mysqlTable("referrerSlackWebhooks", {
   id: int("id").autoincrement().primaryKey(),
