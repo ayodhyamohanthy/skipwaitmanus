@@ -922,10 +922,10 @@ export async function createReferralAttachment(ownerId: number, input: { fileNam
 
 export async function getAccessibleReferralAttachment(userId: number, attachmentId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId }).from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id)).where(and(eq(referralAttachments.id, attachmentId), or(eq(referralAttachments.ownerId, userId), and(eq(referralRequests.referrerId, userId), inArray(referralRequests.status, ["pending", "approved", "intro_made", "interview", "offer", "closed"]))))).limit(1);
-  return result[0];
+  const result = await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId, requestStatus: referralRequests.status }).from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralAttachments.id, attachmentId)).limit(1);
+  const attachment = result[0];
+  return attachment && canAccessReferralAttachment(userId, attachment) ? attachment : undefined;
 }
-
 export async function getOwnedResumeAttachmentForPitch(userId: number, attachmentId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const result = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId))).limit(1);
@@ -933,10 +933,11 @@ export async function getOwnedResumeAttachmentForPitch(userId: number, attachmen
   return result[0];
 }
 
-export function canAccessReferralAttachment(actorUserId: number, attachment: { ownerId: number; referrerId?: number | null }): boolean {
-  return attachment.ownerId === actorUserId || attachment.referrerId === actorUserId;
+const DOCUMENT_REFERRER_ACCESS_STATUSES = new Set(["pending", "approved", "intro_made", "interview", "offer", "closed"]);
+export function canAccessReferralAttachment(actorUserId: number, attachment: { ownerId: number; referrerId?: number | null; requestStatus?: string | null }): boolean {
+  if (attachment.ownerId === actorUserId) return true;
+  return attachment.referrerId === actorUserId && Boolean(attachment.requestStatus && DOCUMENT_REFERRER_ACCESS_STATUSES.has(attachment.requestStatus));
 }
-
 export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = await db.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1);

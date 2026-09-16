@@ -383,7 +383,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).send("Sign in to view this document"); if (!Number.isInteger(attachmentId) || attachmentId <= 0) return res.status(400).send("Invalid document reference");
       const attachment = await deps.getAccessibleReferralAttachment(identity.account.id, attachmentId); if (!attachment) return res.status(404).send("Document not found");
       record({ actorUserId: identity.account.id, action: "document.accessed", outcome: "success", resourceType: "attachment", resourceId: attachmentId, metadata: { access: "authorized" } });
-      const url = await deps.storageGetSignedUrl(attachment.fileKey || ""); res.set("Cache-Control", "private, no-store"); res.redirect(307, url);
+      res.set("Cache-Control", "private, no-store");
+      res.set("X-Content-Type-Options", "nosniff");
+      const safeName = String(attachment.fileName || "document").replace(/[\r\n"\\]/g, "_");
+      res.set("Content-Disposition", `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`);
+      if (deps.storageGetBytes) {
+        const bytes = await deps.storageGetBytes(attachment.fileKey || "").catch(() => undefined);
+        if (!bytes) return res.status(404).send("Document not found");
+        res.set("Content-Type", attachment.mimeType || "application/octet-stream");
+        return res.send(Buffer.from(bytes));
+      }
+      const url = await deps.storageGetSignedUrl(attachment.fileKey || ""); res.redirect(307, url);
     } catch { res.status(502).send("We could not retrieve that document. Please try again."); }
   });
   app.get("/api/privacy/export", async (req, res) => {
