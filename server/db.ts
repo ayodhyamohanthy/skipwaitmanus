@@ -5,6 +5,7 @@ import * as mysql from "mysql2/promise";
 import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
+import { databaseSslOptions } from "./_core/databaseSsl";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
@@ -25,7 +26,7 @@ export async function getDb() {
         user: parsed.username,
         password: decodeURIComponent(parsed.password),
         database: parsed.pathname.replace(/^\//, "") || undefined,
-        ssl: { rejectUnauthorized: false },
+        ssl: databaseSslOptions(),
       });
       _db = drizzle(connection) as unknown as ReturnType<typeof drizzle>;
     } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }

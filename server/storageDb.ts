@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
 import { documentBlobs } from "../drizzle/schema";
+import { databaseSslOptions, databaseUrlParts } from "./_core/databaseSsl";
 
 /**
  * Database-backed storage adapter — the zero-config fallback for document
@@ -15,16 +16,16 @@ let pool: mysql.Pool | undefined;
 
 function getPool() {
   if (!pool) {
-    const url = new URL(process.env.DATABASE_URL ?? "");
+    const parts = databaseUrlParts();
     pool = mysql.createPool({
-      uri: process.env.DATABASE_URL ?? "",
-      host: url.hostname,
-      user: decodeURIComponent(url.username || "root"),
-      password: decodeURIComponent(url.password || url.searchParams.get("password") || ""),
-      database: url.pathname.slice(1),
-      port: Number(url.port || 3306),
+      uri: parts.raw,
+      host: parts.host,
+      user: parts.user,
+      password: parts.password,
+      database: parts.database,
+      port: parts.port,
       connectionLimit: 5,
-      ssl: { rejectUnauthorized: false },
+      ssl: databaseSslOptions(),
     });
   }
   return pool;
