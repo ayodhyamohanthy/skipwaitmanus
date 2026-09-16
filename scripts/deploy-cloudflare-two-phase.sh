@@ -17,5 +17,5 @@ instances=$(npx wrangler containers instances "$app_id" --json);expected_name="s
 echo 'activation_retry=1';deploy 2
 second_info=$(npx wrangler containers info "$app_id" --json);second_version=$(jq -r '.current_version//.version//empty'<<<"$second_info");second_image=$(jq -r '.configuration.image//.image//empty'<<<"$second_info");echo "deploy_phase=2 version=$second_version image=$second_image"
 set +e;READY_TIMEOUT_SECONDS=240 poll_cloudflare_readiness "$READY_URL" "$EXPECTED_SHA";result=$?;set -e
-if [[ $result != 0 ]];then echo "Final Cloudflare application=$app_id";npx wrangler containers instances "$app_id" --json|jq -c '.[]|{name,state,version:(.version?//null),created}';fi
+if [[ $result != 0 ]];then echo "Final Cloudflare application=$app_id";npx wrangler containers instances "$app_id" --json|jq -c '.[]|{name,state,version:(.version? // null),created}';fi
 exit "$result"
