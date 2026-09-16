@@ -11,6 +11,7 @@ import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
+import { isLegacyOpportunityUrlSafe, validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -467,13 +468,28 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before publishing an opportunity");
   const roleTitle = input.roleTitle.trim();
   if (!roleTitle || roleTitle.length > 180) throw new Error("Add a role title before publishing");
-  if (input.targetRoleUrl) {
-    try { new URL(input.targetRoleUrl); } catch { throw new Error("Use a valid public job link or leave it blank"); }
+  const targetRoleUrl = input.targetRoleUrl?.trim() ? await validateOpportunityTargetUrl(input.targetRoleUrl, profile.workEmailDomain, resolveEmployerDomainFromTargetUrl) : null;
+  const location = input.location?.trim() || null;
+  if (input.kind === "hiring_now" && !targetRoleUrl) throw new Error("Hiring-now opportunities require a verified role link");
+  if (input.kind === "walk_in") {
+    if (targetRoleUrl) throw new Error("Walk-ins should use the validated time and location instead of a role link");
+    if (!location || !input.walkInAt || !input.walkInEndsAt || input.walkInEndsAt <= input.walkInAt) throw new Error("Walk-ins require a complete location and valid start and end time");
   }
   if (input.compensation && input.compensation.trim().length > 80) throw new Error("Keep compensation under 80 characters");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl: input.targetRoleUrl?.trim() || null, location: input.location?.trim() || null, compensation: input.compensation?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true });
+  const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl, location, compensation: input.compensation?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true });
   return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, compensation: input.compensation?.trim() || null };
+}
+
+async function suppressUnsafeLegacyOpportunities<T extends { id: number; companyDomain: string; targetRoleUrl: string | null; kind: "hiring_now" | "walk_in"; location: string | null; walkInAt: Date | null; walkInEndsAt: Date | null }>(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows: T[]) {
+  const checks = await Promise.all(rows.map(async row => {
+    if (row.kind === "walk_in") return !row.targetRoleUrl && Boolean(row.location && row.walkInAt && row.walkInEndsAt && row.walkInEndsAt > row.walkInAt);
+    if (!row.targetRoleUrl || !isLegacyOpportunityUrlSafe(row.targetRoleUrl, row.companyDomain)) return false;
+    try { await validateOpportunityTargetUrl(row.targetRoleUrl, row.companyDomain, resolveEmployerDomainFromTargetUrl); return true; } catch { return false; }
+  }));
+  const unsafe = rows.filter((_row, index) => !checks[index]);
+  if (unsafe.length) await db.update(companyOpportunities).set({ isActive: false }).where(inArray(companyOpportunities.id, unsafe.map(row => row.id)));
+  return rows.filter((_row, index) => checks[index]);
 }
 
 export async function listPublicCompanyOpportunities() {
@@ -482,9 +498,9 @@ export async function listPublicCompanyOpportunities() {
   // compensation is a newer optional column; degrade gracefully if the live
   // DB has not yet been migrated, so the wall never 500s.
   try {
-    return await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+    return suppressUnsafeLegacyOpportunities(db, await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24));
   } catch {
-    return db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+    return suppressUnsafeLegacyOpportunities(db, await db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24));
   }
 }
 
@@ -1968,7 +1984,7 @@ export async function listPublicCompanyOpportunitiesWithSponsorship() {
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
   const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   try {
-    const rows = await attempt();
+    const rows = await suppressUnsafeLegacyOpportunities(db, await attempt());
     const now = Date.now();
     return orderOpportunitiesSponsoredFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
   } catch {
