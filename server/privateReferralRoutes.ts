@@ -101,7 +101,7 @@ export type PrivateReferralRouteDeps = {
   listMyPrivacyRequests?: (userId: number) => Promise<unknown[]>;
   createPrivacyErasureRequest?: (userId: number) => Promise<{ id: number; kind: "erasure"; status: string; createdAt: Date; alreadyRequested: boolean }>;
   listAdminPrivacyRequests?: (limit?: number) => Promise<unknown[]>;
-  reviewPrivacyRequest?: (adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) => Promise<unknown>;
+  reviewPrivacyRequest?: (adminUserId: number, requestId: number, input: { status: "in_review"; resolution?: string }) => Promise<unknown>;
   listNotifications?: (userId: number) => Promise<PrivateNotification[]>;
   markNotificationRead?: (userId: number, notificationId: number) => Promise<{ success: boolean }>;
   listRequiresReviewPayments?: (limit?: number) => Promise<unknown[]>;
@@ -1048,7 +1048,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid privacy request" });
       const status = req.body?.status; const resolution = typeof req.body?.resolution === "string" ? req.body.resolution.slice(0, 500) : undefined;
-      if (status !== "in_review" && status !== "completed" && status !== "declined") return res.status(400).json({ error: "Choose a valid privacy request status" });
+      if (status !== "in_review") return res.status(409).json({ error: "Completion is blocked until a verified erasure workflow records every resource step and retained-data exception. This endpoint can only start review." });
       const request = await deps.reviewPrivacyRequest?.(identity.account.id, requestId, { status, resolution }); if (!request) return res.status(404).json({ error: "Privacy request not found" });
       record({ actorUserId: identity.account.id, action: "admin.privacy_request_reviewed", outcome: "success", resourceType: "privacy_request", resourceId: requestId, metadata: { status } });
       res.json({ request });

@@ -158,14 +158,14 @@ export async function listAdminPrivacyRequests(limit: number = 100) {
   return db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, source: privacyRequests.source, resolution: privacyRequests.resolution, createdAt: privacyRequests.createdAt, updatedAt: privacyRequests.updatedAt, userId: privacyRequests.userId, requesterName: users.name, requesterEmail: users.email, reviewedByUserId: privacyRequests.reviewedByUserId, reviewedAt: privacyRequests.reviewedAt }).from(privacyRequests).innerJoin(users, eq(privacyRequests.userId, users.id)).orderBy(desc(privacyRequests.createdAt)).limit(safeLimit);
 }
 
-export async function reviewPrivacyRequest(adminUserId: number, requestId: number, input: { status: "in_review" | "completed" | "declined"; resolution?: string }) {
+export async function reviewPrivacyRequest(adminUserId: number, requestId: number, input: { status: "in_review"; resolution?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = await db.select({ id: privacyRequests.id, userId: privacyRequests.userId, kind: privacyRequests.kind }).from(privacyRequests).where(eq(privacyRequests.id, requestId)).limit(1);
   if (!existing[0]) return undefined;
-  const resolution = input.resolution?.trim().slice(0, 500) || null;
-  const activeKey = input.status === "completed" || input.status === "declined" ? null : `${existing[0].kind}:${existing[0].userId}`;
-  await db.update(privacyRequests).set({ status: input.status, activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(eq(privacyRequests.id, requestId));
-  return { id: requestId, status: input.status, resolution };
+  const resolution = input.resolution?.trim().slice(0, 500) || "Blocked: awaiting verified erasure inventory and per-resource evidence.";
+  const activeKey = `${existing[0].kind}:${existing[0].userId}`;
+  await db.update(privacyRequests).set({ status: "in_review", activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(and(eq(privacyRequests.id, requestId), inArray(privacyRequests.status, ["requested", "in_review"])));
+  return { id: requestId, status: "in_review" as const, resolution };
 }
 
 export async function getVerifiedWorkEmailAccess(userId: number) {
