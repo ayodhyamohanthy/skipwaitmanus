@@ -371,8 +371,9 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   fileKey: varchar("fileKey", { length: 1024 }).notNull(),
   mimeType: varchar("mimeType", { length: 120 }).notNull(),
   fileSize: int("fileSize").notNull(),
+  uploadSessionId: varchar("uploadSessionId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId)]);
+}, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
 
 export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   id: varchar("id", { length: 64 }).primaryKey(),
@@ -382,7 +383,10 @@ export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   expectedSize: int("expectedSize").notNull(),
   receivedSize: int("receivedSize").default(0).notNull(),
   nextChunkIndex: int("nextChunkIndex").default(0).notNull(),
-  status: mysqlEnum("status", ["active", "completed", "failed"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "finalizing", "completed", "failed"]).default("active").notNull(),
+  finalizationOwner: varchar("finalizationOwner", { length: 64 }),
+  finalizationLeaseUntil: timestamp("finalizationLeaseUntil"),
+  permanentStorageKey: varchar("permanentStorageKey", { length: 1024 }),
   attachmentId: int("attachmentId").references(() => referralAttachments.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

@@ -31,9 +31,10 @@ export type PrivateReferralRouteDeps = {
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
   createResumeUploadSession?: (ownerId: number, input: { fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
-  getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
+  getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "finalizing" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
   appendResumeUploadChunk?: (ownerId: number, input: { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number }) => Promise<{ nextChunkIndex: number; receivedSize: number; alreadyStored: boolean }>;
-  completeResumeUploadSession?: (ownerId: number, sessionId: string, attachmentId: number) => Promise<void>;
+  claimResumeUploadFinalization?: (ownerId: number, sessionId: string, finalizationOwner: string) => Promise<{ outcome: "missing" | "claimed" | "finalizing" | "completed"; session?: { attachmentId: number | null } }>;
+  completeResumeUploadSession?: (ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
   getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
@@ -336,28 +337,34 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.post("/api/documents/uploads/:sessionId/complete", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });
-      if (!deps.getResumeUploadSession || !deps.completeResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
-      const session = await deps.getResumeUploadSession(identity.account.id, req.params.sessionId); if (!session) return res.status(404).json({ error: "This private upload is no longer available" });
+      if (!deps.getResumeUploadSession || !deps.claimResumeUploadFinalization || !deps.completeResumeUploadSession) return res.status(503).json({ error: "Private uploads are temporarily unavailable" });
+      const initialSession = await deps.getResumeUploadSession(identity.account.id, req.params.sessionId); if (!initialSession) return res.status(404).json({ error: "This private upload is no longer available" });
+      let session: typeof initialSession | undefined = initialSession;
       if (session.status === "completed" && session.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` });
-      if (session.status !== "active" || session.receivedSize !== session.expectedSize || session.chunks.length !== session.nextChunkIndex) return res.status(400).json({ error: "Your resume upload is incomplete. Please retry it." });
+      if ((session.status !== "active" && session.status !== "finalizing") || session.receivedSize !== session.expectedSize || session.chunks.length !== session.nextChunkIndex) return res.status(400).json({ error: "Your resume upload is incomplete. Please retry it." });
+      const finalizationOwner = `${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const claim = await deps.claimResumeUploadFinalization(identity.account.id, session.id, finalizationOwner);
+      if (claim.outcome === "missing") return res.status(404).json({ error: "This private upload is no longer available" });
+      if (claim.outcome === "completed") { session = await deps.getResumeUploadSession(identity.account.id, session.id); if (session?.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` }); }
+      if (claim.outcome === "finalizing") {
+        const sessionId = initialSession.id;
+        for (let attempt = 0; attempt < 40; attempt += 1) { await new Promise(resolve => setTimeout(resolve, 50)); session = await deps.getResumeUploadSession(identity.account.id, sessionId); if (session?.status === "completed" && session.attachmentId) return res.status(201).json({ id: session.attachmentId, fileName: session.fileName, mimeType: session.mimeType, fileSize: session.expectedSize, url: `/api/documents/${session.attachmentId}` }); }
+        return res.status(409).json({ error: "Your resume is still finishing. Retry completion." });
+      }
+      if (!session) return res.status(404).json({ error: "This private upload is no longer available" });
       const pieces = await Promise.all(session.chunks.map(async (chunk, index) => {
         if (chunk.chunkIndex !== index) throw new Error("Resume upload chunks are incomplete");
-        if (deps.storageGetBytes) {
-          const bytes = await deps.storageGetBytes(chunk.storageKey).catch(() => undefined);
-          if (!bytes) throw new Error("Resume upload fragment was not found");
-          return Buffer.from(bytes);
-        }
-        const signedUrl = await deps.storageGetSignedUrl(chunk.storageKey);
-        let response: Response;
-        try { response = await fetch(signedUrl); }
-        catch { throw new Error("Resume upload fragment was not found"); }
-        if (!response.ok) throw new Error("Resume upload fragment was not found");
-        return Buffer.from(await response.arrayBuffer());
+        if (deps.storageGetBytes) { const bytes = await deps.storageGetBytes(chunk.storageKey).catch(() => undefined); if (!bytes) throw new Error("Resume upload fragment was not found"); return Buffer.from(bytes); }
+        const signedUrl = await deps.storageGetSignedUrl(chunk.storageKey); let response: Response; try { response = await fetch(signedUrl); } catch { throw new Error("Resume upload fragment was not found"); }
+        if (!response.ok) throw new Error("Resume upload fragment was not found"); return Buffer.from(await response.arrayBuffer());
       }));
       const buffer = Buffer.concat(pieces); if (buffer.length !== session.expectedSize) throw new Error("Resume upload size could not be verified");
-      const attachment = await createPrivateAttachment(identity, session.fileName, session.mimeType, buffer); await deps.completeResumeUploadSession(identity.account.id, session.id, attachment.id);
-      res.status(201).json(attachment);
-    } catch (error) { const message = error instanceof Error ? error.message : "We could not finish your resume upload"; res.status(/incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : 500).json({ error: message }); }
+      const validated = validatePrivateDocument({ fileName: session.fileName, mimeType: session.mimeType, buffer });
+      const permanentKey = `${privateDocumentPrefix(identity)}uploads/${session.id}/${deps.sanitizeDocumentName(validated.fileName)}`;
+      const stored = await deps.storagePut(permanentKey, buffer, validated.mimeType);
+      const attachment = await deps.completeResumeUploadSession(identity.account.id, session.id, finalizationOwner, { fileName: validated.fileName, fileKey: stored.key, mimeType: validated.mimeType, fileSize: buffer.length });
+      res.status(201).json({ ...attachment, url: `/api/documents/${attachment.id}` });
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not finish your resume upload"; res.status(/incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : /still finishing|lease changed/i.test(message) ? 409 : 500).json({ error: message }); }
   });
   app.get("/api/documents/:attachmentId", async (req, res) => {
     try {

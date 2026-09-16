@@ -111,9 +111,32 @@ export async function appendResumeUploadChunk(ownerId: number, input: { sessionI
   return { nextChunkIndex: session.nextChunkIndex + 1, receivedSize: session.receivedSize + input.byteSize, alreadyStored: false };
 }
 
-export async function completeResumeUploadSession(ownerId: number, sessionId: string, attachmentId: number) {
+export async function claimResumeUploadFinalization(ownerId: number, sessionId: string, finalizationOwner: string) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.update(resumeUploadSessions).set({ status: "completed", attachmentId }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "active")));
+  const leaseUntil = new Date(Date.now() + 2 * 60 * 1000);
+  const result = await db.update(resumeUploadSessions).set({ status: "finalizing", finalizationOwner, finalizationLeaseUntil: leaseUntil })
+    .where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), or(eq(resumeUploadSessions.status, "active"), and(eq(resumeUploadSessions.status, "finalizing"), or(isNull(resumeUploadSessions.finalizationLeaseUntil), sql`${resumeUploadSessions.finalizationLeaseUntil} < NOW()`)))));
+  const session = await getResumeUploadSession(ownerId, sessionId);
+  if (!session) return { outcome: "missing" as const };
+  if (session.status === "completed" && session.attachmentId) return { outcome: "completed" as const, session };
+  if (Number(result[0].affectedRows) === 1 && session.finalizationOwner === finalizationOwner) return { outcome: "claimed" as const, session };
+  return { outcome: "finalizing" as const, session };
+}
+
+export async function completeResumeUploadSession(ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    await tx.insert(referralAttachments).values({ ownerId, uploadSessionId: sessionId, ...input }).onDuplicateKeyUpdate({ set: { uploadSessionId: sessionId } });
+    const rows = await tx.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.uploadSessionId, sessionId)).limit(1);
+    const attachment = rows[0]; if (!attachment) throw new Error("Finalized attachment could not be bound");
+    const result = await tx.update(resumeUploadSessions).set({ status: "completed", attachmentId: attachment.id, permanentStorageKey: input.fileKey, finalizationOwner: null, finalizationLeaseUntil: null }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "finalizing"), eq(resumeUploadSessions.finalizationOwner, finalizationOwner)));
+    if (Number(result[0].affectedRows) !== 1) {
+      const current = await tx.select({ attachmentId: resumeUploadSessions.attachmentId }).from(resumeUploadSessions).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId))).limit(1);
+      if (current[0]?.attachmentId !== attachment.id) throw new Error("Resume upload finalization lease changed; retry completion");
+    }
+    await tx.delete(resumeUploadChunks).where(eq(resumeUploadChunks.sessionId, sessionId));
+    return attachment;
+  });
 }
 
 export async function exportUserData(userId: number) {

@@ -267,6 +267,13 @@
       "when": 1797196800000,
       "tag": "0038_user_follows",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1789545218278,
+      "tag": "0041_atomic_resume_upload_finalization",
+      "breakpoints": true
     }
   ]
 }
