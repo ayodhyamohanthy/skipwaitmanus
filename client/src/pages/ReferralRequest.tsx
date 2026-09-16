@@ -165,8 +165,9 @@ export default function ReferralRequest() {
         return promise;
       };
       const uploaded = await Promise.all(files.map(uploadOne));
-      setAttachments(current => { const known = new Set(current.map(item => item.id)); const next = [...current, ...uploaded.filter(item => !known.has(item.id))]; localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
-      return uploaded;
+      const canonicalUploaded = uploaded.filter((item, index, all) => all.findIndex(candidate => candidate.id === item.id) === index);
+      setAttachments(current => { const known = new Set(current.map(item => item.id)); const additions = canonicalUploaded.filter(item => { if (known.has(item.id)) return false; known.add(item.id); return true; }); const next = [...current, ...additions]; localStorage.setItem("bridge-seeker-attachments", JSON.stringify(next)); return next; });
+      return canonicalUploaded;
     } catch (uploadError) { setError(uploadError instanceof Error ? uploadError.message : "Upload failed"); throw uploadError; } finally { setUploading(false); setUploadProgress(null); }
   };
   const selectFiles = (files: FileList | null) => {
