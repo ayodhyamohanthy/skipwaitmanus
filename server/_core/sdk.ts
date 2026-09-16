@@ -1,4 +1,4 @@
-import { decodeJwt, SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify } from "jose";
 import { randomUUID } from "node:crypto";
 import { ENV } from "./env";
 import * as db from "../db";
@@ -28,7 +28,8 @@ class SDKServer {
   }
   async revokeSession(cookieValue:string|undefined|null){
     if(!cookieValue)return;
-    try{const p=decodeJwt(cookieValue);if(typeof p.sub==="string")await db.revokeUserSessions(p.sub)}catch{}
+    const session = await this.verifySession(cookieValue);
+    if (session) await db.revokeUserSessions(session.openId);
   }
 }
 export const sdk=new SDKServer();
