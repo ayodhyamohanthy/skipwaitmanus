@@ -127,7 +127,7 @@ describe("boot-time schema reconcile", () => {
     dbRef.current = null;
     const { reconcileSchema, isSchemaReconciled, getLastReconcileResults } = await loadReconcileModule();
 
-    await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: ["index:resumeUploadSessions.resume_upload_sessions_owner_client_unique", "index:referralAttachments.referral_attachments_upload_session_unique"] });
+    await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: [] });
     expect(isSchemaReconciled()).toBe(false);
     expect(getLastReconcileResults()).toEqual([]);
   });
@@ -212,7 +212,7 @@ describe("boot-time schema reconcile", () => {
     };
     const { reconcileSchema, isSchemaReconciled, getLastReconcileError, getLastReconcileResults } = await loadReconcileModule();
 
-    await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: [] });
+    await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: ["index:resumeUploadSessions.resume_upload_sessions_owner_client_unique", "index:referralAttachments.referral_attachments_upload_session_unique"] });
     expect(isSchemaReconciled()).toBe(false);
     expect(getLastReconcileError()).toContain("ALTER TABLE `companyOpportunities` ADD COLUMN `compensation`");
     expect(getLastReconcileError()).toContain("Command denied to user");
