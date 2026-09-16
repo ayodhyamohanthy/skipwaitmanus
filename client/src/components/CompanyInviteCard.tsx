@@ -55,7 +55,7 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
     void copyText(inviteText, "Invite copied. Paste it into any app you prefer.");
   };
 
-  return <section className={`rounded-2xl border border-blue-100 bg-blue-50/60 ${compact ? "p-4" : "p-5 sm:p-6"}`} aria-label={`Private invitation for ${companyDomain}`}>
+  return <section className={`rounded-2xl border border-primary-tint-strong bg-primary-tint/60 ${compact ? "p-4" : "p-5 sm:p-6"}`} aria-label={`Private invitation for ${companyDomain}`}>
     <div className="flex items-start justify-between gap-4">
       <div>
         <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.14em] text-primary"><UsersRound className="h-3.5 w-3.5" />Private company invitation</p>
@@ -64,15 +64,15 @@ export function CompanyInviteCard({ companyDomain, placement, compact = false }:
       </div>
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface text-primary shadow-sm"><ShieldCheck className="h-5 w-5" /></span>
     </div>
-    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-surface p-3">
+    <div className="mt-5 flex items-center justify-between gap-3 rounded-xl border border-primary-tint-strong bg-surface p-3">
       <span className="min-w-0 truncate text-sm font-semibold text-slate-600">{inviteLink.replace(/^https?:\/\//, "")}</span>
-      <button type="button" onClick={() => { void copyText(inviteText, "Private company invite copied."); }} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-slate-950 px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-[.98]"><Copy className="h-3.5 w-3.5" />Copy</button>
+      <button type="button" onClick={() => { void copyText(inviteText, "Private company invite copied."); }} className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-inverse px-3 py-2 text-xs font-bold text-white transition hover:bg-slate-800 active:scale-[.98]"><Copy className="h-3.5 w-3.5" />Copy</button>
     </div>
     <div className={`mt-3 grid gap-2 ${compact ? "sm:grid-cols-2" : "sm:grid-cols-4"}`}>
-      <button type="button" onClick={shareToWhatsApp} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><MessageCircleMore className="h-4 w-4 text-primary" />WhatsApp</button>
-      <button type="button" onClick={shareToLinkedIn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><Linkedin className="h-4 w-4 text-primary" />LinkedIn</button>
-      <button type="button" onClick={shareToEmail} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><Mail className="h-4 w-4 text-primary" />Email</button>
-      {!compact && <><button type="button" onClick={shareToX} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]">X</button><button type="button" onClick={shareMore} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 active:scale-[.98]"><MoreHorizontal className="h-4 w-4 text-primary" />More apps</button></>}
+      <button type="button" onClick={shareToWhatsApp} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-primary-tint-strong hover:bg-primary-tint active:scale-[.98]"><MessageCircleMore className="h-4 w-4 text-primary" />WhatsApp</button>
+      <button type="button" onClick={shareToLinkedIn} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-primary-tint-strong hover:bg-primary-tint active:scale-[.98]"><Linkedin className="h-4 w-4 text-primary" />LinkedIn</button>
+      <button type="button" onClick={shareToEmail} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-primary-tint-strong hover:bg-primary-tint active:scale-[.98]"><Mail className="h-4 w-4 text-primary" />Email</button>
+      {!compact && <><button type="button" onClick={shareToX} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-primary-tint-strong hover:bg-primary-tint active:scale-[.98]">X</button><button type="button" onClick={shareMore} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-slate-200 bg-surface px-3 text-sm font-bold text-slate-700 transition hover:border-primary-tint-strong hover:bg-primary-tint active:scale-[.98]"><MoreHorizontal className="h-4 w-4 text-primary" />More apps</button></>}
     </div>
     <p className="mt-4 text-xs leading-5 text-slate-500">This invitation only asks someone to verify a matching work email. It never includes a candidate name, role link, request state, or document.</p>
   </section>;

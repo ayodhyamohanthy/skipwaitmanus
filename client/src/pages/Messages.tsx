@@ -19,7 +19,7 @@ function relativeTime(iso: string) {
 }
 
 function PaywallCard() {
-  return <div data-skipwait-screen="dm-paywall" className="rounded-xl border border-blue-100 bg-blue-50/70 p-5">
+  return <div data-skipwait-screen="dm-paywall" className="rounded-xl border border-primary-tint-strong bg-primary-tint/70 p-5">
     <span className="grid h-11 w-11 place-items-center rounded-xl bg-surface text-primary"><Crown className="h-5 w-5" /></span>
     <h2 className="mt-4 text-xl font-semibold tracking-[-.02em] text-slate-900">Direct messaging is for members</h2>
     <p className="mt-2 text-sm leading-6 text-slate-900">Pro members can message verified referrers directly and get answers faster. Pro includes 10 referral credits monthly — the core referral loop stays free for everyone. Or follow each other to message free — many referrers follow back.</p>
@@ -97,24 +97,24 @@ export default function Messages() {
         {thread.messages.map(message => <div key={message.id} className={`flex ${message.isMine ? "justify-end" : "justify-start"}`}><p className={`${message.isMine ? "bg-primary text-white" : "bg-surface text-slate-900 border border-slate-200"} max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-6`}>{message.body}</p></div>)}
       </div>
       {paywalled && <PaywallCard />}
-      {threadError && <p role="alert" className="pb-2 text-xs font-semibold text-rose-700">{threadError}</p>}
+      {threadError && <p role="alert" className="pb-2 text-xs font-semibold text-danger">{threadError}</p>}
       <footer className="shrink-0 border-t border-slate-200 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
         <form className="flex items-center gap-2" onSubmit={event => { event.preventDefault(); void send(); }}>
           <label className="sr-only" htmlFor="dm-draft">Message</label>
-          <input ref={composerRef} id="dm-draft" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a message" maxLength={3000} className="h-11 flex-1 rounded-lg border border-slate-200 bg-surface px-3 text-sm text-slate-950 outline-none focus:border-primary focus:bg-blue-50/40" />
+          <input ref={composerRef} id="dm-draft" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a message" maxLength={3000} className="h-11 flex-1 rounded-lg border border-slate-200 bg-surface px-3 text-sm text-slate-950 outline-none focus:border-primary focus:bg-primary-tint/40" />
           <button type="submit" disabled={sending || !draft.trim()} aria-label="Send message" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary text-white disabled:opacity-40"><Send className="h-4 w-4" /></button>
         </form>
       </footer>
     </section> : <section className="flex min-h-0 flex-1 flex-col pt-4">
-      {listError && <p role="alert" className="pb-3 text-xs font-semibold text-rose-700">{listError}</p>}
+      {listError && <p role="alert" className="pb-3 text-xs font-semibold text-danger">{listError}</p>}
       {threads === null ? <div className="h-24 animate-pulse rounded-xl border border-slate-200 bg-surface" /> : threads.length === 0 ? <div className="flex flex-1 flex-col justify-center">
-        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-blue-50 text-primary"><MessageSquare className="h-7 w-7" /></span>
+        <span className="grid h-14 w-14 place-items-center rounded-2xl bg-primary-tint text-primary"><MessageSquare className="h-7 w-7" /></span>
         <h1 className="mt-5 text-[2rem] font-semibold leading-[1] tracking-[-.05em]">Your chats live here.</h1>
         <p className="mt-3 text-sm leading-6 text-slate-600">Direct messages with referrers appear in this inbox. Referral-request conversations stay in <Link href="/requests" className="font-semibold text-primary underline-offset-2 hover:underline">My requests</Link>.</p>
         <Link href="/wall" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-3 text-sm font-bold text-white">Find referrers <ArrowRight className="h-4 w-4" /></Link>
       </div> : <ul className="min-h-0 flex-1 divide-y divide-slate-200 overflow-y-auto" data-skipwait-thread-list="open">
         {threads.map(item => <li key={item.counterpartUserId}><button type="button" onClick={() => { void openThread(item.counterpartUserId); }} className="flex w-full items-start gap-3 py-3.5 text-left">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-blue-50 text-primary"><MessageSquare className="h-4 w-4" /></span>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-tint text-primary"><MessageSquare className="h-4 w-4" /></span>
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline justify-between gap-2"><span className="truncate text-sm font-bold text-slate-900">{item.counterpartLabel}</span><span className="shrink-0 text-[11px] text-slate-500">{relativeTime(item.lastMessageAt)}</span></span>
             <span className="mt-0.5 flex items-center justify-between gap-2"><span className="truncate text-sm text-slate-600">{item.lastMessageIsMine ? "you: " : ""}{item.lastMessageBody}</span>{item.unreadCount > 0 && <span aria-label={`${item.unreadCount} unread`} className="h-2 w-2 shrink-0 rounded-full bg-primary" />}</span>

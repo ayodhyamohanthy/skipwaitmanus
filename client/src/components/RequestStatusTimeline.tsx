@@ -44,7 +44,7 @@ export function RequestStatusTimeline({ entries, label = "Status history" }: { e
       const color = entry.state === "waiting" ? "#94a3b8" : toneColor[entry.tone];
       const stamp = formatStamp(entry.date);
       return <li key={`${entry.label}-${index}`} className="flex items-baseline gap-2.5 text-sm">
-        <span aria-hidden="true" className="relative top-[-1px] inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color, boxShadow: entry.state === "waiting" ? "inset 0 0 0 1.5px #94a3b8, inset 0 0 0 3px #fff" : undefined }} />
+        <span aria-hidden="true" className="relative top-[-1px] inline-block h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: color, boxShadow: entry.state === "waiting" ? "inset 0 0 0 1.5px var(--color-slate-400), inset 0 0 0 3px var(--color-surface)" : undefined }} />
         <span className={entry.state === "waiting" ? "font-medium text-slate-500" : "font-semibold"} style={entry.state === "waiting" ? undefined : { color }}>{entry.label}</span>
         <span className="ml-auto shrink-0 text-xs text-slate-500">{stamp ?? (entry.state === "waiting" ? "waiting" : "")}</span>
       </li>;

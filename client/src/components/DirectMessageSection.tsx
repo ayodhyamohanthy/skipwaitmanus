@@ -8,7 +8,7 @@ import { FollowButton } from "./FollowButton";
 type ComposeState = { allowed: boolean; upgradeRequired: boolean; threadExists: boolean };
 
 function PaywallCard({ compact, referrerUserId }: { compact?: boolean; referrerUserId?: number }) {
-  return <div data-skipwait-screen="dm-paywall" className={`${compact ? "p-4" : "p-5"} rounded-xl border border-blue-100 bg-blue-50/70`}>
+  return <div data-skipwait-screen="dm-paywall" className={`${compact ? "p-4" : "p-5"} rounded-xl border border-primary-tint-strong bg-primary-tint/70`}>
     <span className="grid h-11 w-11 place-items-center rounded-xl bg-surface text-primary"><Crown className="h-5 w-5" /></span>
     <h2 className={`${compact ? "mt-3 text-lg" : "mt-4 text-xl"} font-semibold tracking-[-.02em] text-slate-900`}>Direct messaging is for members</h2>
     <p className="mt-2 text-sm leading-6 text-slate-900">Pro members can message verified referrers directly and get answers faster. Pro includes 10 referral credits monthly — the core referral loop stays free for everyone. Or follow each other to message free — many referrers follow back.</p>{typeof referrerUserId === "number" ? <div className="mt-3"><FollowButton targetUserId={referrerUserId} compact /></div> : null}
@@ -56,17 +56,17 @@ export function DirectMessageSection({ referrerUserId }: { referrerUserId: numbe
   };
 
   return <section data-skipwait-screen="direct-message" aria-label="Direct message this referrer" className="mt-3">
-    {!isSignedIn ? <PaywallCard compact referrerUserId={referrerUserId} /> : sent ? <p role="status" className="rounded-xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm font-semibold text-slate-900">Message sent. Track replies in your <Link href="/messages" className="text-primary underline-offset-2 hover:underline">direct messages</Link>.</p> : !compose ? <>
+    {!isSignedIn ? <PaywallCard compact referrerUserId={referrerUserId} /> : sent ? <p role="status" className="rounded-xl border border-success-border bg-success-tint/70 px-4 py-3 text-sm font-semibold text-slate-900">Message sent. Track replies in your <Link href="/messages" className="text-primary underline-offset-2 hover:underline">direct messages</Link>.</p> : !compose ? <>
       <button type="button" onClick={() => { void beginCompose(); }} disabled={checking} className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-surface px-5 py-3 text-sm font-bold text-slate-800 disabled:opacity-50"><MessageSquare className="h-4 w-4" />{checking ? "Checking…" : "Message"}</button>
-      {error && <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-xs font-semibold text-danger">{error}</p>}
     </> : compose.allowed ? <div>
       <div className="mb-2"><FollowButton targetUserId={referrerUserId} compact /></div>
       <form className="flex items-center gap-2" onSubmit={event => { event.preventDefault(); void send(); }}>
         <label className="sr-only" htmlFor="dm-compose-draft">Message</label>
-        <input id="dm-compose-draft" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a message" maxLength={3000} className="h-11 flex-1 rounded-lg border border-slate-200 bg-surface px-3 text-sm text-slate-950 outline-none focus:border-primary focus:bg-blue-50/40" />
+        <input id="dm-compose-draft" value={draft} onChange={event => setDraft(event.target.value)} placeholder="Write a message" maxLength={3000} className="h-11 flex-1 rounded-lg border border-slate-200 bg-surface px-3 text-sm text-slate-950 outline-none focus:border-primary focus:bg-primary-tint/40" />
         <button type="submit" disabled={sending || !draft.trim()} aria-label="Send message" className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-primary text-white disabled:opacity-40"><Send className="h-4 w-4" /></button>
       </form>
-      {error && <p role="alert" className="mt-2 text-xs font-semibold text-rose-700">{error}</p>}
+      {error && <p role="alert" className="mt-2 text-xs font-semibold text-danger">{error}</p>}
     </div> : <PaywallCard compact referrerUserId={referrerUserId} />}
   </section>;
 }

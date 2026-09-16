@@ -43,6 +43,6 @@ export function FollowButton({ targetUserId, compact }: { targetUserId: number; 
   return <div className="flex items-center gap-2.5" data-skipwait-follow="row">
     {state && <span className="text-xs text-slate-600"><strong className="font-bold text-slate-900">{state.followers}</strong> follower{state.followers === 1 ? "" : "s"}{state.joinedMonthYear ? <span className="hidden sm:inline"> · Joined {state.joinedMonthYear}</span> : null}{state.isMutual ? <span className="text-primary"> · Follows you</span> : null}</span>}
     {isSignedIn ? <button type="button" onClick={() => { void toggle(); }} disabled={busy || !state} aria-pressed={Boolean(state?.isFollowingViewer)} className={compact ? "inline-flex items-center rounded-full border px-3.5 py-1.5 text-xs font-bold disabled:opacity-50" : "inline-flex items-center rounded-lg border px-4 py-2.5 text-sm font-bold disabled:opacity-50"} data-skipwait-follow-state={state?.isFollowingViewer ? "following" : "not-following"}>{busy ? "Saving…" : state?.isFollowingViewer ? "Following" : "Follow"}</button> : null}
-    {error && <span role="alert" className="text-xs font-semibold text-rose-700">{error}</span>}
+    {error && <span role="alert" className="text-xs font-semibold text-danger">{error}</span>}
   </div>;
 }

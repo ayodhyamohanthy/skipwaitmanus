@@ -34,7 +34,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
   return (
     <section
       aria-label="Referral credits"
-      className={`rounded-xl border border-blue-100 bg-blue-50/70 ${compact ? "p-3" : "p-4"}`}
+      className={`rounded-xl border border-primary-tint-strong bg-primary-tint/70 ${compact ? "p-3" : "p-4"}`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-primary">
@@ -52,10 +52,10 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         aria-valuemin={0}
         aria-valuemax={credits.monthlyAllowance}
         aria-valuenow={used}
-        className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100"
+        className="mt-3 h-2 overflow-hidden rounded-full bg-primary-tint-strong"
       >
         <span
-          className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-primary"}`}
+          className={`block h-full rounded-full ${outOfCredits ? "bg-warning" : "bg-primary"}`}
           style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }}
         />
       </div>

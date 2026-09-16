@@ -42,15 +42,15 @@ export function ReferrerCreditsCard({ compact = false }: { compact?: boolean }) 
   const outOfCredits = credits.totalAvailable <= 0;
 
   return (
-    <section aria-label="Referral credits" className={`rounded-xl border border-blue-100 bg-blue-50/70 ${compact ? "p-3" : "p-4"}`}>
+    <section aria-label="Referral credits" className={`rounded-xl border border-primary-tint-strong bg-primary-tint/70 ${compact ? "p-3" : "p-4"}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.12em] text-primary">
           <HeartHandshake className="h-3.5 w-3.5" /> Referral credits
         </p>
         <p className="text-sm font-bold text-slate-900" aria-live="polite">{credits.totalAvailable} left</p>
       </div>
-      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100">
-        <span className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-primary"}`} style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }} />
+      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-primary-tint-strong">
+        <span className={`block h-full rounded-full ${outOfCredits ? "bg-warning" : "bg-primary"}`} style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }} />
       </div>
       <p className="mt-3 text-sm leading-5 text-slate-700">
         {used} of {credits.monthlyAllowance} free credits used this month.

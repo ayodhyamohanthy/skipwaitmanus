@@ -112,7 +112,40 @@
   --color-surface: #ffffff;
   --color-surface-2: #f4eee5;
   --color-border: #e9dfd2;
-  --color-on-dark: #fff7ec;
+
+  /* An "inverse" surface contrasts with the page in BOTH themes: dark on light
+     paper, light on dark paper. This is what dark bars and banners need — using
+     `bg-slate-950` for them broke in dark mode, because the ramp inverts and
+     slate-950 becomes near-white, leaving white text on it at 1.12:1. */
+  --color-inverse: #2a241d;
+  --color-on-inverse: #faf7f2;
+
+  --color-success-border: #b8d3bc;
+  --color-warning-border: #e8caa0;
+
+  /* --- Legacy semantic tokens ---------------------------------------------
+     These predate the brand system and are still referenced by the shadcn-style
+     primitives in components/ui/*, plus ErrorBoundary and ComponentShowcase.
+     Rewriting this file once dropped them, which silently deleted ~300 utilities
+     (text-muted-foreground, bg-accent, text-primary-foreground, ring-ring, …) —
+     Tailwind generates nothing for a token that does not exist, so those
+     components rendered unstyled. They are re-declared here, mapped onto brand
+     tokens, and re-declared again under .dark. */
+  --color-background: #faf7f2;
+  --color-foreground: #1a1611;
+  --color-card: #ffffff;
+  --color-card-foreground: #1a1611;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1a1611;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f4eee5;
+  --color-secondary-foreground: #4a3f35;
+  --color-muted: #f4eee5;
+  --color-muted-foreground: #615347;
+  --color-accent: #e7efe4;
+  --color-accent-foreground: #2f5429;
+  --color-input: #e9dfd2;
+  --color-ring: #457a3f;
 
   /* --- Legacy remap ------------------------------------------------------
      `violet-*` survives only in components that nothing imports (MvpOffer,
@@ -206,7 +239,9 @@
     --color-slate-200: #2c251e;
     --color-slate-300: #3a3128;
     --color-slate-400: #574a3e;
-    --color-slate-500: #8c7c6b;
+    /* 4.28:1 on --color-surface (#1f1a16) was below AA; #9a8b78 gives 5.08:1
+       while still reading as a muted grey. */
+    --color-slate-500: #9a8b78;
     --color-slate-600: #a79885;
     --color-slate-700: #c0b2a0;
     --color-slate-800: #d8ccbc;
@@ -253,6 +288,31 @@
     --color-surface-2: #241e19;
     --color-border: #332b23;
 
+    --color-inverse: #ede4d8;
+    --color-on-inverse: #1a1611;
+
+    --color-success-border: #2f4634;
+    --color-warning-border: #4d3c23;
+
+    /* Legacy semantic tokens, dark. Every one of these must be re-declared here
+       or the ~300 utilities that reference them keep their light value and the
+       components in components/ui/* render light-on-light. */
+    --color-background: #171310;
+    --color-foreground: #f7f1e7;
+    --color-card: #1f1a16;
+    --color-card-foreground: #f7f1e7;
+    --color-popover: #1f1a16;
+    --color-popover-foreground: #f7f1e7;
+    --color-primary-foreground: #1a120c;
+    --color-secondary: #241e19;
+    --color-secondary-foreground: #d8ccbc;
+    --color-muted: #241e19;
+    --color-muted-foreground: #a79885;
+    --color-accent: #1f2b1c;
+    --color-accent-foreground: #b6d5ac;
+    --color-input: #332b23;
+    --color-ring: #7fb473;
+
     --color-violet-50: #1f2b1c;
     --color-violet-100: #1f2b1c;
     --color-violet-200: #2b3b27;
@@ -265,19 +325,32 @@
 
     color-scheme: dark;
   }
-
-  /* Filled primary surfaces must carry dark ink in dark mode. `--color-primary`
-     is lifted to #e28054 so it holds contrast against dark paper (5.8:1), but
-     white text on that is only ~2.6:1 and fails AA. Components hardcode
-     `text-white` on primary buttons, so this corrects them in one place rather
-     than rewriting every call site. */
-  .dark .bg-primary,
-  .dark .hover\:bg-primary-hover:hover {
-    color: var(--color-on-primary);
-  }
 }
 
 @layer utilities {
+  /* Filled brand/status surfaces must carry dark ink in dark mode: every one of
+     these tokens LIFTS for contrast against dark paper, so white text on them
+     lands at roughly 2.3-2.9:1 and fails AA. Components hardcode `text-white` on
+     those buttons.
+     This lives in `utilities` on purpose. A first attempt put it in `base`, where
+     `.text-white` (also in `utilities`) overrode it — a later layer beats an
+     earlier one regardless of specificity, so the rule never applied. */
+  .dark .bg-primary,
+  .dark .hover\:bg-primary-hover:hover,
+  .dark .bg-success,
+  .dark .hover\:bg-success-hover:hover,
+  .dark .bg-danger,
+  .dark .hover\:bg-danger-hover:hover,
+  .dark .bg-warning,
+  .dark .bg-pine {
+    color: var(--color-on-primary);
+  }
+
+  /* The inverse surface is light in dark mode, so its ink is dark. */
+  .dark .bg-inverse {
+    color: var(--color-on-inverse);
+  }
+
   @keyframes referral-success-pop {
     from {
       opacity: 0;
