@@ -36,7 +36,7 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
 // from DESIRED_COLUMNS + DESIRED_TABLES above. Nothing request-controlled is
 // ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
-export type ReconcileStatementResult = { statement: string; ok: boolean; error?: string };
+export type ReconcileStatementResult = { statement: string; ok: boolean; error?: string; errorCode?: string };
 
 // Drizzle surfaces driver failures as DrizzleQueryError("Failed query: …
 // params: …") with the real MySQL error on `cause` (code/errno/sqlState).
@@ -60,6 +60,13 @@ export function isDuplicateEntryError(err: unknown): boolean {
   const seen = new Set<unknown>(); let current: unknown = err;
   while (current && !seen.has(current)) { seen.add(current); if (typeof current === "object") { const typed=current as {code?:unknown;errno?:unknown;sqlState?:unknown;cause?:unknown}; if (typed.code === "ER_DUP_ENTRY" || typed.errno === 1062 || typed.sqlState === "23000") return true; current=typed.cause; } else break; }
   return false;
+}
+
+
+export function reconcileErrorCode(err: unknown): string | undefined {
+  const seen=new Set<unknown>(); let current:unknown=err;
+  while(current&&!seen.has(current)){seen.add(current);if(typeof current==="object"){const typed=current as {code?:unknown;errno?:unknown;cause?:unknown};if(typeof typed.code==="string"&&typed.code.startsWith("ER_"))return typed.code;if(typeof typed.errno==="number")return `MYSQL_${typed.errno}`;current=typed.cause;}else break;}
+  return undefined;
 }
 
 export function describeReconcileError(err: unknown): string {
@@ -163,7 +170,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
         }
         results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`);
       }
-      catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; console.error(`[schema-reconcile] index failed: [${stmt}] ${error}`); }
+      catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error, errorCode: reconcileErrorCode(err) }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; console.error(`[schema-reconcile] index failed: [${stmt}] ${error}`); }
     }
     for (const { table, createSql } of DESIRED_TABLES) {
       if (existingTables.has(table)) { skipped.push(table); continue; }

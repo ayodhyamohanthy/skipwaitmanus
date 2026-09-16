@@ -1,5 +1,5 @@
 import type{Express}from"express";
-export type HealthDeps={commitSha:()=>Promise<string>;isReady:()=>boolean;lastError:()=>string|null|undefined;failedStatements?:()=>string[];retry:()=>Promise<unknown>};
+export type HealthDeps={commitSha:()=>Promise<string>;isReady:()=>boolean;lastError:()=>string|null|undefined;failedStatements?:()=>Array<{statement:string;errorCode?:string}>;retry:()=>Promise<unknown>};
 export function registerHealthRoutes(app:Express,deps:HealthDeps){
  const common=async()=>({service:"skipwait-api",commitSha:await deps.commitSha()});
  app.get("/api/health/live",async(_req,res)=>res.set("Cache-Control","no-store").status(200).json({ok:true,state:"live",...await common()}));
