@@ -69,7 +69,7 @@ describe("Slack dispatch alongside email review notifications", () => {
       getActiveReferrerSlackWebhooks: async () => [{ referrerId: 77, webhookUrl: validWebhook }],
       sendReferrerSlackDelivery: async input => { deliveries.push({ to: input.to, reviewUrl: input.reviewUrl }); return { sent: true, reason: "sent" }; },
     });
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "member").send({ targetRoleUrl: "https://jobs.acme.com/roles/123", attachmentIds: [1] });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "member").send({ targetRoleUrl: "https://jobs.acme.com/roles/123", attachmentIds: [1] });
     expect(created.status).toBe(201);
     expect(emailSends).toEqual([{ to: "ref@acme.com" }]);
     expect(deliveries).toHaveLength(1);
@@ -89,7 +89,7 @@ describe("Slack dispatch alongside email review notifications", () => {
       getActiveReferrerSlackWebhooks: async () => { throw new Error("must not be called"); },
       sendReferrerSlackDelivery: async () => { deliveries.push({}); return { sent: true, reason: "sent" }; },
     });
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "member").send({ targetRoleUrl: "https://jobs.acme.com/roles/123", attachmentIds: [1] });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "member").send({ targetRoleUrl: "https://jobs.acme.com/roles/123", attachmentIds: [1] });
     expect(created.status).toBe(201);
     expect(deliveries).toEqual([]);
     expect(activity.find(entry => entry.action === "company_referral.review_slack_dispatched")).toBeUndefined();
@@ -103,7 +103,7 @@ describe("Slack dispatch alongside email review notifications", () => {
       getActiveReferrerSlackWebhooks: async () => [{ referrerId: 77, webhookUrl: validWebhook }],
       sendReferrerSlackDelivery: async () => { throw new Error("slack down"); },
     });
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "member").send({ targetRoleUrl: "https://jobs.acme.com/roles/123", attachmentIds: [1] });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "member").send({ targetRoleUrl: "https://jobs.acme.com/roles/123", attachmentIds: [1] });
     expect(created.status).toBe(201);
     const slackRecord = activity.find(entry => entry.action === "company_referral.review_slack_dispatched");
     expect(slackRecord?.outcome).toBe("failure");

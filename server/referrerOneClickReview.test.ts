@@ -45,7 +45,7 @@ describe("Referrer one-click review actions", () => {
 
   it("sends a company-only email handoff and completes its action once for the authenticated intended Referrer", async () => {
     const { app, reviews, consumed, sent } = appFor();
-    const created = await request(app).post("/api/company-referrals").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [1] });
+    const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [1] });
     expect(created.status).toBe(201); expect(sent).toEqual([{ to: "employee@acme.com", companyDomain: "acme.com", reviewUrl: expect.stringMatching(new RegExp(`/email-review/${token}$`)) }]); expect(JSON.stringify(sent)).not.toMatch(/resume|candidate|requestId|queue/i);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).send({ decision: "approved" })).status).toBe(401);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "outsider").send({ decision: "approved" })).status).toBe(409);

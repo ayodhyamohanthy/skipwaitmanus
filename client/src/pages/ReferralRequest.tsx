@@ -15,6 +15,8 @@ type ReferralSubmissionResponse = { error?: string; creditSummary?: unknown; rem
 
 const acceptedDocuments = ".pdf,.doc,.docx,.png,.jpg,.jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg";
 const pendingResumeSubmissionKey = "skipwait-pending-resume-submit";
+const referralIdempotencyKey = "skipwait-referral-idempotency-key";
+function getReferralIdempotencyKey() { const existing=sessionStorage.getItem(referralIdempotencyKey); if(existing)return existing; const created=crypto.randomUUID(); sessionStorage.setItem(referralIdempotencyKey,created); return created; }
 const FREE_MONTHLY_ALLOWANCE = 3;
 const UPLOAD_REQUEST_TIMEOUT_MS = 30_000;
 const activeResumeUploads = new Map<string, Promise<Attachment>>();
@@ -218,14 +220,14 @@ export default function ReferralRequest() {
       const allAttachments = [...attachments, ...newlyUploaded];
       const sessionToken = await getToken();
       const referralParams = new URLSearchParams(window.location.search); const fastTrackCode = referralParams.get("fast")?.trim(); const fastTrackCompanySlug = referralParams.get("referCompany")?.trim(); const fastTrackAlias = referralParams.get("referAlias")?.trim();
-      const response = await fetch("/api/company-referrals", { method: "POST", headers: { "Content-Type": "application/json", ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, credentials: "include", body: JSON.stringify({ targetRoleUrl, attachmentIds: allAttachments.map(attachment => Number(attachment.id)).filter(Number.isInteger), candidateMessage: candidateMessage.trim(), confirmedCompanyDomain: (() => { try { const bound=JSON.parse(localStorage.getItem("bridge-company-confirmation")||"{}"); return bound.canonicalUrl===targetRoleUrl?bound.confirmedDomain||undefined:undefined; } catch { return undefined; } })(), ...(compensation ? { compensation } : {}), ...(fastTrackCode ? { fastTrackCode } : {}), ...(fastTrackCompanySlug && fastTrackAlias ? { fastTrackCompanySlug, fastTrackAlias } : {}) }) });
+      const response = await fetch("/api/company-referrals", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": getReferralIdempotencyKey(), ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}) }, credentials: "include", body: JSON.stringify({ targetRoleUrl, attachmentIds: allAttachments.map(attachment => Number(attachment.id)).filter(Number.isInteger), candidateMessage: candidateMessage.trim(), confirmedCompanyDomain: (() => { try { const bound=JSON.parse(localStorage.getItem("bridge-company-confirmation")||"{}"); return bound.canonicalUrl===targetRoleUrl?bound.confirmedDomain||undefined:undefined; } catch { return undefined; } })(), ...(compensation ? { compensation } : {}), ...(fastTrackCode ? { fastTrackCode } : {}), ...(fastTrackCompanySlug && fastTrackAlias ? { fastTrackCompanySlug, fastTrackAlias } : {}) }) });
       const payload = await readApiJson<ReferralSubmissionResponse>(response, "We could not send this private referral request"); if (!response.ok) throw new Error(payload.error || "We could not send this private referral request");
       const nextSummary = isCreditSummary(payload.creditSummary) ? payload.creditSummary : fallbackSummary(Number.isFinite(Number(payload.remainingTokens)) ? Number(payload.remainingTokens) : Math.max(0, summary.totalAvailable - TOKEN_ACTION_COST));
       setCreditSummary(nextSummary); setTokens(nextSummary.totalAvailable); setJobSeekerTokens(nextSummary.totalAvailable);
       setPendingFiles([]); void clearPendingResumeFiles().catch(() => undefined); sessionStorage.removeItem(pendingResumeSubmissionKey);
       setCoveragePending(payload.coverageStatus === "waiting_for_company_coverage");
       setCoverageInviteCode(typeof payload.coverageInviteCode === "string" ? payload.coverageInviteCode : "");
-      setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(typeof payload.lifetimeRequestCount === "number" && Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.removeItem("bridge-target-compensation"); setCompensation(""); localStorage.setItem("bridge-request-sent", "true"); setSubmitted(true);
+      setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(typeof payload.lifetimeRequestCount === "number" && Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.removeItem("bridge-target-compensation"); setCompensation(""); localStorage.setItem("bridge-request-sent", "true"); sessionStorage.removeItem(referralIdempotencyKey); setSubmitted(true);
     } catch (submitError) { setError(submitError instanceof Error ? submitError.message : "We could not send this private referral request"); } finally { setSubmitting(false); }
   };
 

@@ -31,6 +31,18 @@ const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string
   { table: "resumeUploadSessions", column: "finalizationLeaseUntil", definition: "TIMESTAMP NULL" },
   { table: "resumeUploadSessions", column: "permanentStorageKey", definition: "VARCHAR(1024) NULL" },
   { table: "referralAttachments", column: "uploadSessionId", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequests", column: "idempotencyKey", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequests", column: "requestFingerprint", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequests", column: "debitTransactionId", definition: "INT NULL" },
+  { table: "tokenTransactions", column: "source", definition: "VARCHAR(40) NULL" },
+  { table: "tokenTransactions", column: "sourceCycleKey", definition: "VARCHAR(16) NULL" },
+  { table: "tokenTransactions", column: "referenceType", definition: "VARCHAR(40) NULL" },
+  { table: "tokenTransactions", column: "referenceId", definition: "VARCHAR(80) NULL" },
+  { table: "tokenTransactions", column: "idempotencyKey", definition: "VARCHAR(64) NULL" },
+  { table: "tokenTransactions", column: "reversesTransactionId", definition: "INT NULL" },
+  { table: "tokenTransactions", column: "balanceAfter", definition: "INT NULL" },
+  { table: "tokenTransactions", column: "monthlyCreditsAfter", definition: "INT NULL" },
+  { table: "companyCoverageInvitations", column: "referralRequestId", definition: "INT NULL" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
@@ -154,6 +166,11 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     const desiredIndexes = [
       { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
       { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
+      { table: "referralRequests", name: "referral_requests_seeker_idempotency_unique", columns: "`jobSeekerId`,`idempotencyKey`" },
+      { table: "tokenTransactions", name: "token_transactions_debit_reference_unique", columns: "`userId`,`role`,`kind`,`referenceType`,`referenceId`" },
+      { table: "tokenTransactions", name: "token_transactions_idempotency_kind_unique", columns: "`userId`,`role`,`idempotencyKey`,`kind`" },
+      { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
+      { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
     ];
     for (const index of desiredIndexes) {
       const key = `${index.table}.${index.name}`; if (existingIndexes.get(key) === 0) { skipped.push(`index:${key}`); continue; }
@@ -161,11 +178,11 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       try {
         const dedupe = index.name === "resume_upload_sessions_owner_client_unique"
           ? "UPDATE `resumeUploadSessions` s JOIN (SELECT ownerId,clientUploadId,MIN(id) canonicalId FROM (SELECT id,ownerId,clientUploadId FROM `resumeUploadSessions`) source WHERE clientUploadId IS NOT NULL GROUP BY ownerId,clientUploadId HAVING COUNT(*)>1) duplicates ON duplicates.ownerId=s.ownerId AND duplicates.clientUploadId=s.clientUploadId SET s.clientUploadId=NULL WHERE s.id<>duplicates.canonicalId"
-          : "UPDATE `referralAttachments` a JOIN (SELECT uploadSessionId,MIN(id) canonicalId FROM (SELECT id,uploadSessionId FROM `referralAttachments`) source WHERE uploadSessionId IS NOT NULL GROUP BY uploadSessionId HAVING COUNT(*)>1) duplicates ON duplicates.uploadSessionId=a.uploadSessionId SET a.uploadSessionId=NULL WHERE a.id<>duplicates.canonicalId";
+          : index.name === "referral_attachments_upload_session_unique" ? "UPDATE `referralAttachments` a JOIN (SELECT uploadSessionId,MIN(id) canonicalId FROM (SELECT id,uploadSessionId FROM `referralAttachments`) source WHERE uploadSessionId IS NOT NULL GROUP BY uploadSessionId HAVING COUNT(*)>1) duplicates ON duplicates.uploadSessionId=a.uploadSessionId SET a.uploadSessionId=NULL WHERE a.id<>duplicates.canonicalId" : null;
         let created = false;
         if (existingIndexes.get(key) === 1) await db.execute(sql.raw(`DROP INDEX \`${index.name}\` ON \`${index.table}\``));
         for (let attempt=1; attempt<=3 && !created; attempt++) {
-          await db.execute(sql.raw(dedupe));
+          if (dedupe) await db.execute(sql.raw(dedupe));
           try { await db.execute(sql.raw(stmt)); created=true; }
           catch (err) {
             const code=reconcileErrorCode(err);

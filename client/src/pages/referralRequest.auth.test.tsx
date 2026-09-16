@@ -65,11 +65,13 @@ describe("ReferralRequest secure resume handoff", () => {
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/api/documents"))).toBe(true));
     const startCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith("/api/documents/uploads"));
     const chunkCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/chunks"));
+    const referralCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
     const completeCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/complete"));
     expect(startCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ "Content-Type": "application/json", Authorization: "Bearer test-token" }) });
     expect(JSON.parse(String(startCall?.[1]?.body))).toMatchObject({ fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6 });
     const encryptedChunk = JSON.parse(String(chunkCall?.[1]?.body)); expect(encryptedChunk).toMatchObject({ chunkIndex: 0, encryptedContent: expect.any(String), encryptionKey: expect.any(String), initializationVector: expect.any(String) });
     expect(completeCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ Authorization: "Bearer test-token" }) });
+    expect(referralCall?.[1]).toMatchObject({ method: "POST", headers: expect.objectContaining({ "Idempotency-Key": expect.stringMatching(/^[0-9a-f-]{36}$/) }) });
     await waitFor(() => expect(pendingResume.clear).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.getByText("1 of 3 free credits used this month.")).toBeTruthy());
     expect(screen.getByLabelText("Referral request milestone").textContent).toContain("Your 1st referral request is now active.");
