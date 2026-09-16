@@ -27,8 +27,22 @@ import { getSessionCookieOptions } from "./cookies";
  * WORKOS_COOKIE_PASSWORD are configured.
  */
 
+const WORKOS_ISSUER = "https://api.workos.com";
+const CLIENT_ID_PATTERN = /^client_[A-Za-z0-9]+$/;
+const workosJwksByClient = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+export function configuredWorkosClientId(): string {
+  const clientId = (process.env.WORKOS_CLIENT_ID || "").trim();
+  if (!CLIENT_ID_PATTERN.test(clientId)) throw new Error("WORKOS_CLIENT_ID is missing or malformed");
+  return clientId;
+}
+
 export function workosConfigured(): boolean {
-  return Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD);
+  const anyConfigured = Boolean(process.env.WORKOS_CLIENT_ID || process.env.WORKOS_API_KEY || process.env.WORKOS_COOKIE_PASSWORD);
+  const allConfigured = Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD);
+  if (process.env.NODE_ENV === "production" && anyConfigured && !allConfigured) throw new Error("WorkOS production configuration is incomplete");
+  if (allConfigured) configuredWorkosClientId();
+  return allConfigured;
 }
 
 export function adminCallbackAllowed(input:{email:string;state:string;configuredEmail?:string;bootstrapEnabled?:boolean}){
@@ -38,47 +52,57 @@ export function adminCallbackAllowed(input:{email:string;state:string;configured
   return input.state!=="skipwait-admin-bootstrap"||input.bootstrapEnabled===true;
 }
 
-export function resolveWorkosOpenId(workosUserId: string): string {
-  return `workos_${workosUserId}`.slice(0, 64);
+export function resolveWorkosOpenId(workosUserId: string): string { return `workos_${workosUserId}`.slice(0, 64); }
+
+function workosJwks(clientId: string) {
+  let cached = workosJwksByClient.get(clientId);
+  if (!cached) {
+    cached = createRemoteJWKSet(new URL(`https://api.workos.com/sso/jwks/${clientId}`));
+    workosJwksByClient.set(clientId, cached);
+  }
+  return cached;
 }
 
-let jwksCache: ReturnType<typeof createRemoteJWKSet> | null = null;
-function workosJwks() {
-  if (!jwksCache) jwksCache = createRemoteJWKSet(new URL("https://api.workos.com/sso/jwks/client_01M17TTFJ6784B1CN6MHAHB60Y/"));
-  return jwksCache;
+export function validateWorkosAccessClaims(payload: Record<string, unknown>, clientId: string, nowSeconds = Math.floor(Date.now() / 1000)): boolean {
+  if (payload.iss !== WORKOS_ISSUER || payload.client_id !== clientId) return false;
+  if (typeof payload.sub !== "string" || !payload.sub.startsWith("user_") || typeof payload.sid !== "string" || !payload.sid.startsWith("session_") || typeof payload.jti !== "string" || !payload.jti) return false;
+  if (typeof payload.iat !== "number" || payload.iat > nowSeconds + 60 || payload.iat < nowSeconds - 24 * 60 * 60) return false;
+  if (typeof payload.exp !== "number" || payload.exp <= nowSeconds || payload.exp - payload.iat > 60 * 60) return false;
+  // WorkOS access tokens are client-bound with client_id rather than aud.
+  // If aud/azp is present, it must not contradict that binding.
+  const audiences = typeof payload.aud === "string" ? [payload.aud] : Array.isArray(payload.aud) ? payload.aud : [];
+  if (audiences.length && !audiences.includes(clientId)) return false;
+  if (audiences.length > 1 && payload.azp !== clientId) return false;
+  if (payload.azp !== undefined && payload.azp !== clientId) return false;
+  const tokenUse = payload.token_use ?? payload.token_type;
+  if (tokenUse !== undefined && tokenUse !== "access" && tokenUse !== "access_token") return false;
+  return true;
 }
 
-/** Verify a WorkOS access JWT (Bearer) and map it to the app identity. */
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
-  const { payload } = await jwtVerify(bearer, workosJwks(), { issuer: "https://api.workos.com" });
-  const sub = typeof payload.sub === "string" ? payload.sub : "";
-  if (!sub) return undefined;
+  const clientId = configuredWorkosClientId();
+  const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
+  if (!validateWorkosAccessClaims(payload, clientId)) return undefined;
+  const sub = payload.sub as string;
   const openId = resolveWorkosOpenId(sub);
-  const email = typeof payload.email === "string" ? payload.email : null;
+  const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : null;
   const emailVerified = payload.email_verified === true;
   const name = typeof payload.name === "string" && payload.name ? payload.name : email?.split("@")[0] ?? null;
   await db.upsertUser({ openId, name, email, loginMethod: "workos", lastSignedIn: new Date() });
   const account = await db.getUserByOpenId(openId);
-  if (!account) return undefined;
-  // Same suspension choke point as resolveDevIdentity: the WorkOS JWT path
-  // loads the row here, so a suspended account resolves as signed out.
-  if (account.suspended) return undefined;
-  const primaryEmail: DevEmailAddress | null = email
-    ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } }
-    : null;
+  if (!account || account.suspended) return undefined;
+  const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
   return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
 }
 
-/** Identity resolution for the WorkOS plane: SDK JWT first, app session second. */
 export async function resolveWorkosIdentity(req: Request): Promise<DevIdentity | undefined> {
   const authHeader = req.headers.authorization;
-  const bearer = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined;
-  if (bearer && bearer.split(".").length === 3) {
-    try {
-      return await identityFromWorkosJwt(bearer);
-    } catch (error) {
-      console.warn("[Auth] WorkOS JWT verification failed:", (error as Error).message?.slice(0, 120));
-    }
+  if (typeof authHeader === "string") {
+    if (!authHeader.startsWith("Bearer ")) return undefined;
+    const bearer = authHeader.slice(7).trim();
+    if (bearer.split(".").length !== 3) return undefined;
+    try { return await identityFromWorkosJwt(bearer); }
+    catch (error) { console.warn("[Auth] WorkOS JWT verification failed:", (error as Error).message?.slice(0, 120)); return undefined; }
   }
   return resolveDevIdentity(req);
 }
@@ -86,7 +110,8 @@ export async function resolveWorkosIdentity(req: Request): Promise<DevIdentity |
 export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) {
   return function registerWorkosAuthRoutes(app: Express) {
     if (!workosConfigured()) return;
-    const workos = deps.workos ?? new WorkOS(process.env.WORKOS_API_KEY!, { clientId: process.env.WORKOS_CLIENT_ID! });
+    const clientId = configuredWorkosClientId();
+    const workos = deps.workos ?? new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
     const configuredRedirectUri = process.env.WORKOS_REDIRECT_URI;
     // In production the canonical URI is fixed (skipwait.me). In dev, derive it
     // from the request host so any local port works without env edits.
@@ -126,7 +151,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       if (!code) return res.status(400).send("Authentication could not be completed");
       let stage = "authenticate";
       try {
-        const auth = await workos.userManagement.authenticateWithCode({ clientId: process.env.WORKOS_CLIENT_ID!, code });
+        const auth = await workos.userManagement.authenticateWithCode({ clientId, code });
         stage = "authorize";
         const user = auth.user;
         // Administrator plane strict match (defense-in-depth): when the flow

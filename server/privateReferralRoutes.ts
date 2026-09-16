@@ -1,3 +1,4 @@
+import { resolveTrustedClientIp } from "./_core/trustedClientIp";
 import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { validatePrivateDocument } from "./documentValidation";
@@ -80,7 +81,7 @@ export type PrivateReferralRouteDeps = {
   getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
   sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
   sendWorkEmailOtp?: (input: { email: string }) => Promise<{ sent: boolean; reason: string }>;
-  verifyWorkEmailOtp?: (input: { email: string; code: string }) => Promise<boolean>;
+  verifyWorkEmailOtp?: (input: { email: string; code: string; ip?: string }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
   hasVerifiedWorkEmailOtp?: (input: { email: string }) => Promise<boolean>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
@@ -382,7 +383,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).send("Sign in to view this document"); if (!Number.isInteger(attachmentId) || attachmentId <= 0) return res.status(400).send("Invalid document reference");
       const attachment = await deps.getAccessibleReferralAttachment(identity.account.id, attachmentId); if (!attachment) return res.status(404).send("Document not found");
       record({ actorUserId: identity.account.id, action: "document.accessed", outcome: "success", resourceType: "attachment", resourceId: attachmentId, metadata: { access: "authorized" } });
-      const url = await deps.storageGetSignedUrl(attachment.fileKey || ""); res.set("Cache-Control", "private, no-store"); res.redirect(307, url);
+      res.set("Cache-Control", "private, no-store");
+      res.set("X-Content-Type-Options", "nosniff");
+      const safeName = String(attachment.fileName || "document").replace(/[\r\n"\\]/g, "_");
+      res.set("Content-Disposition", `attachment; filename="${safeName}"; filename*=UTF-8''${encodeURIComponent(safeName)}`);
+      if (deps.storageGetBytes) {
+        const bytes = await deps.storageGetBytes(attachment.fileKey || "").catch(() => undefined);
+        if (!bytes) return res.status(404).send("Document not found");
+        res.set("Content-Type", attachment.mimeType || "application/octet-stream");
+        return res.send(Buffer.from(bytes));
+      }
+      const url = await deps.storageGetSignedUrl(attachment.fileKey || ""); res.redirect(307, url);
     } catch { res.status(502).send("We could not retrieve that document. Please try again."); }
   });
   app.get("/api/privacy/export", async (req, res) => {
@@ -424,9 +435,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
       if (!deps.verifyWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
-      const verified = await deps.verifyWorkEmailOtp({ email, code });
+      const verified = await deps.verifyWorkEmailOtp({ email, code, ip: resolveTrustedClientIp(req) });
       if (verified) { record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ verified: true }); }
-      await deps.registerWorkEmailOtpFailure?.({ email, code });
       record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
       res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
     } catch { res.status(500).json({ error: "We could not verify the code" }); }

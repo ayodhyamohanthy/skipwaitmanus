@@ -138,3 +138,9 @@ Machine-appended by CI after every deploy attempt. Columns: timestamp | workflow
 | 2026-09-16T13:29:51Z | Deploy API (Cloudflare Containers) | 24a6bb10a6dbbd0eb944dd7a98a3e38255a5fa3c | success |
 | 2026-09-16T14:03:54Z | Deploy Web (Cloudflare Pages) | 714a3027376eac0ea799ebf44f850f48967f03cd | success |
 | 2026-09-16T19:53:45Z | Deploy API (Cloudflare Containers) | 0a273140a43b2c5836e0225facf4af3819dd4c87 | success |
+| 2026-09-16T21:05:35Z | Deploy API (Cloudflare Containers) | a1fc3a22efaaadd96ad288cab0d9cd495900a72d | success |
+| 2026-09-16T21:18:52Z | Deploy API (Cloudflare Containers) | 24343790ea0c30bccddcd03ef5f642d214b87cae | success |
+| 2026-09-16T21:32:28Z | Deploy API (Cloudflare Containers) | abb669fb94afe8e9935c2e49a4c0a82318563f3a | success |
+| 2026-09-16T21:47:28Z | Deploy API (Cloudflare Containers) | dc75d89d30e2484810cfdf17899c60104b7acb28 | failure |
+| 2026-09-16T22:00:59Z | Deploy API (Cloudflare Containers) | d80f706948d88f5448866f84053ac730965592d7 | success |
+| 2026-09-16T22:12:56Z | Deploy API (Cloudflare Containers) | 0556758fac644e6b5a982106c0323c6e0d6a2658 | success |

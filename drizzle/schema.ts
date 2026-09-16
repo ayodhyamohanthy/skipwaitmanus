@@ -159,6 +159,14 @@ export const referralRequests = mysqlTable("referralRequests", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
+export const referralRequestPasses = mysqlTable("referralRequestPasses", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: mysqlEnum("reason", ["role_not_a_fit", "cannot_support", "timing"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("referral_request_pass_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referral_request_pass_referrer_idx").on(table.referrerId, table.createdAt)]);
+
 export const referralShareCards = mysqlTable("referralShareCards", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
@@ -187,7 +195,17 @@ export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   expiresAt: timestamp("expiresAt").notNull(),
   consumedAt: timestamp("consumedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("work_email_otp_email_hash_idx").on(table.email, table.codeHash)]);
+}, table => [index("work_email_otp_email_hash_idx").on(table.email, table.codeHash), index("work_email_otp_active_idx").on(table.email, table.consumedAt, table.expiresAt, table.createdAt)]);
+
+export const workEmailOtpRateLimits = mysqlTable("workEmailOtpRateLimits", {
+  id: int("id").autoincrement().primaryKey(),
+  limiterKey: varchar("limiterKey", { length: 96 }).notNull(),
+  windowStart: timestamp("windowStart").notNull(),
+  hitCount: int("hitCount").default(1).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("work_email_otp_rate_window_unique").on(table.limiterKey, table.windowStart), index("work_email_otp_rate_expiry_idx").on(table.expiresAt)]);
 
 export const referrerSlackWebhooks = mysqlTable("referrerSlackWebhooks", {
   id: int("id").autoincrement().primaryKey(),

@@ -7,9 +7,9 @@ const allColumns = () => DESIRED_COLUMNS.map(entry => `${entry.table}.${entry.co
 const allTables = () => DESIRED_TABLES.map(entry => `table:${entry.table}`);
 const alterFor = (entry: { table: string; column: string; definition: string }) => `ALTER TABLE \`${entry.table}\` ADD COLUMN \`${entry.column}\` ${entry.definition}`;
 const allIndexes = () => DESIRED_INDEXES.map(entry => `index:${entry.table}.${entry.name}`);
-// The probe fixture below reports these two as already-present unique indexes,
+// The probe fixture below reports these indexes as already present,
 // so reconcile skips them instead of recreating them.
-const preExistingIndexes = ["index:resumeUploadSessions.resume_upload_sessions_owner_client_unique", "index:referralAttachments.referral_attachments_upload_session_unique"];
+const preExistingIndexes = ["index:workEmailOtpCodes.work_email_otp_active_idx", "index:resumeUploadSessions.resume_upload_sessions_owner_client_unique", "index:referralAttachments.referral_attachments_upload_session_unique"];
 const createdIndexes = () => allIndexes().filter(key => !preExistingIndexes.includes(key));
 
 // Fake drizzle db: answers the information_schema probe from `existingColumns`,
@@ -35,7 +35,7 @@ const probeRows = (columns: string[]) => columns.map(column => {
 
 const probeAnswer = (query: unknown) => {
   const text = sqlText(query);
-  return text.startsWith("SELECT TABLE_NAME") ? [[...probeRows(existingColumns), { TABLE_NAME: "resumeUploadSessions", COLUMN_NAME: null, INDEX_NAME: "resume_upload_sessions_owner_client_unique" }, { TABLE_NAME: "referralAttachments", COLUMN_NAME: null, INDEX_NAME: "referral_attachments_upload_session_unique" }], []] : null;
+  return text.startsWith("SELECT TABLE_NAME") ? [[...probeRows(existingColumns), { TABLE_NAME: "resumeUploadSessions", COLUMN_NAME: null, INDEX_NAME: "resume_upload_sessions_owner_client_unique" }, { TABLE_NAME: "referralAttachments", COLUMN_NAME: null, INDEX_NAME: "referral_attachments_upload_session_unique" }, { TABLE_NAME: "workEmailOtpCodes", COLUMN_NAME: null, INDEX_NAME: "work_email_otp_active_idx", NON_UNIQUE: 1 }], []] : null;
 };
 
 async function loadReconcileModule() {
@@ -113,6 +113,36 @@ describe("boot-time schema reconcile", () => {
     expect(getLastReconcileResults().map(entry => entry.ok)).toEqual(Array.from({ length: DESIRED_INDEXES.length - preExistingIndexes.length + DESIRED_TABLES.length }, () => true));
   });
 
+  it.each([
+    { table: "workEmailOtpCodes", name: "work_email_otp_active_idx", actualNonUnique: 0, unique: false },
+    { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", actualNonUnique: 1, unique: true },
+  ])("repairs mismatched uniqueness for $name", async ({ table, name, actualNonUnique, unique }) => {
+    dbRef.current = {
+      execute: async (query: unknown) => {
+        const probed = probeAnswer(query);
+        if (probed) {
+          const rows = probed[0] as Array<{ INDEX_NAME: string | null; NON_UNIQUE?: number }>;
+          const row = rows.find(entry => entry.INDEX_NAME === name);
+          if (!row) throw new Error(`Missing probe fixture for ${name}`);
+          row.NON_UNIQUE = actualNonUnique;
+          return probed;
+        }
+        alterStatements.push(sqlText(query));
+        return [{}, []];
+      },
+    };
+    const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
+    const result = await reconcileSchema();
+    const index = DESIRED_INDEXES.find(entry => entry.name === name)!;
+    const drop = `DROP INDEX \`${name}\` ON \`${table}\``;
+    const create = `CREATE ${unique ? "UNIQUE " : ""}INDEX \`${name}\` ON \`${table}\` (${index.columns})`;
+    expect(alterStatements).toContain(drop);
+    expect(alterStatements).toContain(create);
+    expect(alterStatements.indexOf(drop)).toBeLessThan(alterStatements.indexOf(create));
+    expect(result.applied).toContain(`index:${table}.${name}`);
+    expect(isSchemaReconciled()).toBe(true);
+  });
+
   it("re-running after success is a silent no-op", async () => {
     existingColumns = ["companyOpportunities.compensation"];
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
@@ -165,8 +195,7 @@ describe("boot-time schema reconcile", () => {
 
     const result = await reconcileSchema();
 
-    // Statements after the duplicate race still ran; the duplicate column is skipped idempotently.
-    // The failed jobs ALTER counts as handled, so remaining columns (indexes 2+) apply.
+    // Statements after the failed jobs ALTER still run; the failed column is not applied.
     expect(result.applied).toEqual([...DESIRED_COLUMNS.slice(2).map(entry => `${entry.table}.${entry.column}`), ...createdIndexes(), ...allTables()]);
     // The failed statement is captured with its error, not applied.
     const results = getLastReconcileResults();
