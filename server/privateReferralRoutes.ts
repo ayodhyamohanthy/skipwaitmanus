@@ -90,6 +90,7 @@ export type PrivateReferralRouteDeps = {
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
   publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date }) => Promise<unknown>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
+  listMyUploadStarts?: (userId: number, since: Date) => Promise<Array<{ sessionId: string | null; clientUploadId: string | null; fileName: string | null; createdAt: Date }>>;
   listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
   getReferralFlowHealth?: () => Promise<unknown>;
   getDomainIntegrity?: (limit?: number) => Promise<unknown>;
@@ -311,6 +312,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(201).json(await persistPrivateDocument(identity, fileName, mimeType, opaqueDocumentBuffer({ encryptedContent, encryptionKey, initializationVector })));
     } catch (error) { const message = error instanceof Error ? error.message : "We could not upload that document. Please try again."; const isValidationError = /PDF|Word|PNG|JPEG|document type|smaller than|upload data/i.test(message); res.status(/smaller than 10 MB/i.test(message) ? 413 : isValidationError ? 400 : 500).json({ error: message }); }
   });
+  app.get("/api/documents/debug/upload-starts", async (req, res) => { try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to inspect your upload attempts" }); const starts = await deps.listMyUploadStarts?.(identity.account.id, new Date(Date.now() - 15 * 60 * 1000)) ?? []; res.set("Cache-Control", "private, no-store"); res.json({ starts }); } catch { res.status(500).json({ error: "Upload diagnostics are unavailable" }); } });
   app.post("/api/documents/uploads", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to upload documents securely" });

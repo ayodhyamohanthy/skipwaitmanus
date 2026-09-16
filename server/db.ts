@@ -341,6 +341,12 @@ export async function recordOperationalActivity(input: OperationalActivityInput)
   const metadata = input.metadata ? JSON.stringify(Object.fromEntries(Object.entries(input.metadata).filter(([, value]) => value !== undefined))) : null;
   await db.insert(operationalActivityLogs).values({ actorUserId: input.actorUserId ?? null, action: input.action.slice(0, 100), outcome: input.outcome, resourceType: input.resourceType?.slice(0, 80) ?? null, resourceId: input.resourceId === undefined ? null : String(input.resourceId).slice(0, 120), companyDomain: input.companyDomain?.toLowerCase().slice(0, 255) ?? null, metadata });
 }
+export async function listMyUploadStarts(userId: number, since: Date) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ sessionId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), eq(operationalActivityLogs.action, "document.upload_started"), gt(operationalActivityLogs.createdAt, since))).orderBy(desc(operationalActivityLogs.createdAt)).limit(30);
+  return rows.map(row => { let metadata: Record<string, unknown> = {}; try { metadata = row.metadata ? JSON.parse(row.metadata) : {}; } catch {} return { sessionId: row.sessionId, clientUploadId: typeof metadata.clientUploadId === "string" ? metadata.clientUploadId : null, fileName: typeof metadata.fileName === "string" ? metadata.fileName : null, createdAt: row.createdAt }; });
+}
+
 export async function listOperationalActivity(input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" } = {}) {
   const db = await getDb(); if (!db) return [];
   const limit = Math.max(1, Math.min(input.limit ?? 100, 250));

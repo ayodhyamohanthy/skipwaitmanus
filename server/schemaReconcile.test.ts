@@ -18,12 +18,12 @@ const sqlText = (query: unknown): string => {
 
 const probeRows = (columns: string[]) => columns.map(column => {
   const [TABLE_NAME, COLUMN_NAME] = column.split(".");
-  return { TABLE_NAME, COLUMN_NAME };
+  return { TABLE_NAME, COLUMN_NAME, INDEX_NAME: null };
 });
 
 const probeAnswer = (query: unknown) => {
   const text = sqlText(query);
-  return text.startsWith("SELECT TABLE_NAME") ? [probeRows(existingColumns), []] : null;
+  return text.startsWith("SELECT TABLE_NAME") ? [[...probeRows(existingColumns), { TABLE_NAME: "resumeUploadSessions", COLUMN_NAME: null, INDEX_NAME: "resume_upload_sessions_owner_client_unique" }, { TABLE_NAME: "referralAttachments", COLUMN_NAME: null, INDEX_NAME: "referral_attachments_upload_session_unique" }], []] : null;
 };
 
 async function loadReconcileModule() {
@@ -65,7 +65,7 @@ describe("boot-time schema reconcile", () => {
 
     expect(result).toEqual({
       applied: ["jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "resumeUploadSessions.clientUploadId", "resumeUploadSessions.finalizationOwner", "resumeUploadSessions.finalizationLeaseUntil", "resumeUploadSessions.permanentStorageKey", "referralAttachments.uploadSessionId", "table:employerAccounts", "table:employerTalentRefs", "table:employerTalentIntroRequests", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
-      skipped: ["companyOpportunities.compensation"],
+      skipped: ["companyOpportunities.compensation", "index:resumeUploadSessions.resume_upload_sessions_owner_client_unique", "index:referralAttachments.referral_attachments_upload_session_unique"],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([
       "ALTER TABLE `jobs` ADD COLUMN `compensation` TEXT NULL",
@@ -100,7 +100,7 @@ describe("boot-time schema reconcile", () => {
 
     expect(result).toEqual({
       applied: ["table:employerAccounts", "table:employerTalentRefs", "table:employerTalentIntroRequests", "table:profileUnlocks", "table:partnerModules", "table:userFollows"],
-      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "resumeUploadSessions.clientUploadId", "resumeUploadSessions.finalizationOwner", "resumeUploadSessions.finalizationLeaseUntil", "resumeUploadSessions.permanentStorageKey", "referralAttachments.uploadSessionId"],
+      skipped: ["companyOpportunities.compensation", "jobs.compensation", "referralRequests.savedAt", "users.suspended", "profiles.anonymityOptIn", "companyOpportunities.sponsoredUntil", "companyOpportunities.sponsoredTier", "resumeUploadSessions.clientUploadId", "resumeUploadSessions.finalizationOwner", "resumeUploadSessions.finalizationLeaseUntil", "resumeUploadSessions.permanentStorageKey", "referralAttachments.uploadSessionId", "index:resumeUploadSessions.resume_upload_sessions_owner_client_unique", "index:referralAttachments.referral_attachments_upload_session_unique"],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([]);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(6);
@@ -127,7 +127,7 @@ describe("boot-time schema reconcile", () => {
     dbRef.current = null;
     const { reconcileSchema, isSchemaReconciled, getLastReconcileResults } = await loadReconcileModule();
 
-    await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: [] });
+    await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: ["index:resumeUploadSessions.resume_upload_sessions_owner_client_unique", "index:referralAttachments.referral_attachments_upload_session_unique"] });
     expect(isSchemaReconciled()).toBe(false);
     expect(getLastReconcileResults()).toEqual([]);
   });
