@@ -23,6 +23,7 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "companyOpportunities", column: "compensation", definition: "TEXT NULL" },
   { table: "jobs", column: "compensation", definition: "TEXT NULL" },
   { table: "referralRequests", column: "savedAt", definition: "TIMESTAMP NULL" },
+  { table: "notifications", column: "eventKey", definition: "VARCHAR(120) NULL" },
   { table: "users", column: "suspended", definition: "BOOLEAN NOT NULL DEFAULT false" },
   // B2B monetization (0037). The profiles.accountType enum widening
   // (append 'employer') is intentionally NOT here: ADD COLUMN cannot widen an
@@ -65,6 +66,7 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "tokenTransactions", name: "token_transactions_debit_reference_unique", columns: "`userId`,`role`,`kind`,`referenceType`,`referenceId`" },
   { table: "tokenTransactions", name: "token_transactions_idempotency_kind_unique", columns: "`userId`,`role`,`idempotencyKey`,`kind`" },
   { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
+  { table: "notifications", name: "notifications_event_key_unique", columns: "`eventKey`" },
   { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
 ];
 

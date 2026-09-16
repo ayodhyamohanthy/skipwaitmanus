@@ -902,13 +902,19 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before claiming referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, company: jobs.company, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)))).limit(1);
-  if (!request[0] || !isVerifiedEmployeeOfCompany(profile, request[0].company)) throw new Error("This referral request is no longer available");
-  if (request[0].referrerId === userId) return { requestId, claimed: true };
-  const update = await db.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, requestId), isNull(referralRequests.referrerId)));
-  if (Number(update[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
-  await db.insert(notifications).values({ userId: request[0].jobSeekerId, category: "status", title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." });
-  return { requestId, claimed: true, jobSeekerId: request[0].jobSeekerId, companyDomain: request[0].company };
+  return db.transaction(async tx => {
+    const current=(await tx.select({jobSeekerId:referralRequests.jobSeekerId,company:jobs.company,referrerId:referralRequests.referrerId,status:referralRequests.status}).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
+    if(!current||current.status!=="pending"||!isVerifiedEmployeeOfCompany(profile,current.company)||(current.referrerId!==null&&current.referrerId!==userId))throw new Error("This referral request is no longer available");
+    const passed=(await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
+    if(passed)throw new Error("You already passed on this referral request");
+    if(current.referrerId===null){
+      const claimed=await tx.update(referralRequests).set({referrerId:userId}).where(and(eq(referralRequests.id,requestId),eq(referralRequests.status,"pending"),isNull(referralRequests.referrerId)));
+      if(Number(claimed[0]?.affectedRows??0)!==1)throw new Error("Another verified employee already claimed this request");
+    }
+    // The deterministic key makes response-loss retries converge on one durable event.
+    await tx.insert(notifications).values({userId:current.jobSeekerId,category:"status",title:"Your referral request was claimed",body:"A verified employee at the target company is reviewing your request.",eventKey:`referral:${requestId}:claimed:${userId}`}).onDuplicateKeyUpdate({set:{eventKey:`referral:${requestId}:claimed:${userId}`}});
+    return {requestId,claimed:true as const,jobSeekerId:current.jobSeekerId,companyDomain:current.company};
+  });
 }
 
 export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {

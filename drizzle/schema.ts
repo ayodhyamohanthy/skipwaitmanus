@@ -269,9 +269,10 @@ export const notifications = mysqlTable("notifications", {
   category: mysqlEnum("category", ["referral", "message", "status", "system"]).notNull(),
   title: varchar("title", { length: 180 }).notNull(),
   body: text("body").notNull(),
+  eventKey: varchar("eventKey", { length: 120 }),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("notifications_user_idx").on(table.userId)]);
+}, table => [index("notifications_user_idx").on(table.userId), uniqueIndex("notifications_event_key_unique").on(table.eventKey)]);
 
 export const tokenBalances = mysqlTable("tokenBalances", {
   id: int("id").autoincrement().primaryKey(),
