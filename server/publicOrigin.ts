@@ -1,4 +1,5 @@
 import type { Request } from "express";
+import { publicRequestHost } from "./_core/publicHost";
 
 /**
  * Canonical public origin for absolute URLs that leave the server.
@@ -22,7 +23,7 @@ import type { Request } from "express";
  *  3. Request-derived — local development on arbitrary ports.
  */
 export function publicAppOrigin(
-  req: Pick<Request, "protocol" | "get">
+  req: Pick<Request, "protocol" | "get" | "headers">
 ): string {
   const configured = process.env.PUBLIC_APP_ORIGIN?.trim();
   if (configured) return stripTrailingSlash(configured);
@@ -36,7 +37,11 @@ export function publicAppOrigin(
     }
   }
 
-  return `${req.protocol}://${req.get("host")}`;
+  // Step 3 only runs in local development, but the raw `Host` is still the wrong
+  // thing to read here: behind the Pages proxy it is the container's workers.dev
+  // name, which would put the wrong host into one-click review links. See
+  // `_core/publicHost.ts`.
+  return `${req.protocol}://${publicRequestHost(req) ?? req.get("host")}`;
 }
 
 function stripTrailingSlash(value: string): string {

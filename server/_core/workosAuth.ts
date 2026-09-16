@@ -7,6 +7,7 @@ import type { Express, Request, Response } from "express";
 import * as db from "../db";
 import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./devAuth";
 import { getSessionCookieOptions, isSecureRequest } from "./cookies";
+import { publicRequestHost } from "./publicHost";
 
 /**
  * WorkOS AuthKit authentication for production skipwait.me.
@@ -167,8 +168,11 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     const configuredRedirectUri = process.env.WORKOS_REDIRECT_URI;
     // In production the canonical URI is fixed (skipwait.me). In dev, derive it
     // from the request host so any local port works without env edits.
-    const redirectUriFor = (req: { protocol: string; get: (h: string) => string | undefined }) =>
-      configuredRedirectUri || `${req.protocol}://${req.get("host")}/api/auth/workos/callback`;
+    const redirectUriFor = (req: { protocol: string; get: (h: string) => string | undefined; headers: Request["headers"] }) =>
+      // `publicRequestHost`, not the raw `Host`: behind the Pages proxy the raw
+      // Host is the container's workers.dev name, which would send the OAuth
+      // callback to a host the session cookie is not scoped to.
+      configuredRedirectUri || `${req.protocol}://${publicRequestHost(req) ?? req.get("host")}/api/auth/workos/callback`;
 
     // Begin a flow: mint the nonce, bind it to the caller's browser via a
     // short-lived cookie, and hand the paired state to the provider.

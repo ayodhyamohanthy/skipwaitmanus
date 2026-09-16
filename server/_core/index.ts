@@ -48,6 +48,7 @@ import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { getLastReconcileError, isSchemaReconciled, reconcileSchema } from "../schemaReconcile";
+import { warnOnUnhardenedProxy } from "./publicHost";
 
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -85,6 +86,10 @@ async function startServer() {
   // rate limiting and abuse attribution rather than a live vulnerability.
   const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS);
   app.set("trust proxy", Number.isInteger(trustProxyHops) && trustProxyHops >= 0 ? trustProxyHops : true);
+  // The Pages proxy in front of /api/* cannot set `Host`, so the browser's host
+  // arrives as `X-Forwarded-Host`. Warn once if production is trusting it without
+  // the proof that PROXY_SHARED_SECRET provides.
+  warnOnUnhardenedProxy();
   app.disable("x-powered-by");
   app.use(globalSecurityHeaders);
   // Provider gateway webhooks (Razorpay HMAC, PayPal signature API) register

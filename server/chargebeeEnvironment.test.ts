@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { billingHost, isLiveChargebeeRequest, resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 
 describe("Chargebee environment boundary", () => {
@@ -39,31 +39,61 @@ describe("Chargebee environment boundary", () => {
     expect(() => resolveChargebeeRuntime("skipwait.me", { ...env, CHARGEBEE_LIVE_API_KEY: undefined })).toThrow("Live Chargebee API key is not configured");
   });
 
-  // The host drives which secret validates a webhook and which API key/site a
-  // checkout uses, so it must not be steerable by a request header. Express's
-  // req.hostname prefers the client-supplied X-Forwarded-Host when trust proxy
-  // is enabled; billingHost deliberately reads Host instead.
-  describe("billing host cannot be steered by a forwarding header", () => {
-    it("reads Host, ignoring a spoofed X-Forwarded-Host", () => {
-      const req = { headers: { host: "skipwait.me", "x-forwarded-host": "evil.example" } };
-      expect(billingHost(req)).toBe("skipwait.me");
-      expect(isLiveChargebeeRequest(billingHost(req), env)).toBe(true);
+  // The public host drives which secret validates a webhook and which API
+  // key/site a checkout uses, so it must not be steerable by a request header.
+  //
+  // Production reaches the API through a Cloudflare Pages Function that CANNOT set
+  // `Host` (Cloudflare forbids it on an outbound fetch), so it forwards the
+  // browser's host as `X-Forwarded-Host`. That host is honoured — reading the raw
+  // `Host` instead meant live billing silently ran on the test site — but only on
+  // evidence the request came from the proxy: `PROXY_SHARED_SECRET` plus a matching
+  // `x-skipwait-proxy` marker. Without that proof the raw `Host` is used.
+  describe("public host resolution", () => {
+    const originalSecret = process.env.PROXY_SHARED_SECRET;
+    afterEach(() => {
+      if (originalSecret === undefined) delete process.env.PROXY_SHARED_SECRET;
+      else process.env.PROXY_SHARED_SECRET = originalSecret;
     });
 
-    it("cannot downgrade the live webhook secret to the test secret", () => {
-      const spoofed = { headers: { host: "skipwait.me", "x-forwarded-host": "not-skipwait.me" } };
-      // Live is still selected, so a delivery signed with the test secret is rejected.
-      expect(resolveChargebeeWebhookSecret(billingHost(spoofed), env)).toBe("live-webhook");
-      expect(resolveChargebeeRuntime(billingHost(spoofed), env).environment).toBe("live");
+    it("uses the proxy-forwarded host when the proxy proves it forwarded the request", () => {
+      process.env.PROXY_SHARED_SECRET = "s3cret";
+      const proxied = { headers: { host: "skipwaitmanus.ayodhya-711.workers.dev", "x-forwarded-host": "skipwait.me", "x-skipwait-proxy": "s3cret" } };
+      expect(billingHost(proxied)).toBe("skipwait.me");
+      expect(isLiveChargebeeRequest(billingHost(proxied), env)).toBe(true);
+      expect(resolveChargebeeWebhookSecret(billingHost(proxied), env)).toBe("live-webhook");
     });
 
-    it("cannot upgrade a non-live host onto the live secret", () => {
-      const spoofed = { headers: { host: "bridgeref-ybuthfmw.manus.space", "x-forwarded-host": "skipwait.me" } };
+    it("ignores an unmarked forwarded host, so a caller cannot pick the webhook secret", () => {
+      process.env.PROXY_SHARED_SECRET = "s3cret";
+      const spoofed = { headers: { host: "skipwaitmanus.ayodhya-711.workers.dev", "x-forwarded-host": "skipwait.me" } };
+      expect(billingHost(spoofed)).toBe("skipwaitmanus.ayodhya-711.workers.dev");
       expect(resolveChargebeeWebhookSecret(billingHost(spoofed), env)).toBe("test-webhook");
       expect(resolveChargebeeRuntime(billingHost(spoofed), env).environment).toBe("test");
     });
 
+    it("rejects a forged proxy marker", () => {
+      process.env.PROXY_SHARED_SECRET = "s3cret";
+      const forged = { headers: { host: "skipwaitmanus.ayodhya-711.workers.dev", "x-forwarded-host": "skipwait.me", "x-skipwait-proxy": "wrong" } };
+      expect(billingHost(forged)).toBe("skipwaitmanus.ayodhya-711.workers.dev");
+      expect(isLiveChargebeeRequest(billingHost(forged), env)).toBe(false);
+    });
+
+    it("cannot downgrade the live webhook secret to the test secret", () => {
+      process.env.PROXY_SHARED_SECRET = "s3cret";
+      const spoofed = { headers: { host: "skipwait.me", "x-forwarded-host": "not-skipwait.me", "x-skipwait-proxy": "s3cret" } };
+      // The proxy-forwarded host wins, so a delivery signed with the test secret is rejected.
+      expect(resolveChargebeeWebhookSecret(billingHost(spoofed), env)).toBe("test-webhook");
+    });
+
+    it("falls back to the forwarded host when no secret is configured (documented default)", () => {
+      delete process.env.PROXY_SHARED_SECRET;
+      const proxied = { headers: { host: "skipwaitmanus.ayodhya-711.workers.dev", "x-forwarded-host": "skipwait.me" } };
+      expect(billingHost(proxied)).toBe("skipwait.me");
+      expect(isLiveChargebeeRequest(billingHost(proxied), env)).toBe(true);
+    });
+
     it("treats a missing or repeated Host header as unknown and falls back to test", () => {
+      delete process.env.PROXY_SHARED_SECRET;
       expect(billingHost({ headers: {} })).toBeUndefined();
       expect(billingHost({ headers: { host: ["a.example", "b.example"] } })).toBeUndefined();
       expect(resolveChargebeeWebhookSecret(billingHost({ headers: {} }), env)).toBe("test-webhook");

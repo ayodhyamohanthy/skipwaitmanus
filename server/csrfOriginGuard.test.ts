@@ -26,6 +26,7 @@ describe("csrfOriginGuard", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     delete process.env.CSRF_ALLOWED_ORIGINS;
+    delete process.env.PROXY_SHARED_SECRET;
   });
 
   it("allows same-origin state-changing requests", async () => {
@@ -74,11 +75,55 @@ describe("csrfOriginGuard", () => {
     expect(response.status).toBe(403);
   });
 
-  it("does not trust a spoofed X-Forwarded-Host to launder the origin check", async () => {
+  // Production proxies /api/* through a Cloudflare Pages Function that CANNOT set
+  // `Host` (Cloudflare forbids it on an outbound fetch) and therefore forwards the
+  // browser's host as `X-Forwarded-Host`. Comparing against the raw `Host` compared
+  // `Origin: https://skipwait.me` to `Host: <container>.workers.dev` and 403'd every
+  // state-changing request, so the forwarded host is honoured — with
+  // PROXY_SHARED_SECRET + x-skipwait-proxy as proof whenever it is configured.
+  it("uses the proxy-forwarded host for a request the proxy marked", async () => {
+    process.env.PROXY_SHARED_SECRET = "s3cret";
+    const response = await request(buildApp())
+      .post("/api/state-changing")
+      .set("Host", "skipwaitmanus.ayodhya-711.workers.dev")
+      .set("X-Forwarded-Host", "skipwait.me")
+      .set("X-Skipwait-Proxy", "s3cret")
+      .set("Origin", "https://skipwait.me")
+      .send({});
+    expect(response.status).toBe(200);
+  });
+
+  it("ignores an unmarked forwarded host, so a spoofed origin cannot be laundered", async () => {
+    process.env.PROXY_SHARED_SECRET = "s3cret";
     const response = await request(buildApp())
       .post("/api/state-changing")
       .set("Host", "skipwait.me")
       .set("X-Forwarded-Host", "evil.example")
+      .set("Origin", "https://evil.example")
+      .send({});
+    expect(response.status).toBe(403);
+  });
+
+  it("rejects a forged proxy marker", async () => {
+    process.env.PROXY_SHARED_SECRET = "s3cret";
+    const response = await request(buildApp())
+      .post("/api/state-changing")
+      .set("Host", "skipwait.me")
+      .set("X-Forwarded-Host", "evil.example")
+      .set("X-Skipwait-Proxy", "wrong")
+      .set("Origin", "https://evil.example")
+      .send({});
+    expect(response.status).toBe(403);
+  });
+
+  // The property that actually matters: a genuinely cross-site Origin is refused
+  // even when the forwarded host is honoured, because a browser cannot attach
+  // X-Forwarded-Host to a credentialed cross-site request without a CORS preflight.
+  it("still blocks a cross-site origin when the proxy forwarded the request", async () => {
+    const response = await request(buildApp())
+      .post("/api/state-changing")
+      .set("Host", "skipwaitmanus.ayodhya-711.workers.dev")
+      .set("X-Forwarded-Host", "skipwait.me")
       .set("Origin", "https://evil.example")
       .send({});
     expect(response.status).toBe(403);

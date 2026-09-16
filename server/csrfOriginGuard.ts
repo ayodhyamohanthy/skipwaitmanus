@@ -24,10 +24,21 @@ import type { NextFunction, Request, Response } from "express";
  *   server-to-server. Rejecting those would break the payment rails for no
  *   security gain.
  *
- * The comparison uses the raw `Host` header rather than `req.hostname`, because
- * `req.hostname` honours the client-supplied `X-Forwarded-Host` when
- * `trust proxy` is enabled — a spoofable value is the wrong thing to trust here.
+ * The comparison uses `publicRequestHost` rather than the raw `Host` header.
+ * Production proxies `/api/*` through a Cloudflare Pages Function that deletes
+ * `Host` (Cloudflare forbids setting it on an outbound fetch) and forwards the
+ * browser's host as `X-Forwarded-Host`. Comparing against the raw `Host` therefore
+ * compared `Origin: https://skipwait.me` to `Host: <container>.workers.dev` and
+ * rejected **every** state-changing browser request with 403.
+ *
+ * See `_core/publicHost.ts` for the trust model. The short version: a browser
+ * cannot attach a custom forwarding header without a CORS preflight, and the
+ * session cookie is scoped to the public domain so it is never sent to the
+ * container host — so the forwarded host cannot be steered in a credentialed
+ * request. Setting `PROXY_SHARED_SECRET` adds proof on top.
  */
+
+import { publicRequestHost } from "./_core/publicHost";
 
 /** Returned to any caller whose Origin does not match the host it reached. */
 export const CROSS_SITE_BLOCKED_MESSAGE =
@@ -81,7 +92,7 @@ export function csrfOriginGuard(
 
   if (candidate === undefined) return next();
 
-  const requestHost = (req.headers.host ?? "").trim().toLowerCase();
+  const requestHost = (publicRequestHost(req) ?? "").trim().toLowerCase();
   const candidateHost = hostFromOriginLike(candidate);
 
   // A present-but-unparseable value (e.g. `Origin: null` from a sandboxed
