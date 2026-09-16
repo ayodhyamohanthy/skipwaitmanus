@@ -61,7 +61,7 @@ export default function JobExplorer() {
     if (highlightJobId == null) return;
     const timer = setTimeout(() => {
       const node = document.getElementById(`job-${highlightJobId}`);
-      if (node) node.scrollIntoView({ block: "center", behavior: "smooth" });
+      if (node && typeof node.scrollIntoView === "function") node.scrollIntoView({ block: "center", behavior: "smooth" });
     }, 120);
     return () => clearTimeout(timer);
   }, [jobs, highlightJobId]);
