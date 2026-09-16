@@ -114,9 +114,9 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
   lastError = null;
   let failed = false;
   try {
-    const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
+    const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
     // mysql2's drizzle result HKT loses row typing on raw execute; cast like db.ts does.
-    const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; INDEX_NAME?: string | null }>;
+    const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; INDEX_NAME?: string | null; NON_UNIQUE?: number | string | null }>;
     if (rows.length === 0) {
       // Zero visible columns means the follow-on ALTERs will all fail: either
       // a genuinely fresh database (run the drizzle migrations) or the
@@ -124,7 +124,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       console.error("[schema-reconcile] information_schema probe returned 0 columns; check DATABASE_URL database selection and grants before trusting per-statement errors below");
     }
     const existing = new Set(rows.filter(row => row.COLUMN_NAME).map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
-    const existingIndexes = new Set(rows.filter(row => row.INDEX_NAME).map(row => `${row.TABLE_NAME}.${row.INDEX_NAME}`));
+    const existingIndexes = new Map(rows.filter(row => row.INDEX_NAME).map(row => [`${row.TABLE_NAME}.${row.INDEX_NAME}`, Number(row.NON_UNIQUE ?? 0)]));
     const existingTables = new Set(rows.map(row => row.TABLE_NAME));
     for (const { table, column, definition } of DESIRED_COLUMNS) {
       if (existing.has(`${table}.${column}`)) { skipped.push(`${table}.${column}`); continue; }
@@ -156,17 +156,22 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
     ];
     for (const index of desiredIndexes) {
-      const key = `${index.table}.${index.name}`; if (existingIndexes.has(key)) { skipped.push(`index:${key}`); continue; }
+      const key = `${index.table}.${index.name}`; if (existingIndexes.get(key) === 0) { skipped.push(`index:${key}`); continue; }
       const stmt = `CREATE UNIQUE INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
       try {
         const dedupe = index.name === "resume_upload_sessions_owner_client_unique"
           ? "UPDATE `resumeUploadSessions` s JOIN (SELECT ownerId,clientUploadId,MIN(id) canonicalId FROM (SELECT id,ownerId,clientUploadId FROM `resumeUploadSessions`) source WHERE clientUploadId IS NOT NULL GROUP BY ownerId,clientUploadId HAVING COUNT(*)>1) duplicates ON duplicates.ownerId=s.ownerId AND duplicates.clientUploadId=s.clientUploadId SET s.clientUploadId=NULL WHERE s.id<>duplicates.canonicalId"
           : "UPDATE `referralAttachments` a JOIN (SELECT uploadSessionId,MIN(id) canonicalId FROM (SELECT id,uploadSessionId FROM `referralAttachments`) source WHERE uploadSessionId IS NOT NULL GROUP BY uploadSessionId HAVING COUNT(*)>1) duplicates ON duplicates.uploadSessionId=a.uploadSessionId SET a.uploadSessionId=NULL WHERE a.id<>duplicates.canonicalId";
         let created = false;
+        if (existingIndexes.get(key) === 1) await db.execute(sql.raw(`DROP INDEX \`${index.name}\` ON \`${index.table}\``));
         for (let attempt=1; attempt<=3 && !created; attempt++) {
           await db.execute(sql.raw(dedupe));
           try { await db.execute(sql.raw(stmt)); created=true; }
-          catch (err) { if (!isDuplicateEntryError(err) || attempt===3) throw err; }
+          catch (err) {
+            const code=reconcileErrorCode(err);
+            if (code === "ER_DUP_KEYNAME" && attempt===1) { await db.execute(sql.raw(`DROP INDEX \`${index.name}\` ON \`${index.table}\``)); continue; }
+            if (!isDuplicateEntryError(err) || attempt===3) throw err;
+          }
         }
         results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`);
       }
