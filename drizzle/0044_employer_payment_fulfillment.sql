@@ -1,0 +1,21 @@
+CREATE TABLE `employerPaymentFulfillments` (
+  `id` int AUTO_INCREMENT NOT NULL,
+  `provider` varchar(32) NOT NULL,
+  `providerOrderId` varchar(255) NOT NULL,
+  `providerPaymentId` varchar(255),
+  `userId` int NOT NULL,
+  `pack` enum('starter','growth','scale') NOT NULL,
+  `amount` int NOT NULL,
+  `currency` varchar(3) NOT NULL,
+  `status` enum('pending','processing','credited','requires_review') NOT NULL DEFAULT 'pending',
+  `attemptCount` int NOT NULL DEFAULT 0,
+  `lastError` varchar(500),
+  `creditedAt` timestamp,
+  `createdAt` timestamp NOT NULL DEFAULT (now()),
+  `updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT `employerPaymentFulfillments_id` PRIMARY KEY(`id`),
+  UNIQUE INDEX `employer_payment_provider_order_unique` (`provider`,`providerOrderId`),
+  UNIQUE INDEX `employer_payment_provider_payment_unique` (`provider`,`providerPaymentId`),
+  INDEX `employer_payment_user_status_idx` (`userId`,`status`),
+  CONSTRAINT `employerPaymentFulfillments_userId_users_id_fk` FOREIGN KEY (`userId`) REFERENCES `users`(`id`) ON DELETE cascade
+);

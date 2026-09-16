@@ -72,7 +72,7 @@ async function verifyPayPalWebhookViaApi(input: { authAlgo?: string; certUrl?: s
   return ((await response.json()) as { verification_status?: string }).verification_status === "SUCCESS" ? "SUCCESS" : "FAILURE";
 }
 
-export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entry: ActivityInput) => Promise<void>; recordGatewayEvent?: (input: GatewayEventInput) => Promise<{ matched: boolean } | undefined>; verifyPayPalWebhook?: PayPalWebhookVerifier; fulfillUnlockCredits?: (input: { userId: number; pack: string; eventId: string; amount?: number }) => Promise<unknown> }) {
+export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entry: ActivityInput) => Promise<void>; recordGatewayEvent?: (input: GatewayEventInput) => Promise<{ matched: boolean } | undefined>; verifyPayPalWebhook?: PayPalWebhookVerifier; fulfillUnlockCredits?: (input: { userId: number; pack: string; paymentId: string; orderId: string; amount: number; currency: string }) => Promise<unknown> }) {
   const paypalConfigured = () => Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET);
   const paypalVerificationConfigured = () => Boolean(process.env.PAYPAL_WEBHOOK_ID) && paypalConfigured();
 
@@ -95,7 +95,18 @@ export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entr
     if (event === "payment.captured" && notes.kind === "unlock_credits" && deps.fulfillUnlockCredits) {
       const unlockUserId = integerNote(notes.userId);
       const pack = typeof notes.pack === "string" ? notes.pack : "";
-      if (unlockUserId && pack) await deps.fulfillUnlockCredits({ userId: unlockUserId, pack, eventId: String(payment?.id ?? `unlock:${Date.now()}`), amount: typeof payment?.amount === "number" ? payment.amount : undefined }).catch(() => undefined);
+      const paymentId = typeof payment?.id === "string" ? payment.id : "";
+      const orderId = typeof payment?.order_id === "string" ? payment.order_id : "";
+      const amount = typeof payment?.amount === "number" ? payment.amount : NaN;
+      const currency = typeof payment?.currency === "string" ? payment.currency.toUpperCase() : "";
+      if (!unlockUserId || !pack || !paymentId || !orderId || !Number.isInteger(amount) || amount <= 0 || !currency) return res.status(200).json({ received: true, matched: false, fulfillment: "requires_review" });
+      try {
+        const fulfillment = await deps.fulfillUnlockCredits({ userId: unlockUserId, pack, paymentId, orderId, amount, currency }) as { status?: string } | undefined;
+        if (fulfillment?.status === "requires_review") return res.status(200).json({ received: true, matched: false, fulfillment: "requires_review" });
+      } catch (error) {
+        console.warn("[Payments] Razorpay capture fulfillment failed; retrying:", error);
+        return res.status(503).json({ error: "Payment fulfillment pending retry" });
+      }
     }
     // Correlation is a read-only lookup on paymentFulfillments (see
     // recordGatewayPaymentEvent): unmatched deliveries still ack 200 so

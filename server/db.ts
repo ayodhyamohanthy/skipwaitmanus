@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -2021,23 +2021,43 @@ export async function recordPartnerClick(moduleId: number) {
   return { recorded: Number(result[0]?.affectedRows ?? 0) === 1 };
 }
 
-// Razorpay unlock-credit purchase: credit the employer wallet on verified
-// capture. Idempotent per provider event via operationalActivityLogs key.
-export async function fulfillUnlockCreditPurchase(input: { eventId: string; userId: number; pack: UnlockCreditPackId; amount?: number }) {
-  const pack = UNLOCK_CREDIT_PACKS[input.pack];
-  if (!pack) return { status: "ignored" as const, reason: "unknown_pack" };
+// Durable Razorpay order intent. The provider order is bound to the authenticated
+// employer, selected pack and exact amount before any webhook may credit it.
+export async function recordUnlockCreditOrderIntent(input: { orderId: string; userId: number; pack: UnlockCreditPackId; amount: number; currency: string }) {
+  const expected = UNLOCK_CREDIT_PACKS[input.pack];
+  if (!expected || input.amount !== expected.amountInPaise || input.currency.toUpperCase() !== "INR") throw new Error("Razorpay order does not match the selected pack");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.insert(employerPaymentFulfillments).values({ provider: "razorpay", providerOrderId: input.orderId, userId: input.userId, pack: input.pack, amount: input.amount, currency: "INR", status: "pending" }).onDuplicateKeyUpdate({ set: { providerOrderId: input.orderId } });
+  return { orderId: input.orderId, status: "pending" as const };
+}
+
+// Verified captures are fulfilled in one database transaction. The guarded
+// pending->processing transition is the single winner for concurrent retries;
+// credits and the terminal state commit together, so a crash rolls both back.
+export async function fulfillUnlockCreditPurchase(input: { paymentId: string; orderId: string; userId: number; pack: UnlockCreditPackId; amount: number; currency: string }) {
+  const expected = UNLOCK_CREDIT_PACKS[input.pack];
+  if (!expected) return { status: "requires_review" as const, reason: "unknown_pack" };
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const duplicate = await tx.select({ id: operationalActivityLogs.id }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.action, "employer.unlock_credits_fulfilled"), eq(operationalActivityLogs.resourceId, input.eventId))).limit(1);
-    if (duplicate[0]) return { status: "duplicate" as const, credits: pack.credits };
-    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, input.userId)).limit(1))[0];
-    if (!account) return { status: "ignored" as const, reason: "no_employer_account" };
-    if (input.amount !== undefined && input.amount !== pack.amountInPaise) return { status: "ignored" as const, reason: "checkout_amount_mismatch" };
-    const credits = account.credits + pack.credits;
-    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
-    const metadata: Record<string, string | number> = { pack: input.pack, creditsAdded: pack.credits, credits };
-    await tx.insert(operationalActivityLogs).values({ actorUserId: input.userId, action: "employer.unlock_credits_fulfilled", outcome: "success", resourceType: "employer_unlock_purchase", resourceId: input.eventId, metadata: JSON.stringify(metadata) });
-    return { status: "credited" as const, credits, creditsAdded: pack.credits };
+    const intent = (await tx.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.provider, "razorpay"), eq(employerPaymentFulfillments.providerOrderId, input.orderId))).limit(1))[0];
+    if (!intent) return { status: "requires_review" as const, reason: "unknown_order" };
+    if (intent.status === "credited") return intent.providerPaymentId === input.paymentId ? { status: "duplicate" as const, creditsAdded: expected.credits } : { status: "requires_review" as const, reason: "order_already_paid" };
+    const exact = intent.userId === input.userId && intent.pack === input.pack && intent.amount === input.amount && intent.currency === input.currency.toUpperCase() && input.amount === expected.amountInPaise;
+    if (!exact) {
+      await tx.update(employerPaymentFulfillments).set({ status: "requires_review", providerPaymentId: input.paymentId, lastError: "capture_does_not_match_order" }).where(and(eq(employerPaymentFulfillments.id, intent.id), eq(employerPaymentFulfillments.status, "pending")));
+      return { status: "requires_review" as const, reason: "capture_does_not_match_order" };
+    }
+    const claimed = await tx.update(employerPaymentFulfillments).set({ status: "processing", providerPaymentId: input.paymentId, attemptCount: sql`${employerPaymentFulfillments.attemptCount} + 1`, lastError: null }).where(and(eq(employerPaymentFulfillments.id, intent.id), eq(employerPaymentFulfillments.status, "pending"), isNull(employerPaymentFulfillments.providerPaymentId)));
+    if (Number(claimed[0]?.affectedRows ?? 0) !== 1) {
+      const current = (await tx.select().from(employerPaymentFulfillments).where(eq(employerPaymentFulfillments.id, intent.id)).limit(1))[0];
+      return current?.status === "credited" && current.providerPaymentId === input.paymentId ? { status: "duplicate" as const, creditsAdded: expected.credits } : { status: "busy" as const };
+    }
+    const credited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} + ${expected.credits}` }).where(eq(employerAccounts.userId, intent.userId));
+    if (Number(credited[0]?.affectedRows ?? 0) !== 1) throw new Error("Employer account unavailable for captured payment");
+    const done = await tx.update(employerPaymentFulfillments).set({ status: "credited", creditedAt: new Date() }).where(and(eq(employerPaymentFulfillments.id, intent.id), eq(employerPaymentFulfillments.status, "processing"), eq(employerPaymentFulfillments.providerPaymentId, input.paymentId)));
+    if (Number(done[0]?.affectedRows ?? 0) !== 1) throw new Error("Captured payment fulfillment lost its claim");
+    await tx.insert(operationalActivityLogs).values({ actorUserId: intent.userId, action: "employer.unlock_credits_fulfilled", outcome: "success", resourceType: "employer_unlock_purchase", resourceId: input.paymentId, metadata: JSON.stringify({ orderId: input.orderId, pack: input.pack, creditsAdded: expected.credits }) });
+    return { status: "credited" as const, creditsAdded: expected.credits };
   });
 }
 

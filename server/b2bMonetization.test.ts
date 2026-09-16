@@ -27,6 +27,7 @@ function baseDeps(overrides: Partial<EmployerRouteDeps> = {}): EmployerRouteDeps
     recordPartnerImpression: async () => undefined,
     recordPartnerClick: async () => ({ recorded: true }),
     listEmployerSpendHistory: async () => [],
+    recordUnlockCreditOrderIntent: async () => undefined,
     createRazorpayUnlockOrder: async input => ({ id: "order_test_1", amount: input.amountInPaise, currency: "INR" }),
     ...overrides,
   };
@@ -107,13 +108,23 @@ describe("employer account routes", () => {
 describe("unlock credit purchases", () => {
   it("creates a paise-native Razorpay order with unlock_credits notes", async () => {
     const orders: Array<{ amountInPaise: number; receipt: string; notes: Record<string, string> }> = [];
-    const app = buildApp(baseDeps({ createRazorpayUnlockOrder: async input => { orders.push(input); return { id: "order_pack", amount: input.amountInPaise, currency: "INR" }; } }));
+    const intents: Array<{ orderId: string; userId: number; pack: string; amount: number; currency: string }> = [];
+    const app = buildApp(baseDeps({ recordUnlockCreditOrderIntent: async input => { intents.push(input); }, createRazorpayUnlockOrder: async input => { orders.push(input); return { id: "order_pack", amount: input.amountInPaise, currency: "INR" }; } }));
     const response = await request(app).post("/api/employer/unlock-credits/purchase").send({ pack: "growth" });
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({ orderId: "order_pack", amount: 12900, currency: "INR", pack: "growth", credits: 50 });
     expect(orders[0]).toMatchObject({ amountInPaise: 12900 });
     expect(orders[0].receipt).toMatch(/^employer_11_\d+$/);
     expect(orders[0].notes).toMatchObject({ userId: "11", kind: "unlock_credits", pack: "growth" });
+    expect(intents).toEqual([{ orderId: "order_pack", userId: 11, pack: "growth", amount: 12900, currency: "INR" }]);
+  });
+
+
+  it("does not return a checkout when its durable fulfillment intent cannot be recorded", async () => {
+    const app = buildApp(baseDeps({ recordUnlockCreditOrderIntent: async () => { throw new Error("database down"); } }));
+    const response = await request(app).post("/api/employer/unlock-credits/purchase").send({ pack: "starter" });
+    expect(response.status).toBe(502);
+    expect(response.body.error).toContain("could not start");
   });
 
   it("rejects an unknown pack with 400", async () => {

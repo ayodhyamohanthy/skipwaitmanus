@@ -351,6 +351,23 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("payment_fulfillments_provider_event_unique").on(table.provider, table.providerEventId), index("payment_fulfillments_user_idx").on(table.userId), index("payment_fulfillments_user_status_idx").on(table.userId, table.role, table.status), index("payment_fulfillments_intent_idx").on(table.provider, table.checkoutIntentId)]);
 
+export const employerPaymentFulfillments = mysqlTable("employerPaymentFulfillments", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 32 }).notNull(),
+  providerOrderId: varchar("providerOrderId", { length: 255 }).notNull(),
+  providerPaymentId: varchar("providerPaymentId", { length: 255 }),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  pack: mysqlEnum("pack", ["starter", "growth", "scale"]).notNull(),
+  amount: int("amount").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  status: mysqlEnum("status", ["pending", "processing", "credited", "requires_review"]).default("pending").notNull(),
+  attemptCount: int("attemptCount").default(0).notNull(),
+  lastError: varchar("lastError", { length: 500 }),
+  creditedAt: timestamp("creditedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("employer_payment_provider_order_unique").on(table.provider, table.providerOrderId), uniqueIndex("employer_payment_provider_payment_unique").on(table.provider, table.providerPaymentId), index("employer_payment_user_status_idx").on(table.userId, table.status)]);
+
 export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutIntents", {
   id: int("id").autoincrement().primaryKey(),
   hostedPageId: varchar("hostedPageId", { length: 80 }).notNull(),
