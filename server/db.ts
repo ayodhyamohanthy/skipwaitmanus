@@ -568,7 +568,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
   const fastTrackLink=input.fastTrackCode?await getActiveReferrerFastTrackLink(input.fastTrackCode):input.fastTrackCompanySlug&&input.fastTrackAlias?await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug,input.fastTrackAlias):undefined;
   if((input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias)&&!fastTrackLink)throw new Error("This private referral link is no longer active");
   if(fastTrackLink&&!fastTrackLinkMatchesCompany(fastTrackLink.companyDomain,companyDomain))throw new Error("Use a job link for the same company as this private referral link");
-  await grantPendingActionRewards(userId,"job_seeker");await ensureTokenWallet(userId,"job_seeker");
+  await ensureTokenWallet(userId,"job_seeker");
   return db.transaction(async tx=>{
     // The wallet lock is the per-seeker serialization point for both same-key
     // replay and different-key credit races.
@@ -588,6 +588,8 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id,wallet.id));
     const debit=await tx.insert(tokenTransactions).values({userId,role:"job_seeker",tokenCount:-1,kind:"direct_request",source,sourceCycleKey:effective.monthlyCycleKey,referenceType:"referral_request",referenceId:String(requestId),idempotencyKey:input.idempotencyKey,balanceAfter:patch.balance,monthlyCreditsAfter:patch.monthlyCreditsRemaining});const debitId=Number(debit[0].insertId);await tx.update(referralRequests).set({debitTransactionId:debitId}).where(eq(referralRequests.id,requestId));
     const bound=await tx.update(referralAttachments).set({referralRequestId:requestId}).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId)));if(Number(bound[0]?.affectedRows??0)!==uniqueAttachmentIds.length)throw new Error("One or more resume documents changed during submission");
+    // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is complete inside this transaction.
+    await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     for(const employee of eligible)await tx.insert(notifications).values({userId:employee.userId,category:"referral",title:fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
     const remaining=creditSummaryFromWallet({...effective,...patch});return{requestId,companyDomain,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:eligible.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,fastTrack:Boolean(fastTrackLink),replayed:false as const};
@@ -716,7 +718,7 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
     const updated = await tx.update(referralRequests).set({ status: "approved", referrerMessage: null }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, "pending"), eq(referralRequests.referrerId, userId)));
     if (Number(updated[0].affectedRows) !== 1) throw new Error("This referral request has already been reviewed");
     await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", title: "Referral Request approved", body: "A verified employee accepted your private referral request." });
-    await grantPendingActionRewards(userId, "referrer");
+    await grantPendingActionRewardsTx(tx, userId, "referrer", "referral_approval", String(input.requestId));
     return { status: "approved" as const, companyDomain: current.companyDomain, jobSeekerId: current.jobSeekerId };
   });
 }
@@ -1261,7 +1263,7 @@ export async function fulfillCompanyCoverageInvitation(joinerUserId: number, inp
     await tx.insert(companyCoverageRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS });
     // Action-gated: no credits for verifying alone. Both sides earn when the
     // invited referrer actually accepts a request, or the seeker sends one.
-    await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending" }, { userId: joinerUserId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending" }]);
+    await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }, { userId: joinerUserId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }]);
     await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action." }, { userId: joinerUserId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request." }]);
     await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId, completedAt: new Date() }).where(eq(companyCoverageInvitations.id, invitation.id));
     return { rewarded: true as const, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
@@ -1317,8 +1319,8 @@ export async function claimPersonalReferralInvite(joinerUserId: number, input: {
       // Action-gated: credits are recorded as pending and unlock only after the
       // recipient performs a real referral action (send request / accept one).
       await tx.insert(tokenTransactions).values([
-        { userId: invitation.inviterUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending" },
-        { userId: joinerUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending" },
+        { userId: invitation.inviterUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" },
+        { userId: joinerUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" },
       ]);
       await tx.insert(notifications).values([
         { userId: invitation.inviterUserId, category: "system", title: "Invite reward pending", body: "A friend joined with your link. One extra referral credit unlocks after your next referral action." },
@@ -1444,28 +1446,24 @@ export async function markSubscriptionNonRenewing(userId: number, role: WalletRo
 // recipient performs a real action: a Job Seeker sends a private referral
 // request; a Referrer claims and accepts a referral request. Joining grants
 // nothing, which removes the incentive to farm sign-ups.
-export async function grantPendingActionRewards(userId: number, role: WalletRole) {
-  const db = await getDb(); if (!db) return;
-  try {
-    await db.transaction(async tx => {
-      const pending = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.kind, "invite_reward_pending")));
-      if (pending.length === 0) return;
-      const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
-      const total = pending.reduce((sum, row) => sum + Number(row.tokenCount), 0);
-      if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + total }).where(eq(tokenBalances.id, wallet[0].id));
-      else await tx.insert(tokenBalances).values({ userId, role, balance: total, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
-      for (const row of pending) {
-        await tx.update(tokenTransactions).set({ kind: "invite_reward_granted" }).where(eq(tokenTransactions.id, row.id));
-      }
-      await tx.insert(notifications).values({ userId, category: "system", title: "Referral credits unlocked", body: `Your ${total} invite credit${total === 1 ? "" : "s"} were added after your first referral action. Keep going!` });
-    });
-  } catch (error) {
-    console.warn("[Credits] Failed to grant pending action rewards:", error);
+async function grantPendingActionRewardsTx(tx: any, userId: number, role: WalletRole, qualifiedByType: string, qualifiedById: string) {
+  const pending = await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,role),eq(tokenTransactions.kind,"invite_reward_pending"),or(isNull(tokenTransactions.rewardStatus),eq(tokenTransactions.rewardStatus,"pending")))).for("update");
+  let total=0; const claimedIds:number[]=[];
+  for(const row of pending){
+    const claimed=await tx.update(tokenTransactions).set({rewardStatus:"granted",qualifiedByType,qualifiedById,qualifiedAt:new Date()}).where(and(eq(tokenTransactions.id,row.id),eq(tokenTransactions.kind,"invite_reward_pending"),or(isNull(tokenTransactions.rewardStatus),eq(tokenTransactions.rewardStatus,"pending"))));
+    if(Number(claimed[0]?.affectedRows??0)===1){total+=Number(row.tokenCount);claimedIds.push(row.id);}
   }
+  if(total===0)return {granted:0};
+  const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,role))).limit(1).for("update"))[0];
+  if(!wallet)throw new Error("Reward wallet is unavailable");
+  const updated=await tx.update(tokenBalances).set({balance:sql`${tokenBalances.balance} + ${total}`}).where(eq(tokenBalances.id,wallet.id));
+  if(Number(updated[0]?.affectedRows??0)!==1)throw new Error("Reward wallet update failed");
+  for(const pendingId of claimedIds)await tx.insert(tokenTransactions).values({userId,role,tokenCount:Number(pending.find((row:any)=>row.id===pendingId)!.tokenCount),kind:"invite_reward_granted",source:"action_gated_reward",referenceType:"pending_reward",referenceId:String(pendingId),idempotencyKey:`reward-${pendingId}`,rewardStatus:"granted",qualifiedByType,qualifiedById,qualifiedAt:new Date()});
+  await tx.insert(notifications).values({userId,category:"system",title:"Referral credits unlocked",body:`Your ${total} invite credit${total===1?"":"s"} were added after your referral action.`});
+  return {granted:total};
 }
 
 export async function spendToken(userId: number, role: WalletRole) {
-  await grantPendingActionRewards(userId, role);
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await ensureTokenWallet(userId, role);
