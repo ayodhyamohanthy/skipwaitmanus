@@ -34,7 +34,7 @@
   "vars": {
     "NODE_ENV": "production",
     "API_RELEASE": "legacy",
-    "SKIPWAIT_ADMIN_EMAIL": "ayodhyamohanthy@gmail.com",
+    "SKIPWAIT_ADMIN_EMAIL": "ayodhya@skipwait.me",
     "ENABLE_ADMIN_BOOTSTRAP": "false",
     "ENABLE_ADMIN_SMOKE_FIXTURE": "true",
     "WORKOS_CLIENT_ID": "client_01M17TTFJ6784B1CN6MHAHB60Y",
