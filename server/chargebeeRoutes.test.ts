@@ -152,7 +152,7 @@ describe("Chargebee webhook route", () => {
       createPaymentIntent: async () => undefined,
       fulfillPayment: async input => { fulfilled += 1; expect(input).toMatchObject({ eventId: "hosted_page:hp_recovery", hostedPageId: "hp_recovery", passThruContent: "intent_recovery", amount: 9900, currency: "INR" }); return { status: "credited", tokenCount: 1 }; },
       getPaymentRecovery: async (_userId, _role, hostedPageId) => hostedPageId === "hp_recovery" ? { id: 41, status: "pending", hostedPageId, checkoutIntentId: "intent_recovery", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null } : { id: 42, status: "pending", hostedPageId, checkoutIntentId: "intent_expected", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null },
-      retrieveHostedPage: async hostedPageId => hostedPageId === "hp_recovery" ? { hostedPageId, invoiceId: "inv_recovery", passThruContent: "intent_recovery", amount: 9900, currency: "INR" } : { hostedPageId, invoiceId: "inv_mismatch", passThruContent: "wrong_intent", amount: 9900, currency: "INR" },
+      retrieveHostedPage: async hostedPageId => hostedPageId === "hp_recovery" ? { hostedPageId, invoiceId: "inv_recovery", passThruContent: "intent_recovery", amount: 9900, currency: "INR", pageState: "succeeded", invoiceStatus: "paid", paymentStatus: "paid", paid: true } : { hostedPageId, invoiceId: "inv_mismatch", passThruContent: "wrong_intent", amount: 9900, currency: "INR", pageState: "succeeded", invoiceStatus: "paid", paymentStatus: "paid", paid: true },
       markPaymentForReview: async (_paymentId, reason) => { reviewReasons.push(reason); },
       getCreditSummary: async () => ({ totalAvailable: 4 }),
     });
@@ -164,6 +164,23 @@ describe("Chargebee webhook route", () => {
     expect(mismatched.body.status).toBe("requires_review");
     expect(fulfilled).toBe(1);
     expect(reviewReasons).toEqual(["provider_page_mismatch"]);
+  });
+
+  it.each([
+    ["matching unpaid", { pageState: "succeeded", invoiceStatus: "payment_due", paid: false }],
+    ["cancelled", { pageState: "cancelled", invoiceStatus: "not_paid", paid: false }],
+    ["failed", { pageState: "failed", invoiceStatus: "not_paid", paid: false }],
+    ["completed page with unpaid invoice", { pageState: "succeeded", invoiceStatus: "not_paid", paid: false }],
+  ])("keeps %s recovery pending without fulfillment", async (_label, providerState) => {
+    const app = express(); app.use(express.json()); let fulfilled = 0;
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 7, openId: "test" } }), createPaymentIntent: async () => undefined,
+      getPaymentRecovery: async () => ({ id: 51, status: "pending", hostedPageId: "hp_unpaid", checkoutIntentId: "intent_unpaid", tokenCount: 1, amount: 9900, currency: "INR", reconciliationReason: null }),
+      retrieveHostedPage: async () => ({ hostedPageId: "hp_unpaid", invoiceId: "inv_unpaid", passThruContent: "intent_unpaid", amount: 9900, currency: "INR", paymentStatus: "pending", ...providerState }),
+      fulfillPayment: async () => { fulfilled += 1; return { status: "credited" }; },
+    });
+    const response = await request(app).post("/api/chargebee/credit-recovery").send({ role: "job_seeker", hostedPageId: "hp_unpaid" });
+    expect(response.body.status).toBe("pending"); expect(fulfilled).toBe(0);
   });
 
   it("creates a Pro subscription checkout with the approved INR plan price and synchronizes its verified lifecycle event", async () => {
