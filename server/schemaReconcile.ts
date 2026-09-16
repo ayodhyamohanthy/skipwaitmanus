@@ -99,7 +99,6 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
   // Each run reports only its own outcome: reset the per-statement results and
   // the first-error pointer so a successful retry clears a previous failure.
   lastError = null;
-  lastResults = results;
   let failed = false;
   try {
     const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
@@ -179,6 +178,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     lastError = describeReconcileError(error);
     console.error("[schema-reconcile] failed (non-fatal):", lastError);
   }
+  lastResults = results;
   return { applied, skipped };
   })();
   inFlight = run;
