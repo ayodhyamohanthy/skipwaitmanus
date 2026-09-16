@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { AccountMenu } from "@/components/AccountMenu";
 import { clearReferralDraft, readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
+import { clearPendingResumeFiles } from "@/lib/pendingResume";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, reviewedEmployerFromTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 
 export default function Onboarding() {
@@ -27,7 +28,7 @@ export default function Onboarding() {
   const reviewedEmployer = validTargetUrl ? reviewedEmployerFromTargetRoleUrl(targetUrl) : undefined;
   const showTargetUrlError = Boolean(targetUrl.trim()) && !validTargetUrl;
   useEffect(() => { if (targetUrl) saveReferralDraft({ name, targetUrl }); }, [name, targetUrl]);
-  const clearAndStartNew = async () => { if (isSignedIn) { const token = await getToken(); const response = await fetch("/api/documents/draft", { method: "DELETE", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} }); if (!response.ok) { setPreviewError("We could not clear the saved resume. Try again."); return; } } clearReferralDraft(); localStorage.removeItem("bridge-target-url"); localStorage.removeItem("bridge-target-compensation"); localStorage.removeItem("bridge-seeker-attachments"); localStorage.removeItem("skipwait-job-source"); setTargetUrl(""); setDraftSavedAt(0); setPreview(undefined); setPreviewError(""); };
+  const clearAndStartNew = async () => { if (isSignedIn) { const token = await getToken(); const response = await fetch("/api/documents/draft", { method: "DELETE", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} }); if (!response.ok) { setPreviewError("We could not clear the saved resume. Try again."); return; } } await clearPendingResumeFiles().catch(() => undefined); clearReferralDraft(); localStorage.removeItem("bridge-target-url"); localStorage.removeItem("bridge-target-compensation"); localStorage.removeItem("bridge-seeker-attachments"); localStorage.removeItem("skipwait-job-source"); setTargetUrl(""); setDraftSavedAt(0); setPreview(undefined); setPreviewError(""); };
   const draftAge = draftSavedAt ? (() => { const minutes = Math.max(0, Math.floor((Date.now() - draftSavedAt) / 60000)); return minutes < 1 ? "just now" : minutes < 60 ? `${minutes}m ago` : minutes < 1440 ? `${Math.floor(minutes / 60)}h ago` : `${Math.floor(minutes / 1440)}d ago`; })() : "";
   const fromSampleRole = typeof window !== "undefined" && window.localStorage.getItem("skipwait-job-source") === "sample";
   useEffect(() => {
