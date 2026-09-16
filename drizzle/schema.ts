@@ -159,6 +159,13 @@ export const referralRequests = mysqlTable("referralRequests", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
+export const referralRequestSaves = mysqlTable("referralRequestSaves", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("referral_request_save_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referral_request_save_referrer_idx").on(table.referrerId, table.createdAt), index("referral_request_save_request_idx").on(table.referralRequestId)]);
+
 export const referralRequestPasses = mysqlTable("referralRequestPasses", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
