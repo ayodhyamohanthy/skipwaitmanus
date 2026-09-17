@@ -23,6 +23,7 @@ function normalizeEmail(value: unknown): string {
   return typeof value === "string" ? value.trim().toLowerCase() : "";
 }
 
+// API runtime marker: first-sign-in provisioning and hosted-link fixes.
 export function registerReferrerOtpLoginRoutes(app: Express) {
   app.post("/api/auth/otp/send", async (req: Request, res: Response) => {
     try {
