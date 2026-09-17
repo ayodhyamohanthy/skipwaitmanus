@@ -119,7 +119,7 @@ async function startServer() {
 
 // Liveness is process-only; readiness gates on schema reconciliation. The
 // legacy endpoint stays 200-compatible for existing SHA verification clients.
-registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError,failedStatements:()=>getLastReconcileResults().filter(item=>!item.ok).map(item=>({statement:item.statement,errorCode:item.errorCode})),retry:reconcileSchema});
+registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError});
 
   registerAdminSmokeFixture(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
