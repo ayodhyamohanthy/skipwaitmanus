@@ -33,13 +33,25 @@ if [ "$result" -eq 0 ]; then
   current=$(jq -r '.current_version // .version // empty' <<<"$info")
   image=$(jq -r '.configuration.image // .image // empty' <<<"$info")
   [ -n "$current" ] && [ -n "$image" ] || { echo "::error::Cloudflare omitted active version or image after readiness"; exit 1; }
-  jq -e --arg n "$expected_name" --argjson v "$current" \
+  # Containers may report `stopped` immediately after serving readiness because
+  # sleepAfter scales the release down and control-plane state lags. Do not
+  # weaken the running-instance gate: wake the exact SHA and poll control-plane
+  # state for bounded convergence.
+  deadline=$((SECONDS + 90))
+  until jq -e --arg n "$expected_name" --argjson v "$current" \
     '.[] | select(.name==$n and .state=="running" and .version==$v)' \
-    <<<"$instances" >/dev/null || {
-      echo "::error::Exact SHA is ready, but release identity $expected_name is not the active version $current"
-      jq -c '.[] | {name,state,version:(.version? // null),created}' <<<"$instances"
-      exit 1
-    }
+    <<<"$instances" >/dev/null; do
+      if (( SECONDS >= deadline )); then
+        echo "::error::Exact SHA is ready, but release identity $expected_name did not converge to running on active version $current"
+        jq -c '.[] | {name,state,version:(.version? // null),created}' <<<"$instances"
+        exit 1
+      fi
+      curl -fsS --max-time 20 "$READY_URL" >/dev/null || true
+      sleep 5
+      instances=$(npx wrangler containers instances "$app_id" --json)
+      info=$(npx wrangler containers info "$app_id" --json)
+      current=$(jq -r '.current_version // .version // empty' <<<"$info")
+    done
   echo "RUNTIME CONVERGED: release=$EXPECTED_SHA version=$current image=$image state=ready"
   exit 0
 fi

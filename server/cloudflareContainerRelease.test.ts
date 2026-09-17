@@ -17,6 +17,7 @@ printf 'HTTP/2 %s\ncontent-type: %s\n' "$status" "$type" > "$headers";printf '%s
 }
 const ready=JSON.stringify({service:"skipwait-api",commitSha:"a".repeat(40),state:"ready"})+"\n200";
 describe("Cloudflare container acceptance",()=>{
+ it("uses a bounded wake-and-control-plane convergence poll",()=>{expect(script).toContain("deadline=$((SECONDS + 90))");expect(script).toContain("curl -fsS --max-time 20");expect(script).toContain("state==\"running\"")});
  it("passes a running numeric-version release",()=>expect(fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"running",version:2},[ready]).status).toBe(0));
  it("fails inactive/null even when the public endpoint reports the exact SHA",()=>{const r=fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"inactive",version:null},[ready]);expect(r.status).not.toBe(0);expect(r.stdout).toContain("not the active version");});
  it("fails a running release whose version is not current",()=>expect(fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"running",version:1},[ready]).status).not.toBe(0));
