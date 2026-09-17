@@ -363,12 +363,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const stored = await deps.storagePut(permanentKey, buffer, validated.mimeType);
       const attachment = await deps.completeResumeUploadSession(identity.account.id, session.id, finalizationOwner, { fileName: validated.fileName, fileKey: stored.key, mimeType: validated.mimeType, fileSize: buffer.length });
       res.status(201).json({ ...attachment, url: `/api/documents/${attachment.id}` });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      const validation = /incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message);
-      const conflict = /still finishing|lease changed/i.test(message);
-      res.status(validation ? 400 : conflict ? 409 : 500).json({ error: validation || conflict ? message : "We could not finish your resume upload. Please try again." });
-    }
+    } catch (error) { const message = error instanceof Error ? error.message : "We could not finish your resume upload"; res.status(/incomplete|size|PDF|Word|PNG|JPEG|document type/i.test(message) ? 400 : /still finishing|lease changed/i.test(message) ? 409 : 500).json({ error: message }); }
   });
   app.delete("/api/documents/draft", async (req, res) => {
     try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to clear your private draft" }); if (!deps.clearUnattachedResumeUploads) return res.status(503).json({ error: "Draft cleanup is temporarily unavailable" }); const result = await deps.clearUnattachedResumeUploads(identity.account.id); record({ actorUserId: identity.account.id, action: "document.draft_cleared", outcome: "success", resourceType: "attachment", metadata: { cleared: result.cleared } }); res.json({ cleared: result.cleared }); }

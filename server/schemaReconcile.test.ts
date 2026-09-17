@@ -1,10 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DESIRED_COLUMNS, DESIRED_COLUMN_DEFINITIONS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
+import { DESIRED_COLUMNS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
 
 // Expectations derive from the live desired-schema lists so adding a column or
 // table no longer rots this suite — only order inside those lists matters here.
 const allColumns = () => DESIRED_COLUMNS.map(entry => `${entry.table}.${entry.column}`);
-const allDefinitions = () => DESIRED_COLUMN_DEFINITIONS.map(entry => `definition:${entry.table}.${entry.column}`);
 const allTables = () => DESIRED_TABLES.map(entry => `table:${entry.table}`);
 const alterFor = (entry: { table: string; column: string; definition: string }) => `ALTER TABLE \`${entry.table}\` ADD COLUMN \`${entry.column}\` ${entry.definition}`;
 const allIndexes = () => DESIRED_INDEXES.map(entry => `index:${entry.table}.${entry.name}`);
@@ -31,7 +30,7 @@ const sqlText = (query: unknown): string => {
 
 const probeRows = (columns: string[]) => columns.map(column => {
   const [TABLE_NAME, COLUMN_NAME] = column.split(".");
-  return { TABLE_NAME, COLUMN_NAME, COLUMN_TYPE: COLUMN_NAME === "status" && TABLE_NAME === "resumeUploadSessions" ? "enum(\'active\',\'finalizing\',\'completed\',\'failed\')" : null, INDEX_NAME: null };
+  return { TABLE_NAME, COLUMN_NAME, INDEX_NAME: null };
 });
 
 const probeAnswer = (query: unknown) => {
@@ -48,7 +47,7 @@ async function loadReconcileModule() {
 beforeEach(() => {
   vi.spyOn(console, "log").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
-  existingColumns = [...allColumns(), "resumeUploadSessions.status"];
+  existingColumns = allColumns();
   executeCalls = 0;
   alterStatements.length = 0;
   dbRef = {
@@ -71,7 +70,7 @@ afterEach(() => {
 
 describe("boot-time schema reconcile", () => {
   it("applies only the columns missing from information_schema", async () => {
-    existingColumns = ["companyOpportunities.compensation", "resumeUploadSessions.status"];
+    existingColumns = ["companyOpportunities.compensation"];
     const { reconcileSchema, isSchemaReconciled, getLastReconcileResults } = await loadReconcileModule();
 
     const result = await reconcileSchema();
@@ -79,7 +78,7 @@ describe("boot-time schema reconcile", () => {
     const expectedApplied = [...DESIRED_COLUMNS.filter(entry => entry !== DESIRED_COLUMNS[0]).map(entry => `${entry.table}.${entry.column}`), ...createdIndexes(), ...allTables()];
     expect(result).toEqual({
       applied: expectedApplied,
-      skipped: [...allDefinitions(), "companyOpportunities.compensation", ...preExistingIndexes],
+      skipped: ["companyOpportunities.compensation", ...preExistingIndexes],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual(DESIRED_COLUMNS.slice(1).map(alterFor));
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(DESIRED_TABLES.length);
@@ -106,7 +105,7 @@ describe("boot-time schema reconcile", () => {
 
     expect(result).toEqual({
       applied: [...createdIndexes(), ...allTables()],
-      skipped: [...allDefinitions(), ...allColumns(), ...preExistingIndexes],
+      skipped: [...allColumns(), ...preExistingIndexes],
     });
     expect(alterStatements.filter(st => st.startsWith("ALTER"))).toEqual([]);
     expect(alterStatements.filter(st => st.startsWith("CREATE TABLE IF NOT EXISTS"))).toHaveLength(DESIRED_TABLES.length);
@@ -145,7 +144,7 @@ describe("boot-time schema reconcile", () => {
   });
 
   it("re-running after success is a silent no-op", async () => {
-    existingColumns = ["companyOpportunities.compensation", "resumeUploadSessions.status"];
+    existingColumns = ["companyOpportunities.compensation"];
     const { reconcileSchema, isSchemaReconciled } = await loadReconcileModule();
 
     await reconcileSchema();
@@ -180,7 +179,7 @@ describe("boot-time schema reconcile", () => {
   });
 
   it("continues past a failing ALTER and reports per-statement results", async () => {
-    existingColumns = ["companyOpportunities.compensation", "resumeUploadSessions.status"];
+    existingColumns = ["companyOpportunities.compensation"];
     dbRef.current = {
       execute: async (query: unknown) => {
         executeCalls += 1;
@@ -214,7 +213,7 @@ describe("boot-time schema reconcile", () => {
   });
 
   it("treats duplicate-column races as idempotent skips", async () => {
-    existingColumns = ["companyOpportunities.compensation", "resumeUploadSessions.status"];
+    existingColumns = ["companyOpportunities.compensation"];
     const duplicate = Object.assign(new Error("Duplicate column name 'compensation'"), { code: "ER_DUP_FIELDNAME", errno: 1060, sqlState: "42S21" });
     dbRef.current = {
       execute: async (query: unknown) => {
@@ -250,15 +249,15 @@ describe("boot-time schema reconcile", () => {
 
     await expect(reconcileSchema()).resolves.toEqual({ applied: [], skipped: [...preExistingIndexes] });
     expect(isSchemaReconciled()).toBe(false);
-    expect(getLastReconcileError()).toContain("ALTER TABLE `resumeUploadSessions` MODIFY COLUMN `status`");
+    expect(getLastReconcileError()).toContain("ALTER TABLE `companyOpportunities` ADD COLUMN `compensation`");
     expect(getLastReconcileError()).toContain("Command denied to user");
     const results = getLastReconcileResults();
-    expect(results).toHaveLength(DESIRED_COLUMN_DEFINITIONS.length + DESIRED_COLUMNS.length + createdIndexes().length + DESIRED_TABLES.length); // every column, index, and table attempted
+    expect(results).toHaveLength(DESIRED_COLUMNS.length + createdIndexes().length + DESIRED_TABLES.length); // every column, index, and table attempted
     expect(results.every(entry => !entry.ok)).toBe(true);
   });
 
   it("clears the recorded failure when a re-run succeeds", async () => {
-    existingColumns = ["companyOpportunities.compensation", "resumeUploadSessions.status"];
+    existingColumns = ["companyOpportunities.compensation"];
     let jobsAlterFails = true;
     dbRef.current = {
       execute: async (query: unknown) => {

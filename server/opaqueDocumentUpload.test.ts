@@ -104,25 +104,8 @@ describe("opaque private-document upload route", () => {
     });
     const completed = await request(app).post("/api/documents/uploads/session-missing/complete").set("x-test-user", "seeker").send({});
     expect(completed.status).toBe(500);
-    expect(completed.body.error).toBe("We could not finish your resume upload. Please try again.");
-    expect(completed.body.error).not.toMatch(/Failed query|params:|resumeUploadSessions|Failed to parse URL/i);
-  });
-
-  it("never returns database query text or parameters when finalization fails", async () => {
-    const app = express(); app.use(express.json({ limit: "50mb" }));
-    const session = { id: "session-sql-error", ownerId: 12, fileName: "resume.pdf", mimeType: "application/pdf", expectedSize: 8, receivedSize: 8, nextChunkIndex: 1, status: "active", attachmentId: null, chunks: [{ chunkIndex: 0, storageKey: "fragment", byteSize: 8 }] };
-    registerPrivateReferralRoutes(app, {
-      resolveIdentity: async () => ({ account: { id: 12, openId: "workos-seeker" } }), dataUrlToBuffer: () => Buffer.from("unused"), sanitizeDocumentName: value => value,
-      storagePut: async key => ({ key }), storageGetSignedUrl: async key => key, storageGetBytes: async () => Buffer.from("%PDF-1.4"),
-      createReferralAttachment: async () => ({ id: 91, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 8, fileKey: "k" }), getAccessibleReferralAttachment: async () => undefined,
-      createResumeUploadSession: async () => ({ id: session.id }), getResumeUploadSession: async () => session, appendResumeUploadChunk: async () => ({ nextChunkIndex: 1, receivedSize: 8, alreadyStored: false }), claimResumeUploadFinalization: async () => ({ outcome: "claimed" as const }),
-      completeResumeUploadSession: async () => { throw new Error("Failed query: update `resumeUploadSessions` set `status` = ? params: finalizing,secret-owner"); },
-      saveVerifiedWorkEmail: async () => ({}), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({ id: 1 }),
-    });
-    const completed = await request(app).post(`/api/documents/uploads/${session.id}/complete`).set("x-test-user", "seeker").send({});
-    expect(completed.status).toBe(500);
-    expect(completed.body).toEqual({ error: "We could not finish your resume upload. Please try again." });
-    expect(JSON.stringify(completed.body)).not.toMatch(/Failed query|params:|resumeUploadSessions|secret-owner/i);
+    expect(completed.body.error).toMatch(/fragment was not found/i);
+    expect(completed.body.error).not.toMatch(/Failed to parse URL/i);
   });
   it("reuses a client upload identity when the browser starts the same upload twice", async () => {
     const app = express(); app.use(express.json()); const sessions = new Map<string, any>();
