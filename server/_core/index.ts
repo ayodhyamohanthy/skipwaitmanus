@@ -74,6 +74,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
   throw new Error(`No available port found starting from ${startPort}`);
 }
 
+// Runtime activation anchor: rollback after billing startup guard failure.
 async function startServer() {
   const app = express();
   const server = createServer(app);
