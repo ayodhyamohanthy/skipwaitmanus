@@ -49,6 +49,13 @@ export default {
     env: Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string },
     ctx: ExecutionContext
   ): Promise<Response> {
+    // The API Worker is reachable only on the canonical zone route. Never trust
+    // forwarded host headers: callers can supply them, while request.url is set
+    // by Cloudflare from the matched route.
+    const url = new URL(request.url);
+    if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
+      return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
+    }
     // Single-instance API: all requests to one container for session affinity.
     const release = typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
     return getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`, true).fetch(request);

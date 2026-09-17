@@ -7,6 +7,10 @@
   "name": "skipwaitmanus",
   "main": "src/worker.ts",
   "compatibility_date": "2026-08-01",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "skipwait.me/api/*", "zone_name": "skipwait.me" }
+  ],
   "containers": [
     {
       "class_name": "SkipwaitApi",

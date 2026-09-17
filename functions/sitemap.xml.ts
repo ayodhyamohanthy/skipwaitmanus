@@ -1,7 +1,7 @@
 // Dynamic sitemap for skipwait.me: public pages plus live jobs and
 // opportunities, generated on each request from the API. Replaces the SPA
 // HTML fallback that crawlers previously received at /sitemap.xml.
-const DEFAULT_API_ORIGIN = "https://skipwaitmanus.ayodhya-711.workers.dev";
+const DEFAULT_API_ORIGIN = "https://skipwait.me";
 
 const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string }> = [
   { path: "/", changefreq: "daily", priority: "1.0" },
