@@ -19,6 +19,10 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "userFollows", createSql: `CREATE TABLE IF NOT EXISTS \`userFollows\` (\`id\` int AUTO_INCREMENT NOT NULL, \`followerUserId\` int NOT NULL, \`followingUserId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`userFollows_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`user_follows_pair_unique\`(\`followerUserId\`, \`followingUserId\`), INDEX \`user_follows_following_idx\`(\`followingUserId\`))` },
 ];
 
+export const DESIRED_COLUMN_DEFINITIONS: Array<{ table: string; column: string; columnType: string; definition: string }> = [
+  { table: "resumeUploadSessions", column: "status", columnType: "enum('active','finalizing','completed','failed')", definition: "ENUM('active','finalizing','completed','failed') NOT NULL DEFAULT 'active'" },
+];
+
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
   { table: "companyOpportunities", column: "compensation", definition: "TEXT NULL" },
   { table: "jobs", column: "compensation", definition: "TEXT NULL" },
@@ -152,9 +156,9 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
   lastError = null;
   let failed = false;
   try {
-    const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
+    const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
     // mysql2's drizzle result HKT loses row typing on raw execute; cast like db.ts does.
-    const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; INDEX_NAME?: string | null; NON_UNIQUE?: number | string | null }>;
+    const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; COLUMN_TYPE?: string | null; INDEX_NAME?: string | null; NON_UNIQUE?: number | string | null }>;
     if (rows.length === 0) {
       // Zero visible columns means the follow-on ALTERs will all fail: either
       // a genuinely fresh database (run the drizzle migrations) or the
@@ -162,8 +166,16 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       console.error("[schema-reconcile] information_schema probe returned 0 columns; check DATABASE_URL database selection and grants before trusting per-statement errors below");
     }
     const existing = new Set(rows.filter(row => row.COLUMN_NAME).map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
+    const columnTypes = new Map(rows.filter(row => row.COLUMN_NAME).map(row => [`${row.TABLE_NAME}.${row.COLUMN_NAME}`, String(row.COLUMN_TYPE || "").toLowerCase()]));
     const existingIndexes = new Map(rows.filter(row => row.INDEX_NAME).map(row => [`${row.TABLE_NAME}.${row.INDEX_NAME}`, Number(row.NON_UNIQUE ?? 0)]));
     const existingTables = new Set(rows.map(row => row.TABLE_NAME));
+    for (const { table, column, columnType, definition } of DESIRED_COLUMN_DEFINITIONS) {
+      const key = `${table}.${column}`;
+      if (columnTypes.get(key) === columnType.toLowerCase()) { skipped.push(`definition:${key}`); continue; }
+      const stmt = `ALTER TABLE \`${table}\` MODIFY COLUMN \`${column}\` ${definition}`;
+      try { await db.execute(sql.raw(stmt)); results.push({ statement: stmt, ok: true }); applied.push(`definition:${key}`); }
+      catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; console.error(`[schema-reconcile] definition failed: [${stmt}] ${error}`); }
+    }
     for (const { table, column, definition } of DESIRED_COLUMNS) {
       if (existing.has(`${table}.${column}`)) { skipped.push(`${table}.${column}`); continue; }
       const stmt = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
