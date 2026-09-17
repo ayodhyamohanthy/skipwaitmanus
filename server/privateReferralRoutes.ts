@@ -1,6 +1,6 @@
 import { resolveTrustedClientIp } from "./_core/trustedClientIp";
 import { createDecipheriv } from "node:crypto";
-import express, { type Express, type Request } from "express";
+import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
@@ -118,7 +118,7 @@ export type PrivateReferralRouteDeps = {
   resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
   listJobs?: (input: { query?: string; location?: string }) => Promise<unknown[]>;
   listSavedRoles?: (userId: number) => Promise<unknown[]>;
-  toggleSavedRole?: (userId: number, jobId: number) => Promise<{ saved: boolean }>;
+  setSavedRole?: (userId: number, jobId: number, saved: boolean) => Promise<{ saved: boolean }>;
   listUsersAdmin?: (limit?: number) => Promise<unknown[]>;
   setUserSuspended?: (userId: number, suspended: boolean) => Promise<{ userId: number; suspended: boolean }>;
 };
@@ -205,18 +205,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ saved: await deps.listSavedRoles(identity.account.id) });
     } catch { res.status(500).json({ error: "We could not load your saved roles" }); }
   });
-  app.post("/api/saved-roles/:jobId/toggle", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req); const jobId = Number(req.params.jobId);
-      if (!identity) return res.status(401).json({ error: "Sign in to save a role" });
-      if (!Number.isInteger(jobId) || jobId <= 0) return res.status(400).json({ error: "Invalid job reference" });
-      if (!deps.toggleSavedRole) return res.status(503).json({ error: "Saved roles are unavailable right now" });
-      const result = await deps.toggleSavedRole(identity.account.id, jobId);
-      record({ actorUserId: identity.account.id, action: result.saved ? "saved_role.saved" : "saved_role.removed", outcome: "success", resourceType: "saved_role", resourceId: jobId });
-      res.set("Cache-Control", "private, no-store");
-      res.json({ saved: result.saved });
-    } catch { res.status(500).json({ error: "We could not update your saved roles" }); }
-  });
+  const setSavedRoleHandler=(saved:boolean)=>async(req:Request,res:ExpressResponse)=>{try{const identity=await deps.resolveIdentity(req);const jobId=Number(req.params.jobId);if(!identity)return res.status(401).json({error:"Sign in to save a role"});if(!Number.isInteger(jobId)||jobId<=0)return res.status(400).json({error:"Invalid job reference"});if(!deps.setSavedRole)return res.status(503).json({error:"Saved roles are unavailable right now"});const result=await deps.setSavedRole(identity.account.id,jobId,saved);record({actorUserId:identity.account.id,action:result.saved?"saved_role.saved":"saved_role.removed",outcome:"success",resourceType:"saved_role",resourceId:jobId});res.set("Cache-Control","private, no-store");res.json({saved:result.saved});}catch(error){const message=error instanceof Error?error.message:"We could not update your saved roles";res.status(/unavailable/i.test(message)?404:500).json({error:/unavailable/i.test(message)?"This role is unavailable":"We could not update your saved roles"});}};
+  app.put("/api/saved-roles/:jobId",setSavedRoleHandler(true));
+  app.delete("/api/saved-roles/:jobId",setSavedRoleHandler(false));
+
   app.get("/api/notifications", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);

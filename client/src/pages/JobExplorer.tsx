@@ -73,7 +73,7 @@ export default function JobExplorer() {
     const wasSaved = savedIds.has(jobId);
     setSavedIds(current => { const next = new Set(current); if (wasSaved) next.delete(jobId); else next.add(jobId); return next; });
     try {
-      const response = await fetch(`/api/saved-roles/${jobId}/toggle`, { method: "POST", credentials: "include" });
+      const response = await fetch(`/api/saved-roles/${jobId}`, { method: wasSaved ? "DELETE" : "PUT", credentials: "include" });
       const payload = await readApiJson<{ saved?: boolean; error?: string }>(response, "We could not update your saved roles");
       if (!response.ok) throw new Error(payload.error || "We could not update your saved roles");
     } catch (toggleError) {

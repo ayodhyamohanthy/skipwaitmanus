@@ -529,12 +529,17 @@ export async function listSavedRoles(userId: number) {
   return db.select({ savedId: savedRoles.id, createdAt: savedRoles.createdAt, jobId: jobs.id, title: jobs.title, company: jobs.company, location: jobs.location, seniority: jobs.seniority, workMode: jobs.workMode }).from(savedRoles).innerJoin(jobs, eq(savedRoles.jobId, jobs.id)).where(eq(savedRoles.jobSeekerId, userId)).orderBy(desc(savedRoles.createdAt));
 }
 
-export async function toggleSavedRole(userId: number, jobId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const existing = await db.select().from(savedRoles).where(and(eq(savedRoles.jobSeekerId, userId), eq(savedRoles.jobId, jobId))).limit(1);
-  if (existing[0]) { await db.delete(savedRoles).where(eq(savedRoles.id, existing[0].id)); return { saved: false }; }
-  await db.insert(savedRoles).values({ jobSeekerId: userId, jobId }); return { saved: true };
+export async function setSavedRole(userId: number, jobId: number, saved: boolean) {
+  const db=await getDb();if(!db)throw new Error("Database unavailable");
+  return db.transaction(async tx=>{
+    const job=(await tx.select({id:jobs.id,title:jobs.title,description:jobs.description,publishedAt:jobs.publishedAt}).from(jobs).where(eq(jobs.id,jobId)).limit(1).for("update"))[0];
+    if(!job||!job.publishedAt||job.title==="Role from shared job link"||job.description==="Private referral request routed from a Target Role URL.")throw new Error("This role is unavailable");
+    if(saved)await tx.insert(savedRoles).values({jobSeekerId:userId,jobId}).onDuplicateKeyUpdate({set:{jobId}});else await tx.delete(savedRoles).where(and(eq(savedRoles.jobSeekerId,userId),eq(savedRoles.jobId,jobId)));
+    const stored=(await tx.select({id:savedRoles.id}).from(savedRoles).where(and(eq(savedRoles.jobSeekerId,userId),eq(savedRoles.jobId,jobId))).limit(1))[0];
+    return {saved:Boolean(stored)};
+  });
 }
+
 
 export async function listReferralRequests(userId: number) {
   const db = await getDb(); if (!db) return [];

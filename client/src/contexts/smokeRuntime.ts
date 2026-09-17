@@ -38,7 +38,7 @@ const readContract=(path:string)=>{
  if(path==="/api/admin/schema/reconcile")return s.schema;
  return undefined;
 };
-const allowedActions=[/^\/api\/notifications\/-\d+\/read$/, /^\/api\/saved-roles\/-\d+\/toggle$/, /^\/api\/company-referrals\/-\d+\/withdraw$/, /^\/api\/privacy\/requests(?:\/erasure)?$/, /^\/api\/personal-invites\/claim$/];
+const allowedActions=[/^\/api\/notifications\/-\d+\/read$/, /^\/api\/saved-roles\/-\d+$/, /^\/api\/company-referrals\/-\d+\/withdraw$/, /^\/api\/privacy\/requests(?:\/erasure)?$/, /^\/api\/personal-invites\/claim$/];
 export async function smokeFetch(input:RequestInfo|URL,init?:RequestInit){
  if(!smoke.active)return transport(input,init);
  const url=new URL(typeof input==="string"?input:input instanceof URL?input.href:input.url,location.origin),path=url.pathname,method=(init?.method||((input as Request)?.method)||"GET").toUpperCase();

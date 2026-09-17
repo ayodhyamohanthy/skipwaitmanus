@@ -22,7 +22,7 @@ const jobs = [
 function stubFetch(overrides: { jobsOk?: boolean; savedError?: boolean; toggleError?: boolean } = {}) {
   vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url.startsWith("/api/saved-roles/") && init?.method === "POST") return overrides.toggleError ? { ok: false, status: 500, json: async () => ({ error: "We could not update your saved roles" }) } : { ok: true, json: async () => ({ saved: true }) };
+    if (url.startsWith("/api/saved-roles/") && (init?.method === "PUT" || init?.method === "DELETE")) return overrides.toggleError ? { ok: false, status: 500, json: async () => ({ error: "We could not update your saved roles" }) } : { ok: true, json: async () => ({ saved: true }) };
     if (url === "/api/saved-roles") return overrides.savedError ? { ok: false, status: 500, json: async () => ({ error: "boom" }) } : { ok: true, json: async () => ({ saved: [{ jobId: 12 }] }) };
     return { ok: overrides.jobsOk !== false, json: async () => ({ jobs }) };
   }));
@@ -115,7 +115,7 @@ describe("JobExplorer", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "/api/saved-roles") return { ok: true, json: async () => ({ saved: [] }) };
-      if (url.startsWith("/api/saved-roles/") && init?.method === "POST") return { ok: true, json: async () => ({ saved: true }) };
+      if (url.startsWith("/api/saved-roles/") && (init?.method === "PUT" || init?.method === "DELETE")) return { ok: true, json: async () => ({ saved: true }) };
       return { ok: true, json: async () => ({ jobs: url.includes("query=Backend") ? [jobs[1]] : jobs }) };
     });
     vi.stubGlobal("fetch", fetchMock);

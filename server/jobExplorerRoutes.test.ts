@@ -21,7 +21,7 @@ function baseDeps(overrides: Partial<PrivateReferralRouteDeps> = {}): PrivateRef
     publishCompanyOpportunity: async () => ({}),
     listJobs: async () => [],
     listSavedRoles: async () => [],
-    toggleSavedRole: async () => ({ saved: true }),
+    setSavedRole: async (_userId,_jobId,saved) => ({ saved }),
     ...overrides,
   };
 }
@@ -63,21 +63,21 @@ describe("job explorer routes", () => {
     expect(response.body.saved).toEqual([{ jobId: 3, title: "Designer" }]);
   });
 
-  it("rejects an invalid job id on toggle with 400", async () => {
+  it("rejects an invalid job id for explicit state with 400", async () => {
     const app = buildApp(baseDeps());
-    expect((await request(app).post("/api/saved-roles/abc/toggle")).status).toBe(400);
-    expect((await request(app).post("/api/saved-roles/0/toggle")).status).toBe(400);
-    expect((await request(app).post("/api/saved-roles/-4/toggle")).status).toBe(400);
+    expect((await request(app).put("/api/saved-roles/abc")).status).toBe(400);
+    expect((await request(app).put("/api/saved-roles/0")).status).toBe(400);
+    expect((await request(app).put("/api/saved-roles/-4")).status).toBe(400);
   });
 
-  it("requires sign-in to toggle and forwards the signed-in user's id", async () => {
+  it("requires sign-in and forwards explicit desired state", async () => {
     const signedOut = buildApp(baseDeps({ resolveIdentity: async () => undefined }));
-    expect((await request(signedOut).post("/api/saved-roles/5/toggle")).status).toBe(401);
-    const seen: Array<[number, number]> = [];
-    const app = buildApp(baseDeps({ toggleSavedRole: async (userId, jobId) => { seen.push([userId, jobId]); return { saved: true }; } }));
-    const response = await request(app).post("/api/saved-roles/5/toggle");
+    expect((await request(signedOut).put("/api/saved-roles/5")).status).toBe(401);
+    const seen: Array<[number, number, boolean]> = [];
+    const app = buildApp(baseDeps({ setSavedRole: async (userId, jobId, saved) => { seen.push([userId, jobId, saved]); return { saved }; } }));
+    const response = await request(app).put("/api/saved-roles/5");
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ saved: true });
-    expect(seen).toEqual([[7, 5]]);
+    expect(seen).toEqual([[7, 5, true]]);
   });
 });
