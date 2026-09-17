@@ -25,6 +25,7 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "referralRequests", column: "savedAt", definition: "TIMESTAMP NULL" },
   { table: "notifications", column: "eventKey", definition: "VARCHAR(120) NULL" },
   { table: "users", column: "suspended", definition: "BOOLEAN NOT NULL DEFAULT false" },
+  { table: "users", column: "sessionsValidAfter", definition: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
   // B2B monetization (0037). The profiles.accountType enum widening
   // (append 'employer') is intentionally NOT here: ADD COLUMN cannot widen an
   // existing ENUM, so it is applied by drizzle/0037_b2b_monetization.sql only.
