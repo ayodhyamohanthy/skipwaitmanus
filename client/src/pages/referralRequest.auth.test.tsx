@@ -82,6 +82,28 @@ describe("ReferralRequest secure resume handoff", () => {
     vi.unstubAllGlobals();
   });
 
+  it("does not preload resume filenames or on-device file bytes while signed out", async () => {
+    localStorage.setItem("bridge-seeker-attachments", JSON.stringify([{ id: "71", fileName: "private-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }]));
+    pendingResume.files = [new File(["resume"], "private-pending.pdf", { type: "application/pdf" })];
+    render(<ReferralRequest />);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(screen.queryByText("private-resume.pdf")).toBeNull();
+    expect(screen.queryByText("private-pending.pdf")).toBeNull();
+    expect(pendingResume.restore).not.toHaveBeenCalled();
+  });
+
+  it("restores on-device resume state only after a verified session is present", async () => {
+    localStorage.setItem("bridge-seeker-attachments", JSON.stringify([{ id: "71", fileName: "private-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }]));
+    pendingResume.files = [new File(["resume"], "private-pending.pdf", { type: "application/pdf" })];
+    authState.signedIn = true;
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-08", subscriptionStatus: null, subscriptionCurrentTermEnd: null } }) })));
+    render(<ReferralRequest />);
+    await waitFor(() => expect(screen.getByText("private-resume.pdf")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("private-pending.pdf")).toBeTruthy());
+    expect(pendingResume.restore).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
   it("uses the primary action to open the resume picker before a document is selected", async () => {
     render(<ReferralRequest />);
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;

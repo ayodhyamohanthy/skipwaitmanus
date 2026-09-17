@@ -94,7 +94,7 @@ function NextStep({ number, title, body }: { number: string; title: string; body
 export default function ReferralRequest() {
   const [tokens, setTokens] = useState(getJobSeekerTokens);
   const [creditSummary, setCreditSummary] = useState<CreditSummary | null>(null);
-  const [attachments, setAttachments] = useState<Attachment[]>(getSavedAttachments);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [pendingFilesRestored, setPendingFilesRestored] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -119,10 +119,18 @@ export default function ReferralRequest() {
   const summary = creditSummary ?? fallbackSummary(tokens);
 
   useEffect(() => {
+    if (!isSignedIn) {
+      // A previous user's private draft may remain on this browser. Keep both
+      // its filename metadata and bytes invisible until a session is verified.
+      setAttachments([]);
+      setPendingFilesRestored(false);
+      return;
+    }
     let active = true;
+    setAttachments(getSavedAttachments());
     void restorePendingResumeFiles().then(files => { if (active) setPendingFiles(current => dedupeFiles(current.length ? current : files)); }).catch(() => undefined).finally(() => { if (active) setPendingFilesRestored(true); });
     return () => { active = false; };
-  }, []);
+  }, [isSignedIn]);
 
   useEffect(() => {
     if (!isSignedIn) return;
