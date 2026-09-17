@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { clearReferralDraft, markSecureSessionVerified, readReferralDraft, readSecureSessionVerifiedAt, registerSecureSessionRestoration, requestSavedDeviceCredential, saveReferralDraft, supportsBrowserCredentialMediation } from "./pwaContinuity";
 
 function memoryStorage() {
@@ -7,6 +7,61 @@ function memoryStorage() {
 }
 
 describe("PWA continuity", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("continues when accessing browser storage itself is blocked", () => {
+    vi.stubGlobal("window", {
+      get localStorage() { throw new DOMException("Storage blocked", "SecurityError"); },
+    });
+    expect(readReferralDraft()).toBeNull();
+    expect(readSecureSessionVerifiedAt()).toBeNull();
+    expect(() => saveReferralDraft({ name: "Avery", targetUrl: "https://company.example/jobs/1" })).not.toThrow();
+    expect(() => clearReferralDraft()).not.toThrow();
+    expect(() => markSecureSessionVerified()).not.toThrow();
+  });
+
+  it("treats storage operation failures as unavailable persistence", () => {
+    const storage = {
+      getItem: () => { throw new DOMException("Storage blocked", "SecurityError"); },
+      setItem: () => { throw new DOMException("Storage full", "QuotaExceededError"); },
+      removeItem: () => { throw new DOMException("Storage blocked", "SecurityError"); },
+    };
+    expect(readReferralDraft(storage)).toBeNull();
+    expect(readSecureSessionVerifiedAt(storage)).toBeNull();
+    expect(() => saveReferralDraft({ name: "Avery", targetUrl: "https://company.example/jobs/1" }, storage)).not.toThrow();
+    expect(() => clearReferralDraft(storage)).not.toThrow();
+    expect(() => markSecureSessionVerified(storage)).not.toThrow();
+  });
+
+  it.each([
+    "not json", "null", "[]",
+    JSON.stringify({ name: "Avery", targetUrl: 123, updatedAt: 1 }),
+    JSON.stringify({ name: {}, targetUrl: "https://company.example/jobs/1", updatedAt: 1 }),
+    JSON.stringify({ name: "Avery", targetUrl: "https://company.example/jobs/1" }),
+    JSON.stringify({ name: "Avery", targetUrl: "https://company.example/jobs/1", updatedAt: "yesterday" }),
+    JSON.stringify({ name: "Avery", targetUrl: "   ", updatedAt: 1 }),
+  ])("ignores malformed persisted drafts: %s", (value) => {
+    const storage = memoryStorage();
+    storage.setItem("skipwait-pwa-referral-draft", value);
+    expect(readReferralDraft(storage)).toBeNull();
+  });
+
+  it("preserves the native credential container receiver", async () => {
+    const credentials = {
+      async get(this: unknown, options?: CredentialRequestOptions) {
+        if (this !== credentials) throw new TypeError("Illegal invocation");
+        expect(options).toEqual({ mediation: "optional", password: true });
+        return { id: "device-provided" };
+      },
+    };
+    expect(await requestSavedDeviceCredential(credentials)).toBe("credential");
+  });
+
+  it("retains empty and rejected credential fallbacks", async () => {
+    expect(await requestSavedDeviceCredential({ get: async () => null })).toBe("empty");
+    expect(await requestSavedDeviceCredential({ get: async () => { throw new Error("Cancelled"); } })).toBe("fallback");
+  });
+
   it("keeps only lightweight request context for recovery", () => {
     const storage = memoryStorage();
     saveReferralDraft({ name: "Avery", targetUrl: "https://company.example/jobs/1" }, storage);

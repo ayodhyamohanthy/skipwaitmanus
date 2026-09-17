@@ -10,15 +10,20 @@ const SESSION_KEY = "skipwait-pwa-session-verified-at";
 type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
 function getStorage(): StorageLike | null {
+  // Some privacy modes block storage entirely and throw on mere access.
   if (typeof window === "undefined") return null;
-  return window.localStorage;
+  try { return window.localStorage; } catch { return null; }
 }
 
 export function readReferralDraft(storage: StorageLike | null = getStorage()): ReferralDraft | null {
   if (!storage) return null;
   try {
-    const draft = JSON.parse(storage.getItem(DRAFT_KEY) || "null") as ReferralDraft | null;
-    return draft?.targetUrl ? draft : null;
+    const draft = JSON.parse(storage.getItem(DRAFT_KEY) || "null") as Partial<ReferralDraft> | null;
+    const targetUrl = typeof draft?.targetUrl === "string" ? draft.targetUrl : "";
+    const name = typeof draft?.name === "string" ? draft.name : null;
+    const updatedAt = typeof draft?.updatedAt === "number" && Number.isFinite(draft.updatedAt) ? draft.updatedAt : undefined;
+    if (!targetUrl.trim() || name === null || updatedAt === undefined) return null;
+    return { name, targetUrl, updatedAt };
   } catch {
     return null;
   }
@@ -26,21 +31,23 @@ export function readReferralDraft(storage: StorageLike | null = getStorage()): R
 
 export function saveReferralDraft(draft: Omit<ReferralDraft, "updatedAt">, storage: StorageLike | null = getStorage()): void {
   if (!storage) return;
-  storage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, updatedAt: Date.now() }));
+  try { storage.setItem(DRAFT_KEY, JSON.stringify({ ...draft, updatedAt: Date.now() })); } catch { /* persistence is best-effort */ }
 }
 
 export function clearReferralDraft(storage: StorageLike | null = getStorage()): void {
-  storage?.removeItem(DRAFT_KEY);
+  try { storage?.removeItem(DRAFT_KEY); } catch { /* persistence is best-effort */ }
 }
 
 export function markSecureSessionVerified(storage: StorageLike | null = getStorage()): void {
-  storage?.setItem(SESSION_KEY, String(Date.now()));
+  try { storage?.setItem(SESSION_KEY, String(Date.now())); } catch { /* persistence is best-effort */ }
 }
 
 export function readSecureSessionVerifiedAt(storage: StorageLike | null = getStorage()): number | null {
   if (!storage) return null;
-  const value = Number(storage.getItem(SESSION_KEY));
-  return Number.isFinite(value) && value > 0 ? value : null;
+  try {
+    const value = Number(storage.getItem(SESSION_KEY));
+    return Number.isFinite(value) && value > 0 ? value : null;
+  } catch { return null; }
 }
 
 export function supportsBrowserCredentialMediation(credentials: CredentialCapability): boolean {
@@ -50,8 +57,8 @@ export function supportsBrowserCredentialMediation(credentials: CredentialCapabi
 export async function requestSavedDeviceCredential(credentials: CredentialGetter): Promise<"credential" | "empty" | "unsupported" | "fallback"> {
   if (!credentials?.get) return "unsupported";
   try {
-    const getLegacyCredential = credentials.get as (options: { mediation: "optional"; password: true }) => Promise<unknown>;
-    const credential = await getLegacyCredential({ mediation: "optional", password: true });
+    const getLegacyCredential = credentials.get as (this: unknown, options: { mediation: "optional"; password: true }) => Promise<unknown>;
+    const credential = await getLegacyCredential.call(credentials, { mediation: "optional", password: true });
     return credential ? "credential" : "empty";
   } catch {
     return "fallback";

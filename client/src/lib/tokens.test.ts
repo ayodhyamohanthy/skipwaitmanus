@@ -1,7 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { addPurchasedTokens, canSpendToken, spendToken, TOKEN_ACTION_COST, tokenReturnPath } from "./tokens";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { addPurchasedTokens, canSpendToken, getJobSeekerTokens, setJobSeekerTokens, spendToken, TOKEN_ACTION_COST, tokenReturnPath } from "./tokens";
+
+function memoryStorage() {
+  const values = new Map<string, string>();
+  return { getItem: (key: string) => values.get(key) ?? null, setItem: (key: string, value: string) => { values.set(key, value); } };
+}
 
 describe("token action balance rules", () => {
+  afterEach(() => vi.unstubAllGlobals());
   it("requires exactly one available token for a referral action", () => {
     expect(TOKEN_ACTION_COST).toBe(1);
     expect(canSpendToken(0)).toBe(false);
@@ -30,5 +36,38 @@ describe("token action balance rules", () => {
     expect(toppedUpPurchasedBalance).toBe(1);
     expect(canSpendToken(toppedUpPurchasedBalance)).toBe(true);
     expect(spendToken(toppedUpPurchasedBalance)).toBe(0);
+  });
+
+  it("grants the included balance once and then reads back the stored mirror", () => {
+    const storage = memoryStorage();
+    expect(getJobSeekerTokens(storage)).toBe(3);
+    setJobSeekerTokens(1, storage);
+    expect(getJobSeekerTokens(storage)).toBe(1);
+    storage.setItem("bridge-tokens", "not-a-number");
+    expect(getJobSeekerTokens(storage)).toBe(3);
+  });
+
+  it("never takes the request page down when browser storage access is blocked", () => {
+    vi.stubGlobal("window", {
+      get localStorage() { throw new DOMException("Storage blocked", "SecurityError"); },
+    });
+    expect(getJobSeekerTokens()).toBe(3);
+    expect(() => setJobSeekerTokens(2)).not.toThrow();
+  });
+
+  it("still falls back to the included balance when a stored write fails", () => {
+    const storage = { getItem: () => null, setItem: () => { throw new DOMException("Storage full", "QuotaExceededError"); } };
+    expect(getJobSeekerTokens(storage)).toBe(3);
+    expect(() => setJobSeekerTokens(2, storage)).not.toThrow();
+  });
+
+  it("stores a numeric zero instead of an unreadable balance", () => {
+    const storage = memoryStorage();
+    expect(getJobSeekerTokens(storage)).toBe(3); // runs the one-time included-balance reset
+    setJobSeekerTokens(Number.NaN, storage);
+    expect(storage.getItem("bridge-tokens")).toBe("0");
+    expect(getJobSeekerTokens(storage)).toBe(0);
+    setJobSeekerTokens(-4, storage);
+    expect(storage.getItem("bridge-tokens")).toBe("0");
   });
 });
