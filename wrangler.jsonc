@@ -43,7 +43,10 @@
     "ZEPTOMAIL_FROM_EMAIL": "noreply@skipwait.me",
     "ERROR_ALERT_FROM_EMAIL": "noreply@skipwait.me",
     "VITE_APP_ID": "skipwait",
-    "AI_MODEL": ""
+    "AI_MODEL": "",
+    "CHARGEBEE_LIVE_ENABLED": "true",
+    "CHARGEBEE_LIVE_DOMAIN": "skipwait.me",
+    "CHARGEBEE_LIVE_SITE": "skipwait"
   },
   "observability": { "logs": { "enabled": true, "head_sampling_rate": 1, "invocation_logs": true, "persist": true }, "traces": { "enabled": false } }
 }
