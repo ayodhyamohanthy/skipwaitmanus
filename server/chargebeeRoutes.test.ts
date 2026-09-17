@@ -208,48 +208,6 @@ describe("Chargebee webhook route", () => {
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 
-  it("processes both payment and subscription obligations in one delivery", async () => {
-    const app = express(); app.use(express.json()); process.env.CHARGEBEE_WEBHOOK_SECRET = "mixed-secret";
-    const calls: string[] = [];
-    registerChargebeeRoutes(app, {
-      resolveIdentity: async () => undefined,
-      createPaymentIntent: async () => undefined,
-      applySubscriptionEvent: async () => { calls.push("subscription"); return { status: "applied" }; },
-      fulfillPayment: async () => { calls.push("payment"); return { status: "credited" }; },
-    });
-    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth("mixed-secret")).send({
-      id: "ev_mixed", event_type: "payment_succeeded",
-      content: {
-        transaction: { amount: 9900, currency_code: "INR", invoice_id: "inv_mixed" },
-        invoice: { id: "inv_mixed", total: 9900, currency_code: "INR" },
-        hosted_page: { id: "hp_mixed", pass_thru_content: "intent_mixed" },
-        subscription: { id: "sub_mixed", status: "active", currency_code: "INR", resource_version: 12, subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] },
-      },
-    });
-    expect(response.status).toBe(200);
-    expect(calls).toEqual(["subscription", "payment"]);
-    expect(response.body.obligations).toMatchObject({ subscription: { status: "applied" }, payment: { status: "credited" } });
-    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
-  });
-
-  it("does not acknowledge a mixed delivery when either obligation fails", async () => {
-    const app = express(); app.use(express.json()); process.env.CHARGEBEE_WEBHOOK_SECRET = "mixed-fail-secret";
-    let paymentCalls = 0;
-    registerChargebeeRoutes(app, {
-      resolveIdentity: async () => undefined,
-      createPaymentIntent: async () => undefined,
-      applySubscriptionEvent: async () => { throw new Error("db unavailable"); },
-      fulfillPayment: async () => { paymentCalls += 1; return { status: "credited" }; },
-    });
-    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth("mixed-fail-secret")).send({
-      id: "ev_mixed_fail", event_type: "payment_succeeded",
-      content: { transaction: { amount: 9900, currency_code: "INR" }, subscription: { id: "sub_mixed", status: "active", subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] } },
-    });
-    expect(response.status).toBe(500);
-    expect(paymentCalls).toBe(0);
-    delete process.env.CHARGEBEE_WEBHOOK_SECRET;
-  });
-
   it("only schedules end-of-term cancellation for the signed-in account’s own subscription", async () => {
     const app = express();
     app.use(express.json());

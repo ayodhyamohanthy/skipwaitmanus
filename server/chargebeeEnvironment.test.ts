@@ -1,37 +1,41 @@
 import { describe, expect, it } from "vitest";
-import { isLiveChargebeeRequest, resolveBillingEnvironment, resolveChargebeeRuntime, resolveChargebeeWebhookSecret, validateBillingEnvironment } from "./chargebeeEnvironment";
+import { isLiveChargebeeRequest, resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 
 describe("Chargebee environment boundary", () => {
   const env = {
-    BILLING_ENV: "live",
     CHARGEBEE_SITE: "skipwait-test",
     CHARGEBEE_API_KEY: "test-key",
     CHARGEBEE_WEBHOOK_SECRET: "test-webhook",
+    CHARGEBEE_LIVE_ENABLED: "true",
+    CHARGEBEE_LIVE_DOMAIN: "skipwait.me",
     CHARGEBEE_LIVE_SITE: "skipwait",
     CHARGEBEE_LIVE_API_KEY: "live-key",
     CHARGEBEE_LIVE_WEBHOOK_SECRET: "live-webhook",
   };
 
-  it("uses one immutable live environment regardless of Host", () => {
-    for (const host of ["skipwait.me", "attacker.example", undefined]) {
-      expect(resolveChargebeeRuntime(host, env)).toEqual({ environment: "live", site: "skipwait", apiKey: "live-key" });
-      expect(resolveChargebeeWebhookSecret(host, env)).toBe("live-webhook");
-      expect(isLiveChargebeeRequest(host, env)).toBe(true);
-    }
+  it("uses live credentials only for the explicitly enabled live domain", () => {
+    expect(resolveChargebeeRuntime("skipwait.me:443", env)).toEqual({ environment: "live", site: "skipwait", apiKey: "live-key" });
+    expect(resolveChargebeeWebhookSecret("skipwait.me", env)).toBe("live-webhook");
+    expect(resolveChargebeeRuntime("bridgeref-ybuthfmw.manus.space", env)).toEqual({ environment: "test", site: "skipwait-test", apiKey: "test-key" });
+    expect(resolveChargebeeWebhookSecret("bridgeref-ybuthfmw.manus.space", env)).toBe("test-webhook");
+    expect(resolveChargebeeRuntime("3000-im5hmgawqc67j45jjlcss-a6a715a0.us3.manus.computer", env)).toEqual({ environment: "test", site: "skipwait-test", apiKey: "test-key" });
+    expect(resolveChargebeeWebhookSecret("3000-im5hmgawqc67j45jjlcss-a6a715a0.us3.manus.computer", env)).toBe("test-webhook");
   });
 
-  it("uses one immutable test environment regardless of Host", () => {
-    const test = { ...env, BILLING_ENV: "test" };
-    expect(resolveChargebeeRuntime("skipwait.me", test)).toEqual({ environment: "test", site: "skipwait-test", apiKey: "test-key" });
-    expect(resolveChargebeeWebhookSecret("skipwait.me", test)).toBe("test-webhook");
+  it("uses the managed domain only while it is the one explicit temporary live host", () => {
+    const rollout = { ...env, CHARGEBEE_LIVE_DOMAIN: "bridgeref-ybuthfmw.manus.space" };
+    expect(resolveChargebeeRuntime("bridgeref-ybuthfmw.manus.space", rollout)).toEqual({ environment: "live", site: "skipwait", apiKey: "live-key" });
+    expect(resolveChargebeeWebhookSecret("bridgeref-ybuthfmw.manus.space", rollout)).toBe("live-webhook");
+    expect(resolveChargebeeRuntime("skipwait.me", rollout)).toEqual({ environment: "test", site: "skipwait-test", apiKey: "test-key" });
   });
 
-  it.each([undefined, "", "staging", "production"]) ("rejects invalid BILLING_ENV %s", value => {
-    expect(() => resolveBillingEnvironment({ ...env, BILLING_ENV: value })).toThrow(/BILLING_ENV/);
+  it("does not route lookalike or disabled hosts to live billing", () => {
+    expect(isLiveChargebeeRequest("www.skipwait.me", env)).toBe(false);
+    expect(isLiveChargebeeRequest("skipwait.me", { ...env, CHARGEBEE_LIVE_ENABLED: "false" })).toBe(false);
+    expect(isLiveChargebeeRequest("skipwait.me", { ...env, CHARGEBEE_LIVE_DOMAIN: undefined })).toBe(false);
   });
 
-  it("fails startup validation when the selected environment is incomplete", () => {
-    expect(() => validateBillingEnvironment({ ...env, CHARGEBEE_LIVE_WEBHOOK_SECRET: undefined })).toThrow(/CHARGEBEE_LIVE_WEBHOOK_SECRET/);
-    expect(validateBillingEnvironment(env)).toBe("live");
+  it("fails closed when a live host is enabled without a separate live API key", () => {
+    expect(() => resolveChargebeeRuntime("skipwait.me", { ...env, CHARGEBEE_LIVE_API_KEY: undefined })).toThrow("Live Chargebee API key is not configured");
   });
 });
