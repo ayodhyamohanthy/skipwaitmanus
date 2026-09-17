@@ -431,6 +431,13 @@ export const referralAttachments = mysqlTable("referralAttachments", {
   mimeType: varchar("mimeType", { length: 120 }).notNull(),
   fileSize: int("fileSize").notNull(),
   uploadSessionId: varchar("uploadSessionId", { length: 64 }),
+  availabilityStatus: mysqlEnum("availabilityStatus", ["quarantined", "scanning", "ready", "rejected"]).default("quarantined").notNull(),
+  originalStorageKey: varchar("originalStorageKey", { length: 1024 }),
+  sanitizedStorageKey: varchar("sanitizedStorageKey", { length: 1024 }),
+  contentSha256: varchar("contentSha256", { length: 64 }),
+  sanitizedSha256: varchar("sanitizedSha256", { length: 64 }),
+  scanVersion: varchar("scanVersion", { length: 64 }),
+  scanResult: varchar("scanResult", { length: 500 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("referral_attachments_request_idx").on(table.referralRequestId), index("referral_attachments_owner_idx").on(table.ownerId), uniqueIndex("referral_attachments_upload_session_unique").on(table.uploadSessionId)]);
 
@@ -443,10 +450,15 @@ export const resumeUploadSessions = mysqlTable("resumeUploadSessions", {
   expectedSize: int("expectedSize").notNull(),
   receivedSize: int("receivedSize").default(0).notNull(),
   nextChunkIndex: int("nextChunkIndex").default(0).notNull(),
-  status: mysqlEnum("status", ["active", "finalizing", "completed", "failed"]).default("active").notNull(),
+  status: mysqlEnum("status", ["active", "finalizing", "scanning", "completed", "failed", "rejected"]).default("active").notNull(),
   finalizationOwner: varchar("finalizationOwner", { length: 64 }),
   finalizationLeaseUntil: timestamp("finalizationLeaseUntil"),
   permanentStorageKey: varchar("permanentStorageKey", { length: 1024 }),
+  contentSha256: varchar("contentSha256", { length: 64 }),
+  leaseHeartbeatAt: timestamp("leaseHeartbeatAt"),
+  scanStatus: mysqlEnum("scanStatus", ["pending", "scanning", "ready", "rejected", "retryable"]).default("pending").notNull(),
+  scanVersion: varchar("scanVersion", { length: 64 }),
+  scanResult: varchar("scanResult", { length: 500 }),
   attachmentId: int("attachmentId").references(() => referralAttachments.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -458,8 +470,39 @@ export const resumeUploadChunks = mysqlTable("resumeUploadChunks", {
   chunkIndex: int("chunkIndex").notNull(),
   storageKey: varchar("storageKey", { length: 1024 }).notNull(),
   byteSize: int("byteSize").notNull(),
+  acceptedAttemptId: bigint("acceptedAttemptId", { mode: "number" }),
+  contentSha256: varchar("contentSha256", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("resume_upload_chunks_session_index_unique").on(table.sessionId, table.chunkIndex), index("resume_upload_chunks_session_idx").on(table.sessionId, table.chunkIndex)]);
+
+export const resumeUploadAttempts = mysqlTable("resumeUploadAttempts", {
+  id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+  sessionId: varchar("sessionId", { length: 64 }).notNull().references(() => resumeUploadSessions.id, { onDelete: "cascade" }),
+  clientAttemptId: varchar("clientAttemptId", { length: 64 }).notNull(),
+  idempotencyKey: varchar("idempotencyKey", { length: 96 }).notNull(),
+  chunkIndex: int("chunkIndex").notNull(),
+  storageKey: varchar("storageKey", { length: 1024 }).notNull(),
+  storageKeyHash: varchar("storageKeyHash", { length: 64 }).notNull(),
+  contentSha256: varchar("contentSha256", { length: 64 }).notNull(),
+  byteSize: int("byteSize").notNull(),
+  disposition: mysqlEnum("disposition", ["staged", "accepted", "conflict", "deletion_queued", "deleted"]).default("staged").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  dispositionUpdatedAt: timestamp("dispositionUpdatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("resume_upload_attempt_client_unique").on(table.sessionId, table.clientAttemptId), uniqueIndex("resume_upload_attempt_idempotency_unique").on(table.sessionId, table.idempotencyKey), uniqueIndex("resume_upload_attempt_storage_hash_unique").on(table.storageKeyHash), index("resume_upload_attempt_session_chunk_idx").on(table.sessionId, table.chunkIndex, table.createdAt)]);
+
+export const storageDeletionOutbox = mysqlTable("storageDeletionOutbox", {
+  id: bigint("id", { mode: "number" }).autoincrement().primaryKey(),
+  storageKey: varchar("storageKey", { length: 1024 }).notNull(),
+  storageKeyHash: varchar("storageKeyHash", { length: 64 }).notNull(),
+  reason: varchar("reason", { length: 80 }).notNull(),
+  status: mysqlEnum("status", ["pending", "processing", "deleted", "retryable", "failed"]).default("pending").notNull(),
+  attemptCount: int("attemptCount").default(0).notNull(),
+  nextAttemptAt: timestamp("nextAttemptAt"),
+  lastError: varchar("lastError", { length: 500 }),
+  deletedAt: timestamp("deletedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("storage_deletion_outbox_hash_unique").on(table.storageKeyHash), index("storage_deletion_outbox_status_attempt_idx").on(table.status, table.nextAttemptAt)]);
 
 export const operationalActivityLogs = mysqlTable("operationalActivityLogs", {
   id: int("id").autoincrement().primaryKey(),
