@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadAttempts, resumeUploadChunks, resumeUploadSessions, storageDeletionOutbox, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -101,13 +101,17 @@ export async function isUserSuspended(userId: number) {
   return Boolean(row?.suspended);
 }
 
-export async function createResumeUploadSession(ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) {
+export type ResumeUploadChunkInput = { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number; clientAttemptId: string; idempotencyKey: string; contentSha256: string };
+
+function uploadStorageKeyHash(key: string) { return createHash("sha256").update(key).digest("hex"); }
+
+export async function createResumeUploadSession(ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number; contentSha256?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const id = randomUUID(); const clientUploadId = input.sessionId;
-  await db.insert(resumeUploadSessions).values({ id, ownerId, clientUploadId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize }).onDuplicateKeyUpdate({ set: { clientUploadId } });
+  const id = randomUUID(), clientUploadId = input.sessionId;
+  await db.insert(resumeUploadSessions).values({ id, ownerId, clientUploadId, fileName: input.fileName, mimeType: input.mimeType, expectedSize: input.expectedSize, contentSha256: input.contentSha256 ?? null }).onDuplicateKeyUpdate({ set: { clientUploadId } });
   const selected = clientUploadId ? await db.select({ id: resumeUploadSessions.id }).from(resumeUploadSessions).where(and(eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.clientUploadId, clientUploadId))).limit(1) : [{ id }];
   const existing = await getResumeUploadSession(ownerId, selected[0]?.id || id);
-  if (!existing || existing.fileName !== input.fileName || existing.mimeType !== input.mimeType || existing.expectedSize !== input.expectedSize) throw new Error("Upload identity is already in use");
+  if (!existing || existing.fileName !== input.fileName || existing.mimeType !== input.mimeType || existing.expectedSize !== input.expectedSize || (input.contentSha256 && existing.contentSha256 && existing.contentSha256 !== input.contentSha256)) throw new Error("Upload identity is already in use");
   return existing;
 }
 
@@ -119,57 +123,67 @@ export async function getResumeUploadSession(ownerId: number, sessionId: string)
   return { ...session[0], chunks };
 }
 
-export async function appendResumeUploadChunk(ownerId: number, input: { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number }) {
+export async function appendResumeUploadChunk(ownerId: number, input: ResumeUploadChunkInput) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const session = await getResumeUploadSession(ownerId, input.sessionId); if (!session) throw new Error("Resume upload session was not found");
-  if (session.status !== "active") throw new Error("Resume upload is no longer active");
-  if (input.chunkIndex < session.nextChunkIndex) return { nextChunkIndex: session.nextChunkIndex, receivedSize: session.receivedSize, alreadyStored: true };
-  if (input.chunkIndex !== session.nextChunkIndex || input.byteSize <= 0 || session.receivedSize + input.byteSize > session.expectedSize) throw new Error("Resume upload chunks arrived out of order");
-  await db.transaction(async tx => {
-    const result = await tx.update(resumeUploadSessions).set({ receivedSize: session.receivedSize + input.byteSize, nextChunkIndex: session.nextChunkIndex + 1 }).where(and(eq(resumeUploadSessions.id, input.sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "active"), eq(resumeUploadSessions.nextChunkIndex, input.chunkIndex)));
-    if (!result[0].affectedRows) throw new Error("Resume upload changed; retry this chunk");
-    await tx.insert(resumeUploadChunks).values({ sessionId: input.sessionId, chunkIndex: input.chunkIndex, storageKey: input.storageKey, byteSize: input.byteSize });
+  const outcome = await db.transaction(async tx => {
+    const session = (await tx.select().from(resumeUploadSessions).where(and(eq(resumeUploadSessions.id, input.sessionId), eq(resumeUploadSessions.ownerId, ownerId))).limit(1).for("update"))[0];
+    if (!session || session.status !== "active") throw new Error("Resume upload is no longer active");
+    const replay = (await tx.select().from(resumeUploadAttempts).where(and(eq(resumeUploadAttempts.sessionId, input.sessionId), eq(resumeUploadAttempts.idempotencyKey, input.idempotencyKey))).limit(1).for("update"))[0];
+    if (replay) {
+      if (replay.chunkIndex !== input.chunkIndex || replay.contentSha256 !== input.contentSha256 || replay.byteSize !== input.byteSize) throw new Error("Resume upload attempt conflicts with an earlier request");
+      return { nextChunkIndex: session.nextChunkIndex, receivedSize: session.receivedSize, alreadyStored: replay.disposition === "accepted" };
+    }
+    const attemptInsert = await tx.insert(resumeUploadAttempts).values({ sessionId: input.sessionId, clientAttemptId: input.clientAttemptId, idempotencyKey: input.idempotencyKey, chunkIndex: input.chunkIndex, storageKey: input.storageKey, storageKeyHash: uploadStorageKeyHash(input.storageKey), contentSha256: input.contentSha256, byteSize: input.byteSize, disposition: "staged" });
+    const attemptId = Number(attemptInsert[0].insertId);
+    if (input.chunkIndex !== session.nextChunkIndex || input.byteSize <= 0 || session.receivedSize + input.byteSize > session.expectedSize) {
+      await tx.update(resumeUploadAttempts).set({ disposition: "conflict" }).where(eq(resumeUploadAttempts.id, attemptId));
+      await tx.insert(storageDeletionOutbox).values({ storageKey: input.storageKey, storageKeyHash: uploadStorageKeyHash(input.storageKey), reason: "losing_chunk_attempt" }).onDuplicateKeyUpdate({ set: { storageKeyHash: uploadStorageKeyHash(input.storageKey) } });
+      return { conflict: true as const, nextChunkIndex: session.nextChunkIndex, receivedSize: session.receivedSize, alreadyStored: false };
+    }
+    await tx.insert(resumeUploadChunks).values({ sessionId: input.sessionId, chunkIndex: input.chunkIndex, storageKey: input.storageKey, byteSize: input.byteSize, acceptedAttemptId: attemptId, contentSha256: input.contentSha256 });
+    const result = await tx.update(resumeUploadSessions).set({ receivedSize: session.receivedSize + input.byteSize, nextChunkIndex: session.nextChunkIndex + 1 }).where(and(eq(resumeUploadSessions.id, input.sessionId), eq(resumeUploadSessions.status, "active"), eq(resumeUploadSessions.nextChunkIndex, input.chunkIndex)));
+    if (Number(result[0]?.affectedRows ?? 0) !== 1) throw new Error("Resume upload changed; retry this chunk");
+    await tx.update(resumeUploadAttempts).set({ disposition: "accepted" }).where(eq(resumeUploadAttempts.id, attemptId));
+    return { conflict: false as const, nextChunkIndex: session.nextChunkIndex + 1, receivedSize: session.receivedSize + input.byteSize, alreadyStored: false };
   });
-  return { nextChunkIndex: session.nextChunkIndex + 1, receivedSize: session.receivedSize + input.byteSize, alreadyStored: false };
+  if ("conflict" in outcome && outcome.conflict) throw new Error("Resume upload chunks arrived out of order");
+  return outcome;
 }
 
 export async function claimResumeUploadFinalization(ownerId: number, sessionId: string, finalizationOwner: string) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const leaseUntil = new Date(Date.now() + 2 * 60 * 1000);
-  const result = await db.update(resumeUploadSessions).set({ status: "finalizing", finalizationOwner, finalizationLeaseUntil: leaseUntil })
-    .where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), or(eq(resumeUploadSessions.status, "active"), and(eq(resumeUploadSessions.status, "finalizing"), or(isNull(resumeUploadSessions.finalizationLeaseUntil), sql`${resumeUploadSessions.finalizationLeaseUntil} < NOW()`)))));
-  const session = await getResumeUploadSession(ownerId, sessionId);
-  if (!session) return { outcome: "missing" as const };
+  const db = await getDb(); if (!db) throw new Error("Database unavailable"); const now = new Date(), leaseUntil = new Date(Date.now() + 2 * 60 * 1000);
+  const result = await db.update(resumeUploadSessions).set({ status: "finalizing", finalizationOwner, finalizationLeaseUntil: leaseUntil, leaseHeartbeatAt: now }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), or(eq(resumeUploadSessions.status, "active"), and(eq(resumeUploadSessions.status, "finalizing"), or(isNull(resumeUploadSessions.finalizationLeaseUntil), sql`${resumeUploadSessions.finalizationLeaseUntil} < NOW()`)))));
+  const session = await getResumeUploadSession(ownerId, sessionId); if (!session) return { outcome: "missing" as const };
   if (session.status === "completed" && session.attachmentId) return { outcome: "completed" as const, session };
-  if (Number(result[0].affectedRows) === 1 && session.finalizationOwner === finalizationOwner) return { outcome: "claimed" as const, session };
-  return { outcome: "finalizing" as const, session };
+  return Number(result[0].affectedRows) === 1 && session.finalizationOwner === finalizationOwner ? { outcome: "claimed" as const, session } : { outcome: "finalizing" as const, session };
 }
 
-export async function completeResumeUploadSession(ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
-    await tx.insert(referralAttachments).values({ ownerId, uploadSessionId: sessionId, ...input }).onDuplicateKeyUpdate({ set: { uploadSessionId: sessionId } });
-    const rows = await tx.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.uploadSessionId, sessionId)).limit(1);
-    const attachment = rows[0]; if (!attachment) throw new Error("Finalized attachment could not be bound");
-    const result = await tx.update(resumeUploadSessions).set({ status: "completed", attachmentId: attachment.id, permanentStorageKey: input.fileKey, finalizationOwner: null, finalizationLeaseUntil: null }).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId), eq(resumeUploadSessions.status, "finalizing"), eq(resumeUploadSessions.finalizationOwner, finalizationOwner)));
-    if (Number(result[0].affectedRows) !== 1) {
-      const current = await tx.select({ attachmentId: resumeUploadSessions.attachmentId }).from(resumeUploadSessions).where(and(eq(resumeUploadSessions.id, sessionId), eq(resumeUploadSessions.ownerId, ownerId))).limit(1);
-      if (current[0]?.attachmentId !== attachment.id) throw new Error("Resume upload finalization lease changed; retry completion");
-    }
-    await tx.delete(resumeUploadChunks).where(eq(resumeUploadChunks.sessionId, sessionId));
+export async function heartbeatResumeUploadFinalization(ownerId: number, sessionId: string, finalizationOwner: string) {
+  const db=await getDb(); if(!db)throw new Error("Database unavailable"); const now=new Date(),leaseUntil=new Date(Date.now()+2*60*1000);
+  const result=await db.update(resumeUploadSessions).set({leaseHeartbeatAt:now,finalizationLeaseUntil:leaseUntil}).where(and(eq(resumeUploadSessions.id,sessionId),eq(resumeUploadSessions.ownerId,ownerId),eq(resumeUploadSessions.status,"finalizing"),eq(resumeUploadSessions.finalizationOwner,finalizationOwner)));
+  return Number(result[0]?.affectedRows??0)===1;
+}
+
+export async function completeResumeUploadSession(ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; originalStorageKey: string; sanitizedStorageKey: string; mimeType: string; fileSize: number; contentSha256: string; sanitizedSha256: string; scanVersion: string; scanResult: string }) {
+  const db=await getDb();if(!db)throw new Error("Database unavailable");
+  return db.transaction(async tx=>{
+    const current=(await tx.select().from(resumeUploadSessions).where(and(eq(resumeUploadSessions.id,sessionId),eq(resumeUploadSessions.ownerId,ownerId))).limit(1).for("update"))[0];
+    if(!current)throw new Error("Resume upload session was not found");
+    if(current.status==="completed"&&current.attachmentId){const a=(await tx.select().from(referralAttachments).where(eq(referralAttachments.id,current.attachmentId)).limit(1))[0];if(a)return a;}
+    if(current.status!=="finalizing"||current.finalizationOwner!==finalizationOwner)throw new Error("Resume upload finalization lease changed; retry completion");
+    await tx.insert(referralAttachments).values({ownerId,uploadSessionId:sessionId,fileName:input.fileName,fileKey:input.sanitizedStorageKey,mimeType:input.mimeType,fileSize:input.fileSize,availabilityStatus:"ready",originalStorageKey:input.originalStorageKey,sanitizedStorageKey:input.sanitizedStorageKey,contentSha256:input.contentSha256,sanitizedSha256:input.sanitizedSha256,scanVersion:input.scanVersion,scanResult:input.scanResult}).onDuplicateKeyUpdate({set:{uploadSessionId:sessionId}});
+    const attachment=(await tx.select().from(referralAttachments).where(eq(referralAttachments.uploadSessionId,sessionId)).limit(1))[0];if(!attachment)throw new Error("Finalized attachment could not be bound");
+    const result=await tx.update(resumeUploadSessions).set({status:"completed",scanStatus:"ready",attachmentId:attachment.id,permanentStorageKey:input.sanitizedStorageKey,contentSha256:input.contentSha256,scanVersion:input.scanVersion,scanResult:input.scanResult,finalizationOwner:null,finalizationLeaseUntil:null}).where(and(eq(resumeUploadSessions.id,sessionId),eq(resumeUploadSessions.status,"finalizing"),eq(resumeUploadSessions.finalizationOwner,finalizationOwner)));
+    if(Number(result[0]?.affectedRows??0)!==1)throw new Error("Resume upload finalization lease changed; retry completion");
+    const keys=await tx.select({storageKey:resumeUploadAttempts.storageKey}).from(resumeUploadAttempts).where(eq(resumeUploadAttempts.sessionId,sessionId));
+    for(const row of keys)if(row.storageKey!==input.originalStorageKey)await tx.insert(storageDeletionOutbox).values({storageKey:row.storageKey,storageKeyHash:uploadStorageKeyHash(row.storageKey),reason:"finalized_staging_chunk"}).onDuplicateKeyUpdate({set:{storageKeyHash:uploadStorageKeyHash(row.storageKey)}});
     return attachment;
   });
 }
 
-export async function clearUnattachedResumeUploads(ownerId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
-    const attachments = await tx.select({ id: referralAttachments.id, fileKey: referralAttachments.fileKey }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
-    if (attachments.length) await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
-    await tx.delete(resumeUploadSessions).where(eq(resumeUploadSessions.ownerId, ownerId));
-    return { cleared: attachments.length, fileKeys: attachments.map(item => item.fileKey) };
-  });
-}
+export async function rejectResumeUploadSession(ownerId:number,sessionId:string,finalizationOwner:string,reason:string){const db=await getDb();if(!db)throw new Error("Database unavailable");await db.update(resumeUploadSessions).set({status:"rejected",scanStatus:"rejected",scanVersion:"builtin-v1",scanResult:reason.slice(0,500),finalizationOwner:null,finalizationLeaseUntil:null}).where(and(eq(resumeUploadSessions.id,sessionId),eq(resumeUploadSessions.ownerId,ownerId),eq(resumeUploadSessions.finalizationOwner,finalizationOwner)));}
+
+export async function clearUnattachedResumeUploads(ownerId:number){const db=await getDb();if(!db)throw new Error("Database unavailable");return db.transaction(async tx=>{const attachments=await tx.select({id:referralAttachments.id,fileKey:referralAttachments.fileKey,originalStorageKey:referralAttachments.originalStorageKey}).from(referralAttachments).where(and(eq(referralAttachments.ownerId,ownerId),isNull(referralAttachments.referralRequestId)));const sessions=await tx.select({id:resumeUploadSessions.id}).from(resumeUploadSessions).where(eq(resumeUploadSessions.ownerId,ownerId));const ids=sessions.map(x=>x.id);const attempts=ids.length?await tx.select({storageKey:resumeUploadAttempts.storageKey}).from(resumeUploadAttempts).where(inArray(resumeUploadAttempts.sessionId,ids)):[];for(const key of [...attachments.flatMap(x=>[x.fileKey,x.originalStorageKey].filter(Boolean) as string[]),...attempts.map(x=>x.storageKey)])await tx.insert(storageDeletionOutbox).values({storageKey:key,storageKeyHash:uploadStorageKeyHash(key),reason:"draft_cleanup"}).onDuplicateKeyUpdate({set:{storageKeyHash:uploadStorageKeyHash(key)}});if(attachments.length)await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId,ownerId),isNull(referralAttachments.referralRequestId)));if(ids.length)await tx.delete(resumeUploadSessions).where(and(eq(resumeUploadSessions.ownerId,ownerId),inArray(resumeUploadSessions.id,ids)));return{cleared:attachments.length,fileKeys:attachments.map(x=>x.fileKey)};});}
 
 export async function exportUserData(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
