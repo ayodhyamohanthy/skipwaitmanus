@@ -19,6 +19,7 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "userFollows", createSql: `CREATE TABLE IF NOT EXISTS \`userFollows\` (\`id\` int AUTO_INCREMENT NOT NULL, \`followerUserId\` int NOT NULL, \`followingUserId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`userFollows_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`user_follows_pair_unique\`(\`followerUserId\`, \`followingUserId\`), INDEX \`user_follows_following_idx\`(\`followingUserId\`))` },
 ];
 
+// Existing columns whose exact types are part of the runtime contract.
 export const DESIRED_COLUMN_DEFINITIONS: Array<{ table: string; column: string; columnType: string; definition: string }> = [
   { table: "resumeUploadSessions", column: "status", columnType: "enum('active','finalizing','completed','failed')", definition: "ENUM('active','finalizing','completed','failed') NOT NULL DEFAULT 'active'" },
 ];
