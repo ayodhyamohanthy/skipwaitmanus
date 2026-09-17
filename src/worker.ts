@@ -43,6 +43,8 @@ export class SkipwaitApi extends Container {
   }
 }
 
+import { fetchContainerWithStoppedRecovery } from "./containerRecovery";
+
 export default {
   async fetch(
     request: Request,
@@ -58,6 +60,7 @@ export default {
     }
     // Single-instance API: all requests to one container for session affinity.
     const release = typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
-    return getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`, true).fetch(request);
+    const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`);
+    return fetchContainerWithStoppedRecovery(container, request);
   },
 };
