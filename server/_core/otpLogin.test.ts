@@ -26,4 +26,10 @@ describe("referrer OTP login completion", () => {
   const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "123456" });
     expect(response.status).toBe(200); expect(response.headers["set-cookie"]?.join(";")).toContain("app_session_id=signed-session");
   });
+  it("does not let a best-effort refresh block an existing OTP identity", async () => {
+    const existing = { id: 7, openId: "workemail_employee@acme.com", name: "Employee", role: "user" };
+    mocks.getUserByOpenId.mockReset(); mocks.getUserByOpenId.mockResolvedValue(existing); mocks.upsertUser.mockRejectedValue(new Error("refresh drift"));
+    const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "123456" });
+    expect(response.status).toBe(200); expect(response.headers["set-cookie"]?.join(";")).toContain("app_session_id=signed-session");
+  });
 });

@@ -6,6 +6,7 @@ describe("preview coalescing",()=>{it("shares fetch and resolver work for identi
 
 describe("reachable employer evidence",()=>{
  it("does not trust a hostname-derived employer when DNS/page fetch fails",async()=>{const result=await previewJobLink("https://careers.no-such-company-zzz987.com/jobs/12345",async()=>"no-such-company-zzz987.com",async()=>{throw Error("dns")});expect(result).toMatchObject({status:"unreachable",employerConfidence:"unreachable"});expect(result.companyDomain).toBeUndefined()});
+ it("treats a safely reached oversized direct careers page as reachable without parsing its body",async()=>{const result=await previewJobLink("https://careers.google.com",async()=>"google.com",async url=>({canonicalUrl:"https://www.google.com/about/careers/applications/",body:""}));expect(result).toMatchObject({status:"fresh",companyDomain:"google.com"})});
  it("allows public Greenhouse company boards through the pinned fetcher policy",async()=>{const source=await import("node:fs").then(fs=>fs.readFileSync(new URL("./jobLinkPreview.ts",import.meta.url),"utf8"));expect(source).toContain('url.hostname==="boards.greenhouse.io"');expect(source).toContain('url.hostname==="job-boards.greenhouse.io"')});
  it("resolves a reachable Greenhouse board when employer evidence is returned",async()=>{const result=await previewJobLink("https://boards.greenhouse.io/stripe",async()=>"stripe.com",async()=>({canonicalUrl:"https://stripe.com/jobs/search",body:"Stripe jobs"}));expect(result).toMatchObject({status:"fresh",companyDomain:"stripe.com"})});
 });

@@ -147,6 +147,12 @@ export function officialEmployerDomainsFromJobPageHtml(html: string) {
   return employerEvidenceFromStructuredData(html).officialDomains;
 }
 
+export function verifiedRedirectEmployerDomain(targetRoleUrl: string, canonicalUrl: string) {
+  const candidates = hostedEmployerCandidatesFromTargetUrl(targetRoleUrl);
+  const domain = directEmployerDomainFromTargetUrl(canonicalUrl);
+  return domain && verifiedEmployerDomainFromCandidates(candidates, [domain]) === domain ? domain : undefined;
+}
+
 export function publicEmployerPageUrls(targetRoleUrl: string) {
   try {
     const url = new URL(targetRoleUrl);

@@ -63,8 +63,15 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       // fails after consuming a valid code in production, leaving no session.
       const openId = `workemail_${email}`;
       const existing = await db.getUserByOpenId(openId);
-      await db.upsertUser({ openId, name: existing?.name ?? email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date() });
-      const account = await db.getUserByOpenId(openId);
+      // Existing OTP identities can sign in even if a non-critical account
+      // refresh is temporarily blocked by production schema drift. New
+      // identities still require a durable insert before any session is issued.
+      if (!existing) {
+        await db.upsertUser({ openId, name: email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date() });
+      } else {
+        void db.upsertUser({ openId, name: existing.name ?? email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date() }).catch(() => undefined);
+      }
+      const account = existing ?? await db.getUserByOpenId(openId);
       if (!account) return res.status(500).json({ error: "We could not complete sign-in. Please request a new code." });
       const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
       if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);

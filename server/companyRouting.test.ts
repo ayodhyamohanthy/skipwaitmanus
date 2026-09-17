@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { companyDomainFromTargetUrl, isVerifiedEmployeeOfCompany, isWorkEmailDomain, resolveEmployerDomainFromTargetUrl } from "./db";
-import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
 describe("company routing from Target Role URLs", () => {
   it("uses a direct employer careers hostname as the hidden company key", () => {
@@ -23,6 +23,12 @@ describe("company routing from Target Role URLs", () => {
     expect(hostedEmployerCandidatesFromTargetUrl("https://acme.bamboohr.com/careers/42")).toEqual(["acme"]);
     expect(verifiedEmployerDomainFromCandidates(["acme"], ["acme.com", "other.com"])).toBe("acme.com");
     expect(verifiedEmployerDomainFromCandidates(["acme"], ["acme.com", "acme.io"])).toBeUndefined();
+  });
+
+  it("trusts a hosted-board redirect only when its final employer domain exactly matches the board handle", () => {
+    expect(verifiedRedirectEmployerDomain("https://boards.greenhouse.io/stripe", "https://stripe.com/careers/search")).toBe("stripe.com");
+    expect(verifiedRedirectEmployerDomain("https://boards.greenhouse.io/stripe", "https://evil.example/jobs")).toBeUndefined();
+    expect(verifiedRedirectEmployerDomain("https://boards.greenhouse.io/stripe", "https://stripejobs.example/jobs")).toBeUndefined();
   });
 
   it("uses public job-page employer metadata only as a candidate for an exact verified-domain match", () => {

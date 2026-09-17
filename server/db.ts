@@ -12,7 +12,7 @@ import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { isLegacyOpportunityUrlSafe, validateOpportunityTargetUrl } from "./opportunityTargetUrl";
-import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing } from "./employerRouting";
+import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -383,8 +383,9 @@ async function employerPageEvidence(targetRoleUrl: string) {
     const url = new URL(targetRoleUrl);
     if (!isHostedJobPlatform(url.hostname)) return { candidates: [], officialDomains: [] };
     const candidateSets = await Promise.all(publicEmployerPageUrls(targetRoleUrl).map(async pageUrl => {
-      const { body: html } = await fetchPublicJobLink(pageUrl);
-      return { candidates: employerCandidatesFromJobPageHtml(html), officialDomains: officialEmployerDomainsFromJobPageHtml(html) };
+      const { canonicalUrl, body: html } = await fetchPublicJobLink(pageUrl);
+      const redirectDomain = verifiedRedirectEmployerDomain(targetRoleUrl, canonicalUrl);
+      return { candidates: employerCandidatesFromJobPageHtml(html), officialDomains: [...officialEmployerDomainsFromJobPageHtml(html), ...(redirectDomain ? [redirectDomain] : [])] };
     }));
     return {
       candidates: Array.from(new Set(candidateSets.flatMap(result => result.candidates))),
