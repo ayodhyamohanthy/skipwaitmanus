@@ -2,6 +2,7 @@ import { WorkOS } from "@workos-inc/node";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Express, Request } from "express";
+import { parse as parseCookieHeader } from "cookie";
 import * as db from "../db";
 import { randomUUID } from "node:crypto";
 import { BoundedTtlCache } from "../boundedTtlCache";
@@ -95,16 +96,46 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
 }
 
-export async function resolveWorkosIdentity(req: Request): Promise<DevIdentity | undefined> {
+type IdentityResolverDependencies = {
+  identityFromBearer?: (bearer: string) => Promise<DevIdentity | undefined>;
+  resolveCookieIdentity?: (req: Request) => Promise<DevIdentity | undefined>;
+};
+
+function hasAppSessionCookie(req: Request): boolean {
+  return Boolean(parseCookieHeader(req.headers.cookie ?? "")[COOKIE_NAME]);
+}
+
+export function isSameOriginBrowserRequest(req: Request): boolean {
+  const origin = req.header("origin");
+  if (origin) {
+    try { return new URL(origin).origin === `${req.protocol}://${req.get("host")}`; }
+    catch { return false; }
+  }
+  return req.header("sec-fetch-site") === "same-origin";
+}
+
+export async function resolveWorkosIdentity(req: Request, dependencies: IdentityResolverDependencies = {}): Promise<DevIdentity | undefined> {
+  const identityFromBearer = dependencies.identityFromBearer ?? identityFromWorkosJwt;
+  const resolveCookieIdentity = dependencies.resolveCookieIdentity ?? resolveDevIdentity;
   const authHeader = req.headers.authorization;
   if (typeof authHeader === "string") {
-    if (!authHeader.startsWith("Bearer ")) return undefined;
-    const bearer = authHeader.slice(7).trim();
-    if (bearer.split(".").length !== 3) return undefined;
-    try { return await identityFromWorkosJwt(bearer); }
-    catch (error) { console.warn("[Auth] WorkOS JWT verification failed:", (error as Error).message?.slice(0, 120)); return undefined; }
+    let bearerIdentity: DevIdentity | undefined;
+    if (authHeader.startsWith("Bearer ")) {
+      const bearer = authHeader.slice(7).trim();
+      if (bearer.split(".").length === 3) {
+        try { bearerIdentity = await identityFromBearer(bearer); }
+        catch (error) { console.warn("[Auth] WorkOS JWT verification failed:", (error as Error).message?.slice(0, 120)); }
+      }
+    }
+    if (bearerIdentity) return bearerIdentity;
+    // AuthKit can leave an expired access token in a same-origin browser while
+    // the independently signed app session cookie is still valid. Keep bearer
+    // failure terminal for cross-origin/API clients; only the browser's own
+    // origin may fall back, and only when it actually presents the app cookie.
+    if (hasAppSessionCookie(req) && isSameOriginBrowserRequest(req)) return resolveCookieIdentity(req);
+    return undefined;
   }
-  return resolveDevIdentity(req);
+  return resolveCookieIdentity(req);
 }
 
 export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) {
