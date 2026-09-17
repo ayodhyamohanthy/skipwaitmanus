@@ -57,9 +57,16 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       if (!verified) {
         return res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
       }
-      // Provision identity and verified referrer profile as one transaction.
+      // Keep the login path compatible with the proven production user/profile
+      // stores. The combined provisioning transaction introduced in a1fc3a2
+      // fails after consuming a valid code in production, leaving no session.
       const openId = `workemail_${email}`;
-      const account = await db.provisionWorkEmailIdentity(email);
+      const existing = await db.getUserByOpenId(openId);
+      await db.upsertUser({ openId, name: existing?.name ?? email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date() });
+      const account = await db.getUserByOpenId(openId);
+      if (!account) return res.status(500).json({ error: "We could not complete sign-in. Please request a new code." });
+      const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
+      if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email);
       const token = await sdk.createSessionToken(openId, { name: account.name ?? email });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
       res.json({ signedIn: true, role: account.role, email });
