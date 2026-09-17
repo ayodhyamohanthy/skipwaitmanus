@@ -171,31 +171,45 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     const secret = resolveChargebeeWebhookSecret(req.hostname);
     if (!secret || !basicAuthMatches(req.header("authorization"), secret)) return res.status(401).send("Unauthorized");
     const subscription = parseSubscriptionEvent(req.body);
+    const payment = parsePaidPaymentEvent(req.body);
+    const obligations: Record<string, unknown> = {};
+    let handled = false;
+
+    // One Chargebee delivery may carry both a subscription transition and a
+    // paid invoice. Process each durable obligation independently. Never let
+    // the first matching parser short-circuit the other.
     if (subscription && deps.applySubscriptionEvent) {
+      handled = true;
       try {
-        const result = await deps.applySubscriptionEvent(subscription);
-        return res.status(200).json({ received: true, result });
+        obligations.subscription = await deps.applySubscriptionEvent(subscription);
       } catch (error) {
         console.error("[Chargebee] subscription entitlement error", error);
         return res.status(500).json({ error: "Subscription synchronization retry required" });
       }
     }
-    const parsed = parsePaidPaymentEvent(req.body);
-    if (!parsed) return res.status(202).json({ received: true, ignored: true });
-    if (!tokenPackFromAmount(parsed.amount, parsed.currency)) return res.status(202).json({ received: true, ignored: true });
-    try {
-      const resolvedHostedPage = (!parsed.hostedPageId || !parsed.passThruContent) && deps.resolveHostedPage
-        ? await deps.resolveHostedPage({ invoiceId: parsed.invoiceId, amount: parsed.amount, currency: parsed.currency })
-        : undefined;
-      const result = await deps.fulfillPayment({
-        ...parsed,
-        hostedPageId: parsed.hostedPageId ?? resolvedHostedPage?.hostedPageId,
-        passThruContent: parsed.passThruContent ?? resolvedHostedPage?.passThruContent,
-      });
-      return res.status(200).json({ received: true, result });
-    } catch (error) {
-      console.error("[Chargebee] fulfillment error", error);
-      return res.status(500).json({ error: "Fulfillment retry required" });
+
+    if (payment && tokenPackFromAmount(payment.amount, payment.currency)) {
+      handled = true;
+      try {
+        const resolvedHostedPage = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
+          ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency })
+          : undefined;
+        obligations.payment = await deps.fulfillPayment({
+          ...payment,
+          hostedPageId: payment.hostedPageId ?? resolvedHostedPage?.hostedPageId,
+          passThruContent: payment.passThruContent ?? resolvedHostedPage?.passThruContent,
+        });
+      } catch (error) {
+        console.error("[Chargebee] fulfillment error", error);
+        return res.status(500).json({ error: "Fulfillment retry required" });
+      }
     }
+
+    // A 2xx means every recognized obligation reached durable terminal state.
+    // Unknown/unpriced events are terminally ignored; provider retries cannot
+    // make them valid obligations.
+    if (!handled) return res.status(202).json({ received: true, ignored: true });
+    const values = Object.values(obligations);
+    return res.status(200).json({ received: true, obligations, result: values.length === 1 ? values[0] : undefined });
   });
 }
