@@ -6,10 +6,10 @@ import { referralStatusLabels, type ReferralStatus } from "@shared/referral";
 export type StatusTone = "amber" | "blue" | "green" | "red" | "slate";
 export const statusToneColors: Record<StatusTone, { bg: string; text: string; dot: string }> = {
   amber: { bg: "rgba(180,83,9,.1)", text: "#b45309", dot: "#b45309" },
-  blue: { bg: "rgba(232,68,46,.1)", text: "#191713", dot: "#0B57D0" },
+  blue: { bg: "rgba(0,0,255,.08)", text: "#000000", dot: "#0000ff" },
   green: { bg: "rgba(21,128,61,.1)", text: "#15803d", dot: "#15803d" },
   red: { bg: "rgba(185,28,28,.1)", text: "#b91c1c", dot: "#b91c1c" },
-  slate: { bg: "rgba(28,27,25,.08)", text: "#3F3B33", dot: "#625D52" },
+  slate: { bg: "rgba(0,0,0,.06)", text: "#505050", dot: "#767676" },
 };
 export const referralStatusTones: Record<ReferralStatus, StatusTone> = { pending: "amber", approved: "green", declined: "red", intro_made: "blue", interview: "blue", offer: "green", closed: "slate", withdrawn: "slate" };
 export type StatusBadgeLabel = { label: string; tone: StatusTone };
