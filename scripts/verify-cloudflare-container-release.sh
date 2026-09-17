@@ -37,7 +37,7 @@ if [ "$result" -eq 0 ]; then
   # sleepAfter scales the release down and control-plane state lags. Do not
   # weaken the running-instance gate: wake the exact SHA and poll control-plane
   # state for bounded convergence.
-  deadline=$((SECONDS + 90))
+  deadline=$((SECONDS + ${RELEASE_CONVERGENCE_TIMEOUT_SECONDS:-90}))
   until jq -e --arg n "$expected_name" --argjson v "$current" \
     '.[] | select(.name==$n and .state=="running" and .version==$v)' \
     <<<"$instances" >/dev/null; do
@@ -47,7 +47,7 @@ if [ "$result" -eq 0 ]; then
         exit 1
       fi
       curl -fsS --max-time 20 "$READY_URL" >/dev/null || true
-      sleep 5
+      sleep "${RELEASE_CONVERGENCE_INTERVAL_SECONDS:-5}"
       instances=$(npx wrangler containers instances "$app_id" --json)
       info=$(npx wrangler containers info "$app_id" --json)
       current=$(jq -r '.current_version // .version // empty' <<<"$info")
