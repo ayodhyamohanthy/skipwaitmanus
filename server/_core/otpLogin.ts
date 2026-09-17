@@ -67,7 +67,7 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       const account = await db.getUserByOpenId(openId);
       if (!account) return res.status(500).json({ error: "We could not complete sign-in. Please request a new code." });
       const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
-      if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email);
+      if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);
       const token = await sdk.createSessionToken(openId, { name: account.name ?? email });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
       res.json({ signedIn: true, role: account.role, email });

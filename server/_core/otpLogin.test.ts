@@ -12,7 +12,7 @@ import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 
 function app() { const value = express(); value.use(express.json()); registerReferrerOtpLoginRoutes(value); return value; }
 describe("referrer OTP login completion", () => {
-  beforeEach(() => { Object.values(mocks).forEach(mock => mock.mockReset()); mocks.verifyCode.mockResolvedValue(true); mocks.getUserByOpenId.mockResolvedValueOnce(undefined).mockResolvedValueOnce({ id: 7, openId: "workemail_employee@acme.com", name: "Employee", role: "user" }); mocks.getVerifiedWorkEmailAccess.mockResolvedValue(undefined); mocks.createSessionToken.mockResolvedValue("signed-session"); });
+  beforeEach(() => { Object.values(mocks).forEach(mock => mock.mockReset()); mocks.verifyCode.mockResolvedValue(true); mocks.getUserByOpenId.mockResolvedValueOnce(undefined).mockResolvedValueOnce({ id: 7, openId: "workemail_employee@acme.com", name: "Employee", role: "user" }); mocks.getVerifiedWorkEmailAccess.mockResolvedValue(undefined); mocks.saveVerifiedWorkEmail.mockResolvedValue(undefined); mocks.createSessionToken.mockResolvedValue("signed-session"); });
   it("turns the newest valid code into a provisioned account, profile, and session cookie", async () => {
     const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "123456" });
     expect(response.status).toBe(200); expect(response.body).toMatchObject({ signedIn: true, email: "employee@acme.com" });
@@ -21,4 +21,9 @@ describe("referrer OTP login completion", () => {
     expect(response.headers["set-cookie"]?.join(";")).toContain("app_session_id=signed-session");
   });
   it("fails before provisioning when the code is invalid", async () => { mocks.verifyCode.mockResolvedValue(false); const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "000000" }); expect(response.status).toBe(400); expect(mocks.upsertUser).not.toHaveBeenCalled(); });
+  it("still issues a session when profile enrollment needs asynchronous repair", async () => {
+  mocks.saveVerifiedWorkEmail.mockRejectedValue(new Error("profile schema drift"));
+  const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "123456" });
+    expect(response.status).toBe(200); expect(response.headers["set-cookie"]?.join(";")).toContain("app_session_id=signed-session");
+  });
 });
