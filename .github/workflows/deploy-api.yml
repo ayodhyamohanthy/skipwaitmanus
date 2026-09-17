@@ -141,7 +141,10 @@ jobs:
           test "$denied" = 403 || { echo "::error::Wrong admin gate returned $denied, expected 403"; exit 1; }
 
       - name: Verify active Cloudflare container release
-        if: ${{ false }}
+        # This is the acceptance gate. The api-runtime marker below must never
+        # move until Cloudflare proves the exact active version, image, baked
+        # commit SHA, and ready state for this release.
+        if: steps.changes.outputs.classification == 'runtime'
         env:
           EXPECTED_SHA: ${{ github.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

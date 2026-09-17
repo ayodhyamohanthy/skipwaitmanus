@@ -26,9 +26,22 @@ fi
 
 set +e; poll_cloudflare_readiness "$READY_URL" "$EXPECTED_SHA"; result=$?; set -e
 if [ "$result" -eq 0 ]; then
+  # Re-read every control-plane fact after readiness. A pre-poll snapshot can
+  # be stale while Cloudflare activates a new image.
+  info=$(npx wrangler containers info "$app_id" --json)
   instances=$(npx wrangler containers instances "$app_id" --json)
-  jq -e --arg n "$expected_name" '.[] | select(.name==$n)' <<<"$instances" >/dev/null || { echo "::error::Exact runtime SHA is ready but release-scoped identity $expected_name is absent"; exit 1; }
-  echo "RUNTIME CONVERGED: exact release $EXPECTED_SHA is ready after bounded reconciliation"; exit 0
+  current=$(jq -r '.current_version // .version // empty' <<<"$info")
+  image=$(jq -r '.configuration.image // .image // empty' <<<"$info")
+  [ -n "$current" ] && [ -n "$image" ] || { echo "::error::Cloudflare omitted active version or image after readiness"; exit 1; }
+  jq -e --arg n "$expected_name" --argjson v "$current" \
+    '.[] | select(.name==$n and .state=="running" and .version==$v)' \
+    <<<"$instances" >/dev/null || {
+      echo "::error::Exact SHA is ready, but release identity $expected_name is not the active version $current"
+      jq -c '.[] | {name,state,version:(.version? // null),created}' <<<"$instances"
+      exit 1
+    }
+  echo "RUNTIME CONVERGED: release=$EXPECTED_SHA version=$current image=$image state=ready"
+  exit 0
 fi
 instances=$(npx wrangler containers instances "$app_id" --json)
 echo "Final Cloudflare application=$app_id deploymentVersion=$current image=$image"

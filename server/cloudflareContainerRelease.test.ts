@@ -18,7 +18,8 @@ printf 'HTTP/2 %s\ncontent-type: %s\n' "$status" "$type" > "$headers";printf '%s
 const ready=JSON.stringify({service:"skipwait-api",commitSha:"a".repeat(40),state:"ready"})+"\n200";
 describe("Cloudflare container acceptance",()=>{
  it("passes a running numeric-version release",()=>expect(fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"running",version:2},[ready]).status).toBe(0));
- it("warns but passes inactive/null when runtime has the exact SHA",()=>{const r=fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"inactive",version:null},[ready]);expect(r.status).toBe(0);expect(r.stdout).toContain("::warning::");});
+ it("fails inactive/null even when the public endpoint reports the exact SHA",()=>{const r=fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"inactive",version:null},[ready]);expect(r.status).not.toBe(0);expect(r.stdout).toContain("not the active version");});
+ it("fails a running release whose version is not current",()=>expect(fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"running",version:1},[ready]).status).not.toBe(0));
  it("fails null/inactive with a stale SHA",()=>expect(fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"inactive",version:null},[JSON.stringify({service:"skipwait-api",commitSha:"b".repeat(40),state:"ready"})+"\n200"]).status).not.toBe(0));
  it("fails an HTML soft-200",()=>expect(fixture({name:"skipwaitmanus-api-aaaaaaaaaaaa",state:"running",version:2},["<html>ok</html>\n200","<html>ok</html>\n200"]).status).not.toBe(0));
 });
