@@ -38,6 +38,7 @@ import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
+import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
@@ -76,6 +77,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 // Runtime activation anchor: rollback after billing startup guard failure.
 async function startServer() {
+  validateBillingEnvironment();
   const app = express();
   const server = createServer(app);
   // Boot-time schema auto-reconcile: the running server owns its DATABASE_URL,

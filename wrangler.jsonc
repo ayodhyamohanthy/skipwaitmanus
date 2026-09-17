@@ -44,6 +44,7 @@
     "ERROR_ALERT_FROM_EMAIL": "noreply@skipwait.me",
     "VITE_APP_ID": "skipwait",
     "AI_MODEL": "",
+    "BILLING_ENV": "live",
     "CHARGEBEE_LIVE_ENABLED": "true",
     "CHARGEBEE_LIVE_DOMAIN": "skipwait.me",
     "CHARGEBEE_LIVE_SITE": "skipwait"
