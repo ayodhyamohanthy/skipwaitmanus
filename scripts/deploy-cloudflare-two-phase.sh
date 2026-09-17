@@ -18,8 +18,9 @@ deploy(){
   # Continue only for that exact partial-trigger error. The exact-SHA readiness
   # gate below proves the canonical route reached this release, and the final
   # direct-origin probe proves workers.dev stayed closed.
-  if grep -q "SUCCESS.*Modified application skipwaitmanus-api" "$log" \
-    && grep -q "Applied changes" "$log" \
+  if grep -q "Uploaded skipwaitmanus" "$log" \
+    && grep -Eq "SUCCESS.*Modified application skipwaitmanus-api|no changes skipwaitmanus-api" "$log" \
+    && grep -Eq "Applied changes|No changes to be made" "$log" \
     && grep -q "/workers/routes" "$log" \
     && grep -q "Authentication error \[code: 10000\]" "$log" \
     && grep -q '"workers_dev": false' wrangler.jsonc \
