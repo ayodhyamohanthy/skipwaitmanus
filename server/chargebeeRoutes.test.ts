@@ -1,13 +1,102 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerChargebeeRoutes } from "./chargebeeRoutes";
 
 function auth(secret: string) {
   return `Basic ${Buffer.from(`skipwait:${secret}`).toString("base64")}`;
 }
 
+beforeEach(() => {
+  vi.stubEnv("BILLING_ENV", "test");
+  vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
+  vi.stubEnv("CHARGEBEE_API_KEY", "fixture-key");
+  vi.stubEnv("CHARGEBEE_WEBHOOK_SECRET", "");
+});
+afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
+
+describe("Chargebee checkout readiness", () => {
+  it("does not create a provider page without subscription intent storage", async () => {
+    const app = express(); app.use(express.json());
+    const createSubscriptionCheckout = vi.fn();
+    registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createSubscriptionCheckout });
+    const response = await request(app).post("/api/chargebee/subscription-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
+    expect(response.status).toBe(503);
+    expect(createSubscriptionCheckout).not.toHaveBeenCalled();
+  });
+
+  it.each(["IN", "INTL"])("prefills only the known country for the %s credit route", async billingCountry => {
+    const app = express(); app.use(express.json());
+    const createCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/tokens", hostedPageId: "hp_tokens", checkoutIntentId: "intent_tokens" }));
+    registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createCheckout });
+    const response = await request(app).post("/api/chargebee/checkout").send({ itemPriceId: `skipwait_token_1-${billingCountry === "IN" ? "INR" : "USD"}`, billingCountry });
+    expect(response.status).toBe(200);
+    expect(createCheckout).toHaveBeenCalledWith(expect.objectContaining({ billingAddress: billingCountry === "IN" ? { country: "IN" } : undefined }));
+  });
+
+  it.each(["Bearer", "Cookie"])("passes %s identity through the subscription helper and stores its intent", async transport => {
+    const provider = vi.fn(async (_url: unknown, options?: RequestInit) => {
+      const form = options?.body as URLSearchParams;
+      return new Response(JSON.stringify({ hosted_page: { id: "hp_plan", url: "https://checkout.example/plan" } }), { status: form.get("subscription_items[item_price_id][0]") === "skipwait_pro_monthly-INR" ? 200 : 400 });
+    });
+    vi.stubGlobal("fetch", provider);
+    const app = express(); app.use(express.json());
+    const storeIntent = vi.fn();
+    registerChargebeeRoutes(app, {
+      resolveIdentity: async req => req.header(transport === "Bearer" ? "authorization" : "cookie") ? { account: { id: 7, email: "member@example.com" } } : undefined,
+      createPaymentIntent: vi.fn(), fulfillPayment: vi.fn(), createSubscriptionIntent: storeIntent,
+    });
+    const response = await request(app).post("/api/chargebee/subscription-checkout").set(transport === "Bearer" ? "Authorization" : "Cookie", transport === "Bearer" ? "Bearer fixture-token" : "app_session_id=fixture-session").send({ plan: "pro", currency: "INR", billingCountry: "IN", role: "referrer" });
+    expect(response.status).toBe(200);
+    const form = provider.mock.calls[0][1]?.body as URLSearchParams;
+    expect(form.get("billing_address[country]")).toBe("IN");
+    expect(form.get("customer[email]")).toBe("member@example.com");
+    expect(storeIntent).toHaveBeenCalledWith(expect.objectContaining({ userId: 7, role: "referrer", hostedPageId: "hp_plan", checkoutIntentId: form.get("pass_thru_content"), amount: 59_900 }));
+  });
+
+  it.each(["/api/chargebee/checkout", "/api/chargebee/subscription-checkout"])("returns unavailable without provider access when configuration is missing at %s", async path => {
+    vi.stubEnv("CHARGEBEE_API_KEY", "");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    const app = express(); app.use(express.json());
+    registerChargebeeRoutes(app, { resolveIdentity: async () => ({ account: { id: 7 } }), createPaymentIntent: vi.fn(), createSubscriptionIntent: vi.fn(), fulfillPayment: vi.fn() });
+    expect((await request(app).post(path).send({ itemPriceId: "skipwait_token_1-INR", plan: "pro", currency: "INR", billingCountry: "IN" })).status).toBe(503);
+    expect(provider).not.toHaveBeenCalled();
+  });
+});
+
 describe("Chargebee webhook route", () => {
+  it.each(["test", "live"])("forwards the configured %s runtime regardless of request host", async environment => {
+    vi.stubEnv("BILLING_ENV", environment);
+    vi.stubEnv("CHARGEBEE_WEBHOOK_SECRET", "test-secret");
+    vi.stubEnv("CHARGEBEE_LIVE_SITE", "fixture-live");
+    vi.stubEnv("CHARGEBEE_LIVE_API_KEY", "live-key");
+    vi.stubEnv("CHARGEBEE_LIVE_WEBHOOK_SECRET", "live-secret");
+    const app = express(); app.use(express.json());
+    const resolveHostedPage = vi.fn(async () => ({ hostedPageId: "hp_runtime", passThruContent: "intent_runtime", pageState: "succeeded", paid: true }));
+    const fulfillPayment = vi.fn(async () => ({ status: "credited" }));
+    registerChargebeeRoutes(app, { resolveIdentity: vi.fn(), createPaymentIntent: vi.fn(), resolveHostedPage, fulfillPayment });
+    const payload = { id: "ev_runtime", event_type: "payment_succeeded", content: { transaction: { amount: 9900, currency_code: "INR" }, invoice: { id: "inv_runtime" } } };
+    const response = await request(app).post("/api/chargebee/webhook").set("Host", "untrusted.example").set("Authorization", auth(`${environment}-secret`)).send(payload);
+    expect(response.status).toBe(200);
+    expect(resolveHostedPage).toHaveBeenCalledExactlyOnceWith({ invoiceId: "inv_runtime", amount: 9900, currency: "INR", site: environment === "live" ? "fixture-live" : "fixture-test", apiKey: environment === "live" ? "live-key" : "fixture-key" });
+    expect(fulfillPayment).toHaveBeenCalledExactlyOnceWith({ eventId: "ev_runtime", invoiceId: "inv_runtime", amount: 9900, currency: "INR", hostedPageId: "hp_runtime", passThruContent: "intent_runtime" });
+  });
+
+  it("retries without test credential fallback when the configured live key is missing", async () => {
+    vi.stubEnv("BILLING_ENV", "live");
+    vi.stubEnv("CHARGEBEE_LIVE_SITE", "fixture-live");
+    vi.stubEnv("CHARGEBEE_LIVE_API_KEY", "");
+    vi.stubEnv("CHARGEBEE_LIVE_WEBHOOK_SECRET", "live-secret");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const app = express(); app.use(express.json());
+    const resolveHostedPage = vi.fn(), fulfillPayment = vi.fn();
+    registerChargebeeRoutes(app, { resolveIdentity: vi.fn(), createPaymentIntent: vi.fn(), resolveHostedPage, fulfillPayment });
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth("live-secret")).send({ id: "ev_missing", event_type: "payment_succeeded", content: { transaction: { amount: 9900, currency_code: "INR" }, invoice: { id: "inv_missing" } } });
+    expect(response.status).toBe(500);
+    expect(resolveHostedPage).not.toHaveBeenCalled();
+    expect(fulfillPayment).not.toHaveBeenCalled();
+  });
   it("accepts a valid payment and keeps duplicate delivery idempotent", async () => {
     const app = express();
     app.use(express.json());
@@ -127,8 +216,8 @@ describe("Chargebee webhook route", () => {
       createPaymentIntent: async () => undefined,
       resolveHostedPage: async input => {
         resolved += 1;
-        expect(input).toEqual({ invoiceId: "inv_v2", amount: 9900, currency: "INR" });
-        return { hostedPageId: "hp_v2", invoiceId: "inv_v2", passThruContent: "intent_v2", amount: 9900, currency: "INR" };
+        expect(input).toEqual({ invoiceId: "inv_v2", amount: 9900, currency: "INR", site: "fixture-test", apiKey: "fixture-key" });
+        return { hostedPageId: "hp_v2", invoiceId: "inv_v2", passThruContent: "intent_v2", amount: 9900, currency: "INR", pageState: "succeeded", paid: true };
       },
       fulfillPayment: async input => {
         expect(input).toMatchObject({ eventId: "ev_v2", invoiceId: "inv_v2", hostedPageId: "hp_v2", passThruContent: "intent_v2", amount: 9900, currency: "INR" });

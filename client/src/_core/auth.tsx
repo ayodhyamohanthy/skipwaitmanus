@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
 import { smokeState } from "@/contexts/smokeRuntime";
+import { safeAuthReturnTo } from "@shared/authReturnTo";
 
 /**
  * WorkOS AuthKit provider exposing the app's auth hook surface.
@@ -28,7 +29,7 @@ type CompatValue = {
   getToken: () => Promise<string | null>;
   signOut: () => Promise<void>;
   user: CompatUser;
-  openSignIn: () => void;
+  openSignIn: (options?: { returnTo?: string }) => void;
 };
 
 type CompatSdkAuth = {
@@ -36,7 +37,7 @@ type CompatSdkAuth = {
   user: { id: string; email: string; emailVerified: boolean; firstName?: string | null; lastName?: string | null; profilePictureUrl?: string | null } | null;
   signIn: () => Promise<void>;
   getAccessToken: () => Promise<string | null>;
-  signOut: () => Promise<void>;
+  signOut: (options?: { navigate: false }) => Promise<void>;
 };
 
 const CompatContext = createContext<CompatValue | null>(null);
@@ -52,7 +53,8 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
 
   const serverUser = meQuery.data ?? null;
   const signedIn = Boolean(synthetic) || Boolean(serverUser) || Boolean(auth.user);
-  const isLoaded = synthetic ? true : !meQuery.isLoading && !auth.isLoading;
+  const isLoaded = Boolean(synthetic || serverUser) || (!meQuery.isLoading && !auth.isLoading);
+  const signingOut = useRef(false);
 
   const user: CompatUser = synthetic
     ? { id:String(synthetic.id), fullName:`Synthetic ${synthetic.role}`, imageUrl:null, primaryEmailAddress:{emailAddress:synthetic.email}, emailAddresses:[{emailAddress:synthetic.email,verification:{status:"verified"}}] }
@@ -74,11 +76,11 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
         }
       : null;
 
-  const openSignIn = useCallback(() => {
-    // The server owns the canonical registered callback and app_session_id.
-    // Do not start SDK PKCE first: its origin-only redirect is not registered.
-    window.location.href = "/api/auth/workos/sign-in";
-  }, []);
+  const openSignIn = useCallback((options?: { returnTo?: string }) => {
+    if (!isLoaded || signedIn) return;
+    const returnTo = safeAuthReturnTo(options?.returnTo ?? window.location.href, window.location.origin) ?? "/";
+    window.location.href = `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo })}`;
+  }, [isLoaded, signedIn]);
 
   // Publish the SDK access token for non-React API clients (tRPC link).
   useEffect(() => {
@@ -87,18 +89,30 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
       if (!auth.user) { setGlobalAccessToken(null); return; }
       try {
         const token = await auth.getAccessToken();
-        if (!cancelled) setGlobalAccessToken(token);
+        if (!cancelled && !signingOut.current) {
+          setGlobalAccessToken(token);
+          if (token) await utils.auth.me.invalidate();
+        }
       } catch { if (!cancelled) setGlobalAccessToken(null); }
     };
     void publish();
     return () => { cancelled = true; };
-  }, [auth.user, auth.getAccessToken]);
+  }, [auth.user, auth.getAccessToken, utils]);
 
   const signOut = useCallback(async () => {
-    try { await auth.signOut(); } catch { /* already signed out */ }
-    try { await fetch("/api/auth/workos/logout", { method: "POST", credentials: "include" }); } catch { /* best effort */ }
+    signingOut.current = true;
+    try {
+      let response = await fetch("/api/auth/workos/logout", { method: "POST", credentials: "include" });
+      if (response.status === 404) response = await fetch("/api/dev-auth/logout", { method: "POST", credentials: "include" });
+      if (!response.ok) throw new Error("Sign out could not be completed. Please try again.");
+    } catch (error) {
+      signingOut.current = false;
+      throw error;
+    }
+    try { await auth.signOut({ navigate: false }); } catch {}
+    setGlobalAccessToken(null);
     try { sessionStorage.removeItem("manus-cookie"); } catch {}
-    await utils.auth.me.invalidate();
+    await utils.auth.me.cancel();
     utils.auth.me.setData(undefined, null);
     window.location.href = "/";
   }, [auth.signOut, utils]);
@@ -137,11 +151,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return <ServerSessionCompatProvider>{children}</ServerSessionCompatProvider>;
   }
   return (
-    <WorkOSAuthKitProvider clientId={clientId}>
-      <AuthKitErrorDowngrade>
-        {(downgrade) => <AuthKitInner downgrade={downgrade}>{children}</AuthKitInner>}
-      </AuthKitErrorDowngrade>
-    </WorkOSAuthKitProvider>
+    <AuthKitErrorDowngrade>
+      {(downgrade) => downgrade
+        ? <ServerSessionCompatProvider>{children}</ServerSessionCompatProvider>
+        : <WorkOSAuthKitProvider clientId={clientId} onRefresh={({ accessToken }) => setGlobalAccessToken(accessToken)}>
+            <AuthKitInner>{children}</AuthKitInner>
+          </WorkOSAuthKitProvider>}
+    </AuthKitErrorDowngrade>
   );
 }
 
@@ -155,17 +171,8 @@ class AuthKitErrorDowngrade extends React.Component<{ children: (downgrade: bool
   }
 }
 
-function AuthKitInner({ children, downgrade }: { children: React.ReactNode; downgrade: boolean }) {
+function AuthKitInner({ children }: { children: React.ReactNode }) {
   const auth = useWorkOSAuth();
-  if (downgrade) {
-    return <CompatShell sdkAuth={{
-      isLoading: false,
-      user: null,
-      signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
-      getAccessToken: async () => null,
-      signOut: async () => {},
-    }}>{children}</CompatShell>;
-  }
   return <CompatShell sdkAuth={auth}>{children}</CompatShell>;
 }
 
@@ -201,7 +208,7 @@ export function SignInButton({ children, className }: { children?: React.ReactNo
       },
     });
   }
-  return <button type="button" className={className} onClick={compat.openSignIn}>{children ?? "Sign in"}</button>;
+  return <button type="button" className={className} onClick={() => compat.openSignIn()}>{children ?? "Sign in"}</button>;
 }
 
 export function SignedIn({ children }: { children: React.ReactNode }) {

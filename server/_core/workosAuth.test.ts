@@ -3,6 +3,9 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const authUrl = vi.fn();
+const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@example.com", firstName: "Test", lastName: "User" } }));
+vi.mock("../db", () => ({ upsertUser: vi.fn() }));
+vi.mock("./sdk", () => ({ sdk: { createSessionToken: vi.fn(async () => "app-session-test") } }));
 const registrarFactory = vi.hoisted(() => ({
   registrar: undefined as unknown as (app: import("express").Express) => void,
 }));
@@ -11,6 +14,7 @@ vi.mock("@workos-inc/node", () => {
   return {
     WorkOS: class {
       userManagement = {
+        authenticateWithCode: authenticate,
         getAuthorizationUrl: (options: { screenHint?: string; loginHint?: string; redirectUri: string }) => {
           authUrl(options);
           return `https://api.workos.com/user_management/authorize?screen=${options.screenHint ?? ""}&login=${options.loginHint ?? ""}&redirect=${encodeURIComponent(options.redirectUri)}`;
@@ -37,6 +41,8 @@ const baseEnv = {
   WORKOS_COOKIE_PASSWORD: "c".repeat(32),
   SKIPWAIT_ADMIN_EMAIL: "ayodhyamohanthy@gmail.com",
   ENABLE_ADMIN_BOOTSTRAP: undefined,
+  WORKOS_REDIRECT_URI: "https://skipwait.me/api/auth/workos/callback",
+  WORKOS_POST_SIGNIN_PATH: undefined,
 };
 
 describe("role-aware WorkOS sign-in entries", () => {
@@ -76,6 +82,65 @@ describe("role-aware WorkOS sign-in entries", () => {
     expect(signUp.status).toBe(302);
     expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up" }));
     restore();
+  });
+});
+
+describe("state-bound authentication return", () => {
+  afterEach(() => { vi.useRealTimers(); authenticate.mockClear(); });
+
+  it.each(["/premium?role=referrer&quantity=7&currency=INR", "/plans?role=job_seeker&plan=max&currency=USD", "https://skipwait.me/premium?role=job_seeker"]) ("restores %s after provider authentication, including an existing session", async returnTo => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      const agent = request.agent(app);
+      const entry = await agent.get("/api/auth/workos/sign-in").set("Cookie", "app_session_id=existing-session").query({ returnTo });
+      const state = authUrl.mock.calls.at(-1)![0].state;
+      expect(entry.headers["set-cookie"][0]).toContain("HttpOnly");
+      expect(entry.headers["set-cookie"][0]).toContain("SameSite=Lax");
+      expect(state).not.toBe("skipwait-auth");
+      const callback = await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state, returnTo: "/" });
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe(returnTo.replace("https://skipwait.me", ""));
+      expect(callback.headers["set-cookie"].join(";")).toContain("app_session_id=app-session-test");
+      expect((await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state })).status).toBe(400);
+    } finally { restore(); }
+  });
+
+  it.each(["https://other.example/premium", "//other.example", "/\\\\other.example", "/api/auth/workos/sign-in", "/..//other.example"]) ("does not redirect outside the app for %s", async returnTo => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      const agent = request.agent(app);
+      await agent.get("/api/auth/workos/sign-up").query({ returnTo });
+      const state = authUrl.mock.calls.at(-1)![0].state;
+      const callback = await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state });
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe("/");
+    } finally { restore(); }
+  });
+
+  it.each(["missing", "mismatched", "tampered", "expired", "raw-return"]) ("rejects %s state binding before contacting the provider", async failure => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      const entry = await request(app).get("/api/auth/workos/sign-in").query({ returnTo: "/premium?role=referrer" });
+      let state = authUrl.mock.calls.at(-1)![0].state;
+      let cookie = entry.headers["set-cookie"][0].split(";")[0];
+      if (failure === "mismatched") state = "wrong-state";
+      if (failure === "raw-return") state = "return=%2Fpremium";
+      if (failure === "tampered") cookie += "x";
+      if (failure === "expired") { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(Date.now() + 11 * 60_000); }
+      const callback = await request(app).get("/api/auth/workos/callback").set("Cookie", failure === "missing" ? "" : cookie).query({ code: "provider-code", state });
+      expect(callback.status).toBe(400);
+      expect(authenticate).not.toHaveBeenCalled();
+    } finally { restore(); }
+  });
+
+  it("retains the admin destination and exact-email check", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      authenticate.mockResolvedValueOnce({ user: { id: "user_admin", email: baseEnv.SKIPWAIT_ADMIN_EMAIL, firstName: "Admin", lastName: "User" } });
+      const allowed = await request(app).get("/api/auth/workos/callback").query({ code: "provider-code", state: "skipwait-admin", returnTo: "/premium" });
+      expect(allowed.headers.location).toBe("/admin/users");
+      expect((await request(app).get("/api/auth/workos/callback").query({ code: "provider-code", state: "skipwait-admin" })).status).toBe(403);
+    } finally { restore(); }
   });
 });
 

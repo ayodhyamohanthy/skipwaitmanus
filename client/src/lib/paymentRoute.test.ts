@@ -6,6 +6,8 @@ describe("payment route defaults", () => {
     expect(detectPaymentRoute({ languages: ["en-IN", "en"] })).toBe("INR");
     expect(detectPaymentRoute({ language: "hi-Deva-IN" })).toBe("INR");
     expect(detectPaymentRoute({ language: "en", timeZone: "Asia/Calcutta" })).toBe("INR");
+    expect(detectPaymentRoute({ language: "en", timeZone: "Asia/Kolkata" })).toBe("INR");
+    expect(detectPaymentRoute({ languages: [], language: "en-IN" })).toBe("INR");
   });
 
   it("defaults unknown, language-only, and non-India signals to international payment", () => {

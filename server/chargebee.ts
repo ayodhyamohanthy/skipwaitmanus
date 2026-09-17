@@ -159,10 +159,10 @@ export async function retrieveChargebeeHostedPage(hostedPageId: string, input: {
   return { hostedPageId, invoiceId, passThruContent: typeof hostedPage.pass_thru_content === "string" ? hostedPage.pass_thru_content : undefined, amount: Number.isInteger(total) ? total : undefined, currency: typeof invoice?.currency_code === "string" ? invoice.currency_code.toUpperCase() : undefined, pageState, invoiceStatus, paymentStatus, paid: pageState === "succeeded" && invoicePaid && paymentSucceeded };
 }
 
-export async function resolveChargebeeHostedPageForPayment(input: { invoiceId?: string; amount: number; currency: string; pendingHostedPageIds: string[] }) {
+export async function resolveChargebeeHostedPageForPayment(input: { invoiceId?: string; amount: number; currency: string; pendingHostedPageIds: string[]; site?: string; apiKey?: string }) {
   if (!input.invoiceId) return undefined;
   for (const hostedPageId of input.pendingHostedPageIds.slice(0, 25)) {
-    const hostedPage = await retrieveChargebeeHostedPage(hostedPageId);
+    const hostedPage = await retrieveChargebeeHostedPage(hostedPageId, { site: input.site, apiKey: input.apiKey });
     if (hostedPage?.invoiceId === input.invoiceId && hostedPage.amount === input.amount && hostedPage.currency === input.currency) return hostedPage;
   }
   return undefined;
@@ -200,9 +200,8 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; qu
 export function buildSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
   const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
   const form = new URLSearchParams();
-  form.set("item_prices[item_price_id][0]", price.itemPriceId);
-  form.set("item_prices[quantity][0]", "1");
-  form.set("currency_code", input.currency);
+  form.set("subscription_items[item_price_id][0]", price.itemPriceId);
+  form.set("subscription_items[quantity][0]", "1");
   if (input.email) form.set("customer[email]", input.email);
   if (input.firstName) form.set("customer[first_name]", input.firstName);
   if (input.lastName) form.set("customer[last_name]", input.lastName);
@@ -224,6 +223,7 @@ export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTok
     method: "POST",
     headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: buildCheckoutForm({ ...input, checkoutIntentId }),
+    signal: AbortSignal.timeout(10_000),
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`Chargebee checkout failed (${response.status})`);
@@ -243,6 +243,7 @@ export async function createChargebeeSubscriptionCheckout(input: { plan: PaidSub
     method: "POST",
     headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: buildSubscriptionCheckoutForm({ ...input, checkoutIntentId }),
+    signal: AbortSignal.timeout(10_000),
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(`Chargebee subscription checkout failed (${response.status})`);

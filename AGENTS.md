@@ -22,10 +22,18 @@ pnpm build            # client PWA + server bundle -> dist/
 ./scripts/sync-check.sh   # repo sync guard (run after work sessions)
 ```
 
-## Working agreement (user rule)
-- When a prompt's work is done and verified (`pnpm check` + affected
-  `vitest` files pass), commit and push to `main` without being asked again.
-  Push triggers both Cloudflare deploys; no local Docker needed.
+## Working agreement: multi-agent collaboration
+- Read [COLLABORATION.md](./COLLABORATION.md) before editing. It is the shared
+  protocol for every platform and model working on this repository.
+- Coordinate ownership through a shared GitHub issue or draft PR; use one
+  isolated branch/worktree per session. Never overwrite or commit another
+  session's dirty files, or switch branches in a shared active working tree.
+- Default to feature branches and reviewed PRs with serialized integration,
+  not concurrent automatic pushes to main. Follow applicable user/tool
+  authorization before committing, pushing, merging, or deploying.
+- Validate the integrated result (`pnpm check` + affected Vitest files;
+  `pnpm build` for runtime/dependency changes) and leave an explicit handoff.
+- A push to main triggers both Cloudflare deploys; no local Docker needed.
 
 ## Environment
 - Copy `.env.example` → `.env`. Minimum for local dev: `JWT_SECRET` (any random

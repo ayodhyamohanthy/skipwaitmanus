@@ -1,7 +1,49 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
-import { registerPrivateReferralRoutes } from "./privateReferralRoutes";
+import { describe, expect, it, vi } from "vitest";
+import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+
+describe("authenticated work email OTP routes", () => {
+  function setup(result: { sent: boolean; reason: string }) {
+    const app = express();
+    app.use(express.json());
+    const sendWorkEmailOtp = vi.fn(async () => result);
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: 1, openId: "workos-test" } } : undefined,
+      sendWorkEmailOtp,
+    } as unknown as PrivateReferralRouteDeps);
+    return { app, sendWorkEmailOtp };
+  }
+
+  it("passes a normalized email and trusted client IP to delivery", async () => {
+    const { app, sendWorkEmailOtp } = setup({ sent: true, reason: "sent" });
+    const response = await request(app).post("/api/work-email/otp/send").set("x-test-user", "employee").send({ email: " REF@ACME.COM " });
+    expect(response.status).toBe(200);
+    expect(sendWorkEmailOtp).toHaveBeenCalledWith({ email: "ref@acme.com", ip: "127.0.0.1" });
+  });
+
+  it.each([
+    ["invalid_email", 400], ["invalid_domain", 400], ["not_configured", 503], ["delivery_failed", 502],
+  ])("maps %s to HTTP %s", async (reason, status) => {
+    const { app } = setup({ sent: false, reason: String(reason) });
+    const response = await request(app).post("/api/work-email/otp/send").set("x-test-user", "employee").send({ email: "ref@acme.com" });
+    expect(response.status).toBe(status);
+  });
+
+  it("matches the OTP login route retry guidance", async () => {
+    const { app } = setup({ sent: false, reason: "rate_limited" });
+    const response = await request(app).post("/api/work-email/otp/send").set("x-test-user", "employee").send({ email: "ref@acme.com" });
+    expect(response.status).toBe(429);
+    expect(response.headers["retry-after"]).toBe("600");
+    expect(response.body.retryAfterSeconds).toBe(600);
+  });
+
+  it("requires authentication before sending", async () => {
+    const { app, sendWorkEmailOtp } = setup({ sent: true, reason: "sent" });
+    expect((await request(app).post("/api/work-email/otp/send").send({ email: "ref@acme.com" })).status).toBe(401);
+    expect(sendWorkEmailOtp).not.toHaveBeenCalled();
+  });
+});
 
 describe("private referral HTTP routes", () => {
   it("keeps a resume private through upload, request creation, exclusive claim, and unrelated-user denial", async () => {

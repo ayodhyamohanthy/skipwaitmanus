@@ -12,7 +12,6 @@ export type WorkEmailOtpDependencies = { sendEmail?: (input: WorkEmailOtpDeliver
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const VERIFICATION_RECEIPT_MS = 10 * 60 * 1000;
-const DELIVERY_TIMEOUT_MS = 8_000;
 const domainCache = new Map<string, { valid: boolean; until: number }>();
 const reservedDomain = /(?:^|\.)(?:invalid|localhost|local|test|example)$/i;
 export async function hasDeliverableMailDomain(domain: string): Promise<boolean> {
@@ -71,7 +70,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
         throw error;
       }
       const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-      const delivery = await Promise.race([sendEmail({ to: email, code }), new Promise<{ sent:false; reason:string }>(resolve => setTimeout(() => resolve({ sent:false, reason:"timeout" }), DELIVERY_TIMEOUT_MS))]);
+      const delivery = await sendEmail({ to: email, code }).catch(() => ({ sent: false, reason: "delivery_failed" }));
       if (!delivery.sent) return { sent: false, reason: delivery.reason === "not_configured" ? "not_configured" : "delivery_failed" };
       await db.insert(workEmailOtpCodes).values({ email, codeHash: hashCode(email, code), expiresAt: new Date(now() + CODE_TTL_MS), attempts: 0, createdAt: new Date(now()) });
       return { sent: true, reason: "sent" };

@@ -7,9 +7,9 @@ function regionFromLocale(locale: string): string | undefined {
 }
 
 export function detectPaymentRoute(signals: LocaleSignals = {}): PaymentRoute {
-  const locales = signals.languages?.filter(Boolean) ?? (signals.language ? [signals.language] : []);
-  if (locales.some(locale => regionFromLocale(locale) === "IN")) return "INR";
-  if (signals.timeZone === "Asia/Calcutta") return "INR";
+  const locales = signals.languages?.filter(Boolean) ?? [];
+  if ((locales.length ? locales : [signals.language ?? ""]).some(locale => regionFromLocale(locale) === "IN")) return "INR";
+  if (signals.timeZone === "Asia/Calcutta" || signals.timeZone === "Asia/Kolkata") return "INR";
   return "USD";
 }
 

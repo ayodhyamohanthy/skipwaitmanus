@@ -18,7 +18,7 @@ type Deps = {
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
   cancelSubscription?: typeof scheduleChargebeeSubscriptionCancellation;
-  resolveHostedPage?: (input: { invoiceId?: string; amount: number; currency: string }) => Promise<{ hostedPageId: string; invoiceId?: string; passThruContent?: string; amount?: number; currency?: string; pageState: string; invoiceStatus?: string; paymentStatus?: string; paid: boolean } | undefined>;
+  resolveHostedPage?: (input: { invoiceId?: string; amount: number; currency: string; site: string; apiKey: string }) => Promise<{ hostedPageId: string; invoiceId?: string; passThruContent?: string; amount?: number; currency?: string; pageState: string; invoiceStatus?: string; paymentStatus?: string; paid: boolean } | undefined>;
   getPaymentRecovery?: (userId: number, role: TokenRole, hostedPageId: string) => Promise<{ id: number; status: "pending" | "credited" | "requires_review" | "rejected" | "refunded"; hostedPageId: string | null; checkoutIntentId: string | null; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null } | undefined>;
   markPaymentForReview?: (paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected") => Promise<unknown>;
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
@@ -30,7 +30,7 @@ function roleFromBody(value: unknown): TokenRole {
 }
 
 function isChargebeeNotConfigured(error: unknown): boolean {
-  return error instanceof Error && /Chargebee API key is not configured/.test(error.message);
+  return error instanceof Error && /Chargebee API key(?:\/site)? is not configured/.test(error.message);
 }
 
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
@@ -58,6 +58,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined,
         firstName: identity.account.name?.split(" ")[0],
         lastName: identity.account.name?.split(" ").slice(1).join(" "),
+        billingAddress: billingCountry === "IN" ? { country: "IN" } : undefined,
         ...(runtime ? { site: runtime.site, apiKey: runtime.apiKey } : {}),
         redirectUrl: `${origin}/premium?role=${role}&payment=pending`,
         cancelUrl: `${origin}/premium?role=${role}&payment=cancelled`,
@@ -83,6 +84,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (!isPaidSubscriptionPlan(plan)) return res.status(400).json({ error: "Choose Pro or Max" });
       if ((currency !== "INR" && currency !== "USD") || (billingCountry !== "IN" && billingCountry !== "INTL")) return res.status(400).json({ error: "Choose a supported billing route" });
       if ((billingCountry === "IN" && currency !== "INR") || (billingCountry === "INTL" && currency !== "USD")) return res.status(400).json({ error: "That currency is not available for the selected billing route" });
+      if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
       const selectedCurrency = currency as "INR" | "USD";
       const origin = `${req.protocol}://${req.get("host")}`;
       const runtime = deps.createSubscriptionCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
@@ -92,12 +94,12 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined,
         firstName: identity.account.name?.split(" ")[0],
         lastName: identity.account.name?.split(" ").slice(1).join(" "),
+        billingAddress: billingCountry === "IN" ? { country: "IN" } : undefined,
         ...(runtime ? { site: runtime.site, apiKey: runtime.apiKey } : {}),
         redirectUrl: `${origin}/plans?role=${role}&payment=pending`,
         cancelUrl: `${origin}/plans?role=${role}&payment=cancelled`,
       });
       const price = SUBSCRIPTION_PLANS[plan].prices[selectedCurrency];
-      if (!deps.createSubscriptionIntent) throw new Error("Subscription intent storage is not configured");
       await deps.createSubscriptionIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, plan, itemPriceId: price.itemPriceId, amount: price.amount, currency: selectedCurrency });
       record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: checkout.hostedPageId, metadata: { role, plan, currency: selectedCurrency, amount: price.amount, billingCountry } });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
@@ -191,8 +193,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     if (payment && tokenPackFromAmount(payment.amount, payment.currency)) {
       handled = true;
       try {
-        const resolvedHostedPage = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
-          ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency })
+        const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
+          ? resolveChargebeeRuntime(req.hostname)
+          : undefined;
+        const resolvedHostedPage = runtime && deps.resolveHostedPage
+          ? await deps.resolveHostedPage({ invoiceId: payment.invoiceId, amount: payment.amount, currency: payment.currency, site: runtime.site, apiKey: runtime.apiKey })
           : undefined;
         obligations.payment = await deps.fulfillPayment({
           ...payment,

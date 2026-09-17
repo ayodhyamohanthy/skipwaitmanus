@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import Plans from "./Plans";
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: false, getToken: vi.fn(), openSignIn: vi.fn() }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: false, getToken: vi.fn(), openSignIn: vi.fn() }) }));
 // Deterministic payment-route detection: the main regression covers the
 // international-first presentation regardless of the host machine's time zone.
 // Individual tests set mockBrowserRoute.current to exercise the other route.

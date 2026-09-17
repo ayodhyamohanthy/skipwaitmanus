@@ -1,6 +1,7 @@
 import { WorkOS } from "@workos-inc/node";
 import { COOKIE_NAME } from "@shared/const";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
+import { safeAuthReturnTo } from "@shared/authReturnTo";
 import type { Express, Request } from "express";
 import { parse as parseCookieHeader } from "cookie";
 import * as db from "../db";
@@ -86,12 +87,19 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   if (!validateWorkosAccessClaims(payload, clientId)) return undefined;
   const sub = payload.sub as string;
   const openId = resolveWorkosOpenId(sub);
-  const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : null;
-  const emailVerified = payload.email_verified === true;
-  const name = typeof payload.name === "string" && payload.name ? payload.name : email?.split("@")[0] ?? null;
+  const existing = await db.getUserByOpenId(openId);
+  if (existing?.suspended) return undefined;
+  if (existing?.sessionsValidAfter && existing.sessionsValidAfter > existing.createdAt && (payload.iat as number) * 1000 < existing.sessionsValidAfter.getTime()) return undefined;
+  const workos = new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
+  const user = await workos.userManagement.getUser(sub);
+  if (user.id !== sub) return undefined;
+  const email = user.email.trim().toLowerCase();
+  const emailVerified = user.emailVerified;
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || email.split("@")[0];
   await db.upsertUser({ openId, name, email, loginMethod: "workos", lastSignedIn: new Date() });
   const account = await db.getUserByOpenId(openId);
   if (!account || account.suspended) return undefined;
+  if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;
   const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
   return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
 }
@@ -149,16 +157,25 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     const redirectUriFor = (req: { protocol: string; get: (h: string) => string | undefined }) =>
       configuredRedirectUri || `${req.protocol}://${req.get("host")}/api/auth/workos/callback`;
 
-    const authorizationUrl = (screenHint: "sign-in" | "sign-up", redirectUri: string, loginHint?: string) => workos.userManagement.getAuthorizationUrl({
-      provider: "authkit",
-      redirectUri,
-      state: "skipwait-auth",
-      screenHint,
-      ...(loginHint ? { loginHint } : {}),
-    });
+    const returnCookie = "workos_auth_return";
+    const returnKey = new TextEncoder().encode(process.env.WORKOS_COOKIE_PASSWORD!);
+    const returnAudience = "skipwait-workos-return";
+    const returnCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos/callback" });
 
-    app.get("/api/auth/workos/sign-in", (req, res) => res.redirect(302, authorizationUrl("sign-in", redirectUriFor(req))));
-    app.get("/api/auth/workos/sign-up", (req, res) => res.redirect(302, authorizationUrl("sign-up", redirectUriFor(req))));
+    for (const screenHint of ["sign-in", "sign-up"] as const) {
+      app.get(`/api/auth/workos/${screenHint}`, async (req, res) => {
+        try {
+          const redirectUri = redirectUriFor(req);
+          const returnTo = safeAuthReturnTo(req.query.returnTo, redirectUri) ?? safeAuthReturnTo(process.env.WORKOS_POST_SIGNIN_PATH, redirectUri) ?? "/";
+          const state = randomUUID();
+          const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
+          res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
+          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: "authkit", redirectUri, state, screenHint }));
+        } catch {
+          res.status(502).send("Authentication could not be started");
+        }
+      });
+    }
 
     // Administrator plane: only the durable skipwait.me admin identity may
     // proceed. Any other address is bounced before AuthKit is ever reached.
@@ -180,6 +197,20 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       const code = typeof req.query.code === "string" ? req.query.code : "";
       const state = typeof req.query.state === "string" ? req.query.state : "";
       if (!code) return res.status(400).send("Authentication could not be completed");
+      const adminState = state === "skipwait-admin" || state === "skipwait-admin-bootstrap";
+      let returnTo = "/admin/users";
+      if (!adminState) {
+        const token = parseCookieHeader(req.headers.cookie ?? "")[returnCookie];
+        res.clearCookie(returnCookie, returnCookieOptions(req));
+        try {
+          const { payload } = await jwtVerify(token ?? "", returnKey, { algorithms: ["HS256"], audience: returnAudience, subject: state });
+          const destination = safeAuthReturnTo(payload.returnTo, redirectUriFor(req));
+          if (!state || !destination) throw new Error("Invalid auth return");
+          returnTo = destination;
+        } catch {
+          return res.status(400).send("Sign-in expired or could not be verified. Please start again.");
+        }
+      }
       let stage = "authenticate";
       try {
         const auth = await workos.userManagement.authenticateWithCode({ clientId, code });
@@ -200,9 +231,6 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         const token = await sdkCreateSessionToken(openId, name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-        const returnTo = state === "skipwait-admin" || state === "skipwait-admin-bootstrap"
-          ? "/admin/users"
-          : state.startsWith("return=") ? decodeURIComponent(state.slice(7)) : process.env.WORKOS_POST_SIGNIN_PATH || "/";
         res.redirect(302, returnTo);
       } catch (error) {
         const errorName = error instanceof Error ? error.name : "unknown";

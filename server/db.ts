@@ -1643,10 +1643,18 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (duplicate[0]) return { status: "duplicate" as const };
 
     const intent = input.hostedPageId && input.passThruContent
-      ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1))[0]
+      ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1).for("update"))[0]
       : undefined;
-    const walletBySubscription = await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1);
-    const wallet = walletBySubscription[0];
+    const walletBySubscription = await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update");
+    if ((input.hostedPageId || input.passThruContent) && !intent) return { status: "ignored" as const, reason: "checkout_intent_mismatch" };
+    if (intent && walletBySubscription[0] && (walletBySubscription[0].userId !== intent.userId || walletBySubscription[0].role !== intent.role)) return { status: "ignored" as const, reason: "subscription_owner_mismatch" };
+    const wallet = walletBySubscription[0] ?? (intent
+      ? (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent.userId), eq(tokenBalances.role, intent.role))).limit(1).for("update"))[0]
+      : undefined);
+    const sameSubscription = wallet?.subscriptionId === input.subscriptionId;
+    if (!sameSubscription && intent && intent.status !== "pending") return { status: "ignored" as const, reason: "checkout_already_reconciled" };
+    if (wallet && !sameSubscription && (wallet.plan !== "free" || wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing")) return { status: "ignored" as const, reason: "subscription_conflict" };
+    if (intent && input.currency && input.currency !== intent.currency) return { status: "ignored" as const, reason: "currency_mismatch" };
     const expectedPlan = intent?.plan ?? input.plan ?? (wallet?.plan !== "free" ? wallet?.plan : undefined);
     if (!wallet && !intent) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
@@ -1660,26 +1668,27 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       return { status: "ignored" as const, reason: "unsupported_plan" };
     }
-    if (wallet?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= wallet.subscriptionResourceVersion) {
+    const currentSubscription = sameSubscription ? wallet : undefined;
+    if (currentSubscription?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentSubscription.subscriptionResourceVersion) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       return { status: "stale" as const };
     }
 
     const allowance = SUBSCRIPTION_PLANS[expectedPlan].monthlyAllowance;
     const retainsAccess = input.status === "active" || input.status === "non_renewing";
-    const startsNewTerm = !wallet?.subscriptionCurrentTermStart || (input.currentTermStart && wallet.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
+    const startsNewTerm = !currentSubscription?.subscriptionCurrentTermStart || (input.currentTermStart && currentSubscription.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
     const patch = retainsAccess
       ? {
           plan: expectedPlan,
           monthlyAllowance: allowance,
-          monthlyCreditsRemaining: startsNewTerm ? allowance : (wallet?.monthlyCreditsRemaining ?? allowance),
+          monthlyCreditsRemaining: startsNewTerm ? allowance : (currentSubscription?.monthlyCreditsRemaining ?? allowance),
           monthlyCycleKey: input.currentTermStart ? currentMonthlyCycleKey(input.currentTermStart) : currentMonthlyCycleKey(),
           subscriptionId: input.subscriptionId,
           subscriptionStatus: input.status,
-          subscriptionCurrency: input.currency ?? wallet?.subscriptionCurrency ?? null,
-          subscriptionCurrentTermStart: input.currentTermStart ?? wallet?.subscriptionCurrentTermStart ?? null,
-          subscriptionCurrentTermEnd: input.currentTermEnd ?? wallet?.subscriptionCurrentTermEnd ?? null,
-          subscriptionResourceVersion: input.resourceVersion ?? wallet?.subscriptionResourceVersion ?? null,
+          subscriptionCurrency: input.currency ?? currentSubscription?.subscriptionCurrency ?? null,
+          subscriptionCurrentTermStart: input.currentTermStart ?? currentSubscription?.subscriptionCurrentTermStart ?? null,
+          subscriptionCurrentTermEnd: input.currentTermEnd ?? currentSubscription?.subscriptionCurrentTermEnd ?? null,
+          subscriptionResourceVersion: input.resourceVersion ?? currentSubscription?.subscriptionResourceVersion ?? null,
         }
       : {
           plan: "free" as const,
@@ -1688,16 +1697,16 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
           monthlyCycleKey: currentMonthlyCycleKey(),
           subscriptionId: input.subscriptionId,
           subscriptionStatus: input.status,
-          subscriptionCurrency: input.currency ?? wallet?.subscriptionCurrency ?? null,
-          subscriptionCurrentTermStart: input.currentTermStart ?? wallet?.subscriptionCurrentTermStart ?? null,
-          subscriptionCurrentTermEnd: input.currentTermEnd ?? wallet?.subscriptionCurrentTermEnd ?? null,
-          subscriptionResourceVersion: input.resourceVersion ?? wallet?.subscriptionResourceVersion ?? null,
+          subscriptionCurrency: input.currency ?? currentSubscription?.subscriptionCurrency ?? null,
+          subscriptionCurrentTermStart: input.currentTermStart ?? currentSubscription?.subscriptionCurrentTermStart ?? null,
+          subscriptionCurrentTermEnd: input.currentTermEnd ?? currentSubscription?.subscriptionCurrentTermEnd ?? null,
+          subscriptionResourceVersion: input.resourceVersion ?? currentSubscription?.subscriptionResourceVersion ?? null,
         };
     const userId = wallet?.userId ?? intent!.userId;
     const role = wallet?.role ?? intent!.role;
     if (wallet) await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet.id));
     else await tx.insert(tokenBalances).values({ userId, role, balance: 0, ...patch });
-    if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
+    if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(and(eq(subscriptionCheckoutIntents.id, intent.id), eq(subscriptionCheckoutIntents.status, "pending")));
     await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
     return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, id: 0, updatedAt: new Date() }), ...patch }) };
   });

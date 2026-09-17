@@ -62,7 +62,10 @@ describe("ReferralRequest secure resume handoff", () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/complete") ? { ok: true, json: async () => ({ id: "71", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/71", url: "/api/documents/71" }) } : String(input).includes("/chunks") ? { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) } : String(input).includes("/api/documents/uploads") ? { ok: true, json: async () => ({ sessionId: "upload-71", chunkBytes: 49152 }) } : { ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) }));
     render(<ReferralRequest />);
-    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/api/documents"))).toBe(true));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith("/api/documents/uploads"))).toBe(true));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/chunks"))).toBe(true));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("/complete"))).toBe(true));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).endsWith("/api/company-referrals"))).toBe(true));
     const startCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith("/api/documents/uploads"));
     const chunkCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes("/chunks"));
     const referralCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));

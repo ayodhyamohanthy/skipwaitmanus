@@ -80,7 +80,7 @@ export type PrivateReferralRouteDeps = {
   deactivateReferrerSlackWebhook?: (userId: number) => Promise<{ deactivated: boolean }>;
   getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
   sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
-  sendWorkEmailOtp?: (input: { email: string }) => Promise<{ sent: boolean; reason: string }>;
+  sendWorkEmailOtp?: (input: { email: string; ip?: string }) => Promise<{ sent: boolean; reason: string }>;
   verifyWorkEmailOtp?: (input: { email: string; code: string; ip?: string }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
   hasVerifiedWorkEmailOtp?: (input: { email: string }) => Promise<boolean>;
@@ -413,11 +413,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in before verifying a work email" });
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       if (!deps.sendWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
-      const result = await deps.sendWorkEmailOtp({ email });
+      const result = await deps.sendWorkEmailOtp({ email, ip: resolveTrustedClientIp(req) });
       if (result.sent) { record({ actorUserId: identity.account.id, action: "work_email.otp_sent", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ sent: true }); }
-      if (result.reason === "rate_limited") return res.status(429).json({ error: "A code was sent recently. Wait a minute before requesting another.", retryAfterSeconds: 60 });
+      if (result.reason === "rate_limited") { res.set("Retry-After", "600"); return res.status(429).json({ error: "Too many code requests. Wait before trying again.", retryAfterSeconds: 600 }); }
       if (result.reason === "invalid_email") return res.status(400).json({ error: "Enter a valid work email address" });
-      return res.status(503).json({ error: result.reason === "not_configured" ? "Work-email verification is unavailable right now" : "We could not deliver the code. Try again shortly." });
+      if (result.reason === "invalid_domain") return res.status(400).json({ error: "Enter a deliverable work email address" });
+      if (result.reason === "not_configured") return res.status(503).json({ error: "Work-email verification is unavailable right now" });
+      return res.status(502).json({ error: "We could not deliver the code. Try again shortly." });
     } catch { res.status(500).json({ error: "We could not send the verification code" }); }
   });
   app.post("/api/work-email/otp/verify", async (req, res) => {
