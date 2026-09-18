@@ -147,19 +147,23 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     try {
       const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
       const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; INDEX_NAME?: string | null; NON_UNIQUE?: number | string | null }>;
-      const columns = new Set(rows.filter(row => row.COLUMN_NAME).map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
-      const tables = new Set(rows.map(row => row.TABLE_NAME));
-      const indexes = new Map(rows.filter(row => row.INDEX_NAME).map(row => [`${row.TABLE_NAME}.${row.INDEX_NAME}`, Number(row.NON_UNIQUE ?? 0)]));
+      // Azure MySQL can return table identifiers folded to lowercase when
+      // lower_case_table_names is enabled. Compare identifiers case-insensitively
+      // while keeping the public validation keys in their canonical source form.
+      const schemaKey = (...parts: Array<string | null | undefined>) => parts.map(part => part?.toLowerCase() ?? "").join(".");
+      const columns = new Set(rows.filter(row => row.COLUMN_NAME).map(row => schemaKey(row.TABLE_NAME, row.COLUMN_NAME)));
+      const tables = new Set(rows.map(row => row.TABLE_NAME.toLowerCase()));
+      const indexes = new Map(rows.filter(row => row.INDEX_NAME).map(row => [schemaKey(row.TABLE_NAME, row.INDEX_NAME), Number(row.NON_UNIQUE ?? 0)]));
       const checks: Array<{ key: string; ok: boolean }> = [
-        ...DESIRED_COLUMNS.map(item => ({ key: `column:${item.table}.${item.column}`, ok: columns.has(`${item.table}.${item.column}`) })),
-        ...DESIRED_TABLES.map(item => ({ key: `table:${item.table}`, ok: tables.has(item.table) })),
-        ...DESIRED_INDEXES.map(item => ({ key: `index:${item.table}.${item.name}`, ok: indexes.get(`${item.table}.${item.name}`) === (item.nonUnique ? 1 : 0) })),
+        ...DESIRED_COLUMNS.map(item => ({ key: `column:${item.table}.${item.column}`, ok: columns.has(schemaKey(item.table, item.column)) })),
+        ...DESIRED_TABLES.map(item => ({ key: `table:${item.table}`, ok: tables.has(item.table.toLowerCase()) })),
+        ...DESIRED_INDEXES.map(item => ({ key: `index:${item.table}.${item.name}`, ok: indexes.get(schemaKey(item.table, item.name)) === (item.nonUnique ? 1 : 0) })),
       ];
       const fkResult = await db.execute(sql`SELECT TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL`);
-      const foreignKeys = new Set((fkResult[0] as unknown as Array<{ TABLE_NAME:string; COLUMN_NAME:string; REFERENCED_TABLE_NAME:string; REFERENCED_COLUMN_NAME:string }>).map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}->${row.REFERENCED_TABLE_NAME}.${row.REFERENCED_COLUMN_NAME}`));
+      const foreignKeys = new Set((fkResult[0] as unknown as Array<{ TABLE_NAME:string; COLUMN_NAME:string; REFERENCED_TABLE_NAME:string; REFERENCED_COLUMN_NAME:string }>).map(row => `${schemaKey(row.TABLE_NAME, row.COLUMN_NAME)}->${schemaKey(row.REFERENCED_TABLE_NAME, row.REFERENCED_COLUMN_NAME)}`));
       checks.push(
-        { key: "fk:referralAttachments.uploadSessionId", ok: foreignKeys.has("referralAttachments.uploadSessionId->resumeUploadSessions.id") },
-        { key: "fk:resumeUploadChunks.acceptedAttemptId", ok: foreignKeys.has("resumeUploadChunks.acceptedAttemptId->resumeUploadAttempts.id") },
+        { key: "fk:referralAttachments.uploadSessionId", ok: foreignKeys.has(`${schemaKey("referralAttachments", "uploadSessionId")}->${schemaKey("resumeUploadSessions", "id")}`) },
+        { key: "fk:resumeUploadChunks.acceptedAttemptId", ok: foreignKeys.has(`${schemaKey("resumeUploadChunks", "acceptedAttemptId")}->${schemaKey("resumeUploadAttempts", "id")}`) },
       );
       for (const check of checks) results.push({ statement: check.key, ok: check.ok, ...(!check.ok ? { errorCode: "SCHEMA_MISMATCH" } : {}) });
       const failed = checks.filter(check => !check.ok);
