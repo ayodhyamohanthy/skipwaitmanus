@@ -238,7 +238,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         // Signing here avoids a second production DB read on the callback's
         // hot path; normal request verification still enforces suspension and
         // session revocation before accepting the cookie.
-        const token = await sdkCreateSessionToken(openId, name);
+        const token = await sdkSignSessionToken(openId, name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         res.redirect(302, returnTo);
       } catch (error) {
@@ -275,3 +275,7 @@ async function sdkCreateSessionToken(openId: string, name: string): Promise<stri
   return sdk.createSessionToken(openId, { name });
 }
 
+async function sdkSignSessionToken(openId: string, name: string): Promise<string> {
+  const { sdk } = await import("./sdk");
+  return sdk.signSession({ openId, appId: ENV.appId, name });
+}
