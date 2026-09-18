@@ -24,3 +24,5 @@ END$$
 CALL `apply_0054_employer_checkout_intents`()$$
 DROP PROCEDURE `apply_0054_employer_checkout_intents`$$
 DELIMITER ;
+
+-- Production applied and verified 2026-09-18; keep resume-safe for recovery.
