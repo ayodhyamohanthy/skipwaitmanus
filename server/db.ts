@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -439,6 +439,45 @@ export async function createCompanyCoverageInvitation(inviterUserId: number, com
   const inviteCode = randomUUID().replace(/-/g, "");
   await db.insert(companyCoverageInvitations).values({ inviteCode, inviterUserId, companyDomain: companyDomain.trim().toLowerCase() });
   return { inviteCode };
+}
+
+export async function completeWorkEmailOtpEnrollment(input: { receipt: string; email: string; userId: number; inviteCode?: string }) {
+  const email = input.email.trim().toLowerCase(); const domain = email.split("@")[1];
+  if (!domain || !isWorkEmailDomain(domain) || !Number.isInteger(input.userId) || input.userId <= 0) throw new Error("A verified work email is required");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const receiptHash = createHash("sha256").update(input.receipt).digest("hex");
+    const receipts = await tx.select().from(workEmailOtpReceipts).where(and(eq(workEmailOtpReceipts.receiptHash, receiptHash), eq(workEmailOtpReceipts.email, email), eq(workEmailOtpReceipts.userId, input.userId), eq(workEmailOtpReceipts.purpose, "work_email_enrollment"), gt(workEmailOtpReceipts.expiresAt, new Date()))).limit(1).for("update");
+    const receipt = receipts[0];
+    if (!receipt) throw new Error("OTP_RECEIPT_INVALID");
+    // A replay after a lost response is safe and returns the already-completed
+    // enrollment only for this exact account/email/purpose.
+    if (receipt.usedAt) {
+      const profile = (await tx.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.userId, input.userId)).limit(1))[0];
+      if (profile?.workEmailDomain === domain) return { workEmailDomain: domain, reward: { rewarded: false as const, reason: "replayed" as const }, replayed: true };
+      throw new Error("OTP_RECEIPT_USED");
+    }
+    const consumed = await tx.update(workEmailOtpReceipts).set({ usedAt: new Date() }).where(and(eq(workEmailOtpReceipts.id, receipt.id), isNull(workEmailOtpReceipts.usedAt)));
+    if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("OTP_RECEIPT_USED");
+    await tx.insert(profiles).values({ userId: input.userId, accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true } });
+    let reward: { rewarded: boolean; tokenCount?: number; reason?: string } = { rewarded: false };
+    const inviteCode = input.inviteCode?.trim();
+    if (inviteCode) {
+      const invitation = (await tx.select().from(companyCoverageInvitations).where(eq(companyCoverageInvitations.inviteCode, inviteCode)).limit(1).for("update"))[0];
+      if (invitation?.status === "active" && invitation.inviterUserId !== input.userId && invitation.companyDomain === domain) {
+        const priorForInviter = await tx.select({ id: companyCoverageRewards.id }).from(companyCoverageRewards).where(eq(companyCoverageRewards.inviterUserId, invitation.inviterUserId)).limit(1);
+        const priorForJoiner = await tx.select({ id: companyCoverageRewards.id }).from(companyCoverageRewards).where(eq(companyCoverageRewards.joinerUserId, input.userId)).limit(1);
+        if (!priorForInviter[0] && !priorForJoiner[0]) {
+          await tx.insert(companyCoverageRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId: input.userId, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS });
+          await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }, { userId: input.userId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }]);
+          await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action." }, { userId: input.userId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request." }]);
+          await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId: input.userId, completedAt: new Date() }).where(and(eq(companyCoverageInvitations.id, invitation.id), eq(companyCoverageInvitations.status, "active")));
+          reward = { rewarded: true, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
+        }
+      }
+    }
+    return { workEmailDomain: domain, reward, replayed: false };
+  });
 }
 
 export async function saveVerifiedWorkEmail(userId: number, email: string) {

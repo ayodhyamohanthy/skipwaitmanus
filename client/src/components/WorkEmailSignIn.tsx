@@ -53,11 +53,11 @@ export function WorkEmailSignIn({ inviteCode, compact = false }: { inviteCode?: 
     setBusy(true); setError("");
     try {
       const response = await fetch("/api/work-email/otp/verify", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, code }) });
-      const payload = (await response.json().catch(() => ({}))) as { verified?: boolean; error?: string };
-      if (!response.ok || !payload.verified) { setError(payload.error || "That code could not be verified. Check the latest code and try again."); return; }
+      const payload = (await response.json().catch(() => ({}))) as { verified?: boolean; receipt?: string; error?: string };
+      if (!response.ok || !payload.verified || !payload.receipt) { setError(payload.error || "That code could not be verified. Check the latest code and try again."); return; }
       rememberCompanyEmail();
       // Enrollment completes through the existing verified-address endpoint.
-      const enroll = await fetch("/api/company-referrals/verify-work-email", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, otpVerified: true, inviteCode }) });
+      const enroll = await fetch("/api/company-referrals/verify-work-email", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: normalizedEmail, receipt: payload.receipt, inviteCode }) });
       const enrollPayload = (await enroll.json().catch(() => ({}))) as { verified?: boolean; error?: string };
       if (!enroll.ok || !enrollPayload.verified) { setError(enrollPayload.error || "We could not confirm this company email for private referral access."); return; }
       window.location.reload();

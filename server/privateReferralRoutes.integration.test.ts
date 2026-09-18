@@ -187,6 +187,26 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).get("/api/referrer-impact/me").set("x-test-user", "outsider")).status).toBe(403);
   });
 
+  it("binds OTP enrollment receipts to one account and consumes them once", async () => {
+    const app = express(); app.use(express.json());
+    const identities = new Map([["one", { account: { id: 1, openId: "one" }, emailAddresses: [] }], ["two", { account: { id: 2, openId: "two" }, emailAddresses: [] }]]);
+    const consumed = new Set<string>();
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => identities.get(String(req.header("x-test-user"))), dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async () => ({ key: "x" }), storageGetSignedUrl: async () => "x", createReferralAttachment: async () => ({ id: 1, fileName: "x", mimeType: "application/pdf", fileSize: 1 }), getAccessibleReferralAttachment: async () => undefined,
+      sendWorkEmailOtp: async () => ({ sent: true, reason: "sent" }), verifyWorkEmailOtp: async () => true,
+      issueWorkEmailEnrollmentReceipt: async ({ userId }) => ({ receipt: `receipt-${userId}`, expiresAt: new Date(Date.now() + 60_000) }),
+      completeWorkEmailOtpEnrollment: async ({ receipt, email, userId }) => { const key = `${receipt}:${email}:${userId}`; if (receipt !== `receipt-${userId}` || consumed.has(key)) return undefined as never; consumed.add(key); return { workEmailDomain: "acme.com", reward: { rewarded: false }, replayed: false }; },
+      saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }), createCompanyReferralRequest: async () => ({ requestId: 1, companyDomain: "acme.com", notifiedEmployees: 0 }), listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 1, claimed: true }), getClaimedCompanyReferralDetail: async () => undefined,
+      listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({}),
+    });
+    const verify = await request(app).post("/api/work-email/otp/verify").set("x-test-user", "one").send({ email: "employee@acme.com", code: "123456" });
+    expect(verify.body).toMatchObject({ verified: true, receipt: "receipt-1" });
+    expect((await request(app).post("/api/company-referrals/verify-work-email").set("x-test-user", "two").send({ email: "employee@acme.com", receipt: "receipt-1" })).status).toBe(403);
+    expect((await request(app).post("/api/company-referrals/verify-work-email").set("x-test-user", "one").send({ email: "employee@acme.com", receipt: "receipt-1" })).status).toBe(200);
+    expect((await request(app).post("/api/company-referrals/verify-work-email").set("x-test-user", "one").send({ email: "employee@acme.com", receipt: "receipt-1" })).status).toBe(403);
+  });
+
   it("lists anonymous opportunities publicly but only lets a verified employee publish one", async () => {
     const app = express();
     app.use(express.json());

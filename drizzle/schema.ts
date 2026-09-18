@@ -204,6 +204,17 @@ export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("work_email_otp_email_hash_idx").on(table.email, table.codeHash), index("work_email_otp_active_idx").on(table.email, table.consumedAt, table.expiresAt, table.createdAt)]);
 
+export const workEmailOtpReceipts = mysqlTable("workEmailOtpReceipts", {
+  id: int("id").autoincrement().primaryKey(),
+  receiptHash: varchar("receiptHash", { length: 64 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  purpose: mysqlEnum("purpose", ["work_email_enrollment"]).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("work_email_otp_receipt_hash_unique").on(table.receiptHash), index("work_email_otp_receipt_scope_idx").on(table.userId, table.purpose, table.expiresAt)]);
+
 export const workEmailOtpRateLimits = mysqlTable("workEmailOtpRateLimits", {
   id: int("id").autoincrement().primaryKey(),
   limiterKey: varchar("limiterKey", { length: 96 }).notNull(),
