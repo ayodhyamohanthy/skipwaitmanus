@@ -9,7 +9,17 @@ const isNonEmptyString = (value: unknown): value is string => typeof value === "
 export type SessionPayload = { openId: string; appId: string; name: string };
 class SDKServer {
   private getSessionSecret(){return new TextEncoder().encode(ENV.cookieSecret)}
-  async createSessionToken(openId:string,options:{expiresInMs?:number;name?:string}={}){return this.signSession({openId,appId:ENV.appId,name:options.name||""},options)}
+  async createSessionToken(openId:string,options:{expiresInMs?:number;name?:string}={}){
+    // All app-session issuance goes through an active-account gate. Re-read
+    // after signing so a concurrent suspension cannot leave the login endpoint
+    // reporting success with a token minted from stale account state.
+    const before=await db.getUserByOpenId(openId);
+    if(!before||before.suspended)throw new Error("ACCOUNT_NOT_ACTIVE");
+    const token=await this.signSession({openId,appId:ENV.appId,name:options.name||""},options);
+    const after=await db.getUserByOpenId(openId);
+    if(!after||after.suspended||after.sessionsValidAfter.getTime()!==before.sessionsValidAfter.getTime())throw new Error("ACCOUNT_NOT_ACTIVE");
+    return token;
+  }
   async signSession(payload:SessionPayload,options:{expiresInMs?:number}={}){
     if(payload.appId!==ENV.appId) throw new Error("Session app ID mismatch");
     const issuedAt=Math.floor(Date.now()/1000), expiresInMs=Math.min(options.expiresInMs??ACCESS_TTL_MS,ACCESS_TTL_MS);
@@ -22,7 +32,8 @@ class SDKServer {
       const {openId,appId,name}=payload as Record<string,unknown>;
       if(!isNonEmptyString(openId)||appId!==ENV.appId||payload.sub!==openId||typeof payload.iat!=="number"||!isNonEmptyString(payload.jti))return null;
       const account=await db.getUserByOpenId(openId);
-      if(account?.sessionsValidAfter&&payload.iat*1000<account.sessionsValidAfter.getTime())return null;
+      if(!account||account.suspended)return null;
+      if(account.sessionsValidAfter&&payload.iat*1000<account.sessionsValidAfter.getTime())return null;
       return {openId,appId,name:typeof name==="string"?name:""};
     }catch{return null}
   }

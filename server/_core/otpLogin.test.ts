@@ -26,10 +26,18 @@ describe("referrer OTP login completion", () => {
   const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "123456" });
     expect(response.status).toBe(200); expect(response.headers["set-cookie"]?.join(";")).toContain("app_session_id=signed-session");
   });
-  it("does not let a best-effort refresh block an existing OTP identity", async () => {
-    const existing = { id: 7, openId: "workemail_employee@acme.com", name: "Employee", role: "user" };
-    mocks.getUserByOpenId.mockReset(); mocks.getUserByOpenId.mockResolvedValue(existing); mocks.upsertUser.mockRejectedValue(new Error("refresh drift"));
+  it("does not mutate or issue a session for a suspended OTP identity", async () => {
+    const existing = { id: 7, openId: "workemail_employee@acme.com", name: "Employee", role: "user", suspended: true };
+    mocks.getUserByOpenId.mockReset(); mocks.getUserByOpenId.mockResolvedValue(existing);
     const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "123456" });
-    expect(response.status).toBe(200); expect(response.headers["set-cookie"]?.join(";")).toContain("app_session_id=signed-session");
+    expect(response.status).toBe(403); expect(response.body).toEqual({ error: "We could not complete sign-in." });
+    expect(mocks.upsertUser).not.toHaveBeenCalled(); expect(mocks.saveVerifiedWorkEmail).not.toHaveBeenCalled(); expect(mocks.createSessionToken).not.toHaveBeenCalled();
+    expect(response.headers["set-cookie"]).toBeUndefined();
+  });
+  it("fails closed if suspension or session revocation races issuance", async () => {
+    const existing = { id: 7, openId: "workemail_employee@acme.com", name: "Employee", role: "user", suspended: false };
+    mocks.getUserByOpenId.mockReset(); mocks.getUserByOpenId.mockResolvedValue(existing); mocks.createSessionToken.mockRejectedValue(new Error("ACCOUNT_NOT_ACTIVE"));
+    const response = await request(app()).post("/api/auth/otp/verify").send({ email: "employee@acme.com", code: "123456" });
+    expect(response.status).toBe(403); expect(response.headers["set-cookie"]).toBeUndefined();
   });
 });
