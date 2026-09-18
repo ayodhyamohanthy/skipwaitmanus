@@ -61,14 +61,15 @@ export default function MyCompanyInbox() {
     if (!isSignedIn) return;
     setLoading(true); setError(""); setLoadFailed(false);
     try {
+      // Kick off the secondary loads in parallel with the primary inbox fetch
+      // so tab switches don't serialize three round-trips.
+      const impactPromise = companyFetch<{ summary?: PrivateImpactSummary }>("/api/referrer-impact/me");
+      const newCountPromise = nextScope === "new" ? null : companyFetch<{ requests?: CompanyInboxItem[] }>("/api/company-referrals/inbox?scope=new");
       const payload = await companyFetch<{ requests?: CompanyInboxItem[] }>(`/api/company-referrals/inbox?scope=${nextScope}`);
       setRequests(payload.requests || []);
-      try { const impactPayload = await companyFetch<{ summary?: PrivateImpactSummary }>("/api/referrer-impact/me"); setImpact(impactPayload.summary || null); } catch { setImpact(null); }
+      try { const impactPayload = await impactPromise; setImpact(impactPayload.summary || null); } catch { setImpact(null); }
       if (nextScope === "new") setNewRequestCount((payload.requests || []).length);
-      else {
-        const newPayload = await companyFetch<{ requests?: CompanyInboxItem[] }>("/api/company-referrals/inbox?scope=new");
-        setNewRequestCount((newPayload.requests || []).length);
-      }
+      else if (newCountPromise) { try { const newPayload = await newCountPromise; setNewRequestCount((newPayload.requests || []).length); } catch { /* keep the previous count */ } }
       setActiveIndex(0);
     } catch (reason) { setLoadFailed(true); setError(reason instanceof Error ? reason.message : "We could not load your private company inbox"); }
     finally { setLoading(false); }

@@ -39,7 +39,7 @@ describe("My Requests withdraw flow", () => {
   it("hides Withdraw once a verified employee has claimed the request", async () => {
     stubRequestsFetch([claimedRequest]);
     render(<MyRequests />);
-    await waitFor(() => expect(screen.getByRole("link", { name: /View request/ })).toBeTruthy());
+    await waitFor(() => expect(screen.getByRole("link", { name: /View job posting/ })).toBeTruthy());
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
   });
 
