@@ -30,31 +30,31 @@ export default function Support() {
     status="published"
     footnote="We never ask for passwords, one-time codes, or card numbers by email. Anything asking for those is not from us."
   >
-    <section aria-label="Contact support" className="rounded-2xl border border-[#DBEAFE] bg-white p-5 sm:p-6">
+    <section aria-label="Contact support" className="rounded-2xl border border-[#c2c2ff] bg-white p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E8F0FE] text-[#191713]"><Mail className="h-5 w-5" /></span>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ededff] text-black"><Mail className="h-5 w-5" /></span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-[#191713]">Email support</h2>
-          <p className="mt-1 text-sm leading-6 text-[#625D52]">Write from the email on your account and include a reference (Ref-0007, a payment id, or the link you opened). We reply from <span className="font-semibold text-[#2E2B25]">{SUPPORT_EMAIL}</span>.</p>
-          <a href={mailto} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#191713] px-5 py-3 text-sm font-bold text-white hover:bg-[#2A2721] sm:w-auto">Email {SUPPORT_EMAIL} <ArrowRight className="h-4 w-4" /></a>
-          <p className="mt-3 text-xs leading-5 text-[#625D52]">Response target: one business day (Mon–Fri, IST). Payment and account-safety issues are handled first.</p>
+          <h2 className="text-base font-semibold text-black">Email support</h2>
+          <p className="mt-1 text-sm leading-6 text-[#505050]">Write from the email on your account and include a reference (Ref-0007, a payment id, or the link you opened). We reply from <span className="font-semibold text-black">{SUPPORT_EMAIL}</span>.</p>
+          <a href={mailto} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3 text-sm font-bold text-white hover:bg-[#0000cc] sm:w-auto">Email {SUPPORT_EMAIL} <ArrowRight className="h-4 w-4" /></a>
+          <p className="mt-3 text-xs leading-5 text-[#505050]">Response target: one business day (Mon–Fri, IST). Payment and account-safety issues are handled first.</p>
         </div>
       </div>
     </section>
 
     <section aria-label="Solve it yourself" className="grid gap-3 sm:grid-cols-2">
-      {selfServe.map(({ icon: Icon, title, body, href, cta }) => <article key={title} className="flex flex-col rounded-2xl border border-[#E2DDD2] bg-white p-5">
-        <Icon className="h-5 w-5 text-[#191713]" />
-        <h3 className="mt-4 text-base font-semibold text-[#191713]">{title}</h3>
-        <p className="mt-2 flex-1 text-sm leading-6 text-[#625D52]">{body}</p>
-        <Link href={href} className="mt-4 inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#191713]">{cta} <ArrowRight className="h-4 w-4" /></Link>
+      {selfServe.map(({ icon: Icon, title, body, href, cta }) => <article key={title} className="flex flex-col rounded-2xl border border-[#e5e5e5] bg-white p-5">
+        <Icon className="h-5 w-5 text-black" />
+        <h3 className="mt-4 text-base font-semibold text-black">{title}</h3>
+        <p className="mt-2 flex-1 text-sm leading-6 text-[#505050]">{body}</p>
+        <Link href={href} className="mt-4 inline-flex min-h-10 items-center gap-1 text-sm font-bold text-black">{cta} <ArrowRight className="h-4 w-4" /></Link>
       </article>)}
     </section>
 
     <PolicySection number="01" title="What to include">
       <ul>
         <li><strong>Referral questions:</strong> the Ref- number from My requests or your inbox. Never paste a resume or another person’s details into an email.</li>
-        <li><strong>Payment questions:</strong> the provider (Razorpay or PayPal), the amount, the date, and the receipt or transaction id. See the <Link href="/refunds" className="font-semibold text-[#191713]">Refunds & cancellation policy</Link> for what to expect.</li>
+        <li><strong>Payment questions:</strong> the provider (Razorpay or PayPal), the amount, the date, and the receipt or transaction id. See the <Link href="/refunds" className="font-semibold text-black">Refunds & cancellation policy</Link> for what to expect.</li>
         <li><strong>Referrer verification:</strong> the company domain you tried and roughly when. Do not send the one-time code itself.</li>
       </ul>
     </PolicySection>
@@ -64,7 +64,7 @@ export default function Support() {
     </PolicySection>
 
     <PolicySection number="03" title="Status of an existing request">
-      <p>Privacy requests (data export, deletion) and payment reviews appear with their current status inside <Link href="/settings" className="font-semibold text-[#191713]">Settings</Link> and <Link href="/premium" className="font-semibold text-[#191713]">Buy credits</Link>. You will also receive an in-product notification when an administrator decides.</p>
+      <p>Privacy requests (data export, deletion) and payment reviews appear with their current status inside <Link href="/settings" className="font-semibold text-black">Settings</Link> and <Link href="/premium" className="font-semibold text-black">Buy credits</Link>. You will also receive an in-product notification when an administrator decides.</p>
     </PolicySection>
   </PolicyPageShell>;
 }
