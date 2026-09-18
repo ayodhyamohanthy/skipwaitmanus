@@ -21,11 +21,13 @@ describe("Chargebee payment contract", () => {
     expect(form.has("currency_code")).toBe(false);
   });
 
-  it("preserves the one-time wire contract and bounds the provider request", async () => {
+  it("preserves the one-time wire contract and allows the bounded live provider window", async () => {
     const provider = vi.fn(async () => new Response(JSON.stringify({ hosted_page: { id: "hp_tokens", url: "https://checkout.example/tokens" } })));
+    const timeout = vi.spyOn(AbortSignal, "timeout");
     vi.stubGlobal("fetch", provider);
     await createChargebeeCheckout({ itemPriceId: "skipwait_token_1-INR", quantity: 3, site: "fixture-test", apiKey: "fixture-key", redirectUrl: "https://app.example/premium", cancelUrl: "https://app.example/premium", checkoutIntentId: "intent_tokens" });
     expect(provider).toHaveBeenCalledWith("https://fixture-test.chargebee.com/api/v2/hosted_pages/checkout_one_time_for_items", expect.objectContaining({ method: "POST", signal: expect.any(AbortSignal), body: expect.any(URLSearchParams) }));
+    expect(timeout).toHaveBeenCalledWith(25_000);
   });
 
   it("uses the selected runtime for both hosted-page and invoice lookups", async () => {
