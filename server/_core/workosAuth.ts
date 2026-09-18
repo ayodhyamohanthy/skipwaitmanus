@@ -224,8 +224,12 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         }
         const openId = resolveWorkosOpenId(user.id);
         const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
-        stage = "identity";
-        await db.resolveLoginIdentity({ provider: "workos", subject: user.id, openId, email: user.email, emailVerified: user.emailVerified, name, loginMethod: "workos" });
+        // Emergency compatibility path: keep interactive sign-in available
+        // while the canonical resolver's production lock wait is investigated.
+        // This is the same provider-verified upsert used by the last known-good
+        // runtime; it does not merge accounts or move business records.
+        stage = "upsert";
+        await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
         stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         const token = await sdkCreateSessionToken(openId, name);
