@@ -62,3 +62,12 @@ Next: <next action or requested coordination>
 Update the shared issue/PR with the commit SHA, changed files, design decisions, tests run, known failures, unresolved questions, and remaining work. Release the scope explicitly when finished. Record deployment status separately from push status; a successful push does not prove a successful deployment.
 
 If another model cannot access the shared record, give the user this handoff to relay. Never invent agreement, approval, test results, or completion by another session.
+
+## 7. Tooling (`scripts/collab.sh`)
+
+Prefer the script over hand-rolled git/gh commands — it encodes the naming and claim conventions above. Requires git + an authenticated `gh`.
+- `./scripts/collab.sh status` — baseline snapshot (branch, dirty paths, worktrees, drift vs origin/main). Run before writing.
+- `./scripts/collab.sh board` — live worktrees plus open coordination issues.
+- `./scripts/collab.sh start <task> [--session NAME]` — new isolated worktree + `agent/<session>/<task>` branch off origin/main.
+- `./scripts/collab.sh claim --issue N --session S --task T --scope F [...] [--dry-run]` — post a §2 claim comment.
+- `./scripts/collab.sh release --issue N --session S` — release the scope when done.
