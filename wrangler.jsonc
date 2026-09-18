@@ -15,7 +15,7 @@
     {
       "class_name": "SkipwaitApi",
       "image": "./Dockerfile",
-      "max_instances": 2,
+      "max_instances": 3,
       "name": "skipwaitmanus-api"
     }
   ],
