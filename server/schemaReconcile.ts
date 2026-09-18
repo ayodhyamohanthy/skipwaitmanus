@@ -135,117 +135,52 @@ let lastResults: ReconcileStatementResult[] = [];
 let inFlight: Promise<{ applied: string[]; skipped: string[] }> | null = null;
 
 export async function reconcileSchema(): Promise<{ applied: string[]; skipped: string[] }> {
-  // Success is cached forever. A failed or deferred attempt (DB connection not
-  // ready at boot) is retried on later calls — the information_schema probe
-  // makes every run idempotent, so retrying is safe. Concurrent callers share
-  // one in-flight attempt.
+  // Schema changes belong to versioned migrations. Runtime validation is
+  // deliberately read-only so startup and public health traffic can never run DDL.
   if (reconciled) return { applied: [], skipped: [] };
   if (inFlight) return inFlight;
   const db = await getDb();
   if (!db) return { applied: [], skipped: [] };
   const run = (async () => {
-  const applied: string[] = [];
-  const skipped: string[] = [];
-  const results: ReconcileStatementResult[] = [];
-  // Each run reports only its own outcome: reset the per-statement results and
-  // the first-error pointer so a successful retry clears a previous failure.
-  lastError = null;
-  let failed = false;
-  try {
-    const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
-    // mysql2's drizzle result HKT loses row typing on raw execute; cast like db.ts does.
-    const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; INDEX_NAME?: string | null; NON_UNIQUE?: number | string | null }>;
-    if (rows.length === 0) {
-      // Zero visible columns means the follow-on ALTERs will all fail: either
-      // a genuinely fresh database (run the drizzle migrations) or the
-      // connection sees no tables (DATABASE_URL database name / privileges).
-      console.error("[schema-reconcile] information_schema probe returned 0 columns; check DATABASE_URL database selection and grants before trusting per-statement errors below");
+    const results: ReconcileStatementResult[] = [];
+    lastError = null;
+    try {
+      const result = await db.execute(sql`SELECT TABLE_NAME, COLUMN_NAME, NULL AS INDEX_NAME, NULL AS NON_UNIQUE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() UNION ALL SELECT TABLE_NAME, NULL AS COLUMN_NAME, INDEX_NAME, NON_UNIQUE FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()`);
+      const rows = result[0] as unknown as Array<{ TABLE_NAME: string; COLUMN_NAME: string | null; INDEX_NAME?: string | null; NON_UNIQUE?: number | string | null }>;
+      // Azure MySQL can return table identifiers folded to lowercase when
+      // lower_case_table_names is enabled. Compare identifiers case-insensitively
+      // while keeping the public validation keys in their canonical source form.
+      const schemaKey = (...parts: Array<string | null | undefined>) => parts.map(part => part?.toLowerCase() ?? "").join(".");
+      const columns = new Set(rows.filter(row => row.COLUMN_NAME).map(row => schemaKey(row.TABLE_NAME, row.COLUMN_NAME)));
+      const tables = new Set(rows.map(row => row.TABLE_NAME.toLowerCase()));
+      const indexes = new Map(rows.filter(row => row.INDEX_NAME).map(row => [schemaKey(row.TABLE_NAME, row.INDEX_NAME), Number(row.NON_UNIQUE ?? 0)]));
+      const checks: Array<{ key: string; ok: boolean }> = [
+        ...DESIRED_COLUMNS.map(item => ({ key: `column:${item.table}.${item.column}`, ok: columns.has(schemaKey(item.table, item.column)) })),
+        ...DESIRED_TABLES.map(item => ({ key: `table:${item.table}`, ok: tables.has(item.table.toLowerCase()) })),
+        ...DESIRED_INDEXES.map(item => ({ key: `index:${item.table}.${item.name}`, ok: indexes.get(schemaKey(item.table, item.name)) === (item.nonUnique ? 1 : 0) })),
+      ];
+      const fkResult = await db.execute(sql`SELECT TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL`);
+      const foreignKeys = new Set((fkResult[0] as unknown as Array<{ TABLE_NAME:string; COLUMN_NAME:string; REFERENCED_TABLE_NAME:string; REFERENCED_COLUMN_NAME:string }>).map(row => `${schemaKey(row.TABLE_NAME, row.COLUMN_NAME)}->${schemaKey(row.REFERENCED_TABLE_NAME, row.REFERENCED_COLUMN_NAME)}`));
+      checks.push(
+        { key: "fk:referralAttachments.uploadSessionId", ok: foreignKeys.has(`${schemaKey("referralAttachments", "uploadSessionId")}->${schemaKey("resumeUploadSessions", "id")}`) },
+        { key: "fk:resumeUploadChunks.acceptedAttemptId", ok: foreignKeys.has(`${schemaKey("resumeUploadChunks", "acceptedAttemptId")}->${schemaKey("resumeUploadAttempts", "id")}`) },
+      );
+      for (const check of checks) results.push({ statement: check.key, ok: check.ok, ...(!check.ok ? { errorCode: "SCHEMA_MISMATCH" } : {}) });
+      const failed = checks.filter(check => !check.ok);
+      if (failed.length) lastError = `Schema validation failed (${failed.length} checks)`;
+      else reconciled = true;
+      lastResults = results;
+      return { applied: [], skipped: checks.filter(check => check.ok).map(check => check.key) };
+    } catch (error) {
+      lastError = "Schema validation unavailable";
+      lastResults = [];
+      console.error("[schema-validation] unavailable", reconcileErrorCode(error) ?? "UNKNOWN");
+      return { applied: [], skipped: [] };
     }
-    const existing = new Set(rows.filter(row => row.COLUMN_NAME).map(row => `${row.TABLE_NAME}.${row.COLUMN_NAME}`));
-    const existingIndexes = new Map(rows.filter(row => row.INDEX_NAME).map(row => [`${row.TABLE_NAME}.${row.INDEX_NAME}`, Number(row.NON_UNIQUE ?? 0)]));
-    const existingTables = new Set(rows.map(row => row.TABLE_NAME));
-    for (const { table, column, definition } of DESIRED_COLUMNS) {
-      if (existing.has(`${table}.${column}`)) { skipped.push(`${table}.${column}`); continue; }
-      const stmt = `ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`;
-      try { await db.execute(sql.raw(stmt)); }
-      catch (err) {
-        // Another instance may add the column between the information_schema
-        // probe and ALTER. MySQL duplicate-column is the successful end state.
-        if (isDuplicateColumnError(err)) {
-          results.push({ statement: stmt, ok: true });
-          skipped.push(`${table}.${column}`);
-          continue;
-        }
-        // One failing statement must not hide the state of the rest: record it
-        // and keep going so a single metadata lock (or privilege) gap cannot
-        // leave the remaining DDL unattempted and unreported.
-        const error = describeReconcileError(err);
-        results.push({ statement: stmt, ok: false, error });
-        if (!lastError) lastError = `[${stmt}] ${error}`;
-        failed = true;
-        console.error(`[schema-reconcile] statement failed (continuing): [${stmt}] ${error}`);
-        continue;
-      }
-      results.push({ statement: stmt, ok: true });
-      applied.push(`${table}.${column}`);
-    }
-    for (const index of DESIRED_INDEXES) {
-      const key = `${index.table}.${index.name}`;
-      const expectedNonUnique = index.nonUnique ? 1 : 0;
-      if (existingIndexes.get(key) === expectedNonUnique) { skipped.push(`index:${key}`); continue; }
-      const stmt = `CREATE ${index.nonUnique ? "" : "UNIQUE "}INDEX \`${index.name}\` ON \`${index.table}\` (${index.columns})`;
-      try {
-        const dedupe = index.name === "resume_upload_sessions_owner_client_unique"
-          ? "UPDATE `resumeUploadSessions` s JOIN (SELECT ownerId,clientUploadId,MIN(id) canonicalId FROM (SELECT id,ownerId,clientUploadId FROM `resumeUploadSessions`) source WHERE clientUploadId IS NOT NULL GROUP BY ownerId,clientUploadId HAVING COUNT(*)>1) duplicates ON duplicates.ownerId=s.ownerId AND duplicates.clientUploadId=s.clientUploadId SET s.clientUploadId=NULL WHERE s.id<>duplicates.canonicalId"
-          : index.name === "referral_attachments_upload_session_unique" ? "UPDATE `referralAttachments` a JOIN (SELECT uploadSessionId,MIN(id) canonicalId FROM (SELECT id,uploadSessionId FROM `referralAttachments`) source WHERE uploadSessionId IS NOT NULL GROUP BY uploadSessionId HAVING COUNT(*)>1) duplicates ON duplicates.uploadSessionId=a.uploadSessionId SET a.uploadSessionId=NULL WHERE a.id<>duplicates.canonicalId" : null;
-        let created = false;
-        if (existingIndexes.has(key)) await db.execute(sql.raw(`DROP INDEX \`${index.name}\` ON \`${index.table}\``));
-        for (let attempt=1; attempt<=3 && !created; attempt++) {
-          if (dedupe) await db.execute(sql.raw(dedupe));
-          try { await db.execute(sql.raw(stmt)); created=true; }
-          catch (err) {
-            const code=reconcileErrorCode(err);
-            if (code === "ER_DUP_KEYNAME" && attempt===1) { await db.execute(sql.raw(`DROP INDEX \`${index.name}\` ON \`${index.table}\``)); continue; }
-            if (!isDuplicateEntryError(err) || attempt===3) throw err;
-          }
-        }
-        results.push({ statement: stmt, ok: true }); applied.push(`index:${key}`);
-      }
-      catch (err) { const error = describeReconcileError(err); results.push({ statement: stmt, ok: false, error, errorCode: reconcileErrorCode(err) }); if (!lastError) lastError = `[${stmt}] ${error}`; failed = true; console.error(`[schema-reconcile] index failed: [${stmt}] ${error}`); }
-    }
-    for (const { table, createSql } of DESIRED_TABLES) {
-      if (existingTables.has(table)) { skipped.push(table); continue; }
-      try { await db.execute(sql.raw(createSql)); }
-      catch (err) {
-        const error = describeReconcileError(err);
-        results.push({ statement: createSql, ok: false, error });
-        if (!lastError) lastError = `[${createSql.slice(0, 60)}…] ${error}`;
-        failed = true;
-        console.error(`[schema-reconcile] statement failed (continuing): [${createSql.slice(0, 60)}…] ${error}`);
-        continue;
-      }
-      results.push({ statement: createSql, ok: true });
-      applied.push(`table:${table}`);
-    }
-    // Only a run with zero statement failures counts as reconciled.
-    if (!failed) {
-      reconciled = true;
-      console.log(`[schema-reconcile] applied=${applied.length} skipped=${skipped.length}${applied.length ? " -> " + applied.join(",") : ""}`);
-    } else {
-      console.error(`[schema-reconcile] incomplete: applied=${applied.length} failed=${results.filter(item => !item.ok).length} skipped=${skipped.length}; will retry on the next trigger`);
-    }
-  } catch (error) {
-    // Never crash the server for reconcile failures; log and continue.
-    lastError = describeReconcileError(error);
-    console.error("[schema-reconcile] failed (non-fatal):", lastError);
-  }
-  lastResults = results;
-  return { applied, skipped };
   })();
   inFlight = run;
   try { return await run; } finally { if (inFlight === run) inFlight = null; }
 }
-
 export function isSchemaReconciled() { return reconciled; }
 export function getLastReconcileError() { return lastError; }
 // Per-statement outcome of the most recent run (empty until one has happened;

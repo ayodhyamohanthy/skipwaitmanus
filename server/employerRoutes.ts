@@ -23,7 +23,7 @@ export type EmployerRouteDeps = {
   getUnlockedProfile: (employerUserId: number, seekerUserId: number) => Promise<unknown>;
   requestEmployerTalentIntro: (employerUserId: number, seekerUserId: number) => Promise<{ ok: boolean; reason?: string; created?: boolean }>;
   createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
-  sponsorCompanyOpportunity: (userId: number, opportunityId: number, input: { tier: "featured" | "spotlight"; isAdmin?: boolean }) => Promise<unknown>;
+  sponsorCompanyOpportunity: (userId: number, opportunityId: number, input: { tier: "featured" | "spotlight"; idempotencyKey: string; isAdmin?: boolean; chargedUserId?: number }) => Promise<unknown>;
   endCompanyOpportunitySponsorship: (adminUserId: number, opportunityId: number) => Promise<unknown>;
   listSponsoredCompanyOpportunities: (limit?: number) => Promise<unknown[]>;
   listEmployerOpportunities: (userId: number) => Promise<unknown[]>;
@@ -175,8 +175,10 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
       const tier = req.body?.tier;
       if (!Number.isInteger(opportunityId) || opportunityId <= 0) return res.status(400).json({ error: "Invalid opportunity reference" });
       if (tier !== "featured" && tier !== "spotlight") return res.status(400).json({ error: "Choose a featured or spotlight sponsorship tier" });
-      const sponsorship = await deps.sponsorCompanyOpportunity(gate.identity.account.id, opportunityId, { tier });
-      res.status(201).json({ sponsorship });
+      const idempotencyKey = req.get("Idempotency-Key")?.trim() ?? "";
+      if (!/^[\x21-\x7E]{16,64}$/.test(idempotencyKey)) return res.status(428).json({ error: "A valid Idempotency-Key header is required" });
+      const sponsorship = await deps.sponsorCompanyOpportunity(gate.identity.account.id, opportunityId, { tier, idempotencyKey });
+      res.status((sponsorship as { replayed?: boolean }).replayed ? 200 : 201).json({ sponsorship });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not sponsor this role";
       res.status(/owner or an administrator|employer account|not currently|could not be found|tier/i.test(message) ? 400 : 402).json({ error: message });

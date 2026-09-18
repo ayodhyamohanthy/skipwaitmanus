@@ -68,17 +68,20 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       // identities still require a durable insert before any session is issued.
       if (!existing) {
         await db.upsertUser({ openId, name: email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date() });
-      } else {
-        void db.upsertUser({ openId, name: existing.name ?? email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date() }).catch(() => undefined);
       }
       const account = existing ?? await db.getUserByOpenId(openId);
       if (!account) return res.status(500).json({ error: "We could not complete sign-in. Please request a new code." });
+      // Do not refresh profile, sign-in timestamps, or identity state for a
+      // suspended account. Keep this response generic to avoid account-state
+      // disclosure from the OTP endpoint.
+      if (account.suspended) return res.status(403).json({ error: "We could not complete sign-in." });
       const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
       if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);
       const token = await sdk.createSessionToken(openId, { name: account.name ?? email });
       res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
       res.json({ signedIn: true, role: account.role, email });
-    } catch {
+    } catch (error) {
+      if (error instanceof Error && error.message === "ACCOUNT_NOT_ACTIVE") return res.status(403).json({ error: "We could not complete sign-in." });
       res.status(500).json({ error: "We could not verify the code" });
     }
   });

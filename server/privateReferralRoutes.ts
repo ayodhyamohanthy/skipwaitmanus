@@ -83,7 +83,8 @@ export type PrivateReferralRouteDeps = {
   sendWorkEmailOtp?: (input: { email: string; ip?: string }) => Promise<{ sent: boolean; reason: string }>;
   verifyWorkEmailOtp?: (input: { email: string; code: string; ip?: string }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
-  hasVerifiedWorkEmailOtp?: (input: { email: string }) => Promise<boolean>;
+  issueWorkEmailEnrollmentReceipt?: (input: { email: string; userId: number }) => Promise<{ receipt: string; expiresAt: Date }>;
+  completeWorkEmailOtpEnrollment?: (input: { receipt: string; email: string; userId: number; inviteCode?: string }) => Promise<{ workEmailDomain: string; reward: { rewarded: boolean; tokenCount?: number }; replayed: boolean }>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
@@ -115,7 +116,7 @@ export type PrivateReferralRouteDeps = {
   revokeCreditedPaymentCredits?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; creditsRevoked: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
   listAdminApprovalQueue?: (limit?: number) => Promise<unknown[]>;
-  resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
+  resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment" | "employer_application", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
   listJobs?: (input: { query?: string; location?: string }) => Promise<unknown[]>;
   listSavedRoles?: (userId: number) => Promise<unknown[]>;
   setSavedRole?: (userId: number, jobId: number, saved: boolean) => Promise<{ saved: boolean }>;
@@ -430,7 +431,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
       if (!deps.verifyWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
       const verified = await deps.verifyWorkEmailOtp({ email, code, ip: resolveTrustedClientIp(req) });
-      if (verified) { record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ verified: true }); }
+      if (verified) {
+        const issued = await deps.issueWorkEmailEnrollmentReceipt?.({ email, userId: identity.account.id });
+        if (!issued) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
+        record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
+        return res.json({ verified: true, receipt: issued.receipt, expiresAt: issued.expiresAt });
+      }
       record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
       res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
     } catch { res.status(500).json({ error: "We could not verify the code" }); }
@@ -441,27 +447,19 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
       if (!identity) return res.status(401).json({ error: "Sign in to verify a work email" });
       if (!email) return res.status(400).json({ error: "Enter the work email address that received your code" });
-      // Proof of ownership comes from exactly one of two authorities:
-      // 1. Server-side OTP proof: the verify endpoint consumed a valid code for
-      //    this exact address moments ago, and the OTP store still holds the
-      //    receipt. This is checked against server state — the request body is
-      //    never trusted to assert its own verification, because any client can
-      //    send `otpVerified: true` for an address it does not control.
-      // 2. The signed-in identity provider already reporting this address as
-      //    verified on the authenticated user (AuthKit-managed email).
-      const otpProof = (await deps.hasVerifiedWorkEmailOtp?.({ email })) ?? false;
-      const verifiedEmail: { emailAddress: string } | undefined = otpProof ? undefined : identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
-      if (!otpProof && !verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
-      if (otpProof) {
-        // Authenticated OTP: record the verified work email directly.
-        const enrolled = await deps.saveVerifiedWorkEmail(identity.account.id, email);
-        const inviteCodeOtp = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
-        const rewardOtp = inviteCodeOtp && enrolled?.workEmailDomain && deps.fulfillCompanyCoverageInvitation ? await deps.fulfillCompanyCoverageInvitation(identity.account.id, { inviteCode: inviteCodeOtp, workEmailDomain: enrolled.workEmailDomain }) : { rewarded: false };
-        record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: enrolled?.workEmailDomain ?? undefined, metadata: { verification: "server_otp" } });
-        if (rewardOtp.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: enrolled?.workEmailDomain ?? undefined, metadata: { tokenCount: rewardOtp.tokenCount ?? 0 } });
-        return res.json({ verified: true, workEmailDomain: enrolled?.workEmailDomain, reward: rewardOtp });
+      // OTP proof is a single-use bearer receipt scoped to this authenticated
+      // account, canonical email, and enrollment purpose. Login OTP challenges
+      // never mint this receipt and therefore cannot cross into this flow.
+      const receipt = typeof req.body?.receipt === "string" ? req.body.receipt : "";
+      const verifiedEmail = identity.emailAddresses?.find(address => address.emailAddress.trim().toLowerCase() === email && address.verification?.status === "verified");
+      if (!verifiedEmail) {
+        const inviteCodeOtp = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : undefined;
+        const completed = receipt ? await deps.completeWorkEmailOtpEnrollment?.({ receipt, email, userId: identity.account.id, inviteCode: inviteCodeOtp }) : undefined;
+        if (!completed) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
+        record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: completed.workEmailDomain, metadata: { verification: "server_otp_receipt", replayed: completed.replayed } });
+        if (completed.reward.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: completed.workEmailDomain, metadata: { tokenCount: completed.reward.tokenCount ?? 0 } });
+        return res.json({ verified: true, workEmailDomain: completed.workEmailDomain, reward: completed.reward });
       }
-      if (!verifiedEmail) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
       const profile = await deps.saveVerifiedWorkEmail(identity.account.id, verifiedEmail.emailAddress);
       const inviteCode = typeof req.body?.inviteCode === "string" ? req.body.inviteCode.slice(0, 64) : "";
       const reward = inviteCode && profile?.workEmailDomain && deps.fulfillCompanyCoverageInvitation ? await deps.fulfillCompanyCoverageInvitation(identity.account.id, { inviteCode, workEmailDomain: profile.workEmailDomain }) : { rewarded: false };
@@ -471,6 +469,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not verify your work email";
       const isValidationError = /personal email domain|work email address|required/i.test(message);
+      if (/^OTP_RECEIPT_/.test(message)) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
       res.status(isValidationError ? 400 : 500).json({ error: message });
     }
   });
@@ -971,7 +970,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const kind = req.params.kind;
       const itemId = Number(req.params.id);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      if (kind !== "referral_request" && kind !== "referrer_enrollment" && kind !== "payment") return res.status(400).json({ error: "Invalid record type" });
+      if (kind !== "referral_request" && kind !== "referrer_enrollment" && kind !== "payment" && kind !== "employer_application") return res.status(400).json({ error: "Invalid record type" });
       if (!Number.isInteger(itemId) || itemId <= 0) return res.status(400).json({ error: "Invalid record reference" });
       const decision = req.body?.decision;
       if (decision !== "approved" && decision !== "rejected") return res.status(400).json({ error: "Choose approve or reject for this record" });

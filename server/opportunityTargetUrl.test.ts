@@ -14,5 +14,11 @@ describe("opportunity target URL",()=>{
 describe("opportunity publication integration contract",()=>{
  const dbSource=readFileSync(new URL("./db.ts",import.meta.url),"utf8");
  it("enforces hiring links and complete walk-in facts before insert",()=>{expect(dbSource).toContain('input.kind === "hiring_now" && !targetRoleUrl');expect(dbSource).toContain('input.walkInEndsAt <= input.walkInAt');});
- it("revalidates and deactivates unsafe active legacy rows before return",()=>{expect(dbSource).toContain("await validateOpportunityTargetUrl(row.targetRoleUrl, row.companyDomain");expect(dbSource).toContain("set({ isActive: false })");});
+ it("keeps public reads side-effect-free and validates only before insert",()=>{
+  const publicRead=dbSource.slice(dbSource.indexOf("export async function listPublicCompanyOpportunities()"),dbSource.indexOf("export const isPrivateReferralJob"));
+  const sponsoredRead=dbSource.slice(dbSource.indexOf("export async function listPublicCompanyOpportunitiesWithSponsorship()"),dbSource.indexOf("export async function listPartnerModules"));
+  expect(publicRead).not.toContain("validateOpportunityTargetUrl"); expect(publicRead).not.toContain("db.update");
+  expect(sponsoredRead).not.toContain("validateOpportunityTargetUrl"); expect(sponsoredRead).not.toContain("db.update");
+  expect(dbSource.indexOf("await validateOpportunityTargetUrl")).toBeLessThan(dbSource.indexOf("db.insert(companyOpportunities)"));
+ });
 });

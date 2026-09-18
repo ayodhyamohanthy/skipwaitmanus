@@ -38,7 +38,7 @@ describe("WorkEmailSignIn (server-owned OTP via ZeptoMail)", () => {
   it("verifies the code server-side, enrolls the verified address, and completes without provider calls", async () => {
     fetchMock.mockImplementation(async (url: unknown) => {
       if (String(url).endsWith("/api/work-email/otp/send")) return { ok: true, json: async () => ({ sent: true }) };
-      if (String(url).endsWith("/api/work-email/otp/verify")) return { ok: true, json: async () => ({ verified: true }) };
+      if (String(url).endsWith("/api/work-email/otp/verify")) return { ok: true, json: async () => ({ verified: true, receipt: "receipt-bound-to-account" }) };
       if (String(url).endsWith("/api/company-referrals/verify-work-email")) return { ok: true, json: async () => ({ verified: true, workEmailDomain: "acme.com" }) };
       return { ok: false, json: async () => ({}) };
     });
@@ -54,6 +54,6 @@ describe("WorkEmailSignIn (server-owned OTP via ZeptoMail)", () => {
     const verifyCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/work-email/otp/verify"));
     expect(JSON.parse((verifyCall?.[1] as RequestInit).body as string)).toEqual({ email: "employee@acme.com", code: "123456" });
     const enrollCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals/verify-work-email"));
-    expect(JSON.parse((enrollCall?.[1] as RequestInit).body as string)).toMatchObject({ email: "employee@acme.com", otpVerified: true });
+    expect(JSON.parse((enrollCall?.[1] as RequestInit).body as string)).toMatchObject({ email: "employee@acme.com", receipt: "receipt-bound-to-account" });
   });
 });

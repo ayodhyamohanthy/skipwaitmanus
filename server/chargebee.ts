@@ -223,10 +223,21 @@ export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTok
     method: "POST",
     headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: buildCheckoutForm({ ...input, checkoutIntentId }),
-    signal: AbortSignal.timeout(10_000),
+    // Chargebee's one-time hosted-page path is materially slower than its
+    // subscription path in live traffic. Keep this bounded, but allow enough
+    // time for the provider to return a page instead of aborting at 10 seconds.
+    signal: AbortSignal.timeout(25_000),
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Chargebee checkout failed (${response.status})`);
+  if (!response.ok) {
+    const cleanDiagnostic = (value: unknown, max: number) => typeof value === "string"
+      ? value.replace(/[\r\n\t]+/g, " ").replace(/[^\x20-\x7E]/g, "").slice(0, max)
+      : "";
+    const providerCode = cleanDiagnostic(body?.api_error_code ?? body?.type, 80) || "UNKNOWN";
+    const providerParam = cleanDiagnostic(body?.param, 120) || "unknown";
+    const providerMessage = cleanDiagnostic(body?.message, 240) || "unavailable";
+    throw new Error(`Chargebee checkout failed (${response.status}, ${providerCode}, param=${providerParam}, message=${providerMessage})`);
+  }
   const hostedPage = body?.hosted_page;
   const checkoutUrl = hostedPage?.url ?? hostedPage?.checkout_url;
   const hostedPageId = hostedPage?.id;

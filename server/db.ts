@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -11,7 +11,7 @@ import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
-import { isLegacyOpportunityUrlSafe, validateOpportunityTargetUrl } from "./opportunityTargetUrl";
+import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -441,6 +441,45 @@ export async function createCompanyCoverageInvitation(inviterUserId: number, com
   return { inviteCode };
 }
 
+export async function completeWorkEmailOtpEnrollment(input: { receipt: string; email: string; userId: number; inviteCode?: string }) {
+  const email = input.email.trim().toLowerCase(); const domain = email.split("@")[1];
+  if (!domain || !isWorkEmailDomain(domain) || !Number.isInteger(input.userId) || input.userId <= 0) throw new Error("A verified work email is required");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const receiptHash = createHash("sha256").update(input.receipt).digest("hex");
+    const receipts = await tx.select().from(workEmailOtpReceipts).where(and(eq(workEmailOtpReceipts.receiptHash, receiptHash), eq(workEmailOtpReceipts.email, email), eq(workEmailOtpReceipts.userId, input.userId), eq(workEmailOtpReceipts.purpose, "work_email_enrollment"), gt(workEmailOtpReceipts.expiresAt, new Date()))).limit(1).for("update");
+    const receipt = receipts[0];
+    if (!receipt) throw new Error("OTP_RECEIPT_INVALID");
+    // A replay after a lost response is safe and returns the already-completed
+    // enrollment only for this exact account/email/purpose.
+    if (receipt.usedAt) {
+      const profile = (await tx.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.userId, input.userId)).limit(1))[0];
+      if (profile?.workEmailDomain === domain) return { workEmailDomain: domain, reward: { rewarded: false as const, reason: "replayed" as const }, replayed: true };
+      throw new Error("OTP_RECEIPT_USED");
+    }
+    const consumed = await tx.update(workEmailOtpReceipts).set({ usedAt: new Date() }).where(and(eq(workEmailOtpReceipts.id, receipt.id), isNull(workEmailOtpReceipts.usedAt)));
+    if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("OTP_RECEIPT_USED");
+    await tx.insert(profiles).values({ userId: input.userId, accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true } });
+    let reward: { rewarded: boolean; tokenCount?: number; reason?: string } = { rewarded: false };
+    const inviteCode = input.inviteCode?.trim();
+    if (inviteCode) {
+      const invitation = (await tx.select().from(companyCoverageInvitations).where(eq(companyCoverageInvitations.inviteCode, inviteCode)).limit(1).for("update"))[0];
+      if (invitation?.status === "active" && invitation.inviterUserId !== input.userId && invitation.companyDomain === domain) {
+        const priorForInviter = await tx.select({ id: companyCoverageRewards.id }).from(companyCoverageRewards).where(eq(companyCoverageRewards.inviterUserId, invitation.inviterUserId)).limit(1);
+        const priorForJoiner = await tx.select({ id: companyCoverageRewards.id }).from(companyCoverageRewards).where(eq(companyCoverageRewards.joinerUserId, input.userId)).limit(1);
+        if (!priorForInviter[0] && !priorForJoiner[0]) {
+          await tx.insert(companyCoverageRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId: input.userId, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS });
+          await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }, { userId: input.userId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }]);
+          await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action." }, { userId: input.userId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request." }]);
+          await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId: input.userId, completedAt: new Date() }).where(and(eq(companyCoverageInvitations.id, invitation.id), eq(companyCoverageInvitations.status, "active")));
+          reward = { rewarded: true, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
+        }
+      }
+    }
+    return { workEmailDomain: domain, reward, replayed: false };
+  });
+}
+
 export async function saveVerifiedWorkEmail(userId: number, email: string) {
   const domain = email.trim().toLowerCase().split("@")[1];
   if (!domain) throw new Error("A work email address is required");
@@ -482,26 +521,15 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
   return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, compensation: input.compensation?.trim() || null };
 }
 
-async function suppressUnsafeLegacyOpportunities<T extends { id: number; companyDomain: string; targetRoleUrl: string | null; kind: "hiring_now" | "walk_in"; location: string | null; walkInAt: Date | null; walkInEndsAt: Date | null }>(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows: T[]) {
-  const checks = await Promise.all(rows.map(async row => {
-    if (row.kind === "walk_in") return !row.targetRoleUrl && Boolean(row.location && row.walkInAt && row.walkInEndsAt && row.walkInEndsAt > row.walkInAt);
-    if (!row.targetRoleUrl || !isLegacyOpportunityUrlSafe(row.targetRoleUrl, row.companyDomain)) return false;
-    try { await validateOpportunityTargetUrl(row.targetRoleUrl, row.companyDomain, resolveEmployerDomainFromTargetUrl); return true; } catch { return false; }
-  }));
-  const unsafe = rows.filter((_row, index) => !checks[index]);
-  if (unsafe.length) await db.update(companyOpportunities).set({ isActive: false }).where(inArray(companyOpportunities.id, unsafe.map(row => row.id)));
-  return rows.filter((_row, index) => checks[index]);
-}
-
 export async function listPublicCompanyOpportunities() {
   const db = await getDb(); if (!db) return [];
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
   // compensation is a newer optional column; degrade gracefully if the live
   // DB has not yet been migrated, so the wall never 500s.
   try {
-    return suppressUnsafeLegacyOpportunities(db, await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24));
+    return await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   } catch {
-    return suppressUnsafeLegacyOpportunities(db, await db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24));
+    return await db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   }
 }
 
@@ -1409,16 +1437,16 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
   return db.transaction(async tx => {
     const recipient = await tx.select({ id: users.id }).from(users).where(eq(users.id, input.recipientUserId)).limit(1);
     if (!recipient[0]) throw new Error("That user account no longer exists");
-    const duplicate = await tx.select({ id: adminTokenAdjustments.id }).from(adminTokenAdjustments).where(and(eq(adminTokenAdjustments.recipientUserId, input.recipientUserId), eq(adminTokenAdjustments.role, input.role), eq(adminTokenAdjustments.caseReference, caseReference))).limit(1);
-    if (duplicate[0]) throw new Error("A recovery grant already exists for this user, role, and support reference");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1);
-    const newBalance = (wallet[0]?.balance ?? 0) + input.tokenCount;
-    if (wallet[0]) await tx.update(tokenBalances).set({ balance: newBalance }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: newBalance, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+    // The unique adjustment row is the idempotency claim. Insert it before any
+    // wallet side effect so concurrent requests for the same case cannot both
+    // credit; a duplicate-key failure rolls the whole transaction back.
     const adjustment = await tx.insert(adminTokenAdjustments).values({ recipientUserId: input.recipientUserId, adminUserId, role: input.role, tokenCount: input.tokenCount, caseReference, reason });
-    await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment" });
+    await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: input.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${input.tokenCount}` } });
+    const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update");
+    if (!wallet[0]) throw new Error("Recovery wallet update failed");
+    await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment", source: "admin_recovery", referenceType: "admin_token_adjustment", referenceId: String(Number(adjustment[0].insertId)), idempotencyKey: `admin-adjustment-${Number(adjustment[0].insertId)}`, balanceAfter: wallet[0].balance });
     await tx.insert(notifications).values({ userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.` });
-    return { adjustmentId: Number(adjustment[0].insertId), recipientUserId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, newBalance };
+    return { adjustmentId: Number(adjustment[0].insertId), recipientUserId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, newBalance: wallet[0].balance };
   });
 }
 
@@ -1573,19 +1601,22 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const rows = await tx.select().from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1);
+    // Serialize all decisions for this payment before doing wallet work. A
+    // plain read followed by the credit was vulnerable to two admins both
+    // observing requires_review and both adding tokens.
+    const rows = await tx.select().from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1).for("update");
     const row = rows[0];
     if (!row) throw new Error("This payment record does not exist");
     if (row.status !== "requires_review") throw new Error("This payment was already resolved");
+    const resolvedAt = new Date();
+    const claimed = await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? resolvedAt : null, lastCheckedAt: resolvedAt }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
+    if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment was already resolved");
     if (decision === "credited") {
-      // Mirror fulfillChargebeePayment's wallet update: balance increment when a
-      // wallet row exists, otherwise create the wallet with the credited tokens.
-      const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
-      if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${row.tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
-      else await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
-      await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase" });
+      await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${row.tokenCount}` } });
+      const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
+      if (!wallet[0]) throw new Error("Payment credit wallet update failed");
+      await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-credit-${paymentId}`, balanceAfter: wallet[0].balance });
     }
-    await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? new Date() : null, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
     const metadata = { provider: row.provider, tokenCount: row.tokenCount, amount: row.amount, currency: row.currency, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
     return { paymentId, decision, tokenCount: row.tokenCount, userId: row.userId, role: row.role };
@@ -1601,20 +1632,25 @@ export async function revokeCreditedPaymentCredits(adminUserId: number, paymentI
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]), eq(paymentFulfillments.status, "credited"))).limit(1);
+    // Lock the fulfillment and wallet in a fixed order. This prevents duplicate
+    // revocations and prevents an absolute balance write from erasing a grant
+    // that commits concurrently.
+    const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]))).limit(1).for("update");
     const row = rows[0];
-    if (!row) throw new Error("Credits cannot be revoked for this payment");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
+    if (!row || row.status !== "credited") throw new Error("Credits cannot be revoked for this payment");
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
     if (!wallet[0] || wallet[0].balance < row.tokenCount) throw new Error("Credits from this payment have been spent; ledger-only revocation is blocked");
-    await tx.update(tokenBalances).set({ balance: wallet[0].balance - row.tokenCount }).where(eq(tokenBalances.id, wallet[0].id));
-    await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment" });
     const updated = await tx.update(paymentFulfillments).set({ status: "rejected", reconciliationReason: "credits_revoked_no_provider_refund", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
     if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("Credits cannot be revoked for this payment");
+    const debited = await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} - ${row.tokenCount}` }).where(and(eq(tokenBalances.id, wallet[0].id), sql`${tokenBalances.balance} >= ${row.tokenCount}`));
+    if (Number(debited[0]?.affectedRows ?? 0) !== 1) throw new Error("Credits from this payment have been spent; ledger-only revocation is blocked");
+    await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment", source: "payment_credit_revocation", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-revoke-${paymentId}`, balanceAfter: wallet[0].balance - row.tokenCount });
     const metadata = { provider: row.provider, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "payment.credits_revoked", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
     return { paymentId, creditsRevoked: true, tokenCount: row.tokenCount, userId: row.userId, role: row.role, provider: row.provider, amount: row.amount, currency: row.currency };
   });
 }
+
 export async function getRevenueSummary() {
   const db = await getDb();
   if (!db) return { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: new Date() };
@@ -1714,7 +1750,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
 
 // ---- Unified admin approval queue (seeker requests, referrer enrollments, payments) ----
 
-export type AdminApprovalQueueKind = "referral_request" | "referrer_enrollment" | "payment";
+export type AdminApprovalQueueKind = "referral_request" | "referrer_enrollment" | "payment" | "employer_application";
 export type AdminApprovalQueueStatus = "pending" | "under_review" | "approved" | "declined" | "requires_review";
 export type AdminApprovalQueueItem = {
   kind: AdminApprovalQueueKind;
@@ -1744,6 +1780,12 @@ export type AdminApprovalQueueItem = {
     waitingForCoverage?: boolean | null;
     creditReserved?: boolean | null;
     approvalNote?: string | null;
+    companyName?: string | null;
+    billingEmail?: string | null;
+    duplicatePersonCount?: number | null;
+    duplicateDomainCount?: number | null;
+    evidenceVersion?: string | null;
+    reviewDueAt?: Date | null;
   };
 };
 
@@ -1770,11 +1812,12 @@ export async function listAdminApprovalQueue(limit: number = 100) {
   const db = await getDb(); if (!db) return [];
   const safeLimit = Math.max(1, Math.min(250, Math.floor(limit)));
   const referrerUser = alias(users, "referrerUser");
-  const [requests, payments, enrollments, enrollmentDecisions] = await Promise.all([
+  const [requests, payments, enrollments, enrollmentDecisions, employerApplications] = await Promise.all([
     db.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, personalPitch: referralRequests.personalPitch, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, roleTitle: jobs.title, targetRoleUrl: jobs.targetRoleUrl, seekerName: users.name, seekerEmail: users.email, referrerName: referrerUser.name, referrerEmail: referrerUser.email }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referrerUser, eq(referralRequests.referrerId, referrerUser.id)).where(inArray(referralRequests.status, ["pending", "approved", "declined"])).orderBy(desc(referralRequests.updatedAt)).limit(safeLimit),
     db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, tokenCount: paymentFulfillments.tokenCount, status: paymentFulfillments.status, reconciliationReason: paymentFulfillments.reconciliationReason, role: paymentFulfillments.role, createdAt: paymentFulfillments.createdAt, lastCheckedAt: paymentFulfillments.lastCheckedAt, creditedAt: paymentFulfillments.creditedAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(inArray(paymentFulfillments.status, ["requires_review", "credited", "rejected"])).orderBy(desc(paymentFulfillments.lastCheckedAt), desc(paymentFulfillments.createdAt)).limit(safeLimit),
     listReferrerEnrollmentsAwaitingAction(),
     db.select({ resourceId: operationalActivityLogs.resourceId, action: operationalActivityLogs.action, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.resourceType, "referrer_enrollment"), like(operationalActivityLogs.action, "admin.approval_%"))).orderBy(desc(operationalActivityLogs.createdAt)).limit(safeLimit),
+    db.select({ id: employerAccounts.id, userId: employerAccounts.userId, companyName: employerAccounts.companyName, billingEmail: employerAccounts.billingEmail, status: employerAccounts.approvalStatus, submittedAt: employerAccounts.submittedAt, updatedAt: employerAccounts.updatedAt, evidenceVersion: employerAccounts.evidenceVersion, applicationVersion: employerAccounts.applicationVersion }).from(employerAccounts).orderBy(desc(employerAccounts.submittedAt)).limit(safeLimit),
   ]);
   const enrollmentDecisionById = new Map<string, { status: AdminApprovalQueueStatus; note?: string | null }>();
   for (const decision of enrollmentDecisions) {
@@ -1810,6 +1853,12 @@ export async function listAdminApprovalQueue(limit: number = 100) {
       meta: { otpTime: enrollment.verifiedAt, referrerName: enrollment.name, referrerEmail: enrollment.email, approvalNote: decision?.note ?? null },
     });
   }
+  for (const application of employerApplications) {
+    const domain = application.billingEmail.split("@")[1] ?? "";
+    const duplicatePersonCount = employerApplications.filter(other => other.userId === application.userId && other.id !== application.id).length;
+    const duplicateDomainCount = domain ? employerApplications.filter(other => other.id !== application.id && other.billingEmail.endsWith(`@${domain}`)).length : 0;
+    items.push({ kind:"employer_application", id:application.id, status:application.status === "approved" ? "approved" : application.status === "rejected" || application.status === "revoked" ? "declined" : application.status === "pending" ? "pending" : "under_review", companyDomain:domain, createdAt:application.submittedAt, updatedAt:application.updatedAt, summary:`${application.companyName} employer access application`, meta:{ companyName:application.companyName, billingEmail:application.billingEmail, duplicatePersonCount, duplicateDomainCount, evidenceVersion:application.evidenceVersion, reviewDueAt:new Date(application.submittedAt.getTime()+24*60*60*1000) } });
+  }
   return items.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, safeLimit);
 }
 
@@ -1823,6 +1872,21 @@ export async function resolveAdminApproval(adminUserId: number, itemKind: AdminA
     if (!row[0]) throw new Error("This enrollment record could not be found");
     await db.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `admin.approval_${decision}`, outcome: "success", resourceType: "referrer_enrollment", resourceId: String(itemId), companyDomain: row[0].companyDomain ?? undefined, metadata: JSON.stringify(trimmedNote ? { note: trimmedNote } : {}) });
     return { kind: itemKind, id: itemId, status: decision === "approved" ? "approved" as const : "declined" as const, note: trimmedNote };
+  }
+  if (itemKind === "employer_application") {
+    return db.transaction(async tx => {
+      const row=(await tx.select().from(employerAccounts).where(eq(employerAccounts.id,itemId)).limit(1).for("update"))[0];
+      if(!row) throw new Error("This employer application could not be found");
+      const target=decision === "approved" ? "approved" : "rejected";
+      if(row.approvalStatus === target) return { kind:itemKind,id:itemId,status:target === "approved" ? "approved" as const : "declined" as const,replayed:true };
+      if(row.approvalStatus !== "pending") throw new Error("This record was already resolved");
+      const now=new Date(); const updated=await tx.update(employerAccounts).set({approvalStatus:target,approvedAt:target === "approved" ? now:null,approvedByUserId:adminUserId,decidedAt:now,decisionNote:trimmedNote}).where(and(eq(employerAccounts.id,itemId),eq(employerAccounts.approvalStatus,"pending")));
+      if(Number(updated[0]?.affectedRows??0)!==1) throw new Error("This record was already resolved");
+      if(target !== "approved"){ await tx.update(profileUnlocks).set({revokedAt:now,revocationReason:"employer_access_rejected"}).where(and(eq(profileUnlocks.employerUserId,row.userId),isNull(profileUnlocks.revokedAt))); await tx.update(employerTalentRefs).set({revokedAt:now}).where(and(eq(employerTalentRefs.employerUserId,row.userId),isNull(employerTalentRefs.revokedAt))); }
+      await tx.insert(operationalActivityLogs).values({actorUserId:adminUserId,action:`admin.employer_${target}`,outcome:"success",resourceType:"employer_application",resourceId:String(itemId),companyDomain:row.billingEmail.split("@")[1],metadata:JSON.stringify({note:trimmedNote,evidenceVersion:row.evidenceVersion,applicationVersion:row.applicationVersion})});
+      await tx.insert(notifications).values({userId:row.userId,category:"system",title:`Employer access ${target}`,body:target === "approved" ? "Your employer workspace is approved." : "Your employer application was not approved. Review the note and resubmit corrected evidence.",eventKey:`employer-application:${itemId}:${row.applicationVersion}:${target}`}).onDuplicateKeyUpdate({set:{eventKey:`employer-application:${itemId}:${row.applicationVersion}:${target}`}});
+      return {kind:itemKind,id:itemId,status:target === "approved" ? "approved" as const : "declined" as const};
+    });
   }
   if (itemKind === "payment") {
     // Approving a credit pack credits the tokens, mirroring the payment review
@@ -1862,23 +1926,11 @@ export type UnlockCreditPackId = keyof typeof UNLOCK_CREDIT_PACKS;
 const firstSkillKeywords = (skills: string | null) => (skills ?? "").split(/[,;|]/).map(skill => skill.trim()).filter(Boolean).slice(0, 5);
 
 export async function ensureEmployerAccount(userId: number, companyName: string, billingEmail: string) {
-  const name = companyName.trim().slice(0, 160);
-  const email = billingEmail.trim().toLowerCase().slice(0, 320);
-  if (!name) throw new Error("Add your company name to open an employer account");
-  if (!email || !email.includes("@")) throw new Error("Add a billing email for your employer account");
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const existing = await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1);
-  if (existing[0]) return existing[0];
-  // Employer access is additive and review-gated. Never overwrite the person's
-  // seeker/referrer profile role when they request employer capability.
-  try {
-    await db.insert(employerAccounts).values({ userId, companyName: name, billingEmail: email, approvalStatus: "pending" });
-  } catch (error) {
-    if ((error as { code?: string }).code !== "ER_DUP_ENTRY") throw error;
-  }
-  return (await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1))[0];
+  const name=companyName.trim().slice(0,160); const email=billingEmail.trim().toLowerCase().slice(0,320);
+  if(!name) throw new Error("Add your company name to open an employer account"); if(!email||!email.includes("@")) throw new Error("Add a billing email for your employer account");
+  const db=await getDb();if(!db)throw new Error("Database unavailable");
+  return db.transaction(async tx=>{ const existing=(await tx.select().from(employerAccounts).where(eq(employerAccounts.userId,userId)).limit(1).for("update"))[0]; if(!existing){await tx.insert(employerAccounts).values({userId,companyName:name,billingEmail:email,approvalStatus:"pending",submittedAt:new Date()});return (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId,userId)).limit(1))[0];} const changed=existing.companyName!==name||existing.billingEmail!==email; if(!changed)return existing; const now=new Date(); await tx.update(employerAccounts).set({companyName:name,billingEmail:email,approvalStatus:"pending",submittedAt:now,decidedAt:null,decisionNote:null,approvedAt:null,approvedByUserId:null,applicationVersion:existing.applicationVersion+1}).where(eq(employerAccounts.id,existing.id)); await tx.update(profileUnlocks).set({revokedAt:now,revocationReason:"employer_application_changed"}).where(and(eq(profileUnlocks.employerUserId,userId),isNull(profileUnlocks.revokedAt))); await tx.update(employerTalentRefs).set({revokedAt:now}).where(and(eq(employerTalentRefs.employerUserId,userId),isNull(employerTalentRefs.revokedAt))); return (await tx.select().from(employerAccounts).where(eq(employerAccounts.id,existing.id)).limit(1))[0]; });
 }
-
 export async function getEmployerAccount(userId: number) {
   const db = await getDb(); if (!db) return undefined;
   return (await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1))[0];
@@ -1892,90 +1944,168 @@ export async function isEmployer(userId: number) {
   return row[0]?.status === "approved";
 }
 
-export async function spendEmployerUnlockCredit(employerUserId: number, seekerUserId: number) {
+export const TALENT_CONSENT_POLICY_VERSION = "2026-09-18.1";
+export const TALENT_CONSENT_RETENTION_DAYS = 90;
+export const TALENT_UNLOCK_DAYS = 30;
+export const TALENT_DISCLOSABLE_FIELDS = ["headline", "location", "skills", "experience", "expertise"] as const;
+export type TalentDisclosedField = typeof TALENT_DISCLOSABLE_FIELDS[number];
+const TALENT_CONSENT_AUDIENCE = "approved employers on SkipWait";
+const TALENT_CONSENT_PURPOSE = "anonymous talent discovery and employer introduction requests";
+const TALENT_CONTACT_FLOW = "Employers spend credits to unlock the approved snapshot and may request an introduction; the seeker chooses whether to respond.";
+
+const asTalentFields = (fields: string[]) => Array.from(new Set(fields)).filter((field): field is TalentDisclosedField => TALENT_DISCLOSABLE_FIELDS.includes(field as TalentDisclosedField));
+const coarseLocation = (value: string | null) => value?.split(",").slice(-2).join(",").trim().slice(0, 120) || null;
+const coarseExperience = (value: string | null) => {
+  if (!value) return null;
+  const year = value.match(/(\d{1,2})\s*\+?\s*years?/i)?.[1];
+  if (!year) return "Experience shared";
+  const n = Number(year); return n < 3 ? "0-2 years" : n < 6 ? "3-5 years" : n < 11 ? "6-10 years" : "10+ years";
+};
+const talentSnapshot = (profile: { headline: string | null; location: string | null; skills: string | null; experience: string | null; expertise: string | null }, fields: TalentDisclosedField[]) => {
+  const snapshot: Record<string, unknown> = {};
+  if (fields.includes("headline")) snapshot.headline = profile.headline;
+  if (fields.includes("location")) snapshot.location = coarseLocation(profile.location);
+  if (fields.includes("skills")) snapshot.skills = firstSkillKeywords(profile.skills);
+  if (fields.includes("experience")) snapshot.experience = coarseExperience(profile.experience);
+  if (fields.includes("expertise")) snapshot.expertise = firstSkillKeywords(profile.expertise);
+  return snapshot;
+};
+
+export function getTalentConsentPreview() {
+  return { policyVersion: TALENT_CONSENT_POLICY_VERSION, availableFields: [...TALENT_DISCLOSABLE_FIELDS], audience: TALENT_CONSENT_AUDIENCE, purpose: TALENT_CONSENT_PURPOSE, retentionDays: TALENT_CONSENT_RETENTION_DAYS, contactFlow: TALENT_CONTACT_FLOW, paidUnlockInvolved: true, unlockCreditCost: EMPLOYER_UNLOCK_CREDIT_COST, unlockDays: TALENT_UNLOCK_DAYS };
+}
+
+async function latestActiveTalentConsent(db: any, seekerUserId: number) {
+  const latest = (await db.select().from(talentDiscoveryConsents).where(eq(talentDiscoveryConsents.seekerUserId, seekerUserId)).orderBy(desc(talentDiscoveryConsents.id)).limit(1))[0];
+  return latest?.grantedAt && !latest.revokedAt && latest.policyVersion === TALENT_CONSENT_POLICY_VERSION ? latest : undefined;
+}
+
+export async function getTalentConsentState(seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const profile = await getProfileByUserId(seekerUserId);
+  const latest = (await db.select().from(talentDiscoveryConsents).where(eq(talentDiscoveryConsents.seekerUserId, seekerUserId)).orderBy(desc(talentDiscoveryConsents.id)).limit(1))[0];
+  const history = await db.select({ id: talentDiscoveryConsents.id, policyVersion: talentDiscoveryConsents.policyVersion, disclosedFields: talentDiscoveryConsents.disclosedFields, source: talentDiscoveryConsents.source, grantedAt: talentDiscoveryConsents.grantedAt, revokedAt: talentDiscoveryConsents.revokedAt, revocationReason: talentDiscoveryConsents.revocationReason }).from(talentDiscoveryConsents).where(eq(talentDiscoveryConsents.seekerUserId, seekerUserId)).orderBy(desc(talentDiscoveryConsents.id)).limit(50);
+  const active = Boolean(profile?.accountType === "job_seeker" && profile.isOnboarded && latest?.grantedAt && !latest.revokedAt && latest.policyVersion === TALENT_CONSENT_POLICY_VERSION);
+  return { ...getTalentConsentPreview(), active, selectedFields: latest ? JSON.parse(latest.disclosedFields) : [], history };
+}
+
+export async function grantTalentDiscoveryConsent(seekerUserId: number, input: { policyVersion: string; disclosedFields: string[]; source: string }) {
+  if (input.policyVersion !== TALENT_CONSENT_POLICY_VERSION) throw new Error("Review the current talent-discovery consent before opting in");
+  const fields = asTalentFields(input.disclosedFields); if (!fields.length) throw new Error("Choose at least one field to share");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, employerUserId)).limit(1).for("update"))[0];
-    if (!account) return { ok: false as const, reason: "no_employer_account" as const, credits: 0 };
-    // Check idempotency while the account row is locked, before balance. A
-    // repeated unlock succeeds even if the remaining balance is now below 5.
-    const alreadyUnlocked = await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
-    if (alreadyUnlocked[0]) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
-    if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
-    const credits = account.credits - EMPLOYER_UNLOCK_CREDIT_COST;
-    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
-    await tx.insert(profileUnlocks).values({ employerUserId, seekerProfileUserId: seekerUserId, creditsSpent: EMPLOYER_UNLOCK_CREDIT_COST });
-    return { ok: true as const, remaining: credits };
+    const account = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, seekerUserId)).limit(1).for("update"))[0];
+    const profile = (await tx.select().from(profiles).where(eq(profiles.userId, seekerUserId)).limit(1).for("update"))[0];
+    if (!account || account.suspended || !profile || profile.accountType !== "job_seeker" || !profile.isOnboarded) throw new Error("Complete an active Job Seeker profile before opting in");
+    await tx.update(talentDiscoveryConsents).set({ revokedAt: new Date(), revocationReason: "replaced_by_new_consent" }).where(and(eq(talentDiscoveryConsents.seekerUserId, seekerUserId), isNull(talentDiscoveryConsents.revokedAt)));
+    const result = await tx.insert(talentDiscoveryConsents).values({ seekerUserId, policyVersion: TALENT_CONSENT_POLICY_VERSION, disclosedFields: JSON.stringify(fields), audience: TALENT_CONSENT_AUDIENCE, purpose: TALENT_CONSENT_PURPOSE, retentionDays: TALENT_CONSENT_RETENTION_DAYS, contactFlow: TALENT_CONTACT_FLOW, paidUnlockInvolved: true, source: input.source.slice(0,80), grantedAt: new Date() });
+    await tx.update(profiles).set({ anonymityOptIn: true }).where(eq(profiles.userId, seekerUserId));
+    return { active: true, consentId: Number(result[0].insertId), disclosedFields: fields };
   });
 }
 
-// Anonymized talent discovery. HARD invariant: never selects name, email,
-// resumeUrl, phone, or any users column beyond the join key.
-export type AnonymizedSeekerProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
-
-async function ensureTalentRef(employerUserId: number, seekerUserId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const existing = await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId))).limit(1);
-  if (existing[0]) return existing[0].publicRef;
-  const publicRef = `tal_${randomBytes(18).toString("base64url")}`;
-  try { await db.insert(employerTalentRefs).values({ employerUserId, seekerProfileUserId: seekerUserId, publicRef }); }
-  catch (error) { if ((error as { code?: string }).code !== "ER_DUP_ENTRY") throw error; }
-  return (await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId))).limit(1))[0]?.publicRef ?? publicRef;
-}
-
-export async function resolveEmployerTalentRef(employerUserId: number, publicRef: string) {
-  if (!/^tal_[A-Za-z0-9_-]{20,60}$/.test(publicRef)) return undefined;
-  const db = await getDb(); if (!db) return undefined;
-  const row = await db.select({ seekerUserId: employerTalentRefs.seekerProfileUserId }).from(employerTalentRefs).innerJoin(profiles, eq(profiles.userId, employerTalentRefs.seekerProfileUserId)).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.publicRef, publicRef), eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true))).limit(1);
-  return row[0]?.seekerUserId;
-}
-
-export async function listAnonymizedSeekerProfiles(employerUserId: number, input: { query?: string; location?: string } = {}) {
-  const db = await getDb(); if (!db) return [] as AnonymizedSeekerProfile[];
-  const rows = await db.select({ userId: profiles.userId, headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience }).from(profiles).where(and(eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true)));
-  const unlocked = new Set((await db.select({ seekerId: profileUnlocks.seekerProfileUserId }).from(profileUnlocks).where(eq(profileUnlocks.employerUserId, employerUserId))).map(row => row.seekerId));
-  const term = input.query?.trim().toLowerCase(); const locationTerm = input.location?.trim().toLowerCase();
-  const filtered = rows.filter(row => (!term || `${row.headline ?? ""} ${row.skills ?? ""} ${row.experience ?? ""}`.toLowerCase().includes(term)) && (!locationTerm || (row.location ?? "").toLowerCase().includes(locationTerm))).slice(0, 60);
-  return Promise.all(filtered.map(async row => ({ displayRef: await ensureTalentRef(employerUserId, row.userId), headline: row.headline, location: row.location, skills: firstSkillKeywords(row.skills), isUnlocked: unlocked.has(row.userId) })));
-}
-
-// Fuller profile for an unlocked, currently opted-in pair.
-export async function getUnlockedProfile(employerUserId: number, seekerUserId: number) {
-  const db = await getDb(); if (!db) return undefined;
-  const unlocked = await db.select({ unlockedAt: profileUnlocks.unlockedAt }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
-  if (!unlocked[0]) return undefined;
-  const profile = await db.select({ headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience, expertise: profiles.expertise }).from(profiles).where(and(eq(profiles.userId, seekerUserId), eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true))).limit(1);
-  if (!profile[0]) return undefined;
-  const displayRef = await ensureTalentRef(employerUserId, seekerUserId);
-  return { displayRef, headline: profile[0].headline, location: profile[0].location, skills: firstSkillKeywords(profile[0].skills), experience: profile[0].experience, expertise: profile[0].expertise, unlockedAt: unlocked[0].unlockedAt };
-}
-
-export async function requestEmployerTalentIntro(employerUserId: number, seekerUserId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const unlocked = await db.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
-  if (!unlocked[0]) return { ok: false as const, reason: "locked" as const };
-  try { await db.insert(employerTalentIntroRequests).values({ employerUserId, seekerProfileUserId: seekerUserId }); return { ok: true as const, created: true as const }; }
-  catch (error) { if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { ok: true as const, created: false as const }; throw error; }
-}
-
-export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; isAdmin?: boolean }) {
-  const tierCost = SPONSOR_TIERS[input.tier];
-  if (!tierCost) throw new Error("Choose a featured or spotlight sponsorship tier");
+export async function revokeTalentDiscoveryConsent(seekerUserId: number, reason = "seeker_opt_out") {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const opportunity = (await tx.select({ id: companyOpportunities.id, ownerId: companyOpportunities.ownerId, companyDomain: companyOpportunities.companyDomain, roleTitle: companyOpportunities.roleTitle }).from(companyOpportunities).where(eq(companyOpportunities.id, opportunityId)).limit(1))[0];
+    const now = new Date();
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, seekerUserId)).limit(1).for("update");
+    await tx.update(talentDiscoveryConsents).set({ revokedAt: now, revocationReason: reason.slice(0,255) }).where(and(eq(talentDiscoveryConsents.seekerUserId, seekerUserId), isNull(talentDiscoveryConsents.revokedAt)));
+    await tx.update(profileUnlocks).set({ revokedAt: now, revocationReason: reason.slice(0,255) }).where(and(eq(profileUnlocks.seekerProfileUserId, seekerUserId), isNull(profileUnlocks.revokedAt)));
+    await tx.update(employerTalentRefs).set({ revokedAt: now }).where(and(eq(employerTalentRefs.seekerProfileUserId, seekerUserId), isNull(employerTalentRefs.revokedAt)));
+    await tx.update(profiles).set({ anonymityOptIn: false }).where(eq(profiles.userId, seekerUserId));
+    return { active: false };
+  });
+}
+
+export async function listTalentAccessHistory(seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.select({ id: profileUnlocks.id, employerUserId: profileUnlocks.employerUserId, employerCompanyName: profileUnlocks.employerCompanyName, consentPolicyVersion: profileUnlocks.consentPolicyVersion, disclosedFields: profileUnlocks.disclosedFields, unlockedAt: profileUnlocks.unlockedAt, expiresAt: profileUnlocks.expiresAt, revokedAt: profileUnlocks.revokedAt, revocationReason: profileUnlocks.revocationReason }).from(profileUnlocks).where(eq(profileUnlocks.seekerProfileUserId, seekerUserId)).orderBy(desc(profileUnlocks.id)).limit(100);
+}
+
+export async function revokeTalentEmployerAccess(seekerUserId: number, employerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => { const now = new Date(); await tx.update(profileUnlocks).set({ revokedAt: now, revocationReason: "seeker_revoked_employer" }).where(and(eq(profileUnlocks.seekerProfileUserId, seekerUserId), eq(profileUnlocks.employerUserId, employerUserId), isNull(profileUnlocks.revokedAt))); await tx.update(employerTalentRefs).set({ revokedAt: now }).where(and(eq(employerTalentRefs.seekerProfileUserId, seekerUserId), eq(employerTalentRefs.employerUserId, employerUserId), isNull(employerTalentRefs.revokedAt))); return { revoked: true }; });
+}
+
+export async function spendEmployerUnlockCredit(employerUserId: number, seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const now = new Date();
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, employerUserId)).limit(1).for("update"))[0];
+    const employer = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, employerUserId)).limit(1))[0];
+    const seeker = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, seekerUserId)).limit(1).for("update"))[0];
+    const profile = (await tx.select().from(profiles).where(eq(profiles.userId, seekerUserId)).limit(1).for("update"))[0];
+    const consent = await latestActiveTalentConsent(tx, seekerUserId);
+    if (!account || account.approvalStatus !== "approved" || employer?.suspended) return { ok: false as const, reason: "no_employer_account" as const, credits: account?.credits ?? 0 };
+    if (!seeker || seeker.suspended || !profile || !profile.anonymityOptIn || !profile.isOnboarded || !consent) return { ok: false as const, reason: "consent_withdrawn" as const, credits: account.credits };
+    const active = (await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId), eq(profileUnlocks.consentId, consent.id), isNull(profileUnlocks.revokedAt), gt(profileUnlocks.expiresAt, now))).limit(1))[0];
+    if (active) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
+    if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
+    const fields = asTalentFields(JSON.parse(consent.disclosedFields)); const snapshot = talentSnapshot(profile, fields); const expiresAt = new Date(now.getTime() + TALENT_UNLOCK_DAYS*86400000);
+    const debited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} - ${EMPLOYER_UNLOCK_CREDIT_COST}` }).where(and(eq(employerAccounts.id, account.id), sql`${employerAccounts.credits} >= ${EMPLOYER_UNLOCK_CREDIT_COST}`));
+    if (Number((debited as any)[0]?.affectedRows ?? 0) !== 1) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
+    await tx.insert(profileUnlocks).values({ employerUserId, seekerProfileUserId: seekerUserId, consentId: consent.id, consentPolicyVersion: consent.policyVersion, employerCompanyName: account.companyName, disclosedFields: JSON.stringify(fields), profileVersion: profile.updatedAt, profileSnapshot: JSON.stringify(snapshot), expiresAt, creditsSpent: EMPLOYER_UNLOCK_CREDIT_COST });
+    return { ok: true as const, remaining: account.credits - EMPLOYER_UNLOCK_CREDIT_COST };
+  });
+}
+
+export type AnonymizedSeekerProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
+async function ensureTalentRef(employerUserId: number, seekerUserId: number, consentId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId), eq(employerTalentRefs.consentId, consentId), isNull(employerTalentRefs.revokedAt))).limit(1);
+  if (existing[0]) return existing[0].publicRef;
+  const publicRef = `tal_${randomBytes(18).toString("base64url")}`;
+  await db.insert(employerTalentRefs).values({ employerUserId, seekerProfileUserId: seekerUserId, publicRef, consentId }); return publicRef;
+}
+export async function resolveEmployerTalentRef(employerUserId: number, publicRef: string) {
+  if (!/^tal_[A-Za-z0-9_-]{20,60}$/.test(publicRef)) return undefined; const db = await getDb(); if (!db) return undefined;
+  const row = await db.select({ seekerUserId: employerTalentRefs.seekerProfileUserId, consentId: employerTalentRefs.consentId }).from(employerTalentRefs).innerJoin(profiles, eq(profiles.userId, employerTalentRefs.seekerProfileUserId)).innerJoin(users, eq(users.id, employerTalentRefs.seekerProfileUserId)).innerJoin(talentDiscoveryConsents, eq(talentDiscoveryConsents.id, employerTalentRefs.consentId)).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.publicRef, publicRef), isNull(employerTalentRefs.revokedAt), eq(profiles.accountType,"job_seeker"), eq(profiles.anonymityOptIn,true), eq(profiles.isOnboarded,true), eq(users.suspended,false), eq(talentDiscoveryConsents.policyVersion,TALENT_CONSENT_POLICY_VERSION), isNull(talentDiscoveryConsents.revokedAt), isNotNull(talentDiscoveryConsents.grantedAt))).limit(1); return row[0]?.seekerUserId;
+}
+export async function listAnonymizedSeekerProfiles(employerUserId: number, input: { query?: string; location?: string } = {}) {
+  const db = await getDb(); if (!db || !(await isEmployer(employerUserId))) return [] as AnonymizedSeekerProfile[];
+  const rows = await db.select({ userId: profiles.userId, headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType,"job_seeker"),eq(profiles.anonymityOptIn,true),eq(profiles.isOnboarded,true),eq(users.suspended,false)));
+  const term=input.query?.trim().toLowerCase(), locationTerm=input.location?.trim().toLowerCase(); const out: AnonymizedSeekerProfile[]=[];
+  for (const row of rows) { const consent=await latestActiveTalentConsent(db,row.userId); if(!consent) continue; const fields=asTalentFields(JSON.parse(consent.disclosedFields)); const snap=talentSnapshot({ ...row, expertise:null },fields) as any; if(term && `${snap.headline??""} ${(snap.skills??[]).join(" ")} ${snap.experience??""}`.toLowerCase().includes(term)===false) continue; if(locationTerm && String(snap.location??"").toLowerCase().includes(locationTerm)===false) continue; const active=(await db.select({id:profileUnlocks.id}).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId,employerUserId),eq(profileUnlocks.seekerProfileUserId,row.userId),eq(profileUnlocks.consentId,consent.id),isNull(profileUnlocks.revokedAt),gt(profileUnlocks.expiresAt,new Date()))).limit(1))[0]; out.push({displayRef:await ensureTalentRef(employerUserId,row.userId,consent.id),headline:snap.headline??null,location:snap.location??null,skills:snap.skills??[],isUnlocked:Boolean(active)}); if(out.length>=60) break; } return out;
+}
+export async function getUnlockedProfile(employerUserId:number,seekerUserId:number){ const db=await getDb();if(!db||!(await isEmployer(employerUserId)))return undefined; const account=(await db.select({suspended:users.suspended}).from(users).where(eq(users.id,seekerUserId)).limit(1))[0]; if(!account||account.suspended)return undefined; const grant=(await db.select().from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId,employerUserId),eq(profileUnlocks.seekerProfileUserId,seekerUserId),isNull(profileUnlocks.revokedAt),gt(profileUnlocks.expiresAt,new Date()))).orderBy(desc(profileUnlocks.id)).limit(1))[0]; if(!grant)return undefined; const consent=await latestActiveTalentConsent(db,seekerUserId);if(!consent||consent.id!==grant.consentId)return undefined; return {...JSON.parse(grant.profileSnapshot),unlockedAt:grant.unlockedAt,expiresAt:grant.expiresAt}; }
+export async function requestEmployerTalentIntro(employerUserId:number,seekerUserId:number){ const db=await getDb();if(!db)throw new Error("Database unavailable"); return db.transaction(async tx=>{ const now=new Date(); const employer=(await tx.select({suspended:users.suspended}).from(users).where(eq(users.id,employerUserId)).limit(1))[0]; const seeker=(await tx.select({suspended:users.suspended}).from(users).where(eq(users.id,seekerUserId)).limit(1).for("update"))[0]; const account=(await tx.select({status:employerAccounts.approvalStatus}).from(employerAccounts).where(eq(employerAccounts.userId,employerUserId)).limit(1))[0]; const grant=(await tx.select().from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId,employerUserId),eq(profileUnlocks.seekerProfileUserId,seekerUserId),isNull(profileUnlocks.revokedAt),gt(profileUnlocks.expiresAt,now))).orderBy(desc(profileUnlocks.id)).limit(1).for("update"))[0]; const consent=await latestActiveTalentConsent(tx,seekerUserId); if(!employer||employer.suspended||!seeker||seeker.suspended||account?.status!=="approved"||!grant||!consent||grant.consentId!==consent.id)return {ok:false as const,reason:"grant_inactive" as const}; try{await tx.insert(employerTalentIntroRequests).values({employerUserId,seekerProfileUserId:seekerUserId});return {ok:true as const,created:true as const};}catch(error){if((error as any).code==="ER_DUP_ENTRY")return {ok:true as const,created:false as const};throw error;} }); }
+
+export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; idempotencyKey: string; isAdmin?: boolean; chargedUserId?: number }) {
+  const tierCost = SPONSOR_TIERS[input.tier];
+  if (!tierCost) throw new Error("Choose a featured or spotlight sponsorship tier");
+  if (!/^[\x21-\x7E]{16,64}$/.test(input.idempotencyKey)) throw new Error("A valid Idempotency-Key header is required");
+  const chargedUserId = input.chargedUserId ?? userId;
+  if (input.isAdmin && input.chargedUserId === undefined) throw new Error("Administrator sponsorship must name the charged wallet owner");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const opportunity = (await tx.select().from(companyOpportunities).where(eq(companyOpportunities.id, opportunityId)).limit(1).for("update"))[0];
     if (!opportunity) throw new Error("This opportunity could not be found");
+    if (!opportunity.isActive) throw new Error("This opportunity is not active and publishable");
     if (!input.isAdmin && opportunity.ownerId !== userId) throw new Error("Only the opportunity owner or an administrator can sponsor this role");
-    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1).for("update"))[0];
+    if (!input.isAdmin && chargedUserId !== opportunity.ownerId) throw new Error("The opportunity owner wallet must fund this sponsorship");
+    const replay = (await tx.select().from(opportunitySponsorshipPurchases).where(and(eq(opportunitySponsorshipPurchases.chargedUserId, chargedUserId), eq(opportunitySponsorshipPurchases.idempotencyKey, input.idempotencyKey))).limit(1).for("update"))[0];
+    if (replay) {
+      if (replay.opportunityId !== opportunityId || replay.tier !== input.tier) throw new Error("Idempotency-Key is already bound to a different sponsorship");
+      const account = (await tx.select({ credits: employerAccounts.credits }).from(employerAccounts).where(eq(employerAccounts.userId, chargedUserId)).limit(1))[0];
+      return { opportunityId, tier: replay.tier, sponsoredUntil: replay.endsAt, creditsSpent: replay.creditsSpent, credits: account?.credits ?? 0, replayed: true };
+    }
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, chargedUserId)).limit(1).for("update"))[0];
     if (!account) throw new Error("Open an employer account before sponsoring a role");
     if (account.credits < tierCost.cost) throw new Error(`Sponsoring costs ${tierCost.cost} unlock credits; you have ${account.credits}`);
-    const sponsoredUntil = new Date(Date.now() + tierCost.days * 24 * 60 * 60 * 1000);
-    await tx.update(companyOpportunities).set({ sponsoredUntil, sponsoredTier: input.tier }).where(eq(companyOpportunities.id, opportunityId));
+    const purchasedAt = new Date();
+    const startsAt = opportunity.sponsoredUntil && opportunity.sponsoredUntil > purchasedAt ? opportunity.sponsoredUntil : purchasedAt;
+    const sponsoredUntil = new Date(startsAt.getTime() + tierCost.days * 24 * 60 * 60 * 1000);
+    // Claim the immutable purchase before the debit. A duplicate-key race rolls
+    // this transaction back, so only one request can charge this key.
+    await tx.insert(opportunitySponsorshipPurchases).values({ idempotencyKey: input.idempotencyKey, opportunityId, opportunityOwnerId: opportunity.ownerId, chargedUserId, actorUserId: userId, tier: input.tier, creditsSpent: tierCost.cost, startsAt, endsAt: sponsoredUntil, opportunityUpdatedAt: opportunity.updatedAt });
+    const debited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} - ${tierCost.cost}` }).where(and(eq(employerAccounts.id, account.id), sql`${employerAccounts.credits} >= ${tierCost.cost}`));
+    if (Number(debited[0]?.affectedRows ?? 0) !== 1) throw new Error("Not enough unlock credits for this sponsorship");
+    const placed = await tx.update(companyOpportunities).set({ sponsoredUntil, sponsoredTier: input.tier }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.isActive, true), eq(companyOpportunities.updatedAt, opportunity.updatedAt)));
+    if (Number(placed[0]?.affectedRows ?? 0) !== 1) throw new Error("This opportunity changed while sponsorship was being purchased");
     const credits = account.credits - tierCost.cost;
-    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
-    const metadata: Record<string, string | number> = { tier: input.tier, days: tierCost.days, creditsSpent: tierCost.cost, creditsRemaining: credits };
+    const metadata: Record<string, string | number> = { tier: input.tier, days: tierCost.days, creditsSpent: tierCost.cost, creditsRemaining: credits, chargedUserId, opportunityOwnerId: opportunity.ownerId, idempotencyKey: input.idempotencyKey };
     await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "employer.opportunity_sponsored", outcome: "success", resourceType: "opportunity", resourceId: String(opportunityId), companyDomain: opportunity.companyDomain, metadata: JSON.stringify(metadata) });
-    return { opportunityId, tier: input.tier, sponsoredUntil, creditsSpent: tierCost.cost, credits };
+    return { opportunityId, tier: input.tier, sponsoredUntil, creditsSpent: tierCost.cost, credits, replayed: false };
   });
 }
 
@@ -2018,7 +2148,7 @@ export async function listPublicCompanyOpportunitiesWithSponsorship() {
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
   const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   try {
-    const rows = await suppressUnsafeLegacyOpportunities(db, await attempt());
+    const rows = await attempt();
     const now = Date.now();
     return orderOpportunitiesSponsoredFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
   } catch {
@@ -2147,6 +2277,6 @@ export async function listEmployerSpendHistory(userId: number, limit = 50) {
     try { const meta = JSON.parse(row.metadata ?? "{}") as { creditsAdded?: number; pack?: string }; creditsAdded = meta.creditsAdded ?? 0; pack = meta.pack ?? null; } catch { /* keep zeros */ }
     return { kind: "credit_purchase" as const, creditsAdded, pack, createdAt: row.createdAt };
   });
-  const unlockRows = await Promise.all(unlocks.map(async row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: await ensureTalentRef(userId, row.seekerProfileUserId), createdAt: row.createdAt })));
+  const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: "Access record", createdAt: row.createdAt }));
   return [...sponsorRows, ...creditRows, ...unlockRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
 }

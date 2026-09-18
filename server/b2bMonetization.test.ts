@@ -230,10 +230,10 @@ describe("sponsored roles", () => {
     const sponsorships: Array<[number, { tier: string }]> = [];
     const app = buildApp(baseDeps({ requestEmployerTalentIntro: async () => ({ ok: true, created: true }),
     sponsorCompanyOpportunity: async (userId, opportunityId, input) => { sponsorships.push([opportunityId, input]); return { opportunityId, tier: input.tier, creditsSpent: 10 }; } }));
-    const response = await request(app).post("/api/employer/opportunities/7/sponsor").send({ tier: "featured" });
+    const response = await request(app).post("/api/employer/opportunities/7/sponsor").set("Idempotency-Key", "sponsor-test-key-123456").send({ tier: "featured" });
     expect(response.status).toBe(201);
     expect(response.body.sponsorship).toMatchObject({ tier: "featured", creditsSpent: 10 });
-    expect(sponsorships).toEqual([[7, { tier: "featured" }]]);
+    expect(sponsorships).toEqual([[7, { tier: "featured", idempotencyKey: "sponsor-test-key-123456" }]]);
   });
 
   it("rejects an invalid tier and an invalid opportunity id", async () => {

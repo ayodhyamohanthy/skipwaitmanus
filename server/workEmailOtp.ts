@@ -1,6 +1,6 @@
-import { createHash, randomInt } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
-import { workEmailOtpCodes, workEmailOtpRateLimits } from "../drizzle/schema";
+import { workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
 import { getDb, isWorkEmailDomain } from "./db";
 import { sendTransactionalEmail } from "./emailDelivery";
 import { resolve4, resolveMx } from "node:dns/promises";
@@ -12,6 +12,7 @@ export type WorkEmailOtpDependencies = { sendEmail?: (input: WorkEmailOtpDeliver
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const VERIFICATION_RECEIPT_MS = 10 * 60 * 1000;
+const receiptHash = (value: string) => createHash("sha256").update(value).digest("hex");
 const domainCache = new Map<string, { valid: boolean; until: number }>();
 const reservedDomain = /(?:^|\.)(?:invalid|localhost|local|test|example)$/i;
 export async function hasDeliverableMailDomain(domain: string): Promise<boolean> {
@@ -103,18 +104,22 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
         return Number(claimed[0]?.affectedRows ?? 0) === 1;
       });
     },
+    async issueEnrollmentReceipt(rawEmail: string, userId: number): Promise<{ receipt: string; expiresAt: Date }> {
+      const email = rawEmail.trim().toLowerCase();
+      if (!isValidWorkEmailOtpEmail(email) || !Number.isInteger(userId) || userId <= 0) throw new Error("Invalid OTP receipt scope");
+      const db = await getDb(); if (!db) throw new Error("Database unavailable");
+      const receipt = randomBytes(32).toString("base64url");
+      const expiresAt = new Date(now() + VERIFICATION_RECEIPT_MS);
+      await db.insert(workEmailOtpReceipts).values({ receiptHash: receiptHash(receipt), email, userId, purpose: "work_email_enrollment", expiresAt });
+      return { receipt, expiresAt };
+    },
     async registerFailedAttempt(rawEmail: string, rawCode: string): Promise<void> {
       const email = rawEmail.trim().toLowerCase(), code = rawCode.trim();
       if (!isValidWorkEmailOtpEmail(email) || !/^\d{6}$/.test(code)) return;
       const db = await getDb(); if (!db) return;
       await db.update(workEmailOtpCodes).set({ attempts: sql`${workEmailOtpCodes.attempts} + 1` }).where(and(eq(workEmailOtpCodes.email, email), isNull(workEmailOtpCodes.consumedAt), gt(workEmailOtpCodes.expiresAt, new Date(now())), lt(workEmailOtpCodes.attempts, MAX_ATTEMPTS)));
     },
-    async hasRecentVerification(rawEmail: string, withinMs: number = VERIFICATION_RECEIPT_MS): Promise<boolean> {
-      const email = rawEmail.trim().toLowerCase(); if (!isValidWorkEmailOtpEmail(email)) return false;
-      const db = await getDb(); if (!db) return false;
-      const rows = await db.select({ id: workEmailOtpCodes.id }).from(workEmailOtpCodes).where(and(eq(workEmailOtpCodes.email, email), gt(workEmailOtpCodes.consumedAt, new Date(now() - withinMs)))).limit(1);
-      return rows.length === 1;
-    },
+
   };
 }
 export const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async ({ to, code }) => sendTransactionalEmail({ to, subject: "Your skipwait.me verification code", text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.` }) });
