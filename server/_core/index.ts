@@ -1,7 +1,10 @@
-import { initServerSentry, sentryErrorMiddleware } from "../sentry";
+import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
 
 initServerSentry();
+if (process.env.NODE_ENV !== "production") {
+  console.info(`[Sentry] server reporting ${isServerSentryActive() ? "ACTIVE" : "INACTIVE (set SENTRY_DSN to enable)"}`);
+}
 import { registerAdminSmokeFixture } from "../adminSmokeFixture";
 import "./envBoot";
 import { readFile } from "node:fs/promises";
@@ -174,14 +177,39 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       return resolveChargebeeHostedPageForPayment({ ...input, pendingHostedPageIds: pending.flatMap(row => row.hostedPageId ? [row.hostedPageId] : []) });
     },
   });
-  // tRPC API
+  // tRPC API — tRPC handles errors internally and never calls Express
+  // error middleware, so report them to Sentry here explicitly.
   app.use(
     "/api/trpc",
     createExpressMiddleware({
       router: appRouter,
       createContext,
+      onError({ error, path, req }) {
+        captureServerError(error, {
+          trpcPath: scrubSentryPath(typeof path === "string" ? `/${path}` : req.path),
+          code: error.code,
+        });
+      },
     })
   );
+  // Sentry diagnostics (no secrets in responses): status is safe everywhere;
+  // the test sender only exists outside production to avoid event spam.
+  app.get("/api/debug/sentry-status", (_req, res) => {
+    res.json({ active: isServerSentryActive() });
+  });
+  if (process.env.NODE_ENV !== "production") {
+    app.get("/api/debug/sentry-test", async (_req, res) => {
+      const active = isServerSentryActive();
+      if (active) {
+        captureServerError(new Error("Sentry server test event"), { source: "debug-endpoint" });
+        await flushServerSentry();
+      }
+      res.json({ active, sent: active });
+    });
+    app.get("/api/debug/sentry-throw", () => {
+      throw new Error("Sentry server middleware test throw");
+    });
+  }
   // Error-reporting middleware sits after every route so forwarded errors are
   // captured by Sentry (when configured) before the final handlers respond.
   app.use(sentryErrorMiddleware);

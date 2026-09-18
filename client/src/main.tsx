@@ -11,9 +11,13 @@ import { getGlobalAccessToken } from "./_core/accessToken";
 import { initializeDevicePreferences } from "./lib/device";
 import "./index.css";
 import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
-import { captureClientError, initClientSentry } from "./lib/sentry";
+import { captureClientError, initClientSentry, testClientSentry } from "./lib/sentry";
 
-initClientSentry();
+const clientSentryActive = initClientSentry();
+if (import.meta.env.DEV) {
+  console.info(`[Sentry] client reporting ${clientSentryActive ? "ACTIVE" : "INACTIVE (set VITE_SENTRY_DSN and restart dev to enable)"}`);
+  window.__sentryTest = testClientSentry;
+}
 if (typeof window !== "undefined") {
   window.addEventListener("error", event => captureClientError(event.error ?? event.message, { source: "window.onerror" }));
   window.addEventListener("unhandledrejection", event => captureClientError(event.reason, { source: "unhandledrejection" }));

@@ -40,6 +40,15 @@ export function isServerSentryActive(): boolean {
   return initialized;
 }
 
+export async function flushServerSentry(timeoutMs = 5000): Promise<boolean> {
+  if (!initialized) return false;
+  try {
+    return await Sentry.flush(timeoutMs);
+  } catch {
+    return false;
+  }
+}
+
 export function captureServerError(error: unknown, context?: Record<string, unknown>): void {
   if (!initialized) return;
   Sentry.captureException(error, context ? { extra: context } : undefined);
