@@ -38,6 +38,19 @@ The plan may be concise for a small change, but it may not be skipped. Keep the
 implementation inside the listed scope; revise the plan explicitly when scope
 changes.
 
+## Commit every validated atomic change
+- The moment one coherent change passes its focused validation, inspect and
+  commit it. Do not accumulate unrelated working edits into a large checkpoint.
+- Each commit must be independently understandable and, where feasible,
+  revertible: one intent, its implementation, and its verification together.
+  Use a message that states the behavior changed, not a vague progress label.
+- Before committing, reread the diff, stage only the planned owned paths, run
+  `git diff --check` plus the change's focused tests, and confirm no secret,
+  generated artifact, or another session's work is included.
+- A commit is a local recovery point, not permission to push, merge, or deploy.
+  Keep the collaboration and production gates below. Never amend or rewrite a
+  validated checkpoint merely to make history look tidy during active work.
+
 ## Working agreement: multi-agent collaboration
 - Read [COLLABORATION.md](./COLLABORATION.md) before editing. It is the shared
   protocol for every platform and model working on this repository.
