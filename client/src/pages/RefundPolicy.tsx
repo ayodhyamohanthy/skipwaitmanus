@@ -29,7 +29,7 @@ export default function RefundPolicy() {
     </PolicySection>
 
     <PolicySection number="02" title="One-off credit purchases">
-      <p>Purchased credits are added only after the payment provider confirms payment. Unused purchased credits <strong>can be refunded on request within 14 days</strong> of purchase, less any credits already consumed by accepted referrals. Contact <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-[#191713]">{SUPPORT_EMAIL}</a> from your account email with the payment reference shown on your receipt.</p>
+      <p>Purchased credits are added only after the payment provider confirms payment. Unused purchased credits <strong>can be refunded on request within 14 days</strong> of purchase, less any credits already consumed by accepted referrals. Contact <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email with the payment reference shown on your receipt.</p>
     </PolicySection>
 
     <PolicySection number="03" title="Pro and Max subscriptions">
@@ -41,14 +41,14 @@ export default function RefundPolicy() {
     </PolicySection>
 
     <PolicySection number="04" title="Failed or unconfirmed payments">
-      <p>If your bank shows a charge but credits did not appear, the payment is held for administrator review rather than lost. When you return from checkout, <Link href="/premium" className="font-semibold text-[#191713]">Buy credits</Link> re-checks the payment with the provider automatically and tells you whether it was credited or needs review. If it stays unresolved, email us with the payment reference. Duplicate or unfulfillable charges are refunded to the original payment method.</p>
+      <p>If your bank shows a charge but credits did not appear, the payment is held for administrator review rather than lost. When you return from checkout, <Link href="/premium" className="font-semibold text-black">Buy credits</Link> re-checks the payment with the provider automatically and tells you whether it was credited or needs review. If it stays unresolved, email us with the payment reference. Duplicate or unfulfillable charges are refunded to the original payment method.</p>
     </PolicySection>
 
     <PolicySection number="05" title="How refunds are processed">
       <ul>
         <li>Refunds are approved by a skipwait.me administrator and recorded in an auditable log; the matching credits are removed from your balance at the same time.</li>
         <li>Refunds go back to the original payment method. Provider processing usually takes <strong>5–10 business days</strong> after approval.</li>
-        <li>We may decline refunds for credits obtained or used in breach of the <Link href="/terms" className="font-semibold text-[#191713]">Terms of Service</Link>.</li>
+        <li>We may decline refunds for credits obtained or used in breach of the <Link href="/terms" className="font-semibold text-black">Terms of Service</Link>.</li>
       </ul>
     </PolicySection>
 

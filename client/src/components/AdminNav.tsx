@@ -30,7 +30,7 @@ export function AdminNav({ current, badge = "Admin only" }: { current: AdminSect
   return <header className="flex flex-col gap-3">
     <div className="flex items-center justify-between gap-4">
       <Brand />
-      <span className="inline-flex items-center gap-2 rounded-full border border-[#DBEAFE] bg-[#E8F0FE] px-3 py-1.5 text-xs font-semibold text-[#191713]"><ShieldCheck className="h-3.5 w-3.5" />{badge}</span>
+      <span className="inline-flex items-center gap-2 rounded-full border border-[#c2c2ff] bg-[#ededff] px-3 py-1.5 text-xs font-semibold text-black"><ShieldCheck className="h-3.5 w-3.5" />{badge}</span>
     </div>
     <nav aria-label="Administrator sections" className="-mx-1 overflow-x-auto px-1 pb-1 [scrollbar-width:none]">
       <ul className="flex min-w-max items-center gap-2">
@@ -38,8 +38,8 @@ export function AdminNav({ current, badge = "Admin only" }: { current: AdminSect
           const active = section.id === current;
           const Icon = section.icon;
           return <li key={section.id}>
-            <Link href={section.href} aria-current={active ? "page" : undefined} className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${active ? "border-[#191713] bg-[#191713] text-white" : "border-[#E2DDD2] bg-white text-[#3F3B33] hover:border-[#BFDBFE] hover:bg-[#E8F0FE]"}`}>
-              <Icon className={`h-4 w-4 ${active ? "text-white" : "text-[#191713]"}`} />{section.label}
+            <Link href={section.href} aria-current={active ? "page" : undefined} className={`inline-flex min-h-10 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-bold ${active ? "border-[#0000ff] bg-[#0000ff] text-white" : "border-[#e5e5e5] bg-white text-[#505050] hover:border-[#0000ff] hover:bg-[#ededff]"}`}>
+              <Icon className={`h-4 w-4 ${active ? "text-white" : "text-black"}`} />{section.label}
             </Link>
           </li>;
         })}

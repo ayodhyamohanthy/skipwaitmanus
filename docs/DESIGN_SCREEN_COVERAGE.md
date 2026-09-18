@@ -42,6 +42,64 @@ Gap audit of the three pending surfaces against the handoff spec found the items
 
 New tests: `myRequests.pendingStates.test.tsx` (4), `myCompanyInbox.pendingStates.test.tsx` (4), `requestStatusTimeline.test.ts` (5), `referrerFastTrackCard.test.tsx` (3), `policyPages.test.tsx` (4). Board: `docs/design/flow-design-board.html` section 05.
 
+## Full-stack audit + approved-palette re-authoring (2026-09-18)
+
+Audited the complete slice behind the six spec screens: the four pages, every component they render (21 files), and the server contracts each screen calls.
+
+### Server contracts — no gaps found
+| Screen(s) | Endpoint(s) | Guard |
+|---|---|---|
+| 2.1 / 2.2 seeker list + detail | `GET /api/company-referrals/mine`, `GET /api/credits/summary?role=job_seeker` | seeker session |
+| 2.1 withdraw | `POST /api/company-referrals/:requestId/withdraw` | owner, `pending` + unclaimed; refunds the reserved credit |
+| 2.2 referrer claim/decision | `POST …/:requestId/save`, `POST …/:requestId/claim`, `GET …/:requestId/preview` | verified referrer on the company domain |
+| 2.3 / 2.4 referrer queue + review | `GET /api/company-referrals/inbox`, `POST …/:requestId/review`, `POST …/one-click-review`, `POST /api/company-referrals/availability/open` | referrer session |
+| 2.5 admin queue | `GET /api/admin/approval-queue?limit=250` | `identity.account.role === "admin"`, else 403 |
+| 2.6 admin detail + decision | `GET /api/admin/activity?limit=250`, `POST /api/admin/approval-queue/:kind/:id/decision` | `identity.account.role === "admin"` |
+
+Every field the screens render (Ref-XXXX, stage sentence, claim/OTP/payment context, credit movement, ordered history) is already served; **no screen needs a new endpoint**. Route coverage lives in `server/approvalQueueRoutes.test.ts`.
+
+### Design defects found and fixed
+The screens were authored in the earlier Takram / warm-paper palette and only rendered in the approved palette because `client/src/index.css` carried a compatibility shim that rewrote those class names with `!important`. **19 occurrences sat outside the shim**, so the retired palette leaked to production:
+
+| Leak | Surface | Now |
+|---|---|---|
+| `border-[#ECE8DD]` warm beige hairline | `/requests` ×2 | `border-[#e5e5e5]` |
+| `border-[#f3c1bc]` warm salmon | `/inbox`, `ActionErrorCard`, `ReferrerFastTrackCard` | `border-[#b91c1c]/30` |
+| `bg-[#eef3fc]` Takram pale blue | `/admin/approvals`, `/admin/approvals/:kind/:id` | `bg-[#ededff]` |
+| `bg-[#FEF3F2]` warm error ground | `ActionErrorCard`, `ReferrerFastTrackCard` | `bg-[#b91c1c]/10` |
+| `ring-[#191713]` near-black focus ring | `AccountMenu`, `NotificationBell` | `ring-[#0000ff]` |
+| `bg-[#166534]` off-palette green | admin Approve hover | `hover:bg-[#15803d]/85` |
+
+Tailwind palette colours (`amber-*`, `emerald-*`, `rose-*`) were replaced with the brand functional tokens (`#B45309` / `#15803d` / `#B91C1C`) and tints derived as `<token>/10` and `/30`. Inert `disabled:opacity-50` classes were deleted — DESIGN.md bans opacity-faded disabled states and `index.css` already forces the solid `#e0e0e0` / `#505050` state.
+
+**492 class tokens re-authored across 16 files.** Third-party share-target colours (`#25D366`, `#229ED9`, `#0A66C2` in `OneTapShareActions`) are intentional and retained.
+
+### Product-wide completion pass (2026-09-18, same session)
+The remaining 43 product files were re-authored in the same pass (≈1,540 approved tokens across the tree after completion). Conventions applied, taken from the retired shim's own rewrite table so nothing changed visually:
+- **Eyebrows/icons on blue panels** (`text-[#BFDBFE]`, `text-[#FFD9BE]`) → `#fffc52` (DESIGN.md: accent yellow for "eyebrows on blue"), while body text on dark/blue stays `#ededff` and `text-[#FFF7EC]` toast body → white.
+- **Dark/blue editorial panels** (`bg-[#191713]` asides/sections) → `bg-[#0000ff]`; buttons/links → `bg-[#0000ff]`; decorative dots/spans → `bg-[#f0f0f0]`; meter fills → `bg-[#0000ff]`; own-message chat bubbles → `bg-[#0000ff]`.
+- **Warm hover** `hover:bg-[#2A2721]` → `hover:bg-[#0000cc]`; skeleton fills → `#f0f0f0`/`#e0e0ff`; Tailwind `rose/amber/emerald/violet` utilities → the functional tokens (`#B91C1C`/`#B45309`/`#15803d`/`#0000ff` families).
+- Stray off-palette hexes fixed: `#0B57D0` → `#0000ff` (Offline), `hover:#991b1b` → `hover:bg-[#B91C1C]/85` (AdminPaymentsReview revoke confirm).
+- **Dead code deleted** (zero importers, verified by reference scan): `MvpOffer`, `TokenTopUp`, `SectionHeading`, `VerifiedMemberStories`, `CompanyInviteCard`, `DirectMessageSection`, `GrowthPreviews` (+ tests) and `lib/demoData.ts`. `MetricCard` is retained (it is a DESIGN.md-listed reusable component) and was re-authored.
+
+### Guard against regression
+`node scripts/design-token-audit.mjs` walks the **whole `client/src` tree recursively** (only the approved reference surface `Home.tsx` and the dev-only `ComponentShowcase.tsx` are excluded) and fails on any 3- or 6-digit hex outside the DESIGN.md palette. Current result: **143 files · 1,536 approved tokens · 3 whitelisted third-party tokens · 0 violations.**
+
+### Compatibility shim retired
+`client/src/index.css` no longer contains the `@layer utilities` legacy-class rewrite block — every product file authors the approved tokens directly, and the audit above now guards the entire client surface, so the palette cannot regress silently.
+
+### Verification (2026-09-18)
+- `pnpm check` → exit 0
+- Targeted `vitest run` (11 files, 46 tests: the four screens, timeline, credits, AccountMenu, Fast-Track) → 46 passed
+- `pnpm build` → exit 0; every migrated utility present in the emitted CSS (alpha tints compile to 8-digit hex, e.g. `#b453091a`)
+- Full `vitest run` on the final tree → 736 passed / 7 failed / 15 skipped. The 7 failures are **pre-existing**: reproduced identically at `927cb76` in an isolated worktree (`Unable to find tRPC Context` at `Settings.tsx:18` in `settings.workEmail`, `settings.slackTriage`, `policyPages`). They are a Settings/tRPC test-wiring defect, unrelated to these screens.
+
+### Remaining design debt (resolved 2026-09-18)
+The 47-file legacy dependency described above was completed in this session: all product surfaces were re-authored, the shim was deleted, `design-token-audit.mjs` was extended to the full client tree (recursive, with `Home.tsx`/`ComponentShowcase.tsx` excluded as intentional non-product surfaces), and dead demo code was removed. No files on the legacy palette remain.
+
+### Open design decision (deferred, not silently dropped)
+DESIGN.md specifies 24px for task cards/panels and 18px for controls/inputs; the shipped screens use the app-wide Tailwind radii (12px / 8px) because they share cards, credit meters and chrome with surfaces outside this set. Changing the radii for only these six screens would make them inconsistent with the rest of the app, so the change is deferred pending visual QA across the shared components.
+
 ## Built 2026-09-03 (2.5 + 2.6)
 - **Server**: `db.listAdminApprovalQueue()` / `listReferrerEnrollmentsAwaitingAction()` / `resolveAdminApproval()`; routes `GET /api/admin/approval-queue` + `POST /api/admin/approval-queue/:kind/:id/decision` (admin-guarded; records to operationalActivityLogs).
 - **Client**: `AdminApprovalQueue.tsx` (route `/admin/approvals`) + `AdminApprovalRecord.tsx` (route `/admin/approvals/:kind/:id`) + `lib/adminApproval.ts` (status vocab). Admin nav links added to AdminActivity + AdminFlowHealth.

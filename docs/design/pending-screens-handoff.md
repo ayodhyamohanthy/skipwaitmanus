@@ -1,6 +1,14 @@
 # Pending Screens — Developer Handoff Notes
 _Design source: `docs/design/pending-screens-canvas.html` (interactive infinite canvas — open in any browser; scroll to pan, ⌘scroll to zoom)_
-_Style preset: 17 Takram (Soft Precision) adapted to the existing skipwait.me brand — brand blue `#0B57D0` on warm-paper neutrals, rounded-12 cards, gentle shadows._
+_Style preset: 17 Takram (Soft Precision) for layout, hierarchy, motion and copy — **superseded on colour**._
+
+> **Colour authority: [`DESIGN.md`](../../DESIGN.md) + `client/src/index.css`.**
+> This doc governs structure, states, copy and behaviour; it is not a colour
+> source. The original preset shipped `#0B57D0` on warm-paper neutrals, which
+> the approved "Moving Parts" system replaced with primary action blue
+> `#0000ff` on white. The tokens in §1 below are the approved values — use these
+> and never introduce a new hex. Run `node scripts/design-token-audit.mjs` to
+> prove the surface is clean.
 
 ---
 
@@ -11,17 +19,23 @@ _Style preset: 17 Takram (Soft Precision) adapted to the existing skipwait.me br
 - Dot (●) prefix, always colored, no icons otherwise.
 - Status → color mapping (THE mapping, identical everywhere):
 
-| Status | bg (10% alpha) | text | Meaning |
-|---|---|---|---|
-| Pending | `rgba(180,83,9,.1)` | `#b45309` | Sent, nobody claimed/decided |
-| Under review | `rgba(11,87,208,.1)` | `#0B57D0` | Claimed by verified referrer; also used for admin "in-progress" items |
-| Approved | `rgba(21,128,61,.1)` | `#15803d` | Referral accepted; conversation unlocked |
-| Declined | `rgba(185,28,28,.1)` | `#b91c1c` | Decision recorded; reason never shown to seeker |
+| Status | bg (tint ground) | text | dot | Meaning |
+|---|---|---|---|---|
+| Pending | `rgba(180,83,9,.1)` | `#b45309` | `#b45309` | Sent, nobody claimed/decided |
+| Under review | `rgba(0,0,255,.08)` | `#000000` | `#0000ff` | Claimed by verified referrer; also used for admin "in-progress" items |
+| Approved | `rgba(21,128,61,.1)` | `#15803d` | `#15803d` | Referral accepted; conversation unlocked |
+| Declined | `rgba(185,28,28,.1)` | `#b91c1c` | `#b91c1c` | Decision recorded; reason never shown to seeker |
+| Withdrawn / closed | `rgba(0,0,0,.06)` | `#505050` | `#767676` | Neutral recorded state |
+
+Source of truth for the live values: `statusToneColors` in `client/src/components/StatusBadge.tsx`.
+In Tailwind, express every tint ground as the brand colour at alpha (`bg-[#b45309]/10`) — never a
+Tailwind palette colour (`bg-amber-50`) and never a new hex.
 
 - **Rule:** one badge per item, top-right of the card. Never mix tone hues per role — a status means the same thing on every screen.
 
 ### 1.2 PendingItemCard
-- Card: `border-radius:12px; border:1px solid rgba(28,27,25,.06); background:#fff; padding:12px;`
+- Card: `border-radius:12px; border:1px solid #e5e5e5; background:#fff; padding:12px;`
+- Radius note: DESIGN.md specifies 24px for task cards/panels and 18px for controls/inputs. The shipped screens still use the app-wide Tailwind radii (12px cards / 8px controls) because these cards sit beside other surfaces that share the same components; the change is deferred pending visual QA (tracked in `docs/DESIGN_SCREEN_COVERAGE.md`).
 - Row 1: title (left, `font-weight:700`) + StatusBadge (right)
 - Row 2 (muted `#78716c`, 11px): company / **Ref-XXXX** · date
 - Row 3: one-line context (candidate pitch excerpt / stage explanation)
@@ -30,22 +44,22 @@ _Style preset: 17 Takram (Soft Precision) adapted to the existing skipwait.me br
 - Truncation: titles truncate with ellipsis; context clamps to 2 lines.
 
 ### 1.3 Action buttons
-- Primary: `background:#0B57D0; color:#fff; border-radius:9-10px; padding:7-8px; font-weight:700; font-size:11-12px;` — max ONE per card row.
-- Secondary: `border:1px solid rgba(28,27,25,.12); background:#fff; color:#1c1b19;`
-- Destructive (Withdraw / Reject / Confirm decline): `color:#b91c1c;` either as tinted text-button or `border:1px solid rgba(185,28,28,.25)`. Never a solid red fill.
-- Disabled: `opacity:.4-.5`, keep label (never blank while loading).
+- Primary: `background:#0000ff; color:#fff; border-radius:9-10px; padding:7-8px; font-weight:700; font-size:11-12px;` (hover `#0000cc`, pressed `#000099`) — max ONE per card row.
+- Secondary: `border:1px solid #e5e5e5; background:#fff; color:#000000;`
+- Destructive (Withdraw / Reject / Confirm decline): `color:#b91c1c;` either as tinted text-button or `border:1px solid rgba(185,28,28,.3)` on a `rgba(185,28,28,.1)` ground. Never a solid red fill.
+- Disabled: one solid state everywhere — `background:#e0e0e0; color:#505050;`, keep the label (never blank while loading). No opacity-faded ghosts.
 - Busy: label swaps to a gerund ("Sending…", "Opening…") or spinner replaces icon; button stays sized.
 
 ### 1.4 FilterBar (admin; referrer uses inbox tabs)
-- Filter chips: `padding:5px 10px; border-radius:999px; border:1px solid rgba(28,27,25,.12); background:#fff; color:#57534e; font-size:10-11px; font-weight:700;` with `▾` affording a dropdown.
-- Active count chip: `background:#eef3fc; color:#0B57D0;` showing "N open".
-- Tabs (referrer): same geometry, active = solid `#0B57D0` bg + white text.
+- Filter chips: `padding:5px 10px; border-radius:999px; border:1px solid #cfcfcf; background:#fff; color:#505050; font-size:10-11px; font-weight:700;` with `▾` affording a dropdown.
+- Active count chip: `background:#ededff; color:#0000ff;` showing "N open".
+- Tabs (referrer): same geometry, active = solid `#0000ff` bg + white text.
 
 ### 1.5 CreditMeter (seeker + referrer variants — already in production)
-- Container: `background:#eef3fc; border:1px solid #dbe6fb; border-radius:12px; padding:10-12px;`
+- Container: `background:#ededff; border:1px solid #c2c2ff; border-radius:12px; padding:10-12px;`
 - Row: eyebrow label (`FREE PLAN` / `REFERRAL CREDITS`) + bold right-aligned "N left".
-- Bar: 5px, radius 99, track `#dbe6fb`, fill `#0B57D0` (→ `#b45309` when 0 left).
-- Line: "X of 3 free credits used this month." + pack balance sentence when > 0.
+- Bar: 5px, radius 99, track `#e0e0ff`, fill `#0000ff` (→ `#b45309` when 0 left).
+- Line: "X of 3 free credits used this month." + pack balance sentence when > 0; secondary lines `#505050`.
 
 ---
 

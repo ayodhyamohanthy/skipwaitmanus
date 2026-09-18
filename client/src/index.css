@@ -51,9 +51,7 @@ button:disabled { cursor: not-allowed; }
 /* Disabled language: one solid state everywhere — no faded ghosts. */
 button:disabled { opacity: 1 !important; background-color: #e0e0e0 !important; color: #505050 !important; }
 button:disabled svg { color: #505050 !important; }
-/* Disabled primary-blue actions stay recognizably blue, visibly inactive. */
-button[class*="bg-[#191713]"]:disabled { background-color: #0000cc !important; color: #ffffff !important; opacity: 0.55 !important; }
-button[class*="bg-[#191713]"]:disabled svg { color: #ffffff !important; }
+
 ::placeholder { color: #505050; opacity: 1; }
 ::selection { background: #fffc52; color: #000000; }
 input, textarea { caret-color: #0000ff; }
@@ -69,73 +67,4 @@ input, textarea { caret-color: #0000ff; }
 
 @media (prefers-reduced-motion: no-preference) {
   .referral-success-mark { animation: referral-success-pop 200ms cubic-bezier(0.23, 1, 0.32, 1) both; }
-}
-
-@layer utilities {
-  /* Former violet accents now resolve to the electric-blue action color. */
-  .bg-violet-500, .bg-violet-600 { background-color: #0000ff !important; }
-  .hover\:bg-violet-700:hover { background-color: #0000cc !important; }
-  .bg-violet-50, .bg-violet-50\/60, .bg-violet-100 { background-color: #ededff !important; }
-  .text-violet-300 { color: #c2c2ff !important; }
-  .text-violet-600, .text-violet-700, .text-violet-900, .text-violet-950 { color: #0000ff !important; }
-  .border-violet-100, .border-violet-200, .border-violet-300 { border-color: #c2c2ff !important; }
-  .hover\:border-violet-200:hover { border-color: #0000ff !important; }
-  .hover\:text-violet-700:hover { color: #0000cc !important; }
-  .focus\:border-violet-500:focus { border-color: #0000ff !important; }
-  .focus\:ring-violet-100:focus { --tw-ring-color: #ededff !important; }
-
-  /* Legacy warm grounds become the white canvas. */
-  .bg-\[\#FBF4E8\] { background-color: #ffffff !important; }
-  .bg-\[\#FFFCF6\], .bg-\[\#FFFDF8\], .bg-\[\#FFFBF4\] { background-color: #ffffff !important; }
-  .bg-\[\#FFF9F0\], .bg-\[\#FFF4E8\] { background-color: #ffffff !important; }
-  .bg-\[\#F5F4EF\] { background-color: #ffffff !important; }
-  .animate-pulse.bg-\[\#F5F4EF\] { background-color: #f0f0f0 !important; }
-  .bg-\[\#F6E2CC\] { background-color: #ededff !important; }
-  .bg-\[\#2B2823\] { background-color: #121212 !important; }
-  .bg-\[\#191713\] { background-color: #0000ff !important; }
-  .bg-\[\#191713\]\/30 { background-color: rgba(0, 0, 0, 0.35) !important; }
-  .hover\:bg-\[\#2A2721\]:hover, .hover\:bg-\[\#2E2B25\]:hover { background-color: #0000cc !important; }
-  .bg-\[\#D85F3C\] { background-color: #0000ff !important; }
-  .hover\:bg-\[\#B7472A\]:hover { background-color: #0000cc !important; }
-  .border-\[\#191713\] { border-color: #0000ff !important; }
-  .focus\:border-\[\#191713\]:focus { border-color: #0000ff !important; }
-
-  /* Legacy ink text becomes pure black. */
-  .text-\[\#191713\] { color: #000000 !important; }
-  .text-\[\#26231F\], .text-\[\#302A25\], .text-\[\#3C352F\] { color: #000000 !important; }
-  .text-\[\#2E2B25\], .text-\[\#3F3B33\] { color: #000000 !important; }
-  .text-\[\#A6462B\], .text-\[\#B74D2E\] { color: #0000ff !important; }
-
-  /* Legacy muted text becomes neutral gray. */
-  .text-\[\#665B50\], .text-\[\#75685C\], .text-\[\#9A8C7D\] { color: #505050 !important; }
-  .text-\[\#625D52\] { color: #505050 !important; }
-
-  /* Light-on-dark accents for electric-blue panels. */
-  .text-\[\#D5CFC0\] { color: #ededff !important; }
-  .text-\[\#BFDBFE\] { color: #fffc52 !important; }
-  .text-\[\#FFD9BE\] { color: #fffc52 !important; }
-  .text-\[\#FFF7EC\] { color: #ffffff !important; }
-
-  /* Legacy warm borders become neutral hairlines. */
-  .border-\[\#EADBCB\], .border-\[\#E8D9C9\], .border-\[\#E4CDB6\], .border-\[\#E0C9B2\] { border-color: #e5e5e5 !important; }
-  .border-\[\#E2DDD2\] { border-color: #e5e5e5 !important; }
-  .border-\[\#D5CFC0\] { border-color: #cfcfcf !important; }
-  .border-\[\#E0A77D\], .border-\[\#EEC69F\] { border-color: #c2c2ff !important; }
-
-  /* Pale-blue tints stay pale blue, tuned to the electric-blue family. */
-  .border-\[\#DBEAFE\] { border-color: #c2c2ff !important; }
-  .bg-\[\#DBEAFE\] { background-color: #e0e0ff !important; }
-  .ring-\[\#DBEAFE\] { --tw-ring-color: #c2c2ff !important; }
-  .ring-\[\#E8F0FE\] { --tw-ring-color: #c2c2ff !important; }
-  .border-\[\#BFDBFE\] { border-color: #0000ff !important; }
-  .hover\:border-\[\#BFDBFE\]:hover { border-color: #0000ff !important; }
-  .bg-\[\#E8F0FE\] { background-color: #ededff !important; }
-  .bg-\[\#E8F0FE\]\/70, .bg-\[\#E8F0FE\]\/60, .bg-\[\#E8F0FE\]\/40, .bg-\[\#E8F0FE\]\/30 { background-color: #ededff !important; }
-  .hover\:bg-\[\#E8F0FE\]:hover { background-color: #ededff !important; }
-  .focus\:bg-\[\#E8F0FE\]\/40:focus { background-color: #ededff !important; }
-  .decoration-\[\#BFDBFE\] { text-decoration-color: #0000ff !important; }
-
-  /* Warm-gray fills become neutral fills. */
-  .bg-\[\#ECE8DD\] { background-color: #f0f0f0 !important; }
-  .hover\:bg-\[\#ECE8DD\]:hover { background-color: #e5e5e5 !important; }
 }

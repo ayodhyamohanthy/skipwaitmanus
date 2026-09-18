@@ -5,7 +5,8 @@
  * (what is still true) → a primary retry + a quiet escape hatch. The list or
  * record behind the error is never cleared; this card sits alongside it.
  *
- * Tinted with the shared error tokens (`#b91c1c` on `#FEF3F2`), `role="alert"`
+ * Tinted with the error tint ground derived from the brand functional token
+ * (`bg-[#b91c1c]/10` on a `border-[#b91c1c]/30` hairline), `role="alert"`
  * so the failure is announced once, and both actions stay ≥ 44 px tall.
  */
 export function ActionErrorCard({ title, detail, reassurance, retryLabel = "Try again", onRetry, dismissLabel, onDismiss, retrying = false, className = "" }: {
@@ -19,13 +20,13 @@ export function ActionErrorCard({ title, detail, reassurance, retryLabel = "Try 
   retrying?: boolean;
   className?: string;
 }) {
-  return <div role="alert" data-skipwait-error="true" className={`rounded-xl border border-[#f3c1bc] bg-[#FEF3F2] p-4 ${className}`}>
+  return <div role="alert" data-skipwait-error="true" className={`rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4 ${className}`}>
     <p className="text-sm font-bold text-[#b91c1c]">{title}</p>
-    {detail ? <p className="mt-1 text-sm leading-6 text-[#3F3B33]">{detail}</p> : null}
-    {reassurance ? <p className="mt-1 text-sm leading-6 text-[#3F3B33]">{reassurance}</p> : null}
+    {detail ? <p className="mt-1 text-sm leading-6 text-[#505050]">{detail}</p> : null}
+    {reassurance ? <p className="mt-1 text-sm leading-6 text-[#505050]">{reassurance}</p> : null}
     {onRetry || onDismiss ? <div className="mt-3 flex gap-2">
-      {onRetry ? <button type="button" disabled={retrying} onClick={onRetry} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#191713] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{retrying ? "Retrying…" : retryLabel}</button> : null}
-      {onDismiss ? <button type="button" onClick={onDismiss} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-[#E2DDD2] bg-white px-4 py-2.5 text-sm font-bold text-[#3F3B33]">{dismissLabel ?? "Dismiss"}</button> : null}
+      {onRetry ? <button type="button" disabled={retrying} onClick={onRetry} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#0000ff] px-4 py-2.5 text-sm font-bold text-white">{retrying ? "Retrying…" : retryLabel}</button> : null}
+      {onDismiss ? <button type="button" onClick={onDismiss} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white px-4 py-2.5 text-sm font-bold text-[#505050]">{dismissLabel ?? "Dismiss"}</button> : null}
     </div> : null}
   </div>;
 }
