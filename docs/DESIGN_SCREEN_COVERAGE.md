@@ -75,13 +75,13 @@ Tailwind palette colours (`amber-*`, `emerald-*`, `rose-*`) were replaced with t
 **492 class tokens re-authored across 16 files.** The six screens no longer depend on the compatibility shim. Third-party share-target colours (`#25D366`, `#229ED9`, `#0A66C2` in `OneTapShareActions`) are intentional and retained.
 
 ### Guard against regression
-`node scripts/design-token-audit.mjs` walks the pending-screen surface and fails on any hex outside the DESIGN.md palette. Current result: **16 files · 375 approved tokens · 3 whitelisted third-party tokens · 0 violations.**
+`node scripts/design-token-audit.mjs` walks the pending-screen surface and fails on any hex outside the DESIGN.md palette. Current result: **16 files · 377 approved tokens · 3 whitelisted third-party tokens · 0 violations.**
 
 ### Verification (2026-09-18)
 - `pnpm check` → exit 0
 - Targeted `vitest run` (11 files, 46 tests: the four screens, timeline, credits, AccountMenu, Fast-Track) → 46 passed
 - `pnpm build` → exit 0; every migrated utility present in the emitted CSS (alpha tints compile to 8-digit hex, e.g. `#b453091a`)
-- Full `vitest run` → 739 passed / 7 failed / 15 skipped. The 7 failures are **pre-existing**: reproduced identically at `927cb76` in an isolated worktree (`Unable to find tRPC Context` at `Settings.tsx:18` in `settings.workEmail`, `settings.slackTriage`, `policyPages`). They are a Settings/tRPC test-wiring defect, unrelated to these screens.
+- Full `vitest run` on the final tree → 736 passed / 7 failed / 15 skipped. The 7 failures are **pre-existing**: reproduced identically at `927cb76` in an isolated worktree (`Unable to find tRPC Context` at `Settings.tsx:18` in `settings.workEmail`, `settings.slackTriage`, `policyPages`). They are a Settings/tRPC test-wiring defect, unrelated to these screens.
 
 ### Remaining design debt (out of scope, documented)
 51 other client files still author the legacy warm-paper class names and therefore still depend on the `index.css` compatibility shim (`CompanyInviteCard`, `DirectMessageSection`, `OpportunityWall`, `PostOpportunity`, `Referrer`, `Onboarding`, the employer surfaces, …). They render correctly today, but every new utility variant they add can leak the retired palette the way the six pending screens did. Extending `scripts/design-token-audit.mjs` to those paths and re-authoring them the same way is the recommended follow-up — do it one screen group at a time so the visual diff stays reviewable.
