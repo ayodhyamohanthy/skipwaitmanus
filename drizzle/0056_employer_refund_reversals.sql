@@ -7,3 +7,5 @@ CREATE TABLE IF NOT EXISTS `employerPaymentRefunds` (
  `status` enum('applied','requires_review') NOT NULL, `reason` varchar(255) NULL, `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
  UNIQUE INDEX `employer_payment_refund_event_unique` (`provider`,`providerRefundId`), INDEX `employer_payment_refund_payment_idx` (`provider`,`providerPaymentId`)
 );
+
+-- Production applied and verified 2026-09-18.
