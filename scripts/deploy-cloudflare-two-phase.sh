@@ -30,7 +30,7 @@ deploy(){
   fi
   return "$status"
 }
-app_id=$(npx wrangler containers list --json|jq -r '.[]|select(.name=="skipwaitmanus-api")|.id'|head -1)
+app_id="a0320ae6-5d50-43d5-9515-1f89bd74d069"
 deploy 1
 first_info=$(npx wrangler containers info "$app_id" --json);first_version=$(jq -r '.current_version//.version//empty'<<<"$first_info");first_image=$(jq -r '.configuration.image//.image//empty'<<<"$first_info");echo "deploy_phase=1 version=$first_version image=$first_image"
 set +e;READY_TIMEOUT_SECONDS=120 poll_cloudflare_readiness "$READY_URL" "$EXPECTED_SHA";result=$?;set -e

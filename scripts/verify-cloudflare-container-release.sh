@@ -3,9 +3,7 @@ set -euo pipefail
 : "${EXPECTED_SHA:?}" "${CLOUDFLARE_API_TOKEN:?}" "${CLOUDFLARE_ACCOUNT_ID:?}"
 APP_NAME=skipwaitmanus-api
 READY_URL=https://skipwait.me/api/health/ready
-apps=$(npx wrangler containers list --json)
-app_id=$(jq -r --arg n "$APP_NAME" '.[] | select(.name==$n) | .id' <<<"$apps" | head -1)
-[ -n "$app_id" ] || { echo "Cloudflare application $APP_NAME not found"; exit 1; }
+app_id="a0320ae6-5d50-43d5-9515-1f89bd74d069"
 info=$(npx wrangler containers info "$app_id" --json)
 instances=$(npx wrangler containers instances "$app_id" --json)
 current=$(jq -r '.current_version // .version // empty' <<<"$info")
