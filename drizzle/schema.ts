@@ -91,6 +91,21 @@ export const employerAccounts = mysqlTable("employerAccounts", {
 }, table => [uniqueIndex("employer_accounts_user_unique").on(table.userId)]);
 
 // Employer-scoped random references are the only talent identifiers exposed to clients.
+export const opportunitySponsorshipPurchases = mysqlTable("opportunitySponsorshipPurchases", {
+  id: int("id").autoincrement().primaryKey(),
+  idempotencyKey: varchar("idempotencyKey", { length: 64 }).notNull(),
+  opportunityId: int("opportunityId").notNull().references(() => companyOpportunities.id, { onDelete: "restrict" }),
+  opportunityOwnerId: int("opportunityOwnerId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  chargedUserId: int("chargedUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  actorUserId: int("actorUserId").notNull().references(() => users.id, { onDelete: "restrict" }),
+  tier: mysqlEnum("tier", ["featured", "spotlight"]).notNull(),
+  creditsSpent: int("creditsSpent").notNull(),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  opportunityUpdatedAt: timestamp("opportunityUpdatedAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("opportunity_sponsorship_purchase_idempotency_unique").on(table.chargedUserId, table.idempotencyKey), index("opportunity_sponsorship_delivery_idx").on(table.opportunityId, table.endsAt)]);
+
 export const employerTalentRefs = mysqlTable("employerTalentRefs", {
   id: int("id").autoincrement().primaryKey(),
   employerUserId: int("employerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),

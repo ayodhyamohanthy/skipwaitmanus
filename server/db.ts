@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -1994,24 +1994,42 @@ export async function requestEmployerTalentIntro(employerUserId: number, seekerU
   catch (error) { if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { ok: true as const, created: false as const }; throw error; }
 }
 
-export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; isAdmin?: boolean }) {
+export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; idempotencyKey: string; isAdmin?: boolean; chargedUserId?: number }) {
   const tierCost = SPONSOR_TIERS[input.tier];
   if (!tierCost) throw new Error("Choose a featured or spotlight sponsorship tier");
+  if (!/^[\x21-\x7E]{16,64}$/.test(input.idempotencyKey)) throw new Error("A valid Idempotency-Key header is required");
+  const chargedUserId = input.chargedUserId ?? userId;
+  if (input.isAdmin && input.chargedUserId === undefined) throw new Error("Administrator sponsorship must name the charged wallet owner");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const opportunity = (await tx.select({ id: companyOpportunities.id, ownerId: companyOpportunities.ownerId, companyDomain: companyOpportunities.companyDomain, roleTitle: companyOpportunities.roleTitle }).from(companyOpportunities).where(eq(companyOpportunities.id, opportunityId)).limit(1))[0];
+    const opportunity = (await tx.select().from(companyOpportunities).where(eq(companyOpportunities.id, opportunityId)).limit(1).for("update"))[0];
     if (!opportunity) throw new Error("This opportunity could not be found");
+    if (!opportunity.isActive) throw new Error("This opportunity is not active and publishable");
     if (!input.isAdmin && opportunity.ownerId !== userId) throw new Error("Only the opportunity owner or an administrator can sponsor this role");
-    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1).for("update"))[0];
+    if (!input.isAdmin && chargedUserId !== opportunity.ownerId) throw new Error("The opportunity owner wallet must fund this sponsorship");
+    const replay = (await tx.select().from(opportunitySponsorshipPurchases).where(and(eq(opportunitySponsorshipPurchases.chargedUserId, chargedUserId), eq(opportunitySponsorshipPurchases.idempotencyKey, input.idempotencyKey))).limit(1).for("update"))[0];
+    if (replay) {
+      if (replay.opportunityId !== opportunityId || replay.tier !== input.tier) throw new Error("Idempotency-Key is already bound to a different sponsorship");
+      const account = (await tx.select({ credits: employerAccounts.credits }).from(employerAccounts).where(eq(employerAccounts.userId, chargedUserId)).limit(1))[0];
+      return { opportunityId, tier: replay.tier, sponsoredUntil: replay.endsAt, creditsSpent: replay.creditsSpent, credits: account?.credits ?? 0, replayed: true };
+    }
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, chargedUserId)).limit(1).for("update"))[0];
     if (!account) throw new Error("Open an employer account before sponsoring a role");
     if (account.credits < tierCost.cost) throw new Error(`Sponsoring costs ${tierCost.cost} unlock credits; you have ${account.credits}`);
-    const sponsoredUntil = new Date(Date.now() + tierCost.days * 24 * 60 * 60 * 1000);
-    await tx.update(companyOpportunities).set({ sponsoredUntil, sponsoredTier: input.tier }).where(eq(companyOpportunities.id, opportunityId));
+    const purchasedAt = new Date();
+    const startsAt = opportunity.sponsoredUntil && opportunity.sponsoredUntil > purchasedAt ? opportunity.sponsoredUntil : purchasedAt;
+    const sponsoredUntil = new Date(startsAt.getTime() + tierCost.days * 24 * 60 * 60 * 1000);
+    // Claim the immutable purchase before the debit. A duplicate-key race rolls
+    // this transaction back, so only one request can charge this key.
+    await tx.insert(opportunitySponsorshipPurchases).values({ idempotencyKey: input.idempotencyKey, opportunityId, opportunityOwnerId: opportunity.ownerId, chargedUserId, actorUserId: userId, tier: input.tier, creditsSpent: tierCost.cost, startsAt, endsAt: sponsoredUntil, opportunityUpdatedAt: opportunity.updatedAt });
+    const debited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} - ${tierCost.cost}` }).where(and(eq(employerAccounts.id, account.id), sql`${employerAccounts.credits} >= ${tierCost.cost}`));
+    if (Number(debited[0]?.affectedRows ?? 0) !== 1) throw new Error("Not enough unlock credits for this sponsorship");
+    const placed = await tx.update(companyOpportunities).set({ sponsoredUntil, sponsoredTier: input.tier }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.isActive, true), eq(companyOpportunities.updatedAt, opportunity.updatedAt)));
+    if (Number(placed[0]?.affectedRows ?? 0) !== 1) throw new Error("This opportunity changed while sponsorship was being purchased");
     const credits = account.credits - tierCost.cost;
-    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
-    const metadata: Record<string, string | number> = { tier: input.tier, days: tierCost.days, creditsSpent: tierCost.cost, creditsRemaining: credits };
+    const metadata: Record<string, string | number> = { tier: input.tier, days: tierCost.days, creditsSpent: tierCost.cost, creditsRemaining: credits, chargedUserId, opportunityOwnerId: opportunity.ownerId, idempotencyKey: input.idempotencyKey };
     await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "employer.opportunity_sponsored", outcome: "success", resourceType: "opportunity", resourceId: String(opportunityId), companyDomain: opportunity.companyDomain, metadata: JSON.stringify(metadata) });
-    return { opportunityId, tier: input.tier, sponsoredUntil, creditsSpent: tierCost.cost, credits };
+    return { opportunityId, tier: input.tier, sponsoredUntil, creditsSpent: tierCost.cost, credits, replayed: false };
   });
 }
 
