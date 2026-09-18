@@ -96,3 +96,13 @@ describe("WorkOS bearer authentication at the HTTP boundary", () => {
     expect(mocks.resolveLoginIdentity).not.toHaveBeenCalled();
   });
 });
+
+describe("canonical resolver handoff contract",()=>{
+  it("passes a verified provider email to the canonical resolver for a unique historic account",async()=>{
+    mocks.getUserByOpenId.mockResolvedValue(undefined);
+    mocks.resolveLoginIdentity.mockResolvedValue({...account,canonicalPersonId:7});
+    const response=await request(app).get("/private").auth(await signIn(),{type:"bearer"});
+    expect(response.status).toBe(200);
+    expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({openId:"workos_user_test",email:"test@example.com",emailVerified:true}));
+  });
+});

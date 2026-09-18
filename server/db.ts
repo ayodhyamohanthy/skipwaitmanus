@@ -125,12 +125,11 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
       const emailCandidates = input.emailVerified && exactCandidates.length === 0
         ? await tx.select().from(users).where(and(isNull(users.canonicalPersonId), eq(sql`LOWER(TRIM(${users.email}))`, email))).for("update")
         : [];
-      // Historic OTP rows prove email verification. Historic WorkOS rows did
-      // not persist emailVerified, so cross-provider linking them would guess.
-      // Freeze those unknown claims rather than exposing their data or wallet.
-      const candidates = exactCandidates.length ? exactCandidates : emailCandidates.filter(row => row.loginMethod === "otp_work_email");
-      const unverifiableHistoricClaim = exactCandidates.length === 0 && emailCandidates.some(row => row.loginMethod !== "otp_work_email");
-      if (candidates.length > 1 || unverifiableHistoricClaim) {
+      // The current provider has attested this email. One historic account is
+      // therefore a unique canonical claim regardless of its old loginMethod;
+      // only multiple historic rows are ambiguous and must be frozen.
+      const candidates = exactCandidates.length ? exactCandidates : emailCandidates;
+      if (candidates.length > 1) {
         const now = new Date();
         await tx.update(canonicalPeople).set({ suspended: true, reviewReason: "ambiguous_historic_verified_email", sessionsValidAfter: now }).where(eq(canonicalPeople.id, personId));
         for (const row of candidates) await tx.update(users).set({ suspended: true, sessionsValidAfter: now }).where(eq(users.id, row.id));
