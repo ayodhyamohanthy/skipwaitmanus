@@ -1,9 +1,15 @@
--- Resume-safe employer approval migration.
-ALTER TABLE `employerAccounts` MODIFY COLUMN `approvalStatus` enum('pending','approved','rejected','suspended','revoked') NOT NULL DEFAULT 'pending';
+-- Resume-safe employer approval migration, including minimal historic tables.
 DELIMITER $$
 DROP PROCEDURE IF EXISTS `apply_0053_employer_approval`$$
 CREATE PROCEDURE `apply_0053_employer_approval`()
 BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='employerAccounts' AND column_name='approvalStatus') THEN
+    ALTER TABLE `employerAccounts` ADD COLUMN `approvalStatus` enum('pending','approved','rejected','suspended','revoked') NOT NULL DEFAULT 'pending';
+  ELSE
+    ALTER TABLE `employerAccounts` MODIFY COLUMN `approvalStatus` enum('pending','approved','rejected','suspended','revoked') NOT NULL DEFAULT 'pending';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='employerAccounts' AND column_name='approvedAt') THEN ALTER TABLE `employerAccounts` ADD COLUMN `approvedAt` timestamp NULL; END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='employerAccounts' AND column_name='approvedByUserId') THEN ALTER TABLE `employerAccounts` ADD COLUMN `approvedByUserId` int NULL; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='employerAccounts' AND column_name='submittedAt') THEN ALTER TABLE `employerAccounts` ADD COLUMN `submittedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='employerAccounts' AND column_name='decidedAt') THEN ALTER TABLE `employerAccounts` ADD COLUMN `decidedAt` timestamp NULL; END IF;
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='employerAccounts' AND column_name='decisionNote') THEN ALTER TABLE `employerAccounts` ADD COLUMN `decisionNote` varchar(500) NULL; END IF;
