@@ -22,6 +22,22 @@ pnpm build            # client PWA + server bundle -> dist/
 ./scripts/sync-check.sh   # repo sync guard (run after work sessions)
 ```
 
+## Plan and inspect before edits
+Before changing source, configuration, schema, dependencies, tests, or docs:
+1. Inspect the current branch/worktree, latest `origin/main`, target files, their
+   callers/tests, and any active coordination record.
+2. Write a short plan naming the affected files, load-bearing assumptions,
+   contract or data-flow changes, proposed logic, verification to add/run, and
+   deployment or migration impact.
+3. Resolve any uncertain identity, authorization, transaction, API, schema,
+   styling, dependency, or production-state assumption before editing.
+4. Reread each target immediately before modifying it. If source or HEAD changed
+   since the plan, stop, reconcile, and update the plan rather than overwriting.
+
+The plan may be concise for a small change, but it may not be skipped. Keep the
+implementation inside the listed scope; revise the plan explicitly when scope
+changes.
+
 ## Working agreement: multi-agent collaboration
 - Read [COLLABORATION.md](./COLLABORATION.md) before editing. It is the shared
   protocol for every platform and model working on this repository.
@@ -84,6 +100,76 @@ pnpm build            # client PWA + server bundle -> dist/
 6. The deployed web bundle must be built from the same commit as the API
    (contract: tRPC + REST shapes). CI deploys both on every push; check
    `scripts/sync-check.sh` when working locally.
+
+## Product and identity constraints
+- A person is one canonical account plus verified login aliases. Resolve an
+  exact alias before normalized verified-email linking. WorkOS and work-email
+  OTP must converge atomically on that canonical person.
+- Never merge on an unverified email. Freeze ambiguous historic duplicates for
+  operator review; never combine wallets, credits, referrals, employer records,
+  or other business state while identity is ambiguous.
+- Suspension and session revocation apply to every alias of the canonical
+  person. Identity, access, credits, one-time consumption, replay protection,
+  and webhook terminal state must be durable, transactional state, never
+  process-memory decisions.
+- Real payment execution is prohibited in engineering and QA. Use provider test
+  modes, mocks, or synthetic fixtures. FreeCoffee is a separate product and is
+  out of scope for this repository.
+
+## Verification is part of every feature
+- A feature or fix without self-checking verification is incomplete. Ship the
+  smallest useful set of focused unit/component tests, endpoint scripts, and
+  deterministic mock-data/fixture generators alongside the implementation.
+- Backfill missing checks whenever touching an existing area. Cover success,
+  failure, retry, idempotency, concurrency, authorization changes, and response
+  loss where those states apply. Never weaken an existing test to land a fix.
+- Run focused tests while iterating, then `pnpm check`; use `pnpm build` for
+  runtime, dependency, or bundling changes. Production acceptance requires the
+  exact deployed commit and the real endpoint/UI behavior, not a green build or
+  successful upload alone.
+
+## Observability means fix ownership
+- Sentry is a repair loop, not a logging destination. Server uses
+  `@sentry/node`; client uses `@sentry/react`. Keep DSNs environment-gated and
+  scrub tokens, query strings, personal data, credentials, and single-use links.
+- Every event must carry actionable release and environment identity. New
+  production issues are fix work: deduplicate and triage, reproduce, add a
+  regression check, fix, deploy, and close only after the exact release is
+  verified in production.
+
+## Deployment and runtime rules
+- A push, upload, or successful deploy command is not deployment truth. Gate on
+  canonical `https://skipwait.me`, exact baked commit SHA, readiness, and the
+  expected active Worker/container revision. Keep `workers.dev` disabled and
+  verify it remains unavailable.
+- Serialize production writers so latest `main` wins. Reconcile unexpected
+  remote changes before overwriting. Do not let stale queued workflows activate
+  after a newer release. Never delete the Containers application to recover a
+  rollout.
+- Cloudflare container capacity changes are control-plane changes: verify the
+  live application value and active instances. Container env passthrough in
+  `src/worker.ts` must be updated for each new server secret. Return temporary
+  capacity increases to the documented steady-state only after the new exact
+  revision is healthy and old instances are drained.
+- Schema-dependent code stays off `main` until the matching production migration
+  exists and is verified. The web/API contract must come from the same compatible
+  source state.
+
+## Styling and dependency boundary
+- `DESIGN.md` is the frozen product visual contract derived from the approved
+  Refero direction. Reuse its tokens and components; run
+  `node scripts/design-token-audit.mjs` for touched product UI. Do not drift the
+  palette, typography, radii, motion, disabled states, or one-primary-action
+  rule. Do not reintroduce legacy palette shims.
+- Prohibited UI choices: gradients, glassmorphism, neon/glow decoration, blurred
+  orbs, cream/brown/terracotta colors, condensed uppercase headings, Unicode
+  glyph icons, nested cards, decorative kickers, faded disabled controls, and
+  ad-hoc colors outside `DESIGN.md`.
+- Do not add an alternate auth/session library, a direct client-to-database or
+  provider-secret dependency, a standalone `@better-auth/react` package, or an
+  unreviewed payment/provider SDK. Import client contracts from `shared/`, not
+  server implementation modules. Any new runtime dependency needs a written
+  reason, lockfile review, focused verification, and production build evidence.
 
 ## AI model swap (no code changes)
 The AI features (smart pitch, copilot, fit summary, referrer matching) go
