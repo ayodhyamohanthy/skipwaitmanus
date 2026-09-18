@@ -6,11 +6,11 @@ import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 const mocks = vi.hoisted(() => ({
   jwks: vi.fn(),
   getUserByOpenId: vi.fn(),
-  upsertUser: vi.fn(),
+  upsertUser: vi.fn(), resolveLoginIdentity: vi.fn(),
   getUser: vi.fn(),
 }));
 vi.mock("jose", async importOriginal => ({ ...await importOriginal<typeof import("jose")>(), createRemoteJWKSet: mocks.jwks }));
-vi.mock("../db", () => ({ getUserByOpenId: mocks.getUserByOpenId, upsertUser: mocks.upsertUser }));
+vi.mock("../db", () => ({ getUserByOpenId: mocks.getUserByOpenId, upsertUser: mocks.upsertUser, resolveLoginIdentity: mocks.resolveLoginIdentity }));
 vi.mock("@workos-inc/node", () => ({ WorkOS: class { userManagement = { getUser: mocks.getUser }; } }));
 import { resolveWorkosIdentity } from "./workosAuth";
 
@@ -45,7 +45,7 @@ beforeEach(() => {
   vi.stubEnv("WORKOS_CLIENT_ID", "client_test");
   vi.stubEnv("WORKOS_API_KEY", "test-key");
   mocks.getUserByOpenId.mockReset().mockResolvedValue({ ...account });
-  mocks.upsertUser.mockReset().mockResolvedValue(undefined);
+  mocks.upsertUser.mockReset().mockResolvedValue(undefined); mocks.resolveLoginIdentity.mockReset().mockImplementation(async () => mocks.getUserByOpenId());
   mocks.getUser.mockReset().mockResolvedValue(providerUser);
 });
 afterEach(() => vi.unstubAllEnvs());
@@ -62,7 +62,7 @@ describe("WorkOS bearer authentication at the HTTP boundary", () => {
     const response = await request(app).get("/private").auth(await signIn(), { type: "bearer" });
     expect(response.status).toBe(200);
     expect(response.body.email).toMatchObject({ emailAddress: "test@example.com", verification: { status: "verified" } });
-    expect(mocks.upsertUser).toHaveBeenCalledWith(expect.objectContaining({ name: "Test User", email: "test@example.com" }));
+    expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({ provider: "workos", subject: "user_test", name: "Test User", email: "test@example.com", emailVerified: true }));
   });
 
   it("does not mistake the first account creation timestamp for a revocation", async () => {
@@ -93,6 +93,6 @@ describe("WorkOS bearer authentication at the HTTP boundary", () => {
   it("rejects a mismatched provider identity without updating the account", async () => {
     mocks.getUser.mockResolvedValue({ ...providerUser, id: "user_other" });
     expect((await request(app).get("/private").auth(await signIn(), { type: "bearer" })).status).toBe(401);
-    expect(mocks.upsertUser).not.toHaveBeenCalled();
+    expect(mocks.resolveLoginIdentity).not.toHaveBeenCalled();
   });
 });

@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -45,9 +45,9 @@ const durableAdministratorEmail = "ayodhya@skipwait.me";
  */
 const UNAUTHENTICATED_EMAIL_LOGIN_METHOD = "dev";
 
-export function resolveSyncedUserRole(input: { openId: string; email?: string | null; requestedRole?: "user" | "admin"; existingRole?: "user" | "admin"; loginMethod?: string | null }) {
+export function resolveSyncedUserRole(input: { openId: string; email?: string | null; requestedRole?: "user" | "admin"; existingRole?: "user" | "admin"; loginMethod?: string | null; emailVerified?: boolean }) {
   const normalizedEmail = input.email?.trim().toLowerCase();
-  const emailIsProviderVerified = input.loginMethod !== UNAUTHENTICATED_EMAIL_LOGIN_METHOD;
+  const emailIsProviderVerified = input.emailVerified ?? input.loginMethod !== UNAUTHENTICATED_EMAIL_LOGIN_METHOD;
   // The administrator promotion is keyed on the email address, so it is only
   // safe when that address came from a provider that verified it. Otherwise a
   // self-asserted address would hand out administrator access to anyone.
@@ -56,15 +56,105 @@ export function resolveSyncedUserRole(input: { openId: string; email?: string | 
   return input.requestedRole ?? input.existingRole ?? (ownerMatches ? "admin" : "user");
 }
 
-export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) throw new Error("User openId is required for upsert");
+export function normalizeVerifiedEmail(email: string) { return email.trim().normalize("NFKC").toLowerCase(); }
+
+/** Resolve a login subject to a canonical account. Provider+subject aliases win.
+ * A verified email may claim an existing unique account. Unverified email never
+ * participates in linking and is retained only on the isolated account row. */
+export async function resolveLoginIdentity(input: { provider: string; subject: string; openId: string; email: string; emailVerified: boolean; name: string; loginMethod: string }) {
+  const email = normalizeVerifiedEmail(input.email);
   const db = await getDb();
-  if (!db) return;
-  const current = await db.select({ role: users.role }).from(users).where(eq(users.openId, user.openId)).limit(1);
-  const role = resolveSyncedUserRole({ openId: user.openId, email: user.email, requestedRole: user.role, existingRole: current[0]?.role, loginMethod: user.loginMethod });
-  const values: InsertUser = { openId: user.openId, name: user.name ?? null, email: user.email ?? null, loginMethod: user.loginMethod ?? null, lastSignedIn: user.lastSignedIn ?? new Date(), role };
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: { name: values.name, email: values.email, loginMethod: values.loginMethod, lastSignedIn: values.lastSignedIn, role: values.role } });
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.transaction(async tx => {
+    // Provider subject is the strongest key. It always resolves before email.
+    const aliasRow = (await tx.select().from(verifiedLoginAliases)
+      .where(and(eq(verifiedLoginAliases.provider, input.provider), eq(verifiedLoginAliases.subject, input.subject)))
+      .limit(1).for("update"))[0];
+    if (aliasRow) {
+      const account = (await tx.select().from(users).where(eq(users.id, aliasRow.canonicalUserId)).limit(1))[0];
+      const person = (await tx.select().from(canonicalPeople).where(eq(canonicalPeople.id, aliasRow.canonicalPersonId)).limit(1))[0];
+      if (!account || !person || account.suspended || person.suspended) return { blocked: "ACCOUNT_NOT_ACTIVE" as const };
+      return { account: { ...account, suspended: account.suspended || person.suspended, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter } };
+    }
+
+    // A verified email owns exactly one locked person row. INSERT...ON DUPLICATE
+    // plus FOR UPDATE serializes simultaneous WorkOS and OTP first sign-in.
+    let personId: number;
+    if (input.emailVerified) {
+      await tx.insert(canonicalPeople).values({ normalizedVerifiedEmail: email }).onDuplicateKeyUpdate({ set: { normalizedVerifiedEmail: email } });
+      const person = (await tx.select().from(canonicalPeople).where(eq(canonicalPeople.normalizedVerifiedEmail, email)).limit(1).for("update"))[0];
+      if (!person) throw new Error("Canonical identity allocation failed");
+      if (person.suspended || person.reviewReason) return { blocked: person.reviewReason ? "IDENTITY_REVIEW_REQUIRED" as const : "ACCOUNT_NOT_ACTIVE" as const };
+      personId = person.id;
+    } else {
+      const inserted = await tx.insert(canonicalPeople).values({ normalizedVerifiedEmail: null });
+      personId = Number(inserted[0].insertId);
+    }
+
+    // Recheck after the canonical-person lock. A concurrent first sign-in may
+    // have inserted this provider alias while this transaction was waiting.
+    const racedAlias = (await tx.select().from(verifiedLoginAliases)
+      .where(and(eq(verifiedLoginAliases.provider, input.provider), eq(verifiedLoginAliases.subject, input.subject)))
+      .limit(1).for("update"))[0];
+    if (racedAlias) {
+      if (racedAlias.canonicalPersonId !== personId) {
+        const now = new Date();
+        await tx.update(canonicalPeople).set({ suspended: true, reviewReason: "provider_subject_conflict", sessionsValidAfter: now }).where(inArray(canonicalPeople.id, [personId, racedAlias.canonicalPersonId]));
+        await tx.insert(identityLinkAudits).values({ canonicalPersonId: personId, provider: input.provider, subject: input.subject, action: "provider_subject_conflict_frozen" });
+        return { blocked: "IDENTITY_REVIEW_REQUIRED" as const };
+      }
+      const racedAccount = (await tx.select().from(users).where(eq(users.id, racedAlias.canonicalUserId)).limit(1))[0];
+      if (!racedAccount || racedAccount.suspended) return { blocked: "ACCOUNT_NOT_ACTIVE" as const };
+      return { account: racedAccount };
+    }
+
+    let canonical = (await tx.select().from(users).where(eq(users.canonicalPersonId, personId)).limit(2).for("update"));
+    if (canonical.length > 1) {
+      const now = new Date();
+      await tx.update(canonicalPeople).set({ suspended: true, reviewReason: "multiple_canonical_users", sessionsValidAfter: now }).where(eq(canonicalPeople.id, personId));
+      await tx.update(users).set({ suspended: true, sessionsValidAfter: now }).where(inArray(users.id, canonical.map(row => row.id)));
+      await tx.insert(identityLinkAudits).values({ canonicalPersonId: personId, provider: input.provider, subject: input.subject, action: "multiple_canonical_users_frozen" });
+      return { blocked: "IDENTITY_REVIEW_REQUIRED" as const };
+    }
+    let account = canonical[0];
+    if (!account) {
+      // Exact legacy provider ID is safe even without verified email. Verified
+      // email additionally finds the one old email-keyed row. Distinct hits are
+      // an ambiguous historic split and remain frozen for operator review.
+      const exactCandidates = await tx.select().from(users).where(and(isNull(users.canonicalPersonId), eq(users.openId, input.openId))).for("update");
+      const emailCandidates = input.emailVerified && exactCandidates.length === 0
+        ? await tx.select().from(users).where(and(isNull(users.canonicalPersonId), eq(sql`LOWER(TRIM(${users.email}))`, email))).for("update")
+        : [];
+      // Historic OTP rows prove email verification. Historic WorkOS rows did
+      // not persist emailVerified, so cross-provider linking them would guess.
+      // Freeze those unknown claims rather than exposing their data or wallet.
+      const candidates = exactCandidates.length ? exactCandidates : emailCandidates.filter(row => row.loginMethod === "otp_work_email");
+      const unverifiableHistoricClaim = exactCandidates.length === 0 && emailCandidates.some(row => row.loginMethod !== "otp_work_email");
+      if (candidates.length > 1 || unverifiableHistoricClaim) {
+        const now = new Date();
+        await tx.update(canonicalPeople).set({ suspended: true, reviewReason: "ambiguous_historic_verified_email", sessionsValidAfter: now }).where(eq(canonicalPeople.id, personId));
+        for (const row of candidates) await tx.update(users).set({ suspended: true, sessionsValidAfter: now }).where(eq(users.id, row.id));
+        await tx.insert(identityLinkAudits).values({ canonicalPersonId: personId, provider: input.provider, subject: input.subject, action: "ambiguous_verified_email_frozen", evidence: JSON.stringify({ candidateUserIds: candidates.map(row => row.id), emailHash: createHash("sha256").update(email).digest("hex") }) });
+        return { blocked: "IDENTITY_REVIEW_REQUIRED" as const };
+      }
+      account = candidates[0];
+      if (account) { await tx.update(users).set({ canonicalPersonId: personId }).where(eq(users.id, account.id)); account = { ...account, canonicalPersonId: personId }; }
+    }
+    if (account?.suspended) return { blocked: "ACCOUNT_NOT_ACTIVE" as const };
+    if (!account) {
+      const role = resolveSyncedUserRole({ openId: input.openId, email, loginMethod: input.loginMethod, emailVerified: input.emailVerified });
+      const insertedUser = await tx.insert(users).values({ openId: input.openId, canonicalPersonId: personId, name: input.name, email, loginMethod: input.loginMethod, lastSignedIn: new Date(), role });
+      account = (await tx.select().from(users).where(eq(users.id, Number(insertedUser[0].insertId))).limit(1))[0];
+    }
+    await tx.insert(verifiedLoginAliases).values({ provider: input.provider, subject: input.subject, openId: input.openId, canonicalPersonId: personId, canonicalUserId: account!.id, normalizedVerifiedEmail: input.emailVerified ? email : null, verifiedAt: new Date() });
+    await tx.insert(identityLinkAudits).values({ canonicalPersonId: personId, canonicalUserId: account!.id, provider: input.provider, subject: input.subject, action: input.emailVerified ? "verified_alias_linked" : "unverified_alias_isolated", evidence: input.emailVerified ? JSON.stringify({ emailHash: createHash("sha256").update(email).digest("hex") }) : null });
+    return { account: account! };
+  });
+  if ("blocked" in result) throw new Error(result.blocked);
+  return result.account;
 }
+
+export async function upsertUser(user: InsertUser): Promise<void> {if(!user.openId)throw new Error("User openId is required for upsert");const db=await getDb();if(!db)return;const current=await db.select({role:users.role}).from(users).where(eq(users.openId,user.openId)).limit(1);const role=resolveSyncedUserRole({openId:user.openId,email:user.email,requestedRole:user.role,existingRole:current[0]?.role,loginMethod:user.loginMethod});await db.insert(users).values({...user,role,lastSignedIn:user.lastSignedIn??new Date()}).onDuplicateKeyUpdate({set:{name:user.name??null,email:user.email??null,loginMethod:user.loginMethod??null,lastSignedIn:user.lastSignedIn??new Date(),role}});}
 
 export async function provisionWorkEmailIdentity(emailInput: string) {
   const email = emailInput.trim().toLowerCase();
@@ -83,8 +173,18 @@ export async function provisionWorkEmailIdentity(emailInput: string) {
   });
 }
 
-export async function getUserByOpenId(openId: string) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1); return result[0]; }
-export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; await db.update(users).set({ sessionsValidAfter: new Date() }).where(eq(users.openId, openId)); }
+export async function getUserByOpenId(openId: string) {
+  const db = await getDb(); if (!db) return undefined;
+  // An alias is the verified binding and must win over a legacy direct row.
+  const aliasRow = (await db.select({ userId: verifiedLoginAliases.canonicalUserId }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.openId, openId)).limit(1))[0];
+  let account = aliasRow ? (await db.select().from(users).where(eq(users.id, aliasRow.userId)).limit(1))[0] : undefined;
+  if (!account) account = (await db.select().from(users).where(eq(users.openId, openId)).limit(1))[0];
+  if (!account?.canonicalPersonId) return account;
+  const person = (await db.select().from(canonicalPeople).where(eq(canonicalPeople.id, account.canonicalPersonId)).limit(1))[0];
+  if (!person) return account;
+  return { ...account, suspended: account.suspended || person.suspended, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
+}
+export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; const account=await getUserByOpenId(openId);if(!account)return;const now=new Date();await db.update(users).set({sessionsValidAfter:now}).where(eq(users.id,account.id));if(account.canonicalPersonId)await db.update(canonicalPeople).set({sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId)); }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
 export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
@@ -92,8 +192,7 @@ export async function listUsersAdmin(limit = 100) {
 }
 export async function setUserSuspended(userId: number, suspended: boolean) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.update(users).set({ suspended }).where(eq(users.id, userId));
-  return { userId, suspended };
+  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");const now=new Date();if(account.canonicalPersonId){await db.update(canonicalPeople).set({suspended,sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId));const aliases=await db.select({userId:verifiedLoginAliases.canonicalUserId}).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId,account.canonicalPersonId));await db.update(users).set({suspended,sessionsValidAfter:now}).where(inArray(users.id,[account.id,...aliases.map(a=>a.userId)]));}else await db.update(users).set({suspended,sessionsValidAfter:now}).where(eq(users.id,userId));return {userId,suspended};
 }
 export async function isUserSuspended(userId: number) {
   const db = await getDb(); if (!db) return false;

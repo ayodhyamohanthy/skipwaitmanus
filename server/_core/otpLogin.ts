@@ -58,19 +58,8 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       if (!verified) {
         return res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
       }
-      // Keep the login path compatible with the proven production user/profile
-      // stores. The combined provisioning transaction introduced in a1fc3a2
-      // fails after consuming a valid code in production, leaving no session.
       const openId = `workemail_${email}`;
-      const existing = await db.getUserByOpenId(openId);
-      // Existing OTP identities can sign in even if a non-critical account
-      // refresh is temporarily blocked by production schema drift. New
-      // identities still require a durable insert before any session is issued.
-      if (!existing) {
-        await db.upsertUser({ openId, name: email.split("@")[0], email, loginMethod: "otp_work_email", lastSignedIn: new Date() });
-      }
-      const account = existing ?? await db.getUserByOpenId(openId);
-      if (!account) return res.status(500).json({ error: "We could not complete sign-in. Please request a new code." });
+      const account = await db.resolveLoginIdentity({ provider: "work_email_otp", subject: email, openId, email, emailVerified: true, name: email.split("@")[0], loginMethod: "otp_work_email" });
       // Do not refresh profile, sign-in timestamps, or identity state for a
       // suspended account. Keep this response generic to avoid account-state
       // disclosure from the OTP endpoint.

@@ -1,8 +1,19 @@
 import { bigint, boolean, customType, index, int, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
+export const canonicalPeople = mysqlTable("canonicalPeople", {
+  id: int("id").autoincrement().primaryKey(),
+  normalizedVerifiedEmail: varchar("normalizedVerifiedEmail", { length: 320 }),
+  suspended: boolean("suspended").default(false).notNull(),
+  sessionsValidAfter: timestamp("sessionsValidAfter").defaultNow().notNull(),
+  reviewReason: varchar("reviewReason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("canonical_people_verified_email_unique").on(table.normalizedVerifiedEmail)]);
+
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
+  canonicalPersonId: int("canonicalPersonId").references(() => canonicalPeople.id, { onDelete: "restrict" }),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
@@ -12,7 +23,23 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-});
+}, table => [index("users_canonical_person_idx").on(table.canonicalPersonId)]);
+
+export const verifiedLoginAliases = mysqlTable("verifiedLoginAliases", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 32 }).notNull(),
+  subject: varchar("subject", { length: 255 }).notNull(),
+  openId: varchar("openId", { length: 64 }).notNull(),
+  canonicalPersonId: int("canonicalPersonId").notNull().references(() => canonicalPeople.id, { onDelete: "cascade" }),
+  canonicalUserId: int("canonicalUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  normalizedVerifiedEmail: varchar("normalizedVerifiedEmail", { length: 320 }),
+  verifiedAt: timestamp("verifiedAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("verified_login_alias_provider_subject_unique").on(table.provider, table.subject), uniqueIndex("verified_login_alias_open_id_unique").on(table.openId), index("verified_login_alias_person_idx").on(table.canonicalPersonId)]);
+
+export const identityLinkAudits = mysqlTable("identityLinkAudits", {
+ id: int("id").autoincrement().primaryKey(), canonicalPersonId: int("canonicalPersonId"), canonicalUserId: int("canonicalUserId"), provider: varchar("provider", {length:32}), subject: varchar("subject", {length:255}), action: varchar("action", {length:80}).notNull(), evidence: text("evidence"), createdAt: timestamp("createdAt").defaultNow().notNull()
+}, table => [index("identity_link_audit_person_idx").on(table.canonicalPersonId, table.createdAt)]);
 
 export const profiles = mysqlTable("profiles", {
   id: int("id").autoincrement().primaryKey(),

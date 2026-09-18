@@ -96,8 +96,7 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   const email = user.email.trim().toLowerCase();
   const emailVerified = user.emailVerified;
   const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || email.split("@")[0];
-  await db.upsertUser({ openId, name, email, loginMethod: "workos", lastSignedIn: new Date() });
-  const account = await db.getUserByOpenId(openId);
+  const account = await db.resolveLoginIdentity({ provider: "workos", subject: sub, openId, email, emailVerified, name, loginMethod: "workos" });
   if (!account || account.suspended) return undefined;
   if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;
   const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
@@ -225,8 +224,8 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         }
         const openId = resolveWorkosOpenId(user.id);
         const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
-        stage = "upsert";
-        await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
+        stage = "identity";
+        await db.resolveLoginIdentity({ provider: "workos", subject: user.id, openId, email: user.email, emailVerified: user.emailVerified, name, loginMethod: "workos" });
         stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         const token = await sdkCreateSessionToken(openId, name);

@@ -61,7 +61,7 @@ async function upsertDevUser(input: { openId: string; name: string; email: strin
   const existing = memoryAccounts.get(input.openId);
   const account: MemoryAccount = existing
     ? { ...existing, name: input.name, email: input.email, lastSignedIn: new Date() }
-    : { id: memoryAccounts.size + 1, openId: input.openId, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), suspended: false, sessionsValidAfter: new Date(), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
+    : { id: memoryAccounts.size + 1, openId: input.openId, canonicalPersonId: null, name: input.name, email: input.email, loginMethod: input.loginMethod, role: db.resolveSyncedUserRole({ openId: input.openId, email: input.email, loginMethod: input.loginMethod }), suspended: false, sessionsValidAfter: new Date(), createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() };
   memoryAccounts.set(input.openId, account);
   return account;
 }
