@@ -265,6 +265,19 @@ export const referralRequestPasses = mysqlTable("referralRequestPasses", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_request_pass_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referral_request_pass_referrer_idx").on(table.referrerId, table.createdAt)]);
 
+export const referralDocumentAccessGrants = mysqlTable("referralDocumentAccessGrants", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, {onDelete:"cascade"}),
+  referrerId: int("referrerId").notNull().references(() => users.id, {onDelete:"cascade"}),
+  requestRevision: int("requestRevision").notNull(),
+  grantVersion: int("grantVersion").default(1).notNull(),
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  revokedAt: timestamp("revokedAt"),
+  revokeReason: varchar("revokeReason", {length:255}),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("referral_document_grant_request_referrer_unique").on(table.referralRequestId,table.referrerId), index("referral_document_grant_active_idx").on(table.referrerId,table.revokedAt,table.expiresAt)]);
+
 export const referralShareCards = mysqlTable("referralShareCards", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
