@@ -135,6 +135,25 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   modes, mocks, or synthetic fixtures. FreeCoffee is a separate product and is
   out of scope for this repository.
 
+## Lock contracts before logic
+- For any new or changed boundary, define and review the contract before business
+  logic: TypeScript domain/API types, Zod input/output schemas, database tables,
+  columns, constraints and indexes, and the migration/backfill shape that applies.
+- Put shared client/server API contracts in `@shared/`; keep persistence types in
+  `@drizzle/schema.ts` and runtime validators beside the owning boundary. Derive
+  types from one schema where the tooling supports it instead of maintaining
+  look-alike definitions that can drift.
+- Write contract tests first: valid examples, every invalid edge, unknown fields,
+  version compatibility, database uniqueness/foreign-key behavior, and
+  serialization round trips. Business logic starts only after these checks make
+  the expected shape executable and unambiguous.
+- Do not use `any`, unchecked casts, loose record bags, stringly typed states, or
+  validation after side effects to bypass an unresolved contract. Parse at the
+  edge, operate on the validated type, and make impossible states unrepresentable.
+- Schema-dependent logic and its migration are one change set. It may not land or
+  deploy until compatibility, backfill, rollback/forward-fix behavior, and the
+  production migration gate are explicit and validated.
+
 ## Fix generators, not generated output
 - When generated output is malformed, do not patch the emitted file, string,
   response, bundle, fixture, manifest, migration, or status record by hand. Find
