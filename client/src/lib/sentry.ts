@@ -1,5 +1,11 @@
 import * as Sentry from "@sentry/react";
 
+declare global {
+  interface Window {
+    __sentryTest?: () => boolean;
+  }
+}
+
 let initialized = false;
 
 // Single-use links carry secrets in the path (referral review tokens, share
@@ -46,4 +52,13 @@ export function captureClientError(error: unknown, context?: Record<string, unkn
 
 export function isClientSentryActive(): boolean {
   return initialized;
+}
+
+// Manual test hook: sends a fixed test event when active so the Sentry
+// dashboard can be verified without throwing real errors. Returns whether
+// an event was queued.
+export function testClientSentry(): boolean {
+  if (!initialized) return false;
+  Sentry.captureException(new Error("Sentry client test event"), { extra: { source: "manual-test" } });
+  return true;
 }
