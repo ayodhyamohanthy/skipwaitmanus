@@ -62,10 +62,10 @@ export type PrivateReferralRouteDeps = {
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
-  claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string }>;
+  claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
-  oneClickReviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: "role_not_a_fit" | "cannot_support" | "timing" }) => Promise<{ status: string; companyDomain: string; jobSeekerId?: number; declineReason?: string }>;
+  oneClickReviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: "role_not_a_fit" | "cannot_support" | "timing"; reviewLinkToken?: string }) => Promise<{ status: string; companyDomain: string; jobSeekerId?: number; declineReason?: string; revision?: number; replayed?: boolean }>;
   countRecentMessagesBySender?: (userId: number, since: Date) => Promise<number>;
   listReferralLedger?: () => Promise<Array<{ id: number; ref: string; status: string; company: string; jobTitle: string; jobLocation: string | null; seekerEmail: string | null; referrerEmail: string | null; createdAt: Date | string; updatedAt: Date | string }>>;
   getUserEmailById?: (userId: number) => Promise<string | null>;
@@ -776,7 +776,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store"); res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not withdraw this referral request";
-      res.status(/not in your account/i.test(message) ? 404 : /no longer be withdrawn/i.test(message) ? 409 : 500).json({ error: message });
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/not in your account/i.test(message) ? 404 : /no longer be withdrawn|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState });
     }
   });
   app.post("/api/company-referrals/:requestId/review", async (req, res) => {
@@ -790,7 +791,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.reviewReferralRequest(identity.account.id, { requestId, decision, message });
       record({ actorUserId: identity.account.id, action: `company_referral.${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId });
       res.json(result);
-    } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "This referral request can no longer be reviewed" }); }
+    } catch (error) { const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(409).json({ error: error instanceof Error ? error.message : "This referral request can no longer be reviewed", currentState }); }
   });
   app.post("/api/company-referrals/:requestId/one-click-review", async (req, res) => {
     try {
@@ -800,15 +801,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "One-click review is unavailable right now" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
       record({ actorUserId: identity.account.id, action: `company_referral.one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
-      if (decision === "approved") {
-        notifyInApp(result.jobSeekerId, `Your referral request was accepted at ${result.companyDomain}`, "A verified employee accepted your private request. Open My requests to continue the conversation.");
-        notifyEmail(result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
-      } else {
-        notifyInApp(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, "The employee can't help right now. Your request stays active for other employees.");
-        notifyEmail(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
-      }
+      if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, decision === "approved" ? `Your referral request was accepted at ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? "A verified employee accepted your private request." : "The employee can't help right now. Your request stays active for other employees.");
+      if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, decision === "approved" ? `Your referral was accepted — ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p>` : `<p>Your request at <strong>${escapeHtml(result.companyDomain)}</strong> remains visible to other verified employees.</p>`);
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
-    } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; res.status(/verify your work email|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
+    } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/verify your work email|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
   });
   app.get("/api/referrer-review-links/:linkToken", async (req,res)=>{try{const identity=await deps.resolveIdentity(req);const linkToken=req.params.linkToken;if(!identity)return res.status(401).json({error:"Sign in with your verified company email to use this private review link"});if(!isOpaqueReviewLinkToken(linkToken))return res.status(400).json({error:"This private review link is invalid"});if(!deps.resolveReferrerReviewEmailLink)return res.status(503).json({error:"Email review is unavailable right now"});await deps.resolveReferrerReviewEmailLink(identity.account.id,linkToken);res.set("Cache-Control","private, no-store");res.json({review:{ready:true,decisions:["approved","role_not_a_fit","cannot_support","timing"]}});}catch(error){const message=error instanceof Error?error.message:"This private review link is unavailable";res.status(409).json({error:message});}});
   app.post("/api/referrer-review-links/:linkToken/decision", async (req, res) => {
@@ -816,20 +812,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const linkToken = req.params.linkToken; const decision = req.body?.decision; const declineReason = req.body?.declineReason;
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to use this private review link" });
       if (!isOpaqueReviewLinkToken(linkToken) || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason))) return res.status(400).json({ error: "This private review action is invalid" });
-      if (!deps.resolveReferrerReviewEmailLink || !deps.consumeReferrerReviewEmailLink || !deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "Email review is unavailable right now" });
+      if (!deps.resolveReferrerReviewEmailLink || !deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "Email review is unavailable right now" });
       const link = await deps.resolveReferrerReviewEmailLink(identity.account.id, linkToken);
-      const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId: link.requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
-      await deps.consumeReferrerReviewEmailLink(identity.account.id, linkToken);
+      const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId: link.requestId, decision, declineReason: decision === "declined" ? declineReason : undefined, reviewLinkToken: linkToken });
+      if (result.revision === undefined && deps.consumeReferrerReviewEmailLink) await deps.consumeReferrerReviewEmailLink(identity.account.id, linkToken);
       record({ actorUserId: identity.account.id, action: `company_referral.email_one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: link.requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
-      if (decision === "approved") {
-        notifyInApp(result.jobSeekerId, `Your referral request was accepted at ${result.companyDomain}`, "A verified employee accepted your private request. Open My requests to continue the conversation.");
-        notifyEmail(result.jobSeekerId, `Your referral was accepted — ${result.companyDomain}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation.</p>`);
-      } else {
-        notifyInApp(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, "The employee can't help right now. Your request stays active for other employees.");
-        notifyEmail(result.jobSeekerId, `Update on your referral request — ${result.companyDomain}`, `<p>Your referral request at <strong>${escapeHtml(result.companyDomain)}</strong> wasn't picked up by this employee, but that's okay — one click and it's back in the queue.</p><p>Your request remains visible to other verified employees at the company.</p>`);
-      }
+      if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, decision === "approved" ? `Your referral request was accepted at ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? "A verified employee accepted your private request." : "The employee can't help right now. Your request stays active for other employees.");
+      if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, decision === "approved" ? `Your referral was accepted — ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p>` : `<p>Your request at <strong>${escapeHtml(result.companyDomain)}</strong> remains visible to other verified employees.</p>`);
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
-    } catch (error) { const message = error instanceof Error ? error.message : "This private review link is unavailable"; res.status(/private review link|no longer available|another verified employee/i.test(message) ? 409 : 500).json({ error: message }); }
+    } catch (error) { const message = error instanceof Error ? error.message : "This private review link is unavailable"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/private review link|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
   });
   app.post("/api/company-referrals/:requestId/progress", async (req, res) => {
     const requestId = Number(req.params.requestId);
@@ -847,7 +838,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not record this referral progress";
       record({ actorUserId, action: "company_referral.progress_updated", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
-      res.status(/only available after the referral is accepted|not available to you/i.test(message) ? 403 : 409).json({ error: message });
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/only available after the referral is accepted|not available to you/i.test(message) ? 403 : 409).json({ error: message, currentState });
     }
   });
   app.get("/api/company-referrals/:requestId/conversation", async (req, res) => {
@@ -929,12 +921,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId);
       record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain });
-      notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request. Open My requests to continue.`);
-      notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p><p>Open <a href="https://skipwait.me/requests">My requests</a> to continue the conversation. Their identity stays hidden until they choose to share it.</p>`);
+      if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request.`);
+      if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p>`);
       res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
-      res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message });
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed|conflicts with the current state/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
     }
   });
   app.get("/api/admin/referrals/export.csv", async (req, res) => {

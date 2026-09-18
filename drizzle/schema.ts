@@ -226,6 +226,7 @@ export const referralRequests = mysqlTable("referralRequests", {
   referrerId: int("referrerId").references(() => users.id, { onDelete: "set null" }),
   personalPitch: text("personalPitch").notNull(),
   status: mysqlEnum("status", ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"]).default("pending").notNull(),
+  revision: int("revision").default(0).notNull(),
   waitingForCoverage: boolean("waitingForCoverage").default(false).notNull(),
   coverageQueuedAt: timestamp("coverageQueuedAt"),
   referrerMessage: text("referrerMessage"),
@@ -236,6 +237,18 @@ export const referralRequests = mysqlTable("referralRequests", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
+
+export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  operationKey: varchar("operationKey", { length: 120 }).notNull(),
+  actorUserId: int("actorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  action: varchar("action", { length: 40 }).notNull(),
+  fromStatus: varchar("fromStatus", { length: 32 }).notNull(),
+  resultingStatus: varchar("resultingStatus", { length: 32 }).notNull(),
+  resultingRevision: int("resultingRevision").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("referral_transition_operation_unique").on(table.referralRequestId, table.operationKey), uniqueIndex("referral_transition_revision_unique").on(table.referralRequestId, table.resultingRevision)]);
 
 export const referralRequestSaves = mysqlTable("referralRequestSaves", {
   id: int("id").autoincrement().primaryKey(),

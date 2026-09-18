@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -828,36 +828,27 @@ const oneClickDeclineMessages = {
 
 export type OneClickDeclineReason = keyof typeof oneClickDeclineMessages;
 
-export async function oneClickReviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: OneClickDeclineReason }) {
+export async function oneClickReviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: OneClickDeclineReason; reviewLinkToken?: string }) {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before reviewing referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const request = await tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1);
-    const current = request[0];
-    if (!current || current.status !== "pending" || !isVerifiedEmployeeOfCompany(profile, current.companyDomain) || (current.referrerId !== null && current.referrerId !== userId)) throw new Error("This referral request is no longer available");
+    const current = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
+    if (!current || !isVerifiedEmployeeOfCompany(profile, current.companyDomain) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    const operationKey = input.decision === "approved" ? `one-click:${userId}:approved` : `one-click:${userId}:declined:${input.declineReason ?? "cannot_support"}`;
+    const prior = (await tx.select().from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId,input.requestId),eq(referralTransitionEvents.operationKey,operationKey))).limit(1))[0];
+    if (!prior && current.request.status !== "pending") throw new ReferralTransitionConflict("This referral request is no longer available", { status: current.request.status, revision: current.request.revision });
     if (input.decision === "declined") {
-      if (current.referrerId !== null) throw new Error("An allocated referral must be released through the queue workflow");
+      if (current.request.referrerId !== null) throw new ReferralTransitionConflict("An allocated referral must be released through the queue workflow", { status: current.request.status, revision: current.request.revision });
       const reason = input.declineReason ?? "cannot_support";
-      await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: userId, reason }).onDuplicateKeyUpdate({ set: { reason } });
-      await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,userId)));
-      await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt)));
-      await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,userId),eq(referralAvailabilitySlots.status,"allocated")));
-      return { status: "passed" as const, companyDomain: current.companyDomain, declineReason: reason };
+      const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "pass", operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null) throw new Error("An allocated referral must be released through the queue workflow"); }, notification: { userId: current.request.jobSeekerId, title: `Update on your referral request — ${current.companyDomain}`, body: "The employee can't help right now. Your request stays active for other employees." }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: userId, reason }).onDuplicateKeyUpdate({ set: { reason } }); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,userId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,userId),eq(referralAvailabilitySlots.status,"allocated"))); } });
+      return { ...result, status: "passed" as const, companyDomain: current.companyDomain, declineReason: reason, jobSeekerId: current.request.jobSeekerId };
     }
-    const previousPass = await tx.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId, input.requestId), eq(referralRequestPasses.referrerId, userId))).limit(1);
-    if (previousPass[0]) throw new Error("You already passed on this referral request");
-    if (current.referrerId === null) {
-      const claimed = await tx.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, input.requestId), isNull(referralRequests.referrerId), eq(referralRequests.status, "pending")));
-      if (Number(claimed[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
-    }
-    const updated = await tx.update(referralRequests).set({ status: "approved", referrerMessage: null }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, "pending"), eq(referralRequests.referrerId, userId)));
-    if (Number(updated[0].affectedRows) !== 1) throw new Error("This referral request has already been reviewed");
-    await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", title: "Referral Request approved", body: "A verified employee accepted your private referral request." });
-    await grantPendingActionRewardsTx(tx, userId, "referrer", "referral_approval", String(input.requestId));
-    return { status: "approved" as const, companyDomain: current.companyDomain, jobSeekerId: current.jobSeekerId };
+    const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "approve", operationKey, toStatus: "approved", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId, referrerMessage: null }, notification: { userId: current.request.jobSeekerId, title: "Referral Request approved", body: "A verified employee accepted your private referral request." }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } const previousPass = await tx.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId, input.requestId), eq(referralRequestPasses.referrerId, userId))).limit(1); if (previousPass[0]) throw new Error("You already passed on this referral request"); await grantPendingActionRewardsTx(tx, userId, "referrer", "referral_approval", String(input.requestId)); } });
+    return { ...result, status: "approved" as const, companyDomain: current.companyDomain, jobSeekerId: current.request.jobSeekerId };
   });
 }
+
 export async function consumeReferrerReviewEmailLink(userId: number, linkToken: string) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const consumed = await db.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken, linkToken), eq(referrerReviewEmailLinks.referrerId, userId), isNull(referrerReviewEmailLinks.consumedAt)));
@@ -918,12 +909,12 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     const debit=current.debitTransactionId?(await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.id,current.debitTransactionId),eq(tokenTransactions.userId,userId),eq(tokenTransactions.kind,"direct_request"))).limit(1).for("update"))[0]:undefined;if(!debit||!debit.source)throw new Error("The original referral credit debit is unavailable; contact support before withdrawing");
     const existing=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId,debit.id)).limit(1))[0];
     const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!wallet)throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
-    if(existing){await tx.update(referralRequests).set({status:"withdrawn"}).where(eq(referralRequests.id,requestId));return{withdrawn:true as const,requestId,status:"withdrawn" as const,creditSummary:creditSummaryFromWallet(wallet)};}
+    if(existing){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});return{withdrawn:true as const,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet(wallet)};}
     let patch:{balance:number;monthlyCreditsRemaining:number}={balance:wallet.balance,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining};
     if(debit.source==="purchased_balance")patch.balance+=1;else if(debit.source==="monthly_allowance"&&debit.sourceCycleKey===wallet.monthlyCycleKey)patch.monthlyCreditsRemaining=Math.min(wallet.monthlyAllowance,patch.monthlyCreditsRemaining+1);
     await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id,wallet.id));await tx.insert(tokenTransactions).values({userId,role:"job_seeker",tokenCount:debit.source==="monthly_allowance"&&debit.sourceCycleKey!==wallet.monthlyCycleKey?0:1,kind:"withdrawal_refund",source:debit.source,sourceCycleKey:debit.sourceCycleKey,referenceType:"referral_request",referenceId:String(requestId),reversesTransactionId:debit.id,balanceAfter:patch.balance,monthlyCreditsAfter:patch.monthlyCreditsRemaining});
-    const updated=await tx.update(referralRequests).set({status:"withdrawn"}).where(and(eq(referralRequests.id,requestId),eq(referralRequests.status,"pending"),isNull(referralRequests.referrerId)));if(Number(updated[0]?.affectedRows??0)!==1)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
-    return{withdrawn:true as const,requestId,status:"withdrawn" as const,creditSummary:creditSummaryFromWallet({...wallet,...patch})};
+    const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});
+    return{withdrawn:true as const,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet({...wallet,...patch})};
   });
 }
 
@@ -1039,17 +1030,12 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before claiming referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const current=(await tx.select({jobSeekerId:referralRequests.jobSeekerId,company:jobs.company,referrerId:referralRequests.referrerId,status:referralRequests.status}).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
-    if(!current||current.status!=="pending"||!isVerifiedEmployeeOfCompany(profile,current.company)||(current.referrerId!==null&&current.referrerId!==userId))throw new Error("This referral request is no longer available");
-    const passed=(await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
-    if(passed)throw new Error("You already passed on this referral request");
-    if(current.referrerId===null){
-      const claimed=await tx.update(referralRequests).set({referrerId:userId}).where(and(eq(referralRequests.id,requestId),eq(referralRequests.status,"pending"),isNull(referralRequests.referrerId)));
-      if(Number(claimed[0]?.affectedRows??0)!==1)throw new Error("Another verified employee already claimed this request");
-    }
-    // The deterministic key makes response-loss retries converge on one durable event.
-    await tx.insert(notifications).values({userId:current.jobSeekerId,category:"status",title:"Your referral request was claimed",body:"A verified employee at the target company is reviewing your request.",eventKey:`referral:${requestId}:claimed:${userId}`}).onDuplicateKeyUpdate({set:{eventKey:`referral:${requestId}:claimed:${userId}`}});
-    return {requestId,claimed:true as const,jobSeekerId:current.jobSeekerId,companyDomain:current.company};
+    const current = (await tx.select({ request: referralRequests, company: jobs.company }).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
+    if (!current || current.request.status !== "pending" || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    const passed = (await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
+    if (passed) throw new Error("You already passed on this referral request");
+    const result = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "claim", operationKey: `claim:${userId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId }, notification: { userId: current.request.jobSeekerId, title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." } });
+    return { requestId, claimed: true as const, replayed: result.replayed, revision: result.revision, jobSeekerId: current.request.jobSeekerId, companyDomain: current.company };
   });
 }
 
@@ -1085,14 +1071,45 @@ export function canAccessReferralAttachment(actorUserId: number, attachment: { o
   if (attachment.ownerId === actorUserId) return true;
   return attachment.referrerId === actorUserId && Boolean(attachment.requestStatus && DOCUMENT_REFERRER_ACCESS_STATUSES.has(attachment.requestStatus));
 }
+export class ReferralTransitionConflict extends Error {
+  constructor(message: string, public currentState: { status: string; revision: number }) { super(message); this.name = "ReferralTransitionConflict"; }
+}
+
+type ReferralTransitionInput = {
+  requestId: number; actorUserId: number; action: string; operationKey: string;
+  toStatus: ReferralStatus; allowedFrom: ReferralStatus[];
+  authorize: (current: typeof referralRequests.$inferSelect) => void;
+  patch?: Partial<typeof referralRequests.$inferInsert>;
+  notification?: { userId: number; title: string; body: string };
+  beforeCommit?: (tx: any, current: typeof referralRequests.$inferSelect) => Promise<void>;
+};
+
+async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInput) {
+  const replay = (await tx.select().from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, input.requestId), eq(referralTransitionEvents.operationKey, input.operationKey))).limit(1))[0];
+  if (replay) return { status: replay.resultingStatus as ReferralStatus, revision: replay.resultingRevision, replayed: true as const };
+  const current = (await tx.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
+  if (!current) throw new Error("Referral Request not found");
+  input.authorize(current);
+  if (!input.allowedFrom.includes(current.status)) throw new ReferralTransitionConflict("This referral action conflicts with the current state", { status: current.status, revision: current.revision });
+  await input.beforeCommit?.(tx, current);
+  const nextRevision = current.revision + 1;
+  const updated = await tx.update(referralRequests).set({ ...input.patch, status: input.toStatus, revision: nextRevision }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, current.status), eq(referralRequests.revision, current.revision)));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) {
+    const latest = (await tx.select({ status: referralRequests.status, revision: referralRequests.revision }).from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1))[0];
+    throw new ReferralTransitionConflict("This referral action lost a stale-write race", latest ?? { status: current.status, revision: current.revision });
+  }
+  await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision });
+  if (input.notification) await tx.insert(notifications).values({ userId: input.notification.userId, category: "status", title: input.notification.title, body: input.notification.body, eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` }).onDuplicateKeyUpdate({ set: { eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` } });
+  return { status: input.toStatus, revision: nextRevision, replayed: false as const };
+}
+
 export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const existing = await db.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1);
-  if (!existing[0] || existing[0].referrerId !== userId) throw new Error("Referral Request not found");
-  if (existing[0].status !== "pending") throw new Error("This Referral Request has already been reviewed");
-  await db.update(referralRequests).set({ status: input.decision, referrerMessage: input.message ?? null }).where(eq(referralRequests.id, input.requestId));
-  await db.insert(notifications).values({ userId: existing[0].jobSeekerId, category: "status", title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: input.message || "Your Referrer has reviewed your Referral Request." });
-  return { status: input.decision };
+  return db.transaction(async tx => {
+    const current = (await tx.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
+    if (!current || current.referrerId !== userId) throw new Error("Referral Request not found");
+    return transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "review", operationKey: `review:${userId}:${input.decision}`, toStatus: input.decision, allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== userId) throw new Error("Referral Request not found"); }, patch: { referrerMessage: input.message ?? null }, notification: { userId: current.jobSeekerId, title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: input.message || "Your Referrer has reviewed your Referral Request." } });
+  });
 }
 
 export function authorizeApprovedReferralConversation(userId: number, request: { jobSeekerId: number; referrerId: number | null; status: string } | undefined) {
@@ -1103,17 +1120,17 @@ export function authorizeApprovedReferralConversation(userId: number, request: {
 
 export async function updateReferralProgress(userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1);
-  const existing = request[0];
-  const { recipientId } = authorizeApprovedReferralConversation(userId, existing);
-  if (existing.status === "closed") throw new Error("This referral request is already closed");
-  const currentIndex = referralProgressUpdateStatuses.indexOf(existing.status as ReferralProgressUpdateStatus);
-  const nextIndex = referralProgressUpdateStatuses.indexOf(input.status);
-  const canClose = input.status === "closed";
-  if (!canClose && (nextIndex < 0 || nextIndex <= currentIndex)) throw new Error("Choose a later real progress milestone");
-  await db.update(referralRequests).set({ status: input.status }).where(eq(referralRequests.id, input.requestId));
-  await db.insert(notifications).values({ userId: recipientId, category: "status", title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." });
-  return { status: input.status, changed: true };
+  return db.transaction(async tx => {
+    const existing = (await tx.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
+    const { recipientId } = authorizeApprovedReferralConversation(userId, existing);
+    const operationKey = `progress:${userId}:${input.status}`;
+    const prior = (await tx.select().from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId,input.requestId),eq(referralTransitionEvents.operationKey,operationKey))).limit(1))[0];
+    const currentIndex = referralProgressUpdateStatuses.indexOf(existing.status as ReferralProgressUpdateStatus);
+    const nextIndex = referralProgressUpdateStatuses.indexOf(input.status);
+    if (!prior && (existing.status === "closed" || (input.status !== "closed" && (nextIndex < 0 || nextIndex <= currentIndex)))) throw new ReferralTransitionConflict("Choose a later real progress milestone", { status: existing.status, revision: existing.revision });
+    const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "progress", operationKey, toStatus: input.status, allowedFrom: [existing.status], authorize: row => { authorizeApprovedReferralConversation(userId, row); }, notification: { userId: recipientId, title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." } });
+    return { ...result, status: result.status as ReferralProgressUpdateStatus, changed: !result.replayed };
+  });
 }
 
 async function getApprovedReferralConversationParticipants(userId: number, requestId: number) {

@@ -52,7 +52,7 @@ describe("Referrer one-click review actions", () => {
     const acted = await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" });
     expect(acted.status).toBe(200); expect(acted.body).toEqual({ status: "passed", declineReason: "role_not_a_fit" }); expect(JSON.stringify(acted.body)).not.toMatch(/request|email|token|company/i); expect(consumed).toEqual([token]);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" })).status).toBe(409);
-    expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "role_not_a_fit" }]);
+    expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "role_not_a_fit", reviewLinkToken: token }]);
   });
 
   it("keeps recipient review emails factual and omits candidate-private details", async () => {
