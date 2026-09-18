@@ -27,7 +27,7 @@ function baseDeps(overrides: Partial<EmployerRouteDeps> = {}): EmployerRouteDeps
     recordPartnerImpression: async () => undefined,
     recordPartnerClick: async () => ({ recorded: true }),
     listEmployerSpendHistory: async () => [],
-    prepareUnlockCreditCheckout: async input => ({intentId:1,providerOrderId:null,providerReceipt:"sw_test_receipt",status:"creating",amount:input.amount,currency:input.currency,pack:input.pack}),
+    prepareUnlockCreditCheckout: async input => ({id:1,intentId:1,providerOrderId:null,providerReceipt:"sw_test_receipt",status:"provider_create_in_progress",amount:input.amount,currency:input.currency,pack:input.pack,action:"create" as const,createLeaseOwner:"lease"}),
     bindUnlockCreditProviderOrder: async () => undefined,
     createRazorpayUnlockOrder: async input => ({ id: "order_test_1", amount: input.amountInPaise, currency: "INR" }),
     ...overrides,
@@ -108,11 +108,11 @@ describe("employer account routes", () => {
 
 describe("unlock credit purchases", () => {
   it("creates the local intent before a deterministic Razorpay order and durable bind", async () => {
-    const steps:string[]=[]; const app=buildApp(baseDeps({prepareUnlockCreditCheckout:async input=>{steps.push("intent");return {intentId:7,providerOrderId:null,providerReceipt:"sw_deterministic",status:"creating",amount:input.amount,currency:input.currency,pack:input.pack};},createRazorpayUnlockOrder:async input=>{steps.push(`provider:${input.receipt}`);return {id:"order_pack",amount:input.amountInPaise,currency:"INR"};},bindUnlockCreditProviderOrder:async input=>{steps.push(`bind:${input.orderId}`);}}));
+    const steps:string[]=[]; const app=buildApp(baseDeps({prepareUnlockCreditCheckout:async input=>{steps.push("intent");return {id:7,intentId:7,providerOrderId:null,providerReceipt:"sw_deterministic",status:"provider_create_in_progress",amount:input.amount,currency:input.currency,pack:input.pack,action:"create" as const,createLeaseOwner:"lease"};},createRazorpayUnlockOrder:async input=>{steps.push(`provider:${input.receipt}`);return {id:"order_pack",amount:input.amountInPaise,currency:"INR"};},bindUnlockCreditProviderOrder:async input=>{steps.push(`bind:${input.orderId}`);}}));
     const response=await request(app).post("/api/employer/unlock-credits/purchase").set("Idempotency-Key","checkout-key-123456789").send({pack:"growth"});
     expect(response.status).toBe(200);expect(response.body).toMatchObject({orderId:"order_pack",amount:12900,pack:"growth"});expect(steps).toEqual(["intent","provider:sw_deterministic","bind:order_pack"]);
   });
-  it("replays an already-bound local intent without a second provider call",async()=>{let calls=0;const app=buildApp(baseDeps({prepareUnlockCreditCheckout:async input=>({intentId:7,providerOrderId:"order_existing",providerReceipt:"sw_same",status:"pending",amount:input.amount,currency:input.currency,pack:input.pack}),createRazorpayUnlockOrder:async input=>{calls++;return {id:"bad",amount:input.amountInPaise,currency:"INR"};}}));const r=await request(app).post("/api/employer/unlock-credits/purchase").set("Idempotency-Key","checkout-key-123456789").send({pack:"starter"});expect(r.body).toMatchObject({orderId:"order_existing",replayed:true});expect(calls).toBe(0);});
+  it("replays an already-bound local intent without a second provider call",async()=>{let calls=0;const app=buildApp(baseDeps({prepareUnlockCreditCheckout:async input=>({id:7,intentId:7,providerOrderId:"order_existing",providerReceipt:"sw_same",status:"pending",amount:input.amount,currency:input.currency,pack:input.pack,action:"bound" as const}),createRazorpayUnlockOrder:async input=>{calls++;return {id:"bad",amount:input.amountInPaise,currency:"INR"};}}));const r=await request(app).post("/api/employer/unlock-credits/purchase").set("Idempotency-Key","checkout-key-123456789").send({pack:"starter"});expect(r.body).toMatchObject({orderId:"order_existing",replayed:true});expect(calls).toBe(0);});
   it("requires a client idempotency key",async()=>{expect((await request(buildApp(baseDeps())).post("/api/employer/unlock-credits/purchase").send({pack:"starter"})).status).toBe(428);});
 
   it("rejects an unknown pack with 400", async () => {

@@ -1,5 +1,5 @@
 import type { Express, Request } from "express";
-import { razorpayConfigured, razorpayOrderInPaise, type ActivityInput } from "./payments";
+import { findRazorpayOrdersByReceipt, razorpayConfigured, razorpayOrderInPaise, type ActivityInput } from "./payments";
 import { UNLOCK_CREDIT_PACKS, type UnlockCreditPackId } from "./db";
 
 /**
@@ -34,8 +34,10 @@ export type EmployerRouteDeps = {
   updatePartnerModule?: (moduleId: number, patch: PartnerModulePatch) => Promise<unknown>;
   listAllPartnerModules?: () => Promise<unknown[]>;
   listEmployerSpendHistory: (userId: number, limit?: number) => Promise<unknown[]>;
-  prepareUnlockCreditCheckout?: (input: { checkoutKey:string; userId:number; pack:UnlockCreditPackId; amount:number; currency:string }) => Promise<{intentId:number;providerOrderId:string|null;providerReceipt:string;status:string;amount:number;currency:string;pack:UnlockCreditPackId}>;
-  bindUnlockCreditProviderOrder?: (input:{intentId:number;orderId:string;amount:number;currency:string}) => Promise<unknown>;
+  prepareUnlockCreditCheckout?: (input: { checkoutKey:string; userId:number; pack:UnlockCreditPackId; amount:number; currency:string }) => Promise<{id:number;intentId?:number;providerOrderId:string|null;providerReceipt:string;status:string;amount:number;currency:string;pack:UnlockCreditPackId;action:"bound"|"busy"|"blocked"|"create"|"reconcile";createLeaseOwner?:string|null}>;
+  bindUnlockCreditProviderOrder?: (input:{intentId:number;orderId:string;amount:number;currency:string;leaseOwner?:string}) => Promise<unknown>;
+  markUnlockCheckoutRequiresReview?: (intentId:number,reason:string)=>Promise<void>;
+  findRazorpayOrdersByReceipt?: typeof findRazorpayOrdersByReceipt;
   createRazorpayUnlockOrder?: (input: { amountInPaise: number; receipt: string; notes: Record<string, string> }) => Promise<{ id: string; amount: number; currency: string }>;
   unlockCreditPacks?: typeof UNLOCK_CREDIT_PACKS;
 };
@@ -111,9 +113,11 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
       const checkoutKey=req.get("Idempotency-Key")?.trim()??""; if(!/^[\x21-\x7E]{16,64}$/.test(checkoutKey))return res.status(428).json({error:"A valid Idempotency-Key header is required"});
       if(!deps.prepareUnlockCreditCheckout||!deps.bindUnlockCreditProviderOrder)throw new Error("Payment intent storage is unavailable");
       const intent=await deps.prepareUnlockCreditCheckout({checkoutKey,userId:gate.identity.account.id,pack,amount:selected.amountInPaise,currency:"INR"});
-      if(intent.providerOrderId)return res.json({orderId:intent.providerOrderId,amount:intent.amount,currency:intent.currency,keyId:process.env.RAZORPAY_KEY_ID,pack,credits:selected.credits,replayed:true});
-      const order = await createOrder({ amountInPaise: selected.amountInPaise, receipt: intent.providerReceipt, notes: { userId: String(gate.identity.account.id), kind: "unlock_credits", pack, intentId:String(intent.intentId), checkoutKey } });
-      await deps.bindUnlockCreditProviderOrder({intentId:intent.intentId,orderId:order.id,amount:order.amount,currency:order.currency});
+      const intentId=intent.intentId??intent.id;if(intent.action==="bound"&&intent.providerOrderId)return res.json({orderId:intent.providerOrderId,amount:intent.amount,currency:intent.currency,keyId:process.env.RAZORPAY_KEY_ID,pack,credits:selected.credits,replayed:true});
+      if(intent.action==="busy")return res.status(202).json({status:"creating",retryAfterSeconds:5}); if(intent.action==="blocked")return res.status(409).json({error:"Checkout requires review before retry"});
+      if(intent.action==="reconcile"){const matches=await (deps.findRazorpayOrdersByReceipt??findRazorpayOrdersByReceipt)(intent.providerReceipt);if(matches.length>1){await deps.markUnlockCheckoutRequiresReview?.(intentId,"multiple_provider_orders_for_receipt");return res.status(409).json({error:"Checkout requires payment reconciliation"});}if(matches.length===1){const found=matches[0];await deps.bindUnlockCreditProviderOrder({intentId,orderId:found.id,amount:found.amount,currency:found.currency,leaseOwner:intent.createLeaseOwner??undefined});return res.json({orderId:found.id,amount:found.amount,currency:found.currency,keyId:process.env.RAZORPAY_KEY_ID,pack,credits:selected.credits,reconciled:true});}}
+      const correlationId=intent.providerReceipt.slice(3); const order = await createOrder({ amountInPaise: selected.amountInPaise, receipt: intent.providerReceipt, notes: { userId: String(gate.identity.account.id), kind: "unlock_credits", pack, intentId:String(intentId), correlationId } });
+      await deps.bindUnlockCreditProviderOrder({intentId,orderId:order.id,amount:order.amount,currency:order.currency,leaseOwner:intent.createLeaseOwner??undefined});
       record({ actorUserId: gate.identity.account.id, action: "employer.unlock_credits_order_created", outcome: "success", resourceType: "payment", resourceId: order.id, metadata: { pack, amountInPaise: selected.amountInPaise, credits: selected.credits } });
       res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID, pack, credits: selected.credits });
     } catch (error) {
