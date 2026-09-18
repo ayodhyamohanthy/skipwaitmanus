@@ -90,20 +90,34 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   passthrough in `src/worker.ts` is load-bearing. If you add a secret, set it
   with `wrangler secret put <NAME>`; it reaches the container on next start.
 
-## Architecture map
-| Area | Path |
+## Living system map
+Keep this section concise and current in the same atomic commit whenever a route
+group, state machine, owning module, or validation command changes. Do not copy
+every endpoint here; record the active boundary and its source of truth.
+
+| Surface / active routes | Owner and state pattern |
 |---|---|
-| Client pages | `client/src/pages/` (wired in `App.tsx`) |
-| Auth provider (WorkOS AuthKit) | `client/src/_core/auth.tsx` (WorkOS-backed hook surface) |
-| tRPC routers | `server/routers.ts` |
-| REST routes (referrals, docs, admin) | `server/privateReferralRoutes.ts` |
-| Identity resolution | `server/_core/workosAuth.ts` (JWT JWKS + cookie) → `devAuth.ts` |
-| tRPC context | `server/_core/context.ts` (must use `resolveWorkosIdentity` in prod) |
-| Sessions | `server/_core/sdk.ts` (`createSessionToken`/`verifySession`; HS256, `JWT_SECRET`) |
-| OTP service | `server/workEmailOtp.ts` (codes in `workEmailOtpCodes`, hashed) |
-| Storage | R2 if configured → managed Forge → DB (`server/storageDb.ts`, `documentBlobs`) |
-| Employer routing (LinkedIn→company) | `server/employerRouting.ts` + `resolveEmployerDomainFromTargetUrl` in `server/db.ts` |
-| Schema/migrations | `drizzle/schema.ts`, `drizzle/00xx_*.sql` |
+| Client routes and page states | `client/src/App.tsx`, `client/src/pages/`; React Query owns server state, explicit loading/empty/error states, no fabricated records |
+| WorkOS seeker/admin auth | `client/src/_core/auth.tsx`, `server/_core/workosAuth.ts`, `server/_core/sdk.ts`; canonical person + verified aliases, revocable sessions |
+| Work-email OTP/referrer enrollment | `server/_core/otpLogin.ts`, `server/workEmailOtp.ts`, `server/privateReferralRoutes.ts`; receipt-backed OTP state, atomic verified-email enrollment |
+| Health and release identity (`/api/health*`) | `server/healthRoutes.ts`, `src/worker.ts`; live -> validating/failed -> ready, exact baked SHA |
+| Job-link preview (`/api/job-link/preview`) | `server/jobLinkPreviewRoutes.ts`, `server/employerRouting.ts`; validated public URL -> fresh/stale/error preview |
+| Referral, document, notification and admin REST | `server/privateReferralRoutes.ts`, `server/db.ts`; transactional state machines, idempotency and durable outboxes |
+| Employer talent, intro, partner and sponsorship REST | `server/employerRoutes.ts`, `server/db.ts`; consent/version gates, durable request state, no partial notification commits |
+| DMs and follows | `server/dmRoutes.ts`, `server/followRoutes.ts`; authenticated ownership, immutable idempotency for sends |
+| Payment/provider webhooks | `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebeeRoutes.ts`; provider-confirmed terminal state, durable replay protection; no real-money QA |
+| tRPC API | `server/routers.ts`, `server/_core/context.ts`; Zod edge validation and canonical identity context |
+| Persistence and migrations | `drizzle/schema.ts`, `drizzle/00xx_*.sql`, `server/schemaReconcile.ts`; contract/migration first, forward-compatible boot reconciliation |
+| Container/runtime deploy | `wrangler.jsonc`, `src/worker.ts`, `.github/workflows/deploy-api.yml`; serialized rollout, canonical route + exact-SHA readiness |
+| Pages deploy | `.github/workflows/deploy-pages.yml`; same compatible source state as API, production visual verification |
+| Sentry repair loop | `server/sentry.ts`, `client/src/lib/sentry.ts`; scrubbed event -> release-scoped issue -> regression -> verified production fix |
+
+Validation commands: `pnpm check`; `pnpm vitest run <affected tests>`;
+`pnpm build` for runtime/dependency/bundle changes; `pnpm quality:gate` for the
+full local gate; `node scripts/design-token-audit.mjs` plus desktop/mobile pixel
+checks for product UI; `scripts/verify-cloudflare-container-release.sh` for the
+canonical exact-release gate. Add focused endpoint scripts and deterministic
+fixtures beside each feature instead of relying on this list alone.
 
 ## Non-obvious invariants (learned the hard way)
 1. Session JWTs embed `appId` from `VITE_APP_ID`; `verifySession` rejects empty
@@ -208,6 +222,17 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
 - Schema-dependent code stays off `main` until the matching production migration
   exists and is verified. The web/API contract must come from the same compatible
   source state.
+
+## Screenshot-first UI triage
+- A UI defect report must pair the screenshot with the exact relevant component
+  `@path`. Do not replace visual evidence with a long prose description of
+  spacing, alignment, overflow, breakpoint, or responsive behavior.
+- If no screenshot arrives, reproduce the state and capture the actual pixels at
+  the affected viewport before editing. Preserve a before image or equivalent
+  baseline, then capture and inspect the same state after the fix.
+- Pair pixel evidence with a focused component/style regression check. DOM text,
+  coordinates, snapshots, build output, and "the CSS looks right" do not replace
+  desktop/mobile visual verification when layout or appearance is at stake.
 
 ## Styling and dependency boundary
 - `DESIGN.md` is the frozen product visual contract derived from the approved
