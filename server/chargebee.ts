@@ -230,8 +230,13 @@ export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTok
   });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const providerCode = typeof body?.api_error_code === "string" ? body.api_error_code : typeof body?.type === "string" ? body.type : "UNKNOWN";
-    throw new Error(`Chargebee checkout failed (${response.status}, ${providerCode})`);
+    const cleanDiagnostic = (value: unknown, max: number) => typeof value === "string"
+      ? value.replace(/[\r\n\t]+/g, " ").replace(/[^\x20-\x7E]/g, "").slice(0, max)
+      : "";
+    const providerCode = cleanDiagnostic(body?.api_error_code ?? body?.type, 80) || "UNKNOWN";
+    const providerParam = cleanDiagnostic(body?.param, 120) || "unknown";
+    const providerMessage = cleanDiagnostic(body?.message, 240) || "unavailable";
+    throw new Error(`Chargebee checkout failed (${response.status}, ${providerCode}, param=${providerParam}, message=${providerMessage})`);
   }
   const hostedPage = body?.hosted_page;
   const checkoutUrl = hostedPage?.url ?? hostedPage?.checkout_url;
