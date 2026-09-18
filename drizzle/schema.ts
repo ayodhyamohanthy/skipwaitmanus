@@ -282,8 +282,32 @@ export const referrerReviewEmailLinks = mysqlTable("referrerReviewEmailLinks", {
   linkToken: varchar("linkToken", { length: 64 }).notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
   consumedAt: timestamp("consumedAt"),
+  grantVersion: int("grantVersion").default(1).notNull(),
+  rotatedAt: timestamp("rotatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referrer_review_email_token_unique").on(table.linkToken), uniqueIndex("referrer_review_email_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referrer_review_email_lookup_idx").on(table.linkToken, table.referrerId, table.expiresAt), index("referrer_review_email_request_idx").on(table.referralRequestId)]);
+
+export const referralReviewGrantRotations = mysqlTable("referralReviewGrantRotations", {
+  id: int("id").autoincrement().primaryKey(), referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, {onDelete:"cascade"}), referrerId: int("referrerId").notNull().references(() => users.id, {onDelete:"cascade"}), actorUserId: int("actorUserId").notNull().references(() => users.id, {onDelete:"cascade"}), fromVersion: int("fromVersion").notNull(), toVersion: int("toVersion").notNull(), reason: varchar("reason", {length:255}).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull()
+}, table => [uniqueIndex("referral_review_grant_rotation_unique").on(table.referralRequestId,table.referrerId,table.toVersion)]);
+
+export const referralReviewDeliveries = mysqlTable("referralReviewDeliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
+  referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  channel: mysqlEnum("channel", ["email", "slack"]).notNull(),
+  grantVersion: int("grantVersion").default(1).notNull(),
+  status: mysqlEnum("status", ["pending", "leased", "sent", "failed", "unknown", "revoked"]).default("pending").notNull(),
+  attemptCount: int("attemptCount").default(0).notNull(),
+  leaseOwner: varchar("leaseOwner", { length: 64 }),
+  leaseExpiresAt: timestamp("leaseExpiresAt"),
+  nextAttemptAt: timestamp("nextAttemptAt"),
+  providerMessageId: varchar("providerMessageId", { length: 255 }),
+  lastError: varchar("lastError", { length: 255 }),
+  sentAt: timestamp("sentAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("referral_review_delivery_recipient_unique").on(table.referralRequestId, table.referrerId, table.channel, table.grantVersion), index("referral_review_delivery_claim_idx").on(table.status, table.nextAttemptAt, table.leaseExpiresAt)]);
 
 export const workEmailOtpCodes = mysqlTable("workEmailOtpCodes", {
   id: int("id").autoincrement().primaryKey(),

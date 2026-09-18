@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { resolveTrustedClientIp } from "./_core/trustedClientIp";
 import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
@@ -72,6 +73,8 @@ export type PrivateReferralRouteDeps = {
   createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
   sendEmail?: (input: { to: string; subject: string; html: string }) => Promise<{ sent: boolean; reason?: string }>;
   prepareReferrerReviewEmailNotifications?: (requestId: number) => Promise<Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }>>;
+  claimReferralReviewDelivery?: (requestId:number,referrerId:number,channel:"email"|"slack",leaseOwner:string)=>Promise<{id:number}|undefined>;
+  completeReferralReviewDelivery?: (id:number,leaseOwner:string,result:{status:"sent"|"failed"|"unknown";providerMessageId?:string;error?:string})=>Promise<{recorded:boolean}>;
   resolveReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<{ requestId: number }>;
   consumeReferrerReviewEmailLink?: (userId: number, linkToken: string) => Promise<void>;
   sendReferrerReviewEmail?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
@@ -491,12 +494,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (fastTrackCode && !safeFastTrackCode) return res.status(400).json({ error: "This private referral link is invalid" });
       const result = await deps.createCompanyReferralRequest(identity.account.id, { targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias });
       let reviewLinks: Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }> = [];
-      if (deps.prepareReferrerReviewEmailNotifications) {
+      if (!result.replayed && deps.prepareReferrerReviewEmailNotifications) {
         try {
           reviewLinks = await deps.prepareReferrerReviewEmailNotifications(result.requestId);
           const reviewEmailSender = deps.sendReferrerReviewEmail ?? sendReferrerReviewEmail;
           const origin = `${req.protocol}://${req.get("host")}`;
-          const delivery = await Promise.all(reviewLinks.map(link => reviewEmailSender({ to: link.email, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` })));
+          const delivery = await Promise.all(reviewLinks.map(async link => { const leaseOwner=randomUUID();const claim=deps.claimReferralReviewDelivery?await deps.claimReferralReviewDelivery(result.requestId,link.referrerId,"email",leaseOwner):{id:0};if(!claim)return{sent:false,reason:"already_claimed"};try{const sent=await reviewEmailSender({to:link.email,companyDomain:link.companyDomain,reviewUrl:`${origin}/email-review/${encodeURIComponent(link.linkToken)}`});await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:sent.sent?"sent":"failed",error:sent.sent?undefined:sent.reason});return sent;}catch(error){await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:"unknown",error:error instanceof Error?error.message:"delivery interrupted"});throw error;}}));
           const sentCount = delivery.filter(item => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: sentCount === reviewLinks.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: reviewLinks.length, sentCount } });
         } catch { record({ actorUserId: identity.account.id, action: "company_referral.review_email_dispatched", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain }); }
@@ -506,10 +509,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
           const slackTargets = await deps.getActiveReferrerSlackWebhooks(reviewLinks.map(link => link.referrerId));
           const slackSender = deps.sendReferrerSlackDelivery ?? sendReferrerSlackDelivery;
           const origin = `${req.protocol}://${req.get("host")}`;
-          const slackDelivery = await Promise.all(slackTargets.map(target => {
+          const slackDelivery = await Promise.all(slackTargets.map(async target => {
             const link = reviewLinks.find(item => item.referrerId === target.referrerId);
-            if (!link) return Promise.resolve({ sent: false as const, reason: "not_configured" as const });
-            return slackSender({ to: target.webhookUrl, companyDomain: link.companyDomain, reviewUrl: `${origin}/email-review/${encodeURIComponent(link.linkToken)}` }).catch(() => ({ sent: false as const, reason: "delivery_failed" as const }));
+            if (!link) return { sent: false as const, reason: "not_configured" as const };
+            const leaseOwner=randomUUID();const claim=deps.claimReferralReviewDelivery?await deps.claimReferralReviewDelivery(result.requestId,target.referrerId,"slack",leaseOwner):{id:0};if(!claim)return{sent:false as const,reason:"already_claimed" as const};
+            try{const sent=await slackSender({to:target.webhookUrl,companyDomain:link.companyDomain,reviewUrl:`${origin}/email-review/${encodeURIComponent(link.linkToken)}`});await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:sent.sent?"sent":"failed",error:sent.sent?undefined:sent.reason});return sent;}catch(error){await deps.completeReferralReviewDelivery?.(claim.id,leaseOwner,{status:"unknown",error:error instanceof Error?error.message:"delivery interrupted"});return{sent:false as const,reason:"delivery_failed" as const};}
           }));
           const slackSentCount = slackDelivery.filter((item: { sent: boolean }) => item.sent).length;
           record({ actorUserId: identity.account.id, action: "company_referral.review_slack_dispatched", outcome: slackSentCount === slackTargets.length ? "success" : "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { intendedRecipientCount: slackTargets.length, sentCount: slackSentCount } });
