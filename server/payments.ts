@@ -31,6 +31,14 @@ async function razorpayOrder(input: { amountInRupees: number; receipt: string; n
   return (await response.json()) as { id: string; amount: number; currency: string };
 }
 
+export async function findRazorpayOrdersByReceipt(receipt: string) {
+  const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
+  const response = await fetch(`https://api.razorpay.com/v1/orders?receipt=${encodeURIComponent(receipt)}&count=100`, { headers: { Authorization: `Basic ${auth}` }, signal: AbortSignal.timeout(10_000) });
+  if (!response.ok) throw new Error(`razorpay order lookup failed: ${response.status}`);
+  const body = await response.json() as { items?: Array<{id:string;amount:number;currency:string;receipt?:string}> };
+  return (body.items ?? []).filter(order => order.receipt === receipt);
+}
+
 // Paise-native variant for fixed-price B2B packs (employer unlock credits),
 // where the price is already defined in the smallest currency unit.
 export async function razorpayOrderInPaise(input: { amountInPaise: number; receipt: string; notes?: Record<string, string> }) {

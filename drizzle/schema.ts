@@ -83,6 +83,7 @@ export const employerAccounts = mysqlTable("employerAccounts", {
   billingEmail: varchar("billingEmail", { length: 320 }).notNull(),
   credits: int("credits").default(0).notNull(),
   budgetMonthlyUsdCents: int("budgetMonthlyUsdCents").default(0).notNull(),
+  creditDebt: int("creditDebt").default(0).notNull(),
   approvalStatus: mysqlEnum("approvalStatus", ["pending", "approved", "rejected", "suspended", "revoked"]).default("pending").notNull(),
   approvedAt: timestamp("approvedAt"),
   approvedByUserId: int("approvedByUserId").references(() => users.id, { onDelete: "set null" }),
@@ -445,19 +446,41 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
 export const employerPaymentFulfillments = mysqlTable("employerPaymentFulfillments", {
   id: int("id").autoincrement().primaryKey(),
   provider: varchar("provider", { length: 32 }).notNull(),
-  providerOrderId: varchar("providerOrderId", { length: 255 }).notNull(),
+  providerOrderId: varchar("providerOrderId", { length: 255 }),
+  checkoutKey: varchar("checkoutKey", { length: 64 }).notNull(),
+  fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+  providerReceipt: varchar("providerReceipt", { length: 40 }).notNull(),
   providerPaymentId: varchar("providerPaymentId", { length: 255 }),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   pack: mysqlEnum("pack", ["starter", "growth", "scale"]).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
-  status: mysqlEnum("status", ["pending", "processing", "credited", "requires_review"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["creating", "provider_create_in_progress", "pending", "processing", "credited", "requires_review", "expired", "canceled"]).default("creating").notNull(),
   attemptCount: int("attemptCount").default(0).notNull(),
+  createLeaseOwner: varchar("createLeaseOwner", { length: 64 }),
+  createLeaseExpiresAt: timestamp("createLeaseExpiresAt"),
   lastError: varchar("lastError", { length: 500 }),
   creditedAt: timestamp("creditedAt"),
+  refundedAmount: int("refundedAmount").default(0).notNull(),
+  refundedCredits: int("refundedCredits").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("employer_payment_provider_order_unique").on(table.provider, table.providerOrderId), uniqueIndex("employer_payment_provider_payment_unique").on(table.provider, table.providerPaymentId), index("employer_payment_user_status_idx").on(table.userId, table.status)]);
+}, table => [uniqueIndex("employer_payment_checkout_key_unique").on(table.userId, table.checkoutKey), uniqueIndex("employer_payment_provider_receipt_unique").on(table.provider, table.providerReceipt), uniqueIndex("employer_payment_provider_order_unique").on(table.provider, table.providerOrderId), uniqueIndex("employer_payment_provider_payment_unique").on(table.provider, table.providerPaymentId), index("employer_payment_user_status_idx").on(table.userId, table.status)]);
+
+export const employerPaymentRefunds = mysqlTable("employerPaymentRefunds", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 32 }).notNull(),
+  providerRefundId: varchar("providerRefundId", { length: 255 }).notNull(),
+  providerPaymentId: varchar("providerPaymentId", { length: 255 }).notNull(),
+  providerOrderId: varchar("providerOrderId", { length: 255 }),
+  fulfillmentId: int("fulfillmentId").references(() => employerPaymentFulfillments.id, { onDelete: "set null" }),
+  amount: int("amount").notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  creditsReversed: int("creditsReversed").default(0).notNull(),
+  status: mysqlEnum("status", ["applied", "requires_review"]).notNull(),
+  reason: varchar("reason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("employer_payment_refund_event_unique").on(table.provider, table.providerRefundId), index("employer_payment_refund_payment_idx").on(table.provider, table.providerPaymentId)]);
 
 export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutIntents", {
   id: int("id").autoincrement().primaryKey(),

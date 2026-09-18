@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -2040,6 +2040,7 @@ export async function spendEmployerUnlockCredit(employerUserId: number, seekerUs
     if (!seeker || seeker.suspended || !profile || !profile.anonymityOptIn || !profile.isOnboarded || !consent) return { ok: false as const, reason: "consent_withdrawn" as const, credits: account.credits };
     const active = (await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId), eq(profileUnlocks.consentId, consent.id), isNull(profileUnlocks.revokedAt), gt(profileUnlocks.expiresAt, now))).limit(1))[0];
     if (active) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
+    if (account.creditDebt > 0) return { ok: false as const, reason: "credit_debt" as const, credits: account.credits };
     if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
     const fields = asTalentFields(JSON.parse(consent.disclosedFields)); const snapshot = talentSnapshot(profile, fields); const expiresAt = new Date(now.getTime() + TALENT_UNLOCK_DAYS*86400000);
     const debited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} - ${EMPLOYER_UNLOCK_CREDIT_COST}` }).where(and(eq(employerAccounts.id, account.id), sql`${employerAccounts.credits} >= ${EMPLOYER_UNLOCK_CREDIT_COST}`));
@@ -2091,6 +2092,7 @@ export async function sponsorCompanyOpportunity(userId: number, opportunityId: n
     }
     const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, chargedUserId)).limit(1).for("update"))[0];
     if (!account) throw new Error("Open an employer account before sponsoring a role");
+    if (account.creditDebt > 0) throw new Error("Refunded credit debt must be resolved before further spending");
     if (account.credits < tierCost.cost) throw new Error(`Sponsoring costs ${tierCost.cost} unlock credits; you have ${account.credits}`);
     const purchasedAt = new Date();
     const startsAt = opportunity.sponsoredUntil && opportunity.sponsoredUntil > purchasedAt ? opportunity.sponsoredUntil : purchasedAt;
@@ -2218,14 +2220,19 @@ export async function recordPartnerClick(moduleId: number) {
   return { recorded: Number(result[0]?.affectedRows ?? 0) === 1 };
 }
 
-// Durable Razorpay order intent. The provider order is bound to the authenticated
-// employer, selected pack and exact amount before any webhook may credit it.
-export async function recordUnlockCreditOrderIntent(input: { orderId: string; userId: number; pack: UnlockCreditPackId; amount: number; currency: string }) {
-  const expected = UNLOCK_CREDIT_PACKS[input.pack];
-  if (!expected || input.amount !== expected.amountInPaise || input.currency.toUpperCase() !== "INR") throw new Error("Razorpay order does not match the selected pack");
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.insert(employerPaymentFulfillments).values({ provider: "razorpay", providerOrderId: input.orderId, userId: input.userId, pack: input.pack, amount: input.amount, currency: "INR", status: "pending" }).onDuplicateKeyUpdate({ set: { providerOrderId: input.orderId } });
-  return { orderId: input.orderId, status: "pending" as const };
+// A local checkout intent is durable before any provider call. Replays bind to
+// one immutable user/pack/amount fingerprint and one deterministic receipt.
+export async function prepareUnlockCreditCheckout(input: { checkoutKey:string; userId:number; pack:UnlockCreditPackId; amount:number; currency:string }) {
+  const expected=UNLOCK_CREDIT_PACKS[input.pack]; if(!expected||input.amount!==expected.amountInPaise||input.currency.toUpperCase()!=="INR") throw new Error("Checkout does not match the selected pack");
+  if(!/^[\x21-\x7E]{16,64}$/.test(input.checkoutKey)) throw new Error("A valid Idempotency-Key header is required");
+  const fingerprint=createHash("sha256").update(`${input.userId}|${input.pack}|${input.amount}|INR`).digest("hex"); const providerReceipt=`sw_${createHash("sha256").update(`${input.userId}|${input.checkoutKey}`).digest("hex").slice(0,32)}`;
+  const db=await getDb();if(!db)throw new Error("Database unavailable"); try{await db.insert(employerPaymentFulfillments).values({provider:"razorpay",providerOrderId:null,checkoutKey:input.checkoutKey,fingerprint,providerReceipt,userId:input.userId,pack:input.pack,amount:input.amount,currency:"INR",status:"creating"});}catch(error){if((error as any).code!=="ER_DUP_ENTRY")throw error;}
+  return db.transaction(async tx=>{const intent=(await tx.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.userId,input.userId),eq(employerPaymentFulfillments.checkoutKey,input.checkoutKey))).limit(1).for("update"))[0];if(!intent||intent.fingerprint!==fingerprint)throw new Error("Idempotency-Key is already bound to a different credit pack");if(intent.providerOrderId)return {...intent,action:"bound" as const};const now=new Date();if(intent.status==="provider_create_in_progress"&&intent.createLeaseExpiresAt&&intent.createLeaseExpiresAt>now)return {...intent,action:"busy" as const};if(!["creating","provider_create_in_progress"].includes(intent.status))return {...intent,action:"blocked" as const};const leaseOwner=randomUUID();const leaseExpiresAt=new Date(now.getTime()+30_000);await tx.update(employerPaymentFulfillments).set({status:"provider_create_in_progress",createLeaseOwner:leaseOwner,createLeaseExpiresAt:leaseExpiresAt,attemptCount:sql`${employerPaymentFulfillments.attemptCount}+1`}).where(eq(employerPaymentFulfillments.id,intent.id));return {...intent,status:"provider_create_in_progress",createLeaseOwner:leaseOwner,createLeaseExpiresAt:leaseExpiresAt,action:intent.status==="provider_create_in_progress"?"reconcile" as const:"create" as const};});
+}
+export async function markUnlockCheckoutRequiresReview(intentId:number,reason:string){const db=await getDb();if(!db)throw new Error("Database unavailable");await db.update(employerPaymentFulfillments).set({status:"requires_review",lastError:reason,createLeaseOwner:null,createLeaseExpiresAt:null}).where(eq(employerPaymentFulfillments.id,intentId));}
+
+export async function bindUnlockCreditProviderOrder(input:{intentId:number;orderId:string;amount:number;currency:string;leaseOwner?:string}){
+  const db=await getDb();if(!db)throw new Error("Database unavailable"); return db.transaction(async tx=>{const intent=(await tx.select().from(employerPaymentFulfillments).where(eq(employerPaymentFulfillments.id,input.intentId)).limit(1).for("update"))[0];if(!intent)throw new Error("Checkout intent not found");if(intent.providerOrderId){if(intent.providerOrderId!==input.orderId)throw new Error("Checkout intent is bound to another provider order");return intent;}if(intent.status!=="provider_create_in_progress"||intent.amount!==input.amount||intent.currency!==input.currency.toUpperCase())throw new Error("Provider order does not match checkout intent");const changed=await tx.update(employerPaymentFulfillments).set({providerOrderId:input.orderId,status:"pending",createLeaseOwner:null,createLeaseExpiresAt:null}).where(and(eq(employerPaymentFulfillments.id,input.intentId),eq(employerPaymentFulfillments.status,"provider_create_in_progress"),eq(employerPaymentFulfillments.createLeaseOwner,input.leaseOwner??""),isNull(employerPaymentFulfillments.providerOrderId)));if(Number(changed[0]?.affectedRows??0)!==1)throw new Error("Checkout intent binding lost its claim");return {...intent,providerOrderId:input.orderId,status:"pending" as const};});
 }
 
 // Verified captures are fulfilled in one database transaction. The guarded
@@ -2279,4 +2286,24 @@ export async function listEmployerSpendHistory(userId: number, limit = 50) {
   });
   const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: "Access record", createdAt: row.createdAt }));
   return [...sponsorRows, ...creditRows, ...unlockRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
+}
+
+// Verified provider refunds reverse the cumulative proportional credit amount.
+// Rounding is cumulative floor(refunded paise * pack credits / captured paise),
+// so split partial refunds converge exactly to the full-pack credit total.
+export async function applyEmployerUnlockRefund(input:{refundId:string;paymentId:string;orderId?:string;amount:number;currency:string}){
+  if(!input.refundId||!input.paymentId||!Number.isInteger(input.amount)||input.amount<=0)return {status:"requires_review" as const,reason:"invalid_refund"};
+  const db=await getDb();if(!db)throw new Error("Database unavailable");return db.transaction(async tx=>{
+    const duplicate=(await tx.select().from(employerPaymentRefunds).where(and(eq(employerPaymentRefunds.provider,"razorpay"),eq(employerPaymentRefunds.providerRefundId,input.refundId))).limit(1))[0];if(duplicate)return {status:duplicate.status,creditsReversed:duplicate.creditsReversed,duplicate:true};
+    const intent=(await tx.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.provider,"razorpay"),eq(employerPaymentFulfillments.providerPaymentId,input.paymentId))).limit(1).for("update"))[0];
+    if(!intent){await tx.insert(employerPaymentRefunds).values({provider:"razorpay",providerRefundId:input.refundId,providerPaymentId:input.paymentId,providerOrderId:input.orderId??null,amount:input.amount,currency:input.currency.toUpperCase(),creditsReversed:0,status:"requires_review",reason:"refund_before_capture_or_unknown_payment"});return {status:"requires_review" as const,reason:"refund_before_capture_or_unknown_payment"};}
+    const cumulative=intent.refundedAmount+input.amount;if(input.currency.toUpperCase()!==intent.currency||cumulative>intent.amount){await tx.insert(employerPaymentRefunds).values({provider:"razorpay",providerRefundId:input.refundId,providerPaymentId:input.paymentId,providerOrderId:input.orderId??intent.providerOrderId,fulfillmentId:intent.id,amount:input.amount,currency:input.currency.toUpperCase(),creditsReversed:0,status:"requires_review",reason:"refund_amount_or_currency_mismatch"});await tx.update(employerPaymentFulfillments).set({status:"requires_review",lastError:"refund_amount_or_currency_mismatch"}).where(eq(employerPaymentFulfillments.id,intent.id));return {status:"requires_review" as const,reason:"refund_amount_or_currency_mismatch"};}
+    const pack=UNLOCK_CREDIT_PACKS[intent.pack];const totalCredits=Math.floor(cumulative*pack.credits/intent.amount);const delta=totalCredits-intent.refundedCredits;if(delta<0)throw new Error("Refund credit ledger moved backwards");
+    const account=(await tx.select().from(employerAccounts).where(eq(employerAccounts.userId,intent.userId)).limit(1).for("update"))[0];if(!account)throw new Error("Employer account missing for refund");
+    const available=Math.max(0,account.credits);const consumed=Math.min(available,delta);const debt=delta-consumed;await tx.update(employerAccounts).set({credits:account.credits-consumed,creditDebt:account.creditDebt+debt}).where(eq(employerAccounts.id,account.id));
+    await tx.update(employerPaymentFulfillments).set({refundedAmount:cumulative,refundedCredits:totalCredits,lastError:debt?"refunded_credits_already_spent":null}).where(eq(employerPaymentFulfillments.id,intent.id));
+    await tx.insert(employerPaymentRefunds).values({provider:"razorpay",providerRefundId:input.refundId,providerPaymentId:input.paymentId,providerOrderId:input.orderId??intent.providerOrderId,fulfillmentId:intent.id,amount:input.amount,currency:intent.currency,creditsReversed:delta,status:"applied",reason:debt?"credit_debt_recorded":null});
+    if(debt){await tx.update(profileUnlocks).set({revokedAt:new Date(),revocationReason:"refunded_employer_credits_review"}).where(and(eq(profileUnlocks.employerUserId,intent.userId),isNull(profileUnlocks.revokedAt)));}
+    await tx.insert(operationalActivityLogs).values({actorUserId:intent.userId,action:"employer.unlock_credits_refunded",outcome:"success",resourceType:"employer_unlock_refund",resourceId:input.refundId,metadata:JSON.stringify({paymentId:input.paymentId,refundAmount:input.amount,cumulativeRefunded:cumulative,creditsReversed:delta,creditDebt:debt})});return {status:"applied" as const,creditsReversed:delta,creditDebt:debt};
+  });
 }
