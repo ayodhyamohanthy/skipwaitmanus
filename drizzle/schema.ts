@@ -445,19 +445,22 @@ export const paymentFulfillments = mysqlTable("paymentFulfillments", {
 export const employerPaymentFulfillments = mysqlTable("employerPaymentFulfillments", {
   id: int("id").autoincrement().primaryKey(),
   provider: varchar("provider", { length: 32 }).notNull(),
-  providerOrderId: varchar("providerOrderId", { length: 255 }).notNull(),
+  providerOrderId: varchar("providerOrderId", { length: 255 }),
+  checkoutKey: varchar("checkoutKey", { length: 64 }).notNull(),
+  fingerprint: varchar("fingerprint", { length: 64 }).notNull(),
+  providerReceipt: varchar("providerReceipt", { length: 40 }).notNull(),
   providerPaymentId: varchar("providerPaymentId", { length: 255 }),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   pack: mysqlEnum("pack", ["starter", "growth", "scale"]).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
-  status: mysqlEnum("status", ["pending", "processing", "credited", "requires_review"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["creating", "pending", "processing", "credited", "requires_review", "expired", "canceled"]).default("creating").notNull(),
   attemptCount: int("attemptCount").default(0).notNull(),
   lastError: varchar("lastError", { length: 500 }),
   creditedAt: timestamp("creditedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("employer_payment_provider_order_unique").on(table.provider, table.providerOrderId), uniqueIndex("employer_payment_provider_payment_unique").on(table.provider, table.providerPaymentId), index("employer_payment_user_status_idx").on(table.userId, table.status)]);
+}, table => [uniqueIndex("employer_payment_checkout_key_unique").on(table.userId, table.checkoutKey), uniqueIndex("employer_payment_provider_receipt_unique").on(table.provider, table.providerReceipt), uniqueIndex("employer_payment_provider_order_unique").on(table.provider, table.providerOrderId), uniqueIndex("employer_payment_provider_payment_unique").on(table.provider, table.providerPaymentId), index("employer_payment_user_status_idx").on(table.userId, table.status)]);
 
 export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutIntents", {
   id: int("id").autoincrement().primaryKey(),

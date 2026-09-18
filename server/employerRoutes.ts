@@ -34,7 +34,8 @@ export type EmployerRouteDeps = {
   updatePartnerModule?: (moduleId: number, patch: PartnerModulePatch) => Promise<unknown>;
   listAllPartnerModules?: () => Promise<unknown[]>;
   listEmployerSpendHistory: (userId: number, limit?: number) => Promise<unknown[]>;
-  recordUnlockCreditOrderIntent?: (input: { orderId: string; userId: number; pack: UnlockCreditPackId; amount: number; currency: string }) => Promise<unknown>;
+  prepareUnlockCreditCheckout?: (input: { checkoutKey:string; userId:number; pack:UnlockCreditPackId; amount:number; currency:string }) => Promise<{intentId:number;providerOrderId:string|null;providerReceipt:string;status:string;amount:number;currency:string;pack:UnlockCreditPackId}>;
+  bindUnlockCreditProviderOrder?: (input:{intentId:number;orderId:string;amount:number;currency:string}) => Promise<unknown>;
   createRazorpayUnlockOrder?: (input: { amountInPaise: number; receipt: string; notes: Record<string, string> }) => Promise<{ id: string; amount: number; currency: string }>;
   unlockCreditPacks?: typeof UNLOCK_CREDIT_PACKS;
 };
@@ -107,9 +108,12 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
       const selected = packs[pack];
       const createOrder = deps.createRazorpayUnlockOrder ?? (razorpayConfigured() ? razorpayOrderInPaise : undefined);
       if (!createOrder) return res.status(503).json({ error: "Razorpay is not configured" });
-      const order = await createOrder({ amountInPaise: selected.amountInPaise, receipt: `employer_${gate.identity.account.id}_${Date.now()}`, notes: { userId: String(gate.identity.account.id), kind: "unlock_credits", pack } });
-      if (!deps.recordUnlockCreditOrderIntent) throw new Error("Payment fulfillment storage is unavailable");
-      await deps.recordUnlockCreditOrderIntent({ orderId: order.id, userId: gate.identity.account.id, pack, amount: order.amount, currency: order.currency });
+      const checkoutKey=req.get("Idempotency-Key")?.trim()??""; if(!/^[\x21-\x7E]{16,64}$/.test(checkoutKey))return res.status(428).json({error:"A valid Idempotency-Key header is required"});
+      if(!deps.prepareUnlockCreditCheckout||!deps.bindUnlockCreditProviderOrder)throw new Error("Payment intent storage is unavailable");
+      const intent=await deps.prepareUnlockCreditCheckout({checkoutKey,userId:gate.identity.account.id,pack,amount:selected.amountInPaise,currency:"INR"});
+      if(intent.providerOrderId)return res.json({orderId:intent.providerOrderId,amount:intent.amount,currency:intent.currency,keyId:process.env.RAZORPAY_KEY_ID,pack,credits:selected.credits,replayed:true});
+      const order = await createOrder({ amountInPaise: selected.amountInPaise, receipt: intent.providerReceipt, notes: { userId: String(gate.identity.account.id), kind: "unlock_credits", pack, intentId:String(intent.intentId), checkoutKey } });
+      await deps.bindUnlockCreditProviderOrder({intentId:intent.intentId,orderId:order.id,amount:order.amount,currency:order.currency});
       record({ actorUserId: gate.identity.account.id, action: "employer.unlock_credits_order_created", outcome: "success", resourceType: "payment", resourceId: order.id, metadata: { pack, amountInPaise: selected.amountInPaise, credits: selected.credits } });
       res.json({ orderId: order.id, amount: order.amount, currency: order.currency, keyId: process.env.RAZORPAY_KEY_ID, pack, credits: selected.credits });
     } catch (error) {

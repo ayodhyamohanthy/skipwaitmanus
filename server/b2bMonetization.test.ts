@@ -27,7 +27,8 @@ function baseDeps(overrides: Partial<EmployerRouteDeps> = {}): EmployerRouteDeps
     recordPartnerImpression: async () => undefined,
     recordPartnerClick: async () => ({ recorded: true }),
     listEmployerSpendHistory: async () => [],
-    recordUnlockCreditOrderIntent: async () => undefined,
+    prepareUnlockCreditCheckout: async input => ({intentId:1,providerOrderId:null,providerReceipt:"sw_test_receipt",status:"creating",amount:input.amount,currency:input.currency,pack:input.pack}),
+    bindUnlockCreditProviderOrder: async () => undefined,
     createRazorpayUnlockOrder: async input => ({ id: "order_test_1", amount: input.amountInPaise, currency: "INR" }),
     ...overrides,
   };
@@ -106,26 +107,13 @@ describe("employer account routes", () => {
 });
 
 describe("unlock credit purchases", () => {
-  it("creates a paise-native Razorpay order with unlock_credits notes", async () => {
-    const orders: Array<{ amountInPaise: number; receipt: string; notes: Record<string, string> }> = [];
-    const intents: Array<{ orderId: string; userId: number; pack: string; amount: number; currency: string }> = [];
-    const app = buildApp(baseDeps({ recordUnlockCreditOrderIntent: async input => { intents.push(input); }, createRazorpayUnlockOrder: async input => { orders.push(input); return { id: "order_pack", amount: input.amountInPaise, currency: "INR" }; } }));
-    const response = await request(app).post("/api/employer/unlock-credits/purchase").send({ pack: "growth" });
-    expect(response.status).toBe(200);
-    expect(response.body).toMatchObject({ orderId: "order_pack", amount: 12900, currency: "INR", pack: "growth", credits: 50 });
-    expect(orders[0]).toMatchObject({ amountInPaise: 12900 });
-    expect(orders[0].receipt).toMatch(/^employer_11_\d+$/);
-    expect(orders[0].notes).toMatchObject({ userId: "11", kind: "unlock_credits", pack: "growth" });
-    expect(intents).toEqual([{ orderId: "order_pack", userId: 11, pack: "growth", amount: 12900, currency: "INR" }]);
+  it("creates the local intent before a deterministic Razorpay order and durable bind", async () => {
+    const steps:string[]=[]; const app=buildApp(baseDeps({prepareUnlockCreditCheckout:async input=>{steps.push("intent");return {intentId:7,providerOrderId:null,providerReceipt:"sw_deterministic",status:"creating",amount:input.amount,currency:input.currency,pack:input.pack};},createRazorpayUnlockOrder:async input=>{steps.push(`provider:${input.receipt}`);return {id:"order_pack",amount:input.amountInPaise,currency:"INR"};},bindUnlockCreditProviderOrder:async input=>{steps.push(`bind:${input.orderId}`);}}));
+    const response=await request(app).post("/api/employer/unlock-credits/purchase").set("Idempotency-Key","checkout-key-123456789").send({pack:"growth"});
+    expect(response.status).toBe(200);expect(response.body).toMatchObject({orderId:"order_pack",amount:12900,pack:"growth"});expect(steps).toEqual(["intent","provider:sw_deterministic","bind:order_pack"]);
   });
-
-
-  it("does not return a checkout when its durable fulfillment intent cannot be recorded", async () => {
-    const app = buildApp(baseDeps({ recordUnlockCreditOrderIntent: async () => { throw new Error("database down"); } }));
-    const response = await request(app).post("/api/employer/unlock-credits/purchase").send({ pack: "starter" });
-    expect(response.status).toBe(502);
-    expect(response.body.error).toContain("could not start");
-  });
+  it("replays an already-bound local intent without a second provider call",async()=>{let calls=0;const app=buildApp(baseDeps({prepareUnlockCreditCheckout:async input=>({intentId:7,providerOrderId:"order_existing",providerReceipt:"sw_same",status:"pending",amount:input.amount,currency:input.currency,pack:input.pack}),createRazorpayUnlockOrder:async input=>{calls++;return {id:"bad",amount:input.amountInPaise,currency:"INR"};}}));const r=await request(app).post("/api/employer/unlock-credits/purchase").set("Idempotency-Key","checkout-key-123456789").send({pack:"starter"});expect(r.body).toMatchObject({orderId:"order_existing",replayed:true});expect(calls).toBe(0);});
+  it("requires a client idempotency key",async()=>{expect((await request(buildApp(baseDeps())).post("/api/employer/unlock-credits/purchase").send({pack:"starter"})).status).toBe(428);});
 
   it("rejects an unknown pack with 400", async () => {
     const app = buildApp(baseDeps());

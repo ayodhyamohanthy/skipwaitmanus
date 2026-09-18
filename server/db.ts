@@ -2218,14 +2218,21 @@ export async function recordPartnerClick(moduleId: number) {
   return { recorded: Number(result[0]?.affectedRows ?? 0) === 1 };
 }
 
-// Durable Razorpay order intent. The provider order is bound to the authenticated
-// employer, selected pack and exact amount before any webhook may credit it.
-export async function recordUnlockCreditOrderIntent(input: { orderId: string; userId: number; pack: UnlockCreditPackId; amount: number; currency: string }) {
-  const expected = UNLOCK_CREDIT_PACKS[input.pack];
-  if (!expected || input.amount !== expected.amountInPaise || input.currency.toUpperCase() !== "INR") throw new Error("Razorpay order does not match the selected pack");
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  await db.insert(employerPaymentFulfillments).values({ provider: "razorpay", providerOrderId: input.orderId, userId: input.userId, pack: input.pack, amount: input.amount, currency: "INR", status: "pending" }).onDuplicateKeyUpdate({ set: { providerOrderId: input.orderId } });
-  return { orderId: input.orderId, status: "pending" as const };
+// A local checkout intent is durable before any provider call. Replays bind to
+// one immutable user/pack/amount fingerprint and one deterministic receipt.
+export async function prepareUnlockCreditCheckout(input: { checkoutKey:string; userId:number; pack:UnlockCreditPackId; amount:number; currency:string }) {
+  const expected=UNLOCK_CREDIT_PACKS[input.pack]; if(!expected||input.amount!==expected.amountInPaise||input.currency.toUpperCase()!=="INR") throw new Error("Checkout does not match the selected pack");
+  if(!/^[\x21-\x7E]{16,64}$/.test(input.checkoutKey)) throw new Error("A valid Idempotency-Key header is required");
+  const fingerprint=createHash("sha256").update(`${input.userId}|${input.pack}|${input.amount}|INR`).digest("hex");
+  const providerReceipt=`sw_${createHash("sha256").update(`${input.userId}|${input.checkoutKey}`).digest("hex").slice(0,32)}`;
+  const db=await getDb();if(!db)throw new Error("Database unavailable");
+  try{await db.insert(employerPaymentFulfillments).values({provider:"razorpay",providerOrderId:null,checkoutKey:input.checkoutKey,fingerprint,providerReceipt,userId:input.userId,pack:input.pack,amount:input.amount,currency:"INR",status:"creating"});}catch(error){if((error as any).code!=="ER_DUP_ENTRY")throw error;}
+  const intent=(await db.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.userId,input.userId),eq(employerPaymentFulfillments.checkoutKey,input.checkoutKey))).limit(1))[0];
+  if(!intent||intent.fingerprint!==fingerprint)throw new Error("Idempotency-Key is already bound to a different credit pack");
+  return {intentId:intent.id,providerOrderId:intent.providerOrderId,providerReceipt:intent.providerReceipt,status:intent.status,amount:intent.amount,currency:intent.currency,pack:intent.pack};
+}
+export async function bindUnlockCreditProviderOrder(input:{intentId:number;orderId:string;amount:number;currency:string}){
+  const db=await getDb();if(!db)throw new Error("Database unavailable"); return db.transaction(async tx=>{const intent=(await tx.select().from(employerPaymentFulfillments).where(eq(employerPaymentFulfillments.id,input.intentId)).limit(1).for("update"))[0];if(!intent)throw new Error("Checkout intent not found");if(intent.providerOrderId){if(intent.providerOrderId!==input.orderId)throw new Error("Checkout intent is bound to another provider order");return intent;}if(intent.status!=="creating"||intent.amount!==input.amount||intent.currency!==input.currency.toUpperCase())throw new Error("Provider order does not match checkout intent");const changed=await tx.update(employerPaymentFulfillments).set({providerOrderId:input.orderId,status:"pending"}).where(and(eq(employerPaymentFulfillments.id,input.intentId),eq(employerPaymentFulfillments.status,"creating"),isNull(employerPaymentFulfillments.providerOrderId)));if(Number(changed[0]?.affectedRows??0)!==1)throw new Error("Checkout intent binding lost its claim");return {...intent,providerOrderId:input.orderId,status:"pending" as const};});
 }
 
 // Verified captures are fulfilled in one database transaction. The guarded
