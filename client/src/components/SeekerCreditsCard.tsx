@@ -34,14 +34,14 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
   return (
     <section
       aria-label="Referral credits"
-      className={`rounded-xl border border-[#DBEAFE] bg-[#E8F0FE]/70 ${compact ? "p-3" : "p-4"}`}
+      className={`rounded-xl border border-[#c2c2ff] bg-[#ededff] ${compact ? "p-3" : "p-4"}`}
     >
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-[.12em] text-[#191713]">
+        <p className="text-xs font-bold uppercase tracking-[.12em] text-black">
           {isFreePlan ? "Free plan" : `${credits.plan} plan`}
-          {hasPurchased ? <span className="ml-1 font-semibold text-[#625D52]">+ pack credits</span> : null}
+          {hasPurchased ? <span className="ml-1 font-semibold text-[#505050]">+ pack credits</span> : null}
         </p>
-        <p className="text-sm font-bold text-[#191713]" aria-live="polite">
+        <p className="text-sm font-bold text-black" aria-live="polite">
           {credits.totalAvailable} left
         </p>
       </div>
@@ -52,23 +52,23 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         aria-valuemin={0}
         aria-valuemax={credits.monthlyAllowance}
         aria-valuenow={used}
-        className="mt-3 h-2 overflow-hidden rounded-full bg-[#DBEAFE]"
+        className="mt-3 h-2 overflow-hidden rounded-full bg-[#e0e0ff]"
       >
         <span
-          className={`block h-full rounded-full ${outOfCredits ? "bg-amber-500" : "bg-[#191713]"}`}
+          className={`block h-full rounded-full ${outOfCredits ? "bg-[#b45309]" : "bg-[#0000ff]"}`}
           style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }}
         />
       </div>
 
-      <p className="mt-3 text-sm leading-5 text-[#3F3B33]">
+      <p className="mt-3 text-sm leading-5 text-[#505050]">
         {used} of {credits.monthlyAllowance} free credits used this month.
         {hasPurchased ? (
-          <span className="block pt-1 text-[#625D52]">
+          <span className="block pt-1 text-[#505050]">
             {credits.purchasedCreditsRemaining} purchased credit{credits.purchasedCreditsRemaining === 1 ? "" : "s"} — these never expire.
           </span>
         ) : null}
         {!isFreePlan && renewText ? (
-          <span className="block pt-1 text-[#625D52]">Plan renews {renewText}.</span>
+          <span className="block pt-1 text-[#505050]">Plan renews {renewText}.</span>
         ) : null}
       </p>
 
@@ -77,13 +77,13 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
           <>
             <Link
               href="/premium?role=job_seeker"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#191713] px-4 py-3 text-sm font-semibold text-white"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-4 py-3 text-sm font-semibold text-white"
             >
               <CreditCard className="h-4 w-4" /> Add a credit for $1 <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/plans?role=job_seeker"
-              className="text-center text-sm font-semibold text-[#191713]"
+              className="text-center text-sm font-semibold text-black"
             >
               Or upgrade for more monthly referrals
             </Link>
@@ -91,7 +91,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         ) : (
           <Link
             href="/start"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#191713] px-4 py-3 text-sm font-semibold text-white"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-4 py-3 text-sm font-semibold text-white"
           >
             Ask another referral <ArrowRight className="h-4 w-4" />
           </Link>
