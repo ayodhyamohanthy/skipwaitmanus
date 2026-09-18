@@ -129,6 +129,22 @@ changes.
   modes, mocks, or synthetic fixtures. FreeCoffee is a separate product and is
   out of scope for this repository.
 
+## Fix generators, not generated output
+- When generated output is malformed, do not patch the emitted file, string,
+  response, bundle, fixture, manifest, migration, or status record by hand. Find
+  and fix the source generator, serializer, template, query, or transformation.
+- Define a strict schema or explicit parser contract at the generation boundary.
+  Validate before write or publish; reject unknown, missing, mistyped, duplicated,
+  truncated, or out-of-order fields when the contract makes them invalid.
+- Add a regression fixture that reproduces the malformed output and proves the
+  generator now emits schema-valid data. Include round-trip or consumer-contract
+  checks where another component reads the result.
+- Pipeline scripts follow the same rule: use structured tool/API output and
+  schema-aware parsing. Do not grep presentation text, splice hardcoded strings
+  into results, or special-case one observed failure unless that case is part of
+  a documented typed contract. Fail loudly with the source payload identified
+  when validation cannot establish correctness.
+
 ## Verification is part of every feature
 - A feature or fix without self-checking verification is incomplete. Ship the
   smallest useful set of focused unit/component tests, endpoint scripts, and
