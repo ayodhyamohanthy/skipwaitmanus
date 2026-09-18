@@ -5,6 +5,7 @@ import { useAuth } from "@/_core/auth";
 import { useEffect, useState } from "react";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { captureClientError } from "./lib/sentry";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SmokeProvider } from "./contexts/SmokeContext";
 import { markSecureSessionVerified, readReferralDraft } from "./lib/pwaContinuity";
@@ -55,6 +56,7 @@ function RouteLoading(){return <main data-skipwait-screen="route-loading" classN
 class RouteErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
   static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) { captureClientError(error, { boundary: "RouteErrorBoundary", route: window.location.pathname }); }
   render() {
     if (this.state.error) {
       return <main data-skipwait-screen="route-error" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col justify-center"><div className="rounded-2xl border border-[#e5e5e5] bg-white p-6 shadow-sm"><p className="text-xs font-bold uppercase tracking-[.16em] text-black">Something broke on this page</p><h1 className="mt-2 text-2xl font-semibold tracking-[-.03em]">This screen hit an error.</h1><p className="mt-3 text-sm leading-6 text-[#505050]">{this.state.error.message}</p><button type="button" onClick={() => { this.setState({ error: null }); window.location.href = "/"; }} className="mt-6 inline-flex w-full items-center justify-center rounded-lg bg-[#0000ff] px-5 py-3 text-sm font-semibold text-white">Back to home</button></div></div></main>;
