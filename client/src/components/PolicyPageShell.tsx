@@ -22,7 +22,7 @@ export const policyLinks = [
 ] as const;
 
 export function PolicySection({ number, title, children }: { number: string; title: string; children: ReactNode }) {
-  return <section aria-labelledby={`policy-${number}`} className="rounded-2xl border border-[#E2DDD2] bg-white p-5 shadow-sm sm:p-6">
+  return <section aria-labelledby={`policy-${number}`} className="rounded-2xl border border-[#E2DDD2] bg-white p-5 sm:p-6">
     <p className="text-[11px] font-bold uppercase tracking-[.16em] text-[#191713]">{number}</p>
     <h2 id={`policy-${number}`} className="mt-1 text-base font-semibold text-[#191713]">{title}</h2>
     <div className="mt-3 space-y-3 text-sm leading-6 text-[#625D52] [&_li]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_strong]:text-[#2E2B25]">{children}</div>
@@ -43,7 +43,7 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
   return <main data-skipwait-screen={screen} className="min-h-screen bg-[#F5F4EF] px-5 py-5 text-[#191713] sm:px-6 sm:py-8">
     <div className="mx-auto max-w-3xl">
       <header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#625D52] hover:text-[#191713]"><ArrowLeft className="h-4 w-4" />Back</Link></header>
-      <section className="mt-8 rounded-2xl border border-[#DBEAFE] bg-white p-6 shadow-sm sm:p-9">
+      <section className="mt-8 rounded-2xl border border-[#DBEAFE] bg-white p-6 sm:p-9">
         <div className="flex items-start justify-between gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#E8F0FE] text-[#191713]"><Icon className="h-5 w-5" /></span>
           {status === "draft" ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[11px] font-bold text-[#b45309]">Draft · pending legal review</span> : null}

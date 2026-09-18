@@ -191,7 +191,7 @@ export function AIChatBox({
     <div
       ref={containerRef}
       className={cn(
-        "flex flex-col bg-card text-card-foreground rounded-lg border shadow-sm",
+        "flex flex-col bg-card text-card-foreground rounded-lg border",
         className
       )}
       style={{ height }}

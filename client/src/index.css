@@ -51,9 +51,7 @@ button:disabled { cursor: not-allowed; }
 /* Disabled language: one solid state everywhere — no faded ghosts. */
 button:disabled { opacity: 1 !important; background-color: #e0e0e0 !important; color: #505050 !important; }
 button:disabled svg { color: #505050 !important; }
-/* Disabled primary-blue actions stay recognizably blue, visibly inactive. */
-button[class*="bg-[#191713]"]:disabled { background-color: #0000cc !important; color: #ffffff !important; opacity: 0.55 !important; }
-button[class*="bg-[#191713]"]:disabled svg { color: #ffffff !important; }
+
 ::placeholder { color: #505050; opacity: 1; }
 ::selection { background: #fffc52; color: #000000; }
 input, textarea { caret-color: #0000ff; }

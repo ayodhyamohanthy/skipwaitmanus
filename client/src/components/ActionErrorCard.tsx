@@ -5,7 +5,8 @@
  * (what is still true) → a primary retry + a quiet escape hatch. The list or
  * record behind the error is never cleared; this card sits alongside it.
  *
- * Tinted with the shared error tokens (`#b91c1c` on `#FEF3F2`), `role="alert"`
+ * Tinted with the error tint ground derived from the brand functional token
+ * (`bg-[#b91c1c]/10` on a `border-[#b91c1c]/30` hairline), `role="alert"`
  * so the failure is announced once, and both actions stay ≥ 44 px tall.
  */
 export function ActionErrorCard({ title, detail, reassurance, retryLabel = "Try again", onRetry, dismissLabel, onDismiss, retrying = false, className = "" }: {

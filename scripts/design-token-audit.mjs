@@ -37,6 +37,8 @@ const DEFAULT_PATHS = [
   "client/src/components/ReferralProgress.tsx",
   "client/src/components/AccountMenu.tsx",
   "client/src/components/NotificationBell.tsx",
+  "client/src/components/ZeroActivityShareCard.tsx",
+  "client/src/components/OneTapShareActions.tsx",
 ];
 
 /** DESIGN.md palette — the only colours allowed here. */

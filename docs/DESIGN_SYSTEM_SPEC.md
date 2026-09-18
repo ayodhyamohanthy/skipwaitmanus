@@ -1,6 +1,15 @@
 # skipwait.me — Brand-Level Design System Specification
 ## Swiss Grid Clarity · Pentagram/Bierut Aesthetic
 
+> ⚠️ **SUPERSEDED ON COLOUR, TYPE AND SURFACE — historical record only.**
+> The approved, shipping system is [`DESIGN.md`](../DESIGN.md) as implemented in
+> `client/src/index.css` and `client/src/pages/Home.tsx`: primary action blue
+> `#0000ff` (not `#0B57D0`), Helvetica Neue stack (not DM Sans), white canvas
+> (not `#F8FAFC`), task cards 24px / controls 18px. The principles below
+> (typography as language, grid as thought, restrained palette) still hold —
+> but **never take a hex, font or radius from this file.** Run
+> `node scripts/design-token-audit.mjs` to check a surface against the live palette.
+
 > "Typography is the voice of the brand. Grid is the architecture of trust."
 
 ---

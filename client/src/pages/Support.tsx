@@ -30,7 +30,7 @@ export default function Support() {
     status="published"
     footnote="We never ask for passwords, one-time codes, or card numbers by email. Anything asking for those is not from us."
   >
-    <section aria-label="Contact support" className="rounded-2xl border border-[#DBEAFE] bg-white p-5 shadow-sm sm:p-6">
+    <section aria-label="Contact support" className="rounded-2xl border border-[#DBEAFE] bg-white p-5 sm:p-6">
       <div className="flex items-start gap-3">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#E8F0FE] text-[#191713]"><Mail className="h-5 w-5" /></span>
         <div className="min-w-0 flex-1">
@@ -43,7 +43,7 @@ export default function Support() {
     </section>
 
     <section aria-label="Solve it yourself" className="grid gap-3 sm:grid-cols-2">
-      {selfServe.map(({ icon: Icon, title, body, href, cta }) => <article key={title} className="flex flex-col rounded-2xl border border-[#E2DDD2] bg-white p-5 shadow-sm">
+      {selfServe.map(({ icon: Icon, title, body, href, cta }) => <article key={title} className="flex flex-col rounded-2xl border border-[#E2DDD2] bg-white p-5">
         <Icon className="h-5 w-5 text-[#191713]" />
         <h3 className="mt-4 text-base font-semibold text-[#191713]">{title}</h3>
         <p className="mt-2 flex-1 text-sm leading-6 text-[#625D52]">{body}</p>
