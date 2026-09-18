@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 const authUrl = vi.fn();
 const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@example.com", firstName: "Test", lastName: "User" } }));
-vi.mock("../db", () => ({ upsertUser: vi.fn() }));
-vi.mock("./sdk", () => ({ sdk: { createSessionToken: vi.fn(async () => "app-session-test") } }));
+const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", role: "user", suspended: false, sessionsValidAfter: new Date(0), createdAt: new Date(0), updatedAt: new Date(0), lastSignedIn: new Date(0) };
+vi.mock("../db", () => ({ upsertUser: vi.fn(), getDb: vi.fn(async () => ({})), getUserByOpenId: vi.fn(async (openId: string) => openId === account.openId ? account : undefined) }));
 const registrarFactory = vi.hoisted(() => ({
   registrar: undefined as unknown as (app: import("express").Express) => void,
 }));
@@ -32,6 +32,11 @@ async function buildApp(env: Record<string, string | undefined>) {
   const app = express();
   registrarFactory.registrar = createWorkosAuthRoutesRegistrar({ workos: undefined });
   registrarFactory.registrar(app);
+  app.get("/session-proof", async (req, res) => {
+    const { resolveWorkosIdentity } = await import("./workosAuth");
+    const identity = await resolveWorkosIdentity(req);
+    return identity ? res.json({ openId: identity.account.openId }) : res.status(401).json({ error: "Unauthorized" });
+  });
   return { app, restore: () => previous.forEach(([key, value]) => { if (value === undefined) delete process.env[key]; else process.env[key] = value; }) };
 }
 
@@ -39,6 +44,8 @@ const baseEnv = {
   WORKOS_CLIENT_ID: "client_test",
   WORKOS_API_KEY: "sk_test_key",
   WORKOS_COOKIE_PASSWORD: "c".repeat(32),
+  JWT_SECRET: "test-secret-at-least-32-characters-long",
+  VITE_APP_ID: "skipwait",
   SKIPWAIT_ADMIN_EMAIL: "ayodhyamohanthy@gmail.com",
   ENABLE_ADMIN_BOOTSTRAP: undefined,
   WORKOS_REDIRECT_URI: "https://skipwait.me/api/auth/workos/callback",
@@ -97,10 +104,17 @@ describe("state-bound authentication return", () => {
       expect(entry.headers["set-cookie"][0]).toContain("HttpOnly");
       expect(entry.headers["set-cookie"][0]).toContain("SameSite=Lax");
       expect(state).not.toBe("skipwait-auth");
-      const callback = await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state, returnTo: "/" });
+      const callback = await agent.get("/api/auth/workos/callback").set("X-Forwarded-Proto", "https").query({ code: "provider-code", state, returnTo: "/" });
       expect(callback.status).toBe(302);
       expect(callback.headers.location).toBe(returnTo.replace("https://skipwait.me", ""));
-      expect(callback.headers["set-cookie"].join(";")).toContain("app_session_id=app-session-test");
+      const sessionCookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="));
+      expect(sessionCookie).toContain("Path=/");
+      expect(sessionCookie).toContain("HttpOnly");
+      expect(sessionCookie).toContain("Secure");
+      expect(sessionCookie).toContain("SameSite=Lax");
+      const authenticated = await request(app).get("/session-proof").set("Cookie", sessionCookie!.split(";")[0]);
+      expect(authenticated.status).toBe(200);
+      expect(authenticated.body).toMatchObject({ openId: "workos_user_test" });
       expect((await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state })).status).toBe(400);
     } finally { restore(); }
   });

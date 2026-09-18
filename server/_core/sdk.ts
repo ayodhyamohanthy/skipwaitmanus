@@ -33,7 +33,9 @@ class SDKServer {
       if(!isNonEmptyString(openId)||appId!==ENV.appId||payload.sub!==openId||typeof payload.iat!=="number"||!isNonEmptyString(payload.jti))return null;
       const account=await db.getUserByOpenId(openId);
       if(!account||account.suspended)return null;
-      if(account.sessionsValidAfter&&payload.iat*1000<account.sessionsValidAfter.getTime())return null;
+      // JWT iat and MySQL TIMESTAMP both enforce revocation at one-second granularity.
+      // Comparing raw milliseconds falsely rejects a token minted later in the same second.
+      if(account.sessionsValidAfter&&Math.floor(account.sessionsValidAfter.getTime()/1000)>payload.iat)return null;
       return {openId,appId,name:typeof name==="string"?name:""};
     }catch{return null}
   }
