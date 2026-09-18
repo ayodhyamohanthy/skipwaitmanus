@@ -26,17 +26,23 @@ pnpm build            # client PWA + server bundle -> dist/
 Before changing source, configuration, schema, dependencies, tests, or docs:
 1. Inspect the current branch/worktree, latest `origin/main`, target files, their
    callers/tests, and any active coordination record.
-2. Write a short plan naming the affected files, load-bearing assumptions,
-   contract or data-flow changes, proposed logic, verification to add/run, and
-   deployment or migration impact.
+2. Write a short plan naming every intended target with repository-relative
+   `@path` notation (for example `@server/checkout.ts`,
+   `@client/src/components/Card.tsx`, or a narrowly bounded folder such as
+   `@server/auth/`). Also state load-bearing assumptions, contract or data-flow
+   changes, proposed logic, verification to add/run, and deployment or migration
+   impact. A broad label such as "backend", "frontend", or "the repo" is not a
+   target set.
 3. Resolve any uncertain identity, authorization, transaction, API, schema,
    styling, dependency, or production-state assumption before editing.
 4. Reread each target immediately before modifying it. If source or HEAD changed
    since the plan, stop, reconcile, and update the plan rather than overwriting.
 
 The plan may be concise for a small change, but it may not be skipped. Keep the
-implementation inside the listed scope; revise the plan explicitly when scope
-changes.
+implementation inside the explicit `@path` target set. Do not discover-and-edit
+across the repository, run broad rewrites, or touch an adjacent file merely
+because it looks related. If inspection proves another target is required, stop,
+add that exact path and reason to the plan, check ownership/conflicts, then edit.
 
 ## Commit every validated atomic change
 - The moment one coherent change passes its focused validation, inspect and
