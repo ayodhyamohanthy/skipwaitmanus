@@ -11,7 +11,7 @@ import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
-import { isLegacyOpportunityUrlSafe, validateOpportunityTargetUrl } from "./opportunityTargetUrl";
+import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -521,26 +521,15 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
   return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, compensation: input.compensation?.trim() || null };
 }
 
-async function suppressUnsafeLegacyOpportunities<T extends { id: number; companyDomain: string; targetRoleUrl: string | null; kind: "hiring_now" | "walk_in"; location: string | null; walkInAt: Date | null; walkInEndsAt: Date | null }>(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, rows: T[]) {
-  const checks = await Promise.all(rows.map(async row => {
-    if (row.kind === "walk_in") return !row.targetRoleUrl && Boolean(row.location && row.walkInAt && row.walkInEndsAt && row.walkInEndsAt > row.walkInAt);
-    if (!row.targetRoleUrl || !isLegacyOpportunityUrlSafe(row.targetRoleUrl, row.companyDomain)) return false;
-    try { await validateOpportunityTargetUrl(row.targetRoleUrl, row.companyDomain, resolveEmployerDomainFromTargetUrl); return true; } catch { return false; }
-  }));
-  const unsafe = rows.filter((_row, index) => !checks[index]);
-  if (unsafe.length) await db.update(companyOpportunities).set({ isActive: false }).where(inArray(companyOpportunities.id, unsafe.map(row => row.id)));
-  return rows.filter((_row, index) => checks[index]);
-}
-
 export async function listPublicCompanyOpportunities() {
   const db = await getDb(); if (!db) return [];
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
   // compensation is a newer optional column; degrade gracefully if the live
   // DB has not yet been migrated, so the wall never 500s.
   try {
-    return suppressUnsafeLegacyOpportunities(db, await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24));
+    return await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   } catch {
-    return suppressUnsafeLegacyOpportunities(db, await db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24));
+    return await db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   }
 }
 
@@ -2065,7 +2054,7 @@ export async function listPublicCompanyOpportunitiesWithSponsorship() {
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
   const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   try {
-    const rows = await suppressUnsafeLegacyOpportunities(db, await attempt());
+    const rows = await attempt();
     const now = Date.now();
     return orderOpportunitiesSponsoredFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
   } catch {
