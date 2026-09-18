@@ -398,9 +398,19 @@ export const messages = mysqlTable("messages", {
   senderId: int("senderId").notNull().references(() => users.id, { onDelete: "cascade" }),
   recipientId: int("recipientId").notNull().references(() => users.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
+  idempotencyKey: varchar("idempotencyKey", {length:64}),
+  requestFingerprint: varchar("requestFingerprint", {length:64}),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId)]);
+}, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId), uniqueIndex("messages_sender_idempotency_unique").on(table.senderId,table.idempotencyKey)]);
+
+export const directMessageQuotaWindows = mysqlTable("directMessageQuotaWindows", {
+  id: int("id").autoincrement().primaryKey(), senderId: int("senderId").notNull().references(()=>users.id,{onDelete:"cascade"}), windowStart: timestamp("windowStart").notNull(), sendCount: int("sendCount").default(0).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
+}, table=>[uniqueIndex("dm_quota_sender_window_unique").on(table.senderId,table.windowStart)]);
+
+export const directMessageNotificationOutbox = mysqlTable("directMessageNotificationOutbox", {
+ id:int("id").autoincrement().primaryKey(),messageId:int("messageId").notNull().references(()=>messages.id,{onDelete:"cascade"}),recipientId:int("recipientId").notNull().references(()=>users.id,{onDelete:"cascade"}),status:mysqlEnum("status",["pending","leased","sent","failed","unknown"]).default("pending").notNull(),attemptCount:int("attemptCount").default(0).notNull(),nextAttemptAt:timestamp("nextAttemptAt"),createdAt:timestamp("createdAt").defaultNow().notNull()
+},table=>[uniqueIndex("dm_notification_outbox_message_unique").on(table.messageId),index("dm_notification_outbox_claim_idx").on(table.status,table.nextAttemptAt)]);
 
 export const notifications = mysqlTable("notifications", {
   id: int("id").autoincrement().primaryKey(),

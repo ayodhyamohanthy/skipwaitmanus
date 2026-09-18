@@ -81,6 +81,8 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (!Number.isInteger(counterpartUserId) || counterpartUserId <= 0) return res.status(400).json({ error: "Invalid member" });
       if (counterpartUserId === identity.account.id) return res.status(400).json({ error: "You cannot message yourself" });
       const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+      const idempotencyKey=typeof req.get("Idempotency-Key")==="string"?req.get("Idempotency-Key")!.trim():"";
+      if (!/^[\x21-\x7E]{16,64}$/.test(idempotencyKey)) return res.status(428).json({error:"A valid Idempotency-Key header is required"});
       if (!body) return res.status(400).json({ error: "Write a message before sending" });
       if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
       if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
@@ -89,18 +91,15 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
         record({ actorUserId, action: "dm.sent", outcome: "denied", resourceType: "direct_message", metadata: { reason: "premium_required" } });
         return res.status(402).json({ error: UPGRADE_ERROR, upgrade: true });
       }
-      const recentCount = deps.countRecentMessagesBySender ? await deps.countRecentMessagesBySender(actorUserId, new Date(Date.now() - 60 * 60 * 1000)) : 0;
-      if (recentCount >= DM_RATE_LIMIT_PER_HOUR) {
-        record({ actorUserId, action: "dm.rate_limited", outcome: "denied", resourceType: "direct_message" });
-        return res.status(429).json({ error: "You're sending messages too quickly. Try again in a few minutes." });
-      }
-      const message = await send(actorUserId, counterpartUserId, body);
+      if (deps.countRecentMessagesBySender) { const legacyCount=await deps.countRecentMessagesBySender(actorUserId,new Date(Date.now()-3600_000)); if(legacyCount>=DM_RATE_LIMIT_PER_HOUR)return res.status(429).json({error:"You're sending messages too quickly. Try again in a few minutes."}); }
+      const message = await send(actorUserId, counterpartUserId, body, idempotencyKey);
       record({ actorUserId, action: "dm.sent", outcome: "success", resourceType: "direct_message", metadata: { bodyLength: body.length, threadStarted: !existing } });
-      res.status(201).json({ message });
+      res.status(message.replayed?200:201).json({ message });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not send this direct message";
       record({ actorUserId, action: "dm.sent", outcome: "failure", resourceType: "direct_message" });
-      res.status(500).json({ error: message });
+      const retryAt=typeof error==="object"&&error!==null&&"retryAt" in error?(error as {retryAt:Date}).retryAt:undefined;
+      res.status(error instanceof Error&&error.name==="DirectMessageRateLimitError"?429:error instanceof Error&&error.name==="DirectMessageConflictError"?409:/premium feature/i.test(message)?402:/not available/i.test(message)?404:500).json({ error: message, ...(retryAt?{retryAt}: {}) });
     }
   });
 }

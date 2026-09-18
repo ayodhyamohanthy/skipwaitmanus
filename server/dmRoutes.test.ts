@@ -18,7 +18,7 @@ function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiu
     recordActivity: async () => undefined,
     listDmThreads: async userId => (overrides.listDmThreads ? overrides.listDmThreads(userId) : []),
     listDmThread: async (userId, counterpartUserId) => (overrides.listDmThread ? overrides.listDmThread(userId, counterpartUserId) : undefined),
-    sendDirectMessage: async (userId, recipientId) => ({ id: 900 + userId + recipientId }),
+    sendDirectMessage: async (userId, recipientId) => ({ id: 900 + userId + recipientId, replayed:false as const }),
     dmThreadExists: async (userId, counterpartUserId) => threads.has([userId, counterpartUserId].sort((x, y) => x - y).join(":")),
     dmRecipientExists: async userId => users.some(user => user.id === userId),
     hasActivePremiumSubscription: async userId => premium.has(userId),
@@ -30,20 +30,20 @@ function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiu
 
 describe("direct message paywall (X-style)", () => {
   it("rejects a free user starting a new thread with 402 and an upgrade hint", async () => {
-    const response = await request(buildApp()).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hi, could you refer me?" });
+    const response = await request(buildApp()).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hi, could you refer me?" });
     expect(response.status).toBe(402);
     expect(response.body.upgrade).toBe(true);
     expect(response.body.error).toMatch(/premium feature/i);
   });
 
   it("allows a premium member to start a thread", async () => {
-    const response = await request(buildApp({ premiumUsers: [11] })).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hi!" });
+    const response = await request(buildApp({ premiumUsers: [11] })).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hi!" });
     expect(response.status).toBe(201);
     expect(response.body.message.id).toBeTypeOf("number");
   });
 
   it("allows anyone to reply inside an existing thread", async () => {
-    const response = await request(buildApp({ existingThreads: [[11, 22]] })).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Following up" });
+    const response = await request(buildApp({ existingThreads: [[11, 22]] })).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Following up" });
     expect(response.status).toBe(201);
   });
 
@@ -56,28 +56,28 @@ describe("direct message paywall (X-style)", () => {
 
   it("returns 404 for an unknown recipient and 400 for self-messaging", async () => {
     const app = buildApp({ premiumUsers: [11] });
-    expect((await request(app).post("/api/dms/threads/99").set("x-test-user", "11").send({ body: "Hi" })).status).toBe(404);
-    expect((await request(app).post("/api/dms/threads/11").set("x-test-user", "11").send({ body: "Hi" })).status).toBe(400);
+    expect((await request(app).post("/api/dms/threads/99").set("Idempotency-Key","dm-test-key-00000002").set("x-test-user", "11").send({ body: "Hi" })).status).toBe(404);
+    expect((await request(app).post("/api/dms/threads/11").set("Idempotency-Key","dm-test-key-00000003").set("x-test-user", "11").send({ body: "Hi" })).status).toBe(400);
     expect((await request(app).get("/api/dms/compose/99").set("x-test-user", "11")).status).toBe(404);
     expect((await request(app).get("/api/dms/compose/11").set("x-test-user", "11")).status).toBe(400);
   });
 
   it("validates the message body before anything else", async () => {
     const app = buildApp({ premiumUsers: [11] });
-    expect((await request(app).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "   " })).status).toBe(400);
-    expect((await request(app).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "x".repeat(3001) })).status).toBe(400);
-    expect((await request(app).post("/api/dms/threads/22").set("x-test-user", "11").send({})).status).toBe(400);
+    expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "   " })).status).toBe(400);
+    expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "x".repeat(3001) })).status).toBe(400);
+    expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({})).status).toBe(400);
   });
 
   it("rate limits at 30 messages per hour even for premium senders", async () => {
-    const response = await request(buildApp({ premiumUsers: [11], recentSendCount: 30 })).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hi" });
+    const response = await request(buildApp({ premiumUsers: [11], recentSendCount: 30 })).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hi" });
     expect(response.status).toBe(429);
     expect(response.body.error).toMatch(/too quickly/i);
   });
 
   it("lets mutually-following non-premium members message for free (X-style)", async () => {
     const app = buildApp({ mutualFollows: [[11, 22]] });
-    const sent = await request(app).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hey, we follow each other!" });
+    const sent = await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hey, we follow each other!" });
     expect(sent.status).toBe(201);
     const compose = await request(app).get("/api/dms/compose/22").set("x-test-user", "11");
     expect(compose.body).toMatchObject({ allowed: true, upgradeRequired: false, mutualFollow: true });
@@ -85,7 +85,7 @@ describe("direct message paywall (X-style)", () => {
 
   it("still paywalls non-premium senders without a mutual follow", async () => {
     const app = buildApp({ mutualFollows: [[33, 22]] });
-    const sent = await request(app).post("/api/dms/threads/22").set("x-test-user", "11").send({ body: "Hi" });
+    const sent = await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hi" });
     expect(sent.status).toBe(402);
     expect(sent.body.upgrade).toBe(true);
   });
