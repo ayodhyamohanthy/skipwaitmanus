@@ -116,7 +116,7 @@ export type PrivateReferralRouteDeps = {
   revokeCreditedPaymentCredits?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; creditsRevoked: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
   listAdminApprovalQueue?: (limit?: number) => Promise<unknown[]>;
-  resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
+  resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment" | "employer_application", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
   listJobs?: (input: { query?: string; location?: string }) => Promise<unknown[]>;
   listSavedRoles?: (userId: number) => Promise<unknown[]>;
   setSavedRole?: (userId: number, jobId: number, saved: boolean) => Promise<{ saved: boolean }>;
@@ -970,7 +970,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const kind = req.params.kind;
       const itemId = Number(req.params.id);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      if (kind !== "referral_request" && kind !== "referrer_enrollment" && kind !== "payment") return res.status(400).json({ error: "Invalid record type" });
+      if (kind !== "referral_request" && kind !== "referrer_enrollment" && kind !== "payment" && kind !== "employer_application") return res.status(400).json({ error: "Invalid record type" });
       if (!Number.isInteger(itemId) || itemId <= 0) return res.status(400).json({ error: "Invalid record reference" });
       const decision = req.body?.decision;
       if (decision !== "approved" && decision !== "rejected") return res.status(400).json({ error: "Choose approve or reject for this record" });

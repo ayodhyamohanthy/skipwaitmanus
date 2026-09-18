@@ -1750,7 +1750,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
 
 // ---- Unified admin approval queue (seeker requests, referrer enrollments, payments) ----
 
-export type AdminApprovalQueueKind = "referral_request" | "referrer_enrollment" | "payment";
+export type AdminApprovalQueueKind = "referral_request" | "referrer_enrollment" | "payment" | "employer_application";
 export type AdminApprovalQueueStatus = "pending" | "under_review" | "approved" | "declined" | "requires_review";
 export type AdminApprovalQueueItem = {
   kind: AdminApprovalQueueKind;
@@ -1780,6 +1780,12 @@ export type AdminApprovalQueueItem = {
     waitingForCoverage?: boolean | null;
     creditReserved?: boolean | null;
     approvalNote?: string | null;
+    companyName?: string | null;
+    billingEmail?: string | null;
+    duplicatePersonCount?: number | null;
+    duplicateDomainCount?: number | null;
+    evidenceVersion?: string | null;
+    reviewDueAt?: Date | null;
   };
 };
 
@@ -1806,11 +1812,12 @@ export async function listAdminApprovalQueue(limit: number = 100) {
   const db = await getDb(); if (!db) return [];
   const safeLimit = Math.max(1, Math.min(250, Math.floor(limit)));
   const referrerUser = alias(users, "referrerUser");
-  const [requests, payments, enrollments, enrollmentDecisions] = await Promise.all([
+  const [requests, payments, enrollments, enrollmentDecisions, employerApplications] = await Promise.all([
     db.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, personalPitch: referralRequests.personalPitch, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, roleTitle: jobs.title, targetRoleUrl: jobs.targetRoleUrl, seekerName: users.name, seekerEmail: users.email, referrerName: referrerUser.name, referrerEmail: referrerUser.email }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referrerUser, eq(referralRequests.referrerId, referrerUser.id)).where(inArray(referralRequests.status, ["pending", "approved", "declined"])).orderBy(desc(referralRequests.updatedAt)).limit(safeLimit),
     db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, tokenCount: paymentFulfillments.tokenCount, status: paymentFulfillments.status, reconciliationReason: paymentFulfillments.reconciliationReason, role: paymentFulfillments.role, createdAt: paymentFulfillments.createdAt, lastCheckedAt: paymentFulfillments.lastCheckedAt, creditedAt: paymentFulfillments.creditedAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(inArray(paymentFulfillments.status, ["requires_review", "credited", "rejected"])).orderBy(desc(paymentFulfillments.lastCheckedAt), desc(paymentFulfillments.createdAt)).limit(safeLimit),
     listReferrerEnrollmentsAwaitingAction(),
     db.select({ resourceId: operationalActivityLogs.resourceId, action: operationalActivityLogs.action, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.resourceType, "referrer_enrollment"), like(operationalActivityLogs.action, "admin.approval_%"))).orderBy(desc(operationalActivityLogs.createdAt)).limit(safeLimit),
+    db.select({ id: employerAccounts.id, userId: employerAccounts.userId, companyName: employerAccounts.companyName, billingEmail: employerAccounts.billingEmail, status: employerAccounts.approvalStatus, submittedAt: employerAccounts.submittedAt, updatedAt: employerAccounts.updatedAt, evidenceVersion: employerAccounts.evidenceVersion, applicationVersion: employerAccounts.applicationVersion }).from(employerAccounts).orderBy(desc(employerAccounts.submittedAt)).limit(safeLimit),
   ]);
   const enrollmentDecisionById = new Map<string, { status: AdminApprovalQueueStatus; note?: string | null }>();
   for (const decision of enrollmentDecisions) {
@@ -1846,6 +1853,12 @@ export async function listAdminApprovalQueue(limit: number = 100) {
       meta: { otpTime: enrollment.verifiedAt, referrerName: enrollment.name, referrerEmail: enrollment.email, approvalNote: decision?.note ?? null },
     });
   }
+  for (const application of employerApplications) {
+    const domain = application.billingEmail.split("@")[1] ?? "";
+    const duplicatePersonCount = employerApplications.filter(other => other.userId === application.userId && other.id !== application.id).length;
+    const duplicateDomainCount = domain ? employerApplications.filter(other => other.id !== application.id && other.billingEmail.endsWith(`@${domain}`)).length : 0;
+    items.push({ kind:"employer_application", id:application.id, status:application.status === "approved" ? "approved" : application.status === "rejected" || application.status === "revoked" ? "declined" : application.status === "pending" ? "pending" : "under_review", companyDomain:domain, createdAt:application.submittedAt, updatedAt:application.updatedAt, summary:`${application.companyName} employer access application`, meta:{ companyName:application.companyName, billingEmail:application.billingEmail, duplicatePersonCount, duplicateDomainCount, evidenceVersion:application.evidenceVersion, reviewDueAt:new Date(application.submittedAt.getTime()+24*60*60*1000) } });
+  }
   return items.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, safeLimit);
 }
 
@@ -1859,6 +1872,21 @@ export async function resolveAdminApproval(adminUserId: number, itemKind: AdminA
     if (!row[0]) throw new Error("This enrollment record could not be found");
     await db.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `admin.approval_${decision}`, outcome: "success", resourceType: "referrer_enrollment", resourceId: String(itemId), companyDomain: row[0].companyDomain ?? undefined, metadata: JSON.stringify(trimmedNote ? { note: trimmedNote } : {}) });
     return { kind: itemKind, id: itemId, status: decision === "approved" ? "approved" as const : "declined" as const, note: trimmedNote };
+  }
+  if (itemKind === "employer_application") {
+    return db.transaction(async tx => {
+      const row=(await tx.select().from(employerAccounts).where(eq(employerAccounts.id,itemId)).limit(1).for("update"))[0];
+      if(!row) throw new Error("This employer application could not be found");
+      const target=decision === "approved" ? "approved" : "rejected";
+      if(row.approvalStatus === target) return { kind:itemKind,id:itemId,status:target === "approved" ? "approved" as const : "declined" as const,replayed:true };
+      if(row.approvalStatus !== "pending") throw new Error("This record was already resolved");
+      const now=new Date(); const updated=await tx.update(employerAccounts).set({approvalStatus:target,approvedAt:target === "approved" ? now:null,approvedByUserId:adminUserId,decidedAt:now,decisionNote:trimmedNote}).where(and(eq(employerAccounts.id,itemId),eq(employerAccounts.approvalStatus,"pending")));
+      if(Number(updated[0]?.affectedRows??0)!==1) throw new Error("This record was already resolved");
+      if(target !== "approved"){ await tx.update(profileUnlocks).set({revokedAt:now,revocationReason:"employer_access_rejected"}).where(and(eq(profileUnlocks.employerUserId,row.userId),isNull(profileUnlocks.revokedAt))); await tx.update(employerTalentRefs).set({revokedAt:now}).where(and(eq(employerTalentRefs.employerUserId,row.userId),isNull(employerTalentRefs.revokedAt))); }
+      await tx.insert(operationalActivityLogs).values({actorUserId:adminUserId,action:`admin.employer_${target}`,outcome:"success",resourceType:"employer_application",resourceId:String(itemId),companyDomain:row.billingEmail.split("@")[1],metadata:JSON.stringify({note:trimmedNote,evidenceVersion:row.evidenceVersion,applicationVersion:row.applicationVersion})});
+      await tx.insert(notifications).values({userId:row.userId,category:"system",title:`Employer access ${target}`,body:target === "approved" ? "Your employer workspace is approved." : "Your employer application was not approved. Review the note and resubmit corrected evidence.",eventKey:`employer-application:${itemId}:${row.applicationVersion}:${target}`}).onDuplicateKeyUpdate({set:{eventKey:`employer-application:${itemId}:${row.applicationVersion}:${target}`}});
+      return {kind:itemKind,id:itemId,status:target === "approved" ? "approved" as const : "declined" as const};
+    });
   }
   if (itemKind === "payment") {
     // Approving a credit pack credits the tokens, mirroring the payment review
@@ -1898,23 +1926,11 @@ export type UnlockCreditPackId = keyof typeof UNLOCK_CREDIT_PACKS;
 const firstSkillKeywords = (skills: string | null) => (skills ?? "").split(/[,;|]/).map(skill => skill.trim()).filter(Boolean).slice(0, 5);
 
 export async function ensureEmployerAccount(userId: number, companyName: string, billingEmail: string) {
-  const name = companyName.trim().slice(0, 160);
-  const email = billingEmail.trim().toLowerCase().slice(0, 320);
-  if (!name) throw new Error("Add your company name to open an employer account");
-  if (!email || !email.includes("@")) throw new Error("Add a billing email for your employer account");
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const existing = await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1);
-  if (existing[0]) return existing[0];
-  // Employer access is additive and review-gated. Never overwrite the person's
-  // seeker/referrer profile role when they request employer capability.
-  try {
-    await db.insert(employerAccounts).values({ userId, companyName: name, billingEmail: email, approvalStatus: "pending" });
-  } catch (error) {
-    if ((error as { code?: string }).code !== "ER_DUP_ENTRY") throw error;
-  }
-  return (await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1))[0];
+  const name=companyName.trim().slice(0,160); const email=billingEmail.trim().toLowerCase().slice(0,320);
+  if(!name) throw new Error("Add your company name to open an employer account"); if(!email||!email.includes("@")) throw new Error("Add a billing email for your employer account");
+  const db=await getDb();if(!db)throw new Error("Database unavailable");
+  return db.transaction(async tx=>{ const existing=(await tx.select().from(employerAccounts).where(eq(employerAccounts.userId,userId)).limit(1).for("update"))[0]; if(!existing){await tx.insert(employerAccounts).values({userId,companyName:name,billingEmail:email,approvalStatus:"pending",submittedAt:new Date()});return (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId,userId)).limit(1))[0];} const changed=existing.companyName!==name||existing.billingEmail!==email; if(!changed)return existing; const now=new Date(); await tx.update(employerAccounts).set({companyName:name,billingEmail:email,approvalStatus:"pending",submittedAt:now,decidedAt:null,decisionNote:null,approvedAt:null,approvedByUserId:null,applicationVersion:existing.applicationVersion+1}).where(eq(employerAccounts.id,existing.id)); await tx.update(profileUnlocks).set({revokedAt:now,revocationReason:"employer_application_changed"}).where(and(eq(profileUnlocks.employerUserId,userId),isNull(profileUnlocks.revokedAt))); await tx.update(employerTalentRefs).set({revokedAt:now}).where(and(eq(employerTalentRefs.employerUserId,userId),isNull(employerTalentRefs.revokedAt))); return (await tx.select().from(employerAccounts).where(eq(employerAccounts.id,existing.id)).limit(1))[0]; });
 }
-
 export async function getEmployerAccount(userId: number) {
   const db = await getDb(); if (!db) return undefined;
   return (await db.select().from(employerAccounts).where(eq(employerAccounts.userId, userId)).limit(1))[0];
