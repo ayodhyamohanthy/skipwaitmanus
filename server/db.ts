@@ -1409,16 +1409,16 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
   return db.transaction(async tx => {
     const recipient = await tx.select({ id: users.id }).from(users).where(eq(users.id, input.recipientUserId)).limit(1);
     if (!recipient[0]) throw new Error("That user account no longer exists");
-    const duplicate = await tx.select({ id: adminTokenAdjustments.id }).from(adminTokenAdjustments).where(and(eq(adminTokenAdjustments.recipientUserId, input.recipientUserId), eq(adminTokenAdjustments.role, input.role), eq(adminTokenAdjustments.caseReference, caseReference))).limit(1);
-    if (duplicate[0]) throw new Error("A recovery grant already exists for this user, role, and support reference");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1);
-    const newBalance = (wallet[0]?.balance ?? 0) + input.tokenCount;
-    if (wallet[0]) await tx.update(tokenBalances).set({ balance: newBalance }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: newBalance, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+    // The unique adjustment row is the idempotency claim. Insert it before any
+    // wallet side effect so concurrent requests for the same case cannot both
+    // credit; a duplicate-key failure rolls the whole transaction back.
     const adjustment = await tx.insert(adminTokenAdjustments).values({ recipientUserId: input.recipientUserId, adminUserId, role: input.role, tokenCount: input.tokenCount, caseReference, reason });
-    await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment" });
+    await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: input.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${input.tokenCount}` } });
+    const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update");
+    if (!wallet[0]) throw new Error("Recovery wallet update failed");
+    await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment", source: "admin_recovery", referenceType: "admin_token_adjustment", referenceId: String(Number(adjustment[0].insertId)), idempotencyKey: `admin-adjustment-${Number(adjustment[0].insertId)}`, balanceAfter: wallet[0].balance });
     await tx.insert(notifications).values({ userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.` });
-    return { adjustmentId: Number(adjustment[0].insertId), recipientUserId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, newBalance };
+    return { adjustmentId: Number(adjustment[0].insertId), recipientUserId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, newBalance: wallet[0].balance };
   });
 }
 
@@ -1573,19 +1573,22 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const rows = await tx.select().from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1);
+    // Serialize all decisions for this payment before doing wallet work. A
+    // plain read followed by the credit was vulnerable to two admins both
+    // observing requires_review and both adding tokens.
+    const rows = await tx.select().from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1).for("update");
     const row = rows[0];
     if (!row) throw new Error("This payment record does not exist");
     if (row.status !== "requires_review") throw new Error("This payment was already resolved");
+    const resolvedAt = new Date();
+    const claimed = await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? resolvedAt : null, lastCheckedAt: resolvedAt }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
+    if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment was already resolved");
     if (decision === "credited") {
-      // Mirror fulfillChargebeePayment's wallet update: balance increment when a
-      // wallet row exists, otherwise create the wallet with the credited tokens.
-      const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
-      if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${row.tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
-      else await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
-      await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase" });
+      await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${row.tokenCount}` } });
+      const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
+      if (!wallet[0]) throw new Error("Payment credit wallet update failed");
+      await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-credit-${paymentId}`, balanceAfter: wallet[0].balance });
     }
-    await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? new Date() : null, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
     const metadata = { provider: row.provider, tokenCount: row.tokenCount, amount: row.amount, currency: row.currency, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
     return { paymentId, decision, tokenCount: row.tokenCount, userId: row.userId, role: row.role };
@@ -1601,20 +1604,25 @@ export async function revokeCreditedPaymentCredits(adminUserId: number, paymentI
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]), eq(paymentFulfillments.status, "credited"))).limit(1);
+    // Lock the fulfillment and wallet in a fixed order. This prevents duplicate
+    // revocations and prevents an absolute balance write from erasing a grant
+    // that commits concurrently.
+    const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.id, paymentId), inArray(paymentFulfillments.provider, ["chargebee", "razorpay", "paypal"]))).limit(1).for("update");
     const row = rows[0];
-    if (!row) throw new Error("Credits cannot be revoked for this payment");
-    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1);
+    if (!row || row.status !== "credited") throw new Error("Credits cannot be revoked for this payment");
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
     if (!wallet[0] || wallet[0].balance < row.tokenCount) throw new Error("Credits from this payment have been spent; ledger-only revocation is blocked");
-    await tx.update(tokenBalances).set({ balance: wallet[0].balance - row.tokenCount }).where(eq(tokenBalances.id, wallet[0].id));
-    await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment" });
     const updated = await tx.update(paymentFulfillments).set({ status: "rejected", reconciliationReason: "credits_revoked_no_provider_refund", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "credited")));
     if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("Credits cannot be revoked for this payment");
+    const debited = await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} - ${row.tokenCount}` }).where(and(eq(tokenBalances.id, wallet[0].id), sql`${tokenBalances.balance} >= ${row.tokenCount}`));
+    if (Number(debited[0]?.affectedRows ?? 0) !== 1) throw new Error("Credits from this payment have been spent; ledger-only revocation is blocked");
+    await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment", source: "payment_credit_revocation", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-revoke-${paymentId}`, balanceAfter: wallet[0].balance - row.tokenCount });
     const metadata = { provider: row.provider, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: "payment.credits_revoked", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
     return { paymentId, creditsRevoked: true, tokenCount: row.tokenCount, userId: row.userId, role: row.role, provider: row.provider, amount: row.amount, currency: row.currency };
   });
 }
+
 export async function getRevenueSummary() {
   const db = await getDb();
   if (!db) return { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: new Date() };
