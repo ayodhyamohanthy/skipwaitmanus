@@ -59,7 +59,7 @@ export default function AdminPartners() {
     try {
       const response = await fetch(`/api/admin/partners/${module.id}`, { method: "PATCH", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, credentials: "include", body: JSON.stringify({ isActive: !module.isActive }) });
       if (!response.ok) throw new Error();
-    } catch { setModules(current => current.map(row => row.id === module.id ? { ...row, isActive: module.isActive } : row)); }
+    } catch { setModules(current => current.map(row => row.id === module.id ? { ...row, isActive: module.isActive } : row)); setError(`We could not update "${module.headline}". The module is unchanged — try again.`); }
   };
 
   const endSponsorship = async (sponsorship: SponsorshipRow) => {
