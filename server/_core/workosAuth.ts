@@ -232,7 +232,11 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
         stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-        const token = await sdkCreateSessionToken(openId, name);
+        // This callback has just completed a provider-authenticated upsert.
+        // Signing here avoids a second production DB read on the callback's
+        // hot path; normal request verification still enforces suspension and
+        // session revocation before accepting the cookie.
+        const token = await sdkSignSessionToken(openId, name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         res.redirect(302, returnTo);
       } catch (error) {
@@ -267,4 +271,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
 async function sdkCreateSessionToken(openId: string, name: string): Promise<string> {
   const { sdk } = await import("./sdk");
   return sdk.createSessionToken(openId, { name });
+}
+
+async function sdkSignSessionToken(openId: string, name: string): Promise<string> {
+  const { sdk } = await import("./sdk");
+  return sdk.signSession({ openId, appId: ENV.appId, name });
 }
