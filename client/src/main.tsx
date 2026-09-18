@@ -11,6 +11,13 @@ import { getGlobalAccessToken } from "./_core/accessToken";
 import { initializeDevicePreferences } from "./lib/device";
 import "./index.css";
 import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
+import { captureClientError, initClientSentry } from "./lib/sentry";
+
+initClientSentry();
+if (typeof window !== "undefined") {
+  window.addEventListener("error", event => captureClientError(event.error ?? event.message, { source: "window.onerror" }));
+  window.addEventListener("unhandledrejection", event => captureClientError(event.reason, { source: "unhandledrejection" }));
+}
 
 const queryClient = new QueryClient();
 

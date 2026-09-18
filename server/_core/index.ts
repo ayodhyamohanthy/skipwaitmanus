@@ -1,4 +1,7 @@
+import { initServerSentry, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
+
+initServerSentry();
 import { registerAdminSmokeFixture } from "../adminSmokeFixture";
 import "./envBoot";
 import { readFile } from "node:fs/promises";
@@ -179,6 +182,9 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       createContext,
     })
   );
+  // Error-reporting middleware sits after every route so forwarded errors are
+  // captured by Sentry (when configured) before the final handlers respond.
+  app.use(sentryErrorMiddleware);
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV === "development") {
     // API catch-all: unmatched /api/* paths return JSON 404 instead of SPA HTML
