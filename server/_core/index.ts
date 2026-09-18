@@ -92,7 +92,7 @@ async function startServer() {
   // Provider gateway webhooks (Razorpay HMAC, PayPal signature API) register
   // before the global JSON parser: the Razorpay handler must HMAC the exact
   // raw request bytes the provider signed, so it parses its own body.
-  registerPaymentWebhookRoutes(app, { record: db.recordOperationalActivity, recordGatewayEvent: db.recordGatewayPaymentEvent, fulfillUnlockCredits: input => db.fulfillUnlockCreditPurchase({ ...input, pack: input.pack as Parameters<typeof db.fulfillUnlockCreditPurchase>[0]["pack"] }) });
+  registerPaymentWebhookRoutes(app, { record: db.recordOperationalActivity, recordGatewayEvent: db.recordGatewayPaymentEvent, applyUnlockRefund: db.applyEmployerUnlockRefund, fulfillUnlockCredits: input => db.fulfillUnlockCreditPurchase({ ...input, pack: input.pack as Parameters<typeof db.fulfillUnlockCreditPurchase>[0]["pack"] }) });
   // WorkOS AuthKit is the only production auth authority. The callback route
   // (server/_core/workosAuth.ts) verifies the AuthKit session and issues the
   // app_session_id JWT; resolveWorkosIdentity loads the upserted user for it.

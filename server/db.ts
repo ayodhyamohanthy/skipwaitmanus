@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -2040,6 +2040,7 @@ export async function spendEmployerUnlockCredit(employerUserId: number, seekerUs
     if (!seeker || seeker.suspended || !profile || !profile.anonymityOptIn || !profile.isOnboarded || !consent) return { ok: false as const, reason: "consent_withdrawn" as const, credits: account.credits };
     const active = (await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId), eq(profileUnlocks.consentId, consent.id), isNull(profileUnlocks.revokedAt), gt(profileUnlocks.expiresAt, now))).limit(1))[0];
     if (active) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
+    if (account.creditDebt > 0) return { ok: false as const, reason: "credit_debt" as const, credits: account.credits };
     if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
     const fields = asTalentFields(JSON.parse(consent.disclosedFields)); const snapshot = talentSnapshot(profile, fields); const expiresAt = new Date(now.getTime() + TALENT_UNLOCK_DAYS*86400000);
     const debited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} - ${EMPLOYER_UNLOCK_CREDIT_COST}` }).where(and(eq(employerAccounts.id, account.id), sql`${employerAccounts.credits} >= ${EMPLOYER_UNLOCK_CREDIT_COST}`));
@@ -2091,6 +2092,7 @@ export async function sponsorCompanyOpportunity(userId: number, opportunityId: n
     }
     const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, chargedUserId)).limit(1).for("update"))[0];
     if (!account) throw new Error("Open an employer account before sponsoring a role");
+    if (account.creditDebt > 0) throw new Error("Refunded credit debt must be resolved before further spending");
     if (account.credits < tierCost.cost) throw new Error(`Sponsoring costs ${tierCost.cost} unlock credits; you have ${account.credits}`);
     const purchasedAt = new Date();
     const startsAt = opportunity.sponsoredUntil && opportunity.sponsoredUntil > purchasedAt ? opportunity.sponsoredUntil : purchasedAt;
@@ -2284,4 +2286,24 @@ export async function listEmployerSpendHistory(userId: number, limit = 50) {
   });
   const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: "Access record", createdAt: row.createdAt }));
   return [...sponsorRows, ...creditRows, ...unlockRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
+}
+
+// Verified provider refunds reverse the cumulative proportional credit amount.
+// Rounding is cumulative floor(refunded paise * pack credits / captured paise),
+// so split partial refunds converge exactly to the full-pack credit total.
+export async function applyEmployerUnlockRefund(input:{refundId:string;paymentId:string;orderId?:string;amount:number;currency:string}){
+  if(!input.refundId||!input.paymentId||!Number.isInteger(input.amount)||input.amount<=0)return {status:"requires_review" as const,reason:"invalid_refund"};
+  const db=await getDb();if(!db)throw new Error("Database unavailable");return db.transaction(async tx=>{
+    const duplicate=(await tx.select().from(employerPaymentRefunds).where(and(eq(employerPaymentRefunds.provider,"razorpay"),eq(employerPaymentRefunds.providerRefundId,input.refundId))).limit(1))[0];if(duplicate)return {status:duplicate.status,creditsReversed:duplicate.creditsReversed,duplicate:true};
+    const intent=(await tx.select().from(employerPaymentFulfillments).where(and(eq(employerPaymentFulfillments.provider,"razorpay"),eq(employerPaymentFulfillments.providerPaymentId,input.paymentId))).limit(1).for("update"))[0];
+    if(!intent){await tx.insert(employerPaymentRefunds).values({provider:"razorpay",providerRefundId:input.refundId,providerPaymentId:input.paymentId,providerOrderId:input.orderId??null,amount:input.amount,currency:input.currency.toUpperCase(),creditsReversed:0,status:"requires_review",reason:"refund_before_capture_or_unknown_payment"});return {status:"requires_review" as const,reason:"refund_before_capture_or_unknown_payment"};}
+    const cumulative=intent.refundedAmount+input.amount;if(input.currency.toUpperCase()!==intent.currency||cumulative>intent.amount){await tx.insert(employerPaymentRefunds).values({provider:"razorpay",providerRefundId:input.refundId,providerPaymentId:input.paymentId,providerOrderId:input.orderId??intent.providerOrderId,fulfillmentId:intent.id,amount:input.amount,currency:input.currency.toUpperCase(),creditsReversed:0,status:"requires_review",reason:"refund_amount_or_currency_mismatch"});await tx.update(employerPaymentFulfillments).set({status:"requires_review",lastError:"refund_amount_or_currency_mismatch"}).where(eq(employerPaymentFulfillments.id,intent.id));return {status:"requires_review" as const,reason:"refund_amount_or_currency_mismatch"};}
+    const pack=UNLOCK_CREDIT_PACKS[intent.pack];const totalCredits=Math.floor(cumulative*pack.credits/intent.amount);const delta=totalCredits-intent.refundedCredits;if(delta<0)throw new Error("Refund credit ledger moved backwards");
+    const account=(await tx.select().from(employerAccounts).where(eq(employerAccounts.userId,intent.userId)).limit(1).for("update"))[0];if(!account)throw new Error("Employer account missing for refund");
+    const available=Math.max(0,account.credits);const consumed=Math.min(available,delta);const debt=delta-consumed;await tx.update(employerAccounts).set({credits:account.credits-consumed,creditDebt:account.creditDebt+debt}).where(eq(employerAccounts.id,account.id));
+    await tx.update(employerPaymentFulfillments).set({refundedAmount:cumulative,refundedCredits:totalCredits,lastError:debt?"refunded_credits_already_spent":null}).where(eq(employerPaymentFulfillments.id,intent.id));
+    await tx.insert(employerPaymentRefunds).values({provider:"razorpay",providerRefundId:input.refundId,providerPaymentId:input.paymentId,providerOrderId:input.orderId??intent.providerOrderId,fulfillmentId:intent.id,amount:input.amount,currency:intent.currency,creditsReversed:delta,status:"applied",reason:debt?"credit_debt_recorded":null});
+    if(debt){await tx.update(profileUnlocks).set({revokedAt:new Date(),revocationReason:"refunded_employer_credits_review"}).where(and(eq(profileUnlocks.employerUserId,intent.userId),isNull(profileUnlocks.revokedAt)));}
+    await tx.insert(operationalActivityLogs).values({actorUserId:intent.userId,action:"employer.unlock_credits_refunded",outcome:"success",resourceType:"employer_unlock_refund",resourceId:input.refundId,metadata:JSON.stringify({paymentId:input.paymentId,refundAmount:input.amount,cumulativeRefunded:cumulative,creditsReversed:delta,creditDebt:debt})});return {status:"applied" as const,creditsReversed:delta,creditDebt:debt};
+  });
 }
