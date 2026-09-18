@@ -75,7 +75,19 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   string) and `VITE_APP_ID=skipwait` (session payloads REQUIRE a non-empty appId).
 - `DATABASE_URL` optional locally (in-memory fallback); production uses Azure MySQL.
 - WorkOS keys are production-only; without them the dev-auth plane is active.
-- All variables are documented in `.env.example` and README.
+- `.env.example` is a required contract, not optional documentation. Any new or
+  renamed client/server environment variable, secret, feature flag, binding, or
+  config key must be declared there in the same atomic change, with a safe blank
+  or non-secret example and a short purpose/scope note. Removed keys must be
+  removed there too.
+- The same change must wire the key through every required boundary: runtime
+  validator/type, local example, CI/build environment, Worker secret or var,
+  `src/worker.ts` container passthrough for server secrets, and frontend build
+  exposure only for intentionally public `VITE_*` values. Never put a secret in
+  a `VITE_*` key.
+- Add or update a config-contract test that compares referenced keys with
+  `.env.example` and required deployment bindings. A build passing with an
+  undeclared or unforwarded variable is a failed change, not deployment proof.
 
 ## Deploy (fully automated, no local Docker)
 - Push to `main` → GitHub Actions:
