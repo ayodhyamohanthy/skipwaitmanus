@@ -233,7 +233,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
         stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-        // Deployment note: this verified callback intentionally has one database write.
+        // Deployment note: this verified callback performs one database write.
         // This callback has just completed a provider-authenticated upsert.
         // Signing here avoids a second production DB read on the callback's
         // hot path; normal request verification still enforces suspension and
