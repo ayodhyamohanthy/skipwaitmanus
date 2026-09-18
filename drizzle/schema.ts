@@ -90,6 +90,25 @@ export const employerAccounts = mysqlTable("employerAccounts", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("employer_accounts_user_unique").on(table.userId)]);
 
+// Append-only seeker consent history. Every grant or revoke creates a new row;
+// discovery only accepts the latest, unrevoked grant for the current policy.
+export const talentDiscoveryConsents = mysqlTable("talentDiscoveryConsents", {
+  id: int("id").autoincrement().primaryKey(),
+  seekerUserId: int("seekerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  policyVersion: varchar("policyVersion", { length: 32 }).notNull(),
+  disclosedFields: text("disclosedFields").notNull(),
+  audience: varchar("audience", { length: 160 }).notNull(),
+  purpose: varchar("purpose", { length: 255 }).notNull(),
+  retentionDays: int("retentionDays").notNull(),
+  contactFlow: varchar("contactFlow", { length: 255 }).notNull(),
+  paidUnlockInvolved: boolean("paidUnlockInvolved").notNull(),
+  source: varchar("source", { length: 80 }).notNull(),
+  grantedAt: timestamp("grantedAt"),
+  revokedAt: timestamp("revokedAt"),
+  revocationReason: varchar("revocationReason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("talent_consents_seeker_created_idx").on(table.seekerUserId, table.createdAt)]);
+
 // Employer-scoped random references are the only talent identifiers exposed to clients.
 export const opportunitySponsorshipPurchases = mysqlTable("opportunitySponsorshipPurchases", {
   id: int("id").autoincrement().primaryKey(),
@@ -111,17 +130,28 @@ export const employerTalentRefs = mysqlTable("employerTalentRefs", {
   employerUserId: int("employerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   seekerProfileUserId: int("seekerProfileUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   publicRef: varchar("publicRef", { length: 64 }).notNull(),
+  consentId: int("consentId").notNull().references(() => talentDiscoveryConsents.id, { onDelete: "restrict" }),
+  revokedAt: timestamp("revokedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("employer_talent_refs_public_unique").on(table.publicRef), uniqueIndex("employer_talent_refs_pair_unique").on(table.employerUserId, table.seekerProfileUserId), index("employer_talent_refs_scope_idx").on(table.employerUserId, table.publicRef)]);
+}, table => [uniqueIndex("employer_talent_refs_public_unique").on(table.publicRef), index("employer_talent_refs_pair_active_idx").on(table.employerUserId, table.seekerProfileUserId, table.revokedAt), index("employer_talent_refs_scope_idx").on(table.employerUserId, table.publicRef)]);
 
 // Credit Economy ledger: one unlock row per (employer, seeker) pair, ever.
 export const profileUnlocks = mysqlTable("profileUnlocks", {
   id: int("id").autoincrement().primaryKey(),
   employerUserId: int("employerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   seekerProfileUserId: int("seekerProfileUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  consentId: int("consentId").notNull().references(() => talentDiscoveryConsents.id, { onDelete: "restrict" }),
+  consentPolicyVersion: varchar("consentPolicyVersion", { length: 32 }).notNull(),
+  employerCompanyName: varchar("employerCompanyName", { length: 160 }).notNull(),
+  disclosedFields: text("disclosedFields").notNull(),
+  profileVersion: timestamp("profileVersion").notNull(),
+  profileSnapshot: text("profileSnapshot").notNull(),
   unlockedAt: timestamp("unlockedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  revokedAt: timestamp("revokedAt"),
+  revocationReason: varchar("revocationReason", { length: 255 }),
   creditsSpent: int("creditsSpent").notNull(),
-}, table => [uniqueIndex("profile_unlocks_employer_seeker_unique").on(table.employerUserId, table.seekerProfileUserId), index("profile_unlocks_seeker_idx").on(table.seekerProfileUserId)]);
+}, table => [index("profile_unlocks_employer_seeker_active_idx").on(table.employerUserId, table.seekerProfileUserId, table.revokedAt, table.expiresAt), index("profile_unlocks_seeker_idx").on(table.seekerProfileUserId)]);
 
 // A separate, consent-based intro request. Unlock purchases never double as intros.
 export const employerTalentIntroRequests = mysqlTable("employerTalentIntroRequests", {

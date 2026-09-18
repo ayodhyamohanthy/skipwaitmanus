@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -1928,71 +1928,131 @@ export async function isEmployer(userId: number) {
   return row[0]?.status === "approved";
 }
 
-export async function spendEmployerUnlockCredit(employerUserId: number, seekerUserId: number) {
+export const TALENT_CONSENT_POLICY_VERSION = "2026-09-18.1";
+export const TALENT_CONSENT_RETENTION_DAYS = 90;
+export const TALENT_UNLOCK_DAYS = 30;
+export const TALENT_DISCLOSABLE_FIELDS = ["headline", "location", "skills", "experience", "expertise"] as const;
+export type TalentDisclosedField = typeof TALENT_DISCLOSABLE_FIELDS[number];
+const TALENT_CONSENT_AUDIENCE = "approved employers on SkipWait";
+const TALENT_CONSENT_PURPOSE = "anonymous talent discovery and employer introduction requests";
+const TALENT_CONTACT_FLOW = "Employers spend credits to unlock the approved snapshot and may request an introduction; the seeker chooses whether to respond.";
+
+const asTalentFields = (fields: string[]) => Array.from(new Set(fields)).filter((field): field is TalentDisclosedField => TALENT_DISCLOSABLE_FIELDS.includes(field as TalentDisclosedField));
+const coarseLocation = (value: string | null) => value?.split(",").slice(-2).join(",").trim().slice(0, 120) || null;
+const coarseExperience = (value: string | null) => {
+  if (!value) return null;
+  const year = value.match(/(\d{1,2})\s*\+?\s*years?/i)?.[1];
+  if (!year) return "Experience shared";
+  const n = Number(year); return n < 3 ? "0-2 years" : n < 6 ? "3-5 years" : n < 11 ? "6-10 years" : "10+ years";
+};
+const talentSnapshot = (profile: { headline: string | null; location: string | null; skills: string | null; experience: string | null; expertise: string | null }, fields: TalentDisclosedField[]) => {
+  const snapshot: Record<string, unknown> = {};
+  if (fields.includes("headline")) snapshot.headline = profile.headline;
+  if (fields.includes("location")) snapshot.location = coarseLocation(profile.location);
+  if (fields.includes("skills")) snapshot.skills = firstSkillKeywords(profile.skills);
+  if (fields.includes("experience")) snapshot.experience = coarseExperience(profile.experience);
+  if (fields.includes("expertise")) snapshot.expertise = firstSkillKeywords(profile.expertise);
+  return snapshot;
+};
+
+export function getTalentConsentPreview() {
+  return { policyVersion: TALENT_CONSENT_POLICY_VERSION, availableFields: [...TALENT_DISCLOSABLE_FIELDS], audience: TALENT_CONSENT_AUDIENCE, purpose: TALENT_CONSENT_PURPOSE, retentionDays: TALENT_CONSENT_RETENTION_DAYS, contactFlow: TALENT_CONTACT_FLOW, paidUnlockInvolved: true, unlockCreditCost: EMPLOYER_UNLOCK_CREDIT_COST, unlockDays: TALENT_UNLOCK_DAYS };
+}
+
+async function latestActiveTalentConsent(db: any, seekerUserId: number) {
+  const latest = (await db.select().from(talentDiscoveryConsents).where(eq(talentDiscoveryConsents.seekerUserId, seekerUserId)).orderBy(desc(talentDiscoveryConsents.id)).limit(1))[0];
+  return latest?.grantedAt && !latest.revokedAt && latest.policyVersion === TALENT_CONSENT_POLICY_VERSION ? latest : undefined;
+}
+
+export async function getTalentConsentState(seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const profile = await getProfileByUserId(seekerUserId);
+  const latest = (await db.select().from(talentDiscoveryConsents).where(eq(talentDiscoveryConsents.seekerUserId, seekerUserId)).orderBy(desc(talentDiscoveryConsents.id)).limit(1))[0];
+  const history = await db.select({ id: talentDiscoveryConsents.id, policyVersion: talentDiscoveryConsents.policyVersion, disclosedFields: talentDiscoveryConsents.disclosedFields, source: talentDiscoveryConsents.source, grantedAt: talentDiscoveryConsents.grantedAt, revokedAt: talentDiscoveryConsents.revokedAt, revocationReason: talentDiscoveryConsents.revocationReason }).from(talentDiscoveryConsents).where(eq(talentDiscoveryConsents.seekerUserId, seekerUserId)).orderBy(desc(talentDiscoveryConsents.id)).limit(50);
+  const active = Boolean(profile?.accountType === "job_seeker" && profile.isOnboarded && latest?.grantedAt && !latest.revokedAt && latest.policyVersion === TALENT_CONSENT_POLICY_VERSION);
+  return { ...getTalentConsentPreview(), active, selectedFields: latest ? JSON.parse(latest.disclosedFields) : [], history };
+}
+
+export async function grantTalentDiscoveryConsent(seekerUserId: number, input: { policyVersion: string; disclosedFields: string[]; source: string }) {
+  if (input.policyVersion !== TALENT_CONSENT_POLICY_VERSION) throw new Error("Review the current talent-discovery consent before opting in");
+  const fields = asTalentFields(input.disclosedFields); if (!fields.length) throw new Error("Choose at least one field to share");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, employerUserId)).limit(1).for("update"))[0];
-    if (!account) return { ok: false as const, reason: "no_employer_account" as const, credits: 0 };
-    // Check idempotency while the account row is locked, before balance. A
-    // repeated unlock succeeds even if the remaining balance is now below 5.
-    const alreadyUnlocked = await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
-    if (alreadyUnlocked[0]) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
-    if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
-    const credits = account.credits - EMPLOYER_UNLOCK_CREDIT_COST;
-    await tx.update(employerAccounts).set({ credits }).where(eq(employerAccounts.id, account.id));
-    await tx.insert(profileUnlocks).values({ employerUserId, seekerProfileUserId: seekerUserId, creditsSpent: EMPLOYER_UNLOCK_CREDIT_COST });
-    return { ok: true as const, remaining: credits };
+    const account = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, seekerUserId)).limit(1).for("update"))[0];
+    const profile = (await tx.select().from(profiles).where(eq(profiles.userId, seekerUserId)).limit(1).for("update"))[0];
+    if (!account || account.suspended || !profile || profile.accountType !== "job_seeker" || !profile.isOnboarded) throw new Error("Complete an active Job Seeker profile before opting in");
+    await tx.update(talentDiscoveryConsents).set({ revokedAt: new Date(), revocationReason: "replaced_by_new_consent" }).where(and(eq(talentDiscoveryConsents.seekerUserId, seekerUserId), isNull(talentDiscoveryConsents.revokedAt)));
+    const result = await tx.insert(talentDiscoveryConsents).values({ seekerUserId, policyVersion: TALENT_CONSENT_POLICY_VERSION, disclosedFields: JSON.stringify(fields), audience: TALENT_CONSENT_AUDIENCE, purpose: TALENT_CONSENT_PURPOSE, retentionDays: TALENT_CONSENT_RETENTION_DAYS, contactFlow: TALENT_CONTACT_FLOW, paidUnlockInvolved: true, source: input.source.slice(0,80), grantedAt: new Date() });
+    await tx.update(profiles).set({ anonymityOptIn: true }).where(eq(profiles.userId, seekerUserId));
+    return { active: true, consentId: Number(result[0].insertId), disclosedFields: fields };
   });
 }
 
-// Anonymized talent discovery. HARD invariant: never selects name, email,
-// resumeUrl, phone, or any users column beyond the join key.
-export type AnonymizedSeekerProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
-
-async function ensureTalentRef(employerUserId: number, seekerUserId: number) {
+export async function revokeTalentDiscoveryConsent(seekerUserId: number, reason = "seeker_opt_out") {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const existing = await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId))).limit(1);
+  return db.transaction(async tx => {
+    const now = new Date();
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, seekerUserId)).limit(1).for("update");
+    await tx.update(talentDiscoveryConsents).set({ revokedAt: now, revocationReason: reason.slice(0,255) }).where(and(eq(talentDiscoveryConsents.seekerUserId, seekerUserId), isNull(talentDiscoveryConsents.revokedAt)));
+    await tx.update(profileUnlocks).set({ revokedAt: now, revocationReason: reason.slice(0,255) }).where(and(eq(profileUnlocks.seekerProfileUserId, seekerUserId), isNull(profileUnlocks.revokedAt)));
+    await tx.update(employerTalentRefs).set({ revokedAt: now }).where(and(eq(employerTalentRefs.seekerProfileUserId, seekerUserId), isNull(employerTalentRefs.revokedAt)));
+    await tx.update(profiles).set({ anonymityOptIn: false }).where(eq(profiles.userId, seekerUserId));
+    return { active: false };
+  });
+}
+
+export async function listTalentAccessHistory(seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.select({ id: profileUnlocks.id, employerUserId: profileUnlocks.employerUserId, employerCompanyName: profileUnlocks.employerCompanyName, consentPolicyVersion: profileUnlocks.consentPolicyVersion, disclosedFields: profileUnlocks.disclosedFields, unlockedAt: profileUnlocks.unlockedAt, expiresAt: profileUnlocks.expiresAt, revokedAt: profileUnlocks.revokedAt, revocationReason: profileUnlocks.revocationReason }).from(profileUnlocks).where(eq(profileUnlocks.seekerProfileUserId, seekerUserId)).orderBy(desc(profileUnlocks.id)).limit(100);
+}
+
+export async function revokeTalentEmployerAccess(seekerUserId: number, employerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => { const now = new Date(); await tx.update(profileUnlocks).set({ revokedAt: now, revocationReason: "seeker_revoked_employer" }).where(and(eq(profileUnlocks.seekerProfileUserId, seekerUserId), eq(profileUnlocks.employerUserId, employerUserId), isNull(profileUnlocks.revokedAt))); await tx.update(employerTalentRefs).set({ revokedAt: now }).where(and(eq(employerTalentRefs.seekerProfileUserId, seekerUserId), eq(employerTalentRefs.employerUserId, employerUserId), isNull(employerTalentRefs.revokedAt))); return { revoked: true }; });
+}
+
+export async function spendEmployerUnlockCredit(employerUserId: number, seekerUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const now = new Date();
+    const account = (await tx.select().from(employerAccounts).where(eq(employerAccounts.userId, employerUserId)).limit(1).for("update"))[0];
+    const employer = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, employerUserId)).limit(1))[0];
+    const seeker = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, seekerUserId)).limit(1).for("update"))[0];
+    const profile = (await tx.select().from(profiles).where(eq(profiles.userId, seekerUserId)).limit(1).for("update"))[0];
+    const consent = await latestActiveTalentConsent(tx, seekerUserId);
+    if (!account || account.approvalStatus !== "approved" || employer?.suspended) return { ok: false as const, reason: "no_employer_account" as const, credits: account?.credits ?? 0 };
+    if (!seeker || seeker.suspended || !profile || !profile.anonymityOptIn || !profile.isOnboarded || !consent) return { ok: false as const, reason: "consent_withdrawn" as const, credits: account.credits };
+    const active = (await tx.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId), eq(profileUnlocks.consentId, consent.id), isNull(profileUnlocks.revokedAt), gt(profileUnlocks.expiresAt, now))).limit(1))[0];
+    if (active) return { ok: true as const, remaining: account.credits, alreadyUnlocked: true as const };
+    if (account.credits < EMPLOYER_UNLOCK_CREDIT_COST) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
+    const fields = asTalentFields(JSON.parse(consent.disclosedFields)); const snapshot = talentSnapshot(profile, fields); const expiresAt = new Date(now.getTime() + TALENT_UNLOCK_DAYS*86400000);
+    const debited = await tx.update(employerAccounts).set({ credits: sql`${employerAccounts.credits} - ${EMPLOYER_UNLOCK_CREDIT_COST}` }).where(and(eq(employerAccounts.id, account.id), sql`${employerAccounts.credits} >= ${EMPLOYER_UNLOCK_CREDIT_COST}`));
+    if (Number((debited as any)[0]?.affectedRows ?? 0) !== 1) return { ok: false as const, reason: "insufficient_credits" as const, credits: account.credits };
+    await tx.insert(profileUnlocks).values({ employerUserId, seekerProfileUserId: seekerUserId, consentId: consent.id, consentPolicyVersion: consent.policyVersion, employerCompanyName: account.companyName, disclosedFields: JSON.stringify(fields), profileVersion: profile.updatedAt, profileSnapshot: JSON.stringify(snapshot), expiresAt, creditsSpent: EMPLOYER_UNLOCK_CREDIT_COST });
+    return { ok: true as const, remaining: account.credits - EMPLOYER_UNLOCK_CREDIT_COST };
+  });
+}
+
+export type AnonymizedSeekerProfile = { displayRef: string; headline: string | null; location: string | null; skills: string[]; isUnlocked: boolean };
+async function ensureTalentRef(employerUserId: number, seekerUserId: number, consentId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId), eq(employerTalentRefs.consentId, consentId), isNull(employerTalentRefs.revokedAt))).limit(1);
   if (existing[0]) return existing[0].publicRef;
   const publicRef = `tal_${randomBytes(18).toString("base64url")}`;
-  try { await db.insert(employerTalentRefs).values({ employerUserId, seekerProfileUserId: seekerUserId, publicRef }); }
-  catch (error) { if ((error as { code?: string }).code !== "ER_DUP_ENTRY") throw error; }
-  return (await db.select({ publicRef: employerTalentRefs.publicRef }).from(employerTalentRefs).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.seekerProfileUserId, seekerUserId))).limit(1))[0]?.publicRef ?? publicRef;
+  await db.insert(employerTalentRefs).values({ employerUserId, seekerProfileUserId: seekerUserId, publicRef, consentId }); return publicRef;
 }
-
 export async function resolveEmployerTalentRef(employerUserId: number, publicRef: string) {
-  if (!/^tal_[A-Za-z0-9_-]{20,60}$/.test(publicRef)) return undefined;
-  const db = await getDb(); if (!db) return undefined;
-  const row = await db.select({ seekerUserId: employerTalentRefs.seekerProfileUserId }).from(employerTalentRefs).innerJoin(profiles, eq(profiles.userId, employerTalentRefs.seekerProfileUserId)).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.publicRef, publicRef), eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true))).limit(1);
-  return row[0]?.seekerUserId;
+  if (!/^tal_[A-Za-z0-9_-]{20,60}$/.test(publicRef)) return undefined; const db = await getDb(); if (!db) return undefined;
+  const row = await db.select({ seekerUserId: employerTalentRefs.seekerProfileUserId, consentId: employerTalentRefs.consentId }).from(employerTalentRefs).innerJoin(profiles, eq(profiles.userId, employerTalentRefs.seekerProfileUserId)).innerJoin(users, eq(users.id, employerTalentRefs.seekerProfileUserId)).innerJoin(talentDiscoveryConsents, eq(talentDiscoveryConsents.id, employerTalentRefs.consentId)).where(and(eq(employerTalentRefs.employerUserId, employerUserId), eq(employerTalentRefs.publicRef, publicRef), isNull(employerTalentRefs.revokedAt), eq(profiles.accountType,"job_seeker"), eq(profiles.anonymityOptIn,true), eq(profiles.isOnboarded,true), eq(users.suspended,false), eq(talentDiscoveryConsents.policyVersion,TALENT_CONSENT_POLICY_VERSION), isNull(talentDiscoveryConsents.revokedAt), isNotNull(talentDiscoveryConsents.grantedAt))).limit(1); return row[0]?.seekerUserId;
 }
-
 export async function listAnonymizedSeekerProfiles(employerUserId: number, input: { query?: string; location?: string } = {}) {
-  const db = await getDb(); if (!db) return [] as AnonymizedSeekerProfile[];
-  const rows = await db.select({ userId: profiles.userId, headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience }).from(profiles).where(and(eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true)));
-  const unlocked = new Set((await db.select({ seekerId: profileUnlocks.seekerProfileUserId }).from(profileUnlocks).where(eq(profileUnlocks.employerUserId, employerUserId))).map(row => row.seekerId));
-  const term = input.query?.trim().toLowerCase(); const locationTerm = input.location?.trim().toLowerCase();
-  const filtered = rows.filter(row => (!term || `${row.headline ?? ""} ${row.skills ?? ""} ${row.experience ?? ""}`.toLowerCase().includes(term)) && (!locationTerm || (row.location ?? "").toLowerCase().includes(locationTerm))).slice(0, 60);
-  return Promise.all(filtered.map(async row => ({ displayRef: await ensureTalentRef(employerUserId, row.userId), headline: row.headline, location: row.location, skills: firstSkillKeywords(row.skills), isUnlocked: unlocked.has(row.userId) })));
+  const db = await getDb(); if (!db || !(await isEmployer(employerUserId))) return [] as AnonymizedSeekerProfile[];
+  const rows = await db.select({ userId: profiles.userId, headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType,"job_seeker"),eq(profiles.anonymityOptIn,true),eq(profiles.isOnboarded,true),eq(users.suspended,false)));
+  const term=input.query?.trim().toLowerCase(), locationTerm=input.location?.trim().toLowerCase(); const out: AnonymizedSeekerProfile[]=[];
+  for (const row of rows) { const consent=await latestActiveTalentConsent(db,row.userId); if(!consent) continue; const fields=asTalentFields(JSON.parse(consent.disclosedFields)); const snap=talentSnapshot({ ...row, expertise:null },fields) as any; if(term && `${snap.headline??""} ${(snap.skills??[]).join(" ")} ${snap.experience??""}`.toLowerCase().includes(term)===false) continue; if(locationTerm && String(snap.location??"").toLowerCase().includes(locationTerm)===false) continue; const active=(await db.select({id:profileUnlocks.id}).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId,employerUserId),eq(profileUnlocks.seekerProfileUserId,row.userId),eq(profileUnlocks.consentId,consent.id),isNull(profileUnlocks.revokedAt),gt(profileUnlocks.expiresAt,new Date()))).limit(1))[0]; out.push({displayRef:await ensureTalentRef(employerUserId,row.userId,consent.id),headline:snap.headline??null,location:snap.location??null,skills:snap.skills??[],isUnlocked:Boolean(active)}); if(out.length>=60) break; } return out;
 }
-
-// Fuller profile for an unlocked, currently opted-in pair.
-export async function getUnlockedProfile(employerUserId: number, seekerUserId: number) {
-  const db = await getDb(); if (!db) return undefined;
-  const unlocked = await db.select({ unlockedAt: profileUnlocks.unlockedAt }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
-  if (!unlocked[0]) return undefined;
-  const profile = await db.select({ headline: profiles.headline, location: profiles.location, skills: profiles.skills, experience: profiles.experience, expertise: profiles.expertise }).from(profiles).where(and(eq(profiles.userId, seekerUserId), eq(profiles.accountType, "job_seeker"), eq(profiles.anonymityOptIn, true), eq(profiles.isOnboarded, true))).limit(1);
-  if (!profile[0]) return undefined;
-  const displayRef = await ensureTalentRef(employerUserId, seekerUserId);
-  return { displayRef, headline: profile[0].headline, location: profile[0].location, skills: firstSkillKeywords(profile[0].skills), experience: profile[0].experience, expertise: profile[0].expertise, unlockedAt: unlocked[0].unlockedAt };
-}
-
-export async function requestEmployerTalentIntro(employerUserId: number, seekerUserId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const unlocked = await db.select({ id: profileUnlocks.id }).from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId, employerUserId), eq(profileUnlocks.seekerProfileUserId, seekerUserId))).limit(1);
-  if (!unlocked[0]) return { ok: false as const, reason: "locked" as const };
-  try { await db.insert(employerTalentIntroRequests).values({ employerUserId, seekerProfileUserId: seekerUserId }); return { ok: true as const, created: true as const }; }
-  catch (error) { if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { ok: true as const, created: false as const }; throw error; }
-}
+export async function getUnlockedProfile(employerUserId:number,seekerUserId:number){ const db=await getDb();if(!db||!(await isEmployer(employerUserId)))return undefined; const account=(await db.select({suspended:users.suspended}).from(users).where(eq(users.id,seekerUserId)).limit(1))[0]; if(!account||account.suspended)return undefined; const grant=(await db.select().from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId,employerUserId),eq(profileUnlocks.seekerProfileUserId,seekerUserId),isNull(profileUnlocks.revokedAt),gt(profileUnlocks.expiresAt,new Date()))).orderBy(desc(profileUnlocks.id)).limit(1))[0]; if(!grant)return undefined; const consent=await latestActiveTalentConsent(db,seekerUserId);if(!consent||consent.id!==grant.consentId)return undefined; return {...JSON.parse(grant.profileSnapshot),unlockedAt:grant.unlockedAt,expiresAt:grant.expiresAt}; }
+export async function requestEmployerTalentIntro(employerUserId:number,seekerUserId:number){ const db=await getDb();if(!db)throw new Error("Database unavailable"); return db.transaction(async tx=>{ const now=new Date(); const employer=(await tx.select({suspended:users.suspended}).from(users).where(eq(users.id,employerUserId)).limit(1))[0]; const seeker=(await tx.select({suspended:users.suspended}).from(users).where(eq(users.id,seekerUserId)).limit(1).for("update"))[0]; const account=(await tx.select({status:employerAccounts.approvalStatus}).from(employerAccounts).where(eq(employerAccounts.userId,employerUserId)).limit(1))[0]; const grant=(await tx.select().from(profileUnlocks).where(and(eq(profileUnlocks.employerUserId,employerUserId),eq(profileUnlocks.seekerProfileUserId,seekerUserId),isNull(profileUnlocks.revokedAt),gt(profileUnlocks.expiresAt,now))).orderBy(desc(profileUnlocks.id)).limit(1).for("update"))[0]; const consent=await latestActiveTalentConsent(tx,seekerUserId); if(!employer||employer.suspended||!seeker||seeker.suspended||account?.status!=="approved"||!grant||!consent||grant.consentId!==consent.id)return {ok:false as const,reason:"grant_inactive" as const}; try{await tx.insert(employerTalentIntroRequests).values({employerUserId,seekerProfileUserId:seekerUserId});return {ok:true as const,created:true as const};}catch(error){if((error as any).code==="ER_DUP_ENTRY")return {ok:true as const,created:false as const};throw error;} }); }
 
 export async function sponsorCompanyOpportunity(userId: number, opportunityId: number, input: { tier: SponsorTier; idempotencyKey: string; isAdmin?: boolean; chargedUserId?: number }) {
   const tierCost = SPONSOR_TIERS[input.tier];
@@ -2201,6 +2261,6 @@ export async function listEmployerSpendHistory(userId: number, limit = 50) {
     try { const meta = JSON.parse(row.metadata ?? "{}") as { creditsAdded?: number; pack?: string }; creditsAdded = meta.creditsAdded ?? 0; pack = meta.pack ?? null; } catch { /* keep zeros */ }
     return { kind: "credit_purchase" as const, creditsAdded, pack, createdAt: row.createdAt };
   });
-  const unlockRows = await Promise.all(unlocks.map(async row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: await ensureTalentRef(userId, row.seekerProfileUserId), createdAt: row.createdAt })));
+  const unlockRows = unlocks.map(row => ({ kind: "profile_unlock" as const, creditsSpent: row.creditsSpent, displayRef: "Access record", createdAt: row.createdAt }));
   return [...sponsorRows, ...creditRows, ...unlockRows].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, limit);
 }
