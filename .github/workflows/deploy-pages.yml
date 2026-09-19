@@ -50,6 +50,7 @@ jobs:
           VITE_WORKOS_ENABLED: "true"
           VITE_GIT_COMMIT_SHA: ${{ github.sha }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          VITE_CLARITY_PROJECT_ID: ${{ secrets.VITE_CLARITY_PROJECT_ID }}
 
       - name: Deploy to Cloudflare Pages
         run: npx wrangler pages deploy dist/public --project-name skipwait --branch main --commit-dirty=true

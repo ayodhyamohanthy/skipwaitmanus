@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } from "@workos-inc/authkit-react";
 import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
+import { identifyClarity } from "@/lib/clarity";
 import { smokeState } from "@/contexts/smokeRuntime";
 import { safeAuthReturnTo } from "@shared/authReturnTo";
 
@@ -98,6 +99,12 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     void publish();
     return () => { cancelled = true; };
   }, [auth.user, auth.getAccessToken, utils]);
+
+  // Clarity replay identity: internal person id only, never raw email.
+  // No-op until Clarity init succeeds; nothing to reset on sign-out.
+  useEffect(() => {
+    identifyClarity(user?.id ?? null);
+  }, [user?.id]);
 
   const signOut = useCallback(async () => {
     signingOut.current = true;

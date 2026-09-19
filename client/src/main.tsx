@@ -12,11 +12,16 @@ import { initializeDevicePreferences } from "./lib/device";
 import "./index.css";
 import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
 import { captureClientError, initClientSentry, testClientSentry } from "./lib/sentry";
+import { initClarity } from "./lib/clarity";
 
 const clientSentryActive = initClientSentry();
 if (import.meta.env.DEV) {
   console.info(`[Sentry] client reporting ${clientSentryActive ? "ACTIVE" : "INACTIVE (set VITE_SENTRY_DSN and restart dev to enable)"}`);
   window.__sentryTest = testClientSentry;
+}
+const clarityActive = initClarity();
+if (import.meta.env.DEV) {
+  console.info(`[Clarity] replay reporting ${clarityActive ? "ACTIVE" : "INACTIVE (set VITE_CLARITY_PROJECT_ID and restart dev to enable)"}`);
 }
 if (typeof window !== "undefined") {
   window.addEventListener("error", event => captureClientError(event.error ?? event.message, { source: "window.onerror" }));
