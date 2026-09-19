@@ -48,7 +48,20 @@ export async function smokeFetch(input:RequestInfo|URL,init?:RequestInit){
  if(!allowedActions.some(rule=>rule.test(path)))return json({smokeMode:true,error:`Live mutation denied: ${method} ${path}`},409);
  return json({smokeMode:true,ok:true,id:-999,status:"synthetic"});
 }
+// Owner: server/adminSmokeFixture.ts CSRF_COOKIE. That cookie is readable
+// (not HttpOnly), unlike the smoke session cookie. Without it there is no
+// smoke session to restore, so the status probe is skipped: in production the
+// fixture is disabled and the probe 404s, which Chrome logs as a console
+// error on every page load for every visitor.
+const SMOKE_CSRF_COOKIE="skipwait_smoke_csrf";
+function hasSmokeSignal():boolean{
+ try{
+  const cookie=(typeof document!=="undefined"?document.cookie:"")||"";
+  return cookie.split(";").some(part=>part.trim().startsWith(`${SMOKE_CSRF_COOKIE}=`));
+ }catch{return false}
+}
 export async function bootstrapSmoke(nativeFetch:typeof fetch=globalThis.fetch){
  setSmokeTransport(nativeFetch);
+ if(!hasSmokeSignal()){smoke={active:false};return smoke}
  try{const status=await nativeFetch("/api/admin/smoke/status",{credentials:"include",cache:"no-store"});if(!status.ok)return smoke;const info=await status.json();if(!info.active)return smoke;const response=await nativeFetch("/api/admin/smoke/snapshot",{credentials:"include",cache:"no-store"});if(!response.ok)throw new Error("Smoke snapshot failed");smoke={...info,active:true,snapshot:await response.json()};return smoke}catch{smoke={active:false};return smoke}
 }
