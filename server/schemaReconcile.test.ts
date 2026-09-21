@@ -23,3 +23,35 @@ describe("read-only schema validation",()=>{
  it("reports a missing or nonunique index without DDL",async()=>{const rows=validRows().filter((x:any)=>x.INDEX_NAME!=="referral_attachments_upload_session_unique");const{module,calls}=await load(rows,validFks);await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(false);expect(module.getLastReconcileResults()).toContainEqual({statement:"index:referralAttachments.referral_attachments_upload_session_unique",ok:false,errorCode:"SCHEMA_MISMATCH"});expect(calls.join(" ")).not.toMatch(/ALTER|CREATE|DROP|UPDATE|DELETE|INSERT/i)});
  it("requires both 0050 foreign keys without mutating them",async()=>{const{module,calls}=await load(validRows(),validFks.slice(0,1));await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(false);expect(module.getLastReconcileResults()).toContainEqual({statement:"fk:resumeUploadChunks.acceptedAttemptId",ok:false,errorCode:"SCHEMA_MISMATCH"});expect(calls).toHaveLength(2)});
 });
+describe("schema recovery loop",()=>{
+ it("retries transient validation failure until ready with SELECT-only traffic",async()=>{
+  const calls:string[]=[];
+  vi.resetModules();
+  let attempts=0;
+  vi.doMock("./db",()=>{
+   return {
+    getDb: async ()=>{
+     attempts+=1;
+     if(attempts===1)throw new Error("transient db offline");
+     return {
+      execute: async (q:unknown)=>{
+       const text=sqlText(q);
+       calls.push(text);
+       return [text.includes("KEY_COLUMN_USAGE")?validFks:validRows(),[]];
+      },
+     };
+    },
+   };
+  });
+  const module=await import("./schemaReconcile");
+  try{
+   module.startSchemaReconcileRecovery({baseDelayMs:10,maxDelayMs:20});
+   const deadline=Date.now()+2000;
+   while(!module.isSchemaReconciled()&&Date.now()<deadline)await new Promise(r=>setTimeout(r,10));
+   expect(module.isSchemaReconciled()).toBe(true);
+   expect(attempts).toBeGreaterThanOrEqual(2);
+   expect(calls.length).toBeGreaterThan(0);
+   expect(calls.every(x=>x.trimStart().startsWith("SELECT"))).toBe(true);
+  }finally{module.stopSchemaReconcileRecovery();}
+ });
+});

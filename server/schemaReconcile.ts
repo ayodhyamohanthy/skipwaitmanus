@@ -133,6 +133,8 @@ let reconciled = false;
 let lastError: string | null = null;
 let lastResults: ReconcileStatementResult[] = [];
 let inFlight: Promise<{ applied: string[]; skipped: string[] }> | null = null;
+let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
+let recoveryAttempts = 0;
 
 export async function reconcileSchema(): Promise<{ applied: string[]; skipped: string[] }> {
   // Schema changes belong to versioned migrations. Runtime validation is
@@ -186,3 +188,39 @@ export function getLastReconcileError() { return lastError; }
 // Per-statement outcome of the most recent run (empty until one has happened;
 // the array is reset at the start of every run).
 export function getLastReconcileResults() { return lastResults; }
+
+// Boot-time recovery loop: retry read-only validation with backoff until it
+// passes. Boot never blocks on the DB; /api/health/ready stays 503 meanwhile
+// (validating/failed) and flips to 200 once reconciled. SELECT-only — the
+// retry chooses WHEN validation runs, never WHAT it runs.
+export function startSchemaReconcileRecovery(options?: { baseDelayMs?: number; maxDelayMs?: number }) {
+  if (reconciled || recoveryTimer) return;
+  const baseDelayMs = options?.baseDelayMs ?? 1000;
+  const maxDelayMs = options?.maxDelayMs ?? 30000;
+  const attempt = () => {
+    void reconcileSchema()
+      .catch(() => ({ applied: [], skipped: [] as string[] }))
+      .then(() => {
+        if (isSchemaReconciled()) {
+          stopSchemaReconcileRecovery();
+          return;
+        }
+        recoveryAttempts += 1;
+        const delayMs = Math.min(baseDelayMs * 2 ** Math.min(recoveryAttempts - 1, 5), maxDelayMs);
+        if (recoveryTimer) return;
+        recoveryTimer = setTimeout(() => {
+          recoveryTimer = null;
+          attempt();
+        }, delayMs);
+        if (typeof recoveryTimer.unref === "function") recoveryTimer.unref();
+      });
+  };
+  attempt();
+}
+export function stopSchemaReconcileRecovery() {
+  if (recoveryTimer) {
+    clearTimeout(recoveryTimer);
+    recoveryTimer = null;
+  }
+  recoveryAttempts = 0;
+}

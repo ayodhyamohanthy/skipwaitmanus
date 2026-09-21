@@ -58,7 +58,7 @@ import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigure
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
-import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "../schemaReconcile";
+import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, startSchemaReconcileRecovery } from "../schemaReconcile";
 import { registerHealthRoutes } from "../healthRoutes";
 
 
@@ -89,7 +89,8 @@ async function startServer() {
   // Boot-time schema auto-reconcile: the running server owns its DATABASE_URL,
   // so it heals missing columns itself. Fire-and-forget — a slow or unreachable
   // DB must never delay or crash boot; /api/health reports the flag as-is.
-  void reconcileSchema().catch(() => {});
+  // Recovery retries read-only validation with backoff until it passes.
+  startSchemaReconcileRecovery();
   // Managed deployments terminate TLS at a trusted reverse proxy. This lets
   // req.hostname reflect the canonical public host for host-scoped billing.
   app.set("trust proxy", true);
