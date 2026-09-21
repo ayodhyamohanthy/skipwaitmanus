@@ -23,3 +23,88 @@ describe("read-only schema validation",()=>{
  it("reports a missing or nonunique index without DDL",async()=>{const rows=validRows().filter((x:any)=>x.INDEX_NAME!=="referral_attachments_upload_session_unique");const{module,calls}=await load(rows,validFks);await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(false);expect(module.getLastReconcileResults()).toContainEqual({statement:"index:referralAttachments.referral_attachments_upload_session_unique",ok:false,errorCode:"SCHEMA_MISMATCH"});expect(calls.join(" ")).not.toMatch(/ALTER|CREATE|DROP|UPDATE|DELETE|INSERT/i)});
  it("requires both 0050 foreign keys without mutating them",async()=>{const{module,calls}=await load(validRows(),validFks.slice(0,1));await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(false);expect(module.getLastReconcileResults()).toContainEqual({statement:"fk:resumeUploadChunks.acceptedAttemptId",ok:false,errorCode:"SCHEMA_MISMATCH"});expect(calls).toHaveLength(2)});
 });
+describe("schema recovery diagnostics",()=>{
+ it("logs described cause, classification, and attempt/backoff context without leaking secrets",async()=>{
+  const canaryUrl="mysql://canary-user-7x:canary-secret-pw-999@canary-host-7x:3306/canarydb";
+  const canaryPw="canary-secret-pw-999";
+  const canaryToken="canary-token-abc-123";
+  const canaryUserData="canary-user-data@example.com";
+  const prevDbUrl=process.env.DATABASE_URL;
+  process.env.DATABASE_URL=canaryUrl;
+  vi.resetModules();
+  const cause=Object.assign(new Error("access denied for canary probe"),{code:"ER_ACCESS_DENIED_ERROR",errno:1045});
+  const boom=new Error(`connect failed via ${canaryUrl} password=${canaryPw} token=${canaryToken} params: ["${canaryUserData}"]`);
+  (boom as {cause?:unknown}).cause=cause;
+  vi.doMock("./db",()=>({getDb:async()=>({execute:async()=>{throw boom}})}));
+  const module=await import("./schemaReconcile");
+  const lines:string[]=[];
+  const spy=vi.spyOn(console,"error").mockImplementation((...args:unknown[])=>{lines.push(args.map(String).join(" "))});
+  try{
+   await module.reconcileSchema();
+   expect(module.isSchemaReconciled()).toBe(false);
+   const out=lines.join("\n");
+   expect(out).toMatch(/attempt=\d+/);
+   expect(out).toMatch(/nextDelayMs=\d+/);
+   expect(out).toMatch(/ER_ACCESS_DENIED_ERROR|1045/);
+   expect(out).toMatch(/access denied for canary probe/);
+   expect(out).not.toContain(canaryUrl);
+   expect(out).not.toContain(canaryPw);
+   expect(out).not.toContain(canaryToken);
+   expect(out).not.toContain(canaryUserData);
+   expect(out).not.toContain("canary-host-7x");
+  }finally{spy.mockRestore();if(prevDbUrl===undefined)delete process.env.DATABASE_URL;else process.env.DATABASE_URL=prevDbUrl;module.stopSchemaReconcileRecovery();}
+ });
+ it("logs getDb() null as DB-unavailable without leaking DATABASE_URL",async()=>{
+  const canaryUrl="mysql://nullcase-user:nullcase-pw-456@nullcase-host:3306/nulldb";
+  const prevDbUrl=process.env.DATABASE_URL;
+  process.env.DATABASE_URL=canaryUrl;
+  vi.resetModules();
+  vi.doMock("./db",()=>({getDb:async()=>null}));
+  const module=await import("./schemaReconcile");
+  const lines:string[]=[];
+  const spy=vi.spyOn(console,"error").mockImplementation((...args:unknown[])=>{lines.push(args.map(String).join(" "))});
+  try{
+   const result=await module.reconcileSchema();
+   expect(result).toEqual({applied:[],skipped:[]});
+   expect(module.isSchemaReconciled()).toBe(false);
+   const out=lines.join("\n");
+   expect(out).toMatch(/DB-unavailable/i);
+   expect(out).toMatch(/attempt=\d+/);
+   expect(out).toMatch(/nextDelayMs=\d+/);
+   expect(out).not.toContain(canaryUrl);
+   expect(out).not.toContain("nullcase-pw-456");
+  }finally{spy.mockRestore();if(prevDbUrl===undefined)delete process.env.DATABASE_URL;else process.env.DATABASE_URL=prevDbUrl;module.stopSchemaReconcileRecovery();}
+ });
+});
+describe("schema recovery loop",()=>{
+ it("retries transient validation failure until ready with SELECT-only traffic",async()=>{
+  const calls:string[]=[];
+  vi.resetModules();
+  let attempts=0;
+  vi.doMock("./db",()=>{
+   return {
+    getDb: async ()=>{
+     attempts+=1;
+     if(attempts===1)throw new Error("transient db offline");
+     return {
+      execute: async (q:unknown)=>{
+       const text=sqlText(q);
+       calls.push(text);
+       return [text.includes("KEY_COLUMN_USAGE")?validFks:validRows(),[]];
+      },
+     };
+    },
+   };
+  });
+  const module=await import("./schemaReconcile");
+  try{
+   module.startSchemaReconcileRecovery({baseDelayMs:10,maxDelayMs:20});
+   const deadline=Date.now()+2000;
+   while(!module.isSchemaReconciled()&&Date.now()<deadline)await new Promise(r=>setTimeout(r,10));
+   expect(module.isSchemaReconciled()).toBe(true);
+   expect(attempts).toBeGreaterThanOrEqual(2);
+   expect(calls.length).toBeGreaterThan(0);
+   expect(calls.every(x=>x.trimStart().startsWith("SELECT"))).toBe(true);
+  }finally{module.stopSchemaReconcileRecovery();}
+ });
+});

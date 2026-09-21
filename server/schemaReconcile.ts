@@ -129,18 +129,79 @@ export function describeReconcileError(err: unknown): string {
   return causes.length ? `${top} | cause: ${causes.join(" <- ")}` : top;
 }
 
+// Centralized safe diagnostic serializer for failed reconciliation attempts.
+// Built on describeReconcileError; adds error classification, attempt number,
+// and backoff delay. Defensively redacts connection strings, credentials,
+// tokens, and driver-echoed SQL params so logs never carry secrets or user data.
+export function redactReconcileLogText(text: string): string {
+  let out = text;
+  const envUrl = process.env.DATABASE_URL;
+  if (envUrl) {
+    out = out.split(envUrl).join("[redacted-database-url]");
+    try {
+      const parsed = new URL(envUrl);
+      if (parsed.password) out = out.split(parsed.password).join("[redacted]");
+      if (parsed.username) out = out.split(parsed.username).join("[redacted-user]");
+      if (parsed.hostname) out = out.split(parsed.hostname).join("[redacted-host]");
+    } catch { /* non-URL value: exact-match redaction above suffices */ }
+  }
+  out = out.replace(/[a-zA-Z][a-zA-Z0-9+.-]*:\/\/[^\s'"]+/g, "[redacted-connection-string]");
+  out = out.replace(/\bparams\s*:\s*\[[^\]]*\]/gi, "params: [redacted]");
+  out = out.replace(/(password|passwd|pwd|secret|token|api[_-]?key|auth(?:orization)?|credential|DATABASE_URL|connection[_-]?string)\s*[:=]\s*('[^']*'|"[^"]*"|[^\s'";,]+)/gi, "$1=[redacted]");
+  out = out.replace(/(\bpass(?:word)?\b\s*[:=]\s*)([^\s'";,]+)/gi, "$1[redacted]");
+  out = out.replace(/Bearer\s+[A-Za-z0-9\-._~+/=]+/g, "Bearer [redacted]");
+  return out.length > 2000 ? `${out.slice(0, 2000)}…[truncated]` : out;
+}
+
+export type ReconcileFailureReason = "validation_error" | "db_unavailable" | "db_error" | "schema_mismatch";
+
+export function formatSafeReconcileDiagnostic(error: unknown, opts: { attempt: number; nextDelayMs?: number | null; reason: ReconcileFailureReason }): string {
+  const code = reconcileErrorCode(error) ?? (opts.reason === "db_unavailable" ? "DB_UNAVAILABLE" : "UNKNOWN");
+  const message = error instanceof Error ? error.message : String(error ?? opts.reason);
+  const described = error === null || error === undefined ? opts.reason : describeReconcileError(error);
+  return redactReconcileLogText(
+    `attempt=${opts.attempt} reason=${opts.reason} code=${code} nextDelayMs=${opts.nextDelayMs ?? "none"} message=${message} detail=${described}`,
+  );
+}
+
 let reconciled = false;
 let lastError: string | null = null;
 let lastResults: ReconcileStatementResult[] = [];
 let inFlight: Promise<{ applied: string[]; skipped: string[] }> | null = null;
+let recoveryTimer: ReturnType<typeof setTimeout> | null = null;
+let recoveryAttempts = 0;
+let recoveryBaseDelayMs = 1000;
+let recoveryMaxDelayMs = 30000;
+
+function computeBackoffDelayMs(failedAttempt: number): number {
+  return Math.min(recoveryBaseDelayMs * 2 ** Math.min(Math.max(failedAttempt - 1, 0), 5), recoveryMaxDelayMs);
+}
+
+function logFailedReconcileAttempt(error: unknown, reason: ReconcileFailureReason): void {
+  recoveryAttempts += 1;
+  console.error("[schema-validation]", formatSafeReconcileDiagnostic(error, { attempt: recoveryAttempts, nextDelayMs: computeBackoffDelayMs(recoveryAttempts), reason }));
+}
 
 export async function reconcileSchema(): Promise<{ applied: string[]; skipped: string[] }> {
   // Schema changes belong to versioned migrations. Runtime validation is
   // deliberately read-only so startup and public health traffic can never run DDL.
   if (reconciled) return { applied: [], skipped: [] };
   if (inFlight) return inFlight;
-  const db = await getDb();
-  if (!db) return { applied: [], skipped: [] };
+  let db: Awaited<ReturnType<typeof getDb>>;
+  try {
+    db = await getDb();
+  } catch (error) {
+    // Preserve the throw contract (admin trigger answers 500) while emitting
+    // the single per-attempt diagnostic through the centralized serializer.
+    // The recovery loop's catch skips re-logging via the marker below.
+    logFailedReconcileAttempt(error, "db_error");
+    throw Object.assign(error instanceof Error ? error : new Error(String(error)), { __reconcileLogged: true });
+  }
+  if (!db) {
+    logFailedReconcileAttempt(null, "db_unavailable");
+    console.error("[schema-validation] DB-unavailable: no database handle (DATABASE_URL unset or connect failed)");
+    return { applied: [], skipped: [] };
+  }
   const run = (async () => {
     const results: ReconcileStatementResult[] = [];
     lastError = null;
@@ -174,7 +235,7 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
     } catch (error) {
       lastError = "Schema validation unavailable";
       lastResults = [];
-      console.error("[schema-validation] unavailable", reconcileErrorCode(error) ?? "UNKNOWN");
+      logFailedReconcileAttempt(error, "validation_error");
       return { applied: [], skipped: [] };
     }
   })();
@@ -186,3 +247,48 @@ export function getLastReconcileError() { return lastError; }
 // Per-statement outcome of the most recent run (empty until one has happened;
 // the array is reset at the start of every run).
 export function getLastReconcileResults() { return lastResults; }
+
+// Boot-time recovery loop: retry read-only validation with backoff until it
+// passes. Boot never blocks on the DB; /api/health/ready stays 503 meanwhile
+// (validating/failed) and flips to 200 once reconciled. SELECT-only — the
+// retry chooses WHEN validation runs, never WHAT it runs.
+export function startSchemaReconcileRecovery(options?: { baseDelayMs?: number; maxDelayMs?: number }) {
+  if (reconciled || recoveryTimer) return;
+  recoveryBaseDelayMs = options?.baseDelayMs ?? 1000;
+  recoveryMaxDelayMs = options?.maxDelayMs ?? 30000;
+  const scheduleNext = () => {
+    // Exception/null paths already counted this failure when they logged.
+    // A silent mismatch (no exception) still backs off: count it here so the
+    // delay grows instead of hot-looping.
+    const before = recoveryAttempts;
+    void reconcileSchema()
+      .catch((error: unknown) => {
+        if (!(error instanceof Error) || !(error as { __reconcileLogged?: unknown }).__reconcileLogged) {
+          logFailedReconcileAttempt(error, "db_error");
+        }
+        return { applied: [], skipped: [] as string[] };
+      })
+      .then(() => {
+        if (isSchemaReconciled()) {
+          stopSchemaReconcileRecovery();
+          return;
+        }
+        if (recoveryAttempts === before) recoveryAttempts += 1;
+        const delayMs = computeBackoffDelayMs(recoveryAttempts);
+        if (recoveryTimer) return;
+        recoveryTimer = setTimeout(() => {
+          recoveryTimer = null;
+          scheduleNext();
+        }, delayMs);
+        if (typeof recoveryTimer.unref === "function") recoveryTimer.unref();
+      });
+  };
+  scheduleNext();
+}
+export function stopSchemaReconcileRecovery() {
+  if (recoveryTimer) {
+    clearTimeout(recoveryTimer);
+    recoveryTimer = null;
+  }
+  recoveryAttempts = 0;
+}
