@@ -446,7 +446,7 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund"]).notNull(),
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend"]).notNull(),
   source: varchar("source", { length: 40 }),
   sourceCycleKey: varchar("sourceCycleKey", { length: 16 }),
   referenceType: varchar("referenceType", { length: 40 }),
@@ -510,6 +510,23 @@ export const adminTokenAdjustments = mysqlTable("adminTokenAdjustments", {
   reason: varchar("reason", { length: 500 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("admin_token_adjustments_case_unique").on(table.recipientUserId, table.role, table.caseReference), index("admin_token_adjustments_recipient_idx").on(table.recipientUserId, table.createdAt), index("admin_token_adjustments_admin_idx").on(table.adminUserId, table.createdAt)]);
+
+export const promoCreditGrants = mysqlTable("promoCreditGrants", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  tokenCount: int("tokenCount").notNull(),
+  creditsRemaining: int("creditsRemaining").notNull(),
+  status: mysqlEnum("status", ["active", "exhausted", "expired", "revoked"]).default("active").notNull(),
+  source: varchar("source", { length: 40 }).default("first_paid_invoice").notNull(),
+  providerRef: varchar("providerRef", { length: 255 }),
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  consumedAt: timestamp("consumedAt"),
+  revokedAt: timestamp("revokedAt"),
+  revokedReason: varchar("revokedReason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("promo_grant_user_role_unique").on(table.userId, table.role), index("promo_grant_user_status_idx").on(table.userId, table.role, table.status)]);
 
 export const paymentFulfillments = mysqlTable("paymentFulfillments", {
   id: int("id").autoincrement().primaryKey(),
