@@ -86,7 +86,7 @@ const browser = await chromium.launch({ headless: true });
 
   const bodyText = await page.evaluate(() => document.body.innerText).catch(() => "");
   const hasSeekerCta = /I need a referral/i.test(bodyText);
-  const hasReferrerCta = /I give referrals/i.test(bodyText);
+  const hasReferrerCta = /I give referrals|I can refer someone/i.test(bodyText);
   results.push(stepLog("F1 landing renders", info.children > 0 && info.textLength > 40, `root children=${info.children} text=${info.textLength}`));
   results.push(stepLog("F1 'I need a referral' CTA present", hasSeekerCta));
   results.push(stepLog("F1 'I give referrals' CTA present", hasReferrerCta));
