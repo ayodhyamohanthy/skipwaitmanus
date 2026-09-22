@@ -191,7 +191,10 @@ export async function listUsersAdmin(limit = 100) {
 }
 export async function setUserSuspended(userId: number, suspended: boolean) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");const now=new Date();if(account.canonicalPersonId){await db.update(canonicalPeople).set({suspended,sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId));const aliases=await db.select({userId:verifiedLoginAliases.canonicalUserId}).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId,account.canonicalPersonId));await db.update(users).set({suspended,sessionsValidAfter:now}).where(inArray(users.id,[account.id,...aliases.map(a=>a.userId)]));}else await db.update(users).set({suspended,sessionsValidAfter:now}).where(eq(users.id,userId));return {userId,suspended};
+  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");const now=new Date();if(account.canonicalPersonId){// An explicit admin unsuspend IS the operator review the freeze was
+    // waiting for: clear the identity-review reason so sign-in works again.
+    // Suspending never touches the reason.
+    await db.update(canonicalPeople).set(suspended?{suspended,sessionsValidAfter:now}:{suspended,reviewReason:null,sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId));const aliases=await db.select({userId:verifiedLoginAliases.canonicalUserId}).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId,account.canonicalPersonId));await db.update(users).set({suspended,sessionsValidAfter:now}).where(inArray(users.id,[account.id,...aliases.map(a=>a.userId)]));}else await db.update(users).set({suspended,sessionsValidAfter:now}).where(eq(users.id,userId));return {userId,suspended};
 }
 export async function isUserSuspended(userId: number) {
   const db = await getDb(); if (!db) return false;
