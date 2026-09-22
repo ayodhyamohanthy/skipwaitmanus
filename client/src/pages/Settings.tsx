@@ -15,7 +15,7 @@ export default function Settings() {
   const [, setLocation] = useLocation(); const { isSignedIn, getToken } = useAuth();
   const [companyAccess, setCompanyAccess] = useState<CompanyAccess | null>(null); const [accessLoading, setAccessLoading] = useState(Boolean(isSignedIn)); const isLoading = accessLoading;
   const [privacyRequests, setPrivacyRequests] = useState<PrivacyRequest[]>([]); const [privacyLoading, setPrivacyLoading] = useState(false); const [privacyError, setPrivacyError] = useState(""); const [exporting, setExporting] = useState(false); const [requestingErasure, setRequestingErasure] = useState(false); const [privacyNotice, setPrivacyNotice] = useState("");
-  const consentState = trpc.talentConsent.state.useQuery(undefined, { retry: false });
+  const consentState = trpc.talentConsent.state.useQuery(undefined, { retry: false, enabled: isSignedIn });
   const consentUtils = trpc.useUtils();
   const [consentFields, setConsentFields] = useState<string[]>(["headline", "location", "skills", "experience"]);
   const grantConsent = trpc.talentConsent.grant.useMutation({ onSuccess: async () => { setPrivacyNotice("Your talent-discovery consent is active."); await consentUtils.talentConsent.state.invalidate(); } });
