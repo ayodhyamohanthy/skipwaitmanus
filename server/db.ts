@@ -199,6 +199,36 @@ export async function isUserSuspended(userId: number) {
   return Boolean(row?.suspended);
 }
 
+// WorkOS webhook support: resolve a WorkOS user_xxx subject to the local
+// canonical account via the verified alias the AuthKit callback upserts
+// (provider "workos"). Unknown subjects resolve to undefined so deletions of
+// never-seen users stay a quiet 200 instead of a retry-driving 500.
+export async function findUserByWorkosId(workosUserId: string): Promise<{ userId: number; openId: string } | undefined> {
+  const db = await getDb(); if (!db) return undefined;
+  const alias = (await db.select({ userId: verifiedLoginAliases.canonicalUserId, openId: verifiedLoginAliases.openId }).from(verifiedLoginAliases).where(and(eq(verifiedLoginAliases.provider, "workos"), eq(verifiedLoginAliases.subject, workosUserId))).limit(1))[0];
+  return alias ? { userId: alias.userId, openId: alias.openId } : undefined;
+}
+
+export async function suspendUserByWorkosId(workosUserId: string): Promise<{ userId: number } | undefined> {
+  const match = await findUserByWorkosId(workosUserId);
+  if (!match) return undefined;
+  await setUserSuspended(match.userId, true);
+  await revokeUserSessions(match.openId);
+  return { userId: match.userId };
+}
+
+export async function updateUserProfileByWorkosId(workosUserId: string, profile: { name?: string; email?: string }): Promise<{ userId: number } | undefined> {
+  const db = await getDb(); if (!db) return undefined;
+  const match = await findUserByWorkosId(workosUserId);
+  if (!match) return undefined;
+  const patch: { name?: string; email?: string } = {};
+  if (typeof profile.name === "string" && profile.name.trim()) patch.name = profile.name.trim().slice(0, 120);
+  if (typeof profile.email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(profile.email.trim()) && profile.email.trim().length <= 320) patch.email = profile.email.trim().toLowerCase();
+  if (Object.keys(patch).length === 0) return { userId: match.userId };
+  await db.update(users).set(patch).where(eq(users.id, match.userId));
+  return { userId: match.userId };
+}
+
 export async function createResumeUploadSession(ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const id = randomUUID(); const clientUploadId = input.sessionId;
