@@ -1423,6 +1423,7 @@ export type CreditSummary = {
   purchasedCreditsRemaining: number;
   promoCreditsRemaining: number;
   promoExpiresAt: Date | null;
+  promoStatus: "active" | "exhausted" | "expired" | "revoked" | null;
   totalAvailable: number;
   cycleKey: string;
   subscriptionStatus: string | null;
@@ -1529,7 +1530,7 @@ export async function claimPersonalReferralInvite(joinerUserId: number, input: {
   }
 }
 
-function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, promo: { remaining: number; expiresAt: Date | null } = { remaining: 0, expiresAt: null }): CreditSummary {
+function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, promo: { remaining: number; expiresAt: Date | null; status: "active" | "exhausted" | "expired" | "revoked" | null } = { remaining: 0, expiresAt: null, status: null }): CreditSummary {
   return {
     plan: wallet.plan,
     monthlyAllowance: wallet.monthlyAllowance,
@@ -1537,6 +1538,7 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     purchasedCreditsRemaining: wallet.balance,
     promoCreditsRemaining: promo.remaining,
     promoExpiresAt: promo.expiresAt,
+    promoStatus: promo.status,
     totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance + promo.remaining,
     cycleKey: wallet.monthlyCycleKey,
     subscriptionStatus: wallet.subscriptionStatus ?? null,
@@ -1577,30 +1579,37 @@ function normalizedWalletState(wallet: typeof tokenBalances.$inferSelect, now: D
 export const PROMO_GRANT_TOKENS = 5;
 export const PROMO_GRANT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
-type PromoState = { remaining: number; expiresAt: Date | null };
+type PromoState = { remaining: number; expiresAt: Date | null; status: "active" | "exhausted" | "expired" | "revoked" | null };
 
-async function activePromoGrantTx(tx: any, userId: number, role: WalletRole, now: Date) {
+function promoStatusOf(grant: { status: string; expiresAt: Date } | undefined, now: Date): PromoState["status"] {
+  if (!grant) return null;
+  if (grant.status === "revoked") return "revoked";
+  if (grant.status === "exhausted") return "exhausted";
+  if (grant.status === "expired") return "expired";
+  return grant.expiresAt.getTime() <= now.getTime() ? "expired" : "active";
+}
+
+async function promoStateForTx(tx: any, userId: number, role: WalletRole, now: Date): Promise<{ grant?: any; status: PromoState["status"] }> {
   const rows = await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1).for("update");
   const grant = rows[0];
-  if (!grant || grant.status !== "active") return undefined;
-  if (grant.expiresAt.getTime() <= now.getTime()) {
+  const status = promoStatusOf(grant, now);
+  if (grant && grant.status === "active" && status === "expired") {
     await tx.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
-    return undefined;
   }
-  return grant;
+  return { grant: status === "active" ? grant : undefined, status };
 }
 
 async function readPromoState(userId: number, role: WalletRole, now: Date): Promise<PromoState> {
   const db = await getDb();
-  if (!db) return { remaining: 0, expiresAt: null };
-  const rows = await db.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role), eq(promoCreditGrants.status, "active"))).limit(1);
+  if (!db) return { remaining: 0, expiresAt: null, status: null };
+  const rows = await db.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1);
   const grant = rows[0];
-  if (!grant) return { remaining: 0, expiresAt: null };
-  if (grant.expiresAt.getTime() <= now.getTime()) {
+  const status = promoStatusOf(grant, now);
+  if (grant && grant.status === "active" && status === "expired") {
     await db.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
-    return { remaining: 0, expiresAt: null };
   }
-  return { remaining: grant.creditsRemaining, expiresAt: grant.expiresAt };
+  if (status !== "active" || !grant) return { remaining: 0, expiresAt: null, status };
+  return { remaining: grant.creditsRemaining, expiresAt: grant.expiresAt, status };
 }
 
 export async function grantPromoCreditsTx(tx: any, input: { userId: number; role: WalletRole; source: string; providerRef: string; now?: Date }): Promise<{ granted: boolean; grantId?: number; reason?: "already_granted" }> {
@@ -1740,12 +1749,13 @@ export async function spendToken(userId: number, role: WalletRole) {
     const normalized = normalizedWalletState(current[0]);
     const effective = { ...current[0], ...normalized.patch };
     const now = new Date();
-    const promo = await activePromoGrantTx(tx, userId, role, now);
-    if (promo && promo.creditsRemaining > 0) {
-      const next = promo.creditsRemaining - 1;
-      await tx.update(promoCreditGrants).set(next === 0 ? { creditsRemaining: 0, status: "exhausted", consumedAt: now } : { creditsRemaining: next }).where(and(eq(promoCreditGrants.id, promo.id), eq(promoCreditGrants.status, "active")));
-      await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "promo_spend", source: "promo_grant", referenceType: "promo_credit_grant", referenceId: String(promo.id), idempotencyKey: `promo-spend-${promo.id}-${promo.tokenCount - next}` });
-      return creditSummaryFromWallet({ ...effective, ...normalized.patch }, { remaining: next, expiresAt: promo.expiresAt });
+    const promo = await promoStateForTx(tx, userId, role, now);
+    const grant = promo.grant;
+    if (grant && grant.creditsRemaining > 0) {
+      const next = grant.creditsRemaining - 1;
+      await tx.update(promoCreditGrants).set(next === 0 ? { creditsRemaining: 0, status: "exhausted", consumedAt: now } : { creditsRemaining: next }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+      await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "promo_spend", source: "promo_grant", referenceType: "promo_credit_grant", referenceId: String(grant.id), idempotencyKey: `promo-spend-${grant.id}-${grant.tokenCount - next}` });
+      return creditSummaryFromWallet({ ...effective, ...normalized.patch }, { remaining: next, expiresAt: grant.expiresAt, status: "active" });
     }
     if (effective.monthlyCreditsRemaining + effective.balance < 1) throw new Error("You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.");
     const usesMonthlyCredit = effective.monthlyCreditsRemaining > 0;
@@ -1754,7 +1764,7 @@ export async function spendToken(userId: number, role: WalletRole) {
     const patch = { ...normalized.patch, monthlyCreditsRemaining: nextMonthlyCredits, balance: nextBalance };
     await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, current[0].id));
     await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "direct_request" });
-    return creditSummaryFromWallet({ ...effective, ...patch }, { remaining: 0, expiresAt: null });
+    return creditSummaryFromWallet({ ...effective, ...patch }, { remaining: 0, expiresAt: null, status: promo.status });
   });
 }
 

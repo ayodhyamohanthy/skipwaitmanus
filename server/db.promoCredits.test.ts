@@ -122,7 +122,7 @@ describe("promo credit grants", () => {
     expect(tables.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 3, balance: 2 });
     expect(tables.txns).toHaveLength(1);
     expect(tables.txns[0]).toMatchObject({ tokenCount: -1, kind: "promo_spend" });
-    expect(summary).toMatchObject({ promoCreditsRemaining: 4, totalAvailable: 4 + 3 + 2 });
+    expect(summary).toMatchObject({ promoCreditsRemaining: 4, promoStatus: "active", totalAvailable: 4 + 3 + 2 });
   });
 
   it("falls through to monthly credits once promo is exhausted and marks the grant", async () => {
@@ -144,7 +144,7 @@ describe("promo credit grants", () => {
   it("excludes revoked grants from spend and summary", async () => {
     tables.grants = [{ id: 1, userId: 7, role: "job_seeker", tokenCount: 5, creditsRemaining: 5, status: "revoked", source: "first_paid_invoice", providerRef: "in_1", grantedAt: NOW, expiresAt: new Date("2026-10-20T00:00:00.000Z"), consumedAt: null, revokedAt: NOW, revokedReason: "duplicate_account", createdAt: NOW }];
     const summary = await getTokenWallet(7, "job_seeker");
-    expect(summary).toMatchObject({ promoCreditsRemaining: 0, totalAvailable: 3 + 2 });
+    expect(summary).toMatchObject({ promoCreditsRemaining: 0, promoStatus: "revoked", totalAvailable: 3 + 2 });
     expect(summary.promoExpiresAt).toBeNull();
   });
 
@@ -159,7 +159,7 @@ describe("promo credit grants", () => {
   it("reports promo expiry on the wallet summary", async () => {
     tables.grants = [{ id: 1, userId: 7, role: "job_seeker", tokenCount: 5, creditsRemaining: 5, status: "active", source: "first_paid_invoice", providerRef: "in_1", grantedAt: NOW, expiresAt: new Date("2026-10-31T00:00:00.000Z"), consumedAt: null, revokedAt: null, revokedReason: null, createdAt: NOW }];
     const summary = await getTokenWallet(7, "job_seeker");
-    expect(summary).toMatchObject({ promoCreditsRemaining: 5, totalAvailable: 5 + 3 + 2 });
+    expect(summary).toMatchObject({ promoCreditsRemaining: 5, promoStatus: "active", totalAvailable: 5 + 3 + 2 });
     expect(new Date(summary.promoExpiresAt as unknown as string).toISOString()).toBe("2026-10-31T00:00:00.000Z");
   });
 
