@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -1421,6 +1421,8 @@ export type CreditSummary = {
   monthlyAllowance: number;
   monthlyCreditsRemaining: number;
   purchasedCreditsRemaining: number;
+  promoCreditsRemaining: number;
+  promoExpiresAt: Date | null;
   totalAvailable: number;
   cycleKey: string;
   subscriptionStatus: string | null;
@@ -1527,13 +1529,15 @@ export async function claimPersonalReferralInvite(joinerUserId: number, input: {
   }
 }
 
-function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect): CreditSummary {
+function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, promo: { remaining: number; expiresAt: Date | null } = { remaining: 0, expiresAt: null }): CreditSummary {
   return {
     plan: wallet.plan,
     monthlyAllowance: wallet.monthlyAllowance,
     monthlyCreditsRemaining: wallet.monthlyCreditsRemaining,
     purchasedCreditsRemaining: wallet.balance,
-    totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance,
+    promoCreditsRemaining: promo.remaining,
+    promoExpiresAt: promo.expiresAt,
+    totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance + promo.remaining,
     cycleKey: wallet.monthlyCycleKey,
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
@@ -1563,6 +1567,75 @@ function normalizedWalletState(wallet: typeof tokenBalances.$inferSelect, now: D
     },
   };
   return { changed: false, patch: {} };
+}
+
+// ---- Promo credits: 5 expiring credits for the first bank-verified payment ----
+// A promo grant is a separate expiring ledger, never mixed into the
+// never-expiring pack balance. Spend order is promo first (it expires),
+// then monthly, then pack. Expiry is lazy: reads treat past-expiresAt grants
+// as zero and sweep them to expired on the next write path. No cron.
+export const PROMO_GRANT_TOKENS = 5;
+export const PROMO_GRANT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+type PromoState = { remaining: number; expiresAt: Date | null };
+
+async function activePromoGrantTx(tx: any, userId: number, role: WalletRole, now: Date) {
+  const rows = await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1).for("update");
+  const grant = rows[0];
+  if (!grant || grant.status !== "active") return undefined;
+  if (grant.expiresAt.getTime() <= now.getTime()) {
+    await tx.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+    return undefined;
+  }
+  return grant;
+}
+
+async function readPromoState(userId: number, role: WalletRole, now: Date): Promise<PromoState> {
+  const db = await getDb();
+  if (!db) return { remaining: 0, expiresAt: null };
+  const rows = await db.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role), eq(promoCreditGrants.status, "active"))).limit(1);
+  const grant = rows[0];
+  if (!grant) return { remaining: 0, expiresAt: null };
+  if (grant.expiresAt.getTime() <= now.getTime()) {
+    await db.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+    return { remaining: 0, expiresAt: null };
+  }
+  return { remaining: grant.creditsRemaining, expiresAt: grant.expiresAt };
+}
+
+export async function grantPromoCreditsTx(tx: any, input: { userId: number; role: WalletRole; source: string; providerRef: string; now?: Date }): Promise<{ granted: boolean; grantId?: number; reason?: "already_granted" }> {
+  const now = input.now ?? new Date();
+  // The unique (userId, role) row is the idempotency claim: one grant per
+  // account ever. Lock first for the common path; the unique constraint wins
+  // any insertion race and maps to already_granted below.
+  const existing = await tx.select({ id: promoCreditGrants.id }).from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, input.userId), eq(promoCreditGrants.role, input.role))).limit(1).for("update");
+  if (existing[0]) return { granted: false, reason: "already_granted" };
+  const expiresAt = new Date(now.getTime() + PROMO_GRANT_TTL_MS);
+  try {
+    const inserted = await tx.insert(promoCreditGrants).values({ userId: input.userId, role: input.role, tokenCount: PROMO_GRANT_TOKENS, creditsRemaining: PROMO_GRANT_TOKENS, status: "active", source: input.source.slice(0, 40), providerRef: input.providerRef.slice(0, 255), grantedAt: now, expiresAt });
+    const grantId = Number(inserted[0].insertId);
+    await tx.insert(tokenTransactions).values({ userId: input.userId, role: input.role, tokenCount: PROMO_GRANT_TOKENS, kind: "promo_grant", source: "promo_first_payment", referenceType: "promo_credit_grant", referenceId: String(grantId), idempotencyKey: `promo-grant-${grantId}` });
+    await tx.insert(notifications).values({ userId: input.userId, category: "system", title: `${PROMO_GRANT_TOKENS} bonus referral credits`, body: `Your verified payment earned ${PROMO_GRANT_TOKENS} bonus credits. They expire in 30 days and are used before monthly credits.` });
+    return { granted: true, grantId };
+  } catch (error) {
+    if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { granted: false, reason: "already_granted" };
+    throw error;
+  }
+}
+
+export async function revokePromoGrant(grantId: number, reason: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const clean = reason.trim().slice(0, 255);
+  if (!clean) throw new Error("Add a revocation reason");
+  return db.transaction(async tx => {
+    const rows = await tx.select().from(promoCreditGrants).where(eq(promoCreditGrants.id, grantId)).limit(1).for("update");
+    const grant = rows[0];
+    if (!grant) throw new Error("Promo grant not found");
+    if (grant.status === "revoked") return { grantId, status: "revoked" as const };
+    await tx.update(promoCreditGrants).set({ status: "revoked", creditsRemaining: 0, revokedAt: new Date(), revokedReason: clean }).where(eq(promoCreditGrants.id, grantId));
+    return { grantId, status: "revoked" as const };
+  });
 }
 
 export async function findUsersForTokenRecovery(query: string) {
@@ -1617,7 +1690,8 @@ export async function ensureTokenWallet(userId: number, role: WalletRole) {
 }
 
 export async function getTokenWallet(userId: number, role: WalletRole) {
-  return creditSummaryFromWallet(await ensureTokenWallet(userId, role));
+  const wallet = await ensureTokenWallet(userId, role);
+  return creditSummaryFromWallet(wallet, await readPromoState(userId, role, new Date()));
 }
 
 export async function getUserSubscription(userId: number, role: WalletRole) {
@@ -1665,6 +1739,14 @@ export async function spendToken(userId: number, role: WalletRole) {
     if (!current[0]) throw new Error("No referral credit available");
     const normalized = normalizedWalletState(current[0]);
     const effective = { ...current[0], ...normalized.patch };
+    const now = new Date();
+    const promo = await activePromoGrantTx(tx, userId, role, now);
+    if (promo && promo.creditsRemaining > 0) {
+      const next = promo.creditsRemaining - 1;
+      await tx.update(promoCreditGrants).set(next === 0 ? { creditsRemaining: 0, status: "exhausted", consumedAt: now } : { creditsRemaining: next }).where(and(eq(promoCreditGrants.id, promo.id), eq(promoCreditGrants.status, "active")));
+      await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "promo_spend", source: "promo_grant", referenceType: "promo_credit_grant", referenceId: String(promo.id), idempotencyKey: `promo-spend-${promo.id}-${promo.tokenCount - next}` });
+      return creditSummaryFromWallet({ ...effective, ...normalized.patch }, { remaining: next, expiresAt: promo.expiresAt });
+    }
     if (effective.monthlyCreditsRemaining + effective.balance < 1) throw new Error("You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.");
     const usesMonthlyCredit = effective.monthlyCreditsRemaining > 0;
     const nextMonthlyCredits = usesMonthlyCredit ? effective.monthlyCreditsRemaining - 1 : effective.monthlyCreditsRemaining;
@@ -1672,7 +1754,7 @@ export async function spendToken(userId: number, role: WalletRole) {
     const patch = { ...normalized.patch, monthlyCreditsRemaining: nextMonthlyCredits, balance: nextBalance };
     await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, current[0].id));
     await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "direct_request" });
-    return creditSummaryFromWallet({ ...effective, ...patch });
+    return creditSummaryFromWallet({ ...effective, ...patch }, { remaining: 0, expiresAt: null });
   });
 }
 
@@ -1737,6 +1819,10 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
     else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase" });
+    // First bank-verified payment earns the promo grant. Idempotent by the
+    // unique (userId, role) grant row: renewals and replays no-op inside the
+    // same transaction, so fulfillment can never double-grant.
+    await grantPromoCreditsTx(tx, { userId: intent[0].userId, role: intent[0].role, source: "first_paid_invoice", providerRef: input.invoiceId ?? input.hostedPageId ?? input.eventId, now: creditedAt });
     return { status: "credited" as const, tokenCount: intent[0].tokenCount, userId: intent[0].userId, role: intent[0].role };
   });
 }
@@ -1894,6 +1980,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     else await tx.insert(tokenBalances).values({ userId, role, balance: 0, ...patch });
     if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(and(eq(subscriptionCheckoutIntents.id, intent.id), eq(subscriptionCheckoutIntents.status, "pending")));
     await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+    // First bank-verified subscription earns the same promo grant as a pack
+    // purchase. Idempotent: renewals hit the existing grant row and no-op.
+    if (retainsAccess) await grantPromoCreditsTx(tx, { userId, role, source: "first_paid_invoice", providerRef: input.subscriptionId, now: new Date() });
     return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, id: 0, updatedAt: new Date() }), ...patch }) };
   });
 }

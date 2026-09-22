@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { subscriptionCheckoutIntents, subscriptionEvents, tokenBalances } from "../drizzle/schema";
+import { subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
 import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
 import { applyChargebeeSubscriptionEvent } from "./db";
 
@@ -23,6 +23,9 @@ const input = {
 let wallets: Wallet[];
 let intents: Intent[];
 let events: Event[];
+let promoGrants: Array<Record<string, unknown>>;
+let promoTxns: Array<Record<string, unknown>>;
+let promoNotes: Array<Record<string, unknown>>;
 let locks: Array<{ table: unknown; params: unknown[] }>;
 let walletInserts: ReturnType<typeof vi.fn>;
 let walletUpdates: ReturnType<typeof vi.fn>;
@@ -40,6 +43,9 @@ function fixtureDatabase() {
     if (table === tokenBalances) return wallets;
     if (table === subscriptionCheckoutIntents) return intents;
     if (table === subscriptionEvents) return events;
+    if (table === promoCreditGrants) return promoGrants;
+    if (table === tokenTransactions) return promoTxns;
+    if (table === notifications) return promoNotes;
     throw new Error("Unexpected table");
   };
   const tx = {
@@ -71,10 +77,11 @@ function fixtureDatabase() {
     } }),
   };
   return { transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => {
-    const snapshot = structuredClone({ wallets, intents, events });
+    const snapshot = structuredClone({ wallets, intents, events, promoGrants, promoTxns, promoNotes });
     try { return await callback(tx); }
     catch (error) {
       wallets = snapshot.wallets; intents = snapshot.intents; events = snapshot.events;
+      promoGrants = snapshot.promoGrants; promoTxns = snapshot.promoTxns; promoNotes = snapshot.promoNotes;
       throw error;
     }
   } };
@@ -85,6 +92,9 @@ beforeEach(() => {
   wallets = [{ id: 1, userId: 7, role: "job_seeker", balance: 12, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-09", plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: termStart }];
   intents = [{ id: 1, userId: 7, role: "job_seeker", hostedPageId: "page_new", checkoutIntentId: "intent_new", plan: "pro", itemPriceId: "skipwait_pro_monthly-INR", amount: 59900, currency: "INR", status: "pending", createdAt: termStart, updatedAt: termStart }];
   events = [];
+  promoGrants = [];
+  promoTxns = [];
+  promoNotes = [];
   locks = [];
   walletInserts = vi.fn();
   walletUpdates = vi.fn();
@@ -116,6 +126,9 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
     expect(walletUpdates.mock.calls[0][0]).not.toHaveProperty("balance");
     expect(locks).toContainEqual({ table: tokenBalances, params: [7, role] });
     expect(intents[0].status).toBe("activated");
+    // First bank-verified activation earns the promo grant exactly once.
+    expect(promoGrants).toHaveLength(1);
+    expect(promoGrants[0]).toMatchObject({ tokenCount: 5, creditsRemaining: 5, status: "active" });
   });
 
   it("keeps duplicate delivery idempotent and does not refill credits for a newer event in the same term", async () => {
