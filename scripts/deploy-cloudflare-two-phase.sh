@@ -32,11 +32,12 @@ deploy(){
 }
 app_id="a0320ae6-5d50-43d5-9515-1f89bd74d069"
 deploy 1
-# Container cold start (edge image pull + node boot + first schema pass) routinely
-# exceeds two minutes; gating shorter than that fails healthy rollouts that
-# converge late (seen twice: Sept 21 and Sept 22 releases went live hours after
-# their 120s gates timed out). Wait up to ten minutes before calling it failed.
-set +e;READY_TIMEOUT_SECONDS=600 poll_cloudflare_readiness "$READY_URL" "$EXPECTED_SHA";result=$?;set -e
+# Worker-version activation plus container cold start (edge image pull + node
+# boot + first schema pass) takes 15-40 minutes to converge on live traffic;
+# every recent release flipped late, after its gate had already timed out.
+# Gate to 30 minutes so a healthy rollout can actually pass; a genuine failure
+# still fails loudly instead of hanging the pipeline.
+set +e;READY_TIMEOUT_SECONDS=1800 poll_cloudflare_readiness "$READY_URL" "$EXPECTED_SHA";result=$?;set -e
 if [[ $result == 0 ]]; then
   direct_status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 https://skipwaitmanus.ayodhya-711.workers.dev/api/health/ready || true)
   [[ "$direct_status" == "404" ]] || { echo "::error::Public workers.dev origin returned $direct_status, expected 404"; exit 3; }
