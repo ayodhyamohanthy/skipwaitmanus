@@ -3,6 +3,13 @@ import { Link, useLocation } from "wouter";
 import { ArrowLeft, ArrowRight, Crown, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/_core/auth";
 import { readApiJson } from "@/lib/apiResponse";
+import {
+  DM_SEND_WORKFLOW,
+  beginPendingSend,
+  clearPendingSend,
+  normalizeMessageBody,
+  readPendingSend,
+} from "@/lib/idempotentSend";
 import { FollowButton } from "@/components/FollowButton";
 
 type DmThreadSummary = { counterpartUserId: number; counterpartLabel: string; lastMessageBody: string; lastMessageIsMine: boolean; lastMessageAt: string; unreadCount: number };
@@ -38,6 +45,7 @@ export default function Messages() {
   const [sending, setSending] = useState(false);
   const [paywalled, setPaywalled] = useState(false);
   const composerRef = useRef<HTMLInputElement>(null);
+  const inFlightRef = useRef(false);
 
   const authedFetch = async (path: string, init?: RequestInit) => {
     const token = await getToken();
@@ -62,22 +70,54 @@ export default function Messages() {
       const payload = await readApiJson<{ thread?: DmThread; error?: string }>(response, "We could not open this conversation");
       if (!response.ok) throw new Error(payload.error || "We could not open this conversation");
       setThread(payload.thread ?? null);
+      const pending = readPendingSend(DM_SEND_WORKFLOW, { recipientKey: String(counterpartUserId) });
+      if (pending) setDraft(current => (current === "" ? pending.body : current));
     } catch (reason) { setThreadError(reason instanceof Error ? reason.message : "We could not open this conversation"); }
   };
 
   const send = async () => {
-    if (!thread || !draft.trim() || sending) return;
+    if (!thread || sending || inFlightRef.current) return;
+    const recipientUserId = thread.counterpartUserId;
+    const normalized = normalizeMessageBody(draft);
+    if (!normalized) return;
+    inFlightRef.current = true;
     setSending(true); setThreadError(""); setPaywalled(false);
     try {
-      const response = await authedFetch(`/api/dms/threads/${thread.counterpartUserId}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: draft.trim() }) });
-      const payload = await readApiJson<{ message?: { id: number }; error?: string }>(response, "We could not send this direct message");
-      if (response.status === 402) { setPaywalled(true); setDraft(""); return; }
-      if (!response.ok) throw new Error(payload.error || "We could not send this direct message");
-      setThread(current => current ? { ...current, messages: [...current.messages, { id: payload.message?.id ?? Date.now(), body: draft.trim(), createdAt: new Date().toISOString(), isMine: true }] } : current);
-      setDraft("");
-      composerRef.current?.focus();
+      const { record: attempt } = beginPendingSend({ workflow: DM_SEND_WORKFLOW, recipientKey: String(recipientUserId), body: normalized });
+      const response = await authedFetch(`/api/dms/threads/${recipientUserId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": attempt.idempotencyKey },
+        body: JSON.stringify({ body: normalized }),
+      });
+      const payload = await readApiJson<{ message?: { id?: number }; error?: string; retryAt?: string | number }>(response, "We could not send this direct message");
+      if (response.status === 201 || response.status === 200) {
+        const acknowledgedId = typeof payload.message?.id === "number" ? payload.message.id : null;
+        setThread(current => {
+          if (!current || current.counterpartUserId !== recipientUserId) return current;
+          if (acknowledgedId !== null && current.messages.some(message => message.id === acknowledgedId)) return current;
+          return { ...current, messages: [...current.messages, { id: acknowledgedId ?? Date.now(), body: attempt.body, createdAt: new Date().toISOString(), isMine: true }] };
+        });
+        clearPendingSend(DM_SEND_WORKFLOW);
+        setDraft("");
+        composerRef.current?.focus();
+        return;
+      }
+      if (response.status === 402) { setPaywalled(true); return; }
+      if (response.status === 409) {
+        clearPendingSend(DM_SEND_WORKFLOW);
+        setThreadError("That send changed while retrying, so we kept your text and did not send a duplicate. Review it and send again to start a fresh attempt.");
+        return;
+      }
+      if (response.status === 429) {
+        const retryAt = payload.retryAt;
+        const retryDate = typeof retryAt === "string" || typeof retryAt === "number" ? new Date(retryAt) : null;
+        const suffix = retryDate && !Number.isNaN(retryDate.getTime()) ? ` Try again after ${retryDate.toLocaleString()}.` : " Try again in a few minutes.";
+        setThreadError(`${payload.error || "You're sending messages too quickly."}${suffix}`);
+        return;
+      }
+      throw new Error(payload.error || "We could not send this direct message");
     } catch (reason) { setThreadError(reason instanceof Error ? reason.message : "We could not send this direct message"); }
-    finally { setSending(false); }
+    finally { inFlightRef.current = false; setSending(false); }
   };
 
   if (!isSignedIn) return <main data-skipwait-screen="messages" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 flex-col justify-center gap-5"><h1 className="text-[2.35rem] font-semibold leading-[.96] tracking-[-.02em]">Direct messages</h1><PaywallCard /></section></div></main>;
