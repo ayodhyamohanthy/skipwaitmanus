@@ -58,6 +58,7 @@ import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigure
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
+import { registerWorkosWebhookRoutes } from "../workosWebhooks";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, startSchemaReconcileRecovery } from "../schemaReconcile";
 import { registerHealthRoutes } from "../healthRoutes";
 
@@ -100,6 +101,10 @@ async function startServer() {
   // before the global JSON parser: the Razorpay handler must HMAC the exact
   // raw request bytes the provider signed, so it parses its own body.
   registerPaymentWebhookRoutes(app, { record: db.recordOperationalActivity, recordGatewayEvent: db.recordGatewayPaymentEvent, applyUnlockRefund: db.applyEmployerUnlockRefund, fulfillUnlockCredits: input => db.fulfillUnlockCreditPurchase({ ...input, pack: input.pack as Parameters<typeof db.fulfillUnlockCreditPurchase>[0]["pack"] }) });
+  // WorkOS identity webhooks (user.deleted/user.updated) register before the
+  // global JSON parser for the same reason: the WorkOS-Signature covers the
+  // exact raw bytes, so this route parses its own body.
+  registerWorkosWebhookRoutes(app, { record: entry => { void db.recordOperationalActivity(entry).catch(() => undefined); }, suspendUserByWorkosId: db.suspendUserByWorkosId, updateUserProfileByWorkosId: db.updateUserProfileByWorkosId });
   // WorkOS AuthKit is the only production auth authority. The callback route
   // (server/_core/workosAuth.ts) verifies the AuthKit session and issues the
   // app_session_id JWT; resolveWorkosIdentity loads the upserted user for it.
