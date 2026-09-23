@@ -24,4 +24,19 @@ describe("administrator activity viewer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Search" }));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes("query=document") && String(url).includes("outcome=success"))).toBe(true));
   });
+
+  it("announces a load failure as an alert and recovers from its Retry action", async () => {
+    let attempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      attempts += 1;
+      return attempts === 1 ? { ok: false, status: 503, json: async () => ({ error: "Activity is temporarily unavailable" }) } : { ok: true, json: async () => ({ events: [{ id: 7, action: "document.uploaded", outcome: "success", resourceType: "attachment", resourceId: "4", companyDomain: "acme.com", metadata: null, createdAt: "2026-08-14T00:00:00.000Z", actorName: "Avery", actorEmail: "avery@example.com" }] }) };
+    }));
+    render(<AdminActivity />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Activity is temporarily unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await waitFor(() => expect(screen.getByText("document.uploaded")).toBeTruthy());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(attempts).toBe(2);
+  });
 });

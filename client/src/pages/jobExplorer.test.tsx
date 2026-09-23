@@ -98,6 +98,7 @@ describe("JobExplorer", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 500, json: async () => ({ error: "We could not load the job list" }) })));
     render(<JobExplorer />);
     expect(await screen.findByText("We could not load the job list")).toBeTruthy();
+    expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 
