@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("jose", async importOriginal => ({ ...await importOriginal<typeof import("jose")>(), createRemoteJWKSet: mocks.jwks }));
 vi.mock("../db", () => ({ getUserByOpenId: mocks.getUserByOpenId, upsertUser: mocks.upsertUser, resolveLoginIdentity: mocks.resolveLoginIdentity }));
 vi.mock("@workos-inc/node", () => ({ WorkOS: class { userManagement = { getUser: mocks.getUser }; } }));
-import { resolveWorkosIdentity } from "./workosAuth";
+import { clearWorkosIdentityCacheForTests, resolveWorkosIdentity } from "./workosAuth";
 
 let keys: Awaited<ReturnType<typeof generateKeyPair>>;
 const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", suspended: false, createdAt: new Date(0), sessionsValidAfter: new Date(0) };
@@ -42,6 +42,7 @@ beforeAll(async () => {
   mocks.jwks.mockReturnValue(createLocalJWKSet({ keys: [{ ...jwk, kid: "test", alg: "RS256" }] }));
 });
 beforeEach(() => {
+  clearWorkosIdentityCacheForTests();
   vi.stubEnv("WORKOS_CLIENT_ID", "client_test");
   vi.stubEnv("WORKOS_API_KEY", "test-key");
   mocks.getUserByOpenId.mockReset().mockResolvedValue({ ...account });
@@ -104,5 +105,28 @@ describe("canonical resolver handoff contract",()=>{
     const response=await request(app).get("/private").auth(await signIn(),{type:"bearer"});
     expect(response.status).toBe(200);
     expect(mocks.resolveLoginIdentity).toHaveBeenCalledWith(expect.objectContaining({openId:"workos_user_test",email:"test@example.com",emailVerified:true}));
+  });
+
+  it("reuses a verified token briefly instead of calling WorkOS on every request, but still honours suspension", async () => {
+    const token = await signIn();
+    expect((await request(app).get("/private").auth(token, { type: "bearer" })).status).toBe(200);
+    expect((await request(app).get("/private").auth(token, { type: "bearer" })).status).toBe(200);
+    expect(mocks.getUser).toHaveBeenCalledTimes(1);
+    expect(mocks.resolveLoginIdentity).toHaveBeenCalledTimes(1);
+    mocks.getUserByOpenId.mockResolvedValue({ ...account, suspended: true });
+    expect((await request(app).get("/private").auth(token, { type: "bearer" })).status).toBe(401);
+  });
+
+  it("resolves identity once per request even when several layers ask", async () => {
+    const token = await signIn();
+    const twice = express();
+    twice.get("/twice", async (req, res) => {
+      const [a, b] = [await resolveWorkosIdentity(req), await resolveWorkosIdentity(req)];
+      res.json({ same: a === b, ok: Boolean(a) });
+    });
+    const res = await request(twice).get("/twice").auth(token, { type: "bearer" });
+    expect(res.body).toEqual({ same: true, ok: true });
+    expect(mocks.getUser).toHaveBeenCalledTimes(1);
+    expect(mocks.resolveLoginIdentity).toHaveBeenCalledTimes(1);
   });
 });
