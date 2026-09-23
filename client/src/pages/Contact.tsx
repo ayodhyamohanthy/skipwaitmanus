@@ -20,6 +20,7 @@ export default function Contact() {
         <li><strong>Brand:</strong> {BUSINESS.brand}</li>
         {BUSINESS.address ? <li><strong>Address:</strong> {BUSINESS.address}</li> : null}
         <li><strong>Country:</strong> {BUSINESS.country}</li>
+        <li><strong>Phone:</strong> <a href={BUSINESS.phoneHref} className="font-semibold text-black">{BUSINESS.phone}</a> ({BUSINESS.hours})</li>
         <li><strong>Email:</strong> <a href={`mailto:${BUSINESS.email}`} className="font-semibold text-black">{BUSINESS.email}</a></li>
       </ul>
     </PolicySection>

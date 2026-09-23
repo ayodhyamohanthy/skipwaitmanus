@@ -51,7 +51,7 @@ export default function CancellationPolicy() {
     </PolicySection>
 
     <PolicySection number="05" title="Contact">
-      <p>{BUSINESS.brand} is operated by {BUSINESS.operator}{BUSINESS.address ? `, ${BUSINESS.address}` : `, ${BUSINESS.country}`}. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</p>
+      <p>{BUSINESS.brand} is operated by {BUSINESS.operator}{BUSINESS.address ? `, ${BUSINESS.address}` : `, ${BUSINESS.country}`}. Phone <a href={BUSINESS.phoneHref} className="font-semibold text-black">{BUSINESS.phone}</a> ({BUSINESS.hours}). Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</p>
     </PolicySection>
   </PolicyPageShell>;
 }

@@ -70,7 +70,7 @@ export default function Terms() {
       <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as SkipWait.</p>
       <ul>
         <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
-        <li>Phone: <a href="tel:+917207234883" className="font-semibold text-black">+91 72072 34883</a> (Mon–Fri, IST business hours).</li>
+        <li>Phone: <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a> (Mon–Fri, IST business hours).</li>
         <li>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</li>
       </ul>
     </PolicySection>
@@ -80,7 +80,7 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="11" title="Grievance officer">
-      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
+      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Phone <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a>. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
     </PolicySection>
   </PolicyPageShell>;
 }

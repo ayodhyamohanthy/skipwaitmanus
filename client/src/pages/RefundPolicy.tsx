@@ -68,7 +68,7 @@ export default function RefundPolicy() {
     </PolicySection>
 
     <PolicySection number="08" title="Contact">
-      <p>{BUSINESS.brand} is operated by {BUSINESS.operator}, {BUSINESS.address}. Refund and cancellation requests: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</p>
+      <p>{BUSINESS.brand} is operated by {BUSINESS.operator}, {BUSINESS.address}. Phone <a href={BUSINESS.phoneHref} className="font-semibold text-black">{BUSINESS.phone}</a> ({BUSINESS.hours}). Refund and cancellation requests: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</p>
     </PolicySection>
   </PolicyPageShell>;
 }
