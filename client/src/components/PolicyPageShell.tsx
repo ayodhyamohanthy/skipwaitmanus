@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 
 /**
- * Long-form disclosure shell shared by /terms, /refunds, and /support.
+ * Long-form disclosure shell shared by /terms, /refunds, /shipping, and /support.
  *
  * These are reading pages, not guided flows, so they scroll normally
  * (`min-h-screen`) like /privacy. One hero card, numbered sections, and a
@@ -13,11 +13,18 @@ import { Brand } from "@/components/Brand";
  * The "Draft" pill stays until founder/legal review signs off (see
  * docs/pre-launch-checklist.md, P0 legal disclosures).
  */
+/** Founder approved publishing Terms and Refunds on Sep 23, 2026 (removes the Draft badge). */
+export const POLICIES_PUBLISHED = true;
+
 export const SUPPORT_EMAIL = "support@skipwait.me";
 export const policyLinks = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/privacy", label: "Privacy & trust" },
   { href: "/refunds", label: "Refunds & cancellation" },
+  { href: "/shipping", label: "Shipping & delivery" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About us" },
+  { href: "/contact", label: "Contact us" },
   { href: "/support", label: "Support" },
 ] as const;
 
@@ -29,7 +36,7 @@ export function PolicySection({ number, title, children }: { number: string; tit
   </section>;
 }
 
-export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, updated, status = "draft", children, footnote }: {
+export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, updated, status = POLICIES_PUBLISHED ? "published" : "draft", children, footnote }: {
   screen: string;
   icon: LucideIcon;
   eyebrow: string;
