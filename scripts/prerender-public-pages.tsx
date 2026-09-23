@@ -18,6 +18,7 @@ export const PUBLIC_PAGES: { route: string; title: string; load: () => Promise<{
   { route: "/terms", title: "Terms of Service", load: () => import("../client/src/pages/Terms") },
   { route: "/privacy", title: "Privacy Policy", load: () => import("../client/src/pages/TrustPrivacy") },
   { route: "/refunds", title: "Refunds & Cancellation", load: () => import("../client/src/pages/RefundPolicy") },
+  { route: "/cancellations", title: "Cancellation Policy", load: () => import("../client/src/pages/CancellationPolicy") },
   { route: "/shipping", title: "Shipping & Delivery", load: () => import("../client/src/pages/ShippingPolicy") },
   { route: "/about", title: "About Us", load: () => import("../client/src/pages/About") },
   { route: "/contact", title: "Contact Us", load: () => import("../client/src/pages/Contact") },

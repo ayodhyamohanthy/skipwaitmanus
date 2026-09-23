@@ -67,12 +67,20 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="09" title="Business identity">
-      <p>skipwait.me is operated by <strong>SkipWait, a sole proprietorship</strong> based in India.</p>
+      <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as SkipWait.</p>
       <ul>
         <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
         <li>Phone: <a href="tel:+917207234883" className="font-semibold text-black">+91 72072 34883</a> (Mon–Fri, IST business hours).</li>
         <li>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</li>
       </ul>
+    </PolicySection>
+
+    <PolicySection number="10" title="Governing law">
+      <p>These terms are governed by the laws of India.</p>
+    </PolicySection>
+
+    <PolicySection number="11" title="Grievance officer">
+      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
     </PolicySection>
   </PolicyPageShell>;
 }
