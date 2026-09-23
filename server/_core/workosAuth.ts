@@ -41,9 +41,14 @@ export function configuredWorkosClientId(): string {
 }
 
 export function workosConfigured(): boolean {
-  const anyConfigured = Boolean(process.env.WORKOS_CLIENT_ID || process.env.WORKOS_API_KEY || process.env.WORKOS_COOKIE_PASSWORD);
   const allConfigured = Boolean(process.env.WORKOS_CLIENT_ID && process.env.WORKOS_API_KEY && process.env.WORKOS_COOKIE_PASSWORD);
-  if (process.env.NODE_ENV === "production" && anyConfigured && !allConfigured) throw new Error("WorkOS production configuration is incomplete");
+  if (!allConfigured && process.env.NODE_ENV === "production") {
+    // Refusing to fall through to the dev session plane is deliberate: an
+    // all-unset WorkOS config would otherwise register /api/dev-auth/login and
+    // mint real app_session_id cookies for any self-asserted email. A missing
+    // secret must stop the release, not downgrade the auth plane.
+    throw new Error("WorkOS production configuration is incomplete");
+  }
   if (allConfigured) configuredWorkosClientId();
   return allConfigured;
 }

@@ -21,4 +21,7 @@ describe("WorkOS production configuration",()=>{
  const saved={...process.env};afterEach(()=>{process.env={...saved};});
  it("rejects malformed client IDs",()=>{process.env.WORKOS_CLIENT_ID="other";expect(()=>configuredWorkosClientId()).toThrow(/malformed/);});
  it("fails incomplete production configuration",()=>{process.env.NODE_ENV="production";process.env.WORKOS_CLIENT_ID="client_good";delete process.env.WORKOS_API_KEY;delete process.env.WORKOS_COOKIE_PASSWORD;expect(()=>workosConfigured()).toThrow(/incomplete/);});
+ it("fails closed when production has no WorkOS plane at all",()=>{process.env.NODE_ENV="production";delete process.env.WORKOS_CLIENT_ID;delete process.env.WORKOS_API_KEY;delete process.env.WORKOS_COOKIE_PASSWORD;expect(()=>workosConfigured()).toThrow(/incomplete/);});
+ it("keeps the dev session plane available locally when WorkOS is unset",()=>{process.env.NODE_ENV="development";delete process.env.WORKOS_CLIENT_ID;delete process.env.WORKOS_API_KEY;delete process.env.WORKOS_COOKIE_PASSWORD;expect(workosConfigured()).toBe(false);});
+ it("accepts a complete production plane",()=>{process.env.NODE_ENV="production";process.env.WORKOS_CLIENT_ID="client_good";process.env.WORKOS_API_KEY="sk_test_key";process.env.WORKOS_COOKIE_PASSWORD="a_cookie_password";expect(workosConfigured()).toBe(true);});
 });
