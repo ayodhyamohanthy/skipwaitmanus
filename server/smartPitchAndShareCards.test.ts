@@ -57,6 +57,13 @@ describe("Smart Pitch and referral share cards", () => {
     expect(previewHtml.status).toBe(200); expect(previewHtml.text).toContain('property="og:image"'); expect(previewHtml.text).toContain("Accepted at acme.com"); expect(previewHtml.text).not.toMatch(/seeker|referrer|requestId|queue/i);
     const previewImage = await request(app).get(`/api/referral-share-cards/public/${"a".repeat(32)}/image.png`);
     expect(previewImage.status).toBe(200); expect(previewImage.headers["content-type"]).toMatch(/image\/png/);
+    // Server share previews ship the product token system, not a legacy palette:
+    // brand blue (#0000ff), pale blue (#ededff / #e0e0ff), black, and greys only.
+    const previewBrand = previewHtml.text;
+    for (const banned of ["#f5f4ef", "#191713", "#e8442e", "#3f3b33", "#625d52", "#e2ddd2", "#f9e4de"]) {
+      expect(previewBrand).not.toContain(banned);
+    }
+    for (const expected of ["#0000ff", "#c2c2ff", "#ededff"]) expect(previewBrand).toContain(expected);
     expect((await request(app).delete("/api/referral-share-cards/901").set("x-test-user", "outsider")).status).toBe(403);
     expect((await request(app).delete("/api/referral-share-cards/901").set("x-test-user", "referrer")).body).toEqual({ revoked: true }); expect(revokeCalls).toEqual([2]);
     expect((await request(app).get(`/api/referral-share-cards/public/${"a".repeat(32)}`)).status).toBe(404);

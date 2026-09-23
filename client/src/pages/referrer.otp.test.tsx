@@ -2,7 +2,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import Referrer from "./Referrer";
+import Referrer, { ReferralCoverageInviteBanner } from "./Referrer";
 
 const authState = vi.hoisted(() => {
   const emailAddress = {
@@ -135,7 +135,29 @@ describe("Referrer work-email OTP verification", () => {
     fireEvent.click(screen.getByRole("button", { name: "Approve referral" }));
     await waitFor(() => expect(screen.getByText("Referral approved.")).toBeTruthy());
     expect(screen.getByRole("button", { name: "Message Job Seeker" })).toBeTruthy();
+    // The colleague invite is informational, next to the handoff — never a gate.
+    expect(screen.getByRole("region", { name: "Strengthen private coverage at acme.com" })).toBeTruthy();
     window.history.pushState({}, "", "/");
+  });
+
+  it("explains a company-coverage invitation to the signed-out recipient before sign-in", () => {
+    resetReferrerState();
+    stubReferrerFetch();
+    authState.isSignedIn = false;
+    window.history.pushState({}, "", "/referrer?company=acme.com&source=coverage&invite=abc123");
+    render(<Referrer />);
+    const banner = screen.getByRole("region", { name: "Strengthen private coverage at acme.com" });
+    expect(banner.textContent).toMatch(/verify a work email and choose whether to help/i);
+    const emailShare = screen.getByRole("link", { name: "Share by email" });
+    expect(emailShare.getAttribute("href")).toContain(encodeURIComponent("/referrer?company=acme.com"));
+    expect(emailShare.getAttribute("href")).toContain(encodeURIComponent("invite=abc123"));
+    window.history.pushState({}, "", "/");
+  });
+
+  it("builds the coverage banner link with the company and invite code only", () => {
+    render(<ReferralCoverageInviteBanner companyDomain="acme.com" inviteCode="abc123" />);
+    expect(screen.getByRole("link", { name: "Share on WhatsApp" }).getAttribute("href")).toContain(encodeURIComponent("invite=abc123"));
+    expect(screen.getByText("Strengthen private coverage").tagName).toBe("P");
   });
 });
 
