@@ -4,15 +4,19 @@
 const DEFAULT_API_ORIGIN = "https://skipwait.me";
 
 const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string }> = [
+  // Only URLs that serve their own canonical and content (#96).
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/wall", changefreq: "hourly", priority: "0.9" },
   { path: "/jobs", changefreq: "daily", priority: "0.9" },
-  { path: "/premium", changefreq: "weekly", priority: "0.7" },
+  { path: "/referrer", changefreq: "weekly", priority: "0.8" },
+  { path: "/pricing", changefreq: "weekly", priority: "0.7" },
   { path: "/plans", changefreq: "weekly", priority: "0.6" },
+  { path: "/about", changefreq: "monthly", priority: "0.4" },
+  { path: "/contact", changefreq: "monthly", priority: "0.4" },
+  { path: "/support", changefreq: "monthly", priority: "0.3" },
   { path: "/privacy", changefreq: "monthly", priority: "0.3" },
   { path: "/terms", changefreq: "monthly", priority: "0.3" },
   { path: "/refunds", changefreq: "monthly", priority: "0.3" },
-  { path: "/support", changefreq: "monthly", priority: "0.3" },
 ];
 
 function escapeXml(value: string) {
@@ -33,18 +37,7 @@ export const onRequest: PagesFunction<{ API_ORIGIN?: string }> = async (context)
   } catch { /* treat as empty */ }
   const urls = STATIC_ROUTES.filter(route => route.path !== "/wall" || wallHasOpenings).map(route => ({ loc: `${origin}${route.path}`, changefreq: route.changefreq, priority: route.priority }));
 
-  try {
-    const response = await fetch(`${apiOrigin}/api/jobs`, { headers: { accept: "application/json" } });
-    if (response.ok) {
-      const payload = (await response.json()) as { jobs?: Array<{ id?: number; updatedAt?: string }> };
-      for (const job of payload.jobs ?? []) {
-        if (typeof job.id !== "number") continue;
-        const entry: { loc: string; changefreq: string; priority: string; lastmod?: string } = { loc: `${origin}/jobs?job=${job.id}`, changefreq: "weekly", priority: "0.6" };
-        if (typeof job.updatedAt === "string" && /^\d{4}-\d{2}-\d{2}/.test(job.updatedAt)) entry.lastmod = job.updatedAt.slice(0, 10);
-        urls.push(entry);
-      }
-    }
-  } catch { /* sitemap still serves the static routes if the API is cold */ }
+  // Per-job URLs return once jobs have crawlable pages of their own (#96, #100).
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls.map(entry => `  <url>\n    <loc>${escapeXml(entry.loc)}</loc>\n${entry.lastmod ? `    <lastmod>${entry.lastmod}</lastmod>\n` : ""}    <changefreq>${entry.changefreq}</changefreq>\n    <priority>${entry.priority}</priority>\n  </url>`).join("\n")}\n</urlset>\n`;
 
