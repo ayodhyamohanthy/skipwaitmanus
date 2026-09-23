@@ -225,20 +225,24 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         }
         const openId = resolveWorkosOpenId(user.id);
         const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
-        // Emergency compatibility path: keep interactive sign-in available
-        // while the canonical resolver's production lock wait is investigated.
-        // This is the same provider-verified upsert used by the last known-good
-        // runtime; it does not merge accounts or move business records.
-        stage = "upsert";
-        await db.upsertUser({ openId, name, email: user.email, loginMethod: "workos", lastSignedIn: new Date() });
+        // One identity path for every sign-in: the canonical resolver links by
+        // provider subject first and only uses the email when WorkOS attests it
+        // is verified. The session is minted for the canonical account's openId
+        // through the active-account gate, so the cookie resolves to the same
+        // user on every later request.
+        stage = "resolve";
+        let account: Awaited<ReturnType<typeof db.resolveLoginIdentity>>;
+        try {
+          account = await db.resolveLoginIdentity({ provider: "workos", subject: user.id, openId, email: user.email, emailVerified: user.emailVerified === true, name, loginMethod: "workos" });
+        } catch (error) {
+          const blocked = error instanceof Error && (error.message === "IDENTITY_REVIEW_REQUIRED" || error.message === "ACCOUNT_NOT_ACTIVE") ? error.message : null;
+          if (!blocked) throw error;
+          console.warn("[workos-callback]", { stage, code: blocked });
+          return res.status(403).send(blocked === "IDENTITY_REVIEW_REQUIRED" ? "This account needs a quick review before it can sign in. Contact support@skipwait.me." : "This account is not active. Contact support@skipwait.me.");
+        }
         stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-        // Deployment note: this verified callback performs one database write.
-        // This callback has just completed a provider-authenticated upsert.
-        // Signing here avoids a second production DB read on the callback's
-        // hot path; normal request verification still enforces suspension and
-        // session revocation before accepting the cookie.
-        const token = await sdkSignSessionToken(openId, name);
+        const token = await sdkCreateSessionToken(account.openId, account.name || name);
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         res.redirect(302, returnTo);
       } catch (error) {
@@ -273,9 +277,4 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
 async function sdkCreateSessionToken(openId: string, name: string): Promise<string> {
   const { sdk } = await import("./sdk");
   return sdk.createSessionToken(openId, { name });
-}
-
-async function sdkSignSessionToken(openId: string, name: string): Promise<string> {
-  const { sdk } = await import("./sdk");
-  return sdk.signSession({ openId, appId: ENV.appId, name });
 }

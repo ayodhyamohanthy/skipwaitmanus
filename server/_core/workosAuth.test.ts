@@ -5,7 +5,22 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const authUrl = vi.fn();
 const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@example.com", firstName: "Test", lastName: "User" } }));
 const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", role: "user", suspended: false, sessionsValidAfter: new Date(0), createdAt: new Date(0), updatedAt: new Date(0), lastSignedIn: new Date(0) };
-vi.mock("../db", () => ({ upsertUser: vi.fn(), getDb: vi.fn(async () => ({})), getUserByOpenId: vi.fn(async (openId: string) => openId === account.openId ? account : undefined) }));
+const accounts = vi.hoisted(() => new Map<string, Record<string, unknown>>());
+const resolveLoginIdentity = vi.hoisted(() => vi.fn());
+vi.mock("../db", () => ({
+  upsertUser: vi.fn(),
+  getDb: vi.fn(async () => ({})),
+  getUserByOpenId: vi.fn(async (openId: string) => openId === account.openId ? account : accounts.get(openId)),
+  revokeUserSessions: vi.fn(async (openId: string) => { const row = openId === account.openId ? account : accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); }),
+  resolveLoginIdentity,
+}));
+function defaultResolve(input: { openId: string; name: string; email: string }) {
+  if (input.openId === account.openId) return account;
+  const row = accounts.get(input.openId) ?? { ...account, id: accounts.size + 2, openId: input.openId, name: input.name, email: input.email };
+  accounts.set(input.openId, row);
+  return row;
+}
+resolveLoginIdentity.mockImplementation(async (input: { openId: string; name: string; email: string }) => defaultResolve(input));
 const registrarFactory = vi.hoisted(() => ({
   registrar: undefined as unknown as (app: import("express").Express) => void,
 }));
@@ -161,4 +176,74 @@ describe("state-bound authentication return", () => {
 describe("administrator callback equality",()=>{
  it("accepts only the provider-returned exact configured address",async()=>{const {adminCallbackAllowed}=await import("./workosAuth");expect(adminCallbackAllowed({email:"ayodhya@skipwait.me",state:"skipwait-admin",configuredEmail:"ayodhya@skipwait.me"})).toBe(true);expect(adminCallbackAllowed({email:"someone@skipwait.me",state:"skipwait-admin",configuredEmail:"ayodhya@skipwait.me"})).toBe(false);expect(adminCallbackAllowed({email:"ayodhya@gmail.com",state:"skipwait-admin",configuredEmail:"ayodhya@skipwait.me"})).toBe(false)});
  it("rejects a stale bootstrap callback after the flag is removed",async()=>{const {adminCallbackAllowed}=await import("./workosAuth");expect(adminCallbackAllowed({email:"ayodhya@skipwait.me",state:"skipwait-admin-bootstrap",configuredEmail:"ayodhya@skipwait.me",bootstrapEnabled:false})).toBe(false);expect(adminCallbackAllowed({email:"ayodhya@skipwait.me",state:"skipwait-admin-bootstrap",configuredEmail:"ayodhya@skipwait.me",bootstrapEnabled:true})).toBe(true)});
+});
+
+describe("canonical WorkOS callback session", () => {
+  afterEach(() => { authenticate.mockClear(); resolveLoginIdentity.mockClear(); resolveLoginIdentity.mockImplementation(async (input: { openId: string; name: string; email: string }) => defaultResolve(input)); accounts.clear(); account.sessionsValidAfter = new Date(0); });
+
+  async function signIn(app: import("express").Express) {
+    const agent = request.agent(app);
+    await agent.get("/api/auth/workos/sign-in").query({ returnTo: "/premium" });
+    const state = authUrl.mock.calls.at(-1)![0].state;
+    return agent.get("/api/auth/workos/callback").query({ code: "provider-code", state });
+  }
+
+  it("resolves through the canonical resolver with the provider's verified-email evidence", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      authenticate.mockResolvedValueOnce({ user: { id: "user_test", email: "Test@Example.com", emailVerified: true, firstName: "Test", lastName: "User" } });
+      expect((await signIn(app)).status).toBe(302);
+      expect(resolveLoginIdentity).toHaveBeenCalledWith({ provider: "workos", subject: "user_test", openId: "workos_user_test", email: "Test@Example.com", emailVerified: true, name: "Test User", loginMethod: "workos" });
+      authenticate.mockResolvedValueOnce({ user: { id: "user_test", email: "test@example.com", firstName: "Test", lastName: "User" } });
+      await signIn(app);
+      expect(resolveLoginIdentity.mock.calls.at(-1)![0].emailVerified).toBe(false);
+    } finally { restore(); }
+  });
+
+  it("mints the session for the canonical account, not the provider openId", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      authenticate.mockResolvedValueOnce({ user: { id: "user_second_provider", email: "test@example.com", emailVerified: true, firstName: "Test", lastName: "User" } });
+      resolveLoginIdentity.mockResolvedValueOnce(account);
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
+      const proof = await request(app).get("/session-proof").set("Cookie", cookie);
+      expect(proof.status).toBe(200);
+      expect(proof.body).toEqual({ openId: "workos_user_test" });
+      expect(accounts.has("workos_user_second_provider")).toBe(false);
+    } finally { restore(); }
+  });
+
+  it.each([["IDENTITY_REVIEW_REQUIRED", /review/], ["ACCOUNT_NOT_ACTIVE", /not active/]]) ("returns 403 without a session cookie when the resolver reports %s", async (code, message) => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      resolveLoginIdentity.mockRejectedValueOnce(new Error(code));
+      const callback = await signIn(app);
+      expect(callback.status).toBe(403);
+      expect(callback.text).toMatch(message);
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(false);
+    } finally { restore(); }
+  });
+
+  it("does not mint a session for an account suspended between resolve and signing", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      resolveLoginIdentity.mockResolvedValueOnce({ ...account, openId: "workos_gone" });
+      const callback = await signIn(app);
+      expect(callback.status).toBe(502);
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(false);
+    } finally { restore(); }
+  });
+
+  it("rejects the session cookie after logout (replay fails)", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      const callback = await signIn(app);
+      const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
+      expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(200);
+      expect((await request(app).post("/api/auth/workos/logout").set("Cookie", cookie)).body).toEqual({ signedOut: true });
+      expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(401);
+    } finally { restore(); }
+  });
 });
