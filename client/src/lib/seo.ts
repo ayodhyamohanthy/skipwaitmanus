@@ -63,3 +63,11 @@ export function jobsJsonLd(jobs: Array<{ id: number; title: string; company: str
     })),
   };
 }
+
+/** Toggle a robots noindex tag, e.g. for a page that is empty right now. */
+export function setNoindex(noindex: boolean) {
+  if (typeof document === "undefined") return;
+  const existing = document.head.querySelector<HTMLMetaElement>('meta[name="robots"]');
+  if (noindex) upsertMeta("name", "robots", "noindex");
+  else if (existing?.content === "noindex") existing.remove();
+}

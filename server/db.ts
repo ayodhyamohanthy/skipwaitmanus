@@ -680,6 +680,21 @@ export async function listPublicCompanyOpportunities() {
 export const isPrivateReferralJob = (row: { title?: string | null; description?: string | null }) =>
   row.title === "Role from shared job link" || row.description === "Private referral request routed from a Target Role URL.";
 
+// Reserved example/test domains (RFC 2606/6761) plus the acme.com sample used in
+// loop verification. A catalog row pointing at one of these is a fixture, never
+// a real role, and must not reach the public job list or the sitemap (#98).
+const TEST_CATALOG_HOSTS = new Set(["acme.com", "example.com", "example.net", "example.org"]);
+const TEST_CATALOG_TLDS = [".test", ".example", ".invalid", ".localhost"];
+function isTestCatalogHost(host: string) {
+  const h = host.trim().toLowerCase().replace(/^www\./, "");
+  return TEST_CATALOG_HOSTS.has(h) || Array.from(TEST_CATALOG_HOSTS).some(base => h.endsWith(`.${base}`)) || TEST_CATALOG_TLDS.some(tld => h.endsWith(tld));
+}
+export const isTestCatalogJob = (row: { company?: string | null; targetRoleUrl?: string | null; description?: string | null }) => {
+  if (row.company && isTestCatalogHost(row.company)) return true;
+  if (row.targetRoleUrl) { try { if (isTestCatalogHost(new URL(row.targetRoleUrl).hostname)) return true; } catch { /* malformed URL is not proof of a fixture */ } }
+  return /^test role\b/i.test(row.description?.trim() ?? "");
+};
+
 export async function listJobs(input: { query?: string; company?: string; location?: string; seniority?: string }) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select().from(jobs).orderBy(desc(jobs.publishedAt));
@@ -687,7 +702,7 @@ export async function listJobs(input: { query?: string; company?: string; locati
   // Private referral targets currently share the jobs table with the public
   // catalog. Keep both legacy and newly-created sentinel rows out of every
   // public listing until catalog visibility is a first-class schema field.
-  return rows.filter(row => !isPrivateReferralJob(row) && (!term || `${row.title} ${row.company} ${row.description}`.toLowerCase().includes(term)) && (!input.company || row.company === input.company) && (!input.location || row.location.includes(input.location)) && (!input.seniority || row.seniority === input.seniority));
+  return rows.filter(row => !isPrivateReferralJob(row) && !isTestCatalogJob(row) && (!term || `${row.title} ${row.company} ${row.description}`.toLowerCase().includes(term)) && (!input.company || row.company === input.company) && (!input.location || row.location.includes(input.location)) && (!input.seniority || row.seniority === input.seniority));
 }
 
 export async function listReferrers(input: { query?: string; company?: string; role?: string }) {

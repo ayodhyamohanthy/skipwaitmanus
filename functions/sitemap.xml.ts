@@ -25,7 +25,13 @@ export const onRequest: PagesFunction<{ API_ORIGIN?: string }> = async (context)
   // Static routes omit <lastmod>: faking "today" on every request would make
   // crawlers re-validate static pages daily. Change dates only where the API
   // provides them; the sitemap stays honest and stable otherwise.
-  const urls = STATIC_ROUTES.map(route => ({ loc: `${origin}${route.path}`, changefreq: route.changefreq, priority: route.priority }));
+  // /wall is listed only while it has openings: an empty wall is not worth crawling (#98).
+  let wallHasOpenings = false;
+  try {
+    const response = await fetch(`${apiOrigin}/api/opportunities`, { headers: { accept: "application/json" } });
+    if (response.ok) wallHasOpenings = (((await response.json()) as { opportunities?: unknown[] }).opportunities ?? []).length > 0;
+  } catch { /* treat as empty */ }
+  const urls = STATIC_ROUTES.filter(route => route.path !== "/wall" || wallHasOpenings).map(route => ({ loc: `${origin}${route.path}`, changefreq: route.changefreq, priority: route.priority }));
 
   try {
     const response = await fetch(`${apiOrigin}/api/jobs`, { headers: { accept: "application/json" } });

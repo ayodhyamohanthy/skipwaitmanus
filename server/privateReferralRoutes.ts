@@ -4,7 +4,7 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
-import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, isTestCatalogJob, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
@@ -197,7 +197,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // targets even if an alternate listJobs dependency regresses.
       const publicJobs = jobs.filter(job => !(job && typeof job === "object" && ((job as { title?: string }).title === "Role from shared job link" || (job as { description?: string }).description === "Private referral request routed from a Target Role URL.")));
       res.set("Cache-Control", "public, max-age=60");
-      res.json({ jobs: publicJobs.slice(0, 50) });
+      res.json({ jobs: publicJobs.filter(job => !(job && typeof job === "object" && isTestCatalogJob(job as { company?: string; targetRoleUrl?: string; description?: string }))).slice(0, 50) });
     } catch { res.status(500).json({ error: "We could not load the job list right now" }); }
   });
   app.get("/api/saved-roles", async (req, res) => {

@@ -37,11 +37,13 @@ describe("Opportunity Wall", () => {
     expect(whatsApp).not.toContain("employee%40");
   });
 
-  it("uses a visual no-opening state with one share action when no internal openings are live", async () => {
+  it("shows no share buttons and marks the page noindex when no internal openings are live (#98)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [] }) })));
     render(<OpportunityWall />);
     await waitFor(() => expect(document.querySelector('[aria-label="No internal openings"]')).toBeTruthy());
-    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
+    expect(document.querySelector('[data-skipwait-zero-action]')).toBeNull();
+    expect(screen.queryByRole("link", { name: "Share on WhatsApp" })).toBeNull();
+    await waitFor(() => expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("noindex"));
     expect(screen.queryByText("No openings yet.")).toBeNull();
     expect(screen.getByRole("button", { name: "Request a referral" })).toBeTruthy();
   });
