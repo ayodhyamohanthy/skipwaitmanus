@@ -57,7 +57,8 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     render(<RefundPolicy />);
     expect(document.querySelector('[data-skipwait-screen="refund-policy"]')).toBeTruthy();
     expect(screen.getByText(/uses one credit/)).toBeTruthy();
-    expect(screen.getByText(/withdraw before a verified employee claims/)).toBeTruthy();
+    expect(screen.getByText(/withdraw the request before a verified employee picks it up/)).toBeTruthy();
+    expect(screen.getByText(/not returned/)).toBeTruthy();
     expect(screen.getByText(/until the end of the current billing cycle/)).toBeTruthy();
     expect(screen.getByText(/approved by a skipwait.me administrator/)).toBeTruthy();
     expect(screen.getByText(/free for Referrers/)).toBeTruthy();
