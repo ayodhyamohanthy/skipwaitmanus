@@ -5,6 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
 import RefundPolicy from "./RefundPolicy";
 import ShippingPolicy from "./ShippingPolicy";
+import About from "./About";
+import Contact from "./Contact";
+import Pricing from "./Pricing";
+import PrivacyPolicy from "./PrivacyPolicy";
 import Support from "./Support";
 import Settings from "./Settings";
 import NotFound from "./NotFound";
@@ -34,7 +38,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
     expect(screen.getByText("Draft · pending legal review")).toBeTruthy();
-    expect(policyLinks(container)).toEqual(["/terms", "/privacy", "/refunds", "/shipping", "/support"]);
+    expect(policyLinks(container)).toEqual(["/terms", "/privacy-policy", "/privacy", "/refunds", "/shipping", "/pricing", "/about", "/contact", "/support"]);
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");
   });
 
@@ -55,6 +59,23 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/added to your account instantly/)).toBeTruthy();
     expect(screen.getAllByRole("link", { name: "Refunds & cancellation" }).every(link => link.getAttribute("href") === "/refunds")).toBe(true);
     expect(policyLinks(container)).toContain("/shipping");
+  });
+
+  it("About, Contact, Pricing and Privacy policy name the operator and real prices for payment-provider review", () => {
+    render(<About />);
+    expect(screen.getAllByText(/Ayodhya Ram Mohanthy/).length).toBeGreaterThan(0);
+    cleanup();
+    render(<Contact />);
+    expect(screen.getByText(/Operated by:/).parentElement?.textContent).toContain("Ayodhya Ram Mohanthy");
+    expect(screen.getAllByRole("link", { name: "support@skipwait.me" })[0].getAttribute("href")).toBe("mailto:support@skipwait.me");
+    cleanup();
+    render(<Pricing />);
+    expect(screen.getByText(/₹599\/month or \$7\/month/)).toBeTruthy();
+    expect(screen.getByText(/₹1,299\/month or \$15\/month/)).toBeTruthy();
+    expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
+    cleanup();
+    render(<PrivacyPolicy />);
+    expect(screen.getByText(/We do not sell your personal information/)).toBeTruthy();
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {

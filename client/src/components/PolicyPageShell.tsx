@@ -13,12 +13,19 @@ import { Brand } from "@/components/Brand";
  * The "Draft" pill stays until founder/legal review signs off (see
  * docs/pre-launch-checklist.md, P0 legal disclosures).
  */
+/** Flip to true once the founder signs off; removes the Draft badge from Terms, Privacy-adjacent and Refund pages. */
+export const POLICIES_PUBLISHED = false;
+
 export const SUPPORT_EMAIL = "support@skipwait.me";
 export const policyLinks = [
   { href: "/terms", label: "Terms of Service" },
+  { href: "/privacy-policy", label: "Privacy policy" },
   { href: "/privacy", label: "Privacy & trust" },
   { href: "/refunds", label: "Refunds & cancellation" },
   { href: "/shipping", label: "Shipping & delivery" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/about", label: "About us" },
+  { href: "/contact", label: "Contact us" },
   { href: "/support", label: "Support" },
 ] as const;
 
@@ -30,7 +37,7 @@ export function PolicySection({ number, title, children }: { number: string; tit
   </section>;
 }
 
-export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, updated, status = "draft", children, footnote }: {
+export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, updated, status = POLICIES_PUBLISHED ? "published" : "draft", children, footnote }: {
   screen: string;
   icon: LucideIcon;
   eyebrow: string;
