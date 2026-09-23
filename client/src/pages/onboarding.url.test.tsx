@@ -112,4 +112,12 @@ describe("Onboarding preview race safety", () => {
     expect(screen.queryByLabelText("Company domain")).toBeNull(); expect(button).toHaveProperty("disabled",false);
     await waitFor(()=>expect(button).toHaveProperty("disabled",false),{timeout:1200});
   });
+
+  it.each([["covered", "Verified example.com employees review requests here."], ["waiting", "No verified example.com employee yet."]])("shows %s coverage at step 1, before the resume step (#99)", async (coverage, text) => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ canonicalUrl: "https://careers.example.com/jobs/product-designer", status: "fresh", employerConfidence: "direct-domain", companyDomain: "example.com", reason: "", recoveryAction: "", coverage }) })));
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
+    await waitFor(() => expect(document.querySelector(`[data-skipwait-step1-coverage="${coverage}"]`)?.textContent).toContain(text));
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+  });
 });
