@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { notifications, paymentFulfillments, promoCreditGrants, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
+import { notifications, operationalActivityLogs, paymentFulfillments, promoCreditGrants, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
 import { getTokenWallet, fulfillChargebeePayment, revokePromoGrant, spendToken } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -11,16 +11,20 @@ vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 const dialect = new MySqlDialect();
 const NOW = new Date("2026-10-01T00:00:00.000Z");
 
-type Table = typeof users | typeof tokenBalances | typeof tokenTransactions | typeof promoCreditGrants | typeof paymentFulfillments | typeof notifications;
+type Table = typeof users | typeof tokenBalances | typeof tokenTransactions | typeof promoCreditGrants | typeof paymentFulfillments | typeof notifications | typeof operationalActivityLogs;
 let tables: Record<string, Array<Record<string, unknown>>>;
+let failPromoTables = false;
+const schemaMissingError = () => Object.assign(new Error("Table 'skipwait.promoCreditGrants' doesn't exist"), { code: "ER_NO_SUCH_TABLE", errno: 1146 });
 
 function rowsFor(table: Table): Array<Record<string, unknown>> {
+  if (table === promoCreditGrants && failPromoTables) throw schemaMissingError();
   if (table === users) return tables.users;
   if (table === tokenBalances) return tables.wallets;
   if (table === tokenTransactions) return tables.txns;
   if (table === promoCreditGrants) return tables.grants;
   if (table === paymentFulfillments) return tables.payments;
   if (table === notifications) return tables.notes;
+  if (table === operationalActivityLogs) return tables.activity;
   throw new Error("Unexpected table");
 }
 
@@ -106,7 +110,8 @@ const walletRow = () => ({ id: 1, userId: 7, role: "job_seeker" as const, balanc
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  tables = { users: [{ id: 7 }], wallets: [walletRow()], txns: [], grants: [], payments: [], notes: [] };
+  tables = { users: [{ id: 7 }], wallets: [walletRow()], txns: [], grants: [], payments: [], notes: [], activity: [] };
+  failPromoTables = false;
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDatabase());
   vi.useFakeTimers();
@@ -187,5 +192,27 @@ describe("promo credit grants", () => {
     expect(await fulfillChargebeePayment({ eventId: "evt_2", hostedPageId: "page2", invoiceId: "in_2", passThruContent: "intent2", amount: 1000, currency: "USD" })).toMatchObject({ status: "credited" });
     expect(tables.grants).toHaveLength(1);
     expect(tables.wallets[0]).toMatchObject({ balance: 2 + 3 + 10 });
+  });
+
+  it("degrades to monthly credits when the promo schema has not migrated yet", async () => {
+    failPromoTables = true;
+    const summary = await spendToken(7, "job_seeker");
+    expect(tables.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(summary).toMatchObject({ promoCreditsRemaining: 0, promoStatus: null, totalAvailable: 2 + 2 });
+  });
+
+  it("reports a zero promo summary when the promo schema has not migrated yet", async () => {
+    failPromoTables = true;
+    const summary = await getTokenWallet(7, "job_seeker");
+    expect(summary).toMatchObject({ promoCreditsRemaining: 0, promoStatus: null, totalAvailable: 3 + 2 });
+  });
+
+  it("still credits a paid purchase when the promo schema has not migrated yet", async () => {
+    failPromoTables = true;
+    tables.payments = [{ id: 1, provider: "chargebee", providerEventId: "pending:page1", providerInvoiceId: null, providerHostedPageId: "page1", checkoutIntentId: "intent1", userId: 7, role: "job_seeker", tokenCount: 3, amount: 300, currency: "USD", status: "pending", reconciliationReason: null, lastCheckedAt: null, creditedAt: null, createdAt: NOW }];
+    const result = await fulfillChargebeePayment({ eventId: "evt_1", hostedPageId: "page1", invoiceId: "in_1", passThruContent: "intent1", amount: 300, currency: "USD" });
+    expect(result).toMatchObject({ status: "credited", tokenCount: 3 });
+    expect(tables.wallets[0]).toMatchObject({ balance: 5 });
+    expect(tables.activity.some(a => a.action === "promo.grant_skipped_schema_pending")).toBe(true);
   });
 });
