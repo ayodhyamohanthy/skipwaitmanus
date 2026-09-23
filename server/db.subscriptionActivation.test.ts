@@ -89,6 +89,7 @@ function fixtureDatabase() {
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+  vi.stubEnv("PROMO_GRANTS_ENABLED", "true");
   wallets = [{ id: 1, userId: 7, role: "job_seeker", balance: 12, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-09", plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: termStart }];
   intents = [{ id: 1, userId: 7, role: "job_seeker", hostedPageId: "page_new", checkoutIntentId: "intent_new", plan: "pro", itemPriceId: "skipwait_pro_monthly-INR", amount: 59900, currency: "INR", status: "pending", createdAt: termStart, updatedAt: termStart }];
   events = [];

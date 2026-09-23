@@ -16,9 +16,18 @@ describe("Premium promo banner", () => {
 
   it("invites unclaimed users to earn bonus credits on first payment", async () => {
     window.history.pushState({}, "", "/premium?role=job_seeker");
-    vi.stubGlobal("fetch", summaryFetch({ totalAvailable: 3, promoCreditsRemaining: 0, promoExpiresAt: null, promoStatus: null }));
+    vi.stubGlobal("fetch", summaryFetch({ totalAvailable: 3, promoCreditsRemaining: 0, promoExpiresAt: null, promoStatus: null, promoOfferActive: true }));
     render(<Premium />);
     expect(await screen.findByText("First verified payment earns 5 bonus credits.")).toBeTruthy();
+  });
+
+  it("does not advertise the bonus while promo grants are switched off", async () => {
+    window.history.pushState({}, "", "/premium?role=job_seeker");
+    const fetchMock = summaryFetch({ totalAvailable: 3, promoCreditsRemaining: 0, promoExpiresAt: null, promoStatus: null, promoOfferActive: false });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Premium />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() => expect(screen.queryByText("First verified payment earns 5 bonus credits.")).toBeNull());
   });
 
   it("shows the active promo balance with expiry instead of the claim banner", async () => {

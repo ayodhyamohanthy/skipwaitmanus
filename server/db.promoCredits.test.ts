@@ -110,6 +110,7 @@ const walletRow = () => ({ id: 1, userId: 7, role: "job_seeker" as const, balanc
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+  vi.stubEnv("PROMO_GRANTS_ENABLED", "true");
   tables = { users: [{ id: 7 }], wallets: [walletRow()], txns: [], grants: [], payments: [], notes: [], activity: [] };
   failPromoTables = false;
   mocks.createPool.mockResolvedValue({});
@@ -180,6 +181,17 @@ describe("promo credit grants", () => {
     expect(tables.notes).toHaveLength(1);
     const summary = await getTokenWallet(7, "job_seeker");
     expect(summary.totalAvailable).toBe(5 + 3 + 5);
+  });
+
+  it("grants nothing and still credits the paid pack while promo grants are off", async () => {
+    vi.stubEnv("PROMO_GRANTS_ENABLED", "false");
+    tables.payments = [{ id: 1, provider: "chargebee", providerEventId: "pending:page1", providerInvoiceId: null, providerHostedPageId: "page1", checkoutIntentId: "intent1", userId: 7, role: "job_seeker", tokenCount: 3, amount: 300, currency: "USD", status: "pending", reconciliationReason: null, lastCheckedAt: null, creditedAt: null, createdAt: NOW }];
+    const result = await fulfillChargebeePayment({ eventId: "evt_1", hostedPageId: "page1", invoiceId: "in_1", passThruContent: "intent1", amount: 300, currency: "USD" });
+    expect(result).toMatchObject({ status: "credited", tokenCount: 3 });
+    expect(tables.grants).toHaveLength(0);
+    expect(tables.txns.some(t => t.kind === "promo_grant")).toBe(false);
+    expect(tables.notes).toHaveLength(0);
+    expect((await getTokenWallet(7, "job_seeker")).promoOfferActive).toBe(false);
   });
 
   it("never double-grants on webhook replay or a second purchase", async () => {
