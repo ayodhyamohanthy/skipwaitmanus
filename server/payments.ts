@@ -31,6 +31,7 @@ async function razorpayOrder(input: { amountInRupees: number; receipt: string; n
   return (await response.json()) as { id: string; amount: number; currency: string };
 }
 
+<<<<<<< Updated upstream
 export async function findRazorpayOrdersByReceipt(receipt: string) {
   const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
   const response = await fetch(`https://api.razorpay.com/v1/orders?receipt=${encodeURIComponent(receipt)}&count=100`, { headers: { Authorization: `Basic ${auth}` }, signal: AbortSignal.timeout(10_000) });
@@ -53,6 +54,8 @@ export async function razorpayOrderInPaise(input: { amountInPaise: number; recei
   return (await response.json()) as { id: string; amount: number; currency: string };
 }
 
+=======
+>>>>>>> Stashed changes
 export async function paypalAccessToken(): Promise<string> {
   const auth = Buffer.from(`${process.env.PAYPAL_CLIENT_ID}:${process.env.PAYPAL_SECRET}`).toString("base64");
   const base = process.env.PAYPAL_ENV === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";

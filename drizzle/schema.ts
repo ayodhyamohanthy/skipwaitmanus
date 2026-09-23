@@ -18,8 +18,11 @@ export const users = mysqlTable("users", {
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+<<<<<<< Updated upstream
   suspended: boolean("suspended").default(false).notNull(),
   sessionsValidAfter: timestamp("sessionsValidAfter").defaultNow().notNull(),
+=======
+>>>>>>> Stashed changes
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
@@ -44,7 +47,7 @@ export const identityLinkAudits = mysqlTable("identityLinkAudits", {
 export const profiles = mysqlTable("profiles", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  accountType: mysqlEnum("accountType", ["job_seeker", "referrer", "employer"]),
+  accountType: mysqlEnum("accountType", ["job_seeker", "referrer"]),
   headline: varchar("headline", { length: 180 }),
   location: varchar("location", { length: 120 }),
   bio: text("bio"),
@@ -58,9 +61,6 @@ export const profiles = mysqlTable("profiles", {
   expertise: text("expertise"),
   referralCapacity: int("referralCapacity").default(3),
   isOnboarded: boolean("isOnboarded").default(false).notNull(),
-  // Talent discovery is strictly opt-in: a seeker must explicitly turn this on
-  // before employers can ever see them in the anonymized talent list.
-  anonymityOptIn: boolean("anonymityOptIn").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("profiles_user_id_unique").on(table.userId)]);
@@ -95,11 +95,9 @@ export const companyOpportunities = mysqlTable("companyOpportunities", {
   walkInAt: timestamp("walkInAt"),
   walkInEndsAt: timestamp("walkInEndsAt"),
   isActive: boolean("isActive").default(true).notNull(),
-  // Sponsored Role Engine: paid placement window + tier. NULL while organic.
-  sponsoredUntil: timestamp("sponsoredUntil"),
-  sponsoredTier: mysqlEnum("sponsoredTier", ["standard", "featured", "spotlight"]),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+<<<<<<< Updated upstream
 }, table => [index("company_opportunities_public_idx").on(table.isActive, table.createdAt), index("company_opportunities_domain_idx").on(table.companyDomain), index("company_opportunities_owner_idx").on(table.ownerId), index("company_opportunities_sponsor_idx").on(table.sponsoredUntil)]);
 
 // B2B credit economy: one self-serve billing account per employer user.
@@ -211,6 +209,9 @@ export const partnerModules = mysqlTable("partnerModules", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("partner_modules_active_idx").on(table.isActive, table.createdAt)]);
+=======
+}, table => [index("company_opportunities_public_idx").on(table.isActive, table.createdAt), index("company_opportunities_domain_idx").on(table.companyDomain), index("company_opportunities_owner_idx").on(table.ownerId)]);
+>>>>>>> Stashed changes
 
 export const savedRoles = mysqlTable("savedRoles", {
   id: int("id").autoincrement().primaryKey(),
@@ -683,10 +684,6 @@ export type CompanyOpportunity = typeof companyOpportunities.$inferSelect;
 export type ReferralRequest = typeof referralRequests.$inferSelect;
 export type OperationalActivityLog = typeof operationalActivityLogs.$inferSelect;
 export type PrivacyRequest = typeof privacyRequests.$inferSelect;
-export type EmployerAccount = typeof employerAccounts.$inferSelect;
-export type ProfileUnlock = typeof profileUnlocks.$inferSelect;
-export type PartnerModule = typeof partnerModules.$inferSelect;
-export type PartnerModuleCategory = PartnerModule["category"];
 
 const longblob = customType<{ data: Buffer; driverData: Buffer }>({
   dataType() {

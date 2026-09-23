@@ -3,7 +3,6 @@ import { resolveTrustedClientIp } from "./_core/trustedClientIp";
 import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
-import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
@@ -63,6 +62,7 @@ export type PrivateReferralRouteDeps = {
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
+<<<<<<< Updated upstream
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
@@ -72,6 +72,12 @@ export type PrivateReferralRouteDeps = {
   getUserEmailById?: (userId: number) => Promise<string | null>;
   createNotification?: (userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) => Promise<void>;
   sendEmail?: (input: { to: string; subject: string; html: string }) => Promise<{ sent: boolean; reason?: string }>;
+=======
+  claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean }>;
+  getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
+  reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
+  oneClickReviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: "role_not_a_fit" | "cannot_support" | "timing" }) => Promise<{ status: string; companyDomain: string; declineReason?: string }>;
+>>>>>>> Stashed changes
   prepareReferrerReviewEmailNotifications?: (requestId: number) => Promise<Array<{ referrerId: number; email: string; linkToken: string; companyDomain: string }>>;
   claimReferralReviewDelivery?: (requestId:number,referrerId:number,channel:"email"|"slack",leaseOwner:string)=>Promise<{id:number}|undefined>;
   completeReferralReviewDelivery?: (id:number,leaseOwner:string,result:{status:"sent"|"failed"|"unknown";providerMessageId?:string;error?:string})=>Promise<{recorded:boolean}>;
@@ -119,19 +125,21 @@ export type PrivateReferralRouteDeps = {
   revokeCreditedPaymentCredits?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; creditsRevoked: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
   listAdminApprovalQueue?: (limit?: number) => Promise<unknown[]>;
+<<<<<<< Updated upstream
   resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment" | "employer_application", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
   listJobs?: (input: { query?: string; location?: string }) => Promise<unknown[]>;
   listSavedRoles?: (userId: number) => Promise<unknown[]>;
   setSavedRole?: (userId: number, jobId: number, saved: boolean) => Promise<{ saved: boolean }>;
   listUsersAdmin?: (limit?: number) => Promise<unknown[]>;
   setUserSuspended?: (userId: number, suspended: boolean) => Promise<{ userId: number; suspended: boolean }>;
+=======
+  resolveAdminApproval?: (adminUserId: number, itemKind: "referral_request" | "referrer_enrollment" | "payment", itemId: number, decision: "approved" | "rejected", note?: string) => Promise<unknown>;
+>>>>>>> Stashed changes
 };
 
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
   app.use("/api/admin", (req, res, next) => { if (req.method === "GET") res.set("Cache-Control", "private, no-store"); next(); });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
-  const notifyInApp = (userId: number | undefined, title: string, body: string) => { if (!userId) return; void deps.createNotification?.(userId, "status", title, body).catch(() => undefined); };
-  const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
   const privateDocumentMimeTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
   const parseRawPrivateDocument = express.raw({ type: privateDocumentMimeTypes, limit: "10mb" });
   const parseLegacyDocumentJson = express.json({ limit: "14mb" });
@@ -188,6 +196,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.get("/api/opportunities", async (_req, res) => {
     try { res.json({ opportunities: await deps.listPublicCompanyOpportunities() }); } catch { res.status(500).json({ error: "We could not load opportunities right now" }); }
   });
+<<<<<<< Updated upstream
   app.get("/api/jobs", async (req, res) => {
     try {
       const query = typeof req.query.query === "string" ? req.query.query.slice(0, 120) : undefined;
@@ -213,6 +222,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   app.put("/api/saved-roles/:jobId",setSavedRoleHandler(true));
   app.delete("/api/saved-roles/:jobId",setSavedRoleHandler(false));
 
+=======
+>>>>>>> Stashed changes
   app.get("/api/notifications", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
@@ -805,8 +816,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "One-click review is unavailable right now" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
       record({ actorUserId: identity.account.id, action: `company_referral.one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
+<<<<<<< Updated upstream
       if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, decision === "approved" ? `Your referral request was accepted at ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? "A verified employee accepted your private request." : "The employee can't help right now. Your request stays active for other employees.");
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, decision === "approved" ? `Your referral was accepted — ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p>` : `<p>Your request at <strong>${escapeHtml(result.companyDomain)}</strong> remains visible to other verified employees.</p>`);
+=======
+>>>>>>> Stashed changes
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This referral request can no longer be reviewed"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/verify your work email|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
   });
@@ -821,8 +835,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId: link.requestId, decision, declineReason: decision === "declined" ? declineReason : undefined, reviewLinkToken: linkToken });
       if (result.revision === undefined && deps.consumeReferrerReviewEmailLink) await deps.consumeReferrerReviewEmailLink(identity.account.id, linkToken);
       record({ actorUserId: identity.account.id, action: `company_referral.email_one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: link.requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
+<<<<<<< Updated upstream
       if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, decision === "approved" ? `Your referral request was accepted at ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? "A verified employee accepted your private request." : "The employee can't help right now. Your request stays active for other employees.");
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, decision === "approved" ? `Your referral was accepted — ${result.companyDomain}` : `Update on your referral request — ${result.companyDomain}`, decision === "approved" ? `<p>A verified employee at <strong>${escapeHtml(result.companyDomain)}</strong> accepted your private referral request.</p>` : `<p>Your request at <strong>${escapeHtml(result.companyDomain)}</strong> remains visible to other verified employees.</p>`);
+=======
+>>>>>>> Stashed changes
       res.set("Cache-Control", "private, no-store"); res.json({ status: result.status, declineReason: result.declineReason });
     } catch (error) { const message = error instanceof Error ? error.message : "This private review link is unavailable"; const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined; res.status(/private review link|no longer available|another verified employee|conflicts with the current state/i.test(message) ? 409 : 500).json({ error: message, currentState }); }
   });
@@ -873,8 +890,6 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to send a private message" });
       actorUserId = identity.account.id;
-      const recentCount = deps.countRecentMessagesBySender ? await deps.countRecentMessagesBySender(identity.account.id, new Date(Date.now() - 60 * 60 * 1000)) : 0;
-      if (recentCount >= 30) { record({ actorUserId: identity.account.id, action: "company_referral.conversation_rate_limited", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined }); return res.status(429).json({ error: "You're sending messages too quickly. Try again in a few minutes." }); }
       const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (!body) return res.status(400).json({ error: "Write a message before sending" });
@@ -924,9 +939,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to claim a referral request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId);
+<<<<<<< Updated upstream
       record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain });
       if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request.`);
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p>`);
+=======
+      record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId });
+>>>>>>> Stashed changes
       res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
@@ -980,32 +999,6 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const message = error instanceof Error ? error.message : "We could not record this approval decision";
       res.status(/already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
     }
-  });
-  app.get("/api/admin/users", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
-      const users = await deps.listUsersAdmin?.(limit) ?? [];
-      record({ actorUserId: identity.account.id, action: "admin.users_viewed", outcome: "success", resourceType: "user_directory", metadata: { limit, userCount: users.length } });
-      res.set("Cache-Control", "private, no-store");
-      res.json({ users });
-    } catch { res.status(500).json({ error: "We could not load the users directory" }); }
-  });
-  app.post("/api/admin/users/:userId/suspend", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req); const userId = Number(req.params.userId);
-      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      if (!Number.isInteger(userId) || userId <= 0) return res.status(400).json({ error: "Invalid user reference" });
-      if (typeof req.body?.suspended !== "boolean") return res.status(400).json({ error: "State whether the account should be suspended" });
-      if (userId === identity.account.id && req.body.suspended) return res.status(400).json({ error: "You cannot suspend your own administrator account" });
-      if (!deps.setUserSuspended) return res.status(503).json({ error: "User suspension is unavailable right now" });
-      const user = await deps.setUserSuspended(userId, req.body.suspended);
-      const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
-      record({ actorUserId: identity.account.id, action: req.body.suspended ? "admin.user_suspended" : "admin.user_unsuspended", outcome: "success", resourceType: "user", resourceId: userId, metadata: { note: typeof note === "string" ? note : null } });
-      res.set("Cache-Control", "private, no-store");
-      res.json({ user });
-    } catch { res.status(500).json({ error: "We could not update this user account" }); }
   });
   app.get("/api/admin/payments/review", async (req, res) => {
     try {
@@ -1129,31 +1122,6 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "admin.token_recovery_granted", outcome: "success", resourceType: "token_adjustment", resourceId: grant.adjustmentId, metadata: { recipientUserId, role, tokenCount } });
       res.status(201).json({ grant });
     } catch (error) { res.status(409).json({ error: error instanceof Error ? error.message : "We could not create this token recovery grant" }); }
-  });
-  // Admin schema-migrate trigger: runs the reconciler's FIXED allowlist (the
-  // DESIRED_COLUMNS/DESIRED_TABLES DDL in schemaReconcile.ts) against the live
-  // DB on demand. No request input reaches the SQL layer, so there is no
-  // arbitrary-SQL surface; the admin guard is the only gate. Statement-level
-  // results come back so a partial run (e.g. one metadata-lock timeout) is
-  // diagnosable without shell access. GET is the no-run inspection snapshot.
-  const schemaSnapshot = () => ({ reconciled: isSchemaReconciled(), results: getLastReconcileResults(), firstError: getLastReconcileError() });
-  app.get("/api/admin/schema/reconcile", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      res.set("Cache-Control", "private, no-store");
-      res.json(schemaSnapshot());
-    } catch { res.status(500).json({ error: "We could not load the schema reconcile status" }); }
-  });
-  app.post("/api/admin/schema/reconcile", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      await reconcileSchema();
-      record({ actorUserId: identity.account.id, action: "admin.schema_reconcile_run", outcome: isSchemaReconciled() ? "success" : "failure", resourceType: "schema_reconcile", metadata: { statementCount: getLastReconcileResults().length, reconciled: isSchemaReconciled() } });
-      res.set("Cache-Control", "private, no-store");
-      res.json(schemaSnapshot());
-    } catch { res.status(500).json({ error: "We could not run the schema reconcile" }); }
   });
 }
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";

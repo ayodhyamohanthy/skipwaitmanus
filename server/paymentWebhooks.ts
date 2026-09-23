@@ -72,7 +72,11 @@ async function verifyPayPalWebhookViaApi(input: { authAlgo?: string; certUrl?: s
   return ((await response.json()) as { verification_status?: string }).verification_status === "SUCCESS" ? "SUCCESS" : "FAILURE";
 }
 
+<<<<<<< Updated upstream
 export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entry: ActivityInput) => Promise<void>; recordGatewayEvent?: (input: GatewayEventInput) => Promise<{ matched: boolean } | undefined>; verifyPayPalWebhook?: PayPalWebhookVerifier; applyUnlockRefund?: (input:{refundId:string;paymentId:string;orderId?:string;amount:number;currency:string})=>Promise<unknown>; fulfillUnlockCredits?: (input: { userId: number; pack: string; paymentId: string; orderId: string; amount: number; currency: string }) => Promise<unknown> }) {
+=======
+export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entry: ActivityInput) => Promise<void>; recordGatewayEvent?: (input: GatewayEventInput) => Promise<{ matched: boolean } | undefined>; verifyPayPalWebhook?: PayPalWebhookVerifier }) {
+>>>>>>> Stashed changes
   const paypalConfigured = () => Boolean(process.env.PAYPAL_CLIENT_ID && process.env.PAYPAL_SECRET);
   const paypalVerificationConfigured = () => Boolean(process.env.PAYPAL_WEBHOOK_ID) && paypalConfigured();
 
@@ -88,6 +92,7 @@ export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entr
     const subject = (payment ?? refund) as Record<string, unknown> | undefined;
     const notes = (subject?.notes ?? {}) as Record<string, unknown>;
     const checkoutIntentId = typeof notes.checkoutIntentId === "string" ? notes.checkoutIntentId : undefined;
+<<<<<<< Updated upstream
     // B2B unlock-credit packs self-fulfill on verified capture: notes.kind =
     // "unlock_credits" carries the pack id, and the handler credits the
     // employer wallet (idempotent per payment id). Seeker token fulfillment
@@ -109,6 +114,8 @@ export function registerPaymentWebhookRoutes(app: Express, deps: { record: (entr
       }
     }
     if(event==="refund.processed"&&deps.applyUnlockRefund){const refundId=typeof refund?.id==="string"?refund.id:"";const paymentId=typeof refund?.payment_id==="string"?refund.payment_id:"";const amount=typeof refund?.amount==="number"?refund.amount:NaN;const currency=typeof refund?.currency==="string"?refund.currency:"";const orderId=typeof refund?.order_id==="string"?refund.order_id:undefined;if(!refundId||!paymentId||!Number.isInteger(amount)||amount<=0||!currency)return res.status(200).json({received:true,matched:false,refund:"requires_review"});try{await deps.applyUnlockRefund({refundId,paymentId,orderId,amount,currency});}catch(error){console.warn("[Payments] Razorpay refund reversal failed; retrying:",error);return res.status(503).json({error:"Refund reversal pending retry"});}}
+=======
+>>>>>>> Stashed changes
     // Correlation is a read-only lookup on paymentFulfillments (see
     // recordGatewayPaymentEvent): unmatched deliveries still ack 200 so
     // Razorpay does not retry forever, and nothing is ever fabricated.

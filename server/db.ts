@@ -1,8 +1,12 @@
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
+<<<<<<< Updated upstream
 import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+=======
+import { adminTokenAdjustments, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, referralAvailabilitySlots, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, type InsertUser, jobs, messages, notifications, operationalActivityLogs, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+>>>>>>> Stashed changes
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -198,6 +202,7 @@ export async function getUserByOpenId(openId: string) {
 }
 export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; const account=await getUserByOpenId(openId);if(!account)return;const now=new Date();await db.update(users).set({sessionsValidAfter:now}).where(eq(users.id,account.id));if(account.canonicalPersonId)await db.update(canonicalPeople).set({sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId)); }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
+<<<<<<< Updated upstream
 export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));
@@ -214,6 +219,8 @@ export async function isUserSuspended(userId: number) {
   const [row] = await db.select({ suspended: users.suspended }).from(users).where(eq(users.id, userId)).limit(1);
   return Boolean(row?.suspended);
 }
+=======
+>>>>>>> Stashed changes
 
 // WorkOS webhook support: resolve a WorkOS user_xxx subject to the local
 // canonical account via the verified alias the AuthKit callback upserts
@@ -323,7 +330,7 @@ export async function exportUserData(userId: number) {
     db.select({ id: referralRequests.id, status: referralRequests.status, personalPitch: referralRequests.personalPitch, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.jobSeekerId, userId)),
     db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, createdAt: referralAttachments.createdAt }).from(referralAttachments).where(eq(referralAttachments.ownerId, userId)),
     db.select({ id: messages.id, referralRequestId: messages.referralRequestId, senderId: messages.senderId, recipientId: messages.recipientId, body: messages.body, readAt: messages.readAt, createdAt: messages.createdAt }).from(messages).where(or(eq(messages.senderId, userId), eq(messages.recipientId, userId))),
-    db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, compensation: companyOpportunities.compensation, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, isActive: companyOpportunities.isActive, createdAt: companyOpportunities.createdAt, updatedAt: companyOpportunities.updatedAt }).from(companyOpportunities).where(eq(companyOpportunities.ownerId, userId)).catch(() => db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, isActive: companyOpportunities.isActive, createdAt: companyOpportunities.createdAt, updatedAt: companyOpportunities.updatedAt }).from(companyOpportunities).where(eq(companyOpportunities.ownerId, userId))),
+    db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, compensation: companyOpportunities.compensation, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, isActive: companyOpportunities.isActive, createdAt: companyOpportunities.createdAt, updatedAt: companyOpportunities.updatedAt }).from(companyOpportunities).where(eq(companyOpportunities.ownerId, userId)),
     db.select({ role: tokenBalances.role, balance: tokenBalances.balance, monthlyCreditsRemaining: tokenBalances.monthlyCreditsRemaining, monthlyAllowance: tokenBalances.monthlyAllowance, monthlyCycleKey: tokenBalances.monthlyCycleKey, plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrency: tokenBalances.subscriptionCurrency, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd, updatedAt: tokenBalances.updatedAt }).from(tokenBalances).where(eq(tokenBalances.userId, userId)),
     db.select({ role: tokenTransactions.role, tokenCount: tokenTransactions.tokenCount, kind: tokenTransactions.kind, createdAt: tokenTransactions.createdAt }).from(tokenTransactions).where(eq(tokenTransactions.userId, userId)),
     db.select({ id: privacyRequests.id, kind: privacyRequests.kind, status: privacyRequests.status, source: privacyRequests.source, resolution: privacyRequests.resolution, createdAt: privacyRequests.createdAt, updatedAt: privacyRequests.updatedAt }).from(privacyRequests).where(eq(privacyRequests.userId, userId)),
@@ -453,7 +460,7 @@ export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<
   const normalizedCode = linkCode.trim().slice(0, 64);
   if (!normalizedCode) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
   return { companyDomain: link.companyDomain, isActive: true };
@@ -464,7 +471,7 @@ export async function getPublicReferrerFastTrackVanityLink(companySlug: string, 
   const normalizedAlias = vanityAlias.trim().toLowerCase();
   if (!normalizedSlug || !isSafeFastTrackAlias(normalizedAlias)) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
   return { companyDomain: link.companyDomain, isActive: true };
@@ -667,6 +674,7 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
 
 export async function listPublicCompanyOpportunities() {
   const db = await getDb(); if (!db) return [];
+<<<<<<< Updated upstream
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
   // compensation is a newer optional column; degrade gracefully if the live
   // DB has not yet been migrated, so the wall never 500s.
@@ -675,6 +683,9 @@ export async function listPublicCompanyOpportunities() {
   } catch {
     return await db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   }
+=======
+  return db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, compensation: companyOpportunities.compensation, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+>>>>>>> Stashed changes
 }
 
 export const isPrivateReferralJob = (row: { title?: string | null; description?: string | null }) =>
@@ -901,8 +912,17 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
       const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "pass", operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null) throw new Error("An allocated referral must be released through the queue workflow"); }, notification: { userId: current.request.jobSeekerId, title: `Update on your referral request — ${current.companyDomain}`, body: "The employee can't help right now. Your request stays active for other employees." }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: userId, reason }).onDuplicateKeyUpdate({ set: { reason } }); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,userId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,userId),eq(referralAvailabilitySlots.status,"allocated"))); } });
       return { ...result, status: "passed" as const, companyDomain: current.companyDomain, declineReason: reason, jobSeekerId: current.request.jobSeekerId };
     }
+<<<<<<< Updated upstream
     const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "approve", operationKey, toStatus: "approved", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId, referrerMessage: null }, notification: { userId: current.request.jobSeekerId, title: "Referral Request approved", body: "A verified employee accepted your private referral request." }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } const previousPass = await tx.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId, input.requestId), eq(referralRequestPasses.referrerId, userId))).limit(1); if (previousPass[0]) throw new Error("You already passed on this referral request"); await grantPendingActionRewardsTx(tx, userId, "referrer", "referral_approval", String(input.requestId)); } });
     return { ...result, status: "approved" as const, companyDomain: current.companyDomain, jobSeekerId: current.request.jobSeekerId };
+=======
+    const message = input.decision === "declined" ? oneClickDeclineMessages[input.declineReason ?? "cannot_support"] : null;
+    const updated = await tx.update(referralRequests).set({ status: input.decision, referrerMessage: message }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, "pending"), eq(referralRequests.referrerId, userId)));
+    if (Number(updated[0].affectedRows) !== 1) throw new Error("This referral request has already been reviewed");
+    await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: message || "Your Referrer has reviewed your Referral Request." });
+    if (input.decision === "approved") await grantPendingActionRewards(userId, "referrer");
+    return { status: input.decision, companyDomain: current.companyDomain, declineReason: input.decision === "declined" ? input.declineReason ?? "cannot_support" : undefined };
+>>>>>>> Stashed changes
   });
 }
 
@@ -1086,6 +1106,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before claiming referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+<<<<<<< Updated upstream
   return db.transaction(async tx => {
     const current = (await tx.select({ request: referralRequests, company: jobs.company }).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
     if (!current || current.request.status !== "pending" || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
@@ -1095,6 +1116,15 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     if(!result.replayed)await tx.insert(referralDocumentAccessGrants).values({referralRequestId:requestId,referrerId:userId,requestRevision:result.revision,grantVersion:1,expiresAt:new Date(Date.now()+30*24*60*60*1000)}).onDuplicateKeyUpdate({set:{requestRevision:result.revision,grantVersion:sql`${referralDocumentAccessGrants.grantVersion}+1`,grantedAt:new Date(),expiresAt:new Date(Date.now()+30*24*60*60*1000),revokedAt:null,revokeReason:null}});
     return { requestId, claimed: true as const, replayed: result.replayed, revision: result.revision, jobSeekerId: current.request.jobSeekerId, companyDomain: current.company };
   });
+=======
+  const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, company: jobs.company, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)))).limit(1);
+  if (!request[0] || !isVerifiedEmployeeOfCompany(profile, request[0].company)) throw new Error("This referral request is no longer available");
+  if (request[0].referrerId === userId) return { requestId, claimed: true };
+  const update = await db.update(referralRequests).set({ referrerId: userId }).where(and(eq(referralRequests.id, requestId), isNull(referralRequests.referrerId)));
+  if (Number(update[0].affectedRows) !== 1) throw new Error("Another verified employee already claimed this request");
+  await db.insert(notifications).values({ userId: request[0].jobSeekerId, category: "status", title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." });
+  return { requestId, claimed: true };
+>>>>>>> Stashed changes
 }
 
 export async function getClaimedCompanyReferralDetail(userId:number,requestId:number){const db=await getDb();if(!db)return undefined;const now=new Date();const rows=await db.select({id:referralRequests.id,targetRoleUrl:jobs.targetRoleUrl,companyDomain:jobs.company,candidateName:users.name,referrerId:referralRequests.referrerId,status:referralRequests.status,revision:referralRequests.revision,grantVersion:referralDocumentAccessGrants.grantVersion,grantRevision:referralDocumentAccessGrants.requestRevision,grantExpiresAt:referralDocumentAccessGrants.expiresAt}).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).innerJoin(users,eq(referralRequests.jobSeekerId,users.id)).innerJoin(referralDocumentAccessGrants,and(eq(referralDocumentAccessGrants.referralRequestId,referralRequests.id),eq(referralDocumentAccessGrants.referrerId,userId),isNull(referralDocumentAccessGrants.revokedAt),gt(referralDocumentAccessGrants.expiresAt,now))).where(and(eq(referralRequests.id,requestId),eq(referralRequests.referrerId,userId),inArray(referralRequests.status,["pending","approved","intro_made","interview","offer"]))).limit(1);const request=rows[0];if(!request)return undefined;const attachments=await db.select({id:referralAttachments.id,fileName:referralAttachments.fileName,mimeType:referralAttachments.mimeType,fileSize:referralAttachments.fileSize}).from(referralAttachments).where(eq(referralAttachments.referralRequestId,requestId));return{...request,attachments};}
@@ -1250,6 +1280,7 @@ export async function sendReferralConversationMessage(userId: number, requestId:
   return { id: Number(result[0].insertId) };
 }
 
+<<<<<<< Updated upstream
 
 
 export type ReferralLedgerRow = { id: number; ref: string; status: string; company: string; jobTitle: string; jobLocation: string | null; seekerEmail: string | null; referrerEmail: string | null; createdAt: Date; updatedAt: Date };
@@ -1376,24 +1407,12 @@ export async function sendDirectMessage(userId:number,recipientId:number,body:st
 
 
 
+=======
+>>>>>>> Stashed changes
 export async function listMessages(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(messages).where(or(eq(messages.senderId, userId), eq(messages.recipientId, userId))).orderBy(desc(messages.createdAt)); }
 export async function sendMessage(userId: number, input: { recipientId: number; body: string; referralRequestId?: number }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(messages).values({ senderId: userId, recipientId: input.recipientId, body: input.body, referralRequestId: input.referralRequestId }); await db.insert(notifications).values({ userId: input.recipientId, category: "message", title: "New message", body: "You have a new message in Bridge." }); return { id: Number(result[0].insertId) }; }
 export async function listNotifications(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)); }
 export async function markNotificationRead(userId: number, notificationId: number) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId))); return { success: true }; }
-export async function countRecentMessagesBySender(userId: number, since: Date) {
-  const db = await getDb(); if (!db) return 0;
-  const [rows] = await db.select({ count: sql<number>`count(*)` }).from(messages).where(and(eq(messages.senderId, userId), gt(messages.createdAt, since)));
-  return Number(rows?.count ?? 0);
-}
-export async function getUserEmailById(userId: number) {
-  const db = await getDb(); if (!db) return null;
-  const [row] = await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
-  return row?.email ?? null;
-}
-export async function createNotification(userId: number, category: "referral" | "message" | "status" | "system", title: string, body: string) {
-  const db = await getDb(); if (!db) return;
-  await db.insert(notifications).values({ userId, category, title, body });
-}
 
 export async function getDashboardStats(userId: number) {
   const db = await getDb(); if (!db) return { savedRoles: 0, activeReferralRequests: 0, incomingReferralRequests: 0, introductionsMade: 0, conversationsStarted: 0, peopleHired: 0 };
@@ -2212,6 +2231,7 @@ export async function resolveAdminApproval(adminUserId: number, itemKind: AdminA
     return { kind: itemKind, id: itemId, status: nextStatus as AdminApprovalQueueStatus };
   });
 }
+<<<<<<< Updated upstream
 
 // ---- B2B monetization (employer accounts, unlock credits, sponsored roles, partners) ----
 
@@ -2613,3 +2633,5 @@ export async function applyEmployerUnlockRefund(input:{refundId:string;paymentId
     await tx.insert(operationalActivityLogs).values({actorUserId:intent.userId,action:"employer.unlock_credits_refunded",outcome:"success",resourceType:"employer_unlock_refund",resourceId:input.refundId,metadata:JSON.stringify({paymentId:input.paymentId,refundAmount:input.amount,cumulativeRefunded:cumulative,creditsReversed:delta,creditDebt:debt})});return {status:"applied" as const,creditsReversed:delta,creditDebt:debt};
   });
 }
+=======
+>>>>>>> Stashed changes

@@ -237,7 +237,16 @@ Inner: h-4 w-40 rounded bg-slate-100
 
 ---
 
+<<<<<<< Updated upstream
 ## 9. Accessibility
+=======
+### Public / auth
+- `/` **Home** — marketing links; light states
+- `/start` **Onboarding** — multi-step, error state
+- `/referrer` **Referrer sign-in** — empty/error/loading
+- `/email-review/:token` **EmailReviewAction** — error
+- `/privacy` **TrustPrivacy** — static
+>>>>>>> Stashed changes
 
 - **Contrast**: Text ≥ 4.5:1 against background (WCAG AA)
 - **Focus**: 3px solid `#BFDBFE` ring with 2px offset on all interactive elements

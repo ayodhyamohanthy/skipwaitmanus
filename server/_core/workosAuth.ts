@@ -88,6 +88,7 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   if (!validateWorkosAccessClaims(payload, clientId)) return undefined;
   const sub = payload.sub as string;
   const openId = resolveWorkosOpenId(sub);
+<<<<<<< Updated upstream
   const existing = await db.getUserByOpenId(openId);
   if (existing?.suspended) return undefined;
   if (existing?.sessionsValidAfter && existing.sessionsValidAfter > existing.createdAt && (payload.iat as number) * 1000 < existing.sessionsValidAfter.getTime()) return undefined;
@@ -101,6 +102,17 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   if (!account || account.suspended) return undefined;
   if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;
   const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
+=======
+  const email = typeof payload.email === "string" ? payload.email : null;
+  const emailVerified = payload.email_verified === true;
+  const name = typeof payload.name === "string" && payload.name ? payload.name : email?.split("@")[0] ?? null;
+  await db.upsertUser({ openId, name, email, loginMethod: "workos", lastSignedIn: new Date() });
+  const account = await db.getUserByOpenId(openId);
+  if (!account) return undefined;
+  const primaryEmail: DevEmailAddress | null = email
+    ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } }
+    : null;
+>>>>>>> Stashed changes
   return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
 }
 
