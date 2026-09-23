@@ -63,3 +63,19 @@ export function jobsJsonLd(jobs: Array<{ id: number; title: string; company: str
     })),
   };
 }
+
+/**
+ * FAQ structured data. Only pass entries that are rendered as visible page
+ * copy; search engines reject FAQ markup for questions a visitor cannot read.
+ */
+export function faqJsonLd(entries: ReadonlyArray<{ question: string; answer: string }>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: entries.map(entry => ({
+      "@type": "Question",
+      name: entry.question,
+      acceptedAnswer: { "@type": "Answer", text: entry.answer },
+    })),
+  };
+}

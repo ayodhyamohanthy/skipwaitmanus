@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { homeLinks, landingSnapshot, PUBLIC_PAGES, publicSnapshots, renderPublicPage } from "./prerender-public-pages";
-import { LANDING_EXPLORE, LANDING_H1, LANDING_SUMMARY, LANDING_TITLE } from "../shared/landingContent";
+import { LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_SUMMARY, LANDING_TITLE } from "../shared/landingContent";
 
 const template = '<html><head><title>skipwait.me — Job Referrals</title><meta name="description" content="previous copy" /><link rel="canonical" href="https://skipwait.me/" /><meta property="og:title" content="previous og title" /><meta property="og:description" content="previous og copy" /><meta property="og:url" content="https://skipwait.me/" /><meta name="twitter:title" content="previous twitter title" /><meta name="twitter:description" content="previous twitter copy" /></head><body><div id="root"></div></body></html>';
 
@@ -28,6 +28,15 @@ describe("crawlable landing and public snapshots", () => {
     expect(html).toContain('href="/referrer"');
     for (const link of LANDING_EXPLORE) expect(html).toContain(`href="${link.href}"`);
     expect(html).toContain(homeLinks());
+  });
+
+  it("prints the same questions the landing page shows, so FAQ markup has visible answers", () => {
+    const html = landingSnapshot();
+    expect(html).toContain(`<h2>${LANDING_FAQ_HEADING}</h2>`);
+    for (const entry of LANDING_FAQ) {
+      expect(html).toContain(`<dt>${entry.question}</dt>`);
+      expect(html).toContain(`<dd>${entry.answer}</dd>`);
+    }
   });
 
   it("keeps the landing title, description, and canonical honest in the shell it rewrites", () => {

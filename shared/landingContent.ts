@@ -46,3 +46,17 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/contact", label: "Contact us", summary: "Reach the team about your account, a payment, or privacy." },
   { href: "/support", label: "Support", summary: "A person answers, usually within one business day." },
 ];
+
+export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
+
+/**
+ * Questions the product can answer without a promise. These render as visible
+ * page copy and as FAQ structured data, so the structured data never describes
+ * something a visitor cannot read.
+ */
+export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
+  { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
+  { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
+  { question: "What does it cost?", answer: `${FREE_MONTHLY_ALLOWANCE} referral requests are free every month. Extra credits cost $1 each (₹99 in India), never expire, and are used only when an employee accepts your request.` },
+  { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
+];
