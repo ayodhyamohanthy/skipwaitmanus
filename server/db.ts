@@ -1700,11 +1700,17 @@ export async function revokePromoGrant(grantId: number, reason: string) {
   });
 }
 
+/** Escape LIKE wildcards so recovery search treats % _ \ as literals (MySQL backslash escape). */
+export function likeSearchPattern(query: string): string {
+  return `%${query.replace(/[\\%_]/g, match => `\\${match}`)}%`;
+}
+
 export async function findUsersForTokenRecovery(query: string) {
   const db = await getDb(); if (!db) return [];
   const normalized = query.trim();
   if (normalized.length < 2) return [];
-  return db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(or(like(users.email, `%${normalized}%`), like(users.name, `%${normalized}%`))).orderBy(desc(users.lastSignedIn)).limit(15);
+  const pattern = likeSearchPattern(normalized);
+  return db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(or(like(users.email, pattern), like(users.name, pattern))).orderBy(desc(users.lastSignedIn)).limit(15);
 }
 
 export async function listAdminTokenAdjustments(limit = 20) {
