@@ -18,7 +18,7 @@ export default function Terms() {
     title="Plain terms for a private referral handoff."
     intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
     updated="September 23, 2026"
-    footnote="These terms describe how the product works today. If we change them, we will update the date above and, for material changes, tell you by email."
+    footnote="These terms describe how the product works today. If we change them, we will update the date above."
   >
     <PolicySection number="01" title="What skipwait.me is">
       <p>skipwait.me lets a <strong>Job Seeker</strong> send one private referral request for a specific role to verified employees of the company behind that role. A verified employee (a <strong>Referrer</strong>) may accept or decline. We route and record the request; we are not an employer, recruiter, or hiring agent.</p>
