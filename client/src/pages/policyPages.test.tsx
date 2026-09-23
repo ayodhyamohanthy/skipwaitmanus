@@ -23,6 +23,18 @@ vi.mock("@/_core/auth", () => ({
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
+// Settings reads talent-consent state through tRPC; without this the render
+// throws "Unable to find tRPC Context" instead of checking the disclosure links.
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    talentConsent: {
+      state: { useQuery: () => ({ data: undefined, isLoading: false }) },
+      grant: { useMutation: () => ({ mutate: vi.fn() }) },
+      revoke: { useMutation: () => ({ mutate: vi.fn() }) },
+    },
+    useUtils: () => ({ talentConsent: { state: { invalidate: vi.fn() } } }),
+  },
+}));
 
 beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) }))); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
