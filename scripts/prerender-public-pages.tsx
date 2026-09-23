@@ -16,8 +16,7 @@ import { Router } from "wouter";
 // load lazily after React is on globalThis.
 export const PUBLIC_PAGES: { route: string; title: string; load: () => Promise<{ default: React.ComponentType }> }[] = [
   { route: "/terms", title: "Terms of Service", load: () => import("../client/src/pages/Terms") },
-  { route: "/privacy-policy", title: "Privacy Policy", load: () => import("../client/src/pages/PrivacyPolicy") },
-  { route: "/privacy", title: "Privacy & Trust", load: () => import("../client/src/pages/TrustPrivacy") },
+  { route: "/privacy", title: "Privacy Policy", load: () => import("../client/src/pages/TrustPrivacy") },
   { route: "/refunds", title: "Refunds & Cancellation", load: () => import("../client/src/pages/RefundPolicy") },
   { route: "/shipping", title: "Shipping & Delivery", load: () => import("../client/src/pages/ShippingPolicy") },
   { route: "/about", title: "About Us", load: () => import("../client/src/pages/About") },

@@ -8,7 +8,6 @@ import ShippingPolicy from "./ShippingPolicy";
 import About from "./About";
 import Contact from "./Contact";
 import Pricing from "./Pricing";
-import PrivacyPolicy from "./PrivacyPolicy";
 import Support from "./Support";
 import Settings from "./Settings";
 import NotFound from "./NotFound";
@@ -37,8 +36,8 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Plain terms");
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
-    expect(screen.getByText("Draft · pending legal review")).toBeTruthy();
-    expect(policyLinks(container)).toEqual(["/terms", "/privacy-policy", "/privacy", "/refunds", "/shipping", "/pricing", "/about", "/contact", "/support"]);
+    expect(screen.queryByText("Draft · pending legal review")).toBeNull();
+    expect(policyLinks(container)).toEqual(["/terms", "/privacy", "/refunds", "/shipping", "/pricing", "/about", "/contact", "/support"]);
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");
   });
 
@@ -73,9 +72,6 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/₹599\/month or \$7\/month/)).toBeTruthy();
     expect(screen.getByText(/₹1,299\/month or \$15\/month/)).toBeTruthy();
     expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
-    cleanup();
-    render(<PrivacyPolicy />);
-    expect(screen.getByText(/We do not sell your personal information/)).toBeTruthy();
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {

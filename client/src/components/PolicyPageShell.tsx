@@ -13,13 +13,12 @@ import { Brand } from "@/components/Brand";
  * The "Draft" pill stays until founder/legal review signs off (see
  * docs/pre-launch-checklist.md, P0 legal disclosures).
  */
-/** Flip to true once the founder signs off; removes the Draft badge from Terms, Privacy-adjacent and Refund pages. */
-export const POLICIES_PUBLISHED = false;
+/** Founder approved publishing Terms and Refunds on Sep 23, 2026 (removes the Draft badge). */
+export const POLICIES_PUBLISHED = true;
 
 export const SUPPORT_EMAIL = "support@skipwait.me";
 export const policyLinks = [
   { href: "/terms", label: "Terms of Service" },
-  { href: "/privacy-policy", label: "Privacy policy" },
   { href: "/privacy", label: "Privacy & trust" },
   { href: "/refunds", label: "Refunds & cancellation" },
   { href: "/shipping", label: "Shipping & delivery" },
