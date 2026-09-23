@@ -1555,7 +1555,9 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     promoExpiresAt: promo.expiresAt,
     promoStatus: promo.status,
     promoOfferActive: promoGrantsEnabled(),
-    totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance + promo.remaining,
+    // Referral requests (createCompanyReferralRequest) never spend promo credits, and grants are paused
+    // while PROMO_GRANTS_ENABLED is off, so promo must not inflate the spendable total shown to users.
+    totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance + (promoGrantsEnabled() ? promo.remaining : 0),
     cycleKey: wallet.monthlyCycleKey,
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
