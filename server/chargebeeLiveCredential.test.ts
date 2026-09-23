@@ -13,9 +13,11 @@ async function chargebeeCredentialRead(url: string, authorization: string) {
 }
 
 describe("live Chargebee credential", () => {
-  it("authorizes a minimal production item-price read when the live Write Key is configured", async () => {
+  // Opt in explicitly with RUN_EXTERNAL_CREDENTIAL_TESTS=true: this reads the
+  // live production site, so it must never run on a plain `pnpm test`.
+  it.runIf(process.env.RUN_EXTERNAL_CREDENTIAL_TESTS === "true")("authorizes a minimal production item-price read", async () => {
     const apiKey = process.env.CHARGEBEE_LIVE_API_KEY;
-    if (!apiKey) return;
+    expect(apiKey, "CHARGEBEE_LIVE_API_KEY must be configured").toBeTruthy();
 
     const response = await chargebeeCredentialRead("https://skipwait.chargebee.com/api/v2/item_prices?limit=1", Buffer.from(`${apiKey}:`).toString("base64"));
 
