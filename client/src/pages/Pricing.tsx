@@ -21,7 +21,7 @@ export default function Pricing() {
     <PolicySection number="02" title="Extra credits (one-time)">
       <ul>
         <li><strong>₹99 per credit</strong> (India) or <strong>$1 per credit</strong> (rest of the world). Buy 1 or more.</li>
-        <li>Purchased credits never expire. A credit is only used when a Referrer accepts your request.</li>
+        <li>Purchased credits never expire. A credit is used when you send a request, and returned if you withdraw before a verified employee picks it up. It is not returned if the request is declined or gets no response.</li>
       </ul>
     </PolicySection>
     <PolicySection number="03" title="Monthly plans">
