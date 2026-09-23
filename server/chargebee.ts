@@ -177,9 +177,22 @@ export function tokenPackFromAmount(amount: number, currency: string): { tokenCo
 
 export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; quantity?: number; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
   const form = new URLSearchParams();
-  form.set("item_prices[item_price_id][0]", input.itemPriceId);
-  form.set("item_prices[quantity][0]", String(input.quantity ?? 1));
-  form.set("currency_code", CHARGEBEE_TOKEN_PACKS[input.itemPriceId].currency);
+  const pack = CHARGEBEE_TOKEN_PACKS[input.itemPriceId];
+  const quantity = input.quantity ?? 1;
+  if (!isTokenQuantity(quantity)) throw new Error("Invalid credit quantity");
+  if (quantity === 1) {
+    // Live credit prices are flat-fee charges. Chargebee rejects any quantity
+    // param on them ("should not be sent for on_off addon type"), so a single
+    // credit is sent as the bare item price.
+    form.set("item_prices[item_price_id][0]", input.itemPriceId);
+  } else {
+    // Multi-credit purchases go as one server-computed ad hoc charge. The amount
+    // comes only from the catalog constant, never from the client, and payment
+    // reconciliation already matches on invoice amount + currency.
+    form.set("charges[amount][0]", String(pack.amount * quantity));
+    form.set("charges[description][0]", `SkipWait credits x ${quantity}`);
+  }
+  form.set("currency_code", pack.currency);
   if (input.email) form.set("customer[email]", input.email);
   if (input.firstName) form.set("customer[first_name]", input.firstName);
   if (input.lastName) form.set("customer[last_name]", input.lastName);

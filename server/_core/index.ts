@@ -44,6 +44,7 @@ import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
+import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { materialErrorAlertMiddleware } from "../errorAlerting";
@@ -166,6 +167,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       return { inrAmount: plan.prices.INR.amount / 100, usdAmount: plan.prices.USD.amount / 100 };
     },
   });
+  registerAdminBillingCatalogRoutes(app, { resolveIdentity });
   registerChargebeeRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
