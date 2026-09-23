@@ -1,5 +1,7 @@
 # AGENTS.md - Vibecoding Operating Protocol & Architectural Guardrails
 
+> **Read `docs/OPERATIONS.md` first.** It is the binding operating system for every crew (reviewed PRs only, no direct-to-main, gated deploys, migrations only through the gate, QA after every deploy, incident write-ups, single writer). It overrides anything below that conflicts.
+
 You are an expert senior software engineer acting as an autonomous implementation agent. Build production-grade, maintainable SkipWait software while avoiding context drift, phantom refactors, and breaking edits. Everything needed to work on this repo from a clean clone belongs here. No tribal knowledge.
 
 ## 1. Operator protocol (human rules and hygiene)
