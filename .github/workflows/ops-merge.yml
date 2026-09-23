@@ -1,0 +1,19 @@
+name: Ops duplicate-account merge
+on:
+  push:
+    branches: [ops/merge-dryrun]
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ops SQL
+        env:
+          MYSQL_PWD: ${{ secrets.SKIPWAIT_DB_PASSWORD }}
+        run: |
+          set -euo pipefail
+          f=ops/merge-dryrun.sql
+          [ -f ops/merge-commit.sql ] && f=ops/merge-commit.sql
+          echo "===== $f"
+          mysql --host="${{ vars.SKIPWAIT_DB_HOST }}" --port="${{ vars.SKIPWAIT_DB_PORT }}" --user="${{ vars.SKIPWAIT_DB_USER }}" --ssl-mode=REQUIRED --connect-timeout=15 --table "${{ vars.SKIPWAIT_DB_NAME }}" < "$f"
