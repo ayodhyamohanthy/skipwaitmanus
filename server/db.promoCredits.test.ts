@@ -183,6 +183,27 @@ describe("promo credit grants", () => {
     expect(summary.totalAvailable).toBe(5 + 3 + 5);
   });
 
+  it("parks a paid invoice whose amount disagrees with the checkout for review, never a silent ignore", async () => {
+    tables.payments = [{ id: 1, provider: "chargebee", providerEventId: "pending:page1", providerInvoiceId: null, providerHostedPageId: "page1", checkoutIntentId: "intent1", userId: 7, role: "job_seeker", tokenCount: 10, amount: 99000, currency: "INR", status: "pending", reconciliationReason: null, lastCheckedAt: null, creditedAt: null, createdAt: NOW }];
+    const result = await fulfillChargebeePayment({ eventId: "evt_tax", hostedPageId: "page1", invoiceId: "in_tax", passThruContent: "intent1", amount: 116820, currency: "INR" });
+    expect(result).toMatchObject({ status: "requires_review", reason: "checkout_amount_mismatch", paymentId: 1, expectedAmount: 99000, paidAmount: 116820 });
+    expect(tables.payments[0]).toMatchObject({ status: "requires_review", reconciliationReason: "checkout_amount_mismatch", providerEventId: "evt_tax", providerInvoiceId: "in_tax" });
+    expect(tables.wallets[0]).toMatchObject({ balance: 2 });
+    expect(tables.txns).toHaveLength(0);
+    expect(tables.grants).toHaveLength(0);
+    expect(tables.activity.some(a => a.action === "billing.payment_amount_mismatch" && a.outcome === "failure")).toBe(true);
+    // Replaying the same provider event does not re-park or credit.
+    expect(await fulfillChargebeePayment({ eventId: "evt_tax", hostedPageId: "page1", invoiceId: "in_tax", passThruContent: "intent1", amount: 116820, currency: "INR" })).toMatchObject({ status: "duplicate" });
+    expect(tables.wallets[0]).toMatchObject({ balance: 2 });
+  });
+
+  it("does not count leftover promo credits in totalAvailable while promo grants are off", async () => {
+    vi.stubEnv("PROMO_GRANTS_ENABLED", "false");
+    tables.grants = [{ id: 1, userId: 7, role: "job_seeker", tokenCount: 5, creditsRemaining: 4, status: "active", source: "first_paid_invoice", providerRef: "in_1", grantedAt: NOW, expiresAt: new Date("2026-10-20T00:00:00.000Z"), consumedAt: null, revokedAt: null, revokedReason: null, createdAt: NOW }];
+    const summary = await getTokenWallet(7, "job_seeker");
+    expect(summary.totalAvailable).toBe(3 + 2);
+  });
+
   it("grants nothing and still credits the paid pack while promo grants are off", async () => {
     vi.stubEnv("PROMO_GRANTS_ENABLED", "false");
     tables.payments = [{ id: 1, provider: "chargebee", providerEventId: "pending:page1", providerInvoiceId: null, providerHostedPageId: "page1", checkoutIntentId: "intent1", userId: 7, role: "job_seeker", tokenCount: 3, amount: 300, currency: "USD", status: "pending", reconciliationReason: null, lastCheckedAt: null, creditedAt: null, createdAt: NOW }];

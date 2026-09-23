@@ -16,9 +16,9 @@ export default function Terms() {
     icon={ScrollText}
     eyebrow="Terms of Service"
     title="Plain terms for a private referral handoff."
-    intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past."
-    updated="September 5, 2026"
-    footnote="This draft reflects how the product works today. A jurisdiction-specific version reviewed by counsel will replace it before general launch; the product behaviour it describes will not change."
+    intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
+    updated="September 23, 2026"
+    footnote="These terms describe how the product works today. If we change them, we will update the date above."
   >
     <PolicySection number="01" title="What skipwait.me is">
       <p>skipwait.me lets a <strong>Job Seeker</strong> send one private referral request for a specific role to verified employees of the company behind that role. A verified employee (a <strong>Referrer</strong>) may accept or decline. We route and record the request; we are not an employer, recruiter, or hiring agent.</p>
@@ -64,6 +64,23 @@ export default function Terms() {
 
     <PolicySection number="08" title="Contact">
       <p>Questions about these terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>, or visit the <Link href="/support" className="font-semibold text-black">Support</Link> page.</p>
+    </PolicySection>
+
+    <PolicySection number="09" title="Business identity">
+      <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as SkipWait.</p>
+      <ul>
+        <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
+        <li>Phone: <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a> (Mon–Fri, IST business hours).</li>
+        <li>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</li>
+      </ul>
+    </PolicySection>
+
+    <PolicySection number="10" title="Governing law">
+      <p>These terms are governed by the laws of India.</p>
+    </PolicySection>
+
+    <PolicySection number="11" title="Grievance officer">
+      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Phone <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a>. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
     </PolicySection>
   </PolicyPageShell>;
 }

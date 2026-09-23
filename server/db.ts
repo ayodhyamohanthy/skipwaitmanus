@@ -1555,7 +1555,9 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     promoExpiresAt: promo.expiresAt,
     promoStatus: promo.status,
     promoOfferActive: promoGrantsEnabled(),
-    totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance + promo.remaining,
+    // Referral requests (createCompanyReferralRequest) never spend promo credits, and grants are paused
+    // while PROMO_GRANTS_ENABLED is off, so promo must not inflate the spendable total shown to users.
+    totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance + (promoGrantsEnabled() ? promo.remaining : 0),
     cycleKey: wallet.monthlyCycleKey,
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
@@ -1868,7 +1870,17 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
     const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1);
     if (!intent[0]) return { status: "ignored" as const, reason: "unknown_checkout" };
-    if (intent[0].amount !== input.amount || intent[0].currency !== input.currency) return { status: "ignored" as const, reason: "checkout_amount_mismatch" };
+    if (intent[0].amount !== input.amount || intent[0].currency !== input.currency) {
+      // A paid invoice that disagrees with the checkout (tax, coupon, rounding,
+      // catalog drift) must never be dropped quietly: the user has paid. Park
+      // it for admin review, log it, and let the route raise the admin alert.
+      // Credits are not added automatically because the amount is untrusted.
+      const reviewedAt = new Date();
+      const parked = await tx.update(paymentFulfillments).set({ providerEventId: input.eventId, providerInvoiceId: input.invoiceId ?? null, status: "requires_review", reconciliationReason: "checkout_amount_mismatch", lastCheckedAt: reviewedAt }).where(and(eq(paymentFulfillments.id, intent[0].id), eq(paymentFulfillments.status, "pending")));
+      if (Number(parked[0]?.affectedRows ?? 0) !== 1) return { status: "ignored" as const, reason: "payment_already_reconciled" };
+      await tx.insert(operationalActivityLogs).values({ actorUserId: intent[0].userId, action: "billing.payment_amount_mismatch", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(intent[0].id), metadata: JSON.stringify({ role: intent[0].role, expectedAmount: intent[0].amount, expectedCurrency: intent[0].currency, paidAmount: input.amount, paidCurrency: input.currency, invoiceId: input.invoiceId ?? null }) });
+      return { status: "requires_review" as const, reason: "checkout_amount_mismatch" as const, paymentId: intent[0].id, userId: intent[0].userId, role: intent[0].role, expectedAmount: intent[0].amount, expectedCurrency: intent[0].currency, paidAmount: input.amount, paidCurrency: input.currency };
+    }
     const creditedAt = new Date();
     const claimed = await tx.update(paymentFulfillments).set({ providerEventId: input.eventId, providerInvoiceId: input.invoiceId ?? null, status: "credited", reconciliationReason: null, lastCheckedAt: creditedAt, creditedAt }).where(and(eq(paymentFulfillments.id, intent[0].id), eq(paymentFulfillments.status, "pending"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`)));
     if (Number(claimed[0]?.affectedRows ?? 0) !== 1) {
