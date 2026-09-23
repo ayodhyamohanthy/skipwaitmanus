@@ -25,6 +25,7 @@ type Deps = {
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
   getCreditSummary?: (userId: number, role: TokenRole) => Promise<unknown>;
   alertPaymentReview?: (input: { paymentId: number; reason: string; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
+  alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
   createGiftCheckout?: typeof createGiftSubscriptionCheckout;
   recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number; plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; amount?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; plan?: PaidSubscriptionPlan | null; currency?: string | null; subscriptionId?: string | null }>;
   updateGiftPlan?: (giftId: string, input: { plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; subscriptionId?: string }) => Promise<unknown>;
@@ -312,6 +313,26 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         console.error("[Chargebee] fulfillment error", error);
         return res.status(500).json({ error: "Fulfillment retry required" });
       }
+    }
+
+    // #77 safety net: a paid invoice we cannot tie to any checkout, active
+    // subscription, or gift must never disappear silently. Log it for review
+    // and alert the administrator. Subscription renewals (handled above) and
+    // gifted subscriptions (tracked by gift events) are not unmatched.
+    const giftPaid = Boolean(req.body?.content?.gift || req.body?.content?.subscription?.gift_id || req.body?.content?.invoice?.gift_id);
+    const subscriptionHandled = Boolean(subscription && obligations.subscription && (obligations.subscription as { status?: string }).status !== "ignored");
+    const paymentResult = obligations.payment as { status?: string; reason?: string } | undefined;
+    const paymentUnmatched = payment && !subscriptionHandled && !giftPaid && (
+      (paymentResult?.status === "ignored" && ["unknown_checkout", "missing_hosted_page", "missing_checkout_intent"].includes(paymentResult.reason ?? ""))
+      || (!paymentResult && !subscriptionHandled)
+    );
+    if (payment && paymentUnmatched) {
+      handled = true;
+      const reason = paymentResult?.reason ?? "unpriced_amount";
+      obligations.payment = { status: "requires_review", reason };
+      console.error("[Chargebee] unmatched paid invoice needs review", { eventId: payment.eventId, invoiceId: payment.invoiceId, reason });
+      record({ action: "billing.payment_unmatched", outcome: "failure", resourceType: "chargebee_invoice", resourceId: payment.invoiceId ?? payment.eventId, metadata: { eventId: payment.eventId, hostedPageId: payment.hostedPageId, reason, amount: payment.amount, currency: payment.currency } });
+      void deps.alertUnmatchedPayment?.({ eventId: payment.eventId, invoiceId: payment.invoiceId, hostedPageId: payment.hostedPageId, reason, paidAmount: payment.amount, paidCurrency: payment.currency });
     }
 
     const gift = parseGiftEvent(req.body);

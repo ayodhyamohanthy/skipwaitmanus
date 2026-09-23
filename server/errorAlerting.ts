@@ -158,3 +158,47 @@ export function createPaymentReviewAlerter(dependencies: AlertDependencies = {})
     }
   };
 }
+
+export type UnmatchedPaymentAlertInput = { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string };
+
+/**
+ * #77: emails the administrator when Chargebee reports a paid invoice that no
+ * checkout, subscription, or gift explains. Someone paid and nothing was
+ * credited, so this is never deduplicated. Provider ids and amounts only.
+ */
+export function createUnmatchedPaymentAlerter(dependencies: AlertDependencies = {}) {
+  const fetchImpl = dependencies.fetchImpl ?? fetch;
+  const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
+  return async function alertUnmatchedPayment(input: UnmatchedPaymentAlertInput) {
+    const ref = input.invoiceId ?? input.eventId;
+    const subject = `skipwait.me unmatched payment needs review · ${ref}`;
+    const text = [
+      "Chargebee reported a paid invoice that matches no checkout, subscription, or gift. Nothing was credited.",
+      `Invoice: ${input.invoiceId ?? "unknown"}`,
+      `Event: ${input.eventId}`,
+      `Hosted page: ${input.hostedPageId ?? "unknown"}`,
+      `Reason: ${input.reason}`,
+      `Paid: ${input.paidAmount} ${input.paidCurrency}`,
+      "Look it up in Chargebee and credit or refund the customer.",
+    ].join("\n");
+    const metadata = { eventId: input.eventId, invoiceId: input.invoiceId, reason: input.reason };
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
+      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
+      const response = await fetchImpl("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      await recordActivity({ action: "system.unmatched_payment_alert_sent", outcome: "success", resourceType: "chargebee_invoice", resourceId: ref, metadata });
+      return { alerted: true as const };
+    } catch (error) {
+      console.warn("[UnmatchedPaymentAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
+      await recordActivity({ action: "system.unmatched_payment_alert_sent", outcome: "failure", resourceType: "chargebee_invoice", resourceId: ref, metadata }).catch(() => undefined);
+      return { alerted: false as const };
+    }
+  };
+}
