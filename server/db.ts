@@ -1437,6 +1437,8 @@ export type CreditSummary = {
   promoCreditsRemaining: number;
   promoExpiresAt: Date | null;
   promoStatus: "active" | "exhausted" | "expired" | "revoked" | null;
+  /** False while promo grants are switched off; the UI must not advertise the offer. */
+  promoOfferActive: boolean;
   totalAvailable: number;
   cycleKey: string;
   subscriptionStatus: string | null;
@@ -1552,6 +1554,7 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     promoCreditsRemaining: promo.remaining,
     promoExpiresAt: promo.expiresAt,
     promoStatus: promo.status,
+    promoOfferActive: promoGrantsEnabled(),
     totalAvailable: wallet.monthlyCreditsRemaining + wallet.balance + promo.remaining,
     cycleKey: wallet.monthlyCycleKey,
     subscriptionStatus: wallet.subscriptionStatus ?? null,
@@ -1652,7 +1655,15 @@ async function readPromoState(userId: number, role: WalletRole, now: Date): Prom
   }
 }
 
-export async function grantPromoCreditsTx(tx: any, input: { userId: number; role: WalletRole; source: string; providerRef: string; now?: Date }): Promise<{ granted: boolean; grantId?: number; reason?: "already_granted" }> {
+/** Promo grants are opt-in: only PROMO_GRANTS_ENABLED="true" turns the grant hooks on. */
+export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_ENABLED === "true"; }
+
+export async function grantPromoCreditsTx(tx: any, input: { userId: number; role: WalletRole; source: string; providerRef: string; now?: Date }): Promise<{ granted: boolean; grantId?: number; reason?: "already_granted" | "disabled" }> {
+  // Grants stay off until the issue #35 rebuild (reviewer contracts 39-41):
+  // the current hooks grant without verified payment and can roll back a paid
+  // fulfillment. Returning before any query keeps the fulfillment transaction
+  // free of promo locks.
+  if (!promoGrantsEnabled()) return { granted: false, reason: "disabled" };
   const now = input.now ?? new Date();
   // The unique (userId, role) row is the idempotency claim: one grant per
   // account ever. Lock first for the common path; the unique constraint wins
