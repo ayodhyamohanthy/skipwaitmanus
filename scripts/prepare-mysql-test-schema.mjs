@@ -4,8 +4,11 @@
  *
  * The schema is generated from `drizzle/schema.ts` with `drizzle-kit export`,
  * so the sandbox is always the exact shape the application code is typed
- * against. Nothing here reads `drizzle/meta/_journal.json` and nothing here can
- * reach a real database: the deploy migration path stays out of test scope.
+ * against. `./mysqlTestSchemaDdl.mjs` owns making that output executable, and
+ * every foreign key it has to rename is read back out of information_schema
+ * here to prove the relationship survived. Nothing here reads
+ * `drizzle/meta/_journal.json` and nothing here can reach a real database: the
+ * deploy migration path stays out of test scope.
  *
  * Usage: MYSQL_TEST_URL=mysql://user:pass@127.0.0.1:3306/skipwait_test \
  *          node scripts/prepare-mysql-test-schema.mjs
@@ -14,11 +17,10 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import mysql from "mysql2/promise";
+import { IDENTIFIER_LIMIT, applyIdentifierLimit, groupForeignKeys, parseExportedDdl } from "./mysqlTestSchemaDdl.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TEST_DB_NAME = /^skipwait_test[0-9a-z_]*$/i;
-const DDL_START = /^(CREATE TABLE|CREATE INDEX|CREATE UNIQUE INDEX|ALTER TABLE)\b/;
-const CREATE_TABLE = /^CREATE TABLE `([^`]+)`/;
 const MIN_MYSQL = { major: 8, minor: 0, patch: 13 };
 
 /** Unique indexes the concurrency specs reason about. Drift here is a hard
@@ -68,20 +70,13 @@ function exportedDdl() {
   if (result.status !== 0) {
     throw new SandboxError(`drizzle-kit export failed (${result.status}): ${result.stderr?.trim() || result.stdout?.trim() || "no output"}`);
   }
-  const lines = (result.stdout ?? "").split("\n");
-  const start = lines.findIndex(line => DDL_START.test(line.trim()));
-  if (start === -1) throw new SandboxError(`no DDL in drizzle-kit export output:\n${lines.slice(0, 20).join("\n")}`);
-  const statements = lines.slice(start).join("\n").split(";").map(line => line.trim()).filter(Boolean);
-  const unexpected = statements.find(statement => !DDL_START.test(statement));
-  if (unexpected) throw new SandboxError(`unclassifiable DDL statement:\n${unexpected.slice(0, 400)}`);
-  const tables = statements.flatMap(statement => {
-    const match = statement.match(CREATE_TABLE);
-    if (!statement.startsWith("CREATE TABLE")) return [];
-    if (!match) throw new SandboxError(`CREATE TABLE name could not be parsed:\n${statement.slice(0, 200)}`);
-    return [match[1]];
-  });
-  console.log(`[sandbox] ${statements.length} DDL statements for ${tables.length} tables, generated from drizzle/schema.ts`);
-  return { statements, tables };
+  const { statements, tables } = parseExportedDdl(result.stdout ?? "");
+  const { applied, declared, unnamedForeignKeys } = applyIdentifierLimit(statements);
+  if (unnamedForeignKeys) {
+    console.log(`[sandbox] let InnoDB name ${unnamedForeignKeys} foreign keys whose drizzle labels exceed ${IDENTIFIER_LIMIT} characters`);
+  }
+  console.log(`[sandbox] ${applied.length} DDL statements for ${tables.length} tables, generated from drizzle/schema.ts`);
+  return { statements: applied, tables, declared };
 }
 
 async function openSandboxConnection(testUrl) {
@@ -135,6 +130,34 @@ async function rebuild(connection, ddl) {
   await connection.query("SET FOREIGN_KEY_CHECKS = 1");
 }
 
+/**
+ * The over-long foreign key labels are dropped before the DDL runs, so this is
+ * the only proof that dropping a label did not drop a relationship.
+ */
+async function verifyForeignKeys(connection, declared) {
+  const [rows] = await connection.query(
+    `SELECT rc.CONSTRAINT_NAME AS constraintName, rc.TABLE_NAME AS tableName,
+            rc.REFERENCED_TABLE_NAME AS referencedTable, rc.DELETE_RULE AS deleteRule,
+            k.COLUMN_NAME AS columnName, k.REFERENCED_COLUMN_NAME AS referencedColumn
+       FROM information_schema.REFERENTIAL_CONSTRAINTS rc
+       JOIN information_schema.KEY_COLUMN_USAGE k
+         ON k.CONSTRAINT_SCHEMA = rc.CONSTRAINT_SCHEMA AND k.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+      WHERE rc.CONSTRAINT_SCHEMA = DATABASE() AND k.REFERENCED_TABLE_NAME IS NOT NULL
+      ORDER BY rc.CONSTRAINT_NAME, k.ORDINAL_POSITION`,
+  );
+  const actual = groupForeignKeys(rows);
+  const expected = new Map();
+  for (const item of declared) expected.set(item.key, (expected.get(item.key) ?? 0) + 1);
+  const mismatched = [
+    ...Array.from(expected.entries()).filter(([key, count]) => actual.get(key) !== count).map(([key, count]) => `declared but not created: ${key} (${count})`),
+    ...Array.from(actual.entries()).filter(([key, count]) => expected.get(key) !== count).map(([key, count]) => `created but not declared: ${key} (${count})`),
+  ];
+  if (mismatched.length) {
+    throw new SandboxError(`foreign keys in the sandbox do not match drizzle/schema.ts:\n${mismatched.slice(0, 8).join("\n")}`);
+  }
+  console.log(`[sandbox] ${declared.length} foreign key relationships verified by table, columns and delete rule`);
+}
+
 async function verify(connection, ddl) {
   const [rows] = await connection.query(
     "SELECT TABLE_NAME AS name, ENGINE AS engine FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE'",
@@ -162,6 +185,7 @@ async function main() {
   try {
     await assertSupportedServer(connection);
     await rebuild(connection, ddl);
+    await verifyForeignKeys(connection, ddl.declared);
     await verify(connection, ddl);
   } finally {
     await connection.end();
