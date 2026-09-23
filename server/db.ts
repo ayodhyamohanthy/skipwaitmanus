@@ -11,6 +11,7 @@ import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
+import { captureServerError } from "./sentry";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
@@ -1579,6 +1580,23 @@ function normalizedWalletState(wallet: typeof tokenBalances.$inferSelect, now: D
 export const PROMO_GRANT_TOKENS = 5;
 export const PROMO_GRANT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
+// Schema-pending degradation: the promo table/enum reach production via the
+// reviewed migration, which may land after the code. Missing-schema failures
+// (absent table, pre-widen enum) must degrade to "no promo" — never break
+// payments, spends, or summaries. Anything else still throws.
+function isSchemaMissingError(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const typed = current as { code?: unknown; errno?: unknown; sqlState?: unknown; cause?: unknown };
+    if (typed.code === "ER_NO_SUCH_TABLE" || typed.errno === 1146) return true;
+    if (typed.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD" || typed.errno === 1265 || typed.errno === 1366) return true;
+    current = typed.cause;
+  }
+  return false;
+}
+
 type PromoState = { remaining: number; expiresAt: Date | null; status: "active" | "exhausted" | "expired" | "revoked" | null };
 
 function promoStatusOf(grant: { status: string; expiresAt: Date } | undefined, now: Date): PromoState["status"] {
@@ -1590,26 +1608,36 @@ function promoStatusOf(grant: { status: string; expiresAt: Date } | undefined, n
 }
 
 async function promoStateForTx(tx: any, userId: number, role: WalletRole, now: Date): Promise<{ grant?: any; status: PromoState["status"] }> {
-  const rows = await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1).for("update");
-  const grant = rows[0];
-  const status = promoStatusOf(grant, now);
-  if (grant && grant.status === "active" && status === "expired") {
-    await tx.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+  try {
+    const rows = await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1).for("update");
+    const grant = rows[0];
+    const status = promoStatusOf(grant, now);
+    if (grant && grant.status === "active" && status === "expired") {
+      await tx.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+    }
+    return { grant: status === "active" ? grant : undefined, status };
+  } catch (error) {
+    if (isSchemaMissingError(error)) return { grant: undefined, status: null };
+    throw error;
   }
-  return { grant: status === "active" ? grant : undefined, status };
 }
 
 async function readPromoState(userId: number, role: WalletRole, now: Date): Promise<PromoState> {
   const db = await getDb();
   if (!db) return { remaining: 0, expiresAt: null, status: null };
-  const rows = await db.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1);
-  const grant = rows[0];
-  const status = promoStatusOf(grant, now);
-  if (grant && grant.status === "active" && status === "expired") {
-    await db.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+  try {
+    const rows = await db.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1);
+    const grant = rows[0];
+    const status = promoStatusOf(grant, now);
+    if (grant && grant.status === "active" && status === "expired") {
+      await db.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+    }
+    if (status !== "active" || !grant) return { remaining: 0, expiresAt: null, status };
+    return { remaining: grant.creditsRemaining, expiresAt: grant.expiresAt, status };
+  } catch (error) {
+    if (isSchemaMissingError(error)) return { remaining: 0, expiresAt: null, status: null };
+    throw error;
   }
-  if (status !== "active" || !grant) return { remaining: 0, expiresAt: null, status };
-  return { remaining: grant.creditsRemaining, expiresAt: grant.expiresAt, status };
 }
 
 export async function grantPromoCreditsTx(tx: any, input: { userId: number; role: WalletRole; source: string; providerRef: string; now?: Date }): Promise<{ granted: boolean; grantId?: number; reason?: "already_granted" }> {
@@ -1831,8 +1859,16 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase" });
     // First bank-verified payment earns the promo grant. Idempotent by the
     // unique (userId, role) grant row: renewals and replays no-op inside the
-    // same transaction, so fulfillment can never double-grant.
-    await grantPromoCreditsTx(tx, { userId: intent[0].userId, role: intent[0].role, source: "first_paid_invoice", providerRef: input.invoiceId ?? input.hostedPageId ?? input.eventId, now: creditedAt });
+    // same transaction, so fulfillment can never double-grant. A pending
+    // schema migration degrades loudly (ledger + Sentry) without blocking the
+    // paid credits the user bought.
+    try {
+      await grantPromoCreditsTx(tx, { userId: intent[0].userId, role: intent[0].role, source: "first_paid_invoice", providerRef: input.invoiceId ?? input.hostedPageId ?? input.eventId, now: creditedAt });
+    } catch (error) {
+      if (!isSchemaMissingError(error)) throw error;
+      captureServerError(error, { source: "promo-grant-skipped", userId: intent[0].userId, role: intent[0].role });
+      await tx.insert(operationalActivityLogs).values({ actorUserId: intent[0].userId, action: "promo.grant_skipped_schema_pending", outcome: "failure", resourceType: "promo_credit_grant", metadata: JSON.stringify({ role: intent[0].role, providerRef: input.invoiceId ?? input.hostedPageId ?? input.eventId }) });
+    }
     return { status: "credited" as const, tokenCount: intent[0].tokenCount, userId: intent[0].userId, role: intent[0].role };
   });
 }
@@ -1992,7 +2028,16 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
     // First bank-verified subscription earns the same promo grant as a pack
     // purchase. Idempotent: renewals hit the existing grant row and no-op.
-    if (retainsAccess) await grantPromoCreditsTx(tx, { userId, role, source: "first_paid_invoice", providerRef: input.subscriptionId, now: new Date() });
+    // A pending schema migration degrades loudly without blocking activation.
+    if (retainsAccess) {
+      try {
+        await grantPromoCreditsTx(tx, { userId, role, source: "first_paid_invoice", providerRef: input.subscriptionId, now: new Date() });
+      } catch (error) {
+        if (!isSchemaMissingError(error)) throw error;
+        captureServerError(error, { source: "promo-grant-skipped", userId, role });
+        await tx.insert(operationalActivityLogs).values({ actorUserId: userId, action: "promo.grant_skipped_schema_pending", outcome: "failure", resourceType: "promo_credit_grant", metadata: JSON.stringify({ role, providerRef: input.subscriptionId }) });
+      }
+    }
     return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, id: 0, updatedAt: new Date() }), ...patch }) };
   });
 }
