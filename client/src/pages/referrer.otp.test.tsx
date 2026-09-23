@@ -46,6 +46,11 @@ vi.mock("@/_core/auth", () => ({
   }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
+// The review screen mounts AtsBlurbCard, which drafts through tRPC; these
+// tests cover the OTP/decision flow, so the blurb mutation is stubbed out.
+vi.mock("@/lib/trpc", () => ({
+  trpc: { ai: { draftHiringManagerEmail: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) } } },
+}));
 
 function resetReferrerState() {
   localStorage.clear();
