@@ -78,4 +78,13 @@ describe("config contract", () => {
     const missing = workerPassthroughKeys().filter(key => !example.has(key));
     expect(missing, `worker passthrough keys missing from .env.example: ${missing.join(", ")}`).toEqual([]);
   });
+
+  it("forwards runtime server secrets that must reach the container", () => {
+    // Regression: PROMO_GRANTS_ENABLED and TRUST_CLOUDFLARE_CONNECTING_IP were
+    // read server-side but silently dropped at the Worker→container boundary.
+    const forwarded = new Set(workerPassthroughKeys());
+    for (const key of ["PROMO_GRANTS_ENABLED", "TRUST_CLOUDFLARE_CONNECTING_IP"]) {
+      expect(forwarded.has(key), `container passthrough missing ${key}`).toBe(true);
+    }
+  });
 });

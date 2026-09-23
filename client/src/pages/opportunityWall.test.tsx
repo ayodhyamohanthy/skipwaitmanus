@@ -52,4 +52,19 @@ describe("Opportunity Wall", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Internal openings are temporarily unavailable. Please try again.");
     expect(screen.queryByText(/Unexpected token/i)).toBeNull();
   });
+
+  it("recovers through Try again when the openings request fails first", async () => {
+    let attempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/api/partners")) return { ok: true, json: async () => ({ modules: [] }) };
+      attempts += 1;
+      return attempts === 1 ? { ok: false, status: 503, json: async () => ({ error: "Internal openings are temporarily unavailable. Please try again." }) } : { ok: true, json: async () => ({ opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", compensation: null, walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14" }] }) };
+    }));
+    render(<OpportunityWall />);
+    expect((await screen.findByRole("alert")).textContent).toContain("temporarily unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getByText("Product Designer")).toBeTruthy());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(attempts).toBe(2);
+  });
 });

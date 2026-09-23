@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ShareCard from "./ShareCard";
 
@@ -25,5 +25,19 @@ describe("ShareCard flywheel CTA", () => {
     const cta = await screen.findByRole("link", { name: "Get your own referral" });
     expect(cta.getAttribute("href")).toBe("/start");
     await waitFor(() => expect(screen.getByText("Accepted at acme.com")).toBeTruthy());
+  });
+
+  it("announces an unavailable card and recovers through Try again", async () => {
+    let attempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      attempts += 1;
+      return attempts === 1 ? { ok: false, status: 404, json: async () => ({}) } : { ok: true, json: async () => ({ card: { companyDomain: "acme.com", status: "accepted", inviteCode: "r1-deadbeef" } }) };
+    }));
+    render(<ShareCard />);
+    expect((await screen.findByRole("alert")).textContent).toContain("Share card unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getByText("Accepted at acme.com")).toBeTruthy());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(attempts).toBe(2);
   });
 });

@@ -173,6 +173,7 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
     }));
     render(<Referrer />);
     expect(await screen.findByText("Your company's private referral inbox is paused.")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("Your company's private referral inbox is paused.");
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();
     expect(authState.signOut).not.toHaveBeenCalled();
     // The redirect effect is suppressed while inboxError is set.

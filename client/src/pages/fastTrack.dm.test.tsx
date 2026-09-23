@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import FastTrackLink from "./FastTrackLink";
 
@@ -22,5 +22,19 @@ describe("Fast-track link landing", () => {
     expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
     expect(screen.queryByLabelText("Message")).toBeNull();
     expect(screen.getByRole("button", { name: /Start private request/ })).toBeTruthy();
+  });
+
+  it("announces a dead link and recovers through Try again", async () => {
+    let attempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      attempts += 1;
+      return attempts === 1 ? { ok: false, status: 410, json: async () => ({ error: "This private referral link is unavailable" }) } : { ok: true, json: async () => ({ link: { companyDomain: "acme.com", isActive: true, referrerUserId: 22 } }) };
+    }));
+    render(<FastTrackLink />);
+    expect((await screen.findByRole("alert")).textContent).toContain("This private referral link is unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText(/Request a referral at acme\.com/)).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(attempts).toBe(2);
   });
 });
