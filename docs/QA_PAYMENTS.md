@@ -71,6 +71,27 @@ Chargebee cannot reach localhost. Options, easiest first:
 activates on webhook; cancel schedules end-of-term. First activation also
 earns the 5 promo credits (same rule as packs, granted once per account).
 
+## 5b. Gift subscriptions (test gateway only)
+
+Requires Chargebee TEST site keys (founder-blocked until provided); until
+then the loop below runs against fixtures/mocks only.
+
+1. Buyer: `/plans` → "Gift Pro" → gift hosted checkout → pay with a test
+   card. Buyer wallet MUST NOT change; `/api/chargebee/gifts/mine` shows
+   the receipt under `sent` with `fulfillmentStatus: pending`.
+2. Recipient (no account yet): sign up with the receiver email, verify it,
+   open `/plans` → "You received a gift" → Claim → plan activates
+   (`subscriptionStatus: non_renewing`, monthly allowance credited).
+3. Recipient (existing verified account): auto-credited on the
+   `gift_claimed` webhook; claiming again returns `duplicate`.
+4. Negative: claim from a different signed-in account → 403 and no credit;
+   expired gift → `expired`, never credited.
+5. Local simulation without provider: POST `gift_scheduled` then
+   `gift_claimed` bodies (see `server/chargebeeGiftRoutes.test.ts`
+   fixtures) to `/api/chargebee/webhook` with the webhook secret; replay
+   each `eventId` twice. Gift activation MUST NOT grant promo credits
+   (promo interplay belongs to the #35 rebuild).
+
 ## 6. Never do this
 
 - No production `DATABASE_URL`, `BILLING_ENV=live`, or live keys in QA.
