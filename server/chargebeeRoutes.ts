@@ -23,7 +23,13 @@ type Deps = {
   markPaymentForReview?: (paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected") => Promise<unknown>;
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
   getCreditSummary?: (userId: number, role: TokenRole) => Promise<unknown>;
+  alertPaymentReview?: (input: { paymentId: number; reason: string; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
 };
+
+type ReviewResult = { status: "requires_review"; reason: string; paymentId: number; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string };
+function isReviewResult(value: unknown): value is ReviewResult {
+  return typeof value === "object" && value !== null && (value as { status?: unknown }).status === "requires_review" && typeof (value as { paymentId?: unknown }).paymentId === "number";
+}
 
 function roleFromBody(value: unknown): TokenRole {
   return value === "referrer" ? "referrer" : "job_seeker";
@@ -156,6 +162,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       }
       if (hostedPage.passThruContent !== payment.checkoutIntentId || hostedPage.amount !== payment.amount || hostedPage.currency !== payment.currency) {
         await deps.markPaymentForReview?.(payment.id, "provider_page_mismatch");
+        void deps.alertPaymentReview?.({ paymentId: payment.id, reason: "provider_page_mismatch", expectedAmount: payment.amount, expectedCurrency: payment.currency, paidAmount: hostedPage.amount as number, paidCurrency: hostedPage.currency as string }).catch(() => undefined);
         return res.json({ status: "requires_review", summary: await summary() });
       }
       const result = await deps.fulfillPayment({ eventId: `hosted_page:${hostedPage.hostedPageId}`, hostedPageId: hostedPage.hostedPageId, invoiceId: hostedPage.invoiceId, passThruContent: hostedPage.passThruContent, amount: hostedPage.amount, currency: hostedPage.currency });
@@ -190,7 +197,12 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       }
     }
 
-    if (payment && tokenPackFromAmount(payment.amount, payment.currency)) {
+    // A paid event is a credit obligation when its amount is a whole number of
+    // packs OR it carries our checkout intent. The second arm matters: a paid
+    // invoice with tax/coupon/rounding is not a pack multiple, and dropping it
+    // here would be a silent loss of a real payment. fulfillPayment parks
+    // amount mismatches for admin review.
+    if (payment && (tokenPackFromAmount(payment.amount, payment.currency) || payment.passThruContent)) {
       handled = true;
       try {
         const runtime = (!payment.hostedPageId || !payment.passThruContent) && deps.resolveHostedPage
@@ -204,6 +216,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
           hostedPageId: payment.hostedPageId ?? resolvedHostedPage?.hostedPageId,
           passThruContent: payment.passThruContent ?? resolvedHostedPage?.passThruContent,
         });
+        const fulfilled = obligations.payment;
+        if (isReviewResult(fulfilled)) {
+          console.error("[Chargebee] paid invoice parked for review", { paymentId: fulfilled.paymentId, reason: fulfilled.reason });
+          void deps.alertPaymentReview?.({ paymentId: fulfilled.paymentId, reason: fulfilled.reason, expectedAmount: fulfilled.expectedAmount, expectedCurrency: fulfilled.expectedCurrency, paidAmount: fulfilled.paidAmount, paidCurrency: fulfilled.paidCurrency }).catch(() => undefined);
+        }
       } catch (error) {
         console.error("[Chargebee] fulfillment error", error);
         return res.status(500).json({ error: "Fulfillment retry required" });

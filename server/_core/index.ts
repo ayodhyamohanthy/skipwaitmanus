@@ -47,7 +47,7 @@ import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
-import { materialErrorAlertMiddleware } from "../errorAlerting";
+import { createPaymentReviewAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -180,6 +180,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     getPaymentRecovery: db.getChargebeePaymentRecovery,
     markPaymentForReview: db.markChargebeePaymentForReview,
     getCreditSummary: db.getTokenWallet,
+    alertPaymentReview: createPaymentReviewAlerter(),
     resolveHostedPage: async input => {
       const pending = await db.listPendingChargebeePaymentIntents();
       return resolveChargebeeHostedPageForPayment({ ...input, pendingHostedPageIds: pending.flatMap(row => row.hostedPageId ? [row.hostedPageId] : []) });

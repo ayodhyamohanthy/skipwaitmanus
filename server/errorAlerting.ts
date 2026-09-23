@@ -108,3 +108,53 @@ export const materialErrorAlertMiddleware: RequestHandler = (req, res, next) => 
   });
   next();
 };
+
+export type PaymentReviewAlertInput = {
+  paymentId: number;
+  reason: string;
+  expectedAmount: number;
+  expectedCurrency: string;
+  paidAmount: number;
+  paidCurrency: string;
+};
+
+/**
+ * Emails the administrator when a paid provider invoice could not be credited
+ * automatically and was parked as requires_review. Unlike route errors this is
+ * never deduplicated: every parked payment is a user who paid and is waiting.
+ * Only the internal payment id, reason, and amounts are included.
+ */
+export function createPaymentReviewAlerter(dependencies: AlertDependencies = {}) {
+  const fetchImpl = dependencies.fetchImpl ?? fetch;
+  const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
+  return async function alertPaymentReview(input: PaymentReviewAlertInput) {
+    const subject = `skipwait.me payment needs review · #${input.paymentId}`;
+    const text = [
+      "A paid invoice could not be credited automatically and is waiting for admin review.",
+      `Payment record: #${input.paymentId}`,
+      `Reason: ${input.reason}`,
+      `Expected: ${input.expectedAmount} ${input.expectedCurrency}`,
+      `Paid: ${input.paidAmount} ${input.paidCurrency}`,
+      "Resolve it in Admin > Payments requiring review.",
+    ].join("\n");
+    const metadata = { paymentId: input.paymentId, reason: input.reason };
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
+      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
+      const response = await fetchImpl("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      await recordActivity({ action: "system.payment_review_alert_sent", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata });
+      return { alerted: true as const };
+    } catch (error) {
+      console.warn("[PaymentReviewAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
+      await recordActivity({ action: "system.payment_review_alert_sent", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(input.paymentId), metadata }).catch(() => undefined);
+      return { alerted: false as const };
+    }
+  };
+}
