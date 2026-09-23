@@ -4,6 +4,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
 import RefundPolicy from "./RefundPolicy";
+import ShippingPolicy from "./ShippingPolicy";
 import Support from "./Support";
 import Settings from "./Settings";
 import NotFound from "./NotFound";
@@ -33,7 +34,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
     expect(screen.getByText("Draft · pending legal review")).toBeTruthy();
-    expect(policyLinks(container)).toEqual(["/terms", "/privacy", "/refunds", "/support"]);
+    expect(policyLinks(container)).toEqual(["/terms", "/privacy", "/refunds", "/shipping", "/support"]);
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");
   });
 
@@ -45,6 +46,15 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/until the end of the current billing cycle/)).toBeTruthy();
     expect(screen.getByText(/approved by a skipwait.me administrator/)).toBeTruthy();
     expect(screen.getByText(/free for Referrers/)).toBeTruthy();
+  });
+
+  it("Shipping policy states credits are digital, delivered instantly, and nothing ships", () => {
+    const { container } = render(<ShippingPolicy />);
+    expect(document.querySelector('[data-skipwait-screen="shipping-policy"]')).toBeTruthy();
+    expect(screen.getByText(/No physical goods are shipped/)).toBeTruthy();
+    expect(screen.getByText(/added to your account instantly/)).toBeTruthy();
+    expect(screen.getAllByRole("link", { name: "Refunds & cancellation" }).every(link => link.getAttribute("href") === "/refunds")).toBe(true);
+    expect(policyLinks(container)).toContain("/shipping");
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {
