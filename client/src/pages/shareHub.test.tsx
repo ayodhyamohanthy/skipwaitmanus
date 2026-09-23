@@ -56,6 +56,22 @@ describe("ShareHub personal invites", () => {
     expect(screen.getByRole("button", { name: "Sign in to continue" })).toBeTruthy();
   });
 
+  it("shows an inline retryable error when the personal invite link fails to load", async () => {
+    let attempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      attempts += 1;
+      return attempts === 1 ? { ok: false, status: 503, json: async () => ({ error: "temporarily unavailable" }) } : { ok: true, json: async () => ({ invite: { inviteCode: "r7-abcdef12" } }) };
+    }));
+    render(<ShareHub />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("temporarily unavailable");
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getByText(/start\?invite=r7-abcdef12/i)).toBeTruthy());
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(attempts).toBe(2);
+  });
+
   it("shows a usable sign-in state instead of an unbounded loading shell while authentication initializes", () => {
     authState.isLoaded = false;
     authState.isSignedIn = false;
