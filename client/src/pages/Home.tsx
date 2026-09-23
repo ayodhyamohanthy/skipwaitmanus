@@ -1,5 +1,6 @@
 import { ArrowRight, ArrowUpRight, Check, FileText, LockKeyhole, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { trackFunnel } from "@/lib/funnel";
 import { Link, useLocation } from "wouter";
 import { Button, Dialog, DialogBody, DialogContent, DialogSurface, DialogTitle, FluentProvider, Tab, TabList, makeStyles, webLightTheme } from "@fluentui/react-components";
 import { SignInButton, useAuth } from "@/_core/auth";
@@ -47,6 +48,7 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [audience, setAudience] = useState("seeker");
   const [acceptedReferrals, setAcceptedReferrals] = useState<number | null>(null);
+  useEffect(() => { trackFunnel("landing_view"); }, []);
   useEffect(() => {
     let active = true;
     void fetch("/api/referral-impact").then(response => response.json()).then(payload => {
