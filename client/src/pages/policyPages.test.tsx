@@ -19,6 +19,18 @@ vi.mock("@/_core/auth", () => ({
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
+// Settings renders its talent-consent section via tRPC; the policy-page gate
+// only asserts the disclosure links, so the consent queries are stubbed out.
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    useUtils: () => ({ talentConsent: { state: { invalidate: vi.fn().mockResolvedValue(undefined) } } }),
+    talentConsent: {
+      state: { useQuery: () => ({ data: undefined }) },
+      grant: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      revoke: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
+  },
+}));
 
 beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) }))); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });

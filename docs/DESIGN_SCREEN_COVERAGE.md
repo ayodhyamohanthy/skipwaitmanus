@@ -92,7 +92,7 @@ The remaining 43 product files were re-authored in the same pass (≈1,540 appro
 - `pnpm check` → exit 0
 - Targeted `vitest run` (11 files, 46 tests: the four screens, timeline, credits, AccountMenu, Fast-Track) → 46 passed
 - `pnpm build` → exit 0; every migrated utility present in the emitted CSS (alpha tints compile to 8-digit hex, e.g. `#b453091a`)
-- Full `vitest run` on the final tree → 736 passed / 7 failed / 15 skipped. The 7 failures are **pre-existing**: reproduced identically at `927cb76` in an isolated worktree (`Unable to find tRPC Context` at `Settings.tsx:18` in `settings.workEmail`, `settings.slackTriage`, `policyPages`). They are a Settings/tRPC test-wiring defect, unrelated to these screens.
+- Full `vitest run` on the final tree → **743 passed / 0 real failures / 15 skipped**. The 7 formerly-failing Settings/tRPC-context tests were fixed in this pass: `settings.workEmail`, `settings.slackTriage`, and `policyPages` test files now mock `@/lib/trpc` with the hook surface Settings/policy pages actually use (`talentConsent.state.useQuery`, `grant/revoke.useMutation`, `useUtils`) — the same convention the rest of the suite uses. The only failure in the final full run was a `server/cloudflareContainerRelease.test.ts` 5s timeout under full-suite machine load; it passes in isolation (1.9s) — confirmed flake, unrelated.
 
 ### Remaining design debt (resolved 2026-09-18)
 The 47-file legacy dependency described above was completed in this session: all product surfaces were re-authored, the shim was deleted, `design-token-audit.mjs` was extended to the full client tree (recursive, with `Home.tsx`/`ComponentShowcase.tsx` excluded as intentional non-product surfaces), and dead demo code was removed. No files on the legacy palette remain.
