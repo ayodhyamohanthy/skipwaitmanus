@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { SUBSCRIPTION_PLANS, subscriptionPlanFromItemPrice, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { buyerUserIdFromGifter, normalizeGiftEmail } from "../shared/giftSubscriptions";
 
 export type TokenRole = "job_seeker" | "referrer";
 
@@ -128,6 +129,106 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
     currentTermStart: dateFromChargebeeSeconds(subscription?.current_term_start),
     currentTermEnd: dateFromChargebeeSeconds(subscription?.current_term_end),
     resourceVersion: Number.isSafeInteger(resourceVersion) && resourceVersion > 0 ? resourceVersion : undefined,
+  };
+}
+
+export type GiftEventType = "gift_scheduled" | "gift_unclaimed" | "gift_claimed" | "gift_expired" | "gift_cancelled" | "gift_updated";
+
+const GIFT_EVENT_TYPES: readonly string[] = ["gift_scheduled", "gift_unclaimed", "gift_claimed", "gift_expired", "gift_cancelled", "gift_updated"];
+
+export type ParsedGiftEvent = {
+  eventId: string;
+  eventType: GiftEventType;
+  giftId: string;
+  status: string;
+  receiverEmail?: string;
+  receiverCustomerId?: string;
+  subscriptionId?: string;
+  buyerUserId?: number;
+  gifterSignature?: string;
+  resourceVersion?: number;
+};
+
+export function parseGiftEvent(payload: any): ParsedGiftEvent | undefined {
+  const eventType = typeof payload?.event_type === "string" ? payload.event_type : "";
+  if (!(GIFT_EVENT_TYPES as readonly string[]).includes(eventType)) return undefined;
+  const eventId = getChargebeeEventId(payload);
+  const gift = payload?.content?.gift;
+  const giftId = typeof gift?.id === "string" && gift.id.length > 0 ? gift.id : undefined;
+  if (!eventId || !giftId) return undefined;
+  const receiver = gift?.gift_receiver ?? {};
+  const gifter = gift?.gifter ?? {};
+  const resourceVersion = Number(gift?.resource_version);
+  return {
+    eventId,
+    eventType: eventType as GiftEventType,
+    giftId,
+    status: typeof gift?.status === "string" ? gift.status : "unknown",
+    receiverEmail: normalizeGiftEmail(receiver?.email),
+    receiverCustomerId: typeof receiver?.customer_id === "string" ? receiver.customer_id : undefined,
+    subscriptionId: typeof receiver?.subscription_id === "string" ? receiver.subscription_id : undefined,
+    buyerUserId: buyerUserIdFromGifter(gifter?.customer_id),
+    gifterSignature: typeof gifter?.signature === "string" ? gifter.signature.slice(0, 50) : undefined,
+    resourceVersion: Number.isSafeInteger(resourceVersion) && resourceVersion > 0 ? resourceVersion : undefined,
+  };
+}
+
+export function buildGiftSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; gifterCustomerId: string; redirectUrl: string; cancelUrl: string }) {
+  const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
+  const form = new URLSearchParams();
+  form.set("subscription_items[item_price_id][0]", price.itemPriceId);
+  form.set("subscription_items[quantity][0]", "1");
+  form.set("gifter[customer_id]", input.gifterCustomerId);
+  form.set("redirect_url", input.redirectUrl);
+  form.set("cancel_url", input.cancelUrl);
+  return form;
+}
+
+export async function createGiftSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; buyerUserId: number; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string }) {
+  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
+  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
+  if (!apiKey) throw new Error("Chargebee API key is not configured");
+  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/checkout_gift_for_items`, {
+    method: "POST",
+    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: buildGiftSubscriptionCheckoutForm({ plan: input.plan, currency: input.currency, gifterCustomerId: `skipwait-u${input.buyerUserId}`, redirectUrl: input.redirectUrl, cancelUrl: input.cancelUrl }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(`Chargebee gift checkout failed (${response.status})`);
+  const hostedPage = body?.hosted_page;
+  const checkoutUrl = hostedPage?.url ?? hostedPage?.checkout_url;
+  const hostedPageId = hostedPage?.id;
+  if (typeof checkoutUrl !== "string" || typeof hostedPageId !== "string") throw new Error("Chargebee returned an incomplete gift checkout");
+  return { checkoutUrl, hostedPageId };
+}
+
+export type RetrievedGiftSubscription = {
+  subscriptionId: string;
+  plan?: PaidSubscriptionPlan;
+  currency?: "INR" | "USD";
+  status?: string;
+};
+
+export async function retrieveGiftSubscriptionPlan(subscriptionId: string, input: { site?: string; apiKey?: string } = {}): Promise<RetrievedGiftSubscription | undefined> {
+  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
+  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
+  if (!apiKey) throw new Error("Chargebee API key is not configured");
+  const response = await fetch(`https://${site}.chargebee.com/api/v2/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
+    signal: AbortSignal.timeout(8_000),
+  });
+  if (!response.ok) return undefined;
+  const subscription = (await response.json().catch(() => ({})))?.subscription;
+  if (!subscription || subscription.id !== subscriptionId) return undefined;
+  const itemPriceId = subscription?.subscription_items?.find?.((item: any) => typeof item?.item_price_id === "string")?.item_price_id;
+  const parsed = subscriptionPlanFromItemPrice(itemPriceId);
+  const currency = typeof subscription?.currency_code === "string" ? subscription.currency_code.toUpperCase() : undefined;
+  return {
+    subscriptionId,
+    plan: parsed?.plan,
+    currency: currency === "INR" || currency === "USD" ? currency : parsed?.currency,
+    status: typeof subscription?.status === "string" ? subscription.status : undefined,
   };
 }
 

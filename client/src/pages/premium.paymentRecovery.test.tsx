@@ -29,7 +29,8 @@ describe("Premium payment return recovery", () => {
     auth.isSignedIn = true;
     view.rerender(<Page />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary"))).toBe(true);
+    // Plans also loads gift receipts/claimables alongside the summary.
+    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary") || String(url).includes("/api/chargebee/gifts/mine"))).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: Page === Premium ? /continue to pay/i : /choose pro/i }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(Page === Premium ? "/api/chargebee/checkout" : "/api/chargebee/subscription-checkout", expect.objectContaining({ method: "POST" })));
     expect(auth.openSignIn).not.toHaveBeenCalled();
@@ -60,7 +61,8 @@ describe("Premium payment return recovery", () => {
     else expect(screen.getByRole("button", { name: /^Max 30/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/Razorpay/)).toBeTruthy();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary"))).toBe(true);
+    // Plans also loads gift receipts/claimables alongside the summary.
+    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary") || String(url).includes("/api/chargebee/gifts/mine"))).toBe(true);
   });
 
   it("shows credits only after the signed-in server recovery confirms a matching provider payment", async () => {

@@ -528,8 +528,27 @@ export const promoCreditGrants = mysqlTable("promoCreditGrants", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("promo_grant_user_role_unique").on(table.userId, table.role), index("promo_grant_user_status_idx").on(table.userId, table.role, table.status)]);
 
-export const paymentFulfillments = mysqlTable("paymentFulfillments", {
+export const giftSubscriptionFulfillments = mysqlTable("giftSubscriptionFulfillments", {
   id: int("id").autoincrement().primaryKey(),
+  giftId: varchar("giftId", { length: 150 }).notNull(),
+  provider: varchar("provider", { length: 32 }).default("chargebee").notNull(),
+  buyerUserId: int("buyerUserId").references(() => users.id, { onDelete: "cascade" }),
+  receiverEmail: varchar("receiverEmail", { length: 70 }),
+  recipientUserId: int("recipientUserId").references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  plan: mysqlEnum("plan", ["pro", "max"]),
+  currency: varchar("currency", { length: 3 }),
+  amount: int("amount"),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  providerStatus: varchar("providerStatus", { length: 20 }),
+  fulfillmentStatus: mysqlEnum("fulfillmentStatus", ["pending", "credited", "conflict", "expired", "cancelled"]).default("pending").notNull(),
+  failureReason: varchar("failureReason", { length: 255 }),
+  creditedAt: timestamp("creditedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("gift_fulfillment_gift_unique").on(table.giftId), index("gift_fulfillment_receiver_idx").on(table.receiverEmail, table.fulfillmentStatus), index("gift_fulfillment_buyer_idx").on(table.buyerUserId, table.createdAt), index("gift_fulfillment_subscription_idx").on(table.subscriptionId)]);
+
+export const paymentFulfillments = mysqlTable("paymentFulfillments", {  id: int("id").autoincrement().primaryKey(),
   provider: varchar("provider", { length: 32 }).notNull(),
   providerEventId: varchar("providerEventId", { length: 255 }).notNull(),
   providerInvoiceId: varchar("providerInvoiceId", { length: 255 }),

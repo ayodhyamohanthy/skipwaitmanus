@@ -1,8 +1,9 @@
 import type { Express, Request } from "express";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, isTokenPackId, isTokenQuantity, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, createGiftSubscriptionCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, retrieveGiftSubscriptionPlan, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { giftCheckoutRequestSchema, giftClaimRequestSchema } from "../shared/giftSubscriptions";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -24,6 +25,15 @@ type Deps = {
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
   getCreditSummary?: (userId: number, role: TokenRole) => Promise<unknown>;
   alertPaymentReview?: (input: { paymentId: number; reason: string; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
+  createGiftCheckout?: typeof createGiftSubscriptionCheckout;
+  recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number; plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; amount?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; plan?: PaidSubscriptionPlan | null; currency?: string | null; subscriptionId?: string | null }>;
+  updateGiftPlan?: (giftId: string, input: { plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; subscriptionId?: string }) => Promise<unknown>;
+  resolveGiftRecipient?: (normalizedEmail: string) => Promise<{ status: string; userId?: number }>;
+  fulfillGift?: (input: { giftId: string; subscriptionId: string; plan: PaidSubscriptionPlan; currency: "INR" | "USD"; status: string; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number; receiverEmail: string; recipientUserId: number; role: TokenRole }) => Promise<unknown>;
+  retrieveGiftPlan?: typeof retrieveGiftSubscriptionPlan;
+  listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: PaidSubscriptionPlan | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
+  listClaimableGifts?: (userId: number) => Promise<Array<{ giftId: string; plan: PaidSubscriptionPlan | null; currency: string | null; amount: number | null; subscriptionId: string | null; receiverEmail: string | null; createdAt: Date }>>;
+  claimGift?: (userId: number, giftId: string) => Promise<unknown>;
 };
 
 type ReviewResult = { status: "requires_review"; reason: string; paymentId: number; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string };
@@ -113,6 +123,80 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       console.error("[Chargebee] subscription checkout error", error);
       if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
       return res.status(502).json({ error: "Unable to start the secure plan checkout" });
+    }
+  });
+
+  app.post("/api/chargebee/gift-checkout", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in before gifting a plan" });
+      const parsed = giftCheckoutRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "Choose Pro or Max on a supported billing route" });
+      const { plan, currency, billingCountry } = parsed.data;
+      const origin = `${req.protocol}://${req.get("host")}`;
+      const runtime = deps.createGiftCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
+      const checkout = await (deps.createGiftCheckout ?? createGiftSubscriptionCheckout)({
+        plan,
+        currency,
+        buyerUserId: identity.account.id,
+        ...(runtime ? { site: runtime.site, apiKey: runtime.apiKey } : {}),
+        redirectUrl: `${origin}/plans?gift=done`,
+        cancelUrl: `${origin}/plans?gift=cancelled`,
+      });
+      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
+      record({ actorUserId: identity.account.id, action: "billing.gift_checkout_started", outcome: "success", resourceType: "gift_checkout", resourceId: checkout.hostedPageId, metadata: { plan, currency, amount: price.amount, billingCountry } });
+      return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
+    } catch (error) {
+      console.error("[Chargebee] gift checkout error", error);
+      if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Gift checkout is not configured" });
+      return res.status(502).json({ error: "Unable to start the gift checkout" });
+    }
+  });
+
+  app.get("/api/chargebee/gifts/mine", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your gifts" });
+      const [sent, claimable] = await Promise.all([
+        deps.listBuyerGifts ? deps.listBuyerGifts(identity.account.id) : [],
+        deps.listClaimableGifts ? deps.listClaimableGifts(identity.account.id) : [],
+      ]);
+      return res.json({ sent, claimable });
+    } catch {
+      return res.status(500).json({ error: "We could not load your gifts right now" });
+    }
+  });
+
+  app.post("/api/chargebee/gifts/claim", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to claim your gift" });
+      const parsed = giftClaimRequestSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(400).json({ error: "That gift reference is not valid" });
+      if (!deps.claimGift) return res.status(503).json({ error: "Gift claiming is temporarily unavailable" });
+      const attempt = async () => deps.claimGift!(identity.account.id, parsed.data.giftId);
+      try {
+        const result = await attempt();
+        record({ actorUserId: identity.account.id, action: "billing.gift_claimed", outcome: "success", resourceType: "gift", resourceId: parsed.data.giftId });
+        return res.json({ status: (result as { status?: string }).status ?? "credited" });
+      } catch (error) {
+        if (!(error instanceof Error) || error.message !== "This gift is not ready to claim yet") throw error;
+        const claimables = deps.listClaimableGifts ? await deps.listClaimableGifts(identity.account.id) : [];
+        const row = claimables.find(candidate => candidate.giftId === parsed.data.giftId);
+        if (!row?.subscriptionId || row.plan) throw error;
+        const runtime = deps.retrieveGiftPlan ? undefined : resolveChargebeeRuntime(req.hostname);
+        const retrieved = await (deps.retrieveGiftPlan ?? retrieveGiftSubscriptionPlan)(row.subscriptionId, runtime ? { site: runtime.site, apiKey: runtime.apiKey } : undefined);
+        if (!retrieved?.plan || !retrieved.currency) throw error;
+        if (deps.updateGiftPlan) await deps.updateGiftPlan(parsed.data.giftId, { plan: retrieved.plan, currency: retrieved.currency, subscriptionId: row.subscriptionId });
+        const result = await attempt();
+        record({ actorUserId: identity.account.id, action: "billing.gift_claimed", outcome: "success", resourceType: "gift", resourceId: parsed.data.giftId });
+        return res.json({ status: (result as { status?: string }).status ?? "credited" });
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === "We could not find this gift") return res.status(404).json({ error: "We could not find this gift" });
+      if (error instanceof Error && error.message === "This gift was sent to a different email address") return res.status(403).json({ error: "This gift was sent to a different email address" });
+      console.error("[Chargebee] gift claim error", error);
+      return res.status(400).json({ error: error instanceof Error ? error.message : "We could not claim this gift right now" });
     }
   });
 
@@ -224,6 +308,48 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       } catch (error) {
         console.error("[Chargebee] fulfillment error", error);
         return res.status(500).json({ error: "Fulfillment retry required" });
+      }
+    }
+
+    const gift = parseGiftEvent(req.body);
+    if (gift && deps.recordGiftEvent) {
+      try {
+        const recorded = await deps.recordGiftEvent({ ...gift });
+        // Lifecycle events (scheduled/unclaimed/expired/cancelled/updated) are
+        // durable receipts only: no credit moves, handled stays false, and the
+        // delivery ends 202 exactly as before gifts existed. Only a claimed
+        // gift naming a receiver subscription is a credit obligation.
+        if (gift.eventType === "gift_claimed" && gift.subscriptionId && gift.receiverEmail) {
+          handled = true;
+          let plan = recorded.plan ?? undefined;
+          let currency = (recorded.currency === "INR" || recorded.currency === "USD" ? recorded.currency : undefined) as "INR" | "USD" | undefined;
+          if ((!plan || !currency)) {
+            const runtime = deps.retrieveGiftPlan ? undefined : resolveChargebeeRuntime(req.hostname);
+            const retrieved = await (deps.retrieveGiftPlan ?? retrieveGiftSubscriptionPlan)(gift.subscriptionId, runtime ? { site: runtime.site, apiKey: runtime.apiKey } : undefined);
+            if (retrieved?.plan && retrieved.currency && deps.updateGiftPlan) {
+              await deps.updateGiftPlan(gift.giftId, { plan: retrieved.plan, currency: retrieved.currency, subscriptionId: gift.subscriptionId });
+              plan = retrieved.plan;
+              currency = retrieved.currency;
+            }
+          }
+          if (plan && currency && deps.resolveGiftRecipient && deps.fulfillGift) {
+            const recipient = await deps.resolveGiftRecipient(gift.receiverEmail);
+            if (recipient.status === "resolved" && recipient.userId) {
+              obligations.gift = await deps.fulfillGift({
+                giftId: gift.giftId, subscriptionId: gift.subscriptionId, plan, currency,
+                status: "non_renewing", receiverEmail: gift.receiverEmail,
+                recipientUserId: recipient.userId, role: "job_seeker", resourceVersion: gift.resourceVersion,
+              });
+            } else {
+              obligations.gift = { status: "pending", reason: `recipient_${recipient.status}` };
+            }
+          } else {
+            obligations.gift = { status: "pending", reason: !plan || !currency ? "plan_unresolved" : "recipient_unresolved" };
+          }
+        }
+      } catch (error) {
+        console.error("[Chargebee] gift event error", error);
+        return res.status(500).json({ error: "Gift synchronization retry required" });
       }
     }
 

@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -2086,6 +2086,241 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     }
     return { status: "applied" as const, plan: patch.plan, userId, role, creditSummary: creditSummaryFromWallet({ ...(wallet ?? { userId, role, balance: 0, monthlyCreditsRemaining: allowance, monthlyAllowance: allowance, monthlyCycleKey: currentMonthlyCycleKey(), plan: expectedPlan, subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, id: 0, updatedAt: new Date() }), ...patch }) };
   });
+}
+
+// ---- Gift subscriptions ----
+// A buyer purchases Pro/Max for a recipient through Chargebee's gift
+// checkout. Only the recipient's wallet is ever credited; the buyer keeps a
+// receipt row. Recipient resolution is exact verified-email alias only:
+// unresolved, ambiguous, or suspended identities stay pending and are never
+// merged or credited. Promo interplay belongs to the #35 rebuild: gift
+// activation intentionally does not grant promo credits.
+
+export type GiftRecipientResolution =
+  | { status: "resolved"; userId: number }
+  | { status: "unresolved" | "ambiguous" | "suspended" };
+
+export type RecordGiftEventInput = {
+  eventId: string;
+  eventType: string;
+  giftId: string;
+  status: string;
+  receiverEmail?: string;
+  receiverCustomerId?: string;
+  subscriptionId?: string;
+  buyerUserId?: number;
+  plan?: PaidSubscriptionPlan;
+  currency?: "INR" | "USD";
+  amount?: number;
+};
+
+export type FulfillGiftInput = {
+  giftId: string;
+  subscriptionId: string;
+  plan: PaidSubscriptionPlan;
+  currency: "INR" | "USD";
+  status: string;
+  currentTermStart?: Date;
+  currentTermEnd?: Date;
+  resourceVersion?: number;
+  receiverEmail: string;
+  recipientUserId: number;
+  role: WalletRole;
+};
+
+function giftTerminalStatus(providerStatus: string): "expired" | "cancelled" | undefined {
+  return providerStatus === "expired" ? "expired" : providerStatus === "cancelled" ? "cancelled" : undefined;
+}
+
+async function resolveGiftRecipientTx(tx: any, normalizedEmail: string): Promise<GiftRecipientResolution> {
+  const aliases = await tx.select({ canonicalPersonId: verifiedLoginAliases.canonicalPersonId }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.normalizedVerifiedEmail, normalizedEmail)).limit(50);
+  if (!aliases.length) return { status: "unresolved" };
+  const personIds: number[] = Array.from(new Set(aliases.map((alias: { canonicalPersonId: number }) => alias.canonicalPersonId)));
+  const people = await tx.select({ id: canonicalPeople.id, suspended: canonicalPeople.suspended }).from(canonicalPeople).where(inArray(canonicalPeople.id, personIds)).limit(25);
+  if (people.some((person: { suspended: boolean }) => person.suspended)) return { status: "suspended" };
+  const accounts = await tx.select({ id: users.id, suspended: users.suspended }).from(users).where(inArray(users.canonicalPersonId, personIds)).limit(25);
+  const active = accounts.filter((account: { suspended: boolean }) => !account.suspended);
+  if (active.length === 1) return { status: "resolved", userId: active[0].id };
+  return { status: active.length === 0 ? "unresolved" : "ambiguous" };
+}
+
+export async function resolveGiftRecipient(normalizedEmail: string): Promise<GiftRecipientResolution> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => resolveGiftRecipientTx(tx, normalizedEmail));
+}
+
+async function verifiedEmailsForUserTx(tx: any, userId: number): Promise<string[]> {
+  const account = (await tx.select({ canonicalPersonId: users.canonicalPersonId }).from(users).where(eq(users.id, userId)).limit(1))[0];
+  if (!account?.canonicalPersonId) return [];
+  const aliases = await tx.select({ normalizedVerifiedEmail: verifiedLoginAliases.normalizedVerifiedEmail }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId, account.canonicalPersonId)).limit(50);
+  return Array.from(new Set(aliases.map((alias: { normalizedVerifiedEmail: string | null }) => alias.normalizedVerifiedEmail).filter((email: string | null): email is string => !!email)));
+}
+
+function giftWalletPatch(input: { plan: PaidSubscriptionPlan; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number; subscriptionId: string; current?: typeof tokenBalances.$inferSelect }) {
+  const current = input.current;
+  const allowance = SUBSCRIPTION_PLANS[input.plan].monthlyAllowance;
+  const retainsAccess = input.status === "active" || input.status === "non_renewing";
+  const startsNewTerm = !current?.subscriptionCurrentTermStart || (input.currentTermStart && current.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
+  const patch = retainsAccess
+    ? {
+        plan: input.plan,
+        monthlyAllowance: allowance,
+        monthlyCreditsRemaining: startsNewTerm ? allowance : (current?.monthlyCreditsRemaining ?? allowance),
+        monthlyCycleKey: input.currentTermStart ? currentMonthlyCycleKey(input.currentTermStart) : currentMonthlyCycleKey(),
+        subscriptionId: input.subscriptionId,
+        subscriptionStatus: input.status,
+        subscriptionCurrency: input.currency ?? current?.subscriptionCurrency ?? null,
+        subscriptionCurrentTermStart: input.currentTermStart ?? current?.subscriptionCurrentTermStart ?? null,
+        subscriptionCurrentTermEnd: input.currentTermEnd ?? current?.subscriptionCurrentTermEnd ?? null,
+        subscriptionResourceVersion: input.resourceVersion ?? current?.subscriptionResourceVersion ?? null,
+      }
+    : {
+        plan: "free" as const,
+        monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
+        monthlyCreditsRemaining: Math.min(current?.monthlyCreditsRemaining ?? FREE_MONTHLY_ALLOWANCE, FREE_MONTHLY_ALLOWANCE),
+        monthlyCycleKey: currentMonthlyCycleKey(),
+        subscriptionId: input.subscriptionId,
+        subscriptionStatus: input.status,
+        subscriptionCurrency: input.currency ?? current?.subscriptionCurrency ?? null,
+        subscriptionCurrentTermStart: input.currentTermStart ?? current?.subscriptionCurrentTermStart ?? null,
+        subscriptionCurrentTermEnd: input.currentTermEnd ?? current?.subscriptionCurrentTermEnd ?? null,
+        subscriptionResourceVersion: input.resourceVersion ?? current?.subscriptionResourceVersion ?? null,
+      };
+  return { patch, retainsAccess };
+}
+
+export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const existing = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1).for("update"))[0];
+    const terminal = giftTerminalStatus(input.status);
+    if (!existing) {
+      await tx.insert(giftSubscriptionFulfillments).values({
+        giftId: input.giftId, buyerUserId: input.buyerUserId ?? null, receiverEmail: input.receiverEmail ?? null,
+        plan: input.plan ?? null, currency: input.currency ?? null, amount: input.amount ?? null,
+        subscriptionId: input.subscriptionId ?? null, providerStatus: input.status,
+        fulfillmentStatus: terminal ?? "pending",
+        failureReason: terminal ? `provider_${terminal}` : null,
+      });
+      return (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1))[0];
+    }
+    if (existing.fulfillmentStatus === "credited") return existing;
+    const patch: Record<string, unknown> = { providerStatus: input.status };
+    if (!existing.subscriptionId && input.subscriptionId) patch.subscriptionId = input.subscriptionId;
+    if (!existing.receiverEmail && input.receiverEmail) patch.receiverEmail = input.receiverEmail;
+    if (!existing.plan && input.plan) patch.plan = input.plan;
+    if (!existing.currency && input.currency) patch.currency = input.currency;
+    if ((existing.amount ?? null) === null && typeof input.amount === "number") patch.amount = input.amount;
+    if (existing.buyerUserId === null && typeof input.buyerUserId === "number") patch.buyerUserId = input.buyerUserId;
+    if (terminal && (existing.fulfillmentStatus === "pending" || existing.fulfillmentStatus === "conflict")) {
+      patch.fulfillmentStatus = terminal;
+      patch.failureReason = `provider_${terminal}`;
+    }
+    await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, existing.id));
+    return { ...existing, ...patch };
+  });
+}
+
+export async function updateGiftPlan(giftId: string, input: { plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; subscriptionId?: string }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const row = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, giftId)).limit(1).for("update"))[0];
+    if (!row || row.fulfillmentStatus !== "pending") return row ?? null;
+    const patch: Record<string, unknown> = {};
+    if (!row.plan && input.plan) patch.plan = input.plan;
+    if (!row.currency && input.currency) patch.currency = input.currency;
+    if (!row.subscriptionId && input.subscriptionId) patch.subscriptionId = input.subscriptionId;
+    if (!Object.keys(patch).length) return row;
+    await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, row.id));
+    return { ...row, ...patch };
+  });
+}
+
+async function fulfillGiftTx(tx: any, row: typeof giftSubscriptionFulfillments.$inferSelect, input: FulfillGiftInput) {
+  const resolution = await resolveGiftRecipientTx(tx, input.receiverEmail);
+  if (resolution.status !== "resolved" || resolution.userId !== input.recipientUserId) {
+    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "pending", failureReason: `recipient_${resolution.status}` }).where(eq(giftSubscriptionFulfillments.id, row.id));
+    return { status: "pending" as const, reason: `recipient_${resolution.status}` };
+  }
+  const recipient = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, input.recipientUserId)).limit(1))[0];
+  if (!recipient || recipient.suspended) {
+    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "pending", failureReason: "recipient_suspended" }).where(eq(giftSubscriptionFulfillments.id, row.id));
+    return { status: "pending" as const, reason: "recipient_suspended" };
+  }
+  const walletBySubscription = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
+  if (walletBySubscription && (walletBySubscription.userId !== input.recipientUserId || walletBySubscription.role !== input.role)) {
+    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", failureReason: "subscription_owner_mismatch" }).where(eq(giftSubscriptionFulfillments.id, row.id));
+    return { status: "conflict" as const, reason: "subscription_owner_mismatch" };
+  }
+  const wallet = walletBySubscription ?? (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update"))[0];
+  const sameSubscription = wallet?.subscriptionId === input.subscriptionId;
+  if (wallet && !sameSubscription && (wallet.plan !== "free" || wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing")) {
+    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", subscriptionId: input.subscriptionId, failureReason: "subscription_conflict" }).where(eq(giftSubscriptionFulfillments.id, row.id));
+    return { status: "conflict" as const, reason: "subscription_conflict" };
+  }
+  const { patch, retainsAccess } = giftWalletPatch({ plan: input.plan, status: input.status, currency: input.currency, currentTermStart: input.currentTermStart, currentTermEnd: input.currentTermEnd, resourceVersion: input.resourceVersion, subscriptionId: input.subscriptionId, current: wallet });
+  if (!retainsAccess) {
+    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "expired", subscriptionId: input.subscriptionId, failureReason: "subscription_cancelled" }).where(eq(giftSubscriptionFulfillments.id, row.id));
+    return { status: "expired" as const, reason: "subscription_cancelled" };
+  }
+  if (wallet) await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet.id));
+  else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: 0, ...patch });
+  const now = new Date();
+  await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "credited", recipientUserId: input.recipientUserId, subscriptionId: input.subscriptionId, failureReason: null, creditedAt: now }).where(eq(giftSubscriptionFulfillments.id, row.id));
+  return { status: "credited" as const, plan: input.plan, userId: input.recipientUserId, role: input.role };
+}
+
+export async function fulfillGiftSubscription(input: FulfillGiftInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const row = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1).for("update"))[0];
+    if (!row) throw new Error("Unknown gift subscription");
+    if (row.fulfillmentStatus === "credited") return row.subscriptionId === input.subscriptionId ? { status: "duplicate" as const } : { status: "conflict" as const, reason: "subscription_changed_after_credit" };
+    if (row.fulfillmentStatus === "expired" || row.fulfillmentStatus === "cancelled") return { status: row.fulfillmentStatus };
+    return fulfillGiftTx(tx, row, input);
+  });
+}
+
+export async function claimGiftSubscription(callerUserId: number, giftId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const row = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, giftId)).limit(1).for("update"))[0];
+    if (!row) throw new Error("We could not find this gift");
+    if (row.fulfillmentStatus === "credited") return { status: "duplicate" as const };
+    if (row.providerStatus !== "claimed") throw new Error("This gift is not ready to claim yet");
+    if (!row.receiverEmail) throw new Error("This gift is not ready to claim yet");
+    if (!row.subscriptionId || !row.plan) throw new Error("This gift is not ready to claim yet");
+    const resolution = await resolveGiftRecipientTx(tx, row.receiverEmail);
+    if (resolution.status !== "resolved" || resolution.userId !== callerUserId) throw new Error("This gift was sent to a different email address");
+    return fulfillGiftTx(tx, row, {
+      giftId, subscriptionId: row.subscriptionId, plan: row.plan, currency: (row.currency ?? "USD") as "INR" | "USD",
+      status: "non_renewing", receiverEmail: row.receiverEmail, recipientUserId: callerUserId, role: row.role,
+    });
+  });
+}
+
+export async function listBuyerGifts(buyerUserId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.buyerUserId, buyerUserId)).limit(100);
+  return rows.sort((a, b) => b.id - a.id).map(row => ({ giftId: row.giftId, plan: row.plan, currency: row.currency, amount: row.amount, receiverEmail: row.receiverEmail, providerStatus: row.providerStatus, fulfillmentStatus: row.fulfillmentStatus, subscriptionId: row.subscriptionId, creditedAt: row.creditedAt, createdAt: row.createdAt }));
+}
+
+export async function listClaimableGiftsForUser(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const emails = await db.transaction(async tx => verifiedEmailsForUserTx(tx, userId));
+  if (!emails.length) return [];
+  const rows = await db.select().from(giftSubscriptionFulfillments).where(inArray(giftSubscriptionFulfillments.receiverEmail, emails)).limit(100);
+  return rows
+    .filter(row => row.fulfillmentStatus === "pending" && row.providerStatus === "claimed")
+    .sort((a, b) => b.id - a.id)
+    .map(row => ({ giftId: row.giftId, plan: row.plan, currency: row.currency, amount: row.amount, subscriptionId: row.subscriptionId, receiverEmail: row.receiverEmail, createdAt: row.createdAt }));
 }
 
 // ---- Unified admin approval queue (seeker requests, referrer enrollments, payments) ----
