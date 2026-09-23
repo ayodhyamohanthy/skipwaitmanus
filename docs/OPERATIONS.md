@@ -17,7 +17,7 @@ Why it exists: on 2026-09-23 production was down for about 3 hours because schem
   - Put the SQL on a throwaway `ops/*` branch.
   - Do a read-only or `ROLLBACK` dry run first and post the before/after mapping.
   - Execute only after approval, then close the PR unmerged and delete the branch.
-- Enforcement: `main` should be protected (require PR, require the `Workers Builds` and deploy checks, block force-push). GitHub only offers branch protection on private repos with a paid plan. Until it's on, this rule depends on discipline, so treat any direct push to `main` as an incident.
+- Enforcement: `main` should be protected (require PR, require the `Workers Builds` and CI checks, block force-push). As of 2026-09-23 it isn't: the GitHub API reports "Branch not protected". Until it's on, this rule depends on discipline, so treat any direct push to `main` as an incident.
 
 ## 2. Deploys are gated and halt on red
 

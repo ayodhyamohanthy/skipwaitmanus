@@ -35,4 +35,4 @@ The hand-run migration `0057_canonical_identity.sql` intentionally suspended eve
 - #40: a `migrate-db` job with a sha256 ledger runs before every API deploy, and deploy waits on it.
 - #41: promo grant hooks are off behind `PROMO_GRANTS_ENABLED` until the #35 rebuild meets reviewer contracts 39, 40 and 41.
 - `docs/OPERATIONS.md`: reviewed PRs only, gated deploys, migrations only through the gate, QA after every deploy, single writer.
-- Open: enable branch protection on `main` (needs a paid GitHub plan for a private repo), and give the pipeline a credential that doesn't depend on interactive 2FA.
+- Open: enable branch protection on `main`, and give the pipeline a credential that doesn't depend on interactive 2FA.
