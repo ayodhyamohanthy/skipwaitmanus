@@ -65,5 +65,14 @@ export default function Terms() {
     <PolicySection number="08" title="Contact">
       <p>Questions about these terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>, or visit the <Link href="/support" className="font-semibold text-black">Support</Link> page.</p>
     </PolicySection>
+
+    <PolicySection number="09" title="Business identity">
+      <p>skipwait.me is operated by <strong>SkipWait, a sole proprietorship</strong> based in India.</p>
+      <ul>
+        <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
+        <li>Phone: <a href="tel:+917207234883" className="font-semibold text-black">+91 72072 34883</a> (Mon–Fri, IST business hours).</li>
+        <li>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</li>
+      </ul>
+    </PolicySection>
   </PolicyPageShell>;
 }
