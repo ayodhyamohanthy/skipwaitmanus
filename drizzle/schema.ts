@@ -37,6 +37,17 @@ export const verifiedLoginAliases = mysqlTable("verifiedLoginAliases", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("verified_login_alias_provider_subject_unique").on(table.provider, table.subject), uniqueIndex("verified_login_alias_open_id_unique").on(table.openId), index("verified_login_alias_person_idx").on(table.canonicalPersonId)]);
 
+/** Operator-approved extra verified emails for an existing person. A verified
+ * sign-in with one of these emails resolves to that person instead of creating
+ * a new one. Written only by reviewed deploy migrations, never by requests. */
+export const canonicalEmailAliases = mysqlTable("canonicalEmailAliases", {
+  id: int("id").autoincrement().primaryKey(),
+  normalizedEmail: varchar("normalizedEmail", { length: 320 }).notNull(),
+  canonicalPersonId: int("canonicalPersonId").notNull().references(() => canonicalPeople.id, { onDelete: "cascade" }),
+  reason: varchar("reason", { length: 120 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("canonical_email_alias_email_unique").on(table.normalizedEmail), index("canonical_email_alias_person_idx").on(table.canonicalPersonId)]);
+
 export const identityLinkAudits = mysqlTable("identityLinkAudits", {
  id: int("id").autoincrement().primaryKey(), canonicalPersonId: int("canonicalPersonId"), canonicalUserId: int("canonicalUserId"), provider: varchar("provider", {length:32}), subject: varchar("subject", {length:255}), action: varchar("action", {length:80}).notNull(), evidence: text("evidence"), createdAt: timestamp("createdAt").defaultNow().notNull()
 }, table => [index("identity_link_audit_person_idx").on(table.canonicalPersonId, table.createdAt)]);
