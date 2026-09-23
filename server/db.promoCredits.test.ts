@@ -197,6 +197,13 @@ describe("promo credit grants", () => {
     expect(tables.wallets[0]).toMatchObject({ balance: 2 });
   });
 
+  it("does not count leftover promo credits in totalAvailable while promo grants are off", async () => {
+    vi.stubEnv("PROMO_GRANTS_ENABLED", "false");
+    tables.grants = [{ id: 1, userId: 7, role: "job_seeker", tokenCount: 5, creditsRemaining: 4, status: "active", source: "first_paid_invoice", providerRef: "in_1", grantedAt: NOW, expiresAt: new Date("2026-10-20T00:00:00.000Z"), consumedAt: null, revokedAt: null, revokedReason: null, createdAt: NOW }];
+    const summary = await getTokenWallet(7, "job_seeker");
+    expect(summary.totalAvailable).toBe(3 + 2);
+  });
+
   it("grants nothing and still credits the paid pack while promo grants are off", async () => {
     vi.stubEnv("PROMO_GRANTS_ENABLED", "false");
     tables.payments = [{ id: 1, provider: "chargebee", providerEventId: "pending:page1", providerInvoiceId: null, providerHostedPageId: "page1", checkoutIntentId: "intent1", userId: 7, role: "job_seeker", tokenCount: 3, amount: 300, currency: "USD", status: "pending", reconciliationReason: null, lastCheckedAt: null, creditedAt: null, createdAt: NOW }];
