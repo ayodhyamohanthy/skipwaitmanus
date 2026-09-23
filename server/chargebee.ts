@@ -181,10 +181,11 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; qu
   const quantity = input.quantity ?? 1;
   if (!isTokenQuantity(quantity)) throw new Error("Invalid credit quantity");
   if (quantity === 1) {
-    // Live credit prices are flat-fee charges. Chargebee rejects any quantity
-    // param on them ("should not be sent for on_off addon type"), so a single
-    // credit is sent as the bare item price.
+    // Credit prices are per_unit in Chargebee (switched 2026-09-23). A per_unit
+    // line item requires a quantity; omitting it fails the hosted page on load
+    // with "line_items[0].quantity cannot be blank".
     form.set("item_prices[item_price_id][0]", input.itemPriceId);
+    form.set("item_prices[quantity][0]", "1");
   } else {
     // Multi-credit purchases go as one server-computed ad hoc charge. The amount
     // comes only from the catalog constant, never from the client, and payment
