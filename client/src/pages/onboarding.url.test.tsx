@@ -11,7 +11,7 @@ describe("Onboarding Target Role URL", () => {
   beforeEach(() => { localStorage.clear(); vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ canonicalUrl: "https://careers.example.com/jobs/product-designer", status: "fresh", employerConfidence: "direct-domain", companyDomain: "example.com", reason: "Company identified", recoveryAction: "Continue" }) }))); });
   afterEach(() => cleanup());
 
-  it("blocks arbitrary text and enables continue only after a safe preview", async () => {
+  it("blocks arbitrary text and enables continue as soon as the link is valid", async () => {
     render(<Onboarding />);
     expect(screen.getByRole("button", { name: "Back" })).toBeTruthy();
     expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeNull();
@@ -27,7 +27,7 @@ describe("Onboarding Target Role URL", () => {
 
     fireEvent.change(input, { target: { value: "https://careers.example.com/jobs/product-designer" } });
     expect(screen.queryByRole("alert")).toBeNull();
-    await waitFor(() => expect(continueButton).toHaveProperty("disabled", false));
+    expect(continueButton).toHaveProperty("disabled", false);
     expect(screen.queryByText("Fix the link above to continue")).toBeNull();
   });
 
@@ -37,6 +37,8 @@ describe("Onboarding Target Role URL", () => {
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://careers.example.com/jobs/product-designer" } });
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("We could not reach this job link."));
     expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByLabelText("Company domain"), { target: { value: "example.com" } });
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
   });
 
   it("blocks an unreachable link without a safely identified employer", async () => {
@@ -47,14 +49,14 @@ describe("Onboarding Target Role URL", () => {
     expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
   });
 
-  it("shows a retryable error instead of stranding Continue when the preview service fails", async () => {
+  it("keeps Continue available with a retryable error when the preview service fails", async () => {
     const fetchMock = vi.fn(async () => { throw new Error("network down"); });
     vi.stubGlobal("fetch", fetchMock);
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://jobs.lever.co/unknown/1" } });
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("We couldn't verify this job link");
-    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
     const callsBefore = fetchMock.mock.calls.length;
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(callsBefore));
@@ -65,7 +67,7 @@ describe("Onboarding Target Role URL", () => {
     render(<Onboarding />);
     fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://www.wellfound.com/jobs/3971835-account-executive/?source=mobile" } });
     await waitFor(() => expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false));
-    expect(screen.getByRole("alert").textContent).toContain("We couldn't verify this job link");
+    expect((await screen.findByRole("alert")).textContent).toContain("We couldn't verify this job link");
   });
 
   it("restores the included balance when a legacy reset marker exists without a stored token balance", async () => {
@@ -95,12 +97,19 @@ describe("Onboarding Target Role URL", () => {
 
 describe("Onboarding preview race safety", () => {
   afterEach(() => cleanup());
+  it("does not wait for company identification before Continue", () => {
+    vi.stubGlobal("fetch", vi.fn(() => new Promise(() => {})));
+    render(<Onboarding />);
+    fireEvent.change(screen.getByLabelText("Target Role URL"), { target: { value: "https://jobs.lever.co/unknown/1" } });
+    expect(screen.getByRole("button", { name: "Continue" })).toHaveProperty("disabled", false);
+  });
+
   it("clears confirmation and requires the current canonical preview", async () => {
     vi.stubGlobal("fetch", vi.fn(async (_url, init:any) => { const value=JSON.parse(init.body).url; return {ok:true,json:async()=>({canonicalUrl:value,status:"fresh",employerConfidence:value.includes("lever")?"ambiguous":"direct-domain",companyDomain:value.includes("lever")?undefined:"beta.com",reason:"ok",recoveryAction:"continue"})}; }));
     render(<Onboarding/>); const input=screen.getByLabelText("Target Role URL"); const button=screen.getByRole("button",{name:"Continue"});
     fireEvent.change(input,{target:{value:"https://jobs.lever.co/meta/1"}}); await waitFor(()=>expect(screen.getByLabelText("Company domain")).toBeTruthy(),{timeout:1200});
     fireEvent.change(screen.getByLabelText("Company domain"),{target:{value:"meta.com"}}); fireEvent.change(input,{target:{value:"https://careers.beta.com/jobs/2"}});
-    expect(screen.queryByLabelText("Company domain")).toBeNull(); expect(button).toHaveProperty("disabled",true);
+    expect(screen.queryByLabelText("Company domain")).toBeNull(); expect(button).toHaveProperty("disabled",false);
     await waitFor(()=>expect(button).toHaveProperty("disabled",false),{timeout:1200});
   });
 });
