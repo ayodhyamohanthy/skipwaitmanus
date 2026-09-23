@@ -7,6 +7,7 @@ import { WorkEmailSignIn, coverageInviteSessionKey } from "@/components/WorkEmai
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { AccountMenu } from "@/components/AccountMenu";
 import { readApiJson } from "@/lib/apiResponse";
+import { applySeo } from "@/lib/seo";
 import { isCompanyEmail } from "@/lib/workEmail";
 
 type Attachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
@@ -55,6 +56,11 @@ export default function Referrer() {
   const document = attachments[activeDocument];
   const previewable = Boolean(document && (document.mimeType === "application/pdf" || document.mimeType.startsWith("image/")));
   const candidate = claimedRequest?.candidateName || "Candidate";
+  useEffect(() => {
+    // /referrer is the public employee entry point, so it carries its own title
+    // instead of inheriting the current shell metadata.
+    applySeo({ title: "Verify a work email to review private referrals", description: "Verify a company email once, then review private referral requests for your own company and choose whether to help. Reviewing is always free.", path: "/referrer" });
+  }, []);
 
   const companyFetch = async (path: string, init?: RequestInit) => {
     const token = await getToken();

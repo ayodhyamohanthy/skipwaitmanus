@@ -5,6 +5,7 @@ import { ArrowLeft, Check, CreditCard, LoaderCircle, Minus, Plus } from "lucide-
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
+import { applySeo } from "@/lib/seo";
 
 type Pack = { id: "skipwait_token_1-INR" | "skipwait_token_1-USD"; price: number; currency: PaymentRoute };
 type PendingCheckout = { hostedPageId: string; role: TokenRole };
@@ -37,6 +38,10 @@ export default function Premium() {
   const total = selected.price * quantity;
   const totalLabel = `${money(total, route)} ${route}`;
   const updateQuantity = (next: number) => setQuantity(Math.max(1, Math.min(1000, Number.isFinite(next) ? Math.round(next) : 1)));
+
+  useEffect(() => {
+    applySeo({ title: "Buy referral credits for $1 each", description: "Every account gets free referral requests each month. Extra credits cost $1 each (₹99 in India), never expire, and are used only when an employee accepts a request.", path: "/premium" });
+  }, []);
 
   useEffect(() => {
     if (!isSignedIn) { setBalance(null); return; }

@@ -1,6 +1,7 @@
 import { BadgeCheck, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Clock3, MapPin, Share2, ShieldCheck, Sparkles } from "lucide-react";
 import { readReferralDraft, saveReferralDraft } from "@/lib/pwaContinuity";
 import { readApiJson } from "@/lib/apiResponse";
+import { applySeo } from "@/lib/seo";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
@@ -26,6 +27,9 @@ export default function OpportunityWall() {
   const retry = () => { setError(""); setLoading(true); setReloadKey(key => key + 1); };
   useEffect(() => { let active = true; void fetch("/api/opportunities", { credentials: "include" }).then(async response => { const payload = await readApiJson<{ opportunities?: Opportunity[]; error?: string }>(response, "Internal openings are temporarily unavailable. Please try again."); if (!response.ok) throw new Error(payload.error || "We could not load opportunities right now"); if (active) setOpportunities(payload.opportunities || []); }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); }); return () => { active = false; }; }, [reloadKey]);
   useEffect(() => { let active = true; void fetch("/api/partners", { credentials: "include" }).then(async response => { if (!response.ok) return; const payload = await readApiJson<{ modules?: PartnerModuleRow[] }>(response, "Partner recommendations are unavailable"); if (active) setPartners(payload.modules || []); }).catch(() => undefined); return () => { active = false; }; }, []);
+  // Wall deep links (/wall?opening=<id>) canonicalise to /wall, so one canonical
+  // URL covers every opening a visitor was sent to.
+  useEffect(() => { applySeo({ title: "Internal openings shared by verified employees", description: "Hiring-now roles and walk-in events published privately by verified employees, with the company domain and the role details.", path: "/wall" }); }, []);
   const useOpportunity = (opportunity: Opportunity) => { if (!opportunity.targetRoleUrl) { toast("This walk-in does not include a direct role link yet. You can still attend with the shared details."); return; } const draft = readReferralDraft(); localStorage.setItem("bridge-target-url", opportunity.targetRoleUrl); localStorage.setItem("bridge-target-compensation", opportunity.compensation || ""); saveReferralDraft({ name: draft?.name || "", targetUrl: opportunity.targetRoleUrl }); go("/start"); };
   // Contextual partner slot: after every third organic card, one partner card.
   const items: WallItem[] = [];

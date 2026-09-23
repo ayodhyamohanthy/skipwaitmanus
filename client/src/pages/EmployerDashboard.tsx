@@ -5,6 +5,7 @@ import { SignInButton, useAuth } from "@/_core/auth";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
 import { readApiJson } from "@/lib/apiResponse";
+import { applySeo } from "@/lib/seo";
 
 type EmployerAccount = { id: number; companyName: string; billingEmail: string; credits: number; budgetMonthlyUsdCents: number };
 
@@ -36,6 +37,12 @@ export default function EmployerDashboard() {
     }).catch((reason: Error) => { if (active) setError(reason.message); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [isSignedIn]);
+
+  useEffect(() => {
+    // Public employer entry point: it keeps its own title instead of inheriting
+    // whatever screen the visitor came from.
+    applySeo({ title: "Hire on skipwait.me", description: "Sponsor roles to opt-in job seekers, unlock anonymized opt-in talent, and manage a self-serve promotion budget. The seeker-referrer loop stays free.", path: "/employer" });
+  }, []);
 
   const startEmployerAccount = async () => {
     setStarting(true); setError("");

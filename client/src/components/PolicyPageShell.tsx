@@ -1,8 +1,9 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
+import { applySeo } from "@/lib/seo";
 
 /**
  * Long-form disclosure shell shared by /terms, /refunds, /shipping, and /support.
@@ -29,6 +30,21 @@ export const policyLinks = [
   { href: "/support", label: "Support" },
 ] as const;
 
+/**
+ * Canonical public route for each reading screen. A screen that is missing here
+ * keeps the shell metadata rather than declaring a wrong canonical URL.
+ */
+const POLICY_SCREEN_PATHS: Record<string, string> = {
+  terms: "/terms",
+  "refund-policy": "/refunds",
+  "cancellation-policy": "/cancellations",
+  "shipping-policy": "/shipping",
+  about: "/about",
+  contact: "/contact",
+  pricing: "/pricing",
+  support: "/support",
+};
+
 export function PolicySection({ number, title, children }: { number: string; title: string; children: ReactNode }) {
   return <section aria-labelledby={`policy-${number}`} className="rounded-2xl border border-[#e5e5e5] bg-white p-5 sm:p-6">
     <p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">{number}</p>
@@ -48,6 +64,12 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
   children: ReactNode;
   footnote?: string;
 }) {
+  const canonicalPath = POLICY_SCREEN_PATHS[screen];
+  useEffect(() => {
+    // Keeps title, canonical, and share copy correct when a visitor navigates
+    // between policy screens inside the single-page app.
+    if (canonicalPath) applySeo({ title, description: intro, path: canonicalPath });
+  }, [canonicalPath, intro, title]);
   return <main data-skipwait-screen={screen} className="min-h-screen bg-white px-5 py-5 text-black sm:px-6 sm:py-8">
     <div className="mx-auto max-w-3xl">
       <header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#505050] hover:text-black"><ArrowLeft className="h-4 w-4" />Back</Link></header>

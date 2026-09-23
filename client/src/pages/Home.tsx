@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button, Dialog, DialogBody, DialogContent, DialogSurface, DialogTitle, FluentProvider, Tab, TabList, makeStyles, webLightTheme } from "@fluentui/react-components";
 import { SignInButton, useAuth } from "@/_core/auth";
+import { applySeo } from "@/lib/seo";
+import { LANDING_SUMMARY, LANDING_TITLE } from "@shared/landingContent";
 
 const sans = '"Helvetica Neue", "Segoe UI", sans-serif';
 const theme = { ...webLightTheme, fontFamilyBase: sans, colorBrandBackground: "#0000ff", colorBrandBackgroundHover: "#0000cc", colorBrandBackgroundPressed: "#000099", colorBrandForeground1: "#0000ff", colorBrandStroke1: "#0000ff", borderRadiusMedium: "18px" };
@@ -53,6 +55,11 @@ export default function Home() {
       if (active && typeof payload.acceptedReferrals === "number" && payload.acceptedReferrals > 0) setAcceptedReferrals(Math.floor(payload.acceptedReferrals));
     }).catch(() => undefined);
     return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    // Per-route metadata: the shell ships one <head>, so without this the home
+    // route keeps whatever title the last visited screen set.
+    applySeo({ title: LANDING_TITLE, description: LANDING_SUMMARY, path: "/" });
   }, []);
   const steps = audience === "seeker"
     ? [{ title: "Start with the role", body: "Paste the job link for the company you want to join." }, { title: "Add your context", body: "Your resume and a short note about your fit." }, { title: "Let the right people review", body: "Only verified employees of that company can review your request." }]

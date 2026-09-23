@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Check, Gift, LoaderCircle } from "lucide-react";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { readApiJson } from "@/lib/apiResponse";
+import { applySeo } from "@/lib/seo";
 
 type Plan = "pro" | "max";
 type CreditSummary = { plan: "free" | Plan; monthlyAllowance: number; monthlyCreditsRemaining: number; totalAvailable: number; subscriptionStatus: string | null; subscriptionCurrentTermEnd: string | null };
@@ -51,6 +52,10 @@ export default function Plans() {
   const selectedPrice = useMemo(() => plans[selected][route], [route, selected]);
   const price = selectedPrice.display;
   const routeDetails = paymentRouteDetails(route);
+
+  useEffect(() => {
+    applySeo({ title: "Monthly referral plans", description: "Pro and Max monthly plans add referral credits each month on top of the free allowance. Cancel any time.", path: "/plans" });
+  }, []);
 
   useEffect(() => {
     if (!isSignedIn) return;

@@ -3,15 +3,22 @@
 // HTML fallback that crawlers previously received at /sitemap.xml.
 const DEFAULT_API_ORIGIN = "https://skipwait.me";
 
-const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string }> = [
+export const STATIC_ROUTES: Array<{ path: string; changefreq: string; priority: string }> = [
   { path: "/", changefreq: "daily", priority: "1.0" },
   { path: "/wall", changefreq: "hourly", priority: "0.9" },
   { path: "/jobs", changefreq: "daily", priority: "0.9" },
   { path: "/premium", changefreq: "weekly", priority: "0.7" },
   { path: "/plans", changefreq: "weekly", priority: "0.6" },
+  { path: "/pricing", changefreq: "weekly", priority: "0.6" },
+  { path: "/referrer", changefreq: "weekly", priority: "0.6" },
+  { path: "/employer", changefreq: "monthly", priority: "0.4" },
+  { path: "/about", changefreq: "monthly", priority: "0.4" },
+  { path: "/contact", changefreq: "monthly", priority: "0.4" },
   { path: "/privacy", changefreq: "monthly", priority: "0.3" },
   { path: "/terms", changefreq: "monthly", priority: "0.3" },
   { path: "/refunds", changefreq: "monthly", priority: "0.3" },
+  { path: "/cancellations", changefreq: "monthly", priority: "0.3" },
+  { path: "/shipping", changefreq: "monthly", priority: "0.3" },
   { path: "/support", changefreq: "monthly", priority: "0.3" },
 ];
 
@@ -28,6 +35,9 @@ export const onRequest: PagesFunction<{ API_ORIGIN?: string }> = async (context)
   const urls = STATIC_ROUTES.map(route => ({ loc: `${origin}${route.path}`, changefreq: route.changefreq, priority: route.priority }));
 
   try {
+    // Only job detail URLs are listed. Opportunity Wall deep links
+    // (/wall?opening=<id>) canonicalise back to /wall, so listing them would
+    // spend crawl budget on near-duplicates of one page.
     const response = await fetch(`${apiOrigin}/api/jobs`, { headers: { accept: "application/json" } });
     if (response.ok) {
       const payload = (await response.json()) as { jobs?: Array<{ id?: number; updatedAt?: string }> };
