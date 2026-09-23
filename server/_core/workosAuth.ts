@@ -82,6 +82,11 @@ export function validateWorkosAccessClaims(payload: Record<string, unknown>, cli
   return true;
 }
 
+const WORKOS_IDENTITY_CACHE_TTL_MS = 60_000;
+const WORKOS_IDENTITY_CACHE_MAX = 5_000;
+const workosIdentityCache = new Map<string, { identity: DevIdentity; expiresAt: number }>();
+export function clearWorkosIdentityCacheForTests() { workosIdentityCache.clear(); }
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
@@ -91,6 +96,13 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   const existing = await db.getUserByOpenId(openId);
   if (existing?.suspended) return undefined;
   if (existing?.sessionsValidAfter && existing.sessionsValidAfter > existing.createdAt && (payload.iat as number) * 1000 < existing.sessionsValidAfter.getTime()) return undefined;
+  // Hot path: every signed-in request lands here. The WorkOS profile lookup
+  // and login-identity upsert are network/DB round trips (seconds in prod), so
+  // reuse a verified result for the same token briefly. Suspension and
+  // session revocation are re-checked against the DB above on every request.
+  const cacheKey = `${sub}:${String(payload.iat ?? "")}`;
+  const cached = workosIdentityCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now() && existing) return { ...cached.identity, account: { ...cached.identity.account, ...existing } };
   const workos = new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
   const user = await workos.userManagement.getUser(sub);
   if (user.id !== sub) return undefined;
@@ -101,7 +113,10 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   if (!account || account.suspended) return undefined;
   if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;
   const primaryEmail: DevEmailAddress | null = email ? { id: `workos-email-${email}`, emailAddress: email, verification: { status: emailVerified ? "verified" : "unverified" } } : null;
-  return { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+  const identity: DevIdentity = { account, primaryEmail, emailAddresses: primaryEmail ? [primaryEmail] : [] };
+  if (workosIdentityCache.size >= WORKOS_IDENTITY_CACHE_MAX) workosIdentityCache.clear();
+  workosIdentityCache.set(cacheKey, { identity, expiresAt: Date.now() + WORKOS_IDENTITY_CACHE_TTL_MS });
+  return identity;
 }
 
 type IdentityResolverDependencies = {
@@ -122,7 +137,20 @@ export function isSameOriginBrowserRequest(req: Request): boolean {
   return req.header("sec-fetch-site") === "same-origin";
 }
 
-export async function resolveWorkosIdentity(req: Request, dependencies: IdentityResolverDependencies = {}): Promise<DevIdentity | undefined> {
+// Several layers (route middleware, the route itself, tRPC context) resolve
+// identity for the same request. Resolve once per request object.
+const identityByRequest = new WeakMap<Request, Promise<DevIdentity | undefined>>();
+export function resolveWorkosIdentity(req: Request, dependencies: IdentityResolverDependencies = {}): Promise<DevIdentity | undefined> {
+  if (dependencies.identityFromBearer || dependencies.resolveCookieIdentity) return resolveWorkosIdentityUncached(req, dependencies);
+  const inFlight = identityByRequest.get(req);
+  if (inFlight) return inFlight;
+  const resolved = resolveWorkosIdentityUncached(req, dependencies);
+  identityByRequest.set(req, resolved);
+  resolved.catch(() => identityByRequest.delete(req));
+  return resolved;
+}
+
+async function resolveWorkosIdentityUncached(req: Request, dependencies: IdentityResolverDependencies = {}): Promise<DevIdentity | undefined> {
   const identityFromBearer = dependencies.identityFromBearer ?? identityFromWorkosJwt;
   const resolveCookieIdentity = dependencies.resolveCookieIdentity ?? resolveDevIdentity;
   const authHeader = req.headers.authorization;

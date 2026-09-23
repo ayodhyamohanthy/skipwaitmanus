@@ -65,6 +65,12 @@ export default function MyCompanyInbox() {
       // so tab switches don't serialize three round-trips.
       const impactPromise = companyFetch<{ summary?: PrivateImpactSummary }>("/api/referrer-impact/me");
       const newCountPromise = nextScope === "new" ? null : companyFetch<{ requests?: CompanyInboxItem[] }>("/api/company-referrals/inbox?scope=new");
+      // Eager no-op rejection handlers: if the primary fetch below throws,
+      // these promises are never awaited, and their later rejection would be
+      // an unhandled rejection (fails test runners, noise in browsers). The
+      // awaited handling further down is unaffected.
+      void impactPromise.catch(() => undefined);
+      if (newCountPromise) void newCountPromise.catch(() => undefined);
       const payload = await companyFetch<{ requests?: CompanyInboxItem[] }>(`/api/company-referrals/inbox?scope=${nextScope}`);
       setRequests(payload.requests || []);
       try { const impactPayload = await impactPromise; setImpact(impactPayload.summary || null); } catch { setImpact(null); }
