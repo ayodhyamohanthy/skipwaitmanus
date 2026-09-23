@@ -21,6 +21,7 @@ export const policyLinks = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/privacy", label: "Privacy & trust" },
   { href: "/refunds", label: "Refunds & cancellation" },
+  { href: "/cancellations", label: "Cancellation policy" },
   { href: "/shipping", label: "Shipping & delivery" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About us" },

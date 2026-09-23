@@ -7,6 +7,9 @@ export const BUSINESS = {
   brand: "skipwait.me",
   email: "support@skipwait.me",
   // Set before publishing. City/state at minimum; a full postal address passes provider reviews more reliably.
-  address: "" as string,
+  address: "D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India" as string,
+  phone: "+91 95130 64808",
+  phoneHref: "tel:+919513064808",
+  hours: "Mon–Fri, IST business hours",
   country: "India",
 } as const;

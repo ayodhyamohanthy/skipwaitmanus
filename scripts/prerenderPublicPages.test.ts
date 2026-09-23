@@ -5,7 +5,7 @@ const template = '<html><head><title>skipwait.me — Job Referrals</title><link 
 
 describe("static public pages for crawlers (Razorpay website review)", () => {
   it("covers every page Razorpay asks for", () => {
-    expect(PUBLIC_PAGES.map(p => p.route)).toEqual(expect.arrayContaining(["/terms", "/privacy", "/refunds", "/shipping", "/about", "/contact", "/pricing"]));
+    expect(PUBLIC_PAGES.map(p => p.route)).toEqual(expect.arrayContaining(["/terms", "/privacy", "/refunds", "/cancellations", "/shipping", "/about", "/contact", "/pricing"]));
   });
   it("injects the page text, title and canonical into the SPA shell", () => {
     const html = renderPublicPage(template, "/refunds", "Refunds & Cancellation", "<main>refund text</main>");
