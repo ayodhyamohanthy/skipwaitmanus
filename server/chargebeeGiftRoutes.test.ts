@@ -22,6 +22,7 @@ function appFor(deps?: Parameters<typeof registerChargebeeRoutes>[1]) {
 }
 
 beforeEach(() => {
+  vi.stubEnv("GIFT_CHECKOUT_ENABLED", "true");
   vi.stubEnv("BILLING_ENV", "test");
   vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
   vi.stubEnv("CHARGEBEE_API_KEY", "fixture-key");
@@ -36,6 +37,14 @@ const giftClaimedPayload = (gift: Record<string, unknown>) => ({
 });
 
 describe("gift checkout endpoint", () => {
+  it("refuses every gift checkout while GIFT_CHECKOUT_ENABLED is not true", async () => {
+    vi.stubEnv("GIFT_CHECKOUT_ENABLED", "");
+    const createGiftCheckout = vi.fn();
+    const response = await request(appFor({ createGiftCheckout })).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
+    expect(response.status).toBe(503);
+    expect(createGiftCheckout).not.toHaveBeenCalled();
+  });
+
   it("requires sign-in and a valid plan on a supported route", async () => {
     const app = appFor({ resolveIdentity: async () => undefined });
     expect((await request(app).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" })).status).toBe(401);
