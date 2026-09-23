@@ -2320,7 +2320,7 @@ export async function listClaimableGiftsForUser(userId: number) {
   return rows
     .filter(row => row.fulfillmentStatus === "pending" && row.providerStatus === "claimed")
     .sort((a, b) => b.id - a.id)
-    .map(row => ({ giftId: row.giftId, plan: row.plan, currency: row.currency, amount: row.amount, receiverEmail: row.receiverEmail, createdAt: row.createdAt }));
+    .map(row => ({ giftId: row.giftId, plan: row.plan, currency: row.currency, amount: row.amount, subscriptionId: row.subscriptionId, receiverEmail: row.receiverEmail, createdAt: row.createdAt }));
 }
 
 // ---- Unified admin approval queue (seeker requests, referrer enrollments, payments) ----
