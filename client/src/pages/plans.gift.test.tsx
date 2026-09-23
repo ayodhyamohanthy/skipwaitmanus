@@ -22,6 +22,7 @@ function stubFetch(handler: (url: string, init?: RequestInit) => unknown) {
 const emptyGifts = { sent: [], claimable: [] };
 
 beforeEach(() => {
+  vi.stubEnv("VITE_GIFT_CHECKOUT_ENABLED", "true");
   window.history.pushState({}, "", "/plans?role=job_seeker");
   openedCheckout.mockClear();
   openSignIn.mockClear();
@@ -31,9 +32,17 @@ beforeEach(() => {
     return { ok: true, json: async () => ({}) };
   });
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); window.history.pushState({}, "", "/"); });
 
 describe("Plans gift subscriptions", () => {
+  it("hides the gift button unless VITE_GIFT_CHECKOUT_ENABLED is true", async () => {
+    vi.stubEnv("VITE_GIFT_CHECKOUT_ENABLED", "");
+    stubFetch(url => String(url).includes("/api/chargebee/gifts/mine") ? { ok: true, json: async () => emptyGifts } : String(url).includes("/api/credits/summary") ? { ok: true, json: async () => summaryFree } : { ok: true, json: async () => ({}) });
+    render(<Plans />);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(screen.queryByRole("button", { name: /^Gift / })).toBeNull();
+  });
+
   it("opens a gift checkout for the selected plan without touching the buyer plan", async () => {
     stubFetch((url, init) => {
       if (String(url).includes("/api/credits/summary")) return { ok: true, json: async () => summaryFree };

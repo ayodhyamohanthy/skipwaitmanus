@@ -127,6 +127,9 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
   });
 
   app.post("/api/chargebee/gift-checkout", async (req, res) => {
+    // Hard server gate: no gift purchase can start until the flow is verified
+    // on the Chargebee TEST site (#77/#78) and this is set deliberately.
+    if (process.env.GIFT_CHECKOUT_ENABLED !== "true") return res.status(503).json({ error: "Gifting is not available yet" });
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before gifting a plan" });
