@@ -124,7 +124,9 @@ export async function openConcurrencyHarness(): Promise<ConcurrencyHarness> {
   const probe = await db.execute(sql`SELECT DATABASE() AS databaseName, @@transaction_isolation AS isolationLevel`);
   const probeRows = (Array.isArray(probe[0]) ? probe[0] : []) as unknown as SqlRow[];
   const boundDatabase = requireStringValue(probeRows[0], "databaseName", "sandbox probe");
-  const isolationLevel = requireStringValue(probeRows[0], "isolationLevel", "sandbox probe");
+  // MySQL spells the system variable value with a hyphen (REPEATABLE-READ); the
+  // SQL-standard spelling is what a reader asserts on, so normalise it here.
+  const isolationLevel = requireStringValue(probeRows[0], "isolationLevel", "sandbox probe").replace(/[-_]/g, " ");
   if (boundDatabase !== target.database) {
     process.env.DATABASE_URL = previousUrl;
     await pool.end();
