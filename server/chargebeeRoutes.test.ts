@@ -201,7 +201,7 @@ describe("Chargebee webhook route", () => {
     });
     const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth(secret)).send({ id: "ev_mismatch", event_type: "payment_succeeded", content: { payment: { amount: 9900, currency_code: "INR", hosted_page_id: "hp_test" }, hosted_page: { pass_thru_content: "wrong_intent" } } });
     expect(response.status).toBe(200);
-    expect(response.body.result.status).toBe("ignored");
+    expect(response.body.result).toMatchObject({ status: "requires_review", reason: "unknown_checkout" }); // #77: never credited, now parked for review
     delete process.env.CHARGEBEE_WEBHOOK_SECRET;
   });
 
