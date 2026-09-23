@@ -5,7 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 
 /**
- * Long-form disclosure shell shared by /terms, /refunds, and /support.
+ * Long-form disclosure shell shared by /terms, /refunds, /shipping, and /support.
  *
  * These are reading pages, not guided flows, so they scroll normally
  * (`min-h-screen`) like /privacy. One hero card, numbered sections, and a
@@ -18,6 +18,7 @@ export const policyLinks = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/privacy", label: "Privacy & trust" },
   { href: "/refunds", label: "Refunds & cancellation" },
+  { href: "/shipping", label: "Shipping & delivery" },
   { href: "/support", label: "Support" },
 ] as const;
 
