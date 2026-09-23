@@ -66,6 +66,18 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
   const email = normalizeVerifiedEmail(input.email);
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  // Returning sign-ins already hold a verified provider alias. Resolve them with
+  // plain reads so every callback/bearer request does not take row locks; only
+  // first-time linking below needs the serialized, locking transaction.
+  const knownAlias = (await db.select().from(verifiedLoginAliases)
+    .where(and(eq(verifiedLoginAliases.provider, input.provider), eq(verifiedLoginAliases.subject, input.subject)))
+    .limit(1))[0];
+  if (knownAlias) {
+    const account = (await db.select().from(users).where(eq(users.id, knownAlias.canonicalUserId)).limit(1))[0];
+    const person = (await db.select().from(canonicalPeople).where(eq(canonicalPeople.id, knownAlias.canonicalPersonId)).limit(1))[0];
+    if (!account || !person || account.suspended || person.suspended) throw new Error(person?.reviewReason ? "IDENTITY_REVIEW_REQUIRED" : "ACCOUNT_NOT_ACTIVE");
+    return { ...account, suspended: false, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
+  }
   const result = await db.transaction(async tx => {
     // Provider subject is the strongest key. It always resolves before email.
     const aliasRow = (await tx.select().from(verifiedLoginAliases)
