@@ -1803,7 +1803,10 @@ export async function spendToken(userId: number, role: WalletRole) {
   if (!db) throw new Error("Database unavailable");
   await ensureTokenWallet(userId, role);
   return db.transaction(async tx => {
-    const current = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
+    // Serialization point: lock the wallet row before reading promo or balance
+    // state so concurrent spends queue on the lock instead of double-spending.
+    // (Same wallet-first ordering as createCompanyReferralRequest.)
+    const current = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update");
     if (!current[0]) throw new Error("No referral credit available");
     const normalized = normalizedWalletState(current[0]);
     const effective = { ...current[0], ...normalized.patch };
@@ -1812,7 +1815,8 @@ export async function spendToken(userId: number, role: WalletRole) {
     const grant = promo.grant;
     if (grant && grant.creditsRemaining > 0) {
       const next = grant.creditsRemaining - 1;
-      await tx.update(promoCreditGrants).set(next === 0 ? { creditsRemaining: 0, status: "exhausted", consumedAt: now } : { creditsRemaining: next }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+      const claimed = await tx.update(promoCreditGrants).set(next === 0 ? { creditsRemaining: 0, status: "exhausted", consumedAt: now } : { creditsRemaining: next }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
+      if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new Error("That credit was just used. Try again.");
       await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "promo_spend", source: "promo_grant", referenceType: "promo_credit_grant", referenceId: String(grant.id), idempotencyKey: `promo-spend-${grant.id}-${grant.tokenCount - next}` });
       return creditSummaryFromWallet({ ...effective, ...normalized.patch }, { remaining: next, expiresAt: grant.expiresAt, status: "active" });
     }
@@ -1821,7 +1825,8 @@ export async function spendToken(userId: number, role: WalletRole) {
     const nextMonthlyCredits = usesMonthlyCredit ? effective.monthlyCreditsRemaining - 1 : effective.monthlyCreditsRemaining;
     const nextBalance = usesMonthlyCredit ? effective.balance : effective.balance - 1;
     const patch = { ...normalized.patch, monthlyCreditsRemaining: nextMonthlyCredits, balance: nextBalance };
-    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, current[0].id));
+    const debited = await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, current[0].id));
+    if (Number(debited[0]?.affectedRows ?? 0) !== 1) throw new Error("That credit was just used. Try again.");
     await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "direct_request" });
     return creditSummaryFromWallet({ ...effective, ...patch }, { remaining: 0, expiresAt: null, status: promo.status });
   });
