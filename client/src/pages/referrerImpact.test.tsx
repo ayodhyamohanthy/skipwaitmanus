@@ -78,4 +78,15 @@ describe("ReferrerImpact dashboard", () => {
     expect(container.querySelector('[role="alert"]')).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
+
+  it("never renders a blank page while the summary is still loading", async () => {
+    authState.isSignedIn = true;
+    stubFetch(url => {
+      if (url.endsWith("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) };
+      return { ok: true, json: async () => new Promise(() => undefined) };
+    });
+    render(<ReferrerImpact />);
+    await waitFor(() => expect(document.querySelector('[data-skipwait-screen="referrer-impact-loading"]')).toBeTruthy());
+    expect(document.querySelector("main")?.textContent?.length ?? 0).toBeGreaterThan(0);
+  });
 });

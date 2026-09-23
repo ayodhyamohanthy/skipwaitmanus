@@ -95,4 +95,21 @@ describe("TalentDiscovery", () => {
     render(<TalentDiscovery />);
     await waitFor(() => expect(screen.getByText("No opt-in talent matches yet.")).toBeTruthy());
   });
+
+  it("announces a load failure and recovers through Try again", async () => {
+    let attempts = 0;
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/employer/account") return { ok: true, status: 200, json: async () => ({ account: { credits: 25 } }) };
+      attempts += 1;
+      return attempts === 1
+        ? { ok: false, status: 503, json: async () => ({ error: "We could not load the talent list" }) }
+        : { ok: true, status: 200, json: async () => ({ talent: [] }) };
+    }));
+    render(<TalentDiscovery />);
+    expect((await screen.findByRole("alert")).textContent).toContain("We could not load the talent list");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.getByText("No opt-in talent matches yet.")).toBeTruthy());
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });
