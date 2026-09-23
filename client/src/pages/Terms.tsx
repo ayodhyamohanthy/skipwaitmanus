@@ -16,8 +16,8 @@ export default function Terms() {
     icon={ScrollText}
     eyebrow="Terms of Service"
     title="Plain terms for a private referral handoff."
-    intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past."
-    updated="September 5, 2026"
+    intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
+    updated="September 23, 2026"
     footnote="This draft reflects how the product works today. A jurisdiction-specific version reviewed by counsel will replace it before general launch; the product behaviour it describes will not change."
   >
     <PolicySection number="01" title="What skipwait.me is">

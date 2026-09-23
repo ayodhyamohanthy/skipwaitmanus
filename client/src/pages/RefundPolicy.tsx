@@ -17,7 +17,7 @@ export default function RefundPolicy() {
     eyebrow="Refunds & cancellation"
     title="You only pay for what actually happened."
     intro="Credits are reserved, not spent, until a Referrer acts. Subscriptions stop at the end of the cycle you already paid for. When something goes wrong with a payment, a person reviews it."
-    updated="September 5, 2026"
+    updated="September 23, 2026"
     footnote="Statutory consumer rights in your country apply in addition to this policy and are not limited by it."
   >
     <PolicySection number="01" title="How a credit is used">
@@ -25,6 +25,7 @@ export default function RefundPolicy() {
         <li>Sending a referral request <strong>reserves one credit</strong>. The credit is returned to your balance automatically if you <strong>withdraw before a verified employee claims</strong> the request, or if the Referrer <strong>declines</strong>.</li>
         <li>A credit is used up only when a Referrer <strong>accepts</strong> your request. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
         <li>Free monthly credits reset each month and do not carry over. Purchased credits never expire.</li>
+        <li><strong>Delivery.</strong> skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account <strong>immediately after the payment provider confirms payment</strong>; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check.</li>
       </ul>
     </PolicySection>
 
