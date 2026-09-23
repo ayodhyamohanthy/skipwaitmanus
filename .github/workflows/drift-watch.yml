@@ -1,0 +1,65 @@
+name: Drift watch
+
+# Async deploy truth: polls the canonical API and confirms it serves the exact
+# HEAD of origin/main. Opens or updates a tracking issue on drift so a late or
+# stuck rollout is visible without anyone polling by hand.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: drift-watch
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check live release
+        id: drift
+        run: |
+          # Live must serve the newest main commit that touches runtime paths
+          # (mirror the Deploy API path filter: test-only server/** changes
+          # still trigger runtime deploys). Docs-only HEADs correctly resolve
+          # to the older runtime commit.
+          expected=$(git log -1 --format=%H origin/main -- server shared drizzle src/worker.ts Dockerfile .dockerignore package.json pnpm-lock.yaml patches wrangler.jsonc tsconfig.json vite.config.ts)
+          echo "expected=$expected" >> "$GITHUB_OUTPUT"
+          if EXPECTED_SHA="$expected" bash scripts/verify-live-release.sh; then
+            echo "drifted=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "drifted=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Report drift
+        if: steps.drift.outputs.drifted == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const expected = '${{ steps.drift.outputs.expected }}';
+            const title = 'Live API drift: canonical does not serve origin/main';
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', per_page: 100,
+            });
+            const existing = open.data.find(i => i.title === title);
+            const body = `Live \`https://skipwait.me/api/health/ready\` does not report origin/main HEAD (\`${expected}\`).\n\nLast seen: ${new Date().toISOString()}\n\nCheck the latest Deploy API run, then \`bash scripts/verify-live-release.sh\` with EXPECTED_SHA set. This issue updates on every drift sighting and should be closed once converged.`;
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: existing.number, body: `Still drifted at ${new Date().toISOString()} (expected \`${expected}\`).`,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ['deploy'],
+              });
+            }
