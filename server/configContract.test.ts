@@ -84,6 +84,24 @@ function consumerFiles(): string[] {
   return out;
 }
 
+// The container runtime binds the listen port itself; it is not a Worker secret.
+const RUNTIME_PROVIDED = new Set(["PORT"]);
+
+function serverReadKeys(): Set<string> {
+  const keys = new Set<string>();
+  for (const file of sourceFiles(["server"])) {
+    let text: string;
+    try { text = readFileSync(file, "utf8"); } catch { continue; }
+    for (const match of text.matchAll(/process\.env\.([A-Za-z_][A-Za-z0-9_]*)/g)) {
+      if (!AMBIENT.test(match[1])) keys.add(match[1]);
+    }
+    for (const match of text.matchAll(/process\.env\["([^"]+)"\]/g)) {
+      if (!AMBIENT.test(match[1])) keys.add(match[1]);
+    }
+  }
+  return keys;
+}
+
 function consumedKeys(): Set<string> {
   const consumed = new Set<string>();
   const files = consumerFiles();
@@ -116,6 +134,12 @@ describe("config contract", () => {
     const example = exampleKeys();
     const missing = workerPassthroughKeys().filter(key => !example.has(key));
     expect(missing, `worker passthrough keys missing from .env.example: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("forwards every key the server reads at runtime", () => {
+    const forwarded = new Set(workerPassthroughKeys());
+    const unreadable = [...serverReadKeys()].filter(key => !forwarded.has(key) && !RUNTIME_PROVIDED.has(key));
+    expect(unreadable, `read under server/ but absent from CONTAINER_ENV_KEYS in src/worker.ts, so it can never be set in the container: ${unreadable.join(", ")}`).toEqual([]);
   });
 
   it("forwards runtime server secrets that must reach the container", () => {
