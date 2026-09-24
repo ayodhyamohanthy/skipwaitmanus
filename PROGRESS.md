@@ -18,9 +18,29 @@ CHANGELOG.md update in the same change as the work.
 - [ ] V0-09 — Staging smoke test + smallest safe path to V1.
 - **V0 gate**: accurate system map exists (CURRENT_STATE.md); critical exposures fixed or prod access held. NOT YET MET — pending V0-02…V0-09.
 
-## V1 — Verified referral MVP (not started; checklist expands at version start)
+## V1 — Verified referral MVP (MAPPED 2026-09-24, not started)
 
-V1-01 identity/permissions/migrations · V1-02 auth · V1-03 companies/domains · V1-04 seeker onboarding · V1-05 work-email verification · V1-06 referrer onboarding · V1-07 company pages · V1-08 request service · V1-09 direct flow · V1-10 pool flow · V1-11 referrer inbox · V1-12 tracking/files · V1-13 deadlines/workers · V1-14 notifications · V1-15 admin · V1-16 landing/settings/copy · V1-17 end-to-end gate.
+Legend: HAVE (working code + tests) · PARTIAL (works with gaps) · MISSING.
+Evidence: file:line verified in worktree @42002c3. Nothing here changes code.
+
+- V1-01 identity/permissions/migrations — HAVE. Canonical person + aliases + suspension propagation (`server/db.ts` resolveLoginIdentity); freeze paths + fast-path tests.
+- V1-02 auth — PARTIAL. WorkOS AuthKit verify + logout + suspended-enforcement HAVE; rate limiting MISSING except OTP/DM endpoints.
+- V1-03 companies/domains — PARTIAL. Exact-domain match + pending employer-approval HAVE; public directory/search + duplicate-merge MISSING; no `/company/:slug` route.
+- V1-04 seeker onboarding — PARTIAL. `/start` flow + resume upload HAVE, but limit is 10MB not 5MB (`server/documentValidation.ts:1`); LinkedIn field MISSING.
+- V1-05 work-email verification — PARTIAL. 10-min OTP + atomic throttling HAVE; plaintext work-email storage remains (no HMAC); 6-month re-verification MISSING.
+- V1-06 referrer onboarding — PARTIAL. Capacity + availability HAVE; level/function/team fields, discoverability opt-in, and pause flag MISSING (only talent anonymity opt-in).
+- V1-07 company pages — MISSING. No company routes; only fast-track/vanity links with honest expired states.
+- V1-08 request service — HAVE core. Transactional transitions (FOR_UPDATE + CAS + immutable events), wallet-locked limits, fingerprint dedup. 5/7-day deadlines MISSING (only 7-day review-link + 30-day grant lifetimes).
+- V1-09 direct flow — PARTIAL. Job-link + resume + send HAVE; pitch cap is 2000 chars, not 600 (`privateReferralRoutes.ts:488`); seeker never picks a person (pool-routed); same-job active block MISSING (idempotency only).
+- V1-10 pool flow — PARTIAL. Atomic claim + prior-claimant exclusion HAVE; release-with-reason and direct-to-pool conversion MISSING (pass-with-reason closest).
+- V1-11 referrer inbox — HAVE (tabs, claim/review/one-click/save, capacity message, reasoned decline). Named mark-as-referred action MISSING (approve→progress closest).
+- V1-12 tracking/files — PARTIAL. Timeline, withdraw, progress milestones, resume-authz tests HAVE; post-referral outcomes NOT labeled self-reported in code.
+- V1-13 workers — PARTIAL. Outbox/delivery fns HAVE; no scheduler (no cron config or dep); no 5-day direct constant; monthly reset test-only.
+- V1-14 notifications — PARTIAL. In-app + transactional email HAVE; preferences table MISSING.
+- V1-15 admin — PARTIAL. Users/requests review, suspend, audit log HAVE; duplicate-merge + bounded settings MISSING.
+- V1-16 landing/copy/policies — HAVE. Routes live; anti-guarantee copy + test present.
+- V1-17 end-to-end gate — NOT RUN. Needs real accounts + work-email verification + mobile/desktop pass.
+- **V1 gate**: NOT MET. Biggest structural gaps: V1-07 company pages, V1-09 referrer choice + 600-char pitch, V1-10 release/conversion, V1-13 scheduler, V1-05 HMAC + re-verification.
 
 ## V1.5 → V8 (not started)
 
