@@ -158,6 +158,7 @@ every endpoint here; record the active boundary and its source of truth.
 | Referral, document, notification and admin REST | `server/privateReferralRoutes.ts`, `server/db.ts`; transactional state machines, idempotency and durable outboxes |
 | Employer talent, intro, partner and sponsorship REST | `server/employerRoutes.ts`, `server/db.ts`; consent/version gates, durable request state, no partial notification commits |
 | DMs and follows | `server/dmRoutes.ts`, `server/followRoutes.ts`; authenticated ownership, immutable idempotency for sends |
+| Reputation track record (`/api/reputation/referrer/me`, `/api/reputation/seeker/me`) | `server/reputationRoutes.ts`, `server/reputation.ts`, `shared/reputation.ts`; derived on read from `referralTransitionEvents`, self-view only, rates null when history is empty |
 | Payment/provider webhooks | `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebeeRoutes.ts`; provider-confirmed terminal state, durable replay protection; no real-money QA |
 | tRPC API | `server/routers.ts`, `server/_core/context.ts`; Zod edge validation and canonical identity context |
 | Persistence and migrations | `drizzle/schema.ts`, `drizzle/00xx_*.sql`, `server/schemaReconcile.ts`; contract/migration first, forward-compatible boot reconciliation |
