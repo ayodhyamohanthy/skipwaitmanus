@@ -40,7 +40,7 @@ export default function Premium() {
   const updateQuantity = (next: number) => setQuantity(Math.max(1, Math.min(1000, Number.isFinite(next) ? Math.round(next) : 1)));
 
   useEffect(() => {
-    applySeo({ title: "Buy referral credits for $1 each", description: "Every account gets free referral requests each month. Extra credits cost $1 each (₹99 in India), never expire, and are used only when an employee accepts a request.", path: "/premium" });
+    applySeo({ title: "Buy referral credits for $1 each", description: "Every account gets free referral requests each month. Extra credits cost $1 each (₹99 in India), never expire, and are returned if you withdraw before pickup.", path: "/premium" });
   }, []);
 
   useEffect(() => {
