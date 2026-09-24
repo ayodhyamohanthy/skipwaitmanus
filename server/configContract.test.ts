@@ -65,12 +65,51 @@ function workerPassthroughKeys(): string[] {
   return [...block.matchAll(/"([A-Z][A-Z0-9_]+)"/g)].map(m => m[1]);
 }
 
+// A key can be consumed by a test gate, a CI build, a deploy manifest, or a build-time
+// `%VITE_*%` substitution rather than by runtime code, so the consumer side is the whole
+// tree minus prose, vendored output, and the example files that declare the contract.
+// This file itself is excluded so it cannot certify its own keys as consumed.
+function consumerFiles(): string[] {
+  const skippedDirs = new Set(["node_modules", ".git", "dist", "build", "coverage", ".wrangler", ".vercel"]);
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir)) {
+      if (skippedDirs.has(entry)) continue;
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (!/\.(md|txt|snap|log)$/i.test(entry) && !entry.startsWith(".env") && full !== __filename) out.push(full);
+    }
+  };
+  walk(ROOT);
+  return out;
+}
+
+function consumedKeys(): Set<string> {
+  const consumed = new Set<string>();
+  const files = consumerFiles();
+  const texts = files.map(file => {
+    try { return readFileSync(file, "utf8"); } catch { return ""; }
+  });
+  for (const key of exampleKeys()) {
+    if (!/^[A-Z0-9_]+$/.test(key)) continue;
+    const pattern = new RegExp(`\\b${key}\\b`);
+    if (texts.some(text => pattern.test(text))) consumed.add(key);
+  }
+  return consumed;
+}
+
 describe("config contract", () => {
   it("declares every referenced key in .env.example", () => {
     const example = exampleKeys();
     const { vite, env } = referencedKeys();
     const missing = [...vite, ...env].filter(key => !example.has(key));
     expect(missing, `undeclared config keys (add to .env.example): ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("declares nothing in .env.example that no file consumes", () => {
+    const consumed = consumedKeys();
+    const dead = [...exampleKeys()].filter(key => !consumed.has(key));
+    expect(dead, `.env.example advertises keys nothing reads (wire it through its boundary, or delete it): ${dead.join(", ")}`).toEqual([]);
   });
 
   it("forwards every container env key declared for the Worker", () => {
