@@ -12,8 +12,12 @@ const cache=new BoundedTtlCache<string,JobLinkPreview>(5000);
 const pending=new Map<string,Promise<JobLinkPreview>>();
 export function resetJobLinkPreviewCache(){cache.clear();pending.clear()}
 export function jobLinkPreviewCacheSize(){return cache.size}
-const blockedRanges=new Set(["unspecified","broadcast","multicast","linkLocal","loopback","private","uniqueLocal","carrierGradeNat","reserved"]);
-export function isPublicAddress(address:string){try{return !blockedRanges.has(ipaddr.parse(address).range())}catch{return false}}
+const blockedRanges=new Set(["unspecified","broadcast","multicast","linkLocal","loopback","private","uniqueLocal","carrierGradeNat","reserved","rfc6052"]);
+// ipaddr reports an IPv4 address written in IPv6 form (`::ffff:169.254.169.254`) as
+// its own `ipv4Mapped` range, so classifying it directly admits loopback, private
+// space, carrier-grade NAT, and the cloud metadata service. `URL.hostname` also
+// brackets IPv6 literals, which `ipaddr.parse` does not accept.
+export function isPublicAddress(address:string){try{const parsed=ipaddr.parse(address.replace(/^\[|\]$/g,""));const checked=parsed instanceof ipaddr.IPv6&&parsed.isIPv4MappedAddress()?parsed.toIPv4Address():parsed;return !blockedRanges.has(checked.range())}catch{return false}}
 async function pinnedDispatcher(hostname:string){const answers=await lookup(hostname,{all:true,verbatim:true});if(!answers.length||answers.some(a=>!isPublicAddress(a.address)))throw Error("unsafe_destination");const allowed=new Map(answers.map(a=>[a.address,a.family]));return new Agent({connect:{lookup:(_host,opts,cb)=>{const first=answers[0];if(!allowed.has(first.address))return cb(Error("dns_rebinding"),"",4);if((opts as {all?:boolean}).all)return cb(null,answers as never);cb(null,first.address,first.family)}}});}
 const allowedHostedApi=(url:URL)=>
   (url.hostname==="www.linkedin.com"&&url.pathname.startsWith("/jobs-guest/jobs/api/jobPosting/")) ||
