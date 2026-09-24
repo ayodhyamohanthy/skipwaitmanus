@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { canReviewReferral, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, isPostApprovalReferralStatus, isReferralProgressUpdateStatus, referralStatusLabels } from "./referral";
 
 describe("Referral Request state helpers", () => {
-  it("provides the prescribed request state labels", () => {
+  it("distinguishes request acceptance from participant-reported milestones", () => {
     expect(referralStatusLabels.pending).toBe("Request sent");
-    expect(referralStatusLabels.intro_made).toBe("Introduction made");
+    expect(referralStatusLabels.approved).toBe("Request accepted");
+    expect(referralStatusLabels.intro_made).toBe("Introduction reported");
+    expect(referralStatusLabels.interview).toBe("Interview reported");
+    expect(referralStatusLabels.offer).toBe("Offer reported");
   });
 
   it("allows referrer review only while a Referral Request is pending", () => {
@@ -27,11 +30,18 @@ describe("Referral Request state helpers", () => {
     expect(isReferralProgressUpdateStatus("approved")).toBe(false);
   });
 
-  it("keeps Job Seeker status copy factual about routing, claim, and decision", () => {
+  it("keeps seeker copy precise about routing, acceptance, and unverified outcomes", () => {
     expect(getJobSeekerReferralState({ status: "pending", referrerId: null })).toMatchObject({ label: "Privately routed", tone: "amber" });
     expect(getJobSeekerReferralState({ status: "pending", referrerId: 4 })).toMatchObject({ label: "Under review", tone: "blue" });
     expect(getJobSeekerReferralState({ status: "declined", referrerId: 4 })).toMatchObject({ label: "Request closed", tone: "slate" });
-    expect(getJobSeekerReferralState({ status: "interview", referrerId: 4 })).toMatchObject({ label: "Interview in progress", tone: "blue" });
+    const accepted = getJobSeekerReferralState({ status: "approved", referrerId: 4 });
+    expect(accepted.label).toBe("Request accepted");
+    expect(accepted.detail).toMatch(/does not confirm.*submitted/i);
+    for (const status of ["intro_made", "interview", "offer"] as const) {
+      const state = getJobSeekerReferralState({ status, referrerId: 4 });
+      expect(state.label).toMatch(/reported/i);
+      expect(state.detail).toMatch(/not verified.*employer/i);
+    }
   });
 
   it("separates new, saved, and completed Referrer inbox work without fabricating activity", () => {

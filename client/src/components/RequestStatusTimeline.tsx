@@ -29,9 +29,9 @@ export function buildRequestTimeline(request: { status: ReferralStatus; referrer
     : { label: request.queueStatus === "waiting_for_coverage" ? "Waiting for company coverage" : "Waiting for a verified employee", date: null, tone: "slate", state: "waiting" };
   if (request.status === "pending") return [sent, claimedEntry, { label: "Decision", date: null, tone: "slate", state: "waiting" }];
   if (request.status === "declined") return [sent, claimedEntry, { label: "Declined", date: request.updatedAt, tone: "red", state: "done" }];
-  const decided: TimelineEntry = { label: "Referral accepted", date: request.status === "approved" ? request.updatedAt : null, tone: "green", state: "done" };
+  const decided: TimelineEntry = { label: "Request accepted", date: request.status === "approved" ? request.updatedAt : null, tone: "green", state: "done" };
   if (request.status === "approved") return [sent, claimedEntry, decided];
-  const milestoneLabel: Partial<Record<ReferralStatus, string>> = { intro_made: "Introduction made", interview: "Interview recorded", offer: "Offer recorded", closed: "Request closed" };
+  const milestoneLabel: Partial<Record<ReferralStatus, string>> = { intro_made: "Introduction reported", interview: "Interview reported", offer: "Offer reported", closed: "Request closed" };
   return [sent, claimedEntry, decided, { label: milestoneLabel[request.status] ?? "Updated", date: request.updatedAt, tone: request.status === "closed" ? "slate" : request.status === "offer" ? "green" : "blue", state: "done" }];
 }
 
