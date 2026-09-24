@@ -73,6 +73,21 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
 ];
 
+// Foreign keys the running code relies on. Unlike tables and columns, a FK is
+// never created here: reconcile only READS, so every entry must already be
+// created by a drizzle/deploy/*.sql migration, which server/schemaDeployGuard.test.ts
+// enforces. Keep in sync with the .references() calls in drizzle/schema.ts.
+//
+// Dropped 2026-09-24: this list also required resumeUploadChunks.acceptedAttemptId
+// -> resumeUploadAttempts.id. Production satisfies it, but no file in the
+// repository can: schema.ts declares neither the column nor the table, and no
+// deploy migration creates them, so a database rebuilt from repo SQL could never
+// pass and would sit at /api/health/ready 503 forever. Nothing reads the column.
+// The live table it implies is undocumented source/prod drift, not a requirement.
+export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; referencedTable: string; referencedColumn: string }> = [
+  { table: "referralAttachments", column: "uploadSessionId", referencedTable: "resumeUploadSessions", referencedColumn: "id" },
+];
+
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
 // from DESIRED_COLUMNS + DESIRED_TABLES above. Nothing request-controlled is
 // ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
@@ -225,8 +240,10 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       const fkResult = await db.execute(sql`SELECT TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL`);
       const foreignKeys = new Set((fkResult[0] as unknown as Array<{ TABLE_NAME:string; COLUMN_NAME:string; REFERENCED_TABLE_NAME:string; REFERENCED_COLUMN_NAME:string }>).map(row => `${schemaKey(row.TABLE_NAME, row.COLUMN_NAME)}->${schemaKey(row.REFERENCED_TABLE_NAME, row.REFERENCED_COLUMN_NAME)}`));
       checks.push(
-        { key: "fk:referralAttachments.uploadSessionId", ok: foreignKeys.has(`${schemaKey("referralAttachments", "uploadSessionId")}->${schemaKey("resumeUploadSessions", "id")}`) },
-        { key: "fk:resumeUploadChunks.acceptedAttemptId", ok: foreignKeys.has(`${schemaKey("resumeUploadChunks", "acceptedAttemptId")}->${schemaKey("resumeUploadAttempts", "id")}`) },
+        ...DESIRED_FOREIGN_KEYS.map(item => ({
+          key: `fk:${item.table}.${item.column}`,
+          ok: foreignKeys.has(`${schemaKey(item.table, item.column)}->${schemaKey(item.referencedTable, item.referencedColumn)}`),
+        })),
       );
       for (const check of checks) results.push({ statement: check.key, ok: check.ok, ...(!check.ok ? { errorCode: "SCHEMA_MISMATCH" } : {}) });
       const failed = checks.filter(check => !check.ok);
