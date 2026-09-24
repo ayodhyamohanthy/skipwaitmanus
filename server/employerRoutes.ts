@@ -1,6 +1,18 @@
-import type { Express, Request } from "express";
+import type { Express, Request, Response } from "express";
 import { findRazorpayOrdersByReceipt, razorpayConfigured, razorpayOrderInPaise, type ActivityInput } from "./payments";
 import { UNLOCK_CREDIT_PACKS, type UnlockCreditPackId } from "./db";
+import { resolveTrustedClientIp } from "./_core/trustedClientIp";
+import {
+  createTelemetryLimiter,
+  isPartnerCategory,
+  parsePartnerModuleCreation,
+  parsePartnerModulePatch,
+  PARTNER_CLICK_LIMIT_PER_WINDOW,
+  PARTNER_IMPRESSION_LIMIT_PER_WINDOW,
+  TELEMETRY_WINDOW_MS,
+  type PartnerCategory,
+  type PartnerModulePatch,
+} from "./partnerContracts";
 
 /**
  * B2B self-serve employer surface: account, unlock-credit purchases, anonymized
@@ -34,6 +46,8 @@ export type EmployerRouteDeps = {
   updatePartnerModule?: (moduleId: number, patch: PartnerModulePatch) => Promise<unknown>;
   listAllPartnerModules?: () => Promise<unknown[]>;
   listEmployerSpendHistory: (userId: number, limit?: number) => Promise<unknown[]>;
+  /** Injectable clock for the anonymous telemetry budgets; defaults to Date.now. */
+  telemetryNow?: () => number;
   prepareUnlockCreditCheckout?: (input: { checkoutKey:string; userId:number; pack:UnlockCreditPackId; amount:number; currency:string }) => Promise<{id:number;intentId?:number;providerOrderId:string|null;providerReceipt:string;status:string;amount:number;currency:string;pack:UnlockCreditPackId;action:"bound"|"busy"|"blocked"|"create"|"reconcile";createLeaseOwner?:string|null}>;
   bindUnlockCreditProviderOrder?: (input:{intentId:number;orderId:string;amount:number;currency:string;leaseOwner?:string}) => Promise<unknown>;
   markUnlockCheckoutRequiresReview?: (intentId:number,reason:string)=>Promise<void>;
@@ -42,19 +56,22 @@ export type EmployerRouteDeps = {
   unlockCreditPacks?: typeof UNLOCK_CREDIT_PACKS;
 };
 
-const PARTNER_CATEGORIES = ["interview_prep", "resume_vetting", "skill_assessment", "other"] as const;
-type PartnerCategory = (typeof PARTNER_CATEGORIES)[number];
-
-const isPartnerCategory = (value: unknown): value is PartnerCategory => PARTNER_CATEGORIES.includes(value as PartnerCategory);
 const isUnlockPack = (value: unknown): value is UnlockCreditPackId => value === "starter" || value === "growth" || value === "scale";
 const roleKeywordsFrom = (value: unknown) => (typeof value === "string" ? value.toLowerCase().split(/[^a-z0-9+#.]+/).filter(Boolean).slice(0, 12) : []);
 
 type GateError = { status: 401 | 403; body: { error: string } };
 type Gate = { error: GateError } | { identity: EmployerIdentity };
-type PartnerModulePatch = { partnerName?: string; category?: PartnerCategory; headline?: string; description?: string | null; targetRoles?: string | null; ctaLabel?: string; ctaUrl?: string; isActive?: boolean };
 
 export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
   const record = (input: ActivityInput) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  // Partner impressions and clicks are written by anonymous requests, so each
+  // one is budgeted per client IP. These buckets live in this container only:
+  // they raise the cost of inflating a partner's numbers, they are not a
+  // cross-container ceiling - that would need shared storage.
+  const impressionBudget = createTelemetryLimiter({ limitPerWindow: PARTNER_IMPRESSION_LIMIT_PER_WINDOW, windowMs: TELEMETRY_WINDOW_MS });
+  const clickBudget = createTelemetryLimiter({ limitPerWindow: PARTNER_CLICK_LIMIT_PER_WINDOW, windowMs: TELEMETRY_WINDOW_MS });
+  const telemetryNow = deps.telemetryNow ?? (() => Date.now());
+  const retryIn = (res: Response) => res.set("Retry-After", String(Math.ceil(TELEMETRY_WINDOW_MS / 1000)));
   const requireIdentity = async (req: Request): Promise<Gate> => {
     const identity = await deps.resolveIdentity(req);
     if (!identity) return { error: { status: 401, body: { error: "Sign in to use the employer tools" } } };
@@ -218,7 +235,10 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
       const role = typeof req.query.role === "string" ? req.query.role : "";
       const category = isPartnerCategory(req.query.category) ? req.query.category : undefined;
       const modules = await deps.listPartnerModules({ roleKeywords: roleKeywordsFrom(role), category, limit: 3 });
-      for (const module of modules as Array<{ id?: number }>) if (typeof module.id === "number") await deps.recordPartnerImpression(module.id);
+      // Recommendations are public and cacheable, so a spent budget still serves
+      // the slots - it just stops writing telemetry for them.
+      if (!impressionBudget.allow(resolveTrustedClientIp(req), telemetryNow())) retryIn(res);
+      else for (const module of modules as Array<{ id?: number }>) if (typeof module.id === "number") await deps.recordPartnerImpression(module.id);
       res.set("Cache-Control", "public, max-age=60");
       res.json({ modules });
     } catch { res.status(500).json({ error: "We could not load partner recommendations" }); }
@@ -226,6 +246,7 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
 
   app.post("/api/partners/:moduleId/click", async (req, res) => {
     try {
+      if (!clickBudget.allow(resolveTrustedClientIp(req), telemetryNow())) return retryIn(res).status(429).json({ error: "Too many tracked clicks. Try again in a minute." });
       const moduleId = Number(req.params.moduleId);
       if (!Number.isInteger(moduleId) || moduleId <= 0) return res.status(400).json({ error: "Invalid partner reference" });
       const result = await deps.recordPartnerClick(moduleId);
@@ -247,11 +268,10 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
     try {
       const gate = await requireAdmin(req);
       if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
-      const body = req.body ?? {};
-      if (!isPartnerCategory(body.category)) return res.status(400).json({ error: "Choose a partner category" });
-      if (typeof body.partnerName !== "string" || !body.partnerName.trim() || typeof body.headline !== "string" || !body.headline.trim() || typeof body.ctaLabel !== "string" || !body.ctaLabel.trim() || typeof body.ctaUrl !== "string" || !body.ctaUrl.trim()) return res.status(400).json({ error: "Partner name, headline, CTA label, and CTA URL are required" });
-      const created = await deps.createPartnerModule?.({ partnerName: body.partnerName, category: body.category, headline: body.headline, description: typeof body.description === "string" ? body.description : undefined, targetRoles: typeof body.targetRoles === "string" ? body.targetRoles : undefined, ctaLabel: body.ctaLabel, ctaUrl: body.ctaUrl });
-      record({ actorUserId: gate.identity.account.id, action: "admin.partner_module_created", outcome: "success", resourceType: "partner_module", metadata: { category: body.category } });
+      const parsed = parsePartnerModuleCreation(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const created = await deps.createPartnerModule?.(parsed.value);
+      record({ actorUserId: gate.identity.account.id, action: "admin.partner_module_created", outcome: "success", resourceType: "partner_module", metadata: { category: parsed.value.category } });
       res.status(201).json({ module: created });
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not create the partner module" }); }
   });
@@ -262,9 +282,9 @@ export function registerEmployerRoutes(app: Express, deps: EmployerRouteDeps) {
       if ("error" in gate) return res.status(gate.error.status).json(gate.error.body);
       const moduleId = Number(req.params.moduleId);
       if (!Number.isInteger(moduleId) || moduleId <= 0) return res.status(400).json({ error: "Invalid partner reference" });
-      const body = req.body ?? {};
-      if (body.category !== undefined && !isPartnerCategory(body.category)) return res.status(400).json({ error: "Choose a partner category" });
-      const updated = await deps.updatePartnerModule?.(moduleId, body);
+      const parsed = parsePartnerModulePatch(req.body);
+      if (!parsed.ok) return res.status(400).json({ error: parsed.error });
+      const updated = await deps.updatePartnerModule?.(moduleId, parsed.value);
       record({ actorUserId: gate.identity.account.id, action: "admin.partner_module_updated", outcome: "success", resourceType: "partner_module", resourceId: moduleId });
       res.json({ module: updated });
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not update the partner module" }); }

@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { registerEmployerRoutes, type EmployerRouteDeps } from "./employerRoutes";
+import { PARTNER_CLICK_LIMIT_PER_WINDOW, PARTNER_IMPRESSION_LIMIT_PER_WINDOW, TELEMETRY_WINDOW_MS } from "./partnerContracts";
 
 type Call = { name: string; args: unknown[] };
 
@@ -176,6 +177,33 @@ describe("employer REST tenant scoping and money contracts", () => {
   });
 });
 
+describe("admin partner module writes", () => {
+  const validCreate = { partnerName: "Prep", category: "interview_prep", headline: "Get ready", ctaLabel: "Open", ctaUrl: "https://prep.example" };
+
+  it("forwards only the fields the edit surface owns", async () => {
+    const { app, calls } = buildApp({ employers: [], admins: [77] });
+    const response = await request(app).patch("/api/admin/partners/3").set("x-test-user", "77").send({ isActive: false, description: null });
+    expect(response.status).toBe(200);
+    expect(calls.find(call => call.name === "updatePartnerModule")?.args).toEqual([3, { isActive: false, description: null }]);
+  });
+
+  it("refuses a patch that names a column nobody may set, and writes nothing", async () => {
+    const { app, calls } = buildApp({ employers: [], admins: [77] });
+    const response = await request(app).patch("/api/admin/partners/3").set("x-test-user", "77").send({ headline: "Sharpen up", impressions: 999_999 });
+    expect(response.status).toBe(400);
+    expect(calls.map(call => call.name)).not.toContain("updatePartnerModule");
+  });
+
+  it("keeps a script URL out of the CTA both when creating and when editing", async () => {
+    const { app, calls } = buildApp({ employers: [], admins: [77] });
+    const created = await request(app).post("/api/admin/partners").set("x-test-user", "77").send({ ...validCreate, ctaUrl: "javascript:alert(document.cookie)" });
+    const patched = await request(app).patch("/api/admin/partners/3").set("x-test-user", "77").send({ ctaUrl: "javascript:alert(document.cookie)" });
+    expect([created.status, patched.status]).toEqual([400, 400]);
+    expect(calls.map(call => call.name)).not.toContain("createPartnerModule");
+    expect(calls.map(call => call.name)).not.toContain("updatePartnerModule");
+  });
+});
+
 describe("public partner module surface", () => {
   it("records one impression per returned module and passes role keywords, not raw text", async () => {
     const { app, calls } = buildApp();
@@ -201,5 +229,31 @@ describe("public partner module surface", () => {
     const invalid = await request(app).post("/api/partners/not-a-number/click");
     expect(invalid.status).toBe(400);
     expect(calls.filter(call => call.name === "recordPartnerClick").map(call => call.args[0])).toEqual([99]);
+  });
+
+  it("budgets anonymous click telemetry per client IP and resets in the next window", async () => {
+    let clock = 1_700_000_000_000;
+    const { app, calls } = buildApp({ telemetryNow: () => clock });
+    const statuses: number[] = [];
+    for (let index = 0; index <= PARTNER_CLICK_LIMIT_PER_WINDOW; index += 1) statuses.push((await request(app).post("/api/partners/3/click")).status);
+    expect(statuses.slice(0, PARTNER_CLICK_LIMIT_PER_WINDOW).every(status => status === 200)).toBe(true);
+    expect(statuses[statuses.length - 1]).toBe(429);
+    expect(calls.filter(call => call.name === "recordPartnerClick")).toHaveLength(PARTNER_CLICK_LIMIT_PER_WINDOW);
+    clock += TELEMETRY_WINDOW_MS;
+    expect((await request(app).post("/api/partners/3/click")).status).toBe(200);
+  });
+
+  it("keeps serving partner slots once the impression budget is spent, without recording them", async () => {
+    let clock = 1_700_000_000_000;
+    const { app, calls } = buildApp({ telemetryNow: () => clock });
+    for (let index = 0; index < PARTNER_IMPRESSION_LIMIT_PER_WINDOW; index += 1) await request(app).get("/api/partners");
+    const written = () => calls.filter(call => call.name === "recordPartnerImpression").length;
+    expect(written()).toBe(PARTNER_IMPRESSION_LIMIT_PER_WINDOW * 2);
+    clock += 1_000;
+    const response = await request(app).get("/api/partners");
+    expect(response.status).toBe(200);
+    expect(response.body.modules).toHaveLength(2);
+    expect(response.headers["retry-after"]).toBe(String(TELEMETRY_WINDOW_MS / 1000));
+    expect(written()).toBe(PARTNER_IMPRESSION_LIMIT_PER_WINDOW * 2);
   });
 });
