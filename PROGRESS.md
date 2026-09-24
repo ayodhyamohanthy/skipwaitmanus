@@ -9,7 +9,8 @@ CHANGELOG.md update in the same change as the work.
 
 - [x] V0-01 — Repository inventory. Evidence: CURRENT_STATE.md created 2026-09-24 from isolated worktree @42002c3 (48 routes, 55 tables, 7 route groups, ~186 test files verified by direct reads). Tracking files created in the same change.
 - [ ] V0-02 — Roadmap mapping (which V1+ items already exist and work).
-- [ ] V0-03 — Security and privacy audit (authorization, file access, secrets, logs, roles, dependencies, misleading copy).
+- [x] V0-03 — Security and privacy audit. Evidence: dual read-only audit 2026-09-24 in worktree @42002c3 (stacked base d1e5bb2). Authz sweep (all referral/doc/DM/employer/billing/admin/tRPC routes): zero exploitable IDOR — ownership, same-company, grant, intent-match and admin-role checks verified at route + DB layers. PII sweep: no hardcoded secrets; Sentry/Clarity scrubbers verified; no work-email/hash in ordinary responses; zero guarantee copy (guarded by tests). NO CODE CHANGES — nothing immediately exploitable found.
+  Findings (non-blocking, owned follow-ups): (1) no rate limiter on WorkOS callback or tRPC router — limits exist per-feature (OTP atomic windows, DM 30/hr + transactional, 256kb body caps); (2) CI runs no `pnpm audit`/Dependabot step (V0-06); (3) prior known gaps stand: plaintext work-email storage, no 6-month re-verification (V1-05).
 - [ ] V0-04 — Stack decision record (see DECISIONS.md seed; confirm or amend).
 - [ ] V0-05 — Environments and recovery (document local/preview/prod, backups, rollback; verify, don't assume).
 - [ ] V0-06 — Automated checks (CI currently RED repo-wide — runner offline; local gates green).
