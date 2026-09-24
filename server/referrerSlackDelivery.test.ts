@@ -6,10 +6,13 @@ const validWebhook = "https://hooks.slack.com/services/T000/B000/XXXXXXXXXXXXXXX
 describe("Slack incoming-webhook URL validation", () => {
   it("accepts only https hooks.slack.com endpoints without credentials, query, or fragment", () => {
     expect(isValidSlackIncomingWebhookUrl(validWebhook)).toBe(true);
-    expect(isValidSlackIncomingWebhookUrl("https://hooks.slack-trusted.com/services/T000/B000/XXXX")).toBe(true);
+    expect(isValidSlackIncomingWebhookUrl("https://hooks.slack.com./services/T000/B000/XXXX")).toBe(true);
     expect(isValidSlackIncomingWebhookUrl("http://hooks.slack.com/services/T000/B000/XXXX")).toBe(false);
     expect(isValidSlackIncomingWebhookUrl("https://evil.example/services/T000")).toBe(false);
     expect(isValidSlackIncomingWebhookUrl("https://hooks.slack.com.evil.example/services")).toBe(false);
+    // Brand-adjacent hosts carry no Slack relationship and anyone can register them.
+    expect(isValidSlackIncomingWebhookUrl("https://hooks.slack-trusted.com/services/T000/B000/XXXX")).toBe(false);
+    expect(isValidSlackIncomingWebhookUrl("https://slack.com/services/T000/B000/XXXX")).toBe(false);
     expect(isValidSlackIncomingWebhookUrl("https://user:pass@hooks.slack.com/services")).toBe(false);
     expect(isValidSlackIncomingWebhookUrl("https://hooks.slack.com/services?track=1")).toBe(false);
     expect(isValidSlackIncomingWebhookUrl("")).toBe(false);
@@ -41,6 +44,14 @@ describe("opt-in Slack review delivery sender", () => {
     const fetchImpl = vi.fn();
     const send = createReferrerSlackDeliverySender({ fetchImpl: fetchImpl as unknown as typeof fetch });
     const result = await send({ to: "https://evil.example/hook", companyDomain: "acme.com", reviewUrl: "https://skipwait.me/email-review/T" });
+    expect(result).toEqual({ sent: false, reason: "not_configured" });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("never posts the single-use review link to a brand-adjacent host", async () => {
+    const fetchImpl = vi.fn();
+    const send = createReferrerSlackDeliverySender({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    const result = await send({ to: "https://hooks.slack-trusted.com/services/T000/B000/XXXX", companyDomain: "acme.com", reviewUrl: "https://skipwait.me/email-review/TOKEN123" });
     expect(result).toEqual({ sent: false, reason: "not_configured" });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
