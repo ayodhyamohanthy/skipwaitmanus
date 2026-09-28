@@ -10,6 +10,19 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: { emailAddresses: [] } }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// Settings reads talent-consent state through tRPC; these suites cover other
+// sections, so the consent queries are stubbed out.
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    useUtils: () => ({ talentConsent: { state: { invalidate: vi.fn().mockResolvedValue(undefined) } } }),
+    talentConsent: {
+      state: { useQuery: () => ({ data: undefined }) },
+      grant: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      revoke: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
+  },
+}));
 describe("Settings work email", () => {
   beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/company-referrals/access") ? { ok: true, json: async () => ({ verifiedCompanyAccess: accessState.verified, workEmailDomain: accessState.verified ? "acme.com" : null }) } : { ok: true, json: async () => ({ requests: [] }) })); });
   afterEach(() => { cleanup(); accessState.verified = false; window.history.replaceState({}, "", "/"); vi.unstubAllGlobals(); });

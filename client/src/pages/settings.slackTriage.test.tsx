@@ -18,6 +18,19 @@ vi.mock("wouter", () => ({
   Link: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+// Settings reads talent-consent state through tRPC; these suites cover other
+// sections, so the consent queries are stubbed out.
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    useUtils: () => ({ talentConsent: { state: { invalidate: vi.fn().mockResolvedValue(undefined) } } }),
+    talentConsent: {
+      state: { useQuery: () => ({ data: undefined }) },
+      grant: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+      revoke: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
+    },
+  },
+}));
+
 const fetchMock = (overrides: Record<string, unknown> = {}) => vi.fn(async (url: unknown) => {
   const path = String(url);
   if (path.includes("/api/company-referrals/access")) return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) };
