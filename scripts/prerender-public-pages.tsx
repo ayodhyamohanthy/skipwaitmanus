@@ -20,16 +20,16 @@ import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EXPLORE, LANDING_F
 
 // Page modules use the classic JSX runtime (global React) under tsx, so they
 // load lazily after React is on globalThis.
-export const PUBLIC_PAGES: { route: string; title: string; load: () => Promise<{ default: React.ComponentType }> }[] = [
-  { route: "/terms", title: "Terms of Service", load: () => import("../client/src/pages/Terms") },
-  { route: "/privacy", title: "Privacy Policy", load: () => import("../client/src/pages/TrustPrivacy") },
-  { route: "/refunds", title: "Refunds & Cancellation", load: () => import("../client/src/pages/RefundPolicy") },
-  { route: "/cancellations", title: "Cancellation Policy", load: () => import("../client/src/pages/CancellationPolicy") },
-  { route: "/shipping", title: "Shipping & Delivery", load: () => import("../client/src/pages/ShippingPolicy") },
-  { route: "/about", title: "About Us", load: () => import("../client/src/pages/About") },
-  { route: "/contact", title: "Contact Us", load: () => import("../client/src/pages/Contact") },
-  { route: "/pricing", title: "Pricing", load: () => import("../client/src/pages/Pricing") },
-  { route: "/support", title: "Support", load: () => import("../client/src/pages/Support") },
+export const PUBLIC_PAGES: { route: string; title: string; description: string; load: () => Promise<{ default: React.ComponentType }> }[] = [
+  { route: "/terms", title: "Terms of Service", description: "What skipwait.me does, what you agree to when you use it, and what we will never promise.", load: () => import("../client/src/pages/Terms") },
+  { route: "/privacy", title: "Privacy Policy", description: "How skipwait.me handles personal data: least-exposure referrals, and no published resumes, referrer identities, or private conversations.", load: () => import("../client/src/pages/TrustPrivacy") },
+  { route: "/refunds", title: "Refunds & Cancellation", description: "Credits are reserved, not spent, until a Referrer acts, and subscriptions stop at the end of the paid cycle. A person reviews payment problems.", load: () => import("../client/src/pages/RefundPolicy") },
+  { route: "/cancellations", title: "Cancellation Policy", description: "How to cancel a referral request, a Pro or Max subscription, or a credit purchase, and when any money comes back.", load: () => import("../client/src/pages/CancellationPolicy") },
+  { route: "/shipping", title: "Shipping & Delivery", description: "Referral credits and plan subscriptions are delivered to your account online, usually within seconds of payment. Nothing ships.", load: () => import("../client/src/pages/ShippingPolicy") },
+  { route: "/about", title: "About Us", description: "Private job referrals, made simpler: a request reviewed only by a verified employee at that employer, with identities hidden until they accept.", load: () => import("../client/src/pages/About") },
+  { route: "/contact", title: "Contact Us", description: "Talk to a person. We reply to emails within 2 business days; for payment problems, include your payment reference.", load: () => import("../client/src/pages/Contact") },
+  { route: "/pricing", title: "Pricing", description: "Prices in INR for India and USD everywhere else, shown before checkout. Start free, buy credits, or pick a monthly plan.", load: () => import("../client/src/pages/Pricing") },
+  { route: "/support", title: "Support", description: "Write from the email on your account with a reference, and a person answers, usually within one business day (Mon-Fri, IST).", load: () => import("../client/src/pages/Support") },
 ];
 
 const escapeHtml = (value: string) => value.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
@@ -137,11 +137,11 @@ async function main() {
   const dist = path.resolve(import.meta.dirname, "../dist/public");
   const template = readFileSync(path.join(dist, "index.html"), "utf8");
   if (!/<div id="root">\s*<\/div>/.test(template)) throw new Error("prerender: #root placeholder not found in index.html");
-  for (const { route, title, load } of PUBLIC_PAGES) {
+  for (const { route, title, description, load } of PUBLIC_PAGES) {
     const { default: Component } = await load();
     const markup = renderToStaticMarkup(<Router ssrPath={route}><Component /></Router>);
     // Cloudflare Pages serves /terms from terms.html (a terms/index.html would 308 to /terms/).
-    writeFileSync(path.join(dist, `${route.slice(1)}.html`), renderPublicPage(template, route, title, markup));
+    writeFileSync(path.join(dist, `${route.slice(1)}.html`), renderPublicPage(template, route, title, markup, description));
     console.log(`prerendered ${route} (${markup.length} chars)`);
   }
   for (const snapshot of publicSnapshots()) {

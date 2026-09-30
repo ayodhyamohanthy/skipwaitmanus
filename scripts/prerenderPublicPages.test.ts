@@ -19,6 +19,15 @@ describe("static public pages for crawlers (Razorpay website review)", () => {
     expect(html).toContain('<meta property="og:description" content="previous og copy" />');
 
   });
+  it("gives every public page a description drawn from that page's own copy", () => {
+    for (const page of PUBLIC_PAGES) {
+      expect(page.description.length).toBeGreaterThan(40);
+      const html = renderPublicPage(template, page.route, page.title, "<main>x</main>", page.description);
+      expect(html).toContain(`<meta name="description" content="${page.description}" />`);
+      expect(html).toContain(`<meta property="og:description" content="${page.description}" />`);
+      expect(html).toContain(`<meta name="twitter:description" content="${page.description}" />`);
+    }
+  });
   it("gives the home page plain links to every policy page", () => {
     for (const { route } of PUBLIC_PAGES) expect(homeLinks()).toContain(`href="${route}"`);
   });
