@@ -145,7 +145,8 @@
       "browserslist": ">=4.28.7",
       "baseline-browser-mapping": ">=2.11.0",
       "@babel/core": ">=7.29.6",
-      "jsdom>undici": ">=8.10.2"
+      "jsdom>undici": ">=8.10.2",
+      "esbuild@~0.18.20": "0.25.10"
     }
   },
   "engines": {
