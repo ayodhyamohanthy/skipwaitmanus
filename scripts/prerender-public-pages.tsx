@@ -45,17 +45,22 @@ export function renderPublicPage(template: string, route: string, title: string,
   let html = template
     .replace(/<title>[^<]*<\/title>/, () => `<title>${escapeHtml(fullTitle)}</title>`)
     .replace(/<link rel="canonical" href="[^"]*"\s*\/?>/, () => `<link rel="canonical" href="${canonical}" />`)
-    .replace(/<div id="root">\s*<\/div>/, () => `<div id="root">${markup}</div>`);
+    .replace(/<div id="root">\s*<\/div>/, () => `<div id="root">${markup}</div>`)
+    // og:url and the share titles must match the page a crawler landed on
+    // even when no description is supplied (the nine React-rendered pages
+    // pass none), or every shared policy page shows the home card. Only
+    // the description lines fall back to the home copy when none is given.
+    .replace(/<meta property="og:title" content="[^"]*"\s*\/?>/, () => `<meta property="og:title" content="${escapeHtml(fullTitle)}" />`)
+    .replace(/<meta property="og:url" content="[^"]*"\s*\/?>/, () => `<meta property="og:url" content="${canonical}" />`)
+    .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, () => `<meta name="twitter:title" content="${escapeHtml(fullTitle)}" />`);
   if (description) {
     html = html
       .replace(/<meta name="description" content="[^"]*"\s*\/?>/, () => `<meta name="description" content="${escapeHtml(description)}" />`)
-      .replace(/<meta property="og:title" content="[^"]*"\s*\/?>/, () => `<meta property="og:title" content="${escapeHtml(fullTitle)}" />`)
       .replace(/<meta property="og:description" content="[^"]*"\s*\/?>/, () => `<meta property="og:description" content="${escapeHtml(description)}" />`)
-      .replace(/<meta property="og:url" content="[^"]*"\s*\/?>/, () => `<meta property="og:url" content="${canonical}" />`)
-      .replace(/<meta name="twitter:title" content="[^"]*"\s*\/?>/, () => `<meta name="twitter:title" content="${escapeHtml(fullTitle)}" />`)
       .replace(/<meta name="twitter:description" content="[^"]*"\s*\/?>/, () => `<meta name="twitter:description" content="${escapeHtml(description)}" />`);
   }
   return html;
+
 }
 
 export function homeLinks() {

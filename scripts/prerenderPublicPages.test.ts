@@ -13,6 +13,11 @@ describe("static public pages for crawlers (Razorpay website review)", () => {
     expect(html).toContain('<div id="root"><main>refund text</main></div>');
     expect(html).toContain("<title>Refunds &amp; Cancellation — skipwait.me</title>");
     expect(html).toContain('href="https://skipwait.me/refunds"');
+    expect(html).toContain('<meta property="og:url" content="https://skipwait.me/refunds" />');
+    expect(html).toContain('<meta property="og:title" content="Refunds &amp; Cancellation — skipwait.me" />');
+    expect(html).toContain('<meta name="twitter:title" content="Refunds &amp; Cancellation — skipwait.me" />');
+    expect(html).toContain('<meta property="og:description" content="previous og copy" />');
+
   });
   it("gives the home page plain links to every policy page", () => {
     for (const { route } of PUBLIC_PAGES) expect(homeLinks()).toContain(`href="${route}"`);
