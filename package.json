@@ -114,7 +114,7 @@
     "esbuild": "^0.25.0",
     "jsdom": "^30.0.1",
     "playwright": "1.62.1",
-    "pnpm": "^10.15.1",
+    "pnpm": "^10.34.6",
     "postcss": "^8.5.23",
     "prettier": "^3.6.2",
     "supertest": "^7.2.2",
@@ -146,7 +146,8 @@
       "baseline-browser-mapping": ">=2.11.0",
       "@babel/core": ">=7.29.6",
       "jsdom>undici": ">=8.10.2",
-      "dompurify": ">=3.4.16"
+      "dompurify": ">=3.4.16",
+      "esbuild": ">=0.25.0"
     }
   },
   "engines": {
