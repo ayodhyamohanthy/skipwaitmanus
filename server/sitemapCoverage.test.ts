@@ -26,7 +26,7 @@ describe("public crawl coverage", () => {
   });
 
   it("keeps signed-in screens out of crawler reach", () => {
-    for (const path of ["/admin/", "/api/", "/conversation/", "/inbox", "/messages", "/notifications", "/requests", "/settings"]) {
+    for (const path of ["/admin/", "/api/", "/conversation/", "/inbox", "/messages", "/notifications", "/requests", "/settings", "/track-record"]) {
       expect(robots).toContain(`Disallow: ${path}`);
     }
     expect(robots).toContain("Sitemap: https://skipwait.me/sitemap.xml");

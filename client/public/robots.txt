@@ -9,5 +9,6 @@ Disallow: /messages
 Disallow: /notifications
 Disallow: /requests
 Disallow: /settings
+Disallow: /track-record
 
 Sitemap: https://skipwait.me/sitemap.xml
