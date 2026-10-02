@@ -1,38 +1,46 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { EMPTY_REFERRAL_FAN_OUT, summarizeReferralFanOut } from "./referralFanOut";
+import { EMPTY_REFERRAL_FAN_OUT, parseReferralCreationNotice, summarizeReferralFanOut } from "./referralFanOut";
 
-const empty = { grantsPerRequest: [], grantsPerEmployee: [], requestsPerRoleLink: [] };
+const empty = { grantsPerRequest: [], grantsPerEmployee: [], requestsPerRoleLink: [], creations: [] };
 
 describe("summarizeReferralFanOut", () => {
   it("reports zero for every field when nothing has been sent", () => {
     expect(summarizeReferralFanOut(empty)).toEqual({
-      requests: 0, reviewGrants: 0, requestsWithGrants: 0, grantsPerRequest: 0,
-      largestRequestFanOut: 0, mostNotifiedEmployee: 0, repeatedRoleLinks: 0, requestsOnRepeatedRoleLinks: 0,
+      requests: 0, creationsScanned: 0, employeeNotifications: 0, largestRequestFanOut: 0, fastTrackRequests: 0,
+      reviewGrants: 0, requestsWithGrants: 0, grantsPerRequest: 0, mostEmailedEmployee: 0,
+      repeatedRoleLinks: 0, requestsOnRepeatedRoleLinks: 0,
     });
   });
 
-  it("counts the employees one request notified", () => {
+  it("measures reach in notifications, not in review links", () => {
+    // Every eligible employee gets an in-app notice; only employees whose verified
+    // address is at that exact domain get a single-use link. Links alone understate reach.
     const summary = summarizeReferralFanOut({
-      grantsPerRequest: [{ requestId: 1, grants: 3 }],
-      grantsPerEmployee: [{ referrerId: 10, grants: 1 }, { referrerId: 11, grants: 1 }, { referrerId: 12, grants: 1 }],
+      grantsPerRequest: [{ requestId: 1, grants: 2 }],
+      grantsPerEmployee: [{ referrerId: 10, grants: 1 }, { referrerId: 11, grants: 1 }],
       requestsPerRoleLink: [{ targetRoleUrl: "https://acme.com/jobs/1", requests: 1 }],
+      creations: [{ notifiedEmployees: 2, fastTrack: false }],
     });
-    expect(summary.reviewGrants).toBe(3);
-    expect(summary.requestsWithGrants).toBe(1);
-    expect(summary.grantsPerRequest).toBe(3);
-    expect(summary.largestRequestFanOut).toBe(3);
+    expect(summary.employeeNotifications).toBe(2);
+    expect(summary.largestRequestFanOut).toBe(2);
+    expect(summary.reviewGrants).toBe(2);
   });
 
-  it("names the busiest employee instead of an average, because one flooded referrer is the failure mode", () => {
+  it("keeps the notification ceiling separate from the email ceiling", () => {
     const summary = summarizeReferralFanOut({
-      grantsPerRequest: [{ requestId: 1, grants: 2 }, { requestId: 2, grants: 2 }, { requestId: 3, grants: 1 }],
-      grantsPerEmployee: [{ referrerId: 10, grants: 3 }, { referrerId: 11, grants: 2 }],
-      requestsPerRoleLink: [{ targetRoleUrl: "https://a.com/1", requests: 1 }, { targetRoleUrl: "https://a.com/2", requests: 1 }, { targetRoleUrl: "https://a.com/3", requests: 1 }],
+      grantsPerRequest: [{ requestId: 1, grants: 40 }, { requestId: 2, grants: 1 }],
+      grantsPerEmployee: [{ referrerId: 10, grants: 9 }, { referrerId: 11, grants: 2 }],
+      requestsPerRoleLink: [{ targetRoleUrl: "https://a.com/1", requests: 1 }, { targetRoleUrl: "https://a.com/2", requests: 1 }],
+      creations: [{ notifiedEmployees: 120, fastTrack: false }, { notifiedEmployees: 1, fastTrack: true }],
     });
-    expect(summary.mostNotifiedEmployee).toBe(3);
-    expect(summary.largestRequestFanOut).toBe(2);
-    expect(summary.grantsPerRequest).toBe(1.7);
+    expect(summary.largestRequestFanOut).toBe(120);
+    expect(summary.employeeNotifications).toBe(121);
+    expect(summary.mostEmailedEmployee).toBe(9);
+    expect(summary.reviewGrants).toBe(41);
+    expect(summary.grantsPerRequest).toBe(20.5);
+    expect(summary.fastTrackRequests).toBe(1);
+    expect(summary.creationsScanned).toBe(2);
   });
 
   it("counts a role link reused by several requests without double-counting requests", () => {
@@ -76,5 +84,27 @@ describe("summarizeReferralFanOut", () => {
       expect(readFileSync(new URL(file, import.meta.url), "utf8"), file).toContain("fanOut: EMPTY_REFERRAL_FAN_OUT");
     }
     expect(Object.values(EMPTY_REFERRAL_FAN_OUT).every(value => value === 0)).toBe(true);
+  });
+});
+
+describe("parseReferralCreationNotice", () => {
+  it("reads the recorded fan-out and dispatch mode", () => {
+    expect(parseReferralCreationNotice('{"attachmentCount":1,"notifiedEmployees":37,"creditReserved":true,"coverageStatus":"covered","fastTrack":false}'))
+      .toEqual({ notifiedEmployees: 37, fastTrack: false });
+    expect(parseReferralCreationNotice('{"notifiedEmployees":1,"fastTrack":true}')).toEqual({ notifiedEmployees: 1, fastTrack: true });
+  });
+
+  it("drops rows that cannot state a whole non-negative employee count", () => {
+    // A row the writer no longer produces must shrink the scanned window, not fabricate
+    // a reach number, so an admin never decides on a count the log did not record.
+    for (const metadata of [null, "", "not json", "[]", '"12"', "42", "{}", '{"notifiedEmployees":"12"}', '{"notifiedEmployees":12.5}', '{"notifiedEmployees":-3}', '{"notifiedEmployees":null}']) {
+      expect(parseReferralCreationNotice(metadata as string | null), JSON.stringify(metadata)).toBeUndefined();
+    }
+  });
+
+  it("treats a missing or non-boolean fastTrack flag as broadcast", () => {
+    expect(parseReferralCreationNotice('{"notifiedEmployees":4}')).toEqual({ notifiedEmployees: 4, fastTrack: false });
+    expect(parseReferralCreationNotice('{"notifiedEmployees":4,"fastTrack":"true"}')).toEqual({ notifiedEmployees: 4, fastTrack: false });
+    expect(parseReferralCreationNotice('{"notifiedEmployees":0}')).toEqual({ notifiedEmployees: 0, fastTrack: false });
   });
 });
