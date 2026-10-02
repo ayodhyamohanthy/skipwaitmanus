@@ -9,6 +9,7 @@ import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isP
 import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
+import { EMPTY_REFERRAL_FAN_OUT, parseReferralCreationNotice, summarizeReferralFanOut } from "./referralFanOut";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
@@ -1040,13 +1041,22 @@ export async function getDomainIntegrity(limit = 100) {
 
 export async function getReferralFlowHealth() {
   const db = await getDb();
-  if (!db) return { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
-  const [requests, verifiedProfiles, activities, domainIntegrity] = await Promise.all([
-    db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
+  if (!db) return { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 }, fanOut: EMPTY_REFERRAL_FAN_OUT };
+  const [requests, verifiedProfiles, activities, domainIntegrity, grantsByRequest, grantsByEmployee, creationEvents] = await Promise.all([
+    db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, targetRoleUrl: jobs.targetRoleUrl }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
     db.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.accountType, "referrer")),
     db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome }).from(operationalActivityLogs).orderBy(desc(operationalActivityLogs.createdAt)).limit(1000),
     getDomainIntegrity(1),
+    db.select({ requestId: referrerReviewEmailLinks.referralRequestId, grants: count() }).from(referrerReviewEmailLinks).groupBy(referrerReviewEmailLinks.referralRequestId),
+    db.select({ referrerId: referrerReviewEmailLinks.referrerId, grants: count() }).from(referrerReviewEmailLinks).groupBy(referrerReviewEmailLinks.referrerId),
+    db.select({ metadata: operationalActivityLogs.metadata }).from(operationalActivityLogs).where(eq(operationalActivityLogs.action, "company_referral.created")).orderBy(desc(operationalActivityLogs.id)).limit(5000),
   ]);
+  const creations = creationEvents.flatMap(event => {
+    const notice = parseReferralCreationNotice(event.metadata);
+    return notice ? [notice] : [];
+  });
+  const requestsPerRoleLink = new Map<string | null, number>();
+  for (const request of requests) requestsPerRoleLink.set(request.targetRoleUrl, (requestsPerRoleLink.get(request.targetRoleUrl) ?? 0) + 1);
   const coverageByCompany = new Map<string, number>();
   for (const profile of verifiedProfiles) if (profile.workEmailDomain) coverageByCompany.set(profile.workEmailDomain, (coverageByCompany.get(profile.workEmailDomain) ?? 0) + 1);
   const waitingByCompany = new Map<string, number>();
@@ -1065,6 +1075,12 @@ export async function getReferralFlowHealth() {
       recordedFailures: activities.filter(activity => activity.outcome === "failure" || activity.outcome === "denied").length,
       domainIntegrityAffected: domainIntegrity.affectedCount,
     },
+    fanOut: summarizeReferralFanOut({
+      grantsPerRequest: grantsByRequest,
+      grantsPerEmployee: grantsByEmployee,
+      requestsPerRoleLink: Array.from(requestsPerRoleLink, ([targetRoleUrl, total]) => ({ targetRoleUrl, requests: total })),
+      creations,
+    }),
   };
 }
 
