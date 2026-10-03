@@ -5,6 +5,7 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { main } from "./prerender-public-pages";
 import { PUBLIC_ROUTES } from "../shared/publicRoutes";
+import { GUIDES } from "../client/src/content/guides";
 
 /**
  * The prerender step had no test that ran it. A refactor of the file-writing
@@ -83,6 +84,35 @@ describe("the prerender step writes a file Cloudflare Pages can serve for every 
       // The home page has nothing above it in the trail, and "Home" on its own
       // is not a breadcrumb, so it is the one page that must not carry one.
       expect(html.includes('aria-label="Breadcrumb"'), `${route.route} should ${route.route === "/" ? "not " : ""}have a breadcrumb`).toBe(route.route !== "/");
+    }
+  });
+});
+
+describe("the guides are pages, not link stubs", () => {
+  // A component can only add structured data from a useEffect, which
+  // renderToStaticMarkup never runs, so the prerender has to write it too. When
+  // it did not, the guides shipped with no FAQPage markup at all.
+  it("marks up every guide with the questions it also prints on the page", () => {
+    for (const guide of GUIDES) {
+      const html = readFileSync(path.join(dist, fileFor(guide.route)), "utf8");
+      expect(html, `${guide.route} has no FAQPage markup`).toContain('"@type":"FAQPage"');
+      for (const entry of guide.faq) {
+        // Markup for a question a visitor cannot read is a manual-action risk,
+        // so each one has to be visible text on the same page.
+        expect(html, `${guide.route} does not print "${entry.question}"`).toContain(entry.question);
+      }
+    }
+  });
+
+  it("keeps each guide substantial enough to answer its question", () => {
+    // Thin editorial pages that exist only to hold a keyword are worse than no
+    // page: they cost crawl budget and dilute the ones that do answer something.
+    for (const guide of GUIDES) {
+      const html = readFileSync(path.join(dist, fileFor(guide.route)), "utf8");
+      const words = html.replace(/<script[\s\S]*?<\/script>/g, " ").replace(/<[^>]*>/g, " ").split(/\s+/).filter(Boolean).length;
+      expect(words, `${guide.route} is only ${words} words`).toBeGreaterThan(500);
+      expect(html.match(/<h1/g)?.length, `${guide.route} needs exactly one H1`).toBe(1);
+      expect(guide.sections.length, `${guide.route} needs real sections`).toBeGreaterThanOrEqual(4);
     }
   });
 });

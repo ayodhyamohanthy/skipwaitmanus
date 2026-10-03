@@ -65,7 +65,17 @@ describe("structured data reaches crawlers that never run JavaScript", () => {
     expect(html).toContain('"@type":"WebPage"');
     expect(html).toContain('"@type":"BreadcrumbList"');
     expect(html).toContain('"name":"About skipwait.me"');
-    expect(html).toMatch(/<script type="application\/ld\+json">.*<\/script><\/head>/);
+    expect(html).toMatch(/<script type="application\/ld\+json" data-skipwait-jsonld="prerender">.*<\/script><\/head>/);
+  });
+
+  it("tags the block so applySeo can replace it instead of duplicating it", () => {
+    // @client/src/lib/seo.ts removes every script carrying this marker when the
+    // route changes. An untagged block survives hydration, and the head ends up
+    // holding two BreadcrumbList blocks for the same page.
+    const html = renderPublicPage(template, route("/about"), "<main>about</main>");
+    const marked = html.match(/<script type="application\/ld\+json" data-skipwait-jsonld="[^"]+">/g) ?? [];
+    const all = html.match(/<script type="application\/ld\+json"/g) ?? [];
+    expect(all.length).toBe(marked.length);
   });
 
   it("leaves the home page without a pointless one-item breadcrumb", () => {

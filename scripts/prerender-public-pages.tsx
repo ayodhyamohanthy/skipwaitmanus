@@ -21,12 +21,22 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
-import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
+import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
+import { GUIDES } from "../client/src/content/guides";
 import { breadcrumbsHtml, escapeHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
 
 /** Route is declared here; its title and description come from @shared/publicRoutes. */
-export type PublicPage = { route: string; load: () => Promise<{ default: React.ComponentType }> };
+export type PublicPage = {
+  route: string;
+  load: () => Promise<{ default: React.ComponentType }>;
+  /**
+   * Extra schema.org blocks for the prerendered HTML. A component can only add
+   * them from a useEffect, which `renderToStaticMarkup` never runs, so anything
+   * a crawler is meant to read has to be listed here as well.
+   */
+  extraJsonLd?: () => readonly Record<string, unknown>[];
+};
 
 // Page modules use the classic JSX runtime (global React) under tsx, so they
 // load lazily after React is on globalThis.
@@ -40,6 +50,13 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { route: "/contact", load: () => import("../client/src/pages/Contact") },
   { route: "/pricing", load: () => import("../client/src/pages/Pricing") },
   { route: "/support", load: () => import("../client/src/pages/Support") },
+  // One component behind every guide; it reads its own path from the router.
+  // Derived from the content module so a guide cannot exist without a page.
+  ...GUIDES.map(guide => ({
+    route: guide.route,
+    load: () => import("../client/src/pages/GuidePage"),
+    extraJsonLd: () => [faqJsonLd(guide.faq)],
+  })),
 ];
 
 function stepsSection(heading: string, steps: readonly LandingStep[]) {
@@ -53,7 +70,8 @@ function stepsSection(heading: string, steps: readonly LandingStep[]) {
  */
 export function landingSnapshot(policyLinks: ReadonlyArray<{ route: string; title: string }>): string {
   const employer = `<p><a href="${LANDING_EMPLOYER_LINK.href}">${escapeHtml(LANDING_EMPLOYER_LINK.label)}</a> — ${escapeHtml(LANDING_EMPLOYER_LINK.summary)}</p>`;
-  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(LANDING_H1)}</h1><p>${escapeHtml(LANDING_SUMMARY)}</p><p><a href="/start">Request a private job referral</a> · <a href="/referrer">I work at a company and can help someone</a></p>${stepsSection("How job seekers use skipwait.me", LANDING_SEEKER_STEPS)}${stepsSection("How verified employees help", LANDING_EMPLOYEE_STEPS)}<h2>Private by default</h2><ul>${LANDING_COMMITMENTS.map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("")}</ul><h2>${escapeHtml(LANDING_FAQ_HEADING)}</h2><dl>${LANDING_FAQ.map(entry => `<dt>${escapeHtml(entry.question)}</dt><dd>${escapeHtml(entry.answer)}</dd>`).join("")}</dl><h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>${employer}${homeLinks(policyLinks)}</main>`;
+  const guides = `<h2>Guides</h2><ul>${LANDING_GUIDES.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>`;
+  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(LANDING_H1)}</h1><p>${escapeHtml(LANDING_SUMMARY)}</p><p><a href="/start">Request a private job referral</a> · <a href="/referrer">I work at a company and can help someone</a></p>${stepsSection("How job seekers use skipwait.me", LANDING_SEEKER_STEPS)}${stepsSection("How verified employees help", LANDING_EMPLOYEE_STEPS)}<h2>Private by default</h2><ul>${LANDING_COMMITMENTS.map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("")}</ul><h2>${escapeHtml(LANDING_FAQ_HEADING)}</h2><dl>${LANDING_FAQ.map(entry => `<dt>${escapeHtml(entry.question)}</dt><dd>${escapeHtml(entry.answer)}</dd>`).join("")}</dl><h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>${guides}${employer}${homeLinks(policyLinks)}</main>`;
 }
 
 export type PublicSnapshot = { route: string; title: string; description: string; markup: string };
@@ -130,12 +148,13 @@ export async function main(dist = path.resolve(import.meta.dirname, "../dist/pub
     return route;
   };
 
-  for (const { route: routePath, load } of PUBLIC_PAGES) {
+  for (const page of PUBLIC_PAGES) {
+    const { route: routePath, load, extraJsonLd } = page;
     const route = require(routePath);
     const { default: Component } = await load();
     // These components render their own breadcrumb trail (see PolicyPageShell).
     const markup = renderToStaticMarkup(<Router ssrPath={routePath}><Component /></Router>);
-    write(routePath, renderPublicPage(template, route, markup), markup.length);
+    write(routePath, renderPublicPage(template, route, markup, { extraJsonLd: extraJsonLd?.() }), markup.length);
   }
 
   for (const snapshot of publicSnapshots()) {

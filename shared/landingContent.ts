@@ -60,6 +60,17 @@ export const LANDING_EMPLOYER_LINK: LandingLink = {
   summary: "Sponsor a role to opt-in seekers and unlock anonymized opt-in talent.",
 };
 
+/**
+ * The public guides, linked from the home page. Copy lives in
+ * @client/src/content/guides; this is only the entry point, so a visitor and a
+ * crawler reach the same three pages.
+ */
+export const LANDING_GUIDES: readonly LandingLink[] = [
+  { href: "/job-referral-platforms", label: "What a job referral platform is", summary: "The three models, how each charges, and what a referral changes." },
+  { href: "/choosing-a-job-referral-platform", label: "Choosing one", summary: "Four checks, five red flags, and a shortlist template." },
+  { href: "/how-employees-refer-candidates", label: "How referrals actually happen", summary: "What the employee reads, and what comes back to you." },
+];
+
 export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 
 /**

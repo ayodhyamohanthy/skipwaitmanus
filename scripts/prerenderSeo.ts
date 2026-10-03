@@ -84,8 +84,15 @@ export function pageJsonLd(route: PublicRoute, extra: ReadonlyArray<Record<strin
   return graph;
 }
 
+/**
+ * `data-skipwait-jsonld` is the marker @client/src/lib/seo.ts owns: its route
+ * change removes every script carrying it before adding the current route's.
+ * Tagging the prerendered block is what stops the head holding two
+ * BreadcrumbList blocks after hydration — one written here, one written by
+ * applySeo — and lets the client own the markup from then on.
+ */
 function jsonLdScript(data: ReadonlyArray<Record<string, unknown>>): string {
-  return `<script type="application/ld+json">${JSON.stringify(data)}</script>`;
+  return `<script type="application/ld+json" data-skipwait-jsonld="prerender">${JSON.stringify(data)}</script>`;
 }
 
 /**
