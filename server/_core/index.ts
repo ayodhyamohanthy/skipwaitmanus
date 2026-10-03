@@ -43,6 +43,7 @@ import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
+import { registerReputationRoutes } from "../reputationRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
@@ -154,6 +155,9 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerDmRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, countRecentMessagesBySender: db.countRecentMessagesBySender });
   // X-style follow graph: follow members, see counts, and unlock free mutual-follow messaging.
   registerFollowRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // Self-view track records: referrer reputation and seeker reliability,
+  // derived from the durable referral transition log (no new tables).
+  registerReputationRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
   // Razorpay (INR domestic) + PayPal (USD global) checkout order creation.
   // Chargebee stays the fallback gateway for subscription management.

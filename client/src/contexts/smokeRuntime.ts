@@ -15,6 +15,8 @@ const readContract=(path:string)=>{
  if(path==="/api/company-referrals/mine")return {requests:list("requests")};
  if(path==="/api/company-referrals/inbox")return {requests:list("inbox")};
  if(path==="/api/referrer/impact-summary")return s.impact;
+ if(path==="/api/reputation/seeker/me")return s.reliability??{reliability:{totalRequests:0,withdrawnBeforeClaim:0,reviewsReceived:0,approvalsReceived:0,introductions:0,interviews:0,offers:0,completionRate:null}};
+ if(path==="/api/reputation/referrer/me")return s.reputation??{reputation:{decisions:0,approvals:0,declines:0,approvalRate:null,introductions:0,interviews:0,offers:0,interviewHitRate:null,offerRate:null,medianResponseHours:null}};
  if(path==="/api/notifications")return {notifications:list("notifications"),unreadCount:1};
  if(path==="/api/saved-roles")return {savedRoleIds:[-301]};
  if(path==="/api/personal-invites/me")return s.invites;
