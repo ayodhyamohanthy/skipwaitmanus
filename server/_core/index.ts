@@ -88,6 +88,21 @@ async function startServer() {
   validateBillingEnvironment();
   const app = express();
   const server = createServer(app);
+
+  // #90: the rollout pipeline SIGTERMs this process, and nothing closed the
+  // mysql pool, so connections leaked until the process died. Close the HTTP
+  // server, then the pool, then exit.
+  let shuttingDown = false;
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log(`[Server] ${signal} received, closing server and db pool`);
+    server.close(() => {
+      db.closeDb().finally(() => process.exit(0));
+    });
+  };
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
   // Boot-time schema auto-reconcile: the running server owns its DATABASE_URL,
   // so it heals missing columns itself. Fire-and-forget — a slow or unreachable
   // DB must never delay or crash boot; /api/health reports the flag as-is.

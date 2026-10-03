@@ -16,6 +16,7 @@ import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
+let _pool: mysql.Pool | null = null;
 
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
@@ -31,10 +32,21 @@ export async function getDb() {
         database: parsed.pathname.replace(/^\//, "") || undefined,
         ssl: { rejectUnauthorized: false },
       });
+      _pool = connection;
       _db = drizzle(connection) as unknown as ReturnType<typeof drizzle>;
     } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
   }
   return _db;
+}
+
+/** #90: the deploy pipeline SIGTERMs the server on every rollout, and the
+ * mysql2 pool was never closed, so connections leaked until the process died.
+ * Close the pool explicitly from the shutdown handler. */
+export async function closeDb() {
+  const pool = _pool;
+  _pool = null;
+  _db = null;
+  if (pool) await pool.end();
 }
 
 const durableAdministratorEmail = "ayodhya@skipwait.me";
