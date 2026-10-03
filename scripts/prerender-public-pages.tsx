@@ -100,15 +100,22 @@ export function publicSnapshots(): PublicSnapshot[] {
   });
 }
 
-async function main() {
+/** Public route -> the file Cloudflare Pages serves it from. `/` is index.html. */
+function outputFileFor(dist: string, routePath: string): string {
+  // Not `routePath.slice(1)`: for "/" that is "", which silently wrote a stray
+  // dist/public/.html and left index.html as the empty shell.
+  return routePath === "/" ? path.join(dist, "index.html") : path.join(dist, `${routePath.slice(1)}.html`);
+}
+
+export async function main(dist = path.resolve(import.meta.dirname, "../dist/public")) {
   (globalThis as { React?: typeof React }).React = React;
-  const dist = path.resolve(import.meta.dirname, "../dist/public");
   const template = readFileSync(path.join(dist, "index.html"), "utf8");
   if (!/<div id="root">\s*<\/div>/.test(template)) throw new Error("prerender: #root placeholder not found in index.html");
 
+  // Cloudflare Pages serves /terms from terms.html. A terms/index.html would
+  // 308 to /terms/ instead, which is a redirect hop on every policy link.
   const write = (routePath: string, html: string, size: number) => {
-    // Cloudflare Pages serves /terms from terms.html (a terms/index.html would 308 to /terms/).
-    writeFileSync(path.join(dist, `${routePath.slice(1)}.html`), html);
+    writeFileSync(outputFileFor(dist, routePath), html);
     console.log(`prerendered ${routePath} (${size} chars)`);
   };
   const require = (routePath: string) => {
