@@ -168,7 +168,7 @@ export default function ReferralRequest() {
         activeResumeUploads.set(fingerprint, guarded);
         void (async () => {
           try {
-          const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", await file.arrayBuffer()))).map(byte => byte.toString(16).padStart(2, "0")).join("");
+          const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(await file.arrayBuffer())))).map(byte => byte.toString(16).padStart(2, "0")).join("");
           const clientUploadId = `${digest.slice(0,8)}-${digest.slice(8,12)}-4${digest.slice(13,16)}-8${digest.slice(17,20)}-${digest.slice(20,32)}`;
           uploadIdsRef.current.set(fingerprint, clientUploadId);
           const mimeType = acceptedDocumentMime(file); if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
