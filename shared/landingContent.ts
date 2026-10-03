@@ -42,10 +42,23 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
   { href: "/premium", label: "Buy credits", summary: "Extra referral credits cost $1 each and never expire." },
   { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and monthly plans." },
+  { href: "/plans", label: "Monthly plans", summary: "Pro and Max add credits every month on top of the free allowance." },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },
   { href: "/contact", label: "Contact us", summary: "Reach the team about your account, a payment, or privacy." },
   { href: "/support", label: "Support", summary: "A person answers, usually within one business day." },
 ];
+
+/**
+ * Employer pitch from the footer. It lives here, not inline in Home.tsx, because
+ * the crawler-visible snapshot has to carry it too: /employer had a link in the
+ * rendered page and none in the no-JavaScript HTML, which is the only copy a
+ * search engine reads. A route linked from nowhere else is an orphan.
+ */
+export const LANDING_EMPLOYER_LINK: LandingLink = {
+  href: "/employer",
+  label: "Hiring for your company?",
+  summary: "Sponsor a role to opt-in seekers and unlock anonymized opt-in talent.",
+};
 
 export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 

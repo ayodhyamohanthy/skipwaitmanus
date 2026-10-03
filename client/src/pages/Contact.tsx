@@ -28,7 +28,7 @@ export default function Contact() {
       <p>We reply to emails within 2 business days. For payment problems, include your payment reference so we can find it quickly.</p>
     </PolicySection>
     <PolicySection number="03" title="Helpful links">
-      <p>See <Link href="/support" className="font-semibold text-black">Support</Link> for self-serve help, <Link href="/refunds" className="font-semibold text-black">Refunds &amp; cancellation</Link>, and <Link href="/pricing" className="font-semibold text-black">Pricing</Link>.</p>
+      <p>See <Link href="/support" className="font-semibold text-black">Support</Link> for self-serve help, <Link href="/refunds" className="font-semibold text-black">Refunds &amp; cancellation</Link>, and <Link href="/pricing" className="font-semibold text-black">Pricing</Link>. Hiring for a company? Start at <Link href="/employer" className="font-semibold text-black">Hire on skipwait.me</Link>.</p>
     </PolicySection>
   </PolicyPageShell>;
 }

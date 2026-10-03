@@ -28,6 +28,9 @@ const SHELL = [
   "</head><body><div id=\"root\"></div></body></html>",
 ].join("");
 
+/** Cloudflare Pages serves `/` from index.html and `/about` from about.html. */
+const fileFor = (routePath: string): string => (routePath === "/" ? "index.html" : `${routePath.slice(1)}.html`);
+
 let dist: string;
 
 beforeAll(async () => {
@@ -53,8 +56,7 @@ describe("the prerender step writes a file Cloudflare Pages can serve for every 
 
   it("writes one <route>.html per public route and nothing extra", () => {
     const written = readdirSync(dist).filter(name => name.endsWith(".html")).sort();
-    const expected = PUBLIC_ROUTES.map(route => (route.route === "/" ? "index.html" : `${route.route.slice(1)}.html`)).sort();
-    expect(written).toEqual(expected);
+    expect(written).toEqual(PUBLIC_ROUTES.map(route => fileFor(route.route)).sort());
   });
 
   it("replaces the empty shell placeholder in every file", () => {
@@ -82,5 +84,50 @@ describe("the prerender step writes a file Cloudflare Pages can serve for every 
       // is not a breadcrumb, so it is the one page that must not carry one.
       expect(html.includes('aria-label="Breadcrumb"'), `${route.route} should ${route.route === "/" ? "not " : ""}have a breadcrumb`).toBe(route.route !== "/");
     }
+  });
+});
+
+/**
+ * A page no other page links to is an orphan: it is in the sitemap but nothing
+ * on the site points a crawler at it. `/employer` was one for several deploys
+ * because the React footer linked it while the no-JavaScript snapshot did not,
+ * and only the snapshot is what a crawler reads.
+ *
+ * The graph is measured from the written files, not from the source that made
+ * them, because the snapshot is allowed to drift from the React page — and it
+ * did. Three unique source pages is the floor: not a Google-published rule, but
+ * the point at which a route stops depending on the home page alone.
+ */
+const MIN_INBOUND_SOURCES = 3;
+
+/** Every internal path the written page links to, trailing slashes normalized. */
+function outboundTargets(routePath: string): Set<string> {
+  const html = readFileSync(path.join(dist, fileFor(routePath)), "utf8");
+  return new Set([...html.matchAll(/href="(\/[^"#?]*)"/g)].map(match => match[1].replace(/\/$/, "") || "/"));
+}
+
+/** Unique source pages linking to `target`, ignoring self-links. */
+function inboundSources(target: string): string[] {
+  return PUBLIC_ROUTES.map(route => route.route).filter(source => source !== target && outboundTargets(source).has(target)).sort();
+}
+
+describe("every public route is reachable from the rest of the site", () => {
+  it("leaves no public page an orphan or a one-link page", () => {
+    const thin = PUBLIC_ROUTES
+      .map(route => ({ route: route.route, sources: inboundSources(route.route) }))
+      .filter(entry => entry.sources.length < MIN_INBOUND_SOURCES)
+      .map(entry => `${entry.route} (${entry.sources.length}: ${entry.sources.join(", ") || "nothing"})`);
+    expect(thin, `linked from fewer than ${MIN_INBOUND_SOURCES} pages`).toEqual([]);
+  });
+
+  it("links each public route to at least two others, so nothing is a dead end", () => {
+    const deadEnds = PUBLIC_ROUTES
+      .map(route => {
+        const others = outboundTargets(route.route);
+        others.delete(route.route);
+        return { route: route.route, others: others.size };
+      })
+      .filter(entry => entry.others < 2);
+    expect(deadEnds).toEqual([]);
   });
 });

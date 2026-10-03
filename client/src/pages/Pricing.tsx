@@ -34,5 +34,8 @@ export default function Pricing() {
     <PolicySection number="04" title="Payment">
       <p>Payments are processed securely by our payment providers (Razorpay for INR, PayPal for USD) through Chargebee. Everything is delivered digitally and instantly; see <Link href="/shipping" className="font-semibold text-black">Shipping &amp; delivery</Link>.</p>
     </PolicySection>
+    <PolicySection number="05" title="Employers">
+      <p>Everything above prices the job-seeker and employee side. Companies pay separately to sponsor roles and unlock anonymized opt-in talent; see <Link href="/employer" className="font-semibold text-black">Hire on skipwait.me</Link>.</p>
+    </PolicySection>
   </PolicyPageShell>;
 }
