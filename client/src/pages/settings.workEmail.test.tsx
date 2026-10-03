@@ -10,6 +10,19 @@ vi.mock("@/_core/auth", () => ({
   useUser: () => ({ user: { emailAddresses: [] } }),
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
+
+// Settings reads talent-consent state through tRPC; without this the render
+// throws "Unable to find tRPC Context" instead of exercising the section below.
+vi.mock("@/lib/trpc", () => ({
+  trpc: {
+    talentConsent: {
+      state: { useQuery: () => ({ data: undefined, isLoading: false }) },
+      grant: { useMutation: () => ({ mutate: vi.fn() }) },
+      revoke: { useMutation: () => ({ mutate: vi.fn() }) },
+    },
+    useUtils: () => ({ talentConsent: { state: { invalidate: vi.fn() } } }),
+  },
+}));
 describe("Settings work email", () => {
   beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async (input: string) => String(input).includes("/api/company-referrals/access") ? { ok: true, json: async () => ({ verifiedCompanyAccess: accessState.verified, workEmailDomain: accessState.verified ? "acme.com" : null }) } : { ok: true, json: async () => ({ requests: [] }) })); });
   afterEach(() => { cleanup(); accessState.verified = false; window.history.replaceState({}, "", "/"); vi.unstubAllGlobals(); });
