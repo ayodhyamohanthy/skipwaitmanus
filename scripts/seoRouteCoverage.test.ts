@@ -1,4 +1,6 @@
+import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { isKnownRoute, KNOWN_ROUTE_PATTERNS } from "../functions/_middleware";
 import { STATIC_ROUTES } from "../functions/sitemap.xml";
@@ -95,5 +97,15 @@ describe("the indexable surface stays inside the screens that exist", () => {
       expect(prerendered.has(entry.path), `${entry.path} is in the sitemap but has no prerendered HTML`).toBe(true);
     }
     expect(prerendered.size).toBe(PUBLIC_ROUTES.length);
+  });
+});
+
+describe("a change to the crawlable output still reaches production", () => {
+  // The Sep 24 stall started because a deploy failed silently, and the reason a
+  // copy-only edit can never ship is a path filter missing a build input. Both
+  // are cheap to assert here and expensive to discover in a Search Console report.
+  it("keeps every deploy workflow watching the files its build reads", () => {
+    const script = path.resolve(import.meta.dirname, "check-deploy-triggers.mjs");
+    expect(() => execFileSync(process.execPath, [script], { stdio: "pipe" })).not.toThrow();
   });
 });
