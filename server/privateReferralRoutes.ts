@@ -194,8 +194,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const location = typeof req.query.location === "string" ? req.query.location.slice(0, 120) : undefined;
       const jobs = await deps.listJobs?.({ query, location }) ?? [];
       // Defense in depth: the public route must never expose private referral
-      // targets even if an alternate listJobs dependency regresses.
-      const publicJobs = jobs.filter(job => !(job && typeof job === "object" && ((job as { title?: string }).title === "Role from shared job link" || (job as { description?: string }).description === "Private referral request routed from a Target Role URL.")));
+      // targets or the seeded sample role even if an alternate listJobs
+      // dependency regresses.
+      const publicJobs = jobs.filter(job => !(job && typeof job === "object" && ((job as { title?: string }).title === "Role from shared job link" || (job as { description?: string }).description === "Private referral request routed from a Target Role URL." || (job as { company?: string }).company?.toLowerCase() === "acme.com")));
       res.set("Cache-Control", "public, max-age=60");
       res.json({ jobs: publicJobs.slice(0, 50) });
     } catch { res.status(500).json({ error: "We could not load the job list right now" }); }

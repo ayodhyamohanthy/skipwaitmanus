@@ -48,6 +48,8 @@ describe("job explorer routes", () => {
       { id: 1, title: "Product Designer", description: "Public catalog role" },
       { id: 2, title: "Role from shared job link", description: "Private referral request routed from a Target Role URL." },
       { id: 3, title: "Another role", description: "Private referral request routed from a Target Role URL." },
+      { id: 4, title: "Senior Engineer", company: "acme.com", description: "Sample catalog role" },
+      { id: 5, title: "Staff Engineer", company: "ACME.COM", description: "Sample catalog role" },
     ] }));
     const response = await request(app).get("/api/jobs");
     expect(response.status).toBe(200);
