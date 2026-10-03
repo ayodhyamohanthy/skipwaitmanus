@@ -7,6 +7,11 @@ on:
       - "client/**"
       - "shared/**"
       - "functions/**"
+      # `pnpm build` writes the no-JavaScript HTML through these two files, so a
+      # change to either changes the deployed site even when no client file
+      # moves. Without them a copy or metadata-only edit merges and never ships.
+      - "scripts/prerender-public-pages.tsx"
+      - "scripts/prerenderSeo.ts"
       - "vite.config.ts"
       - "package.json"
       - "pnpm-lock.yaml"

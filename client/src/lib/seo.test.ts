@@ -20,6 +20,22 @@ describe("seo utilities", () => {
     expect(document.querySelector("script#route-jsonld")).toBeNull();
   });
 
+  it("marks up the breadcrumb trail a canonical route has, and clears it on a route with none", () => {
+    applySeo({ path: "/terms" });
+    expect(document.querySelector("script#route-breadcrumb-jsonld")?.textContent).toContain('"@type":"BreadcrumbList"');
+    // The home page has a one-item trail, which is not worth marking up.
+    applySeo({ path: "/" });
+    expect(document.querySelector("script#route-breadcrumb-jsonld")).toBeNull();
+  });
+
+  it("leaves exactly one block per kind when a route supplies its own structured data too", () => {
+    applySeo({ path: "/", jsonLd: faqJsonLd([{ question: "Is this a public job board?", answer: "No." }]) });
+    applySeo({ path: "/terms", jsonLd: { "@type": "ItemList" } });
+    expect(document.querySelectorAll("script[data-skipwait-jsonld]")).toHaveLength(2);
+    expect(document.querySelector("script#route-jsonld")?.textContent).toContain('"@type":"ItemList"');
+    expect(document.querySelector("script#route-breadcrumb-jsonld")?.textContent).toContain('"@type":"BreadcrumbList"');
+  });
+
   it("builds a FAQPage from entries that are also rendered as page copy", () => {
     const ld = faqJsonLd([{ question: "Is this a public job board?", answer: "No." }]);
     expect(ld["@type"]).toBe("FAQPage");

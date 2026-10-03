@@ -1,9 +1,10 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "wouter";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { applySeo } from "@/lib/seo";
+import { breadcrumbsFor, publicRoute } from "@shared/publicRoutes";
 
 /**
  * Long-form disclosure shell shared by /terms, /refunds, /shipping, and /support.
@@ -43,7 +44,34 @@ const POLICY_SCREEN_PATHS: Record<string, string> = {
   contact: "/contact",
   pricing: "/pricing",
   support: "/support",
+  privacy: "/privacy",
 };
+
+/**
+ * `Home > Page` trail for a canonical public route. Rendered here so the React
+ * page and the no-JavaScript HTML the build writes agree; the structured data
+ * for it comes from `applySeo`.
+ */
+export function Breadcrumbs({ path }: { path: string }) {
+  const route = publicRoute(path);
+  const trail = route ? breadcrumbsFor(route) : [];
+  if (trail.length < 2) return null;
+  return (
+    <nav aria-label="Breadcrumb" className="mb-4">
+      <ol className="flex flex-wrap items-center gap-1 text-xs font-semibold text-[#505050]">
+        {trail.map((crumb, index) => {
+          const isLast = index === trail.length - 1;
+          return (
+            <li key={crumb.path} className="flex items-center gap-1" aria-current={isLast ? "page" : undefined}>
+              {index > 0 ? <ChevronRight aria-hidden className="h-3 w-3 text-[#a3a3a3]" /> : null}
+              {isLast ? <span className="text-black">{crumb.label}</span> : <Link href={crumb.path} className="hover:text-black hover:underline">{crumb.label}</Link>}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
 
 export function PolicySection({ number, title, children }: { number: string; title: string; children: ReactNode }) {
   return <section aria-labelledby={`policy-${number}`} className="rounded-2xl border border-[#e5e5e5] bg-white p-5 sm:p-6">
@@ -65,14 +93,18 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
   footnote?: string;
 }) {
   const canonicalPath = POLICY_SCREEN_PATHS[screen];
+  // The description a search engine shows is the one declared for this route,
+  // so the <head> a crawler reads and the page it lands on cannot disagree.
+  const routeDescription = canonicalPath ? publicRoute(canonicalPath)?.description : undefined;
   useEffect(() => {
     // Keeps title, canonical, and share copy correct when a visitor navigates
     // between policy screens inside the single-page app.
-    if (canonicalPath) applySeo({ title, description: intro, path: canonicalPath });
-  }, [canonicalPath, intro, title]);
+    if (canonicalPath) applySeo({ title, description: routeDescription ?? intro, path: canonicalPath });
+  }, [canonicalPath, intro, routeDescription, title]);
   return <main data-skipwait-screen={screen} className="min-h-screen bg-white px-5 py-5 text-black sm:px-6 sm:py-8">
     <div className="mx-auto max-w-3xl">
       <header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#505050] hover:text-black"><ArrowLeft className="h-4 w-4" />Back</Link></header>
+      {canonicalPath ? <div className="mt-8"><Breadcrumbs path={canonicalPath} /></div> : null}
       <section className="mt-8 rounded-2xl border border-[#c2c2ff] bg-white p-6 sm:p-9">
         <div className="flex items-start justify-between gap-3">
           <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#ededff] text-black"><Icon className="h-5 w-5" /></span>
