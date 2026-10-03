@@ -103,7 +103,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     {
       route: "/premium",
       title: "Buy referral credits for $1 each",
-      description: "Every account gets free referral requests each month. Extra credits cost $1 each (₹99 in India), never expire, and are used only when an employee accepts a request.",
+      description: "Every account gets free referral requests each month. Extra credits cost $1 each (₹99 in India), never expire, and are returned if you withdraw before pickup.",
       markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>Every account gets ${FREE_MONTHLY_ALLOWANCE} free referral requests every month. Extra credits cost $1 each (₹99 in India), never expire, and are only used when an employee accepts your request. Reviewing and accepting requests is always free for employees.</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See monthly plans</a> · <a href="/pricing">See all prices</a></p></main>`,
     },
     {

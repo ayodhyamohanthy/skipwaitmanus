@@ -6,8 +6,9 @@ import { BUSINESS } from "@/lib/business";
 /**
  * /refunds — Refunds & cancellation.
  *
- * Mirrors the real billing behaviour: credit reservation/return on withdraw
- * and decline, end-of-term subscription cancellation (Chargebee
+ * Mirrors the real billing behaviour: a credit is used when a request is sent
+ * and returned only on withdraw before claim (withdrawCompanyReferralRequest),
+ * never on decline or no response. End-of-term subscription cancellation (Chargebee
  * `cancel_option=end_of_term`), and administrator-reviewed refunds that
  * deduct the credited tokens.
  */
@@ -17,21 +18,23 @@ export default function RefundPolicy() {
     icon={ReceiptText}
     eyebrow="Refunds & cancellation"
     title="You only pay for what actually happened."
-    intro="Credits are reserved, not spent, until a Referrer acts. Subscriptions stop at the end of the cycle you already paid for. When something goes wrong with a payment, a person reviews it."
+    intro="A credit is used when you send a request, and returned if you withdraw before anyone picks it up. Subscriptions stop at the end of the cycle you already paid for. When something goes wrong with a payment, a person reviews it."
     updated="September 23, 2026"
     footnote="Statutory consumer rights in your country apply in addition to this policy and are not limited by it."
   >
     <PolicySection number="01" title="How a credit is used">
       <ul>
-        <li>Sending a referral request <strong>reserves one credit</strong>. The credit is returned to your balance automatically if you <strong>withdraw before a verified employee claims</strong> the request, or if the Referrer <strong>declines</strong>.</li>
-        <li>A credit is used up only when a Referrer <strong>accepts</strong> your request. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
+        <li>Sending a referral request <strong>uses one credit</strong> at the moment you send it.</li>
+        <li>The credit is returned to your balance automatically if you <strong>withdraw the request before a verified employee picks it up</strong>. A free monthly credit is returned only if you withdraw in the same month it came from; purchased credits are always returned on withdraw.</li>
+        <li>The credit is <strong>not returned</strong> if a Referrer declines, if no one picks up the request, or once a verified employee has picked it up.</li>
+        <li>An accepted request is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
         <li>Free monthly credits reset each month and do not carry over. Purchased credits never expire.</li>
         <li><strong>Delivery.</strong> skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account <strong>immediately after the payment provider confirms payment</strong>; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check.</li>
       </ul>
     </PolicySection>
 
     <PolicySection number="02" title="One-off credit purchases">
-      <p>Purchased credits are added only after the payment provider confirms payment. Unused purchased credits <strong>can be refunded on request within 14 days</strong> of purchase, less any credits already consumed by accepted referrals. Contact <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email with the payment reference shown on your receipt.</p>
+      <p>Purchased credits are added only after the payment provider confirms payment. Unused purchased credits <strong>can be refunded on request within 14 days</strong> of purchase, less any credits already used to send requests (credits returned by a withdrawal count as unused). Contact <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email with the payment reference shown on your receipt.</p>
     </PolicySection>
 
     <PolicySection number="03" title="Pro and Max subscriptions">

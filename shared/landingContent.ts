@@ -57,6 +57,6 @@ export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
   { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
-  { question: "What does it cost?", answer: `${FREE_MONTHLY_ALLOWANCE} referral requests are free every month. Extra credits cost $1 each (₹99 in India), never expire, and are used only when an employee accepts your request.` },
+  { question: "What does it cost?", answer: `${FREE_MONTHLY_ALLOWANCE} referral requests are free every month. Extra credits cost $1 each (₹99 in India), never expire. A credit is used when you send a request and comes back if you withdraw before anyone picks it up.` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
 ];

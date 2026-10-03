@@ -37,7 +37,7 @@ export default function CancellationPolicy() {
 
     <PolicySection number="03" title="Cancelling a credit purchase">
       <ul>
-        <li>You can cancel a one-off credit purchase and get a refund for <strong>unused purchased credits within 14 days</strong> of purchase. Credits already used on accepted referrals are not refundable.</li>
+        <li>You can cancel a one-off credit purchase and get a refund for <strong>unused purchased credits within 14 days</strong> of purchase. Credits already used to send requests are not refundable (credits returned by a withdrawal count as unused).</li>
         <li>To cancel, email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email with the payment reference from your receipt.</li>
       </ul>
     </PolicySection>
