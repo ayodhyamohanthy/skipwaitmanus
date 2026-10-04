@@ -66,6 +66,7 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "messages", name: "messages_recipient_read_idx", columns: "`recipientId`,`readAt`", nonUnique: true },
   { table: "referralRequests", name: "referral_requests_seeker_updated_idx", columns: "`jobSeekerId`,`updatedAt`", nonUnique: true },
   { table: "referralRequests", name: "referral_requests_referrer_updated_idx", columns: "`referrerId`,`updatedAt`", nonUnique: true },
+  { table: "operationalActivityLogs", name: "operational_activity_actor_action_created_idx", columns: "`actorUserId`,`action`,`createdAt`", nonUnique: true },
   { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
   { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
   { table: "referralRequests", name: "referral_requests_seeker_idempotency_unique", columns: "`jobSeekerId`,`idempotencyKey`" },

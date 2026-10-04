@@ -678,7 +678,7 @@ export const operationalActivityLogs = mysqlTable("operationalActivityLogs", {
   companyDomain: varchar("companyDomain", { length: 255 }),
   metadata: text("metadata"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("operational_activity_created_idx").on(table.createdAt), index("operational_activity_actor_idx").on(table.actorUserId), index("operational_activity_action_idx").on(table.action)]);
+}, table => [index("operational_activity_created_idx").on(table.createdAt), index("operational_activity_actor_idx").on(table.actorUserId), index("operational_activity_action_idx").on(table.action), index("operational_activity_actor_action_created_idx").on(table.actorUserId, table.action, table.createdAt)]);
 
 export const privacyRequests = mysqlTable("privacyRequests", {
   id: int("id").autoincrement().primaryKey(),
