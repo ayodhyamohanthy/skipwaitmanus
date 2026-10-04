@@ -614,7 +614,8 @@ export async function completeWorkEmailOtpEnrollment(input: { receipt: string; e
         if (!priorForInviter[0] && !priorForJoiner[0]) {
           await tx.insert(companyCoverageRewards).values({ invitationId: invitation.id, inviterUserId: invitation.inviterUserId, joinerUserId: input.userId, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS });
           await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }, { userId: input.userId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }]);
-          await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action." }, { userId: input.userId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request." }]);
+          await tx.insert(notifications).values({ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action.", eventKey: `coverage-pending:${invitation.id}:inviter` });
+          await tx.insert(notifications).values({ userId: input.userId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request.", eventKey: `coverage-pending:${invitation.id}:joiner` });
           await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId: input.userId, completedAt: new Date() }).where(and(eq(companyCoverageInvitations.id, invitation.id), eq(companyCoverageInvitations.status, "active")));
           reward = { rewarded: true, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
         }
@@ -999,7 +1000,7 @@ export async function openCompanyReferralAvailability(userId: number, input: { s
       const allocation = await tx.update(referralRequests).set({ referrerId: userId, waitingForCoverage: false, coverageQueuedAt: null }).where(and(eq(referralRequests.id, candidate[0].id), isNull(referralRequests.referrerId), eq(referralRequests.waitingForCoverage, true)));
       if (Number(allocation[0].affectedRows) !== 1) continue;
       await tx.insert(referralAvailabilitySlots).values({ referrerId: userId, companyDomain, referralRequestId: candidate[0].id, status: "allocated", activeRequestKey: `request:${candidate[0].id}` });
-      await tx.insert(notifications).values({ userId: candidate[0].jobSeekerId, category: "status", title: "A referral review opened", body: `A verified employee at ${companyDomain} can now review your request.` });
+      await tx.insert(notifications).values({ userId: candidate[0].jobSeekerId, category: "status", title: "A referral review opened", body: `A verified employee at ${companyDomain} can now review your request.`, eventKey: `referral-review-opened:${candidate[0].id}` });
       allocatedRequestIds.push(candidate[0].id);
     }
     return { companyDomain, requestedSlotCount: slotCount, allocatedRequestIds, allocatedCount: allocatedRequestIds.length };
@@ -1475,7 +1476,8 @@ export async function fulfillCompanyCoverageInvitation(joinerUserId: number, inp
     // Action-gated: no credits for verifying alone. Both sides earn when the
     // invited referrer actually accepts a request, or the seeker sends one.
     await tx.insert(tokenTransactions).values([{ userId: invitation.inviterUserId, role: "job_seeker", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }, { userId: joinerUserId, role: "referrer", tokenCount: COMPANY_COVERAGE_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" }]);
-    await tx.insert(notifications).values([{ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action." }, { userId: joinerUserId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request." }]);
+    await tx.insert(notifications).values({ userId: invitation.inviterUserId, category: "system", title: "Company coverage pending reward", body: "A matching employee verified their work email. One referral credit unlocks after your next referral action.", eventKey: `coverage-pending:${invitation.id}:inviter` });
+    await tx.insert(notifications).values({ userId: joinerUserId, category: "system", title: "Coverage credit pending", body: "Welcome to private company coverage. One referral credit unlocks after you accept your first private referral request.", eventKey: `coverage-pending:${invitation.id}:joiner` });
     await tx.update(companyCoverageInvitations).set({ status: "completed", joinerUserId, completedAt: new Date() }).where(eq(companyCoverageInvitations.id, invitation.id));
     return { rewarded: true as const, tokenCount: COMPANY_COVERAGE_REWARD_TOKENS };
   });
@@ -1677,7 +1679,7 @@ export async function grantPromoCreditsTx(tx: any, input: { userId: number; role
     const inserted = await tx.insert(promoCreditGrants).values({ userId: input.userId, role: input.role, tokenCount: PROMO_GRANT_TOKENS, creditsRemaining: PROMO_GRANT_TOKENS, status: "active", source: input.source.slice(0, 40), providerRef: input.providerRef.slice(0, 255), grantedAt: now, expiresAt });
     const grantId = Number(inserted[0].insertId);
     await tx.insert(tokenTransactions).values({ userId: input.userId, role: input.role, tokenCount: PROMO_GRANT_TOKENS, kind: "promo_grant", source: "promo_first_payment", referenceType: "promo_credit_grant", referenceId: String(grantId), idempotencyKey: `promo-grant-${grantId}` });
-    await tx.insert(notifications).values({ userId: input.userId, category: "system", title: `${PROMO_GRANT_TOKENS} bonus referral credits`, body: `Your verified payment earned ${PROMO_GRANT_TOKENS} bonus credits. They expire in 30 days and are used before monthly credits.` });
+    await tx.insert(notifications).values({ userId: input.userId, category: "system", title: `${PROMO_GRANT_TOKENS} bonus referral credits`, body: `Your verified payment earned ${PROMO_GRANT_TOKENS} bonus credits. They expire in 30 days and are used before monthly credits.`, eventKey: `promo-grant:${grantId}` });
     return { granted: true, grantId };
   } catch (error) {
     if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { granted: false, reason: "already_granted" };
@@ -1736,7 +1738,7 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
     const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update");
     if (!wallet[0]) throw new Error("Recovery wallet update failed");
     await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment", source: "admin_recovery", referenceType: "admin_token_adjustment", referenceId: String(Number(adjustment[0].insertId)), idempotencyKey: `admin-adjustment-${Number(adjustment[0].insertId)}`, balanceAfter: wallet[0].balance });
-    await tx.insert(notifications).values({ userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.` });
+    await tx.insert(notifications).values({ userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.`, eventKey: `admin-adjustment:${Number(adjustment[0].insertId)}` });
     return { adjustmentId: Number(adjustment[0].insertId), recipientUserId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, newBalance: wallet[0].balance };
   });
 }
@@ -1794,7 +1796,7 @@ async function grantPendingActionRewardsTx(tx: any, userId: number, role: Wallet
   const updated=await tx.update(tokenBalances).set({balance:sql`${tokenBalances.balance} + ${total}`}).where(eq(tokenBalances.id,wallet.id));
   if(Number(updated[0]?.affectedRows??0)!==1)throw new Error("Reward wallet update failed");
   for(const pendingId of claimedIds)await tx.insert(tokenTransactions).values({userId,role,tokenCount:Number(pending.find((row:any)=>row.id===pendingId)!.tokenCount),kind:"invite_reward_granted",source:"action_gated_reward",referenceType:"pending_reward",referenceId:String(pendingId),idempotencyKey:`reward-${pendingId}`,rewardStatus:"granted",qualifiedByType,qualifiedById,qualifiedAt:new Date()});
-  await tx.insert(notifications).values({userId,category:"system",title:"Referral credits unlocked",body:`Your ${total} invite credit${total===1?"":"s"} were added after your referral action.`});
+  await tx.insert(notifications).values({userId,category:"system",title:"Referral credits unlocked",body:`Your ${total} invite credit${total===1?"":"s"} were added after your referral action.`,eventKey:`invite-rewards:${userId}:${qualifiedByType}:${qualifiedById}`});
   return {granted:total};
 }
 
