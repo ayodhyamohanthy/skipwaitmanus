@@ -63,6 +63,8 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
 // Keep in sync with drizzle/schema.ts.
 export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: string; nonUnique?: boolean }> = [
   { table: "workEmailOtpCodes", name: "work_email_otp_active_idx", columns: "`email`,`consumedAt`,`expiresAt`,`createdAt`", nonUnique: true },
+  { table: "notifications", name: "notifications_user_created_idx", columns: "`userId`,`createdAt`", nonUnique: true },
+  { table: "messages", name: "messages_sender_created_idx", columns: "`senderId`,`createdAt`", nonUnique: true },
   { table: "resumeUploadSessions", name: "resume_upload_sessions_owner_client_unique", columns: "`ownerId`,`clientUploadId`" },
   { table: "referralAttachments", name: "referral_attachments_upload_session_unique", columns: "`uploadSessionId`" },
   { table: "referralRequests", name: "referral_requests_seeker_idempotency_unique", columns: "`jobSeekerId`,`idempotencyKey`" },

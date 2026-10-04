@@ -402,7 +402,7 @@ export const messages = mysqlTable("messages", {
   requestFingerprint: varchar("requestFingerprint", {length:64}),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId), uniqueIndex("messages_sender_idempotency_unique").on(table.senderId,table.idempotencyKey)]);
+}, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId), index("messages_sender_created_idx").on(table.senderId, table.createdAt), uniqueIndex("messages_sender_idempotency_unique").on(table.senderId,table.idempotencyKey)]);
 
 export const directMessageQuotaWindows = mysqlTable("directMessageQuotaWindows", {
   id: int("id").autoincrement().primaryKey(), senderId: int("senderId").notNull().references(()=>users.id,{onDelete:"cascade"}), windowStart: timestamp("windowStart").notNull(), sendCount: int("sendCount").default(0).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
@@ -421,7 +421,7 @@ export const notifications = mysqlTable("notifications", {
   eventKey: varchar("eventKey", { length: 120 }),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("notifications_user_idx").on(table.userId), uniqueIndex("notifications_event_key_unique").on(table.eventKey)]);
+}, table => [index("notifications_user_idx").on(table.userId), index("notifications_user_created_idx").on(table.userId, table.createdAt), uniqueIndex("notifications_event_key_unique").on(table.eventKey)]);
 
 export const tokenBalances = mysqlTable("tokenBalances", {
   id: int("id").autoincrement().primaryKey(),
