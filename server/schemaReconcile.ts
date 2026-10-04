@@ -71,6 +71,7 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
   { table: "notifications", name: "notifications_event_key_unique", columns: "`eventKey`" },
   { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
+  { table: "profiles", name: "profiles_referrer_hot_idx", columns: "`accountType`,`workEmailDomain`,`workEmailVerifiedAt`", nonUnique: true },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

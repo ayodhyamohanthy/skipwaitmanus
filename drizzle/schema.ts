@@ -63,7 +63,7 @@ export const profiles = mysqlTable("profiles", {
   anonymityOptIn: boolean("anonymityOptIn").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("profiles_user_id_unique").on(table.userId)]);
+}, table => [uniqueIndex("profiles_user_id_unique").on(table.userId), index("profiles_referrer_hot_idx").on(table.accountType, table.workEmailDomain, table.workEmailVerifiedAt)]);
 
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),
