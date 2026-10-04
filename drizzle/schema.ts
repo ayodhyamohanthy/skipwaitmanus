@@ -23,7 +23,7 @@ export const users = mysqlTable("users", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
-}, table => [index("users_canonical_person_idx").on(table.canonicalPersonId)]);
+}, table => [index("users_canonical_person_idx").on(table.canonicalPersonId), index("users_created_at_idx").on(table.createdAt)]);
 
 export const verifiedLoginAliases = mysqlTable("verifiedLoginAliases", {
   id: int("id").autoincrement().primaryKey(),
