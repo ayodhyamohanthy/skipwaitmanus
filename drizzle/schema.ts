@@ -402,7 +402,7 @@ export const messages = mysqlTable("messages", {
   requestFingerprint: varchar("requestFingerprint", {length:64}),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId), uniqueIndex("messages_sender_idempotency_unique").on(table.senderId,table.idempotencyKey)]);
+}, table => [index("messages_recipient_idx").on(table.recipientId), index("messages_request_idx").on(table.referralRequestId), index("messages_recipient_read_idx").on(table.recipientId, table.readAt), uniqueIndex("messages_sender_idempotency_unique").on(table.senderId,table.idempotencyKey)]);
 
 export const directMessageQuotaWindows = mysqlTable("directMessageQuotaWindows", {
   id: int("id").autoincrement().primaryKey(), senderId: int("senderId").notNull().references(()=>users.id,{onDelete:"cascade"}), windowStart: timestamp("windowStart").notNull(), sendCount: int("sendCount").default(0).notNull(), createdAt: timestamp("createdAt").defaultNow().notNull(), updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull()
