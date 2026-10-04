@@ -81,7 +81,7 @@ export const jobs = mysqlTable("jobs", {
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location)]);
+}, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location), index("jobs_published_at_idx").on(table.publishedAt)]);
 
 export const companyOpportunities = mysqlTable("companyOpportunities", {
   id: int("id").autoincrement().primaryKey(),
