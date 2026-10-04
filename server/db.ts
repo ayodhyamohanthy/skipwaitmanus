@@ -635,6 +635,8 @@ export async function saveVerifiedWorkEmail(userId: number, email: string) {
   const newlyVerifiedForDomain = previous[0]?.workEmailDomain !== domain || !previous[0]?.workEmailVerifiedAt;
   if (newlyVerifiedForDomain) {
     const waitingRequests = await db.select({ requestId: referralRequests.id }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, domain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
+    // No eventKey here on purpose: a re-verified employee legitimately gets a
+    // fresh waiting-list alert, and a unique key would silently suppress it.
     for (const request of waitingRequests) await db.insert(notifications).values({ userId, category: "referral", title: "A private referral request is waiting", body: `A candidate has asked for help at ${domain}. Review it only if you choose to help.` });
   }
   return getProfileByUserId(userId);
@@ -725,7 +727,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   const result = await db.insert(referralRequests).values({ jobId: input.jobId, jobSeekerId: userId, referrerId: input.referrerId, personalPitch: input.personalPitch });
   const requestId = Number(result[0].insertId);
   for (const attachmentId of input.attachmentIds ?? []) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
-  await db.insert(notifications).values({ userId: input.referrerId, category: "referral", title: "New Referral Request", body: "A Job Seeker has shared a Referral Request for your review." });
+  await db.insert(notifications).values({ userId: input.referrerId, category: "referral", title: "New Referral Request", body: "A Job Seeker has shared a Referral Request for your review.", eventKey: `referral-request:${requestId}:created` });
   return { id: requestId };
 }
 
@@ -770,7 +772,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is complete inside this transaction.
     await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     for(const employee of eligible){
-      await tx.insert(notifications).values({userId:employee.userId,category:"referral",title:fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
+      await tx.insert(notifications).values({userId:employee.userId,category:"referral",title:fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`,eventKey:`referral-available:${requestId}:${employee.userId}`});
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
@@ -1247,7 +1249,7 @@ export async function sendReferralConversationMessage(userId: number, requestId:
   if (!trimmedBody) throw new Error("Write a message before sending");
   const { db, recipientId } = await getApprovedReferralConversationParticipants(userId, requestId);
   const result = await db.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
-  await db.insert(notifications).values({ userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
+  await db.insert(notifications).values({ userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request.", eventKey: `referral-msg:${Number(result[0].insertId)}` });
   return { id: Number(result[0].insertId) };
 }
 
@@ -1378,7 +1380,7 @@ export async function sendDirectMessage(userId:number,recipientId:number,body:st
 
 
 export async function listMessages(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(messages).where(or(eq(messages.senderId, userId), eq(messages.recipientId, userId))).orderBy(desc(messages.createdAt)); }
-export async function sendMessage(userId: number, input: { recipientId: number; body: string; referralRequestId?: number }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(messages).values({ senderId: userId, recipientId: input.recipientId, body: input.body, referralRequestId: input.referralRequestId }); await db.insert(notifications).values({ userId: input.recipientId, category: "message", title: "New message", body: "You have a new message in Bridge." }); return { id: Number(result[0].insertId) }; }
+export async function sendMessage(userId: number, input: { recipientId: number; body: string; referralRequestId?: number }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(messages).values({ senderId: userId, recipientId: input.recipientId, body: input.body, referralRequestId: input.referralRequestId }); await db.insert(notifications).values({ userId: input.recipientId, category: "message", title: "New message", body: "You have a new message in Bridge.", eventKey: `message:${Number(result[0].insertId)}` }); return { id: Number(result[0].insertId) }; }
 export async function listNotifications(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)); }
 export async function markNotificationRead(userId: number, notificationId: number) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId))); return { success: true }; }
 export async function countRecentMessagesBySender(userId: number, since: Date) {
@@ -1535,10 +1537,8 @@ export async function claimPersonalReferralInvite(joinerUserId: number, input: {
         { userId: invitation.inviterUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" },
         { userId: joinerUserId, role: "job_seeker", tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS, kind: "invite_reward_pending", rewardStatus: "pending" },
       ]);
-      await tx.insert(notifications).values([
-        { userId: invitation.inviterUserId, category: "system", title: "Invite reward pending", body: "A friend joined with your link. One extra referral credit unlocks after your next referral action." },
-        { userId: joinerUserId, category: "system", title: "Invite credit pending", body: "You joined with an invite. One extra referral credit unlocks after you send or accept your first private referral request." },
-      ]);
+      await tx.insert(notifications).values({ userId: invitation.inviterUserId, category: "system", title: "Invite reward pending", body: "A friend joined with your link. One extra referral credit unlocks after your next referral action.", eventKey: `invite-pending:${invitation.id}:inviter` });
+      await tx.insert(notifications).values({ userId: joinerUserId, category: "system", title: "Invite credit pending", body: "You joined with an invite. One extra referral credit unlocks after you send or accept your first private referral request.", eventKey: `invite-pending:${invitation.id}:joiner` });
       return { rewarded: true as const, tokenCount: PERSONAL_REFERRAL_REWARD_TOKENS };
     });
   } catch (error) {
