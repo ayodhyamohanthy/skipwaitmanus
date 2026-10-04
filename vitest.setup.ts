@@ -12,6 +12,23 @@ config();
 // data to a provider by forgetting to stub a call.
 isolateLiveOutboundCredentials(process.env);
 
+// waitFor's default async-utility timeout is 1000ms. Several components perform
+// three or more sequential awaits before their first meaningful paint, and under
+// a fully parallel suite run the event loop starves past that budget — producing
+// failures that pass 3/3 in isolation. That is indistinguishable from a real
+// regression, and it is how a red main stayed hidden. Raised here as well as
+// vitest's own testTimeout, because raising only one moves the failure to the
+// other budget.
+//
+// Imported lazily and only where a DOM exists: this setup file also runs for the
+// server tests, and pulling React Testing Library in for those adds real import
+// cost to every server test file.
+if (typeof window !== "undefined") {
+  void import("@testing-library/react").then(({ configure }) => {
+    configure({ asyncUtilTimeout: 5_000 });
+  });
+}
+
 // Components can still fire a same-origin request (e.g. "/api/...") after a
 // test unmounts them and vi.unstubAllGlobals() has restored the real fetch.
 // Node's fetch rejects relative URLs, which Vitest reports as an unhandled

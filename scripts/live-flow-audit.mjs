@@ -86,10 +86,15 @@ const browser = await chromium.launch({ headless: true });
 
   const bodyText = await page.evaluate(() => document.body.innerText).catch(() => "");
   const hasSeekerCta = /I need a referral/i.test(bodyText);
+  // The referrer CTA shipped as "I can refer someone"; "I give referrals" is the
+  // copy used on other surfaces. Both are accepted, so the label has to say so —
+  // it previously read "I give referrals" while matching either string, which
+  // would have reported PASS if the referrer CTA disappeared entirely and only
+  // the other wording remained.
   const hasReferrerCta = /I give referrals|I can refer someone/i.test(bodyText);
   results.push(stepLog("F1 landing renders", info.children > 0 && info.textLength > 40, `root children=${info.children} text=${info.textLength}`));
   results.push(stepLog("F1 'I need a referral' CTA present", hasSeekerCta));
-  results.push(stepLog("F1 'I give referrals' CTA present", hasReferrerCta));
+  results.push(stepLog("F1 referrer CTA present ('I can refer someone' or 'I give referrals')", hasReferrerCta));
   if (errors.length) console.log("   console errors:", errors.slice(0, 6));
   if (netFails.length) console.log("   network failures:", netFails.slice(0, 6));
   await context.close().catch(() => {});
