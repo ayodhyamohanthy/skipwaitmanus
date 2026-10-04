@@ -39,14 +39,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Vitest
-        # TODO(#25): drop the --exclude list once fix/settings-trpc-test-mocks
-        # lands. These three suites need the tRPC mock harness from that PR;
-        # everything else must stay green.
-        run: >-
-          pnpm vitest run
-          --exclude client/src/pages/settings.workEmail.test.tsx
-          --exclude client/src/pages/settings.slackTriage.test.tsx
-          --exclude client/src/pages/policyPages.test.tsx
+        # The full suite runs here with no exclusions. The three suites that
+        # used to be excluded for the missing tRPC mock harness now pass
+        # (settings.workEmail, settings.slackTriage) or never needed excluding
+        # (policyPages). Re-adding an --exclude here hides a red main.
+        run: pnpm vitest run
 
   build:
     name: production build
