@@ -236,7 +236,7 @@ export const referralRequests = mysqlTable("referralRequests", {
   debitTransactionId: int("debitTransactionId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_seeker_updated_idx").on(table.jobSeekerId, table.updatedAt), index("referral_requests_referrer_updated_idx").on(table.referrerId, table.updatedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
 export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   id: int("id").autoincrement().primaryKey(),
