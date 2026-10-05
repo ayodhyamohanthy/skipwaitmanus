@@ -48,7 +48,17 @@ export const RULES = [
   },
 ];
 
-const NEGATION = /\b(?:not|never|no\b|without|cannot|can’t|can't|neither|disclaims?|avoids?)\b/i;
+/**
+ * `no\b` does not match "Nobody", and a claim is usually disclaimed by the
+ * sentence that follows it rather than the one containing it: "A guaranteed
+ * interview, or a stated success rate for an individual application. Nobody can
+ * promise either." sentenceAround() already spans both sentences, so the
+ * disclaimer is in view — the vocabulary was simply missing.
+ *
+ * Only promise-disclaiming forms are added. A bare "nobody"/"nothing" would gut
+ * the rule: "We guarantee an interview. Nobody pays a fee." must still fail.
+ */
+const NEGATION = /\b(?:not|never|no\b|without|cannot|can’t|can't|neither|disclaims?|avoids?)\b|(?:nobody|no one|no-one|nothing)\s+(?:can|could|will|would)\s+(?:promise|guarantee|assure|ensure)|(?:cannot|can’t|can't|won’t|will not)\s+be\s+(?:promised|guaranteed|assured|ensured)|(?:is|are|was|were)\s+not\s+guaranteed/i;
 const SENTENCE_BOUNDARY = /[.!?\n;]|\u2014/g;
 const SCANNED_DIRS = ["client/src", "shared", "server"];
 const TEST_FILE = /\.(?:test|spec)\.[cm]?tsx?$/;
@@ -101,6 +111,7 @@ export function collectProductFiles(rootDir) {
   return found.sort();
 }
 
+/** The sentence containing `index` and the sentence after it. */
 function sentenceAround(content, index) {
   SENTENCE_BOUNDARY.lastIndex = 0;
   let start = 0;
