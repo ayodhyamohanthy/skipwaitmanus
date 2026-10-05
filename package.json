@@ -137,7 +137,8 @@
       "qs": "6.16.0",
       "path-to-regexp": "0.1.13",
       "body-parser": "1.20.6",
-      "tar": "^7.5.22"
+      "tar": "^7.5.22",
+      "dompurify": ">=3.4.16"
     }
   },
   "engines": {
