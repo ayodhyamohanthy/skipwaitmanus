@@ -1,0 +1,30 @@
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { ArrowRight, Building2, Check, ChevronRight, Inbox, ListChecks, LockKeyhole, MessageCircle, Paperclip, Send, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/status-pill";
+import { launchCompanies } from "@/lib/marketplace-data";
+
+const timeline = ["Requested", "Accepted", "Referred", "Interviewing", "Offer", "Hired"];
+
+export function WorkspaceView({ inbox = false }: { inbox?: boolean }) {
+  const tabs = inbox ? ["Conversation preview", "How it works"] : ["Active example", "All statuses", "Start a request"];
+  const [tab, setTab] = useState(tabs[0] ?? "");
+  const [message, setMessage] = useState("");
+  return <main className="page-content workspace-page">
+    <div className="page-heading"><div><span className="eyebrow">{inbox ? "PRIVATE AFTER ACCEPTANCE" : "EVERY STEP, IN ONE PLACE"}</span><h1>{inbox ? "Inbox" : "Requests"}<span className="brand-dot">.</span></h1><p>{inbox ? "A focused space for useful conversations." : "Know where every introduction stands—and what to do next."}</p></div><span className="preview-label">EXAMPLE WORKSPACE</span></div>
+    <div className="directory-tabs section-tabs" role="tablist" aria-label={inbox ? "Inbox views" : "Request views"}>{tabs.map(item => <Button key={item} variant="ghost" role="tab" aria-selected={tab === item} className={tab === item ? "selected" : ""} onClick={() => setTab(item)}>{item}</Button>)}</div>
+    {inbox ? <InboxPreview how={tab === "How it works"} message={message} setMessage={setMessage} /> : <RequestsPreview tab={tab} />}
+  </main>;
+}
+
+function RequestsPreview({ tab }: { tab: string }) {
+  if (tab === "Start a request") return <section className="starter-panel"><div><span className="eyebrow">YOUR FIRST MOVE</span><h2>Choose a company with an open door.</h2><p>No generic broadcast. Every request begins with a real role and one company.</p><Button asChild><Link to="/explore">Explore companies <ArrowRight /></Link></Button></div><div className="company-mini-grid">{launchCompanies.slice(0, 3).map(company => <Link key={company.slug} to="/explore/$slug" params={{ slug: company.slug }}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ChevronRight /></Link>)}</div></section>;
+  if (tab === "All statuses") return <section className="status-library"><div><span className="eyebrow">THE FULL JOURNEY</span><h2>Clear, honest status at every step.</h2><p>You’ll always know whether the next move belongs to you, the referrer, or the employer.</p></div><div>{["Draft", "Requested", "Accepted", "Referred", "Interviewing", "Offer", "Hired", "Declined", "Expired", "Closed"].map(status => <StatusPill key={status} status={status} />)}</div></section>;
+  return <section className="request-example"><div className="example-banner"><ShieldCheck />EXAMPLE ONLY · THIS IS NOT LIVE ACTIVITY</div><div className="request-summary"><span className="company-mark large">W</span><div><span className="eyebrow">EXAMPLE REQUEST</span><h2>Product Designer at Wipro</h2><p>Submitted for review · You can withdraw before acceptance.</p></div><StatusPill status="Requested" /></div><div className="status-timeline">{timeline.map((status, index) => <div key={status} className={index === 0 ? "current" : ""}><span>{index === 0 ? <Check /> : index + 1}</span><strong>{status}</strong><small>{index === 0 ? "Your request is with an available referrer" : "Not reached"}</small></div>)}</div><aside className="next-action"><div><span className="eyebrow">RIGHT NOW</span><h3>No action needed.</h3><p>A referrer can accept, pass, or let the request expire. We never promise a response.</p></div><Button variant="outline">View request</Button></aside></section>;
+}
+
+function InboxPreview({ how, message, setMessage }: { how: boolean; message: string; setMessage: (value: string) => void }) {
+  if (how) return <section className="inbox-how"><div><LockKeyhole /><strong>Before acceptance</strong><p>No direct conversation and no public referrer identity.</p></div><ArrowRight /><div><Check /><strong>After acceptance</strong><p>A private thread opens for context and next steps.</p></div><ArrowRight /><div><ShieldCheck /><strong>At any point</strong><p>Either person can close, block, or report the conversation.</p></div></section>;
+  return <section className="conversation-preview"><aside className="thread-list"><div className="thread-item active"><span className="company-mark">W</span><div><strong>Wipro introduction</strong><p>Example accepted request</p></div><span /></div><div className="thread-empty"><Inbox /><p>Accepted conversations appear here.</p></div></aside><div className="thread"><header><div><span className="company-mark">W</span><span><strong>Verified referrer</strong><small><ShieldCheck />Work email confirmed</small></span></div><Button variant="ghost">Safety</Button></header><div className="conversation-note"><LockKeyhole />This example shows what opens only after both sides agree to connect.</div><div className="messages"><div className="message theirs"><span>Example</span><p>Hi—thanks for the thoughtful context. I can review the role and let you know the next step.</p></div><div className="message mine"><span>Example reply</span><p>Thank you. I’ve attached the latest resume and kept the role link handy.</p></div></div><form onSubmit={event => { event.preventDefault(); setMessage(""); }}><Button type="button" variant="ghost" size="icon" aria-label="Attach file"><Paperclip /></Button><input aria-label="Message" placeholder="Write a message" value={message} onChange={event => setMessage(event.target.value)} /><Button type="submit" size="icon" aria-label="Send message" disabled={!message.trim()}><Send /></Button></form><span className="design-note">EXAMPLE CONVERSATION · NO MESSAGE WILL BE SENT</span></div></section>;
+}

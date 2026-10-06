@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791288136209,
+      "tag": "0000_skipwait_trust_foundation",
+      "breakpoints": true
+    }
+  ]
+}

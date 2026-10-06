@@ -1,0 +1,27 @@
+import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, Check, Link2, LockKeyhole, MapPin, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { getCompany } from "@/lib/marketplace-data";
+import { pageMeta } from "@/lib/page-meta";
+
+export const Route = createFileRoute("/explore/$slug")({
+  loader: ({ params }) => { const company = getCompany(params.slug); if (!company) throw notFound(); return company; },
+  head: ({ loaderData }) => pageMeta(loaderData ? `Referrals at ${loaderData.name}` : "Company not found", loaderData ? `Request a free, private introduction to someone at ${loaderData.name}.` : "This company is not available on SkipWait."),
+  component: CompanyPage,
+});
+
+function CompanyPage() {
+  const company = Route.useLoaderData();
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(0);
+  const [complete, setComplete] = useState(false);
+  const steps = ["Role", "Your fit", "Privacy", "Review"];
+  return <main className="page-content company-page">
+    <Link className="back-link" to="/explore"><ArrowLeft />All companies</Link>
+    <section className="company-hero"><span className="company-mark large" aria-hidden="true">{company.initials}</span><div><span className="availability"><span /> PEOPLE OPEN TO REFERRAL REQUESTS</span><h1>{company.name}<span className="brand-dot">.</span></h1><p>{company.blurb}</p><div className="company-meta"><span><BriefcaseBusiness />{company.industry}</span><span><MapPin />{company.location}</span></div></div><Button onClick={() => { setStep(0); setComplete(false); setOpen(true); }}>Ask for a referral <ArrowRight /></Button></section>
+    <section className="company-detail-grid"><div><span className="eyebrow">BEFORE YOU ASK</span><h2>Bring the role.<br />We’ll guide the request.</h2><p>Find a role on the company’s own careers site, copy its link, and explain why your experience fits. A focused request is easier to review.</p></div><ol className="quality-list"><li><span>1</span><div><strong>Use the exact job link</strong><p>This keeps the request specific and current.</p></div></li><li><span>2</span><div><strong>Make your fit easy to see</strong><p>Share the most relevant experience, not a generic pitch.</p></div></li><li><span>3</span><div><strong>Respect the decision</strong><p>People choose what they can support. A pass stays private.</p></div></li></ol></section>
+    <section className="privacy-preview"><LockKeyhole /><div><strong>What is shared, and when?</strong><p>Your job link and note are shared with an available referrer. Personal contact details and documents remain private until a request is accepted.</p></div><Link to="/safety">Read safety guide <ArrowRight /></Link></section>
+    {open && <div className="modal-backdrop" onClick={() => setOpen(false)}><section className="app-dialog request-dialog" role="dialog" aria-modal="true" aria-labelledby="request-title" onClick={event => event.stopPropagation()}><Button variant="ghost" size="icon" className="dialog-close" aria-label="Close request" onClick={() => setOpen(false)}><X /></Button>{complete ? <div className="request-complete"><span className="preview-check"><Check /></span><span className="eyebrow">DESIGN PREVIEW</span><h2 id="request-title">Your request is ready.</h2><p>In the live product, you would sign in, confirm, and track it from Requests. Nothing was sent from this preview.</p><Button asChild><Link to="/requests">See request tracking <ArrowRight /></Link></Button><Button variant="outline" asChild><Link to="/ask">Write a full ask</Link></Button></div> : <><span className="eyebrow">REQUEST TO {company.name.toUpperCase()}</span><h2 id="request-title">{steps[step]}</h2><div className="request-progress" aria-label={`Step ${step + 1} of ${steps.length}`}>{steps.map((item, index) => <span key={item} className={index <= step ? "reached" : ""} />)}</div>{step === 0 && <div className="request-fields"><label htmlFor="job-url">Job posting link</label><div className="auth-input"><Link2 /><input id="job-url" type="url" placeholder="https://company.com/jobs/..." /></div><p>Use the employer’s official job page where possible.</p></div>}{step === 1 && <div className="request-fields"><label htmlFor="fit-note">Why are you a strong fit?</label><textarea id="fit-note" rows={5} placeholder="Share 2–3 relevant strengths or outcomes. Keep it useful and human." /><span>0 / 600</span></div>}{step === 2 && <div className="share-preview"><ShieldCheck /><h3>You stay in control.</h3><p>Before acceptance, the referrer sees your role link and note. Your name and resume remain private. After acceptance, you choose what to share in the conversation.</p></div>}{step === 3 && <div className="review-request"><span className="company-mark">{company.initials}</span><div><strong>{company.name}</strong><p>Job link + fit note + privacy choices</p></div><span className="status-pill"><Sparkles />Ready</span></div>}<div className="dialog-footer">{step > 0 && <Button variant="ghost" onClick={() => setStep(step - 1)}><ArrowLeft />Back</Button>}<Button onClick={() => step < steps.length - 1 ? setStep(step + 1) : setComplete(true)}>{step < steps.length - 1 ? "Continue" : "Preview request"}{step < steps.length - 1 ? <ArrowRight /> : <Send />}</Button></div><p className="design-note">DESIGN PREVIEW · NOTHING WILL BE SENT</p></>}</section></div>}
+  </main>;
+}
