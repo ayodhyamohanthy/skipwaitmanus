@@ -32,6 +32,11 @@ jobs:
       # path that runs for pull requests, not only on a push to main.
       - name: Design tokens
         run: node scripts/design-token-audit.mjs
+      # Same class of dead guard: this one exists specifically to fail a workflow
+      # edit whose path filter stops matching a build input, which is how the SEO
+      # work merged on Sep 24 and never deployed. Nothing called it either.
+      - name: Deploy trigger coverage
+        run: node scripts/check-deploy-triggers.mjs
 
   test:
     name: unit + component + route tests
