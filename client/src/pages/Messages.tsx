@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { ArrowLeft, ArrowRight, Crown, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, ArrowRight, Crown, LoaderCircle, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "@/_core/auth";
 import { readApiJson } from "@/lib/apiResponse";
 import {
@@ -42,6 +42,7 @@ export default function Messages() {
   const [threadError, setThreadError] = useState("");
   const [listError, setListError] = useState("");
   const [draft, setDraft] = useState("");
+  const [openingId, setOpeningId] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
   const [paywalled, setPaywalled] = useState(false);
   const composerRef = useRef<HTMLInputElement>(null);
@@ -52,19 +53,24 @@ export default function Messages() {
     return fetch(path, { ...init, credentials: "include", headers: { ...(init?.headers ?? {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
   };
 
-  useEffect(() => {
+  const loadThreads = useCallback(async () => {
     if (!isSignedIn) { setThreads([]); return; }
-    let active = true;
-    void authedFetch("/api/dms/threads").then(async response => {
+    setListError("");
+    try {
+      const response = await authedFetch("/api/dms/threads");
       const payload = await readApiJson<{ threads?: DmThreadSummary[]; error?: string }>(response, "We could not load your direct messages");
       if (!response.ok) throw new Error(payload.error || "We could not load your direct messages");
-      if (active) setThreads(payload.threads ?? []);
-    }).catch(reason => { if (active) { setListError(reason instanceof Error ? reason.message : "We could not load your direct messages"); setThreads([]); } });
-    return () => { active = false; };
+      setThreads(payload.threads ?? []);
+    } catch (reason) { setListError(reason instanceof Error ? reason.message : "We could not load your direct messages"); setThreads([]); }
   }, [isSignedIn]);
 
+  useEffect(() => { void loadThreads(); }, [loadThreads]);
+
   const openThread = async (counterpartUserId: number) => {
-    setThreadError(""); setPaywalled(false);
+    // openThread only fires from the thread list, where no thread is open;
+    // capture that so an open failure can surface in the visible list view.
+    const hadThreadOpen = thread !== null;
+    setThreadError(""); setPaywalled(false); setOpeningId(counterpartUserId);
     try {
       const response = await authedFetch(`/api/dms/threads/${counterpartUserId}`);
       const payload = await readApiJson<{ thread?: DmThread; error?: string }>(response, "We could not open this conversation");
@@ -72,7 +78,11 @@ export default function Messages() {
       setThread(payload.thread ?? null);
       const pending = readPendingSend(DM_SEND_WORKFLOW, { recipientKey: String(counterpartUserId) });
       if (pending) setDraft(current => (current === "" ? pending.body : current));
-    } catch (reason) { setThreadError(reason instanceof Error ? reason.message : "We could not open this conversation"); }
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "We could not open this conversation";
+      setThreadError(message);
+      if (!hadThreadOpen) setListError(message);
+    } finally { setOpeningId(null); }
   };
 
   const send = async () => {
@@ -127,6 +137,7 @@ export default function Messages() {
     {thread ? <section className="flex min-h-0 flex-1 flex-col">
       <h1 className="pt-4 text-lg font-semibold tracking-[-.02em] text-black">{thread.counterpartLabel}</h1>
       <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pb-3" data-skipwait-thread="open">
+        {thread.messages.length === 0 ? <p className="rounded-xl border border-dashed border-[#e5e5e5] p-4 text-center text-sm text-[#505050]">No messages yet. Say hello to start the conversation.</p> : null}
         {thread.messages.map(message => <div key={message.id} className={`flex ${message.isMine ? "justify-end" : "justify-start"}`}><p className={`${message.isMine ? "bg-[#0000ff] text-white" : "bg-white text-black border border-[#e5e5e5]"} max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-6`}>{message.body}</p></div>)}
       </div>
       {paywalled && <PaywallCard />}
@@ -139,15 +150,15 @@ export default function Messages() {
         </form>
       </footer>
     </section> : <section className="flex min-h-0 flex-1 flex-col pt-4">
-      {listError && <p role="alert" className="pb-3 text-xs font-semibold text-[#B91C1C]">{listError}</p>}
+      {listError && <div role="alert" className="mb-3 rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4"><p className="text-sm font-semibold text-[#B91C1C]">{listError}</p><p className="mt-1 text-sm text-[#505050]">Your chats are unchanged. Check your connection and try again.</p><button type="button" onClick={() => { void loadThreads(); }} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-[#b91c1c]/30 bg-white px-4 py-2 text-xs font-bold text-[#B91C1C]">Try again</button></div>}
       {threads === null ? <div className="h-24 animate-pulse rounded-xl border border-[#e5e5e5] bg-white" /> : threads.length === 0 ? <div className="flex flex-1 flex-col justify-center">
         <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#ededff] text-black"><MessageSquare className="h-7 w-7" /></span>
         <h1 className="mt-5 text-[2rem] font-semibold leading-[1] tracking-[-.02em]">Your chats live here.</h1>
         <p className="mt-3 text-sm leading-6 text-[#505050]">Direct messages with referrers appear in this inbox. Referral-request conversations stay in <Link href="/requests" className="font-semibold text-black underline-offset-2 hover:underline">My requests</Link>.</p>
         <Link href="/wall" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-4 py-3 text-sm font-bold text-white">Find referrers <ArrowRight className="h-4 w-4" /></Link>
-      </div> : <ul className="min-h-0 flex-1 divide-y divide-[#e5e5e5] overflow-y-auto" data-skipwait-thread-list="open">
-        {threads.map(item => <li key={item.counterpartUserId}><button type="button" onClick={() => { void openThread(item.counterpartUserId); }} className="flex w-full items-start gap-3 py-3.5 text-left">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ededff] text-black"><MessageSquare className="h-4 w-4" /></span>
+      </div> : <ul aria-busy={openingId !== null} className="min-h-0 flex-1 divide-y divide-[#e5e5e5] overflow-y-auto" data-skipwait-thread-list="open">
+        {threads.map(item => <li key={item.counterpartUserId}><button type="button" disabled={openingId === item.counterpartUserId} onClick={() => { void openThread(item.counterpartUserId); }} className="flex w-full items-start gap-3 py-3.5 text-left" aria-label={openingId === item.counterpartUserId ? "Opening conversation" : undefined}>
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#ededff] text-black">{openingId === item.counterpartUserId ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}</span>
           <span className="min-w-0 flex-1">
             <span className="flex items-baseline justify-between gap-2"><span className="truncate text-sm font-bold text-black">{item.counterpartLabel}</span><span className="shrink-0 text-[11px] text-[#505050]">{relativeTime(item.lastMessageAt)}</span></span>
             <span className="mt-0.5 flex items-center justify-between gap-2"><span className="truncate text-sm text-[#505050]">{item.lastMessageIsMine ? "you: " : ""}{item.lastMessageBody}</span>{item.unreadCount > 0 && <span aria-label={`${item.unreadCount} unread`} className="h-2 w-2 shrink-0 rounded-full bg-[#0000ff]" />}</span>

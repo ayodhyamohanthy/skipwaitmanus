@@ -236,4 +236,20 @@ describe("ReferralRequest secure resume handoff", () => {
     await waitFor(() => expect(uploadAttempts).toBeGreaterThan(attemptsBefore));
     vi.unstubAllGlobals();
   });
+
+  it("announces an unsupported resume file as an alert", async () => {
+    localStorage.clear();
+    localStorage.setItem("bridge-job-seeker-token-reset-3-free-v1", "complete");
+    localStorage.setItem("bridge-tokens", "3");
+    localStorage.setItem("bridge-target-url", "https://careers.acme.com/jobs/design");
+    authState.signedIn = false;
+    pendingResume.files = [];
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ companyDomain: "acme.com", remainingTokens: 2, lifetimeRequestCount: 1 }) })));
+    render(<ReferralRequest />);
+    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+    expect(picker).toBeTruthy();
+    fireEvent.change(picker, { target: { files: [new File(["MZ"], "resume.exe", { type: "application/x-msdownload" })] } });
+    expect((await screen.findByRole("alert")).textContent).toContain("Use a PDF");
+    vi.unstubAllGlobals();
+  });
 });
