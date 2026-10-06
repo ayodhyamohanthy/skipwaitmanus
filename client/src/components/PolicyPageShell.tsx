@@ -63,7 +63,7 @@ export function Breadcrumbs({ path }: { path: string }) {
           const isLast = index === trail.length - 1;
           return (
             <li key={crumb.path} className="flex items-center gap-1" aria-current={isLast ? "page" : undefined}>
-              {index > 0 ? <ChevronRight aria-hidden className="h-3 w-3 text-[#a3a3a3]" /> : null}
+              {index > 0 ? <ChevronRight aria-hidden className="h-3 w-3 text-[#767676]" /> : null}
               {isLast ? <span className="text-black">{crumb.label}</span> : <Link href={crumb.path} className="hover:text-black hover:underline">{crumb.label}</Link>}
             </li>
           );

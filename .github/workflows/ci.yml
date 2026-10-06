@@ -25,6 +25,13 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm check
+      # scripts/design-token-audit.mjs already existed and already failed, but no
+      # workflow ever ran it: design-gate.yml only invokes `impeccable detect`
+      # behind `|| true`. So three off-brand hexes sat in the client surface
+      # unnoticed. It is deterministic and fast, so it belongs on the blocking
+      # path that runs for pull requests, not only on a push to main.
+      - name: Design tokens
+        run: node scripts/design-token-audit.mjs
 
   test:
     name: unit + component + route tests
