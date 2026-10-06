@@ -1,5 +1,6 @@
 import { initServerSentry, captureServerError, flushServerSentry, isServerSentryActive, scrubSentryPath, sentryErrorMiddleware } from "../sentry";
 import { registerJobLinkPreviewRoutes } from "../jobLinkPreviewRoutes";
+import { registerFunnelEventRoutes } from "../funnelEventRoutes";
 
 initServerSentry();
 if (process.env.NODE_ENV !== "production") {
@@ -119,6 +120,7 @@ async function startServer() {
     if (!identity) return undefined;
     return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
   };
+  registerFunnelEventRoutes(app, { recordActivity: db.recordOperationalActivity });
   registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
     // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.

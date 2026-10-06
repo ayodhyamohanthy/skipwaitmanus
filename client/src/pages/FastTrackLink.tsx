@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useRoute } from "wouter";
 import { ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
 import { readApiJson } from "@/lib/apiResponse";
+import { trackFunnel } from "@/lib/funnel";
 
 type FastTrackState = { companyDomain: string; isActive: true };
 
@@ -19,7 +20,7 @@ export default function FastTrackLink() {
     void fetch(`/api/referrer-fast-track/${encodeURIComponent(linkCode)}`, { cache: "no-store" }).then(async response => {
       const payload = await readApiJson<{ link?: FastTrackState; error?: string }>(response, "This private referral link is unavailable");
       if (!response.ok) throw new Error(payload.error || "This private referral link is unavailable");
-      if (active) setLink(payload.link || null);
+      if (active) { setLink(payload.link || null); if (payload.link) trackFunnel("referrer_page_view", { companyDomain: payload.link.companyDomain }); }
     }).catch(reason => { if (active) setError(reason instanceof Error ? reason.message : "This private referral link is unavailable"); });
     return () => { active = false; };
   }, [linkCode, reloadKey]);

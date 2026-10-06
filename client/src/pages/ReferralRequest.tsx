@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
+import { trackFunnel } from "@/lib/funnel";
 import { useAuth } from "@/_core/auth";
 import { ArrowLeft, ArrowRight, CheckCircle2, LoaderCircle, Paperclip, Plus, Share2, Sparkles, UsersRound, X } from "lucide-react";
 import { AccountMenu } from "@/components/AccountMenu";
@@ -240,6 +241,7 @@ export default function ReferralRequest() {
       setCreditSummary(nextSummary); setTokens(nextSummary.totalAvailable); setJobSeekerTokens(nextSummary.totalAvailable);
       setPendingFiles([]); void clearPendingResumeFiles().catch(() => undefined); sessionStorage.removeItem(pendingResumeSubmissionKey);
       setCoveragePending(payload.coverageStatus === "waiting_for_company_coverage");
+      trackFunnel("request_sent", { companyDomain: payload.companyDomain || undefined, coverage: payload.coverageStatus === "waiting_for_company_coverage" ? "waiting" : "covered" });
       setCoverageInviteCode(typeof payload.coverageInviteCode === "string" ? payload.coverageInviteCode : "");
       setCompanyDomain(payload.companyDomain || "the target company"); setLifetimeRequestCount(typeof payload.lifetimeRequestCount === "number" && Number.isInteger(payload.lifetimeRequestCount) && payload.lifetimeRequestCount > 0 ? payload.lifetimeRequestCount : null); clearReferralDraft(); localStorage.removeItem("bridge-target-compensation"); setCompensation(""); localStorage.setItem("bridge-request-sent", "true"); sessionStorage.removeItem(referralIdempotencyKey); setSubmitted(true);
     } catch (submitError) { const message = submitError instanceof Error ? submitError.message : "We could not send this private referral request"; if (/safely identify the employer|confirmed company domain does not match/i.test(message)) setNeedsCompanyDomain(true); setError(message); } finally { setSubmitting(false); }

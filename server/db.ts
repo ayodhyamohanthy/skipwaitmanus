@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
@@ -1065,7 +1065,13 @@ export async function getReferralFlowHealth() {
       recordedFailures: activities.filter(activity => activity.outcome === "failure" || activity.outcome === "denied").length,
       domainIntegrityAffected: domainIntegrity.affectedCount,
     },
+    funnelEvents7d: await getFunnelEventCounts(db, new Date(Date.now() - 7 * 86_400_000)),
   };
+}
+
+async function getFunnelEventCounts(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, since: Date) {
+  const rows = await db.select({ action: operationalActivityLogs.action, count: sql<number>`count(*)` }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.resourceType, "funnel"), gte(operationalActivityLogs.createdAt, since))).groupBy(operationalActivityLogs.action);
+  return Object.fromEntries(rows.map(row => [row.action.replace(/^funnel\./, ""), Number(row.count)]));
 }
 
 export async function getCreditLedgerAudit(limit = 200) {
