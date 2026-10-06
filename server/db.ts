@@ -570,6 +570,18 @@ export function isVerifiedEmployeeOfCompany(profile: { accountType?: string | nu
   return profile.accountType === "referrer" && Boolean(profile.workEmailVerifiedAt) && profile.workEmailDomain?.trim().toLowerCase() === companyDomain.trim().toLowerCase();
 }
 
+/** Coarse, public coverage state for a company domain (#99): whether at least
+ * one verified, active referrer works there. Never a count, name or email. */
+export async function getCompanyCoverageState(companyDomain: string): Promise<"covered" | "waiting"> {
+  const domain = companyDomain.trim().toLowerCase();
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt })
+    .from(profiles).innerJoin(users, eq(users.id, profiles.userId))
+    .where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, domain), isNotNull(profiles.workEmailVerifiedAt), eq(users.suspended, false)))
+    .limit(5);
+  return rows.some(row => isVerifiedEmployeeOfCompany(row, domain)) ? "covered" : "waiting";
+}
+
 export function companyCoverageStatus(eligibleEmployeeCount: number) {
   return eligibleEmployeeCount > 0 ? "covered" as const : "waiting_for_company_coverage" as const;
 }

@@ -119,7 +119,7 @@ async function startServer() {
     if (!identity) return undefined;
     return { account: identity.account, primaryEmail: identity.primaryEmail, emailAddresses: identity.emailAddresses };
   };
-  registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl });
+  registerJobLinkPreviewRoutes(app, { resolveEmployerDomainFromTargetUrl: db.resolveEmployerDomainFromTargetUrl, coverageState: db.getCompanyCoverageState });
     // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.
   const smallJson = express.json({ limit: "256kb" });
