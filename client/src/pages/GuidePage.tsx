@@ -40,7 +40,7 @@ export default function GuidePage() {
         {guide.sections.map(section => (
           <section key={section.heading} className="mt-8 border-t border-[#e5e5e5] pt-6">
             <h2 className="text-xl font-semibold tracking-[-.01em]">{section.heading}</h2>
-            <div className="mt-3 space-y-3 text-[15px] leading-7 text-[#3d3d3d]">
+            <div className="mt-3 space-y-3 text-[15px] leading-7 text-[#505050]">
               {section.paragraphs.map(paragraph => <p key={paragraph}>{paragraph}</p>)}
               {section.points ? <ul className="list-disc space-y-2 pl-5">{section.points.map(point => <li key={point}>{point}</li>)}</ul> : null}
             </div>
@@ -52,7 +52,7 @@ export default function GuidePage() {
             {guide.faq.map(entry => (
               <div key={entry.question}>
                 <dt className="font-semibold">{entry.question}</dt>
-                <dd className="mt-1 text-[15px] leading-7 text-[#3d3d3d]">{entry.answer}</dd>
+                <dd className="mt-1 text-[15px] leading-7 text-[#505050]">{entry.answer}</dd>
               </div>
             ))}
           </dl>
