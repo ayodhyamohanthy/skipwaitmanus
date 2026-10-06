@@ -3,11 +3,11 @@ export type ReferralStatus = (typeof referralStatuses)[number];
 
 export const referralStatusLabels: Record<ReferralStatus, string> = {
   pending: "Request sent",
-  approved: "Approved",
+  approved: "Request accepted",
   declined: "Declined",
-  intro_made: "Introduction made",
-  interview: "Interview",
-  offer: "Offer",
+  intro_made: "Introduction reported",
+  interview: "Interview reported",
+  offer: "Offer reported",
   closed: "Closed",
   withdrawn: "Withdrawn",
 };
@@ -44,12 +44,13 @@ export type JobSeekerReferralState = {
 };
 
 export function getJobSeekerReferralState(input: { status: ReferralStatus; referrerId?: number | null }): JobSeekerReferralState {
+  const reported = "Reported by you or your referral partner, not verified by the employer.";
   if (input.status === "pending" && input.referrerId) return { label: "Under review", title: "A verified employee is reviewing your request.", detail: "Their identity remains private. You will see a factual update when they make a decision.", tone: "blue" };
   if (input.status === "pending") return { label: "Privately routed", title: "Your request is available to eligible employees.", detail: "It remains private while a verified employee decides whether to claim it.", tone: "amber" };
-  if (input.status === "approved") return { label: "Referral approved", title: "A verified employee approved your referral request.", detail: "Use the next-step email draft when you are ready to continue with the hiring process.", tone: "emerald" };
-  if (input.status === "intro_made") return { label: "Introduction made", title: "Your referral has moved to the next step.", detail: "Continue privately with your referral partner when there is a real update.", tone: "blue" };
-  if (input.status === "interview") return { label: "Interview in progress", title: "An interview milestone was recorded.", detail: "Keep communication private and update this only when the next real step happens.", tone: "blue" };
-  if (input.status === "offer") return { label: "Offer recorded", title: "An offer milestone was recorded.", detail: "This is a factual private progress update, not a public success claim.", tone: "emerald" };
+  if (input.status === "approved") return { label: "Request accepted", title: "A verified employee accepted your request.", detail: "Their acceptance does not confirm that a referral was submitted to the employer. Ask your partner for the next step.", tone: "emerald" };
+  if (input.status === "intro_made") return { label: "Introduction reported", title: "An introduction was reported.", detail: reported, tone: "blue" };
+  if (input.status === "interview") return { label: "Interview reported", title: "An interview was reported.", detail: reported, tone: "blue" };
+  if (input.status === "offer") return { label: "Offer reported", title: "An offer was reported.", detail: reported, tone: "emerald" };
   if (input.status === "closed") return { label: "Request closed", title: "This referral request is closed.", detail: "Your private request history and documents remain protected.", tone: "slate" };
   if (input.status === "declined") return { label: "Request closed", title: "This referral request was declined.", detail: "Your documents stay private. You can reuse your packet for another opportunity.", tone: "slate" };
   if (input.status === "withdrawn") return { label: "Withdrawn", title: "You withdrew this request.", detail: "Your credit was returned to your balance. You can request another referral anytime.", tone: "slate" };

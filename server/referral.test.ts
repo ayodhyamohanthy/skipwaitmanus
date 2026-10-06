@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import { canReviewReferral, getReferralProgress, referralStatusLabels } from "../shared/referral";
 
 describe("Referral Request state helpers", () => {
-  it("uses the prescribed Referral Request labels", () => {
+  it("uses request-accepted and participant-reported labels in notifications", () => {
     expect(referralStatusLabels.pending).toBe("Request sent");
-    expect(referralStatusLabels.intro_made).toBe("Introduction made");
+    expect(referralStatusLabels.approved).toBe("Request accepted");
+    expect(referralStatusLabels.intro_made).toBe("Introduction reported");
+    expect(referralStatusLabels.interview).toBe("Interview reported");
+    expect(referralStatusLabels.offer).toBe("Offer reported");
   });
 
   it("allows Referrer review only for a pending Referral Request", () => {

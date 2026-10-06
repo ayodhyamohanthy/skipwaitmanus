@@ -25,14 +25,19 @@ describe("buildRequestTimeline (seeker-visible status history)", () => {
     expect(JSON.stringify(entries)).not.toContain("77");
   });
 
-  it("records approvals and declines with the semantic tone and decision timestamp", () => {
-    expect(buildRequestTimeline({ ...base, status: "approved", referrerId: 77 }).at(-1)).toMatchObject({ label: "Referral accepted", tone: "green", date: base.updatedAt });
+  it("shows an accepted request without implying employer submission", () => {
+    const accepted = buildRequestTimeline({ ...base, status: "approved", referrerId: 77 });
+    expect(accepted.at(-1)).toMatchObject({ label: "Request accepted", tone: "green", date: base.updatedAt });
+    expect(accepted.map(entry => entry.label).join(" ")).not.toMatch(/submitted|referred/i);
     expect(buildRequestTimeline({ ...base, status: "declined", referrerId: 77 }).at(-1)).toMatchObject({ label: "Declined", tone: "red", date: base.updatedAt });
   });
 
-  it("appends the later milestone after acceptance and collapses withdrawals to two steps", () => {
-    const interview = buildRequestTimeline({ ...base, status: "interview", referrerId: 77 });
-    expect(interview.map(entry => entry.label)).toEqual(["Request sent", "Claimed by a verified employee", "Referral accepted", "Interview recorded"]);
+  it("labels later milestones as participant reports and collapses withdrawals", () => {
+    for (const [status, label] of [["intro_made", "Introduction reported"], ["interview", "Interview reported"], ["offer", "Offer reported"]] as const) {
+      const entries = buildRequestTimeline({ ...base, status, referrerId: 77 });
+      expect(entries.map(entry => entry.label)).toEqual(["Request sent", "Claimed by a verified employee", "Request accepted", label]);
+      expect(entries.at(-1)?.date).toBe(base.updatedAt);
+    }
     const withdrawn = buildRequestTimeline({ ...base, status: "withdrawn", referrerId: null });
     expect(withdrawn.map(entry => entry.label)).toEqual(["Request sent", "Withdrawn — credit returned"]);
   });

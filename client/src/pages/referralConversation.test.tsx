@@ -50,7 +50,7 @@ describe("ReferralConversation", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("lets an accepted referral partner optionally record one factual progress milestone", async () => {
+  it("lets an accepted referral partner report a milestone without implying employer verification", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/progress")) {
@@ -64,9 +64,10 @@ describe("ReferralConversation", () => {
     render(<ReferralConversation />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Update" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Update" }));
-    expect(screen.getByText("Record a real milestone")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Introduction made" }));
+    expect(screen.getByText("Report a progress update")).toBeTruthy();
+    expect(screen.getByText(/Interviews and offers are participant-reported, not employer-verified/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Report introduction" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST", credentials: "include" })));
-    expect(screen.queryByText("Record a real milestone")).toBeNull();
+    expect(screen.queryByText("Report a progress update")).toBeNull();
   });
 });
