@@ -39,7 +39,7 @@ export const DESIGNED_ROUTES = {
   "app-states": "/app-states",             // PWA install/offline gallery
   "approve": null,                        // assistant approval sheet
   "ask": "/request",                      // kit rename
-  "assistants": null,
+  "assistants": "/assistants",
   "billing": null,
   "connect-assistant": "/connect-assistant",
   "developer-console": null,
@@ -78,7 +78,7 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 30;
+export const BASELINE_IMPLEMENTED = 31;
 
 // Screens the kit designs that have NO capture in screens/. The homepage is in
 // SCREENS.md but absent from both screens/web and screens/mobile, so deriving
