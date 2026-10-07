@@ -140,10 +140,11 @@ export default function UnifiedInbox() {
           {rows.map(row => (
             <li key={`${row.side}-${row.id}`} className="border-b border-[var(--border)] last:border-0">
               <Link href={`/conversation/${row.id}${row.side === "referring" ? "?from=inbox" : ""}`} className={`flex min-h-20 items-center gap-3 p-4 ${row.unread ? "bg-[var(--primary)]/5" : ""}`} aria-label={`${row.companyDomain} conversation, ${row.pill}${row.unread ? `, ${row.unread} unread` : ""}`}>
-                <span className="company-mark">{row.companyDomain.charAt(0).toUpperCase()}</span>
+                <span className="company-mark" aria-hidden="true">{row.companyDomain.charAt(0).toUpperCase()}</span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1 text-sm font-semibold">
-                    {row.side === "referring" ? <EyeOff className="size-3.5 shrink-0" /> : null}<span className="truncate">{row.title}</span>
+                    {row.side === "referring" || row.pill === "Request sent" || row.pill === "Privately routed" || row.pill === "Under review" || row.pill === "Available for review" || row.pill === "Waiting for coverage" ? <EyeOff className="size-3.5 shrink-0" aria-hidden="true" /> : null}
+                    <span className="truncate">{row.title}</span>
                   </span>
                   <span className="block truncate text-sm text-[var(--muted-foreground)]">{row.companyDomain} · {row.note}</span>
                 </span>
