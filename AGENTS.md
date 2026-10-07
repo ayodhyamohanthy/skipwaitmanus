@@ -316,19 +316,19 @@ which rules were adopted or rejected when this section changes.
   desktop/mobile visual verification when layout or appearance is at stake.
 
 ## Styling and dependency boundary
-- `DESIGN.md` is the product visual contract: the "Scoreboard" world (paper
-  `#f4f4f1`, ink `#131311`, one signal red `#e8442e`; Barlow Condensed display,
-  Barlow UI, JetBrains Mono numerals). It was committed from the approved
-  direction in `.impeccable/surfaces/` and replaces the retired "Moving Parts"
-  blue/yellow system. Reuse its tokens and components; run
+- `DESIGN.md` is the product visual contract: Kit v4 (white canvas, ink
+  `#141414`, electric blue `#0000FF`, invitation yellow `#FFFC52`; Instrument
+  Sans UI, IBM Plex Mono labels; oklch tokens in `client/src/index.css`). It
+  replaces all earlier worlds by explicit owner order (Oct 2026). Reuse its
+  tokens and components; run
   `node scripts/design-token-audit.mjs` for touched product UI. Do not drift the
-  palette, type roles, radii, motion, disabled states, or one-primary-action
+  palette, typography, radii, motion, disabled states, or one-primary-action
   rule. Do not reintroduce legacy palette shims.
-- Prohibited UI choices: gradients, glassmorphism, neon/glow decoration, blurred
-  orbs, cool blue/indigo SaaS palettes (the retired `#0000ff` family),
-  cream/brown/terracotta remains, Unicode glyph icons, nested cards, decorative
-  kickers that state nothing, faded disabled controls, and ad-hoc colors outside
-  `DESIGN.md`.
+- Prohibited UI choices: gradients (except the single work-thumbnail tint
+  blend), glassmorphism, neon/glow decoration, blurred
+  orbs, cream/brown/terracotta colors, condensed uppercase headings, Unicode
+  glyph icons, nested cards, decorative kickers, faded disabled controls, and
+  ad-hoc colors outside `DESIGN.md`.
 - Do not add an alternate auth/session library, a direct client-to-database or
   provider-secret dependency, a standalone `@better-auth/react` package, or an
   unreviewed payment/provider SDK. Import client contracts from `shared/`, not

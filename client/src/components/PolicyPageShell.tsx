@@ -105,9 +105,9 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
     <div className="mx-auto max-w-3xl">
       <header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#505050] hover:text-black"><ArrowLeft className="h-4 w-4" />Back</Link></header>
       {canonicalPath ? <div className="mt-8"><Breadcrumbs path={canonicalPath} /></div> : null}
-      <section className="mt-8 rounded-2xl border border-[#d9d9d1] bg-white p-6 sm:p-9">
+      <section className="mt-8 rounded-2xl border border-[#e5e5e5] bg-white p-6 sm:p-9">
         <div className="flex items-start justify-between gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#e9e9e2] text-black"><Icon className="h-5 w-5" /></span>
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#f5f5f5] text-black"><Icon className="h-5 w-5" /></span>
           {status === "draft" ? <span className="rounded-full border border-[#b45309]/30 bg-[#b45309]/10 px-3 py-1 text-[11px] font-bold text-[#b45309]">Draft · pending legal review</span> : null}
         </div>
         <p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-black">{eyebrow}</p>

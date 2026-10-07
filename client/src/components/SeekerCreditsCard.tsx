@@ -34,7 +34,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
   return (
     <section
       aria-label="Referral credits"
-      className={`rounded-xl border border-[#d9d9d1] bg-[#e9e9e2] ${compact ? "p-3" : "p-4"}`}
+      className={`rounded-xl border border-[#e5e5e5] bg-[#f5f5f5] ${compact ? "p-3" : "p-4"}`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-black">
@@ -52,10 +52,10 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         aria-valuemin={0}
         aria-valuemax={credits.monthlyAllowance}
         aria-valuenow={used}
-        className="mt-3 h-2 overflow-hidden rounded-full bg-[#deded6]"
+        className="mt-3 h-2 overflow-hidden rounded-full bg-[#f0f0f0]"
       >
         <span
-          className={`block h-full rounded-full ${outOfCredits ? "bg-[#b45309]" : "bg-[#131311]"}`}
+          className={`block h-full rounded-full ${outOfCredits ? "bg-[#b45309]" : "bg-[#141414]"}`}
           style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }}
         />
       </div>
@@ -77,7 +77,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
           <>
             <Link
               href="/premium?role=job_seeker"
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-4 py-3 text-sm font-semibold text-white"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white"
             >
               <CreditCard className="h-4 w-4" /> Add a credit for $1 <ArrowRight className="h-4 w-4" />
             </Link>
@@ -91,7 +91,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
         ) : (
           <Link
             href="/start"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-4 py-3 text-sm font-semibold text-white"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white"
           >
             Ask another referral <ArrowRight className="h-4 w-4" />
           </Link>

@@ -352,6 +352,16 @@ Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visi
 - Home test suites rewritten to the kit contract (menu, destinations, FAQ JSON-LD, footer, workspace gating).
 - Verification: 11/11 home tests + neighbors green, `tsc` clean, audit clean.
 
+## Batch 22 record — v4 rollout merge (kit replaces everything)
+
+- Commit: merged `origin/main`, resolved all design conflicts for kit v4, re-skinned remaining Scoreboard surfaces, redirected `/request` → `/ask`, amended contracts.
+- Merge: `origin/main` reconciled in; kit versions kept for all 7 conflicted design files; production infra/docs from main preserved (incl. audit regex fix).
+- Re-skin: mechanical Scoreboard→kit hex map over 56 files + manifest/index.html theme colors; audit clean.
+- `/request` redirects to `/ask` (component + its tests intact).
+- `AGENTS.md` styling boundary amended to kit v4 by explicit owner order.
+- Scoreboard-landing test rewritten to the kit composition contract (same anti-fabrication intent).
+- Verification: full suite green, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

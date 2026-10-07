@@ -3,7 +3,6 @@ import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import Home from "./Home";
-import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_H1, LANDING_SEEKER_STEPS } from "@shared/landingContent";
 
 vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children?: React.ReactNode }) => null,
@@ -19,46 +18,51 @@ vi.mock("wouter", () => ({
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
-// The committed direction (surface brief, seed 1abfc6c9) is a broadcast
-// scoreboard: one display headline, a wire strip of real counts, two role
-// plates, numbered sequences, and the request ledger. These assertions pin the
-// composition, not the styling, so a later edit cannot quietly drop a block.
-describe("landing Scoreboard composition", () => {
-  it("leads with the product headline and an ink masthead carrying the brand", () => {
+// Kit v4 launch composition (owner order, Oct 2026): door hero, trust strip,
+// launch companies, three-step journey, referrer band, privacy, FAQ, final
+// CTA. These assertions pin the composition and its honesty rules — free
+// positioning with no fabricated people, counts, or outcomes.
+describe("landing kit composition", () => {
+  it("leads with the product headline and a brand header", () => {
     render(<Home />);
-    expect(screen.getByRole("heading", { level: 1, name: LANDING_H1 })).toBeTruthy();
-    expect(screen.getByRole("banner").textContent).toContain("skipwait.me");
+    expect(screen.getByRole("heading", { level: 1, name: /Free job referrals/ })).toBeTruthy();
+    expect(screen.getByRole("banner").textContent).toContain("SkipWait");
   });
 
-  it("states the free allowance in the wire strip instead of inventing proof", () => {
+  it("states free referrals as assurances instead of inventing proof", () => {
     render(<Home />);
-    const strip = screen.getByRole("banner");
-    expect(strip.textContent).toMatch(/3 free every month/i);
-    // No fabricated activity: the strip only carries counts the product returns.
-    expect(strip.textContent).not.toMatch(/candidates|placements|hires/i);
+    expect(screen.getByText("Referrals are free")).toBeTruthy();
+    expect(screen.getByText("Explore before signing in")).toBeTruthy();
+    // No fabricated activity anywhere on the page.
+    expect(document.body.textContent).not.toMatch(/candidates placed|hires|success stories|testimonials/i);
   });
 
-  it("keeps both role plates as the first action a visitor meets", () => {
+  it("lists the five launch companies with links to their doors", () => {
     render(<Home />);
-    const plates = within(screen.getByRole("main")).getAllByRole("button", { name: /I need a referral|I can refer someone/i });
-    expect(plates).toHaveLength(2);
+    const section = screen.getByText("Start somewhere real.").closest("section") as HTMLElement;
+    for (const [name, slug] of [["SkipWait", "skipwait"], ["Wipro", "wipro"], ["Go Neutrinos", "go-neutrinos"], ["TCS", "tcs"], ["Merkle", "merkle"]]) {
+      const link = within(section).getByText(name).closest("a");
+      expect(link?.getAttribute("href")).toBe(`/explore/${slug}`);
+    }
+    expect(screen.getByRole("link", { name: /Explore all open doors/ }).getAttribute("href")).toBe("/explore");
   });
 
-  it("numbers the seeker and employee sequences 01-03 from the shared copy", () => {
+  it("numbers the three journey steps with selectable guidance", () => {
     render(<Home />);
-    for (const step of [...LANDING_SEEKER_STEPS, ...LANDING_EMPLOYEE_STEPS]) expect(screen.getByText(step.title)).toBeTruthy();
-    const rails = within(screen.getByRole("region", { name: "Referral steps" }));
-    expect(rails.getAllByText(/^0[123]$/)).toHaveLength(6);
+    const journey = screen.getByRole("region", { name: "How referrals work" });
+    expect(within(journey).getAllByText(/^0[123]$/)).toHaveLength(3);
+    for (const title of ["Find a company", "Ask for a referral", "Connect privately"]) expect(within(journey).getByText(title)).toBeTruthy();
   });
 
-  it("shows every commitment in the shared contract, never a promise of an outcome", () => {
+  it("shows every referrer commitment, never a promise of an outcome", () => {
     render(<Home />);
-    for (const commitment of LANDING_COMMITMENTS) expect(screen.getByText(commitment.title)).toBeTruthy();
-    expect(document.body.textContent).toMatch(/never guarantees an interview/i);
+    for (const commitment of ["Your name is never public.", "You choose every connection.", "No money changes hands.", "Always on your terms."]) expect(screen.getByText(commitment)).toBeTruthy();
+    expect(document.body.textContent).toMatch(/not a promise of an interview/i);
   });
 
-  it("explains the referral states in the request ledger", () => {
+  it("closes with the free-forever final call to action", () => {
     render(<Home />);
-    for (const state of ["Posted", "Reviewed in private", "Decided"]) expect(screen.getByText(state)).toBeTruthy();
+    expect(screen.getByText("What's on the other side?")).toBeTruthy();
+    expect(screen.getByText("Referrals are free. Always.")).toBeTruthy();
   });
 });

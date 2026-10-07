@@ -42,22 +42,22 @@ export function ReferrerCreditsCard({ compact = false }: { compact?: boolean }) 
   const outOfCredits = credits.totalAvailable <= 0;
 
   return (
-    <section aria-label="Referral credits" className={`rounded-xl border border-[#d9d9d1] bg-[#e9e9e2] ${compact ? "p-3" : "p-4"}`}>
+    <section aria-label="Referral credits" className={`rounded-xl border border-[#e5e5e5] bg-[#f5f5f5] ${compact ? "p-3" : "p-4"}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.12em] text-black">
           <HeartHandshake className="h-3.5 w-3.5" /> Referral credits
         </p>
         <p className="text-sm font-bold text-black" aria-live="polite">{credits.totalAvailable} left</p>
       </div>
-      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-[#deded6]">
-        <span className={`block h-full rounded-full ${outOfCredits ? "bg-[#b45309]" : "bg-[#131311]"}`} style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }} />
+      <div role="progressbar" aria-label="Monthly referral credits used" aria-valuemin={0} aria-valuemax={credits.monthlyAllowance} aria-valuenow={used} className="mt-3 h-2 overflow-hidden rounded-full bg-[#f0f0f0]">
+        <span className={`block h-full rounded-full ${outOfCredits ? "bg-[#b45309]" : "bg-[#141414]"}`} style={{ width: `${credits.monthlyAllowance ? Math.min(100, (used / credits.monthlyAllowance) * 100) : 0}%` }} />
       </div>
       <p className="mt-3 text-sm leading-5 text-[#505050]">
         {used} of {credits.monthlyAllowance} free credits used this month.
         {credits.purchasedCreditsRemaining > 0 ? <span className="block pt-1 text-[#505050]">{credits.purchasedCreditsRemaining} purchased credit{credits.purchasedCreditsRemaining === 1 ? "" : "s"} — never expire.</span> : null}
       </p>
       {outOfCredits ? (
-        <a href="/plans?role=referrer" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-4 py-3 text-sm font-semibold text-white">
+        <a href="/plans?role=referrer" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white">
           Increase your referral allowance <ArrowRight className="h-4 w-4" />
         </a>
       ) : null}
