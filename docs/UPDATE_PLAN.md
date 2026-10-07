@@ -267,6 +267,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Kit sections NOT shipped (no backends — recorded as the largest backend gap cluster): Region/i18n, notification toggles, dark toggle, sessions list, blocked list, assistants link, consent controls. Each needs server persistence + send-site enforcement, not local toggles that would lie.
 - Verification: 9/9 settings tests, `tsc` clean, audit clean.
 
+## Batch 14 record — trust cluster: /safety + /help + /landed + /sign-in
+
+- Commit: four kit screens on live truth, no preview devices.
+- `Safety.tsx` (standalone): 6 FAQs with stale pre-launch copy corrected to live behavior; no design-note banner.
+- `Help.tsx` (shell): 14 FAQs with plan/expiry/report/block answers rewritten to live truth (no Momentum/Land claims, no 7-day expiry, support instead of missing report UI, no guidelines link until legal batch); search + categories; support + live-policy links.
+- `Landed.tsx` (shell): celebrate → copyable thanks (clipboard is the real action; no wall store, no reminder backend) → pay-it-forward. No fabricated role/company/person, no wall opt-in.
+- `SignIn.tsx` (standalone): intent picker + WorkOS continue (no password form — D3; no forgot link).
+- Verification: 4/4 tests, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

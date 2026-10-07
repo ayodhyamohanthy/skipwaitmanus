@@ -263,6 +263,10 @@ input, textarea { caret-color: var(--primary); }
 .trust-row{display:flex;gap:24px;justify-content:center;margin:25px 0 4px;color:var(--muted-foreground);font-size:11px;}
 .trust-row span{display:flex;gap:6px;align-items:center;}
 .back-link{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--muted-foreground);margin-bottom:30px;text-decoration:none;}
+.safety-list{margin-top:36px;}
+.safety-list details{border-bottom:1px solid var(--border);padding:23px 0;}
+.safety-list summary{font-size:17px;font-weight:600;cursor:pointer;min-height:44px;display:flex;align-items:center;}
+.safety-list p{font-size:14px;line-height:1.8;color:var(--muted-foreground);margin-top:14px;max-width:650px;}
 .company-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:28px;align-items:center;padding:35px;background:var(--secondary);border:2px solid var(--foreground);border-radius:8px;}
 .company-hero h1{font-size:46px;font-weight:600;margin:8px 0;}
 .company-hero p{font-size:14px;max-width:550px;line-height:1.6;}
