@@ -11,7 +11,7 @@ import type { ReferralStatus } from "@shared/referral";
  */
 export type TimelineEntry = { label: string; date: string | null; tone: "green" | "blue" | "red" | "slate" | "amber"; state: "done" | "waiting" };
 
-const toneColor: Record<TimelineEntry["tone"], string> = { green: "#15803d", blue: "#0000ff", red: "#b91c1c", slate: "#505050", amber: "#b45309" };
+const toneColor: Record<TimelineEntry["tone"], string> = { green: "#15803d", blue: "#131311", red: "#b91c1c", slate: "#505050", amber: "#b45309" };
 
 function formatStamp(value: string | null) {
   if (!value) return null;

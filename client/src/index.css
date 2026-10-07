@@ -202,6 +202,7 @@ input, textarea { caret-color: var(--primary); }
 .company-mark{width:42px;height:42px;display:inline-grid;place-items:center;flex:0 0 auto;border:2px solid var(--foreground);border-radius:8px;background:var(--secondary);font-weight:700;font-size:13px;font-style:normal;}
 .company-mark.large{width:82px;height:82px;font-size:23px;border-radius:8px;box-shadow:var(--shadow-offset);}
 .eyebrow{font:11px var(--font-label);text-transform:uppercase;color:var(--muted-foreground);}
+.display{font-family:var(--font-ui);font-weight:600;letter-spacing:0;}
 .brand-dot{color:var(--primary);}
 .page-content{padding:46px 44px 32px;max-width:1280px;margin:auto;}
 .text-link{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--primary);}

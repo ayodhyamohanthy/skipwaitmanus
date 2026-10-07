@@ -77,7 +77,7 @@ let thirdPartyCount = 0;
 for (const file of targets) {
   const source = fs.readFileSync(file, "utf8");
   // Tailwind arbitrary-value class tokens, e.g. `bg-[#ededff]`, `hover:border-[#0000ff]`.
-  const tokens = source.match(/[a-z-]*\[#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})\](\/[0-9]{1,3})?/g) ?? [];
+  const tokens = source.match(/[a-z-]*\[#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})\](?:\/[0-9]{1,3})?/g) ?? [];
   for (const token of tokens) {
     const hex = token.match(/#[0-9A-Fa-f]{3,6}/)[0].toLowerCase();
     if (APPROVED.has(hex)) { approvedCount++; continue; }
