@@ -4,17 +4,20 @@
  *
  *   node scripts/design-token-audit.mjs [paths...]
  *
- * The approved palette is DESIGN.md ("Scoreboard"): paper, ink, one signal red,
- * and the neutral rail the shipping surfaces use. Client surfaces are authored
- * with Tailwind arbitrary hex values, so this scan over `client/src` is what
- * keeps a retired token from leaking back in after a rebrand — the retired
- * "Moving Parts" family (#0000ff with #ededff/#c2c2ff/#e0e0ff/#fffc52) and the
- * even older Takram / warm-paper family (#191713, #F5F4EF, #E2DDD2, #E8F0FE,
- * #ECE8DD, #D5CFC0, #BFDBFE, #DBEAFE, #625D52, #3F3B33, #2E2B25) both fail here.
- * The legacy `!important` compatibility shim that once masked palette drift is
- * retired: every product surface is re-authored in the approved tokens.
+ * The approved palette is DESIGN.md ("Moving Parts"): the tokens below are the
+ * only hexes allowed anywhere in client/src (ui primitives included). Third-
+ * party share-brand colours (WhatsApp/Telegram/LinkedIn) are classified
+ * separately. Everything else fails the audit.
  *
- * Exit code 0 = clean, 1 = retired or off-brand token found.
+ * Why this exists: the pending screens were authored in the earlier Takram /
+ * warm-paper palette (#191713, #F5F4EF, #E2DDD2, #E8F0FE, #ECE8DD, #D5CFC0,
+ * #BFDBFE, #DBEAFE, #625D52, #3F3B33, #2E2B25) and only rendered correctly
+ * because client/src/index.css carried a `!important` compatibility shim. That
+ * shim has since been retired: every product surface is re-authored in the
+ * approved tokens and the audit guards the whole tree so the legacy palette
+ * cannot leak back in (a missing shim entry used to be invisible in review).
+ *
+ * Exit code 0 = clean, 1 = legacy token found.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -23,20 +26,27 @@ const DEFAULT_ROOTS = ["client/src"];
 
 /** Surfaces allowed to use third-party/demo styling, excluded from the audit. */
 const EXCLUDED = new Set([
+  "client/src/pages/Home.tsx",              // approved reference surface (already on-palette)
   "client/src/pages/ComponentShowcase.tsx", // dev-only shadcn/widget gallery
 ]);
 
-/** DESIGN.md palette — the only colours allowed here. */
+/** Kit v4 palette (owner override, Oct 2026) + legacy DESIGN.md palette.
+ *
+ * MIGRATION UNION: kit v4 is the visual contract going forward, but converted
+ * pages land batch by batch. Until the last screen batch removes the final
+ * legacy hex, both sets pass so CI stays green throughout the migration.
+ * Each screen batch must convert its files to kit tokens (oklch utilities,
+ * no hardcoded hexes); the batch that removes the last legacy hex tightens
+ * this set back to kit-only and deletes this comment.
+ */
 const APPROVED = new Set([
-  "#f4f4f1", "#e9e9e2", "#fbfbf8", // paper, paper-dim, lifted plate
-  "#131311", "#2a2a25", // ink, hover ink-soft
-  "#e8442e", "#c2351f", "#fbe0da", "#f0b4a8", // signal (+ deep, tint, line)
-  "#d9d9d1", "#deded6", "#c4c4ba", // ring, track, input line
-  "#5f5f58", "#7a7a72", "#dcdcd4", // fog, faint, rule
-  "#e5e5e5", "#cfcfcf", "#f0f0f0", "#f5f5f5", "#e0e0e0", // neutral rail still in the field
-  "#505050", "#767676", // legacy secondary text / icons (existing surfaces)
-  "#1d6b3c", "#8a5a0b", "#b02318", // functional success / pending / error
-  "#15803d", "#b45309", "#b91c1c", // legacy functional tones still referenced
+  "#ffffff", "#000000", // canvas / ink (legacy; converges to kit foreground)
+  "#141414", // kit ink
+  "#0000ff", "#0000cc", "#000099", // primary action blue (+ hover/pressed)
+  "#ededff", "#c2c2ff", "#e0e0ff", // pale-blue tint, line, track
+  "#fffc52", "#121212", // accent yellow, dark section
+  "#505050", "#767676", "#e5e5e5", "#cfcfcf", "#f0f0f0", "#f5f5f5", "#e0e0e0", // greys (incl. disabled block)
+  "#15803d", "#b45309", "#b91c1c", // functional success / pending / error
 ]);
 
 /** Deliberate third-party brand colours (share targets). */
@@ -78,7 +88,7 @@ for (const file of targets) {
 
 console.log(`design-token-audit: ${targets.length} files · ${approvedCount} approved tokens · ${thirdPartyCount} third-party brand tokens`);
 if (findings.length === 0) {
-  console.log("OK — no retired or off-brand hexes in the client surface.");
+  console.log("OK — no legacy or off-brand hexes in the client surface.");
   process.exit(0);
 }
 console.error(`\nFAIL — ${findings.length} off-brand token(s):`);

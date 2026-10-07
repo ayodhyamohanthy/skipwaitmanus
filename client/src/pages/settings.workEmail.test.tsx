@@ -12,12 +12,16 @@ vi.mock("@/_core/auth", () => ({
 }));
 
 // Settings renders the talent-consent section through tRPC; this suite covers
-// the work-email flow, so the consent queries are stubbed out.
+// the work-email flow, so the consent queries are stubbed out. Without this the
+// render throws "Unable to find tRPC Context" instead of exercising the section
+// below. The stub answers both the loading and the pending flags the component
+// reads, so a future switch between them does not silently start rendering the
+// section as loading.
 vi.mock("@/lib/trpc", () => ({
   trpc: {
     useUtils: () => ({ talentConsent: { state: { invalidate: vi.fn().mockResolvedValue(undefined) } } }),
     talentConsent: {
-      state: { useQuery: () => ({ data: undefined }) },
+      state: { useQuery: () => ({ data: undefined, isLoading: false }) },
       grant: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
       revoke: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },
     },

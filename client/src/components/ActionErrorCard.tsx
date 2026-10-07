@@ -25,7 +25,7 @@ export function ActionErrorCard({ title, detail, reassurance, retryLabel = "Try 
     {detail ? <p className="mt-1 text-sm leading-6 text-[#505050]">{detail}</p> : null}
     {reassurance ? <p className="mt-1 text-sm leading-6 text-[#505050]">{reassurance}</p> : null}
     {onRetry || onDismiss ? <div className="mt-3 flex gap-2">
-      {onRetry ? <button type="button" disabled={retrying} onClick={onRetry} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#131311] px-4 py-2.5 text-sm font-bold text-white">{retrying ? "Retrying…" : retryLabel}</button> : null}
+      {onRetry ? <button type="button" disabled={retrying} onClick={onRetry} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#141414] px-4 py-2.5 text-sm font-bold text-white">{retrying ? "Retrying…" : retryLabel}</button> : null}
       {onDismiss ? <button type="button" onClick={onDismiss} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white px-4 py-2.5 text-sm font-bold text-[#505050]">{dismissLabel ?? "Dismiss"}</button> : null}
     </div> : null}
   </div>;

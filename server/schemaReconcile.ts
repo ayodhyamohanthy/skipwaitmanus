@@ -19,6 +19,9 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "userFollows", createSql: `CREATE TABLE IF NOT EXISTS \`userFollows\` (\`id\` int AUTO_INCREMENT NOT NULL, \`followerUserId\` int NOT NULL, \`followingUserId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`userFollows_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`user_follows_pair_unique\`(\`followerUserId\`, \`followingUserId\`), INDEX \`user_follows_following_idx\`(\`followingUserId\`))` },
   { table: "promoCreditGrants", createSql: `CREATE TABLE IF NOT EXISTS \`promoCreditGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` ENUM('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`tokenCount\` int NOT NULL, \`creditsRemaining\` int NOT NULL, \`status\` ENUM('active','exhausted','expired','revoked') NOT NULL DEFAULT 'active', \`source\` varchar(40) NOT NULL DEFAULT 'first_paid_invoice', \`providerRef\` varchar(255) NULL, \`grantedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`expiresAt\` timestamp NOT NULL, \`consumedAt\` timestamp NULL, \`revokedAt\` timestamp NULL, \`revokedReason\` varchar(255) NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`promoCreditGrants_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`promo_grant_user_role_unique\`(\`userId\`,\`role\`), INDEX \`promo_grant_user_status_idx\`(\`userId\`,\`role\`,\`status\`))` },
   { table: "giftSubscriptionFulfillments", createSql: `CREATE TABLE IF NOT EXISTS \`giftSubscriptionFulfillments\` (\`id\` int AUTO_INCREMENT NOT NULL, \`giftId\` varchar(150) NOT NULL, \`provider\` varchar(32) NOT NULL DEFAULT 'chargebee', \`buyerUserId\` int NULL, \`receiverEmail\` varchar(70) NULL, \`recipientUserId\` int NULL, \`role\` ENUM('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`plan\` ENUM('pro','max') NULL, \`currency\` varchar(3) NULL, \`amount\` int NULL, \`subscriptionId\` varchar(80) NULL, \`providerStatus\` varchar(20) NULL, \`fulfillmentStatus\` ENUM('pending','credited','conflict','expired','cancelled') NOT NULL DEFAULT 'pending', \`failureReason\` varchar(255) NULL, \`creditedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`giftSubscriptionFulfillments_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`gift_fulfillment_gift_unique\`(\`giftId\`), INDEX \`gift_fulfillment_receiver_idx\`(\`receiverEmail\`,\`fulfillmentStatus\`), INDEX \`gift_fulfillment_buyer_idx\`(\`buyerUserId\`,\`createdAt\`), INDEX \`gift_fulfillment_subscription_idx\`(\`subscriptionId\`))` },
+  { table: "safetyReports", createSql: `CREATE TABLE IF NOT EXISTS \`safetyReports\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`reporterUserId\` int NOT NULL, \`reason\` varchar(80) NOT NULL, \`details\` text NULL, \`referralRequestId\` int NULL, \`reportedUserId\` int NULL, \`urgent\` boolean NOT NULL DEFAULT false, \`status\` ENUM('open','under_review','resolved','dismissed') NOT NULL DEFAULT 'open', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`safetyReports_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`safety_reports_reporter_fk\` FOREIGN KEY (\`reporterUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`safety_reports_reporter_idx\`(\`reporterUserId\`), INDEX \`safety_reports_status_idx\`(\`status\`))` },
+  { table: "companySuggestions", createSql: `CREATE TABLE IF NOT EXISTS \`companySuggestions\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`submitterUserId\` int NOT NULL, \`companyName\` varchar(160) NOT NULL, \`website\` varchar(512) NULL, \`role\` ENUM('seeker','employee') NOT NULL DEFAULT 'seeker', \`status\` ENUM('open','under_review','approved','dismissed') NOT NULL DEFAULT 'open', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companySuggestions_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`company_suggestions_submitter_fk\` FOREIGN KEY (\`submitterUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`company_suggestions_submitter_idx\`(\`submitterUserId\`), INDEX \`company_suggestions_status_idx\`(\`status\`))` },
+  { table: "workItems", createSql: `CREATE TABLE IF NOT EXISTS \`workItems\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`title\` varchar(160) NOT NULL, \`kind\` ENUM('case_study','project','article','code','other') NOT NULL DEFAULT 'other', \`source\` varchar(80) NULL, \`url\` varchar(2048) NULL, \`pinned\` boolean NOT NULL DEFAULT false, \`visibleOnProfile\` boolean NOT NULL DEFAULT false, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`workItems_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`work_items_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`work_items_user_idx\`(\`userId\`))` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -34,6 +37,13 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "profiles", column: "anonymityOptIn", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "companyOpportunities", column: "sponsoredUntil", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "sponsoredTier", definition: "ENUM('standard','featured','spotlight') NULL" },
+  { table: "profiles", column: "handle", definition: "VARCHAR(40) NULL" },
+  { table: "profiles", column: "preferAreas", definition: "TEXT NULL" },
+  { table: "profiles", column: "referrerVisibility", definition: "ENUM('anon','named') NOT NULL DEFAULT 'anon'" },
+  { table: "profiles", column: "notifyNewAsk", definition: "boolean NOT NULL DEFAULT true" },
+  { table: "profiles", column: "notifyDigest", definition: "boolean NOT NULL DEFAULT false" },
+  { table: "profiles", column: "paused", definition: "boolean NOT NULL DEFAULT false" },
+  { table: "profiles", column: "profileVisibility", definition: "ENUM('public','link','private') NOT NULL DEFAULT 'private'" },
   { table: "resumeUploadSessions", column: "clientUploadId", definition: "VARCHAR(64) NULL" },
   { table: "resumeUploadSessions", column: "finalizationOwner", definition: "VARCHAR(64) NULL" },
   { table: "resumeUploadSessions", column: "finalizationLeaseUntil", definition: "TIMESTAMP NULL" },
@@ -71,6 +81,33 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
   { table: "notifications", name: "notifications_event_key_unique", columns: "`eventKey`" },
   { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
+  { table: "workItems", name: "work_items_user_idx", columns: "`userId`", nonUnique: true },
+  { table: "profiles", name: "profiles_handle_unique", columns: "`handle`" },
+  { table: "safetyReports", name: "safety_reports_reporter_idx", columns: "`reporterUserId`", nonUnique: true },
+  { table: "safetyReports", name: "safety_reports_status_idx", columns: "`status`", nonUnique: true },
+  { table: "companySuggestions", name: "company_suggestions_submitter_idx", columns: "`submitterUserId`", nonUnique: true },
+  { table: "companySuggestions", name: "company_suggestions_status_idx", columns: "`status`", nonUnique: true },
+  { table: "profiles", name: "profiles_handle_unique", columns: "`handle`" },
+];
+
+// Foreign keys the running code relies on. Unlike tables and columns, a FK is
+// never created here: reconcile only READS, so every entry must already be
+// created by a drizzle/deploy/*.sql migration, which server/schemaDeployGuard.test.ts
+// enforces. Keep in sync with the .references() calls in drizzle/schema.ts.
+//
+// Dropped 2026-09-24: this list also required resumeUploadChunks.acceptedAttemptId
+// -> resumeUploadAttempts.id. Production satisfies it, but no file in the
+// repository can: schema.ts declares neither the column nor the table, and no
+// deploy migration creates them, so a database rebuilt from repo SQL could never
+// pass and would sit at /api/health/ready 503 forever. Nothing reads the column.
+// The live table it implies is undocumented source/prod drift, not a requirement.
+export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; referencedTable: string; referencedColumn: string }> = [
+  { table: "referralAttachments", column: "uploadSessionId", referencedTable: "resumeUploadSessions", referencedColumn: "id" },
+  { table: "workItems", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "safetyReports", column: "reporterUserId", referencedTable: "users", referencedColumn: "id" },
+  { table: "safetyReports", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
+  { table: "safetyReports", column: "reportedUserId", referencedTable: "users", referencedColumn: "id" },
+  { table: "companySuggestions", column: "submitterUserId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
@@ -225,8 +262,10 @@ export async function reconcileSchema(): Promise<{ applied: string[]; skipped: s
       const fkResult = await db.execute(sql`SELECT TABLE_NAME,COLUMN_NAME,CONSTRAINT_NAME,REFERENCED_TABLE_NAME,REFERENCED_COLUMN_NAME FROM information_schema.KEY_COLUMN_USAGE WHERE TABLE_SCHEMA=DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL`);
       const foreignKeys = new Set((fkResult[0] as unknown as Array<{ TABLE_NAME:string; COLUMN_NAME:string; REFERENCED_TABLE_NAME:string; REFERENCED_COLUMN_NAME:string }>).map(row => `${schemaKey(row.TABLE_NAME, row.COLUMN_NAME)}->${schemaKey(row.REFERENCED_TABLE_NAME, row.REFERENCED_COLUMN_NAME)}`));
       checks.push(
-        { key: "fk:referralAttachments.uploadSessionId", ok: foreignKeys.has(`${schemaKey("referralAttachments", "uploadSessionId")}->${schemaKey("resumeUploadSessions", "id")}`) },
-        { key: "fk:resumeUploadChunks.acceptedAttemptId", ok: foreignKeys.has(`${schemaKey("resumeUploadChunks", "acceptedAttemptId")}->${schemaKey("resumeUploadAttempts", "id")}`) },
+        ...DESIRED_FOREIGN_KEYS.map(item => ({
+          key: `fk:${item.table}.${item.column}`,
+          ok: foreignKeys.has(`${schemaKey(item.table, item.column)}->${schemaKey(item.referencedTable, item.referencedColumn)}`),
+        })),
       );
       for (const check of checks) results.push({ statement: check.key, ok: check.ok, ...(!check.ok ? { errorCode: "SCHEMA_MISMATCH" } : {}) });
       const failed = checks.filter(check => !check.ok);

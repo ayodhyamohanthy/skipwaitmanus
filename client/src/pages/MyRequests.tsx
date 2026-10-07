@@ -1,24 +1,22 @@
-import { ArrowLeft, ArrowRight, BriefcaseBusiness, CheckCircle2, ExternalLink, FileText, MailOpen, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { ArrowRight, MailOpen, Plus } from "lucide-react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
-import { useLocation } from "wouter";
-import { AccountMenu } from "@/components/AccountMenu";
+import { Link, useLocation } from "wouter";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
-import ReferralProgress from "@/components/ReferralProgress";
 import StatusBadge from "@/components/StatusBadge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { SeekerCreditsCard, type SeekerCredits } from "@/components/SeekerCreditsCard";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { buildRequestTimeline, RequestStatusTimeline } from "@/components/RequestStatusTimeline";
+import { getJobSeekerReferralState, isPostApprovalReferralStatus, type ReferralStatus } from "@shared/referral";
+import { readApiJson } from "@/lib/apiResponse";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { getJobSeekerReferralState, type ReferralStatus } from "@shared/referral";
-import { readApiJson } from "@/lib/apiResponse";
 
 type ReferralRequest = { id: number; targetRoleUrl: string | null; companyDomain: string; compensation?: string | null; status: ReferralStatus; referrerId: number | null; queueStatus?: "available_for_review" | "waiting_for_coverage" | null; referrerMessage: string | null; unreadMessageCount: number; createdAt: string; updatedAt: string; attachmentCount: number };
 
 const stateBadgeTones = { blue: "blue", amber: "amber", emerald: "green", slate: "slate" } as const;
+const CLOSED_STATUSES: ReferralStatus[] = ["declined", "closed", "withdrawn"];
 
 function compactDate(value: string) {
   const date = new Date(value);
@@ -27,11 +25,77 @@ function compactDate(value: string) {
 }
 
 const displayRef = (id: number) => `Ref-${1000 + id}`;
+const isClosed = (request: ReferralRequest) => CLOSED_STATUSES.includes(request.status);
+const canMessage = (request: ReferralRequest) => isPostApprovalReferralStatus(request.status);
+const canWithdraw = (request: ReferralRequest) => request.status === "pending" && !request.referrerId;
 
-function RequestProgress({ request }: { request: ReferralRequest }) {
-  const reviewed = request.status !== "pending" && request.status !== "withdrawn";
-  const matched = Boolean(request.referrerId);
-  return <div className="mt-4 rounded-xl border border-[#e5e5e5] bg-white p-3"><ol aria-label="Request progress" className="grid grid-cols-3 gap-2 text-center"><li><span className="mx-auto grid h-6 w-6 place-items-center rounded-full bg-[#e9e9e2] text-xs font-bold text-black">1</span><p className="mt-1 text-[11px] font-bold text-black">Sent</p><p className="mt-0.5 text-[10px] text-[#505050]">{compactDate(request.createdAt)}</p></li><li><span className={`mx-auto grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${matched ? "bg-[#e9e9e2] text-black" : "bg-[#f0f0f0] text-[#505050]"}`}>2</span><p className="mt-1 text-[11px] font-bold text-black">Matched</p><p className="mt-0.5 text-[10px] text-[#505050]">{matched ? `Updated ${compactDate(request.updatedAt)}` : "Waiting"}</p></li><li><span className={`mx-auto grid h-6 w-6 place-items-center rounded-full text-xs font-bold ${reviewed ? "bg-[#15803d]/10 text-[#15803d]" : "bg-[#f0f0f0] text-[#505050]"}`}>3</span><p className="mt-1 text-[11px] font-bold text-black">Reviewed</p><p className="mt-0.5 text-[10px] text-[#505050]">{reviewed ? `Updated ${compactDate(request.updatedAt)}` : "Not yet"}</p></li></ol><div className="mt-4 border-t border-[#e5e5e5] pt-3"><ReferralProgress status={request.status} /></div><div className="mt-4 border-t border-[#e5e5e5] pt-3"><p className="mb-2.5 text-[10px] font-bold uppercase tracking-[.14em] text-[#505050]">Status history</p><RequestStatusTimeline entries={buildRequestTimeline(request)} /></div></div>;
+function rowNote(request: ReferralRequest) {
+  if (request.unreadMessageCount > 0 && canMessage(request)) return `${request.unreadMessageCount} new`;
+  if (request.queueStatus === "available_for_review") return "Available for review";
+  if (request.queueStatus === "waiting_for_coverage") return "Waiting for coverage";
+  return `Updated ${compactDate(request.updatedAt)}`;
+}
+
+function rowState(request: ReferralRequest) {
+  if (request.queueStatus === "available_for_review") return { label: "Available for review", tone: "blue" as const };
+  if (request.queueStatus === "waiting_for_coverage") return { label: "Waiting for coverage", tone: "amber" as const };
+  const state = getJobSeekerReferralState(request);
+  return { label: state.label, tone: state.tone };
+}
+
+type RowProps = {
+  request: ReferralRequest;
+  withdrawing: boolean;
+  onWithdraw: (request: ReferralRequest) => void;
+};
+
+function RequestRow({ request, withdrawing, onWithdraw }: RowProps) {
+  const state = rowState(request);
+  const label = `${request.companyDomain} request, ${state.label}`;
+  const rowClass = "flex min-h-16 items-center gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-4";
+  const inner = (
+    <>
+      <span className="min-w-0 flex-1">
+        <strong className="block truncate text-sm">{request.companyDomain}</strong>
+        <small className="mt-0.5 block text-xs text-[#505050]">{displayRef(request.id)} · {rowNote(request)}</small>
+      </span>
+      <StatusBadge label={state.label} tone={stateBadgeTones[state.tone]} />
+      <ArrowRight className="h-4 w-4 shrink-0 text-[#505050]" aria-hidden="true" />
+    </>
+  );
+  return (
+    <li>
+      <Link href={`/conversation/${request.id}`} className={rowClass} aria-label={label}>{inner}</Link>
+      {request.referrerMessage && request.status !== "pending" ? (
+        <aside aria-label="Referrer update" className="mt-2 rounded-xl border border-[#c2c2ff] bg-[#ededff]/60 p-3">
+          <p className="text-xs leading-5 text-[#505050]">{request.referrerMessage}</p>
+        </aside>
+      ) : null}
+      {canWithdraw(request) ? (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <button type="button" className="mt-2 inline-flex min-h-11 items-center px-1 text-sm font-semibold text-[#b91c1c]">Withdraw</button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Withdraw this request?</AlertDialogTitle>
+              <AlertDialogDescription>{request.companyDomain} employees will no longer see it. Your credit returns to your balance.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Keep request</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={withdrawing}
+                onClick={() => onWithdraw(request)}
+                className="border border-[#b91c1c]/30 bg-white text-[#b91c1c] hover:bg-[#b91c1c]/10"
+              >
+                {withdrawing ? "Withdrawing…" : "Withdraw request"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : null}
+    </li>
+  );
 }
 
 export default function MyRequests() {
@@ -41,9 +105,10 @@ export default function MyRequests() {
   const [credits, setCredits] = useState<SeekerCredits | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [withdrawing, setWithdrawing] = useState(false);
+  const [tab, setTab] = useState<"active" | "closed">("active");
+  const [withdrawingId, setWithdrawingId] = useState<number | null>(null);
   const [withdrawError, setWithdrawError] = useState("");
+  const [failedRequest, setFailedRequest] = useState<ReferralRequest | null>(null);
 
   const { showSkeleton, isSlow } = useSlowLoad(loading);
   const [loadNonce, setLoadNonce] = useState(0);
@@ -62,7 +127,7 @@ export default function MyRequests() {
         const response = await fetch("/api/company-referrals/mine", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
         const payload = await readApiJson<{ requests?: ReferralRequest[]; error?: string }>(response, "We could not load your referral requests");
         if (!response.ok) throw new Error(payload.error || "We could not load your referral requests");
-        if (active) { setRequests(payload.requests || []); setActiveIndex(0); }
+        if (active) setRequests(payload.requests || []);
         const creditsResponse = await fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (creditsResponse.ok && active) { const creditsData = await creditsResponse.json() as { summary?: SeekerCredits }; if (creditsData.summary) setCredits(creditsData.summary); }
       } catch (reason) { if (active) setError(reason instanceof Error ? reason.message : "We could not load your referral requests"); }
@@ -71,18 +136,8 @@ export default function MyRequests() {
     return () => { active = false; };
   }, [fetchToken, isSignedIn, loadNonce]);
 
-  if (!isSignedIn) return <main data-skipwait-screen="my-requests-sign-in" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><button type="button" onClick={() => go("/")} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</button></header><section className="flex flex-1 flex-col justify-center"><h1 className="font-display mt-6 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">See the real status.</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Return to your private request updates. We show routing, claim, and real decisions only.</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><SignInButton><button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-5 py-3.5 text-sm font-bold text-white">Secure sign in <ArrowRight className="h-4 w-4" /></button></SignInButton></footer></div></main>;
-
-  const request = requests[activeIndex];
-  const state = request ? request.queueStatus === "available_for_review" ? { label: "Available for review", title: `A verified employee at ${request.companyDomain} can now review your request.`, detail: "Their identity remains private. You will see a factual update when they make a decision.", tone: "blue" as const } : request.queueStatus === "waiting_for_coverage" ? { label: "Waiting for coverage", title: "Your request is waiting for company coverage.", detail: "It remains private until a verified employee at the target company is available.", tone: "amber" as const } : getJobSeekerReferralState(request) : null;
-  const switchRequest = (next: number) => setActiveIndex(Math.max(0, Math.min(requests.length - 1, next)));
-  const canMessageReferrer = request?.status === "approved";
-  const availableForReview = request?.queueStatus === "available_for_review";
-  const unreadConversationCount = canMessageReferrer ? request.unreadMessageCount : 0;
-  const canWithdraw = Boolean(request && request.status === "pending" && !request.referrerId);
-  const withdrawRequest = async () => {
-    if (!request) return;
-    setWithdrawing(true); setWithdrawError("");
+  const withdrawRequest = async (request: ReferralRequest) => {
+    setWithdrawingId(request.id); setWithdrawError(""); setFailedRequest(null);
     try {
       const token = await getToken();
       const response = await fetch(`/api/company-referrals/${request.id}/withdraw`, { method: "POST", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
@@ -90,9 +145,149 @@ export default function MyRequests() {
       if (!response.ok) throw new Error(payload.error || "Withdraw didn't go through");
       if (payload.creditSummary) setCredits(payload.creditSummary);
       setRequests(current => current.map(item => item.id === request.id ? { ...item, status: "withdrawn" as ReferralStatus, referrerId: null, queueStatus: null } : item));
-    } catch (reason) { setWithdrawError(reason instanceof Error ? reason.message : "We could not withdraw this request"); }
-    finally { setWithdrawing(false); }
+    } catch (reason) {
+      setWithdrawError(reason instanceof Error ? reason.message : "We could not withdraw this request");
+      setFailedRequest(request);
+    } finally { setWithdrawingId(null); }
   };
 
-  return <main data-skipwait-screen="my-requests" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between gap-3"><button type="button" onClick={() => go("/")} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</button><AccountMenu /></header>{showSkeleton ? <section className="flex flex-1 flex-col justify-center"><LoadingSkeleton title="Loading your requests…" caption="Routing checks usually take a second." slow={isSlow} /></section> : error ? <section className="flex flex-1 flex-col justify-center"><ActionErrorCard title="We couldn’t load your requests" detail={error} reassurance="Your requests are still active and nothing was lost." onRetry={reload} dismissLabel="Back to home" onDismiss={() => go("/")} /></section> : request && state ? <section className="flex min-h-0 flex-1 flex-col">{credits ? <div className="shrink-0 pb-3"><SeekerCreditsCard credits={credits} compact /></div> : null}<div className="flex min-h-0 flex-1 flex-col justify-center"><div className="flex min-h-0 flex-1 flex-col justify-center"><div className="mt-4 flex items-start justify-between gap-3"><div><p className="text-sm font-bold uppercase tracking-[.14em] text-[#505050]">{request.companyDomain}{request.compensation ? <> · <span className="normal-case tracking-normal">{request.compensation}</span></> : null} · <span className="normal-case tracking-normal">{displayRef(request.id)}</span></p><h1 className="font-display mt-2 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">Your referral request</h1></div><span className="shrink-0"><StatusBadge label={state.label} tone={stateBadgeTones[state.tone]} /></span></div><a href={request.targetRoleUrl || undefined} target="_blank" rel="noreferrer" className="mt-5 inline-flex max-w-full items-center gap-2 truncate text-sm font-semibold text-black"><ExternalLink className="h-4 w-4 shrink-0" /><span className="truncate">{request.targetRoleUrl || "Role link unavailable"}</span></a><div className="mt-5 rounded-xl border border-[#e5e5e5] bg-white p-4"><p className="text-sm font-bold text-black">{state.title}</p><p className="mt-2 text-sm leading-6 text-[#505050]">{state.detail}</p></div>{request.referrerMessage && request.status !== "pending" ? <aside aria-label="Referrer update" className="mt-3 rounded-xl border border-[#d9d9d1] bg-[#e9e9e2]/60 p-4"><p className="text-xs font-bold uppercase tracking-[.14em] text-black">Referrer update</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#505050]">{request.referrerMessage}</p></aside> : null}<RequestProgress request={request} /></div></div><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4">{withdrawError ? <ActionErrorCard className="mb-3" title="Withdraw didn't go through" detail={withdrawError} reassurance="Your request is still active and nothing was lost." onRetry={() => { setWithdrawError(""); void withdrawRequest(); }} retrying={withdrawing} dismissLabel="Keep request" onDismiss={() => setWithdrawError("")} /> : null}{requests.length > 1 ? <div className="mb-3 grid grid-cols-2 gap-2"><button type="button" disabled={activeIndex === 0} onClick={() => switchRequest(activeIndex - 1)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#e5e5e5] px-3 py-2.5 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Previous</button><button type="button" disabled={activeIndex === requests.length - 1} onClick={() => switchRequest(activeIndex + 1)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#e5e5e5] px-3 py-2.5 text-sm font-semibold text-[#505050]">Next<ArrowRight className="h-4 w-4" /></button></div> : null}{canMessageReferrer ? <><button type="button" onClick={() => go(`/conversation/${request.id}`)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-5 py-3.5 text-sm font-bold text-white">{unreadConversationCount ? `Open conversation · ${unreadConversationCount} new` : "Message your Referrer"} <ArrowRight className="h-4 w-4" /></button><button type="button" onClick={() => go("/start")} className="mt-3 inline-flex w-full items-center justify-center gap-2 text-sm font-semibold text-[#505050]">Request another referral</button></> : availableForReview ? <><a href={request.targetRoleUrl || undefined} target="_blank" rel="noreferrer" className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-5 py-3.5 text-sm font-bold text-white">View job posting <ExternalLink className="h-4 w-4" /></a>{canWithdraw ? <AlertDialog><AlertDialogTrigger asChild><button type="button" disabled={withdrawing} className="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[#b91c1c]">{withdrawing ? "Withdrawing…" : "Withdraw"}</button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Withdraw this request?</AlertDialogTitle><AlertDialogDescription>{request.companyDomain} employees will no longer see it. Your credit returns to your balance.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep request</AlertDialogCancel><AlertDialogAction onClick={() => { void withdrawRequest(); }} className="border border-[#b91c1c]/30 bg-white text-[#b91c1c] hover:bg-[#b91c1c]/10">{withdrawing ? "Withdrawing…" : "Withdraw request"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog> : null}</> : <><button type="button" onClick={() => go("/start")} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-5 py-3.5 text-sm font-bold text-white">Request another referral <ArrowRight className="h-4 w-4" /></button>{canWithdraw ? <AlertDialog><AlertDialogTrigger asChild><button type="button" disabled={withdrawing} className="mt-3 inline-flex min-h-11 w-full items-center justify-center text-sm font-semibold text-[#b91c1c]">{withdrawing ? "Withdrawing…" : "Withdraw"}</button></AlertDialogTrigger><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Withdraw this request?</AlertDialogTitle><AlertDialogDescription>{request.companyDomain} employees will no longer see it. Your credit returns to your balance.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Keep request</AlertDialogCancel><AlertDialogAction disabled={withdrawing} onClick={() => void withdrawRequest()} className="border border-[#b91c1c]/30 bg-white text-[#b91c1c] hover:bg-[#b91c1c]/10">{withdrawing ? "Withdrawing…" : "Withdraw request"}</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog> : null}</>}</footer></section> : <section aria-label="No referral requests" className="flex flex-1 flex-col items-center justify-center"><article data-skipwait-empty-preview="job-seeker" aria-label="Illustrative private referral request" className="w-full max-w-sm rounded-3xl border border-dashed border-[#131311] bg-white p-5"><div className="flex items-center justify-between"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#e9e9e2] text-black"><BriefcaseBusiness className="h-5 w-5" /></span><span className="h-2 w-16 rounded-full bg-[#f0f0f0]" /></div><div className="mt-6 grid grid-cols-3 gap-3"><span className="grid h-12 place-items-center rounded-xl bg-white text-black"><FileText className="h-4 w-4" /></span><span className="grid h-12 place-items-center rounded-xl bg-white text-[#505050]"><ShieldCheck className="h-4 w-4" /></span><span className="grid h-12 place-items-center rounded-xl bg-white text-[#15803d]"><CheckCircle2 className="h-4 w-4" /></span></div></article>{credits ? <div className="mt-6 w-full max-w-sm"><SeekerCreditsCard credits={credits} /></div> : null}<div className="mt-5 w-full max-w-sm text-center"><span className="mx-auto grid h-9 w-9 place-items-center rounded-lg bg-[#f0f0f0] text-[#505050]"><MailOpen className="h-4 w-4" /></span><h1 className="font-display mt-3 text-lg font-bold tracking-[-.02em] text-black">Nothing pending right now</h1><p className="mt-1 text-sm leading-6 text-[#505050]">Your sent requests and their outcomes will appear here.</p></div><ZeroActivityShareCard audience="job_seeker" /><footer className="mt-auto w-full pb-[max(0.75rem,env(safe-area-inset-bottom))]"><button type="button" onClick={() => go("/start")} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-5 py-3 text-sm font-bold text-white">Request a referral <ArrowRight className="h-4 w-4" /></button></footer></section>}</div></main>;
+  if (!isSignedIn) {
+    return (
+      <main data-skipwait-screen="my-requests-sign-in" className="mx-auto max-w-xl px-5 py-6 text-black">
+        <p className="text-[11px] font-bold uppercase tracking-[.14em] text-[#505050]">My asks</p>
+        <h1 className="mt-2 text-3xl font-semibold tracking-[-.02em]">See the real status.</h1>
+        <p className="mt-3 text-sm leading-6 text-[#505050]">Return to your private request updates. We show routing, claim, and real decisions only.</p>
+        <div className="mt-6">
+          <SignInButton>
+            <button type="button" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 text-sm font-bold text-white">
+              Secure sign in <ArrowRight className="h-4 w-4" />
+            </button>
+          </SignInButton>
+        </div>
+      </main>
+    );
+  }
+
+  const openCount = requests.filter(request => request.status === "pending").length;
+  const inConversation = requests.filter(request => request.referrerId || isPostApprovalReferralStatus(request.status)).length;
+  const unreadTotal = requests.reduce((sum, request) => sum + request.unreadMessageCount, 0);
+  const visible = requests.filter(request => (tab === "closed") === isClosed(request));
+
+  let body: ReactNode;
+  if (showSkeleton) {
+    body = (
+      <section className="mt-6">
+        <LoadingSkeleton title="Loading your requests…" caption="Routing checks usually take a second." slow={isSlow} />
+      </section>
+    );
+  } else if (error) {
+    body = (
+      <section className="mt-6">
+        <ActionErrorCard title="We couldn’t load your requests" detail={error} reassurance="Your requests are still active and nothing was lost." onRetry={reload} dismissLabel="Back to home" onDismiss={() => go("/")} />
+      </section>
+    );
+  } else if (requests.length === 0) {
+    body = (
+      <section aria-label="No referral requests" className="mt-6 flex flex-col items-center text-center">
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#f0f0f0] text-[#505050]"><MailOpen className="h-4 w-4" /></span>
+        <h2 className="mt-3 text-lg font-bold tracking-[-.02em]">Nothing pending right now</h2>
+        <p className="mt-1 text-sm leading-6 text-[#505050]">Your sent requests and their outcomes will appear here.</p>
+        <ZeroActivityShareCard audience="job_seeker" />
+        <div className="mt-5 w-full">
+          <button type="button" onClick={() => go("/start")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 text-sm font-bold text-white">
+            Request a referral <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+      </section>
+    );
+  } else if (visible.length === 0) {
+    body = (
+      <section className="mt-6 text-center">
+        <h2 className="text-lg font-bold">{tab === "active" ? "No open asks." : "Nothing closed yet."}</h2>
+        <p className="mt-1 text-sm leading-6 text-[#505050]">{tab === "active" ? "Request a referral to open your first ask." : "Answered, passed, or withdrawn asks will appear here."}</p>
+        {tab === "active" ? (
+          <button type="button" onClick={() => go("/start")} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 text-sm font-bold text-white">
+            Request a referral <ArrowRight className="h-4 w-4" />
+          </button>
+        ) : null}
+      </section>
+    );
+  } else {
+    body = (
+      <ul className="mt-4 space-y-3">
+        {visible.map(request => (
+          <RequestRow
+            key={request.id}
+            request={request}
+            withdrawing={withdrawingId === request.id}
+            onWithdraw={candidate => { void withdrawRequest(candidate); }}
+          />
+        ))}
+      </ul>
+    );
+  }
+
+  return (
+    <main data-skipwait-screen="my-requests" className="mx-auto max-w-xl px-5 py-6 text-black">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[.14em] text-[#505050]">My asks</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-[-.02em]">Requests</h1>
+          <p className="mt-2 text-sm leading-6 text-[#505050]">Track every ask in one place. Answered, passed, or withdrawn asks free a slot.</p>
+        </div>
+        <button type="button" onClick={() => go("/start")} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#0000ff] px-4 py-2.5 text-sm font-bold text-white">
+          <Plus className="h-4 w-4" />New ask
+        </button>
+      </div>
+      {credits ? <div className="mt-5"><SeekerCreditsCard credits={credits} compact /></div> : null}
+      <div className="mt-4 grid grid-cols-3 gap-2" aria-label="Request summary">
+        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">Open asks</p>
+          <p className="mt-1 text-2xl font-semibold">{openCount}</p>
+        </div>
+        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">In conversation</p>
+          <p className="mt-1 text-2xl font-semibold">{inConversation}</p>
+        </div>
+        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">Unread updates</p>
+          <p className="mt-1 text-2xl font-semibold">{unreadTotal}</p>
+        </div>
+      </div>
+      {requests.length > 0 && !showSkeleton && !error ? (
+        <div className="mt-6 flex gap-6 border-b border-[#e5e5e5]" role="tablist" aria-label="Request groups">
+          {(["active", "closed"] as const).map(value => (
+            <button
+              key={value}
+              type="button"
+              role="tab"
+              aria-selected={tab === value}
+              onClick={() => setTab(value)}
+              className={tab === value ? "min-h-11 border-b-2 border-[#0000ff] px-1 text-sm font-bold capitalize text-black" : "min-h-11 px-1 text-sm font-bold capitalize text-[#505050]"}
+            >
+              {value}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {withdrawError ? (
+        <div role="alert" className="mt-4 rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4">
+          <p className="text-sm font-bold text-[#B91C1C]">Withdraw didn't go through</p>
+          <p className="mt-1 text-sm text-[#B91C1C]">{withdrawError}</p>
+          <p className="mt-1 text-sm text-[#505050]">Your request is still active and nothing was lost.</p>
+          <div className="mt-3 flex gap-2">
+            {failedRequest ? (
+              <button type="button" onClick={() => { void withdrawRequest(failedRequest); }} className="inline-flex min-h-11 items-center rounded-lg bg-[#B91C1C] px-4 text-sm font-bold text-white">
+                Try again
+              </button>
+            ) : null}
+            <button type="button" onClick={() => { setWithdrawError(""); setFailedRequest(null); }} className="inline-flex min-h-11 items-center rounded-lg border border-[#e5e5e5] bg-white px-4 text-sm font-bold text-black">
+              Keep request
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {body}
+    </main>
+  );
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MyRequests from "./MyRequests";
 
@@ -8,10 +8,8 @@ const { go, getToken } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mock
 
 // A stable getToken matters here: MyRequests' load effect depends on it, so a
 // per-render vi.fn() would re-run the effect on every render in tests.
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }) }));
-vi.mock("wouter", () => ({ Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>, useLocation: () => ["/requests", go] }));
-vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
-vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div data-skipwait-logo-mark="true" /> }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
+vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/requests", go] }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
 beforeEach(() => {
@@ -28,22 +26,22 @@ function stubRequestsFetch(requests: unknown[]) {
 }
 
 describe("My Requests withdraw flow", () => {
-  it("offers Withdraw on a pending unclaimed request and shows its Ref reference", async () => {
+  it("offers Withdraw on a pending unclaimed row and shows its Ref reference", async () => {
     stubRequestsFetch([pendingRequest]);
     render(<MyRequests />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
-    expect(screen.getByText("Ref-1012")).toBeTruthy();
+    expect(screen.getByText(/Ref-1012/)).toBeTruthy();
     expect(screen.getByText("2 left")).toBeTruthy();
   });
 
   it("hides Withdraw once a verified employee has claimed the request", async () => {
     stubRequestsFetch([claimedRequest]);
     render(<MyRequests />);
-    await waitFor(() => expect(screen.getByRole("link", { name: /View job posting/ })).toBeTruthy());
+    await waitFor(() => expect(screen.getByLabelText("acme.com request, Available for review")).toBeTruthy());
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
   });
 
-  it("withdraws from the confirm dialog, updates the state card, and restores the credit", async () => {
+  it("withdraws from the confirm dialog, closes the row, and restores the credit", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => String(url).includes("/withdraw")
       ? { ok: true, json: async () => ({ withdrawn: true, requestId: 12, status: "withdrawn", creditSummary: creditSummary(3).summary }) }
       : { ok: true, json: async () => String(url).includes("/api/credits/summary") ? creditSummary(2) : { requests: [pendingRequest] } });
@@ -55,11 +53,13 @@ describe("My Requests withdraw flow", () => {
     expect(dialog.textContent).toContain("Withdraw this request?");
     expect(dialog.textContent).toContain("acme.com employees will no longer see it. Your credit returns to your balance.");
     expect(dialog.textContent).toContain("Keep request");
-    fireEvent.click(screen.getByRole("button", { name: "Withdraw request", }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Withdraw request" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/12/withdraw", expect.objectContaining({ method: "POST" })));
-    expect(await screen.findByText("You withdrew this request.")).toBeTruthy();
+    // Withdrawn rows leave Active for the Closed tab.
+    expect(await screen.findByText("No open asks.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "closed" }));
+    expect(await screen.findByText("Withdrawn")).toBeTruthy();
     expect(screen.getByText("3 left")).toBeTruthy();
-    expect(screen.getAllByText("Withdrawn").length).toBeGreaterThanOrEqual(1);
   });
 
   it("keeps the request and offers Try again when the withdraw fails", async () => {
@@ -75,10 +75,10 @@ describe("My Requests withdraw flow", () => {
     expect(alert.textContent).toContain("Withdraw didn't go through");
     expect(alert.textContent).toContain("The network dropped before we could reach the server");
     expect(alert.textContent).toContain("Your request is still active and nothing was lost.");
-    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Keep request" })).toBeTruthy();
-    expect(screen.getByText("Ref-1012")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Keep request" }));
+    expect(within(alert).getByRole("button", { name: "Try again" })).toBeTruthy();
+    expect(within(alert).getByRole("button", { name: "Keep request" })).toBeTruthy();
+    expect(screen.getByText(/Ref-1012/)).toBeTruthy();
+    fireEvent.click(within(alert).getByRole("button", { name: "Keep request" }));
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
 });

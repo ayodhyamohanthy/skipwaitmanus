@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, lstatSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = join(__dirname, "..");
@@ -21,8 +21,10 @@ function sourceFiles(dirs: string[]): string[] {
   const walk = (dir: string) => {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
-        if (entry === "node_modules") continue;
+      if (entry === "node_modules") continue;
+      const stats = lstatSync(full);
+      if (stats.isSymbolicLink()) continue;
+      if (stats.isDirectory()) {
         walk(full);
       } else if (/\.(ts|tsx|html|mjs|cjs|jsonc?)$/.test(entry) && !/\.test\.(ts|tsx)$/.test(entry)) {
         out.push(full);
@@ -65,12 +67,75 @@ function workerPassthroughKeys(): string[] {
   return [...block.matchAll(/"([A-Z][A-Z0-9_]+)"/g)].map(m => m[1]);
 }
 
+// A key can be consumed by a test gate, a CI build, a deploy manifest, or a build-time
+// `%VITE_*%` substitution rather than by runtime code, so the consumer side is the whole
+// tree minus prose, vendored output, and the example files that declare the contract.
+// This file itself is excluded so it cannot certify its own keys as consumed.
+function consumerFiles(): string[] {
+  // Vendored toolchains are never config consumers, and walking them dominates
+  // the runtime: a stray Python venv/ in the tree is 1,309 files that this
+  // check used to read as utf8 on every run.
+  const skippedDirs = new Set([
+    "node_modules", ".git", "dist", "build", "coverage", ".wrangler", ".vercel",
+    "venv", ".venv", ".claude", ".workbuddy-ai", ".pnpm-store", ".cache",
+  ]);
+  // Binary fixtures cannot carry a config key, and decoding them as utf8 only
+  // to regex them is pure cost: artifacts/ holds PNGs and backups/ a .gz.
+  const binaryFile = /\.(png|jpe?g|gif|ico|webp|avif|gz|zip|woff2?|ttf|otf|eot|mp4|webm|pdf)$/i;
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir)) {
+      if (skippedDirs.has(entry)) continue;
+      const full = join(dir, entry);
+      // lstat, not stat: following a symlink here can pull an unrelated tree
+      // (or a cycle) into the walk, and a linked path is not this repo's source.
+      const stats = lstatSync(full);
+      if (stats.isSymbolicLink()) continue;
+      if (stats.isDirectory()) walk(full);
+      else if (!/\.(md|txt|snap|log)$/i.test(entry) && !binaryFile.test(entry) && !entry.startsWith(".env") && full !== __filename) out.push(full);
+    }
+  };
+  walk(ROOT);
+  return out;
+}
+
+// The consumer set is every non-prose file in the tree, so the check has to stay
+// O(total bytes) rather than O(keys x total bytes): scanning each file once for
+// the ~40 keys in .env.example re-reads pnpm-lock.yaml and drizzle/meta/*.json
+// dozens of times and took 11.5s, close enough to the timeout to flake under
+// parallel load. Harvest the identifier-shaped tokens in one pass instead and
+// test membership. Equivalent for keys matching /^[A-Z0-9_]+$/, which the loop
+// below already requires.
+const KEY_SHAPED_TOKEN = /\b[A-Z][A-Z0-9_]*\b/g;
+
+function consumedKeys(): Set<string> {
+  const consumed = new Set<string>();
+  const texts = consumerFiles().map(file => {
+    try { return readFileSync(file, "utf8"); } catch { return ""; }
+  });
+  const present = new Set<string>();
+  for (const text of texts) {
+    for (const match of text.matchAll(KEY_SHAPED_TOKEN)) present.add(match[0]);
+  }
+  for (const key of exampleKeys()) {
+    if (!/^[A-Z0-9_]+$/.test(key)) continue;
+    if (present.has(key)) consumed.add(key);
+  }
+  return consumed;
+}
+
 describe("config contract", () => {
   it("declares every referenced key in .env.example", () => {
     const example = exampleKeys();
     const { vite, env } = referencedKeys();
     const missing = [...vite, ...env].filter(key => !example.has(key));
     expect(missing, `undeclared config keys (add to .env.example): ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("declares nothing in .env.example that no file consumes", () => {
+    const consumed = consumedKeys();
+    const dead = [...exampleKeys()].filter(key => !consumed.has(key));
+    expect(dead, `.env.example advertises keys nothing reads (wire it through its boundary, or delete it): ${dead.join(", ")}`).toEqual([]);
   });
 
   it("forwards every container env key declared for the Worker", () => {

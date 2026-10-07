@@ -2,11 +2,10 @@ import { lookup } from "node:dns/promises";
 import ipaddr from "ipaddr.js";
 import { getDomain } from "tldts";
 import { isHostedJobPlatform } from "./employerRouting";
-import { fetchPublicJobLink } from "./jobLinkPreview";
+import { fetchPublicJobLink, isPublicAddress } from "./jobLinkPreview";
 
 const MAX_URL_LENGTH = 2048;
-const blockedRanges = new Set(["unspecified","broadcast","multicast","linkLocal","loopback","private","uniqueLocal","carrierGradeNat","reserved"]);
-function publicIp(address: string) { try { return !blockedRanges.has(ipaddr.parse(address).range()); } catch { return false; } }
+function bracketless(input: string) { return input.replace(/^\[|\]$/g, ""); }
 function canonical(input: string) {
   if (!input || input.length > MAX_URL_LENGTH) throw new Error("Use a public HTTPS job link under 2,048 characters");
   const url = new URL(input.trim());
@@ -20,14 +19,21 @@ function canonical(input: string) {
   if (url.toString().length > MAX_URL_LENGTH) throw new Error("Use a public HTTPS job link under 2,048 characters");
   return url;
 }
+async function resolveAddresses(hostname: string) {
+  // A resolver failure has to surface as the link rule: without this a mistyped
+  // host reaches the member as `getaddrinfo ENOTFOUND ...`.
+  try { return (await lookup(hostname, { all: true, verbatim: true })).map(row => row.address); }
+  catch { throw new Error("Opportunity links must use a public internet host"); }
+}
 async function requirePublicHost(url: URL) {
-  const literal = ipaddr.isValid(url.hostname) ? [url.hostname] : (await lookup(url.hostname, { all: true, verbatim: true })).map(row => row.address);
-  if (!literal.length || literal.some(address => !publicIp(address))) throw new Error("Opportunity links must use a public internet host");
+  const hostname = bracketless(url.hostname);
+  const addresses = ipaddr.isValid(hostname) ? [hostname] : await resolveAddresses(hostname);
+  if (!addresses.length || addresses.some(address => !isPublicAddress(address))) throw new Error("Opportunity links must use a public internet host");
 }
 export function isLegacyOpportunityUrlSafe(input: string, companyDomain: string) {
   try {
     const url = canonical(input);
-    if (ipaddr.isValid(url.hostname)) return false;
+    if (ipaddr.isValid(bracketless(url.hostname))) return false;
     if (isHostedJobPlatform(url.hostname)) return true;
     return getDomain(url.hostname, { allowPrivateDomains: false, detectIp: true }) === companyDomain.trim().toLowerCase();
   } catch { return false; }

@@ -25,6 +25,18 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Typecheck
         run: pnpm check
+      # scripts/design-token-audit.mjs already existed and already failed, but no
+      # workflow ever ran it: design-gate.yml only invokes `impeccable detect`
+      # behind `|| true`. So three off-brand hexes sat in the client surface
+      # unnoticed. It is deterministic and fast, so it belongs on the blocking
+      # path that runs for pull requests, not only on a push to main.
+      - name: Design tokens
+        run: node scripts/design-token-audit.mjs
+      # Same class of dead guard: this one exists specifically to fail a workflow
+      # edit whose path filter stops matching a build input, which is how the SEO
+      # work merged on Sep 24 and never deployed. Nothing called it either.
+      - name: Deploy trigger coverage
+        run: node scripts/check-deploy-triggers.mjs
 
   test:
     name: unit + component + route tests
@@ -39,14 +51,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Vitest
-        # TODO(#25): drop the --exclude list once fix/settings-trpc-test-mocks
-        # lands. These three suites need the tRPC mock harness from that PR;
-        # everything else must stay green.
-        run: >-
-          pnpm vitest run
-          --exclude client/src/pages/settings.workEmail.test.tsx
-          --exclude client/src/pages/settings.slackTriage.test.tsx
-          --exclude client/src/pages/policyPages.test.tsx
+        # The full suite runs here with no exclusions. The three suites that
+        # used to be excluded for the missing tRPC mock harness now pass
+        # (settings.workEmail, settings.slackTriage) or never needed excluding
+        # (policyPages). Re-adding an --exclude here hides a red main.
+        run: pnpm vitest run
 
   build:
     name: production build

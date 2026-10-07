@@ -11,7 +11,7 @@ import { LoaderCircle } from "lucide-react";
 export function LoadingSkeleton({ title, caption, slow = false, slowMessage = "This is taking longer than expected. You can keep waiting or come back in a moment — nothing was lost." }: { title: string; caption?: string; slow?: boolean; slowMessage?: string }) {
   return <div role="status" aria-busy="true" aria-live="polite" data-skipwait-loading="true" className="rounded-xl border border-[#e5e5e5] bg-white p-4">
     <div className="flex items-start gap-3">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#e9e9e2] text-black"><LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" /></span>
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#f5f5f5] text-black"><LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" /></span>
       <div className="min-w-0">
         <p className="text-sm font-bold text-black">{title}</p>
         {caption ? <p className="mt-0.5 text-xs leading-5 text-[#505050]">{caption}</p> : null}

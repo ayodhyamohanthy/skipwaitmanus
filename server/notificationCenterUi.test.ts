@@ -19,7 +19,16 @@ describe("notification center interface safeguards", () => {
     expect(notifications).toContain("/api/notifications/${notification.id}/read");
     expect(notifications).toContain('data-skipwait-notifications-empty="true"');
     expect(notifications).not.toContain("demoNotifications");
-    expect(app).toContain('path="/notifications" component={Notifications}');
+    // The center moved to /alerts (kit IA); /notifications redirects there.
+    // The same safeguards hold on the new surface.
+    expect(app).toContain('path="/alerts"');
+    expect(app).toContain('path="/notifications"><Redirect to="/alerts"');
+    const alerts = source("client/src/pages/Alerts.tsx");
+    expect(alerts).toContain('fetch("/api/notifications"');
+    expect(alerts).toContain("/api/notifications/${item.id}/read");
+    expect(alerts).toContain("data-skipwait-screen=\"alerts\"");
+    expect(alerts).not.toContain("demoNotifications");
+    expect(alerts).not.toContain("EXAMPLE");
   });
 
   it("converts unsafe API parser failures into concise recovery messages instead of exposing raw HTML tokens", () => {

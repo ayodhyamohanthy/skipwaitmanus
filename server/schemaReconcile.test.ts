@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DESIRED_COLUMNS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
+import { DESIRED_COLUMNS, DESIRED_FOREIGN_KEYS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
 const sqlText=(q:unknown)=>((q as {queryChunks?:Array<{value?:string[]}>}).queryChunks??[]).flatMap(c=>c.value??[]).join("");
 async function load(rows:object[],foreignKeys:object[]){
  const calls:string[]=[];
@@ -12,16 +12,17 @@ function validRows(){return [
  ...DESIRED_TABLES.map(x=>({TABLE_NAME:x.table,COLUMN_NAME:"id",INDEX_NAME:null,NON_UNIQUE:null})),
  ...DESIRED_INDEXES.map(x=>({TABLE_NAME:x.table,COLUMN_NAME:null,INDEX_NAME:x.name,NON_UNIQUE:x.nonUnique?1:0})),
 ]}
-const validFks=[
- {TABLE_NAME:"referralAttachments",COLUMN_NAME:"uploadSessionId",CONSTRAINT_NAME:"referral_attachments_upload_session_fk",REFERENCED_TABLE_NAME:"resumeUploadSessions",REFERENCED_COLUMN_NAME:"id"},
- {TABLE_NAME:"resumeUploadChunks",COLUMN_NAME:"acceptedAttemptId",CONSTRAINT_NAME:"resume_upload_chunks_accepted_attempt_fk",REFERENCED_TABLE_NAME:"resumeUploadAttempts",REFERENCED_COLUMN_NAME:"id"},
-];
+// Derived from the contract rather than restating production's history, so a new
+// entry cannot pass this suite by accident: schemaDeployGuard proves repo SQL
+// creates every requirement listed here. The constraint label is irrelevant to
+// reconcile, which matches on (table, column) -> (referenced table, column).
+const validFks=DESIRED_FOREIGN_KEYS.map(fk=>({TABLE_NAME:fk.table,COLUMN_NAME:fk.column,CONSTRAINT_NAME:`fk_${fk.table}_${fk.column}`,REFERENCED_TABLE_NAME:fk.referencedTable,REFERENCED_COLUMN_NAME:fk.referencedColumn}));
 afterEach(()=>vi.restoreAllMocks());
 describe("read-only schema validation",()=>{
  it("accepts the migrated schema using SELECT only",async()=>{const{module,calls}=await load(validRows(),validFks);await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(true);expect(calls).toHaveLength(2);expect(calls.every(x=>x.trimStart().startsWith("SELECT"))).toBe(true)});
  it("accepts Azure MySQL lowercase table identifiers",async()=>{const rows=validRows().map((row:any)=>({...row,TABLE_NAME:row.TABLE_NAME.toLowerCase()}));const fks=validFks.map(row=>({...row,TABLE_NAME:row.TABLE_NAME.toLowerCase(),REFERENCED_TABLE_NAME:row.REFERENCED_TABLE_NAME.toLowerCase()}));const{module,calls}=await load(rows,fks);await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(true);expect(module.getLastReconcileResults().every(result=>result.ok)).toBe(true);expect(calls.every(x=>x.trimStart().startsWith("SELECT"))).toBe(true)});
  it("reports a missing or nonunique index without DDL",async()=>{const rows=validRows().filter((x:any)=>x.INDEX_NAME!=="referral_attachments_upload_session_unique");const{module,calls}=await load(rows,validFks);await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(false);expect(module.getLastReconcileResults()).toContainEqual({statement:"index:referralAttachments.referral_attachments_upload_session_unique",ok:false,errorCode:"SCHEMA_MISMATCH"});expect(calls.join(" ")).not.toMatch(/ALTER|CREATE|DROP|UPDATE|DELETE|INSERT/i)});
- it("requires both 0050 foreign keys without mutating them",async()=>{const{module,calls}=await load(validRows(),validFks.slice(0,1));await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(false);expect(module.getLastReconcileResults()).toContainEqual({statement:"fk:resumeUploadChunks.acceptedAttemptId",ok:false,errorCode:"SCHEMA_MISMATCH"});expect(calls).toHaveLength(2)});
+ it("requires every declared foreign key without mutating them",async()=>{const missing=DESIRED_FOREIGN_KEYS[DESIRED_FOREIGN_KEYS.length-1];const{module,calls}=await load(validRows(),validFks.slice(0,-1));await module.reconcileSchema();expect(module.isSchemaReconciled()).toBe(false);expect(module.getLastReconcileResults()).toContainEqual({statement:`fk:${missing?.table}.${missing?.column}`,ok:false,errorCode:"SCHEMA_MISMATCH"});expect(calls).toHaveLength(2)});
 });
 describe("schema recovery diagnostics",()=>{
  it("logs described cause, classification, and attempt/backoff context without leaking secrets",async()=>{
