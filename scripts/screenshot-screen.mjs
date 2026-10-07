@@ -21,7 +21,7 @@ import { readFileSync } from "node:fs";
 import { spawn } from "node:child_process";
 import path from "node:path";
 
-const [route, capturePath, outPath] = process.argv.slice(2);
+const [route, capturePath, outPath, vhArg] = process.argv.slice(2);
 if (!route || !capturePath) {
   console.error("usage: node scripts/screenshot-screen.mjs <route> <capture.png> [out.png]");
   process.exit(2);
@@ -51,7 +51,15 @@ try {
 
 const out = outPath || `/tmp/${path.basename(capturePath, ".png")}-actual.png`;
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: capture.width, height: 900 }, deviceScaleFactor: 1 });
+// VIEWPORT HEIGHT MATTERS. The kit's .launch-hero is
+  // `height: min(740px, calc(100svh - 170px))`, so the page's total height is a
+  // function of the viewport height. Measuring at a fixed 900px reported the
+  // homepage as 3889px against a 3851px capture -- a phantom "+38px bug" that
+  // was purely the screenshot viewport. Pass the height the capture was taken
+  // at (4th arg), or sweep a few values to find the one that reproduces the
+  // capture's total height before concluding anything from the delta.
+  const viewportHeight = Number(vhArg) || Number(process.env.SCREENSHOT_VH) || 900;
+  const page = await browser.newPage({ viewport: { width: capture.width, height: viewportHeight }, deviceScaleFactor: 1 });
 await page.goto(`${base}${route}`, { waitUntil: "networkidle", timeout: 45000 });
 await page.waitForTimeout(1200);
 await page.screenshot({ path: out, fullPage: true });

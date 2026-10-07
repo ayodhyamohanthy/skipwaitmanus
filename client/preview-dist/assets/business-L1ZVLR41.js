@@ -1,0 +1,1 @@
+const a={operator:"Ayodhya Ram Mohanthy",brand:"skipwait.me",email:"support@skipwait.me",address:"D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India",phone:"+91 95130 64808",phoneHref:"tel:+919513064808",hours:"Mon–Fri, IST business hours",country:"India"};export{a as B};

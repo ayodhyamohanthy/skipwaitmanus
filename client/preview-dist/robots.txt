@@ -1,0 +1,13 @@
+# skipwait.me — job referrals
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /conversation/
+Disallow: /inbox
+Disallow: /messages
+Disallow: /notifications
+Disallow: /requests
+Disallow: /settings
+
+Sitemap: https://skipwait.me/sitemap.xml
