@@ -57,7 +57,7 @@ describe("kit v4 screen coverage ratchet", () => {
   it("fails when coverage drops below the baseline", () => {
     // Mutation: demand more coverage than exists, which is what a deleted
     // screen would look like.
-    withMutation("export const BASELINE_IMPLEMENTED = 24;", "export const BASELINE_IMPLEMENTED = 999;", result => {
+    withMutation("export const BASELINE_IMPLEMENTED = 25;", "export const BASELINE_IMPLEMENTED = 999;", result => {
       expect(result.status).toBe(1);
       expect(result.out).toMatch(/coverage regressed/);
     });

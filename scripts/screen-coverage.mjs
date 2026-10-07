@@ -46,7 +46,7 @@ export const DESIGNED_ROUTES = {
   "emails": null,
   "employer": "/employer",
   "explore": "/explore",
-  "explore-skipwait": null,               // company detail (/explore/:slug)
+  "explore-skipwait": "/explore/:slug",     // company detail
   "for-companies": null,
   "forgot-password": null,
   "guidelines": "/guidelines",
@@ -77,7 +77,7 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 24;
+export const BASELINE_IMPLEMENTED = 25;
 
 const designedSlugs = fs.existsSync(screensDir)
   ? [...new Set(fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, "")))].sort()
