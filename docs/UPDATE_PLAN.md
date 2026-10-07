@@ -362,6 +362,15 @@ Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visi
 - Scoreboard-landing test rewritten to the kit composition contract (same anti-fabrication intent).
 - Verification: full suite green, `tsc` clean, audit clean.
 
+## Batch 23 record — dot-to-dot fidelity pass (shell + explore)
+
+- Commit: shell and explore rebuilt to exact kit markup/CSS after screenshot comparison.
+- `AppShell.tsx` rewritten to kit `skipwait-shell` exactly (blue active item, free-promise block, More dropdown via Radix, 8 mobile tabs, drawer+scrim, topbar, footer); destinations live, signed-in account controls where kit shows Sign in.
+- `Explore.tsx` rewritten to kit cards (availability pill, checkmarked functions, View-open-door button), yellow employee band, trust row, kit heading/search/filters; `/invite` for company requests.
+- CSS: ported all 52 shell rules + missing launch grid rules verbatim; verified zero missing selectors for launch/shell/company families.
+- `ExploreCompany.tsx`: added kit safety-guide link.
+- Verification: shell + explore suites green, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

@@ -23,52 +23,68 @@ vi.mock("wouter", () => ({
 describe("AppShell", () => {
   afterEach(() => cleanup());
 
-  it("renders kit navigation mapped to live routes", () => {
+  it("renders the kit sidebar mapped to live routes", () => {
     render(
       <AppShell>
         <p>page</p>
       </AppShell>
     );
-    const sidebar = screen.getByRole("complementary", { name: "App sidebar" });
+    const sidebar = screen.getByRole("complementary");
     for (const [name, href] of [
+      ["Explore", "/explore"],
       ["Requests", "/requests"],
       ["Inbox", "/inbox"],
       ["Refer", "/referrer-home"],
       ["Profile", "/profile"],
       ["My work", "/work"],
       ["Plans & credits", "/plans"],
-      ["Settings", "/settings"],
     ]) {
       const link = within(sidebar).getByRole("link", { name });
       expect(link.getAttribute("href")).toBe(href);
     }
-    expect(within(sidebar).getByText("Referrals are free. Always.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Alerts" }).getAttribute("href")).toBe("/alerts");
+    expect(within(sidebar).getByText(/Referrals are free/)).toBeTruthy();
+    const bells = screen.getAllByRole("link", { name: "Alerts" });
+    expect(bells.length).toBe(2);
+    expect(bells.every(bell => bell.getAttribute("href") === "/alerts")).toBe(true);
+    expect(screen.getByText("Free referrals. Real expectations.")).toBeTruthy();
   });
 
-  it("marks the current route without inventing destinations", () => {
+  it("marks the current route active without inventing destinations", () => {
     render(
       <AppShell>
         <p>page</p>
       </AppShell>
     );
-    expect(within(screen.getByRole("complementary", { name: "App sidebar" })).getByRole("link", { name: "Requests" }).getAttribute("aria-current")).toBe("page");
-    // Kit-only routes have no shell entry yet — nothing points at them.
+    const sidebar = screen.getByRole("complementary");
+    const active = within(sidebar).getByRole("link", { name: "Requests" });
+    expect(active.className).toContain("active");
+    expect(active.getAttribute("aria-current")).toBe("page");
     expect(document.querySelector('a[href="/help"]')).toBeNull();
     expect(document.querySelector('a[href="/report"]')).toBeNull();
   });
 
-  it("opens the More drawer with help, companies, and sign-in on mobile", () => {
+  it("renders all eight mobile tabs plus the More menu", () => {
     render(
       <AppShell>
         <p>page</p>
       </AppShell>
     );
-    fireEvent.click(within(screen.getByRole("navigation", { name: "Mobile navigation" })).getByRole("button", { name: "Open menu" }));
-    const dialog = screen.getByRole("dialog", { name: "Menu" });
-    expect(within(dialog).getByRole("link", { name: "Help & safety" }).getAttribute("href")).toBe("/support");
-    expect(within(dialog).getByRole("link", { name: "For companies" }).getAttribute("href")).toBe("/employer");
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close menu" }));
-    expect(screen.queryByRole("dialog", { name: "Menu" })).toBeNull();
+    const tabs = screen.getByRole("navigation", { name: "Mobile navigation" });
+    for (const name of ["Explore", "Requests", "Inbox", "Refer", "Profile", "Work", "Plans"]) {
+      expect(within(tabs).getByText(name)).toBeTruthy();
+    }
+    expect(within(tabs).getByRole("button", { name: "More" })).toBeTruthy();
+  });
+
+  it("opens the drawer from the hamburger and closes it on the scrim", () => {
+    render(
+      <AppShell>
+        <p>page</p>
+      </AppShell>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Open menu" }));
+    expect(screen.getByRole("button", { name: "Close menu" })).toBeTruthy();
+    fireEvent.click(document.querySelector(".drawer-scrim") as HTMLElement);
+    expect(screen.queryByRole("button", { name: "Close menu" })).toBeNull();
   });
 });

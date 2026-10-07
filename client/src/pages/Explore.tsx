@@ -1,34 +1,12 @@
-import { ArrowRight, ArrowUpRight, Building2, Globe2, HeartHandshake, LockKeyhole, MapPin, Search, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowRight, ArrowUpRight, BriefcaseBusiness, Building2, Check, Globe2, HeartHandshake, LockKeyhole, MapPin, Search, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { LAUNCH_COMPANIES, companySlugForJobCompany } from "@/lib/companies";
-
-type Job = { id: number; title: string; company: string; location: string };
+import { LAUNCH_COMPANIES } from "@/lib/companies";
 
 export default function Explore() {
   const [search, setSearch] = useState("");
   const [role, setRole] = useState("");
   const [location, setLocation] = useState("");
-  const [counts, setCounts] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    let active = true;
-    void (async () => {
-      try {
-        const response = await fetch("/api/jobs");
-        if (!response.ok) return;
-        const payload = (await response.json()) as { jobs?: Job[] };
-        if (!active || !Array.isArray(payload.jobs)) return;
-        const grouped: Record<string, number> = {};
-        for (const job of payload.jobs) {
-          const slug = companySlugForJobCompany(job.company);
-          if (slug) grouped[slug] = (grouped[slug] ?? 0) + 1;
-        }
-        setCounts(grouped);
-      } catch { /* directory renders without counts */ }
-    })();
-    return () => { active = false; };
-  }, []);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -41,7 +19,7 @@ export default function Explore() {
   const clear = () => { setSearch(""); setRole(""); setLocation(""); };
 
   return (
-    <main data-skipwait-screen="explore" className="page-content">
+    <main data-skipwait-screen="explore" className="page-content explore-page">
       <div className="page-heading">
         <div>
           <span className="eyebrow">Five open doors · More to come</span>
@@ -61,31 +39,29 @@ export default function Explore() {
       </div>
       <div className="directory-heading">
         <div>
-          <span className="availability"><span />{Object.values(counts).reduce((a, b) => a + b, 0) > 0 ? "Open roles listed now" : "Company directory"}</span>
+          <span className="availability"><span />People are open to requests</span>
           <h2>{filtered.length ? `${filtered.length} ${filtered.length === 1 ? "company" : "companies"} to explore` : "No matching doors yet"}</h2>
         </div>
         <span className="directory-note">Availability can change. No referral is guaranteed.</span>
       </div>
       {filtered.length ? (
         <section className="company-grid" aria-live="polite">
-          {filtered.map(company => {
-            const openRoles = counts[company.slug] ?? 0;
-            return (
-              <Link key={company.slug} href={`/explore/${company.slug}`} className="company-card">
-                <div className="company-card-top"><span className="company-mark">{company.initials}</span><ArrowUpRight /></div>
-                <div><h2>{company.name}</h2><p>{company.blurb}</p></div>
-                <div className="company-meta"><span>{company.industry}</span><span>{company.location}</span>{openRoles > 0 ? <span>{openRoles} open {openRoles === 1 ? "role" : "roles"}</span> : null}</div>
-                <div className="company-functions">{company.functions.map(fn => <span key={fn}>{fn}</span>)}</div>
-              </Link>
-            );
-          })}
+          {filtered.map(company => (
+            <article className="company-card" key={company.slug}>
+              <div className="company-card-top"><span className="company-mark" aria-hidden="true">{company.initials}</span><span className="availability"><span />People open to referrals</span></div>
+              <div><h2>{company.name}</h2><p>{company.blurb}</p></div>
+              <div className="company-meta"><span><BriefcaseBusiness />{company.industry}</span><span><MapPin />{company.location}</span></div>
+              <div className="company-functions" aria-label="Functions">{company.functions.map(fn => <span key={fn}><Check />{fn}</span>)}</div>
+              <Link href={`/explore/${company.slug}`} className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">View open door <ArrowUpRight /></Link>
+            </article>
+          ))}
         </section>
       ) : (
         <section className="no-results">
           <Building2 /><h2>Try a wider search.</h2><p>Clear a filter, or tell us where you want a door to open next.</p>
           <div>
             <button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={clear}>Clear filters</button>
-            <Link href="/support" className="brand-button">Contact us <ArrowUpRight /></Link>
+            <Link href="/invite" className="brand-button">Request a company <ArrowUpRight /></Link>
           </div>
         </section>
       )}

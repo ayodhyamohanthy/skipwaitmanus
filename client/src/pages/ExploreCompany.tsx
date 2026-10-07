@@ -103,6 +103,7 @@ export default function ExploreCompany() {
       <section className="privacy-preview">
         <LockKeyhole />
         <div><strong>What is shared, and when?</strong><p>Your job link and note are shared with an available referrer. Personal contact details and documents remain private until a request is accepted.</p></div>
+        <Link href="/safety" className="text-link">Read safety guide <ArrowRight className="size-4" /></Link>
       </section>
 
       <section aria-label={`Open roles at ${company.name}`}>
