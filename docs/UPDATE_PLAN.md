@@ -143,6 +143,59 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Later batches (one plan each, flagged, internal → 10% → 100%): public pages → seeker flows → trust flows → completion flows → admin deltas → billing (post-D2) → assistant access (post-gating + approval infra).
 - Every batch: phone + desktop pixel check vs `screens/`, `pnpm check`, affected Vitest files, `node scripts/design-token-audit.mjs`, no preview chips/sample data in shipped output.
 
+## Batch 1 record — shared app shell (foundation, dormant)
+
+- Commit: shell component + tests (this section appended same change).
+- Added `client/src/components/AppShell.tsx` (kit §7 navigation behavior on live DESIGN.md tokens) + `client/src/components/appShell.test.tsx` (3/3 pass).
+- Visual-contract call: DESIGN.md wins over kit `app/src/styles.css` (frozen contract + token audit). Kit Instrument Sans / oklch / 1.5rem radius / blue-fill active states NOT ported. Recorded deviations: 5 mobile tabs (kit: 8), pale-blue active state, inline More disclosure on desktop, bell without unread fetch.
+- Destinations are live routes only (/requests, /inbox, /referrer, /plans, /settings, /notifications, /support→help, /employer→companies). No link targets kit-only routes.
+- NOT wired into `client/src/App.tsx`: live task pages are self-contained h-dvh layouts; each screen batch converts its page and opts in. Zero production visual change.
+- Verification: token audit 0 findings on new files, `tsc --noEmit` clean, `git diff --check` clean.
+- Carry-forward: bell unread count, dark-mode tokens, kit font/radius takeover (owner call, needs DESIGN.md amendment).
+
+## Batch 2 record — /requests list UX + first shell adoption
+
+- Commit: redesigned list on real data, wrapped in `AppShell` (this section appended same change).
+- Rewrote `client/src/pages/MyRequests.tsx` (297 lines; `RequestRow` extracted): header + New ask → `/start`, live `SeekerCreditsCard`, meters (Open asks / In conversation / Unread updates — all computed from `/api/company-referrals/mine`), Active/Closed tabs, rows linking to `/conversation/:id` when messageable, inline referrer-message excerpt for non-pending rows, per-row Withdraw (pending + unclaimed) with confirm dialog + retryable failure alert + credit restore.
+- Rewrote 3 test files preserving intent (empty honesty, failed-load retry + slow notice, withdraw offer/hide/confirm/restore/failure). Dropped: fabricated `data-skipwait-empty-preview` card (kit honesty rule — its assertion now verifies absence), detail-carousel selectors (timeline/history move to the /thread batch), Back button (shell owns nav).
+- Deviations (server lacks primitives, no server changes in this batch): no slots x/3 meter or slots-full nudge (no open-ask cap enforced anywhere — needs product/server decision); no "Expiring soon" (no `expiresAt`, no expired status); Closed = declined/closed/withdrawn; New ask → `/start` until `/explore` ships; per-request status timeline deferred to /thread batch.
+- Structural note: first draft hit a TSX parse failure in deeply nested ternary+fragment+map JSX; rewrote with `RequestRow` + if/else body (also better sizing). Exact trigger unidentified — flagged if it recurs.
+- Verification: 13/13 tests (3 files + shell), `tsc --noEmit` clean, token audit 0 findings, `git diff --check` clean.
+- Visual check vs `screens/06_requests*` pending — no screenshot harness in this environment; needs phone (360px) + desktop pass before rollout.
+- Carry-forward: /thread batch (full detail + withdraw re-home + timeline), server open-ask cap + expiry decisions.
+
+## Batch 3 record — kit v4 visual-contract takeover (foundation)
+
+- Owner order: kit v4 overrides the past design. Recorded in `DESIGN.md` header (AGENTS.md freeze amended for visual tokens only).
+- `client/src/index.css` rewritten to kit tokens (oklch `@theme`, `.dark` block dormant, Instrument Sans + IBM Plex Mono via fontsource, `--radius: 1.5rem`, kit focus/base). Transitional `--color-*` aliases kept for unconverted pages so they render unchanged.
+- Installed `@fontsource/instrument-sans` + `@fontsource/ibm-plex-mono` (owner-approved; caret convention; `package.json` + `pnpm-lock.yaml`). Note: repo `pnpm` shim cannot parse the `packageManager` hash field — used `COREPACK_ENABLE_PROJECT_SPEC=0 corepack pnpm@10.34.6`.
+- `scripts/design-token-audit.mjs` now carries a documented migration union (kit `#141414` added; legacy hexes still pass until per-batch conversion removes them; final batch tightens to kit-only).
+- Per-page hardcoded hexes (~1,500 in 64 files) convert inside their screen batches — not here.
+- Carry-forward: tighten audit at final batch; dark-mode switchable toggle is a later settings batch.
+
+## Batch 4 record — /thread on /conversation/:requestId (full kit fidelity)
+
+- Commit: kit thread UX on real data, shell-wrapped (this section appended same change).
+- New `client/src/lib/threadApi.ts` (role resolution: mine → seeker, preview → referrer-pending, detail → referrer-claimed; one-click review, progress, withdraw, conversation helpers).
+- Rewrote `client/src/pages/ReferralConversation.tsx` (kit header, stage bar, ask bubble, messages, decision aside, counterpart card, ethics banner; no View-as toggle — role comes from data; no state chips, no sample names/messages).
+- New `client/src/components/thread/ThreadDecisionPanels.tsx` (seeker waiting/withdraw/progress/terminal panels; referrer accept w/ ethics gate, pass w/ 5 kit reasons → server `role_not_a_fit|cannot_support|timing`, mark-as-referred → `intro_made`).
+- `server/db.ts`: additive SELECT columns only (`title`+`pitch` on mine-list, `title` on preview). No schema change, no migration.
+- `client/src/index.css`: ported kit classes used here (brand-button, company-mark, eyebrow, text-link, modal-backdrop, app-dialog, dialog-close, status-pill + live-state variants).
+- `MyRequests.tsx`: all rows now link to the thread (it handles every state).
+- Deviations (no server primitive, recorded gaps): ask-one-question omitted (no endpoint), reference-ID input omitted (no storage), expiry copy/states omitted (no expiry), referrer names never shown to seeker (not exposed), `/report`+`/landed`+dossier links omitted (routes don't exist), closed renders as "Request closed" not "Hired", pass-via-review sets terminal declined while one-click pass keeps the request active for others (server semantics preserved).
+- Verification: 20/20 client tests (7 new thread tests), affected server tests 7/7, `tsc` clean, audit clean, `vite build` ok.
+- Visual check vs `screens/08_thread*` pending — no screenshot harness in this environment.
+- Carry-forward: server ask-one-question endpoint, reference-ID storage, expiry policy, `/report`+`/landed` batches.
+
+## Batch 5 record — /verify work-email OTP (full kit fidelity)
+
+- Commit: kit verify flow on the live OTP backend, shell-wrapped (this section appended same change).
+- New `client/src/pages/Verify.tsx` + `verify.test.tsx` (5/5): company picker (5 launch companies per spec), work-email validation (format, personal-domain block, company-domain match), 6-digit code UX (paste, auto-advance, resend timer), 5-attempt lockout copy, verified badge preview, server-driven re-verify date. No `123456` demo code, no preview state chips.
+- Server used as-is: `POST /api/work-email/otp/send|verify` (rate-limit, TTL, lockout all server-enforced).
+- Deviations: done CTA → `/referrer` until `/referrer-setup` ships (swap recorded); suggest-company link omitted until that batch; Go Neutrinos domain `goneutrinos.com` is a kit-spec assumption needing owner confirmation.
+- Carry-forward: `/referrer-setup` (+ referrer-preferences persistence endpoint — none exists), re-verify-due surfacing in referrer-home batch.
+- Verification: 5/5 tests, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
