@@ -202,6 +202,8 @@ input, textarea { caret-color: var(--primary); }
 .company-mark{width:42px;height:42px;display:inline-grid;place-items:center;flex:0 0 auto;border:2px solid var(--foreground);border-radius:8px;background:var(--secondary);font-weight:700;font-size:13px;font-style:normal;}
 .company-mark.large{width:82px;height:82px;font-size:23px;border-radius:8px;box-shadow:var(--shadow-offset);}
 .eyebrow{font:11px var(--font-label);text-transform:uppercase;color:var(--muted-foreground);}
+.brand-dot{color:var(--primary);}
+.page-content{padding:46px 44px 32px;max-width:1280px;margin:auto;}
 .text-link{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--primary);}
 .modal-backdrop{position:fixed;inset:0;background:color-mix(in oklch,var(--foreground) 35%,transparent);z-index:80;display:grid;place-items:center;padding:20px;}
 .app-dialog{position:relative;background:var(--background);border:2px solid var(--foreground);border-radius:24px;padding:36px;max-width:440px;width:100%;box-shadow:var(--shadow-offset);max-height:calc(100dvh - 40px);overflow-y:auto;}
@@ -218,4 +220,4 @@ input, textarea { caret-color: var(--primary); }
 .status-approved,.status-intro_made,.status-interview,.status-offer{border-color:var(--success);color:var(--success);}
 .status-declined,.status-withdrawn{color:var(--destructive);}
 .status-closed{color:var(--muted-foreground);}
-@media(max-width:768px){.app-dialog{align-self:end;margin-bottom:70px;padding:30px 24px;}.company-mark.large{width:60px;height:60px;font-size:17px;}}
+@media(max-width:768px){.app-dialog{align-self:end;margin-bottom:70px;padding:30px 24px;}.company-mark.large{width:60px;height:60px;font-size:17px;}.page-content{padding:28px 20px 15px;}.eyebrow{font-size:9px;}}

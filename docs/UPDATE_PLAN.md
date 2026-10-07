@@ -187,6 +187,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Visual check vs `screens/08_thread*` pending — no screenshot harness in this environment.
 - Carry-forward: server ask-one-question endpoint, reference-ID storage, expiry policy, `/report`+`/landed` batches.
 
+## Batch 5 record — /verify work-email OTP (full kit fidelity)
+
+- Commit: kit verify flow on the live OTP backend, shell-wrapped (this section appended same change).
+- New `client/src/pages/Verify.tsx` + `verify.test.tsx` (5/5): company picker (5 launch companies per spec), work-email validation (format, personal-domain block, company-domain match), 6-digit code UX (paste, auto-advance, resend timer), 5-attempt lockout copy, verified badge preview, server-driven re-verify date. No `123456` demo code, no preview state chips.
+- Server used as-is: `POST /api/work-email/otp/send|verify` (rate-limit, TTL, lockout all server-enforced).
+- Deviations: done CTA → `/referrer` until `/referrer-setup` ships (swap recorded); suggest-company link omitted until that batch; Go Neutrinos domain `goneutrinos.com` is a kit-spec assumption needing owner confirmation.
+- Carry-forward: `/referrer-setup` (+ referrer-preferences persistence endpoint — none exists), re-verify-due surfacing in referrer-home batch.
+- Verification: 5/5 tests, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
