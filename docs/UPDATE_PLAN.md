@@ -164,6 +164,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Visual check vs `screens/06_requests*` pending — no screenshot harness in this environment; needs phone (360px) + desktop pass before rollout.
 - Carry-forward: /thread batch (full detail + withdraw re-home + timeline), server open-ask cap + expiry decisions.
 
+## Batch 3 record — kit v4 visual-contract takeover (foundation)
+
+- Owner order: kit v4 overrides the past design. Recorded in `DESIGN.md` header (AGENTS.md freeze amended for visual tokens only).
+- `client/src/index.css` rewritten to kit tokens (oklch `@theme`, `.dark` block dormant, Instrument Sans + IBM Plex Mono via fontsource, `--radius: 1.5rem`, kit focus/base). Transitional `--color-*` aliases kept for unconverted pages so they render unchanged.
+- Installed `@fontsource/instrument-sans` + `@fontsource/ibm-plex-mono` (owner-approved; caret convention; `package.json` + `pnpm-lock.yaml`). Note: repo `pnpm` shim cannot parse the `packageManager` hash field — used `COREPACK_ENABLE_PROJECT_SPEC=0 corepack pnpm@10.34.6`.
+- `scripts/design-token-audit.mjs` now carries a documented migration union (kit `#141414` added; legacy hexes still pass until per-batch conversion removes them; final batch tightens to kit-only).
+- Per-page hardcoded hexes (~1,500 in 64 files) convert inside their screen batches — not here.
+- Carry-forward: tighten audit at final batch; dark-mode switchable toggle is a later settings batch.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

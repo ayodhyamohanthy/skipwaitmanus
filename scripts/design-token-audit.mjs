@@ -30,9 +30,18 @@ const EXCLUDED = new Set([
   "client/src/pages/ComponentShowcase.tsx", // dev-only shadcn/widget gallery
 ]);
 
-/** DESIGN.md palette — the only colours allowed here. */
+/** Kit v4 palette (owner override, Oct 2026) + legacy DESIGN.md palette.
+ *
+ * MIGRATION UNION: kit v4 is the visual contract going forward, but converted
+ * pages land batch by batch. Until the last screen batch removes the final
+ * legacy hex, both sets pass so CI stays green throughout the migration.
+ * Each screen batch must convert its files to kit tokens (oklch utilities,
+ * no hardcoded hexes); the batch that removes the last legacy hex tightens
+ * this set back to kit-only and deletes this comment.
+ */
 const APPROVED = new Set([
-  "#ffffff", "#000000", // canvas / ink
+  "#ffffff", "#000000", // canvas / ink (legacy; converges to kit foreground)
+  "#141414", // kit ink
   "#0000ff", "#0000cc", "#000099", // primary action blue (+ hover/pressed)
   "#ededff", "#c2c2ff", "#e0e0ff", // pale-blue tint, line, track
   "#fffc52", "#121212", // accent yellow, dark section

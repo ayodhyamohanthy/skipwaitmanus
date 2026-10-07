@@ -1,26 +1,32 @@
-# DESIGN.md — skipwait.me design context ("Moving Parts" world, approved homepage system)
+# DESIGN.md — skipwait.me design context (Kit v4 contract, Oct 2026)
+
+> OWNER OVERRIDE (Oct 2026): Kit v4 (`START_HERE.md`, `app/src/styles.css`) is
+> the visual contract and supersedes the "Moving Parts" system below where
+> they differ. Type, palette, and shape sections are kit values. The token
+> audit carries a migration union until the last screen batch removes the
+> final legacy hex. AGENTS.md's freeze is hereby amended by the owner for
+> visual tokens only; all other AGENTS.md rules stand.
 
 ## Type system
-- **UI/display/body**: `"Helvetica Neue", "Segoe UI", ui-sans-serif, system-ui, sans-serif` (`font-sans`, `font-serif`, `font-display` all resolve to this stack) — sentence case, never condensed uppercase for headings.
-- **Numerals/labels**: JetBrains Mono 500/700 with `tnum` — counts, meters, codes, timestamps only.
-- **Scale**: 11–13px micro-labels · 13–14px body · 16–20px section titles · 24–28px page titles · large heroes only on the marketing landing page (task screens stay compact so actions remain reachable).
-- Tracking floor −0.04em (headings typically −0.02 to −0.03em); headings use `text-wrap: balance`.
+- **UI/display/body**: `"Instrument Sans", sans-serif` — sentence case, letter-spacing 0.
+- **Labels/eyebrows**: `"IBM Plex Mono", monospace` 9–11px uppercase micro-labels.
+- **Scale**: 11–13px micro-labels · 13–14px body · 16–20px section titles · 24–28px+ page titles (kit heroes larger on marketing surfaces).
+- Headings `text-wrap: balance`.
 
-## Palette (do not invent colors)
-- canvas `#ffffff` · ink `#000000` (text + outlined actions)
-- primary action blue `#0000ff` (hover `#0000cc`, pressed `#000099`) · white text on blue (8.59:1)
-- pale-blue tint `#ededff` (info panels, selected states) · pale-blue line `#c2c2ff` · track `#e0e0ff`
-- accent yellow `#fffc52` with black text — deliberate emphasis only (hero panels, eyebrows on blue, text selection); never body text, never fills behind white text
-- dark section `#121212` with white text
-- secondary text `#505050` · icons/large-only `#767676` · hairline `#e5e5e5` · input line `#cfcfcf` · neutral fills `#f0f0f0` / `#f5f5f5`
-- functional (semantic only, always paired with text/icons): success `#15803d` · pending `#B45309` · error `#B91C1C` (+ their tint grounds)
+## Palette (kit v4 — oklch tokens in `client/src/index.css`, do not invent colors)
+- canvas `oklch(1 0 0)` (white) · ink `#141414` · foreground `oklch(0.191 0 0)`
+- primary electric blue `oklch(0.452 0.313 264.05)` (≈ `#0000FF`), dark-theme brighter blue `oklch(0.62 0.22 264)`
+- invitation yellow `oklch(0.966 0.176 108.4)` (`#FFFC52`) with dark text — deliberate emphasis only
+- dark theme: ink background `oklch(0.17 0 0)`, card `oklch(0.21 0 0)`, yellow kept as secondary accent
+- functional: success `oklch(0.45 0.12 155)` · destructive `oklch(0.577 0.245 27.325)`
+- Focus rings: primary blue, 3px + 4px offset. Selection: yellow on black. Caret: primary.
 
 ## Shape & space
-- radius: major panels 76px desktop / 38px mobile (marketing) · task cards/panels 24px · controls/inputs `--radius: 1.125rem` (18px) · pills/dots 99px · brand mark 9px.
-- elevation once: hairline border OR soft offset shadow, never both (ghost cards banned).
-- disabled = solid `#e0e0e0` block + `#505050` text (no faded ghosts); placeholders `#505050`.
-- focus rings `#0000ff`; caret `#0000ff`; selection yellow `#fffc52` on black; scrollbar white/`#cfcfcf`.
-- task screens `max-w-xl mx-auto`, safe-area bottom actions; step markers carry sequence info; decorative kickers above headings banned.
+- radius: `--radius: 1.5rem`; cards 24px (`radius-2xl`+); controls `--radius` steps via `@theme` scale; pills 999px; brand mark 10px.
+- elevation: 2px ink borders + hard offset shadows (`4px 4px 0`) on brand moments — kit signature, replaces hairline-only rule.
+- tap targets ≥44px mobile (≥45px tab bar), safe-area insets top + bottom; no horizontal overflow at 360px.
+- task screens `max-w-xl mx-auto` where the screen batch keeps that shell; kit app shell (sidebar 248px / tab bar) is the new standard chrome.
+- one gradient exception: kit work-showcase thumbnails use a subtle primary/secondary tint blend; no other gradients anywhere.
 
 ## Components (reuse, never restyle)
 - StatusBadge (dot + label; blue tone = pale-blue tint ground, black text, blue dot)
