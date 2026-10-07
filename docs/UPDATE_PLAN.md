@@ -196,6 +196,14 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Carry-forward: `/referrer-setup` (+ referrer-preferences persistence endpoint — none exists), re-verify-due surfacing in referrer-home batch.
 - Verification: 5/5 tests, `tsc` clean, audit clean.
 
+## Batch 6 record — /ask composer (full kit fidelity)
+
+- Commit: kit ask composer on the live referral + upload + smart-pitch backends, shell-wrapped.
+- New `client/src/pages/Ask.tsx` + `ask.test.tsx` (5/5): official-link check (shared URL validator), 30–120-word + specific-proof strength meter, compensation, resume upload (same chunk-encryption protocol as ReferralRequest, contained single-file flow), free "Draft from my resume" (smart-pitch endpoint, honestly labeled — no credit claim), send with Idempotency-Key + fast-track + company-confirm compatibility, sent state with real thread link + open-ask count, server credit errors surfaced verbatim.
+- Omitted (no primitive, recorded): location-fit vs profile work-auth, pinned work showcase, credit-charged improve (no endpoint), slot denominator (no cap).
+- `/request` stays untouched (owner to decide merge/redirect later).
+- Verification: 5/5 tests, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
