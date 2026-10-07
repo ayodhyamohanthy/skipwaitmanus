@@ -282,24 +282,3 @@ input, textarea { caret-color: var(--primary); }
   .privacy-preview a,.profile-page a{min-height:44px;display:inline-flex;align-items:center;}
 }
 @media (max-width: 640px){.intent-switch{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.intent-switch>button{white-space:normal!important;}}
-
-/* ---------------------------------------------------------------------------
- * .launch-final -- CAPTURE/SOURCE DISCREPANCY, resolved in favour of the capture.
- *
- * app/src/styles.css says `.launch-final{background:var(--muted)}`, which is a
- * very light grey. The design captures (screens/web/00_x__default.png and
- * screens/mobile/00_x__default.png) show this band DARK, with the heading in
- * light text and the blue CTA on top of it.
- *
- * The captures are the stated visual target, so this overrides the source. It
- * uses the kit's own tokens (--foreground ink as the surface, --background as
- * the text) rather than an invented colour, and it re-points the eyebrow and
- * the body line, which would otherwise stay dark-on-dark.
- *
- * If the kit source is in fact authoritative here, deleting this block restores
- * the light band exactly.
- * ------------------------------------------------------------------------- */
-.launch-final{background:var(--foreground);color:var(--background);}
-.launch-final .eyebrow{color:var(--background);opacity:.75;}
-.launch-final p{color:var(--background);opacity:.8;}
-.launch-final h2{color:var(--background);}
