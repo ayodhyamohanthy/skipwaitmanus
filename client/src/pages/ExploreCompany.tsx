@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, BriefcaseBusiness, Exte
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/_core/auth";
+import { usePersistFn } from "@/hooks/usePersistFn";
 import { getLaunchCompany, companySlugForJobCompany } from "@/lib/companies";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -10,6 +11,7 @@ type Job = { id: number; title: string; company: string; location: string; senio
 export default function ExploreCompany() {
   const [, params] = useRoute("/explore/:slug");
   const { isSignedIn, getToken } = useAuth();
+  const fetchToken = usePersistFn(getToken);
   const company = getLaunchCompany(params?.slug ?? "");
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [saved, setSaved] = useState<Set<number>>(new Set());
@@ -35,7 +37,7 @@ export default function ExploreCompany() {
     let active = true;
     void (async () => {
       try {
-        const token = await getToken();
+        const token = await fetchToken();
         const response = await fetch("/api/saved-roles", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
         if (!response.ok) return;
         const payload = await readApiJson<{ saved?: Array<{ jobId: number }> }>(response, "");
@@ -43,14 +45,14 @@ export default function ExploreCompany() {
       } catch { /* save toggles stay unsigned */ }
     })();
     return () => { active = false; };
-  }, [getToken, isSignedIn]);
+  }, [fetchToken, isSignedIn]);
 
   const toggleSave = async (jobId: number) => {
     if (savingId !== null) return;
     const adding = !saved.has(jobId);
     setSavingId(jobId);
     try {
-      const token = await getToken();
+      const token = await fetchToken();
       const response = await fetch(`/api/saved-roles/${jobId}`, { method: adding ? "PUT" : "DELETE", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
       if (!response.ok) return;
       setSaved(current => {

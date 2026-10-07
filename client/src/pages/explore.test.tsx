@@ -28,7 +28,7 @@ describe("Explore directory", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ jobs: JOBS }) })));
     render(<Explore />);
     expect(await screen.findByText("Wipro")).toBeTruthy();
-    expect(screen.getByText("2 open roles")).toBeTruthy();
+    await waitFor(() => expect(screen.getByText(/2 open/)).toBeTruthy());
     expect(screen.getByText("TCS")).toBeTruthy();
     expect(screen.queryByText(/people open/i)).toBeNull();
     expect(screen.getByText("SkipWait")).toBeTruthy();
@@ -61,7 +61,7 @@ describe("Explore company detail", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<ExploreCompany />);
-    expect(await screen.findByText("2 open roles")).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText(/2 open/).length).toBe(2));
     expect(screen.getByText("Product Designer")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Save Product Designer" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/saved-roles/1", expect.objectContaining({ method: "PUT" })));

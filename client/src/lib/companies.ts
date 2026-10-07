@@ -20,7 +20,7 @@ export const LAUNCH_COMPANIES: LaunchCompany[] = [
 ];
 
 function normalizeCompany(value: string) {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  return value.trim().toLowerCase().replace(/\.(com|me|in|io|co|org)$/, "").replace(/[^a-z0-9]/g, "");
 }
 
 const ALIASES: Record<string, string> = {
@@ -36,8 +36,7 @@ const ALIASES: Record<string, string> = {
 
 export function companySlugForJobCompany(value: string | null | undefined): string | null {
   if (!value) return null;
-  const normalized = normalizeCompany(value).replace(/\.(com|me|in|io|co|org)$/, "");
-  return ALIASES[normalized] ?? null;
+  return ALIASES[normalizeCompany(value)] ?? null;
 }
 
 export function getLaunchCompany(slug: string): LaunchCompany | undefined {

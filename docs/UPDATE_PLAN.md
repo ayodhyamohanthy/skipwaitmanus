@@ -210,6 +210,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - `/request` stays untouched (owner to decide merge/redirect later).
 - Verification: 5/5 tests, `tsc` clean, audit clean.
 
+## Batch 7 record — /explore + /explore/:slug (full kit fidelity)
+
+- Commit: kit company directory on live jobs data, shell-wrapped.
+- New `client/src/lib/companies.ts` (spec launch set + job-company matcher — fixed a real TLD-strip ordering bug found by tests), `Explore.tsx`, `ExploreCompany.tsx`, `explore.test.tsx` (5/5).
+- Real open-role counts per company from `/api/jobs`; role list with save toggles on the live saved-roles endpoint; unknown slugs get an honest not-found view.
+- Deviations: availability claims use real role counts (no public referrer-coverage endpoint exists — "people open" copy would be fabricated); safety link omitted (no `/safety` yet); save toggles render only when signed in.
+- Real production bug fixed: saved-roles load effect looped on unstable `getToken` identity (request storm + clobbered PUT state) — stabilized with `usePersistFn`, the same guard MyRequests uses.
+- Verification: 5/5 tests, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
