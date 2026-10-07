@@ -301,6 +301,13 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Live employer workspace (sponsorships, talent unlocks, billing) deliberately untouched — recorded as owner call D6: kit forbids paid visibility while live B2B sells sponsored placement. Same class of conflict as D2 billing.
 - Verification: 1/1 test, `tsc` clean, audit clean.
 
+## Batch 18 record — /admin-review console on dedicated review endpoints
+
+- Commit: kit review queue (reports + company suggestions) with evidence, note-required decisions, reporter notifications, and audit info.
+- Server: `list/review` admin fns with terminal-state protection + reporter/suggester notifications; admin-role gate with 401/403 split; wired via `safetyRoutes.ts`.
+- Page `AdminReview.tsx` (standalone dark console): tabs with counts, SLA badges (urgent 4h), evidence, decisions gated on reviewer note, terminal panels, appeal-via-support note, admin gate without leaking contents.
+- Verification: 14/14 tests (client + server + guard), `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

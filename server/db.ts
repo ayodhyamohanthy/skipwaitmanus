@@ -446,6 +446,44 @@ export async function listMyCompanySuggestions(userId: number) {
   return db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).where(eq(companySuggestions.submitterUserId, userId)).orderBy(desc(companySuggestions.createdAt)).limit(50);
 }
 
+export async function listSafetyReportsAdmin(limit = 100) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: safetyReports.id, reporterUserId: safetyReports.reporterUserId, reason: safetyReports.reason, details: safetyReports.details, referralRequestId: safetyReports.referralRequestId, reportedUserId: safetyReports.reportedUserId, urgent: safetyReports.urgent, status: safetyReports.status, createdAt: safetyReports.createdAt, updatedAt: safetyReports.updatedAt }).from(safetyReports).orderBy(desc(safetyReports.urgent), desc(safetyReports.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+}
+
+export async function reviewSafetyReport(adminId: number, reportId: number, input: { status?: unknown; note?: unknown }, notify?: (userId: number, title: string, body: string) => Promise<unknown>) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (input.status !== "resolved" && input.status !== "dismissed" && input.status !== "under_review") throw new Error("Choose under review, resolved, or dismissed");
+  if (typeof input.note !== "string" || !input.note.trim()) throw new Error("A reviewer note is required");
+  const current = (await db.select().from(safetyReports).where(eq(safetyReports.id, reportId)).limit(1))[0];
+  if (!current) throw new Error("This report could not be found");
+  if (current.status === "resolved" || current.status === "dismissed") throw new Error("This report was already resolved");
+  await db.update(safetyReports).set({ status: input.status, updatedAt: new Date() }).where(eq(safetyReports.id, reportId));
+  if ((input.status === "resolved" || input.status === "dismissed") && notify) {
+    await notify(current.reporterUserId, "Update on your report", input.status === "resolved" ? "Our safety team reviewed your report and took action. Thank you for flagging it." : "Our safety team reviewed your report and closed it with no violation found.").catch(() => undefined);
+  }
+  return { id: reportId, status: input.status, reviewerId: adminId };
+}
+
+export async function listCompanySuggestionsAdmin(limit = 100) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: companySuggestions.id, submitterUserId: companySuggestions.submitterUserId, companyName: companySuggestions.companyName, website: companySuggestions.website, role: companySuggestions.role, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).orderBy(desc(companySuggestions.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+}
+
+export async function reviewCompanySuggestion(adminId: number, suggestionId: number, input: { status?: unknown; note?: unknown }, notify?: (userId: number, title: string, body: string) => Promise<unknown>) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (input.status !== "approved" && input.status !== "dismissed" && input.status !== "under_review") throw new Error("Choose under review, approved, or dismissed");
+  if (typeof input.note !== "string" || !input.note.trim()) throw new Error("A reviewer note is required");
+  const current = (await db.select().from(companySuggestions).where(eq(companySuggestions.id, suggestionId)).limit(1))[0];
+  if (!current) throw new Error("This suggestion could not be found");
+  if (current.status === "approved" || current.status === "dismissed") throw new Error("This suggestion was already resolved");
+  await db.update(companySuggestions).set({ status: input.status }).where(eq(companySuggestions.id, suggestionId));
+  if ((input.status === "approved" || input.status === "dismissed") && notify) {
+    await notify(current.submitterUserId, "Update on your company suggestion", input.status === "approved" ? `Thanks — ${current.companyName} is approved for listing.` : `Thanks for suggesting ${current.companyName}; we can't list it right now.`).catch(() => undefined);
+  }
+  return { id: suggestionId, status: input.status, reviewerId: adminId };
+}
+
 export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));

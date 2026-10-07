@@ -159,7 +159,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Seeker/referrer profiles, work showcases, and shareable public profiles.
   registerProfileRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, getMyProfile: db.getMyProfile, updateMyProfile: db.updateMyProfile, listMyWorkItems: db.listMyWorkItems, createWorkItem: db.createWorkItem, updateWorkItem: db.updateWorkItem, deleteWorkItem: db.deleteWorkItem, getPublicProfileByHandle: db.getPublicProfileByHandle });
   // Safety reports and company suggestions intake.
-  registerSafetyRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, createSafetyReport: db.createSafetyReport, listMySafetyReports: db.listMySafetyReports, createCompanySuggestion: db.createCompanySuggestion, listMyCompanySuggestions: db.listMyCompanySuggestions });
+  registerSafetyRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, createSafetyReport: db.createSafetyReport, listMySafetyReports: db.listMySafetyReports, createCompanySuggestion: db.createCompanySuggestion, listMyCompanySuggestions: db.listMyCompanySuggestions, listSafetyReportsAdmin: db.listSafetyReportsAdmin, reviewSafetyReport: db.reviewSafetyReport, listCompanySuggestionsAdmin: db.listCompanySuggestionsAdmin, reviewCompanySuggestion: db.reviewCompanySuggestion, createNotification: (userId, title, body) => db.createNotification(userId, "system", title, body) });
 
   // Razorpay (INR domestic) + PayPal (USD global) checkout order creation.
   // Chargebee stays the fallback gateway for subscription management.
