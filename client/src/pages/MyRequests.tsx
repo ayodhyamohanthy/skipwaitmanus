@@ -60,16 +60,12 @@ function RequestRow({ request, withdrawing, onWithdraw }: RowProps) {
         <small className="mt-0.5 block text-xs text-[#505050]">{displayRef(request.id)} · {rowNote(request)}</small>
       </span>
       <StatusBadge label={state.label} tone={stateBadgeTones[state.tone]} />
-      {canMessage(request) ? <ArrowRight className="h-4 w-4 shrink-0 text-[#505050]" aria-hidden="true" /> : null}
+      <ArrowRight className="h-4 w-4 shrink-0 text-[#505050]" aria-hidden="true" />
     </>
   );
   return (
     <li>
-      {canMessage(request) ? (
-        <Link href={`/conversation/${request.id}`} className={rowClass} aria-label={label}>{inner}</Link>
-      ) : (
-        <div className={rowClass} aria-label={label}>{inner}</div>
-      )}
+      <Link href={`/conversation/${request.id}`} className={rowClass} aria-label={label}>{inner}</Link>
       {request.referrerMessage && request.status !== "pending" ? (
         <aside aria-label="Referrer update" className="mt-2 rounded-xl border border-[#c2c2ff] bg-[#ededff]/60 p-3">
           <p className="text-xs leading-5 text-[#505050]">{request.referrerMessage}</p>

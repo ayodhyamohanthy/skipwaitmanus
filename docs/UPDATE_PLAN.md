@@ -173,6 +173,20 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Per-page hardcoded hexes (~1,500 in 64 files) convert inside their screen batches — not here.
 - Carry-forward: tighten audit at final batch; dark-mode switchable toggle is a later settings batch.
 
+## Batch 4 record — /thread on /conversation/:requestId (full kit fidelity)
+
+- Commit: kit thread UX on real data, shell-wrapped (this section appended same change).
+- New `client/src/lib/threadApi.ts` (role resolution: mine → seeker, preview → referrer-pending, detail → referrer-claimed; one-click review, progress, withdraw, conversation helpers).
+- Rewrote `client/src/pages/ReferralConversation.tsx` (kit header, stage bar, ask bubble, messages, decision aside, counterpart card, ethics banner; no View-as toggle — role comes from data; no state chips, no sample names/messages).
+- New `client/src/components/thread/ThreadDecisionPanels.tsx` (seeker waiting/withdraw/progress/terminal panels; referrer accept w/ ethics gate, pass w/ 5 kit reasons → server `role_not_a_fit|cannot_support|timing`, mark-as-referred → `intro_made`).
+- `server/db.ts`: additive SELECT columns only (`title`+`pitch` on mine-list, `title` on preview). No schema change, no migration.
+- `client/src/index.css`: ported kit classes used here (brand-button, company-mark, eyebrow, text-link, modal-backdrop, app-dialog, dialog-close, status-pill + live-state variants).
+- `MyRequests.tsx`: all rows now link to the thread (it handles every state).
+- Deviations (no server primitive, recorded gaps): ask-one-question omitted (no endpoint), reference-ID input omitted (no storage), expiry copy/states omitted (no expiry), referrer names never shown to seeker (not exposed), `/report`+`/landed`+dossier links omitted (routes don't exist), closed renders as "Request closed" not "Hired", pass-via-review sets terminal declined while one-click pass keeps the request active for others (server semantics preserved).
+- Verification: 20/20 client tests (7 new thread tests), affected server tests 7/7, `tsc` clean, audit clean, `vite build` ok.
+- Visual check vs `screens/08_thread*` pending — no screenshot harness in this environment.
+- Carry-forward: server ask-one-question endpoint, reference-ID storage, expiry policy, `/report`+`/landed` batches.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
