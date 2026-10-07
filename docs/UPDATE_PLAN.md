@@ -343,6 +343,15 @@ Every kit route is implemented, redirected, deliberately deferred with a recorde
 
 Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visibility conflict, Scoreboard/`main` merge reconciliation, visual phone+desktop pass vs `screens/` (no harness in this environment).
 
+## Batch 21 record — landing page rebuilt exactly per kit
+
+- Commit: `/` rewritten to the kit launch page (header, door hero, trust strip, launch companies, VisualJourney steps, referrer band, privacy, FAQ, final CTA, footer) with kit CSS ported verbatim and the real door asset.
+- `Home.tsx` rewritten; `VisualJourney.tsx` ported (plain buttons); `client/public/launch-door.jpg` added; launch + journey CSS appended to `index.css`.
+- Kept live behaviors: signed-in workspace strip, real accepted-referrals impact line, kit SEO head (shared `landingContent` untouched — sitemap/prerender contract intact).
+- Deviations: consent banner omitted (wiring it into Sentry/Clarity init is a legal/product call — own batch); guides section dropped from footer (routes still live); footer uses Safety instead of missing Guidelines.
+- Home test suites rewritten to the kit contract (menu, destinations, FAQ JSON-LD, footer, workspace gating).
+- Verification: 11/11 home tests + neighbors green, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

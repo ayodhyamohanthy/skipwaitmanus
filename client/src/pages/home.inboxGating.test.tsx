@@ -8,7 +8,7 @@ const { go, signedIn } = vi.hoisted(() => ({ go: vi.fn(), signedIn: { value: fal
 
 vi.mock("wouter", () => ({
   useLocation: () => ["/", go],
-  Link: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
 }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
@@ -48,9 +48,7 @@ describe("homepage profile entries", () => {
   it("keeps the two role entry points routing to their flows", () => {
     render(<Home />);
 
-    fireEvent.click(screen.getByRole("button", { name: /I need a referral/i }));
-    expect(go).toHaveBeenCalledWith("/start");
-    fireEvent.click(screen.getByRole("button", { name: /I can refer someone/i }));
-    expect(go).toHaveBeenCalledWith("/referrer");
+    expect(screen.getAllByRole("link", { name: /Become a referrer/ }).every(link => link.getAttribute("href") === "/referrer")).toBe(true);
+    expect(screen.getAllByRole("link", { name: /Explore companies/ })[0].getAttribute("href")).toBe("/explore");
   });
 });

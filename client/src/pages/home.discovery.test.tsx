@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import Home from "./Home";
-import { LANDING_EXPLORE, LANDING_FAQ } from "@shared/landingContent";
 
 vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children?: React.ReactNode }) => null,
@@ -18,36 +17,40 @@ vi.mock("wouter", () => ({
 }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
-beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ acceptedReferrals: 3 }) }))); });
+beforeEach(() => {
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ acceptedReferrals: 0 }) })));
+});
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("landing discovery and search metadata", () => {
-  it("keeps every public destination one tap from the hero", () => {
+  it("keeps the kit public destinations one tap from the header", () => {
     render(<Home />);
-    const nav = screen.getByRole("navigation", { name: "Public navigation" });
-    for (const href of ["/jobs", "/wall", "/pricing", "/support", "/privacy"]) expect(nav.querySelector(`a[href="${href}"]`)).toBeTruthy();
+    const nav = screen.getByRole("navigation", { name: "Website navigation" });
+    for (const [text, href] of [["Explore companies", "/explore"], ["For referrers", "/referrer"], ["Help & safety", "/safety"]]) {
+      const link = within(nav).getByText(text);
+      expect(link.closest("a")?.getAttribute("href")).toBe(href);
+    }
   });
 
   it("answers the pre-signup questions in visible copy and in FAQ structured data", () => {
     render(<Home />);
-    expect(screen.getByRole("heading", { name: "Common questions, answered plainly." })).toBeTruthy();
-    for (const entry of LANDING_FAQ) expect(screen.getByText(entry.question)).toBeTruthy();
+    expect(screen.getByText("Are job referrals really free?")).toBeTruthy();
     const jsonLd = JSON.parse(document.getElementById("route-jsonld")?.textContent ?? "{}");
     expect(jsonLd["@type"]).toBe("FAQPage");
-    expect(jsonLd.mainEntity).toHaveLength(LANDING_FAQ.length);
-    expect(jsonLd.mainEntity[0].name).toBe(LANDING_FAQ[0].question);
+    expect(jsonLd.mainEntity).toHaveLength(4);
+    expect(jsonLd.mainEntity[0].name).toBe("Are job referrals really free?");
   });
 
-  it("links every public page from the footer so no landing path dead-ends", () => {
+  it("links the live policy and company pages from the footer", () => {
     render(<Home />);
     const footer = document.querySelector("footer");
-    for (const link of LANDING_EXPLORE) expect(footer?.querySelector(`a[href="${link.href}"]`)).toBeTruthy();
+    for (const href of ["/help", "/terms", "/privacy", "/safety", "/for-companies"]) expect(footer?.querySelector(`a[href="${href}"]`)).toBeTruthy();
   });
 
   it("keeps the mobile menu on the same public destinations", () => {
     render(<Home />);
-    fireEvent.click(screen.getByRole("button", { name: "Open navigation menu" }));
-    const menu = screen.getByRole("dialog", { name: "Menu" });
-    for (const href of ["/jobs", "/wall", "/pricing"]) expect(menu.querySelector(`a[href="${href}"]`)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
+    const nav = screen.getByRole("navigation", { name: "Website navigation" });
+    for (const href of ["/explore", "/referrer", "/safety", "/sign-in"]) expect(nav.querySelector(`a[href="${href}"]`)).toBeTruthy();
   });
 });
