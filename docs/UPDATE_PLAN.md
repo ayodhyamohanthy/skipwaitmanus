@@ -294,6 +294,13 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Deviations: areas stored for future matching (jobs carry no function taxonomy — no fuzzy routing by design); levels step omitted (no seniority-match consumer); digest toggle omitted (no digest sender); live `/referrer` hub kept as-is (it exceeds kit functionally — setup linked from verify).
 - Verification: 10/10 setup+home tests, prefs contract tests, delivery/review suites green, `tsc` clean, audit clean.
 
+## Batch 17 record — /for-companies sales page (employer workspace untouched)
+
+- Commit: standalone kit sales page on live truth.
+- `ForCompanies.tsx` + test: hero, launch-company names (no counts), honest value props (rewritten — no ATS/campaign claims), fairness band, pricing replaced with live `/pricing` + `/employer` links (no sample prices), demo form as `mailto:` (nothing submitted silently).
+- Live employer workspace (sponsorships, talent unlocks, billing) deliberately untouched — recorded as owner call D6: kit forbids paid visibility while live B2B sells sponsored placement. Same class of conflict as D2 billing.
+- Verification: 1/1 test, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
