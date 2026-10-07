@@ -50,7 +50,7 @@ export const DESIGNED_ROUTES = {
   "for-companies": null,
   "forgot-password": null,
   "guidelines": "/guidelines",
-  "help": "/support",                     // kit help centre vs live support triage
+  "help": "/help",                        // kit help centre; /support stays as triage
   "inbox": "/inbox",
   "invite": "/share",
   "landed": null,
