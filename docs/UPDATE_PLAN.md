@@ -1,5 +1,11 @@
 # SkipWait Kit v4 → Live Update Plan
 
+> OWNER CALL (Oct 2026, written): kit v4 is up to date and overrides the past,
+> including the Scoreboard rebrand on `main`. This branch continues kit-v4
+> implementation. Merge/reconciliation with `main` (Scoreboard removal of
+> `app/src/routes`, AGENTS.md churn) is an owner/integrator decision — this
+> branch does not rewrite published history.
+
 - Kit: v4 (7 Oct 2026, `START_HERE.md` + `SCREENS.md` + `app/` design source)
 - Branch: `agent/opencode/kit-v4-update-plan`
 - Base HEAD: `07cf59a` (`fix/unblock-main`); diverged from `origin/main`: 19 ahead / 3 behind.
