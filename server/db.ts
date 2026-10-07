@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, canonicalEmailAliases, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -93,7 +93,18 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
     // A verified email owns exactly one locked person row. INSERT...ON DUPLICATE
     // plus FOR UPDATE serializes simultaneous WorkOS and OTP first sign-in.
     let personId: number;
-    if (input.emailVerified) {
+    // An operator-approved email alias (e.g. the founder's gmail) points a
+    // verified address at an existing person, so it signs into that account
+    // instead of minting a second person. Checked before the email-keyed insert.
+    const emailAlias = input.emailVerified
+      ? (await tx.select().from(canonicalEmailAliases).where(eq(canonicalEmailAliases.normalizedEmail, email)).limit(1).for("update"))[0]
+      : undefined;
+    if (emailAlias) {
+      const person = (await tx.select().from(canonicalPeople).where(eq(canonicalPeople.id, emailAlias.canonicalPersonId)).limit(1).for("update"))[0];
+      if (!person) throw new Error("Canonical identity allocation failed");
+      if (person.suspended || person.reviewReason) return { blocked: person.reviewReason ? "IDENTITY_REVIEW_REQUIRED" as const : "ACCOUNT_NOT_ACTIVE" as const };
+      personId = person.id;
+    } else if (input.emailVerified) {
       await tx.insert(canonicalPeople).values({ normalizedVerifiedEmail: email }).onDuplicateKeyUpdate({ set: { normalizedVerifiedEmail: email } });
       const person = (await tx.select().from(canonicalPeople).where(eq(canonicalPeople.normalizedVerifiedEmail, email)).limit(1).for("update"))[0];
       if (!person) throw new Error("Canonical identity allocation failed");
