@@ -49,7 +49,7 @@ export const DESIGNED_ROUTES = {
   "explore-skipwait": null,               // company detail (/explore/:slug)
   "for-companies": null,
   "forgot-password": null,
-  "guidelines": null,
+  "guidelines": "/guidelines",
   "help": "/support",                     // kit help centre vs live support triage
   "inbox": "/inbox",
   "invite": "/share",
@@ -65,7 +65,7 @@ export const DESIGNED_ROUTES = {
   "report": "/report",                    // built: d7506a7a
   "requests": "/requests",
   "reset-password": null,
-  "safety": null,
+  "safety": "/safety",
   "settings": "/settings",
   "sign-in": null,
   "suggest-company": null,
@@ -77,7 +77,7 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 19;
+export const BASELINE_IMPLEMENTED = 21;
 
 const designedSlugs = fs.existsSync(screensDir)
   ? [...new Set(fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, "")))].sort()
