@@ -398,6 +398,12 @@ Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visi
 - Commit: kit header copy, meter icons, aside-bottom pause control per PNGs. Record labels stay on real impact fields.
 - Verification: 7/7 tests, `tsc` clean.
 
+## Batch 28 record — dot-to-dot fidelity pass 6 (thread)
+
+- Commit: ghost-style Pass privately per PNG; ethics banner links “Report or block”.
+- Ask-one-question stays omitted (no anonymous pre-accept messaging endpoint — dedicated backend batch).
+- Verification: 7/7 thread tests, `tsc` clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

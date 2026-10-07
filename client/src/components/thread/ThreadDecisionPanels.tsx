@@ -1,4 +1,4 @@
-import { ArrowRight, Check, HelpCircle, Undo2 } from "lucide-react";
+import { ArrowRight, Check, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { isPostApprovalReferralStatus, type ReferralStatus } from "@shared/referral";
 import type { ThreadRequest } from "@/lib/threadApi";
@@ -164,7 +164,7 @@ export function ReferrerPanel({ request, claimed, busy, error, onAccept, onPass,
           <h2>Would you refer this person?</h2>
           <div className="mt-4 grid gap-2">
             <button type="button" className="brand-button w-full" onClick={() => { setModal("accept"); }}>Accept &amp; connect <ArrowRight /></button>
-            <button type="button" className="brand-button w-full border-2 border-[var(--foreground)] bg-[var(--background)]" onClick={() => { setModal("pass"); }}><HelpCircle />Pass privately</button>
+            <button type="button" className="min-h-11 w-full text-center text-sm font-semibold" onClick={() => { setModal("pass"); }}>Pass privately</button>
           </div>
           <p className="mt-3 text-sm">No reply needed to pass — but a quick answer helps. Your identity is never revealed when you pass.</p>
         </>
