@@ -32,7 +32,7 @@ const appTsx = path.join(root, "client", "src", "App.tsx");
  * keep working).
  */
 export const DESIGNED_ROUTES = {
-  "admin": null,                          // kit console index; live has /admin/* consoles only
+  "admin": "/admin",                      // kit console; links out to the live consoles
   "admin-review": "/admin/approvals",     // kit queue -> live approval queue
   "alerts": "/notifications",             // kit rename
   "app-states": null,                     // PWA install/offline gallery
@@ -77,7 +77,7 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 22;
+export const BASELINE_IMPLEMENTED = 23;
 
 const designedSlugs = fs.existsSync(screensDir)
   ? [...new Set(fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, "")))].sort()
