@@ -1,5 +1,5 @@
 import { SignInButton, useAuth } from "@/_core/auth";
-import { ArrowUpRight, Bell, Building2, Crown, Inbox, ListChecks, Menu, Settings as SettingsIcon, ShieldCheck, X } from "lucide-react";
+import { ArrowUpRight, Bell, Building2, Compass, Crown, Inbox, ListChecks, Menu, Settings as SettingsIcon, ShieldCheck, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { AccountMenu } from "./AccountMenu";
@@ -23,6 +23,7 @@ import { Brand } from "./Brand";
  * shell-compatible layout and opts into this shell.
  */
 export const SHELL_NAV = [
+  { to: "/explore", label: "Explore", icon: Compass },
   { to: "/requests", label: "Requests", icon: ListChecks },
   { to: "/inbox", label: "Inbox", icon: Inbox },
   { to: "/referrer", label: "Refer", icon: ArrowUpRight },
