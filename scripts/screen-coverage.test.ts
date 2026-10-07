@@ -43,12 +43,14 @@ describe("kit v4 screen coverage ratchet", () => {
   it("passes at the committed baseline", () => {
     const result = run();
     expect(result.status).toBe(0);
-    expect(result.out).toMatch(/kit v4 screen coverage: \d+\/42 designed routes reachable/);
+    expect(result.out).toMatch(/kit v4 screen coverage: \d+\/43 designed routes reachable/);
   });
 
   it("accounts for every designed screen: none unmapped, none dangling", () => {
     const parsed = JSON.parse(execFileSync("node", [SCRIPT, "--json"], { stdio: "pipe" }).toString());
-    expect(parsed.designed).toBe(42);
+    // 42 captures + the homepage, which SCREENS.md designs but screens/ never
+    // captured.
+    expect(parsed.designed).toBe(43);
     expect(parsed.unmapped).toEqual([]);
     expect(parsed.dangling).toEqual([]);
     expect(parsed.implemented).toBeGreaterThanOrEqual(parsed.baseline);
@@ -57,7 +59,7 @@ describe("kit v4 screen coverage ratchet", () => {
   it("fails when coverage drops below the baseline", () => {
     // Mutation: demand more coverage than exists, which is what a deleted
     // screen would look like.
-    withMutation("export const BASELINE_IMPLEMENTED = 29;", "export const BASELINE_IMPLEMENTED = 999;", result => {
+    withMutation("export const BASELINE_IMPLEMENTED = 30;", "export const BASELINE_IMPLEMENTED = 999;", result => {
       expect(result.status).toBe(1);
       expect(result.out).toMatch(/coverage regressed/);
     });

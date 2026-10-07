@@ -70,6 +70,19 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/admin/smoke",
   "/admin/token-recovery",
   "/admin/users",
+  "/admin",
+  "/app-states",
+  "/connect-assistant",
+  "/developers",
+  "/emails",
+  "/explore",
+  "/explore/:slug",
+  "/guidelines",
+  "/help",
+  "/report",
+  "/safety",
+  "/sign-in",
+  "/verify",
 ];
 
 /**

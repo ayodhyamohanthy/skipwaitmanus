@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { landingSnapshot, PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
 import { breadcrumbsHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
-import { LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_SUMMARY } from "../shared/landingContent";
+import { LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_SUMMARY } from "../shared/landingContent";
 import { breadcrumbsFor, canonicalUrl, PUBLIC_ROUTES, publicRoute } from "../shared/publicRoutes";
 
 const template =
@@ -121,9 +121,18 @@ describe("crawlable landing and public snapshots", () => {
     const html = landingSnapshot(policyLinks);
     expect(html).toContain(`<h1>${LANDING_H1}</h1>`);
     expect(html).toContain(LANDING_SUMMARY);
-    expect(html).toContain('href="/start"');
+    // Both role entry points, as the v4 landing page presents them.
+    expect(html).toContain('href="/explore"');
     expect(html).toContain('href="/referrer"');
-    for (const link of ["/jobs", "/wall", "/referrer", "/premium", "/pricing", "/about", "/contact", "/support"]) expect(html).toContain(`href="${link}"`);
+    // Derived from the shared source, so the snapshot cannot drift from the
+    // page: every explore link must come from LANDING_EXPLORE.
+    for (const item of LANDING_EXPLORE) expect(html).toContain(`href="${item.href}"`);
+    // NOT asserted here: the absence of /start, /jobs, /wall and /premium. The
+    // landing section no longer emits them, but PUBLIC_PAGES and
+    // shared/publicRoutes.ts still list those routes, so homeLinks() prints
+    // them into the same document. Retiring those two tables is the next step;
+    // until then an absence assertion would fail for a reason that has nothing
+    // to do with the landing page.
     expect(html).toContain(homeLinks(policyLinks));
   });
 

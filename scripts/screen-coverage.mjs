@@ -32,6 +32,7 @@ const appTsx = path.join(root, "client", "src", "App.tsx");
  * keep working).
  */
 export const DESIGNED_ROUTES = {
+  "/": "/",                               // launch homepage; no capture in screens/
   "admin": "/admin",                      // kit console; links out to the live consoles
   "admin-review": "/admin/approvals",     // kit queue -> live approval queue
   "alerts": "/notifications",             // kit rename
@@ -77,11 +78,19 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 29;
+export const BASELINE_IMPLEMENTED = 30;
 
-const designedSlugs = fs.existsSync(screensDir)
-  ? [...new Set(fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, "")))].sort()
-  : [];
+// Screens the kit designs that have NO capture in screens/. The homepage is in
+// SCREENS.md but absent from both screens/web and screens/mobile, so deriving
+// the designed set from captures alone silently under-counts it -- which is how
+// "/" sat on the old design while every other screen moved to v4.
+const UNCAPPED_DESIGNED = ["/"];
+const designedSlugs = [...new Set([
+  ...(fs.existsSync(screensDir)
+    ? fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, ""))
+    : []),
+  ...UNCAPPED_DESIGNED,
+])].sort();
 
 const livePaths = new Set([...fs.readFileSync(appTsx, "utf8").matchAll(/<Route\s+path="([^"]+)"/g)].map(match => match[1]));
 // The 404 screen is a pathless catch-all (`<Route component={NotFound}/>`), so
