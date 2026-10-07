@@ -720,3 +720,42 @@ export const documentBlobs = mysqlTable("documentBlobs", {
   sizeBytes: int("sizeBytes").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+// Kit v4 safety slice. Reasons mirror the six the design offers on `/report`;
+// the API exposes a stable human reference derived from `id` (`R-<1000+id>`)
+// rather than storing one, so the reference can never drift from the row.
+// `dueAt` encodes the kit's SLA (4h when the reporter says they feel unsafe,
+// 48h otherwise) and `appealUntil` the 14-day appeal window opened on review.
+export const safetyReports = mysqlTable("safetyReports", {
+  id: int("id").autoincrement().primaryKey(),
+  reporterUserId: int("reporterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subjectUserId: int("subjectUserId").references(() => users.id, { onDelete: "set null" }),
+  reason: mysqlEnum("reason", ["money_request", "harassment", "fake_job", "impersonation", "spam", "other"]).notNull(),
+  details: text("details"),
+  urgent: boolean("urgent").default(false).notNull(),
+  blockRequested: boolean("blockRequested").default(false).notNull(),
+  status: mysqlEnum("status", ["received", "in_review", "resolved", "declined"]).default("received").notNull(),
+  outcome: mysqlEnum("outcome", ["warning", "restricted", "removed", "no_action"]),
+  reviewerNote: text("reviewerNote"),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewedAt"),
+  dueAt: timestamp("dueAt").notNull(),
+  appealUntil: timestamp("appealUntil"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("safety_report_status_created_idx").on(table.status, table.createdAt), index("safety_report_reporter_idx").on(table.reporterUserId, table.createdAt), index("safety_report_subject_idx").on(table.subjectUserId, table.createdAt)]);
+
+// Blocking is stored one-directional and read both ways: the kit requires a
+// block to hide both people from each other, and a single row per direction
+// keeps "who blocked whom" available for review without a second table.
+export const userBlocks = mysqlTable("userBlocks", {
+  id: int("id").autoincrement().primaryKey(),
+  blockerUserId: int("blockerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  blockedUserId: int("blockedUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("user_blocks_pair_unique").on(table.blockerUserId, table.blockedUserId), index("user_blocks_blocked_idx").on(table.blockedUserId)]);
+
+export type SafetyReport = typeof safetyReports.$inferSelect;
+export type InsertSafetyReport = typeof safetyReports.$inferInsert;
+export type SafetyReportReason = SafetyReport["reason"];
+export type UserBlock = typeof userBlocks.$inferSelect;

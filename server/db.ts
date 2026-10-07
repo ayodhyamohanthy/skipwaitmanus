@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, safetyReports, userBlocks, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -365,6 +365,129 @@ export async function reviewPrivacyRequest(adminUserId: number, requestId: numbe
   const activeKey = `${existing[0].kind}:${existing[0].userId}`;
   await db.update(privacyRequests).set({ status: "in_review", activeKey, resolution, reviewedByUserId: adminUserId, reviewedAt: new Date() }).where(and(eq(privacyRequests.id, requestId), inArray(privacyRequests.status, ["requested", "in_review"])));
   return { id: requestId, status: "in_review" as const, resolution };
+}
+
+// Generic existence probe used by routes that accept a member id from the
+// client and must not reveal anything about ids that do not resolve.
+export async function userExists(userId: number) {
+  const db = await getDb(); if (!db) return false;
+  const rows = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+  return rows.length > 0;
+}
+
+// --- Kit v4 safety slice: reports + blocks -------------------------------
+// The kit (FOR_AI_BUILDERS.md §3 "Safety") requires reports with reasons, a
+// 4h urgent / 48h normal SLA, blocking in both directions, a mandatory
+// reviewer note, a full audit trail and a 14-day appeal window. The reference
+// shown to the reporter (`R-2048` in the design) is derived from the row id so
+// it can never disagree with the stored report.
+
+export const SAFETY_REPORT_REASONS = ["money_request", "harassment", "fake_job", "impersonation", "spam", "other"] as const;
+export type SafetyReportReasonValue = (typeof SAFETY_REPORT_REASONS)[number];
+export type SafetyReportOutcomeValue = "warning" | "restricted" | "removed" | "no_action";
+
+const SAFETY_REPORT_URGENT_MS = 4 * 60 * 60 * 1000;
+const SAFETY_REPORT_STANDARD_MS = 48 * 60 * 60 * 1000;
+const SAFETY_REPORT_APPEAL_MS = 14 * 24 * 60 * 60 * 1000;
+const SAFETY_REPORT_DETAILS_LIMIT = 2000;
+
+export const safetyReportReference = (id: number) => `R-${1000 + id}`;
+
+// Pure so the SLA contract is testable without a database: the route tests
+// inject a stub data layer, so if the window were computed inline they would
+// only ever assert the stub.
+export const safetyReportDueAt = (urgent: boolean, from: Date = new Date()) =>
+  new Date(from.getTime() + (urgent ? SAFETY_REPORT_URGENT_MS : SAFETY_REPORT_STANDARD_MS));
+export const safetyReportAppealUntil = (reviewedAt: Date) =>
+  new Date(reviewedAt.getTime() + SAFETY_REPORT_APPEAL_MS);
+
+export async function createSafetyReport(input: {
+  reporterUserId: number;
+  subjectUserId?: number | null;
+  reason: SafetyReportReasonValue;
+  details?: string;
+  urgent?: boolean;
+  blockRequested?: boolean;
+}) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const urgent = input.urgent === true;
+  const dueAt = safetyReportDueAt(urgent);
+  const details = input.details?.trim().slice(0, SAFETY_REPORT_DETAILS_LIMIT) || null;
+  const result = await db.insert(safetyReports).values({
+    reporterUserId: input.reporterUserId,
+    subjectUserId: input.subjectUserId ?? null,
+    reason: input.reason,
+    details,
+    urgent,
+    blockRequested: input.blockRequested === true,
+    status: "received",
+    dueAt,
+  });
+  const id = Number(result[0].insertId);
+  return { id, reference: safetyReportReference(id), urgent, dueAt, status: "received" as const };
+}
+
+export async function listMySafetyReports(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: safetyReports.id, reason: safetyReports.reason, status: safetyReports.status, urgent: safetyReports.urgent, outcome: safetyReports.outcome, dueAt: safetyReports.dueAt, appealUntil: safetyReports.appealUntil, reviewedAt: safetyReports.reviewedAt, createdAt: safetyReports.createdAt }).from(safetyReports).where(eq(safetyReports.reporterUserId, userId)).orderBy(desc(safetyReports.createdAt));
+  return rows.map(row => ({ ...row, reference: safetyReportReference(row.id) }));
+}
+
+export async function listAdminSafetyReports(limit: number = 100) {
+  const db = await getDb(); if (!db) return [];
+  const safeLimit = Math.max(1, Math.min(250, Math.floor(limit)));
+  const rows = await db.select({ id: safetyReports.id, reporterUserId: safetyReports.reporterUserId, subjectUserId: safetyReports.subjectUserId, reason: safetyReports.reason, details: safetyReports.details, urgent: safetyReports.urgent, blockRequested: safetyReports.blockRequested, status: safetyReports.status, outcome: safetyReports.outcome, reviewerNote: safetyReports.reviewerNote, reviewedByUserId: safetyReports.reviewedByUserId, reviewedAt: safetyReports.reviewedAt, dueAt: safetyReports.dueAt, appealUntil: safetyReports.appealUntil, createdAt: safetyReports.createdAt }).from(safetyReports).orderBy(desc(safetyReports.createdAt)).limit(safeLimit);
+  return rows.map(row => ({ ...row, reference: safetyReportReference(row.id), overdue: (row.status === "received" || row.status === "in_review") && new Date(row.dueAt).getTime() < Date.now() }));
+}
+
+export async function reviewSafetyReport(adminUserId: number, reportId: number, input: { status: "in_review" | "resolved" | "declined"; outcome?: SafetyReportOutcomeValue; reviewerNote: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const note = input.reviewerNote.trim().slice(0, SAFETY_REPORT_DETAILS_LIMIT);
+  if (!note) throw new Error("A reviewer note is required");
+  const existing = await db.select({ id: safetyReports.id }).from(safetyReports).where(eq(safetyReports.id, reportId)).limit(1);
+  if (!existing[0]) return undefined;
+  const reviewedAt = new Date();
+  const finalising = input.status !== "in_review";
+  // A declined report carries no action against the subject; an upheld one must
+  // name the action taken, so the audit trail never records a bare decision.
+  const outcome: SafetyReportOutcomeValue | null = input.status === "declined" ? "no_action" : input.outcome ?? null;
+  if (input.status === "resolved" && !outcome) throw new Error("An upheld report must record an outcome");
+  const appealUntil = finalising ? safetyReportAppealUntil(reviewedAt) : null;
+  await db.update(safetyReports).set({ status: input.status, outcome, reviewerNote: note, reviewedByUserId: adminUserId, reviewedAt, appealUntil }).where(eq(safetyReports.id, reportId));
+  return { id: reportId, reference: safetyReportReference(reportId), status: input.status, outcome, reviewerNote: note, reviewedAt, appealUntil };
+}
+
+// Idempotent: the unique pair index makes a repeated block a no-op rather than
+// an error, so a reporter who taps "block" twice still gets a clean result.
+export async function blockUser(blockerUserId: number, blockedUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  try {
+    await db.insert(userBlocks).values({ blockerUserId, blockedUserId });
+  } catch {
+    const existing = await db.select({ id: userBlocks.id }).from(userBlocks).where(and(eq(userBlocks.blockerUserId, blockerUserId), eq(userBlocks.blockedUserId, blockedUserId))).limit(1);
+    if (!existing[0]) throw new Error("We could not block this person");
+  }
+  return { blockerUserId, blockedUserId };
+}
+
+// Blocks are one-directional rows read both ways: the kit requires a block to
+// hide both people from each other, and keeping the direction lets review see
+// who blocked whom.
+export async function isBlockedBetween(userA: number, userB: number) {
+  const db = await getDb(); if (!db) return false;
+  const rows = await db.select({ id: userBlocks.id }).from(userBlocks).where(or(and(eq(userBlocks.blockerUserId, userA), eq(userBlocks.blockedUserId, userB)), and(eq(userBlocks.blockerUserId, userB), eq(userBlocks.blockedUserId, userA)))).limit(1);
+  return rows.length > 0;
+}
+
+export async function unblockUser(blockerUserId: number, blockedUserId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.delete(userBlocks).where(and(eq(userBlocks.blockerUserId, blockerUserId), eq(userBlocks.blockedUserId, blockedUserId)));
+  return { blockerUserId, blockedUserId };
+}
+
+export async function listMyBlocks(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: userBlocks.id, blockedUserId: userBlocks.blockedUserId, createdAt: userBlocks.createdAt }).from(userBlocks).where(eq(userBlocks.blockerUserId, userId)).orderBy(desc(userBlocks.createdAt));
 }
 
 export async function getVerifiedWorkEmailAccess(userId: number) {

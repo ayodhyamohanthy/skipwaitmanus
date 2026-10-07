@@ -43,6 +43,7 @@ import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
+import { registerReportRoutes } from "../reportRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
@@ -154,6 +155,9 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerDmRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, countRecentMessagesBySender: db.countRecentMessagesBySender });
   // X-style follow graph: follow members, see counts, and unlock free mutual-follow messaging.
   registerFollowRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // Kit v4 safety slice: `/report` — file a report, optionally block the person,
+  // with the kit's 4h urgent / 48h normal SLA and the admin review queue.
+  registerReportRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, userExists: db.userExists, createSafetyReport: db.createSafetyReport, listMySafetyReports: db.listMySafetyReports, blockUser: db.blockUser, listAdminSafetyReports: db.listAdminSafetyReports, reviewSafetyReport: db.reviewSafetyReport });
 
   // Razorpay (INR domestic) + PayPal (USD global) checkout order creation.
   // Chargebee stays the fallback gateway for subscription management.
