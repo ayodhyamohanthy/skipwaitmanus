@@ -40,9 +40,9 @@ export const DESIGNED_ROUTES = {
   "ask": "/request",                      // kit rename
   "assistants": null,
   "billing": null,
-  "connect-assistant": null,
+  "connect-assistant": "/connect-assistant",
   "developer-console": null,
-  "developers": null,
+  "developers": "/developers",
   "emails": "/emails",
   "employer": "/employer",
   "explore": "/explore",
@@ -77,7 +77,7 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 27;
+export const BASELINE_IMPLEMENTED = 29;
 
 const designedSlugs = fs.existsSync(screensDir)
   ? [...new Set(fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, "")))].sort()
