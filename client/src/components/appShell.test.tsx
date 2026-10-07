@@ -34,6 +34,8 @@ describe("AppShell", () => {
       ["Requests", "/requests"],
       ["Inbox", "/inbox"],
       ["Refer", "/referrer"],
+      ["Profile", "/profile"],
+      ["My work", "/work"],
       ["Plans & credits", "/plans"],
       ["Settings", "/settings"],
     ]) {
@@ -52,8 +54,8 @@ describe("AppShell", () => {
     );
     expect(within(screen.getByRole("complementary", { name: "App sidebar" })).getByRole("link", { name: "Requests" }).getAttribute("aria-current")).toBe("page");
     // Kit-only routes have no shell entry yet — nothing points at them.
-    expect(document.querySelector('a[href="/profile"]')).toBeNull();
-    expect(document.querySelector('a[href="/work"]')).toBeNull();
+    expect(document.querySelector('a[href="/help"]')).toBeNull();
+    expect(document.querySelector('a[href="/report"]')).toBeNull();
   });
 
   it("opens the More drawer with help, companies, and sign-in on mobile", () => {

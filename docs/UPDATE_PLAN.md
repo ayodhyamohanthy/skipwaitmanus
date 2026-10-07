@@ -244,6 +244,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Deviations: no per-row last-message text on referring rows (no bulk message endpoint — status notes used); DMs stay separate at `/messages`.
 - Verification: 15/15 tests (incl. all queue suites), `tsc` clean, audit clean.
 
+## Batch 11 record — /profile + /work + /p/:handle with profile backend
+
+- Commit: kit profile surfaces on a new additive backend (migration + endpoints + pages).
+- Schema (additive only): `profiles.handle` (unique nullable) + `profiles.profileVisibility` (public/link/private, default private); new `workItems` table. Shipped `drizzle/deploy/0065_profile_work_items.sql` + `DESIRED_*` entries — deploy-guard test green.
+- New `server/profileRoutes.ts` (me read/update, work CRUD with ownership + 20-cap + URL validation, public handle lookup with visibility gating + noindex header for link-only) wired in `_core/index.ts`; `profileRoutes.test.ts` contract suite (validation edges, reserved/taken handles, ownership 404s, public gating without sign-in).
+- Pages: `Profile.tsx` (edit, visibility radios, handle + copy link, verify state), `Work.tsx` (add/pin/per-item visibility/delete, empty state), `PublicProfile.tsx` (owner/visitor, verified badge from real verification, noindex effect). Shell gains Profile + My work (tabs unchanged).
+- Deviations: display name is read-only (from sign-in account); no "open to roles" chips (no server roles — onboarding sync is future); owner/visitor toggle omitted (role from data).
+- Verification: 19/19 tests (client + server + guard), `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

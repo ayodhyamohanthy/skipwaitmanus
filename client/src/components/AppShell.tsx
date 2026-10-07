@@ -1,5 +1,5 @@
 import { SignInButton, useAuth } from "@/_core/auth";
-import { ArrowUpRight, Bell, Building2, Crown, Inbox, ListChecks, Menu, Settings as SettingsIcon, ShieldCheck, X } from "lucide-react";
+import { ArrowUpRight, Bell, Briefcase, Building2, Crown, Inbox, ListChecks, Menu, Settings as SettingsIcon, ShieldCheck, UserRound, X } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { AccountMenu } from "./AccountMenu";
@@ -29,6 +29,8 @@ export const SHELL_NAV = [
 ] as const;
 
 export const SHELL_SPACE = [
+  { to: "/profile", label: "Profile", shortLabel: "Profile", icon: UserRound },
+  { to: "/work", label: "My work", shortLabel: "Work", icon: Briefcase },
   { to: "/plans", label: "Plans & credits", shortLabel: "Plans", icon: Crown },
   { to: "/settings", label: "Settings", shortLabel: "Settings", icon: SettingsIcon },
 ] as const;
@@ -40,7 +42,7 @@ export const SHELL_MORE = [
   { to: "/employer", label: "For companies", icon: Building2 },
 ] as const;
 
-export const SHELL_TABS = [...SHELL_NAV, SHELL_SPACE[0]] as const;
+export const SHELL_TABS = [...SHELL_NAV, { to: "/plans", label: "Plans & credits", shortLabel: "Plans", icon: Crown }] as const;
 
 function isActive(path: string, to: string) {
   return path === to || path.startsWith(`${to}/`);

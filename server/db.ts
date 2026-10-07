@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -198,6 +198,143 @@ export async function getUserByOpenId(openId: string) {
 }
 export async function revokeUserSessions(openId: string): Promise<void> { const db = await getDb(); if (!db) return; const account=await getUserByOpenId(openId);if(!account)return;const now=new Date();await db.update(users).set({sessionsValidAfter:now}).where(eq(users.id,account.id));if(account.canonicalPersonId)await db.update(canonicalPeople).set({sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId)); }
 export async function getProfileByUserId(userId: number) { const db = await getDb(); if (!db) return undefined; const result = await db.select().from(profiles).where(eq(profiles.userId, userId)).limit(1); return result[0]; }
+
+const RESERVED_HANDLES = new Set(["admin", "api", "app", "ask", "alerts", "billing", "explore", "help", "inbox", "invite", "jobs", "landed", "messages", "notifications", "onboarding", "plans", "premium", "pricing", "privacy", "profile", "queue", "referrer", "report", "requests", "settings", "share", "sign-in", "start", "support", "terms", "thread", "verify", "wall", "work", "p", "developers", "employer", "request"]);
+export function normalizeProfileHandle(raw: unknown): string | undefined {
+  if (typeof raw !== "string") return undefined;
+  const handle = raw.trim().toLowerCase();
+  if (!/^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/.test(handle) || RESERVED_HANDLES.has(handle)) return undefined;
+  return handle;
+}
+const PROFILE_VISIBILITIES = ["public", "link", "private"] as const;
+export type ProfileVisibility = (typeof PROFILE_VISIBILITIES)[number];
+export const WORK_ITEM_KINDS = ["case_study", "project", "article", "code", "other"] as const;
+
+export async function getMyProfile(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const account = (await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, userId)).limit(1))[0];
+  if (!account) throw new Error("User not found");
+  const profile = await getProfileByUserId(userId);
+  const items = await db.select().from(workItems).where(eq(workItems.userId, userId)).orderBy(desc(workItems.pinned), desc(workItems.updatedAt));
+  return { displayName: account.name, profile: profile ?? null, workItems: items };
+}
+
+export async function updateMyProfile(userId: number, input: { headline?: string; currentTitle?: string; location?: string; bio?: string; skills?: string; handle?: string | null; profileVisibility?: string }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const patch: Record<string, unknown> = {};
+  for (const key of ["headline", "currentTitle", "location", "bio", "skills"] as const) {
+    if (input[key] === undefined) continue;
+    if (typeof input[key] !== "string") throw new Error("Profile text must be a string");
+    const value = (input[key] as string).trim().slice(0, key === "bio" ? 2000 : key === "skills" ? 1000 : 180);
+    patch[key] = value || null;
+  }
+  if (input.profileVisibility !== undefined) {
+    if (!(PROFILE_VISIBILITIES as readonly string[]).includes(input.profileVisibility)) throw new Error("Choose public, link-only, or private visibility");
+    patch.profileVisibility = input.profileVisibility;
+  }
+  if (input.handle !== undefined) {
+    if (input.handle === null || input.handle === "") patch.handle = null;
+    else {
+      const handle = normalizeProfileHandle(input.handle);
+      if (!handle) throw new Error("Handles use 3-40 lowercase letters, numbers, or dashes, and cannot be a reserved word");
+      const clash = (await db.select({ userId: profiles.userId }).from(profiles).where(eq(profiles.handle, handle)).limit(1))[0];
+      if (clash && clash.userId !== userId) throw new Error("That handle is already taken");
+      patch.handle = handle;
+    }
+  }
+  if (Object.keys(patch).length === 0) return getMyProfile(userId);
+  const existing = await getProfileByUserId(userId);
+  if (existing) await db.update(profiles).set({ ...patch, updatedAt: new Date() }).where(eq(profiles.userId, userId));
+  else await db.insert(profiles).values({ userId, ...(patch as { headline?: string | null }) });
+  return getMyProfile(userId);
+}
+
+function validateWorkItemInput(input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
+  const out: Record<string, unknown> = {};
+  if (input.title !== undefined) {
+    if (typeof input.title !== "string" || !input.title.trim() || input.title.trim().length > 160) throw new Error("Give each work item a title up to 160 characters");
+    out.title = input.title.trim();
+  }
+  if (input.kind !== undefined) {
+    if (!(WORK_ITEM_KINDS as readonly string[]).includes(input.kind as string)) throw new Error("Choose a real work kind");
+    out.kind = input.kind;
+  }
+  if (input.source !== undefined) {
+    if (typeof input.source !== "string") throw new Error("Work source must be a string");
+    out.source = input.source.trim().slice(0, 80) || null;
+  }
+  if (input.url !== undefined) {
+    if (input.url === null || input.url === "") out.url = null;
+    else if (typeof input.url !== "string" || !/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(input.url.trim()) || input.url.trim().length > 2048) throw new Error("Work links must start with http:// or https://");
+    else out.url = input.url.trim();
+  }
+  if (input.pinned !== undefined) out.pinned = Boolean(input.pinned);
+  if (input.visibleOnProfile !== undefined) out.visibleOnProfile = Boolean(input.visibleOnProfile);
+  return out;
+}
+
+export async function listMyWorkItems(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select().from(workItems).where(eq(workItems.userId, userId)).orderBy(desc(workItems.pinned), desc(workItems.updatedAt));
+}
+
+export async function createWorkItem(userId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const patch = validateWorkItemInput(input);
+  if (!patch.title) throw new Error("Give each work item a title up to 160 characters");
+  const count = (await db.select({ id: workItems.id }).from(workItems).where(eq(workItems.userId, userId)).limit(21)).length;
+  if (count >= 20) throw new Error("Work showcases hold up to 20 items");
+  const inserted = await db.insert(workItems).values({ userId, ...(patch as { title: string }) });
+  const id = Number(inserted[0].insertId);
+  return (await db.select().from(workItems).where(eq(workItems.id, id)).limit(1))[0];
+}
+
+export async function updateWorkItem(userId: number, itemId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(workItems).where(eq(workItems.id, itemId)).limit(1))[0];
+  if (!current || current.userId !== userId) throw new Error("This work item is not in your account");
+  const patch = validateWorkItemInput(input);
+  if (Object.keys(patch).length === 0) return current;
+  await db.update(workItems).set({ ...patch, updatedAt: new Date() }).where(eq(workItems.id, itemId));
+  return (await db.select().from(workItems).where(eq(workItems.id, itemId)).limit(1))[0];
+}
+
+export async function deleteWorkItem(userId: number, itemId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: workItems.id, userId: workItems.userId }).from(workItems).where(eq(workItems.id, itemId)).limit(1))[0];
+  if (!current || current.userId !== userId) throw new Error("This work item is not in your account");
+  await db.delete(workItems).where(eq(workItems.id, itemId));
+  return { deleted: true as const, id: itemId };
+}
+
+export async function getPublicProfileByHandle(handle: string, viewerUserId?: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const normalized = normalizeProfileHandle(handle);
+  if (!normalized) return undefined;
+  const owner = (await db.select({ id: users.id, name: users.name }).from(users).innerJoin(profiles, eq(profiles.userId, users.id)).where(eq(profiles.handle, normalized)).limit(1))[0];
+  if (!owner) return undefined;
+  const profile = await getProfileByUserId(owner.id);
+  if (!profile) return undefined;
+  const visibility = (profile.profileVisibility ?? "private") as ProfileVisibility;
+  const isOwner = viewerUserId === owner.id;
+  if (visibility === "private" && !isOwner) return { visible: false as const, visibility };
+  const items = (await listMyWorkItems(owner.id)).filter(item => isOwner || item.visibleOnProfile);
+  return {
+    visible: true as const,
+    visibility,
+    isOwner,
+    displayName: owner.name,
+    headline: profile.headline,
+    currentTitle: profile.currentTitle,
+    location: profile.location,
+    bio: profile.bio,
+    skills: profile.skills,
+    company: profile.company,
+    verifiedWork: profile.workEmailVerifiedAt ? { domain: profile.workEmailDomain, verifiedAt: profile.workEmailVerifiedAt } : null,
+    handle: profile.handle,
+    workItems: items.map(item => ({ id: item.id, title: item.title, kind: item.kind, source: item.source, url: item.url, pinned: item.pinned, visibleOnProfile: item.visibleOnProfile })),
+  };
+}
 export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));

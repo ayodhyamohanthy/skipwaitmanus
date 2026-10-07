@@ -61,9 +61,24 @@ export const profiles = mysqlTable("profiles", {
   // Talent discovery is strictly opt-in: a seeker must explicitly turn this on
   // before employers can ever see them in the anonymized talent list.
   anonymityOptIn: boolean("anonymityOptIn").default(false).notNull(),
+  handle: varchar("handle", { length: 40 }),
+  profileVisibility: mysqlEnum("profileVisibility", ["public", "link", "private"]).default("private").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [uniqueIndex("profiles_user_id_unique").on(table.userId)]);
+}, table => [uniqueIndex("profiles_user_id_unique").on(table.userId), uniqueIndex("profiles_handle_unique").on(table.handle)]);
+
+export const workItems = mysqlTable("workItems", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 160 }).notNull(),
+  kind: mysqlEnum("kind", ["case_study", "project", "article", "code", "other"]).default("other").notNull(),
+  source: varchar("source", { length: 80 }),
+  url: varchar("url", { length: 2048 }),
+  pinned: boolean("pinned").default(false).notNull(),
+  visibleOnProfile: boolean("visibleOnProfile").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("work_items_user_idx").on(table.userId)]);
 
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),

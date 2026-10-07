@@ -19,6 +19,7 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "userFollows", createSql: `CREATE TABLE IF NOT EXISTS \`userFollows\` (\`id\` int AUTO_INCREMENT NOT NULL, \`followerUserId\` int NOT NULL, \`followingUserId\` int NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`userFollows_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`user_follows_pair_unique\`(\`followerUserId\`, \`followingUserId\`), INDEX \`user_follows_following_idx\`(\`followingUserId\`))` },
   { table: "promoCreditGrants", createSql: `CREATE TABLE IF NOT EXISTS \`promoCreditGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` ENUM('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`tokenCount\` int NOT NULL, \`creditsRemaining\` int NOT NULL, \`status\` ENUM('active','exhausted','expired','revoked') NOT NULL DEFAULT 'active', \`source\` varchar(40) NOT NULL DEFAULT 'first_paid_invoice', \`providerRef\` varchar(255) NULL, \`grantedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`expiresAt\` timestamp NOT NULL, \`consumedAt\` timestamp NULL, \`revokedAt\` timestamp NULL, \`revokedReason\` varchar(255) NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`promoCreditGrants_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`promo_grant_user_role_unique\`(\`userId\`,\`role\`), INDEX \`promo_grant_user_status_idx\`(\`userId\`,\`role\`,\`status\`))` },
   { table: "giftSubscriptionFulfillments", createSql: `CREATE TABLE IF NOT EXISTS \`giftSubscriptionFulfillments\` (\`id\` int AUTO_INCREMENT NOT NULL, \`giftId\` varchar(150) NOT NULL, \`provider\` varchar(32) NOT NULL DEFAULT 'chargebee', \`buyerUserId\` int NULL, \`receiverEmail\` varchar(70) NULL, \`recipientUserId\` int NULL, \`role\` ENUM('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`plan\` ENUM('pro','max') NULL, \`currency\` varchar(3) NULL, \`amount\` int NULL, \`subscriptionId\` varchar(80) NULL, \`providerStatus\` varchar(20) NULL, \`fulfillmentStatus\` ENUM('pending','credited','conflict','expired','cancelled') NOT NULL DEFAULT 'pending', \`failureReason\` varchar(255) NULL, \`creditedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`giftSubscriptionFulfillments_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`gift_fulfillment_gift_unique\`(\`giftId\`), INDEX \`gift_fulfillment_receiver_idx\`(\`receiverEmail\`,\`fulfillmentStatus\`), INDEX \`gift_fulfillment_buyer_idx\`(\`buyerUserId\`,\`createdAt\`), INDEX \`gift_fulfillment_subscription_idx\`(\`subscriptionId\`))` },
+  { table: "workItems", createSql: `CREATE TABLE IF NOT EXISTS \`workItems\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`title\` varchar(160) NOT NULL, \`kind\` ENUM('case_study','project','article','code','other') NOT NULL DEFAULT 'other', \`source\` varchar(80) NULL, \`url\` varchar(2048) NULL, \`pinned\` boolean NOT NULL DEFAULT false, \`visibleOnProfile\` boolean NOT NULL DEFAULT false, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`workItems_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`work_items_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`work_items_user_idx\`(\`userId\`))` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -34,6 +35,8 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "profiles", column: "anonymityOptIn", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "companyOpportunities", column: "sponsoredUntil", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "sponsoredTier", definition: "ENUM('standard','featured','spotlight') NULL" },
+  { table: "profiles", column: "handle", definition: "VARCHAR(40) NULL" },
+  { table: "profiles", column: "profileVisibility", definition: "ENUM('public','link','private') NOT NULL DEFAULT 'private'" },
   { table: "resumeUploadSessions", column: "clientUploadId", definition: "VARCHAR(64) NULL" },
   { table: "resumeUploadSessions", column: "finalizationOwner", definition: "VARCHAR(64) NULL" },
   { table: "resumeUploadSessions", column: "finalizationLeaseUntil", definition: "TIMESTAMP NULL" },
@@ -71,6 +74,8 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "tokenTransactions", name: "token_transactions_reversal_unique", columns: "`reversesTransactionId`" },
   { table: "notifications", name: "notifications_event_key_unique", columns: "`eventKey`" },
   { table: "companyCoverageInvitations", name: "coverage_invite_request_unique", columns: "`referralRequestId`" },
+  { table: "workItems", name: "work_items_user_idx", columns: "`userId`", nonUnique: true },
+  { table: "profiles", name: "profiles_handle_unique", columns: "`handle`" },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -86,6 +91,7 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
 // The live table it implies is undocumented source/prod drift, not a requirement.
 export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; referencedTable: string; referencedColumn: string }> = [
   { table: "referralAttachments", column: "uploadSessionId", referencedTable: "resumeUploadSessions", referencedColumn: "id" },
+  { table: "workItems", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
