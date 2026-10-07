@@ -285,6 +285,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Deviations: block toggle omitted (no block infra — page states team-handled blocking honestly); admin review UI for these queues is future (admin-review batch); suggest approval has no auto-promotion.
 - Verification: 19/19 tests (client + server + guard + thread), `tsc` clean.
 
+## Batch 16 record — /referrer-setup + referrer-preferences backend (incl. real pause)
+
+- Commit: kit setup flow on a new prefs backend with enforced pause; verify-done now routes to setup.
+- Schema (additive): `profiles.preferAreas/referrerVisibility/notifyNewAsk/notifyDigest/paused`; `drizzle/deploy/0067_*.sql` + `DESIRED_*` — guard green.
+- `GET/PUT /api/referrer-preferences` (capacity 1–15, area allowlist, visibility enum, booleans) + contract tests; paused + notify-off referrers are excluded from review-email routing in `prepareReferrerReviewEmailNotifications` (Slack follows automatically — no link, no ping).
+- Pages: `ReferrerSetup.tsx` (5 steps, verified-gate, persists to API) + tests; `ReferrerHome` gains paused banner with Resume + Pause actions (tested).
+- Deviations: areas stored for future matching (jobs carry no function taxonomy — no fuzzy routing by design); levels step omitted (no seniority-match consumer); digest toggle omitted (no digest sender); live `/referrer` hub kept as-is (it exceeds kit functionally — setup linked from verify).
+- Verification: 10/10 setup+home tests, prefs contract tests, delivery/review suites green, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

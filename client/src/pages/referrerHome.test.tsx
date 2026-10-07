@@ -71,6 +71,23 @@ describe("ReferrerHome", () => {
     render(<ReferrerHome />);
     expect(await screen.findByText(/Re-verify your wipro.com email soon/)).toBeTruthy();
   });
+
+  it("shows the paused state with a working resume", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/profile/me")) return ok({ profile: { workEmailVerifiedAt: "2026-08-01T00:00:00Z", referralCapacity: 3 } });
+      if (String(url).endsWith("/referrer-impact/me")) return ok({ summary: { reviewed: 1, approved: 0, introductions: 0, interviews: 0, offers: 0 } });
+      if (String(url).endsWith("/referrer-preferences") && init?.method === "PUT") return ok({ preferences: { paused: false } });
+      if (String(url).endsWith("/referrer-preferences")) return ok({ preferences: { paused: true } });
+      return ok({ requests: [] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<ReferrerHome />);
+    expect(await screen.findByText("New asks are paused. Open conversations still work.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/referrer-preferences", expect.objectContaining({ method: "PUT" })));
+    await waitFor(() => expect(screen.queryByText("New asks are paused. Open conversations still work.")).toBeNull());
+  });
 });
 
 describe("Invite colleagues", () => {

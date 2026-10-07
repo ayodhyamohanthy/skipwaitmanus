@@ -54,7 +54,7 @@ describe("Verify work email", () => {
     fireEvent.click(screen.getByRole("button", { name: /Verify/ }));
     expect(await screen.findByText("You're verified at Wipro.")).toBeTruthy();
     expect(screen.getByText("Someone at Wipro")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Continue as a referrer/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Set up referring/ })).toBeTruthy();
   });
 
   it("counts wrong attempts and locks out after five without inventing server state", async () => {

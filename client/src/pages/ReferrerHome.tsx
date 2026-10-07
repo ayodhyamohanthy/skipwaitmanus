@@ -23,6 +23,8 @@ export default function ReferrerHome() {
   const [impact, setImpact] = useState<Impact | null>(null);
   const [fresh, setFresh] = useState<InboxItem[]>([]);
   const [active, setActive] = useState<InboxItem[]>([]);
+  const [paused, setPaused] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -38,14 +40,16 @@ export default function ReferrerHome() {
           const payload = await readApiJson<T & { error?: string }>(response, "");
           return response.ok ? payload : undefined;
         };
-        const [accessPayload, profilePayload, impactPayload, newPayload, donePayload] = await Promise.all([
+        const [accessPayload, profilePayload, impactPayload, newPayload, donePayload, prefsPayload] = await Promise.all([
           get<{ verifiedCompanyAccess?: boolean; workEmailDomain?: string | null }>("/api/company-referrals/access"),
           get<{ profile?: ProfileShape | null }>("/api/profile/me"),
           get<{ summary?: Impact }>("/api/referrer-impact/me"),
           get<{ requests?: InboxItem[] }>("/api/company-referrals/inbox?scope=new"),
           get<{ requests?: InboxItem[] }>("/api/company-referrals/inbox?scope=completed"),
+          get<{ preferences?: { paused?: boolean } }>("/api/referrer-preferences"),
         ]);
         if (!on) return;
+        if (typeof prefsPayload?.preferences?.paused === "boolean") setPaused(prefsPayload.preferences.paused);
         if (accessPayload) setAccess({ verifiedCompanyAccess: Boolean(accessPayload.verifiedCompanyAccess), workEmailDomain: accessPayload.workEmailDomain ?? null });
         if (typeof profilePayload?.profile?.referralCapacity === "number") setCapacity(profilePayload.profile.referralCapacity);
         if (profilePayload?.profile?.workEmailVerifiedAt) setVerifiedAt(profilePayload.profile.workEmailVerifiedAt);
@@ -69,6 +73,15 @@ export default function ReferrerHome() {
   }
 
   const verified = Boolean(access?.verifiedCompanyAccess);
+  const setPausedValue = async (value: boolean) => {
+    setResuming(true);
+    try {
+      const token = await fetchToken();
+      const response = await fetch("/api/referrer-preferences", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ paused: value }) });
+      if (response.ok) setPaused(value);
+    } finally { setResuming(false); }
+  };
+  const resume = async () => { await setPausedValue(false); };
   const domain = access?.workEmailDomain ?? "";
   const verifiedDate = verifiedAt ? new Date(verifiedAt).getTime() : NaN;
   const daysSinceVerify = Number.isNaN(verifiedDate) ? NaN : Math.floor((Date.now() - verifiedDate) / 86400000);
@@ -89,6 +102,7 @@ export default function ReferrerHome() {
         <div className="flex flex-wrap items-center gap-2">
           {verified ? <span className="flex items-center gap-1 text-sm"><BadgeCheck className="size-4 text-[var(--primary)]" />Verified · {domain}</span> : <Link href="/verify" className="brand-button">Become a referrer</Link>}
           <Link href="/queue" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Queue &amp; settings</Link>
+          {verified && !paused ? <button type="button" disabled={resuming} onClick={() => { void setPausedValue(true); }} className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Pause new asks</button> : null}
         </div>
       </div>
 
@@ -96,6 +110,12 @@ export default function ReferrerHome() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-[var(--accent)] p-4" role="status">
           <span className="flex items-center gap-2 text-sm font-semibold"><CalendarClock className="size-4" />Re-verify your {domain} email soon to keep receiving asks.</span>
           <Link href="/verify" className="brand-button">Re-verify</Link>
+        </div>
+      ) : null}
+      {verified && paused ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4" role="status">
+          <span className="text-sm font-semibold">New asks are paused. Open conversations still work.</span>
+          <button type="button" disabled={resuming} onClick={() => { void resume(); }} className="brand-button">{resuming ? "Resuming…" : "Resume"}</button>
         </div>
       ) : null}
 

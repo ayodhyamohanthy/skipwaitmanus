@@ -193,7 +193,7 @@ export default function Verify() {
               </div>
               <p className="mt-4 text-sm text-[var(--muted-foreground)]">{validUntil ? `Valid until ${new Date(validUntil).toLocaleDateString()}. Re-verify any time from Settings.` : "We'll ask you to re-verify periodically, or sooner if your company email stops working."}</p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <button type="button" className="brand-button" onClick={() => go("/referrer")}>Continue as a referrer <ArrowRight /></button>
+                <button type="button" className="brand-button" onClick={() => go("/referrer-setup")}>Set up referring <ArrowRight /></button>
               </div>
             </div>
           ) : null}
