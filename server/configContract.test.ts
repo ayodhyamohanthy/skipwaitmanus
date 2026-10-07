@@ -65,6 +65,57 @@ function workerPassthroughKeys(): string[] {
   return [...block.matchAll(/"([A-Z][A-Z0-9_]+)"/g)].map(m => m[1]);
 }
 
+// A key can be consumed by a test gate, a CI build, a deploy manifest, or a build-time
+// `%VITE_*%` substitution rather than by runtime code, so the consumer side is the whole
+// tree minus prose, vendored output, and the example files that declare the contract.
+// This file itself is excluded so it cannot certify its own keys as consumed.
+function consumerFiles(): string[] {
+  const skippedDirs = new Set(["node_modules", ".git", "dist", "build", "coverage", ".wrangler", ".vercel"]);
+  const out: string[] = [];
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir)) {
+      if (skippedDirs.has(entry)) continue;
+      const full = join(dir, entry);
+      if (statSync(full).isDirectory()) walk(full);
+      else if (!/\.(md|txt|snap|log)$/i.test(entry) && !entry.startsWith(".env") && full !== __filename) out.push(full);
+    }
+  };
+  walk(ROOT);
+  return out;
+}
+
+// The container runtime binds the listen port itself; it is not a Worker secret.
+const RUNTIME_PROVIDED = new Set(["PORT"]);
+
+function serverReadKeys(): Set<string> {
+  const keys = new Set<string>();
+  for (const file of sourceFiles(["server"])) {
+    let text: string;
+    try { text = readFileSync(file, "utf8"); } catch { continue; }
+    for (const match of text.matchAll(/process\.env\.([A-Za-z_][A-Za-z0-9_]*)/g)) {
+      if (!AMBIENT.test(match[1])) keys.add(match[1]);
+    }
+    for (const match of text.matchAll(/process\.env\["([^"]+)"\]/g)) {
+      if (!AMBIENT.test(match[1])) keys.add(match[1]);
+    }
+  }
+  return keys;
+}
+
+function consumedKeys(): Set<string> {
+  const consumed = new Set<string>();
+  const files = consumerFiles();
+  const texts = files.map(file => {
+    try { return readFileSync(file, "utf8"); } catch { return ""; }
+  });
+  for (const key of exampleKeys()) {
+    if (!/^[A-Z0-9_]+$/.test(key)) continue;
+    const pattern = new RegExp(`\\b${key}\\b`);
+    if (texts.some(text => pattern.test(text))) consumed.add(key);
+  }
+  return consumed;
+}
+
 describe("config contract", () => {
   it("declares every referenced key in .env.example", () => {
     const example = exampleKeys();
@@ -73,10 +124,22 @@ describe("config contract", () => {
     expect(missing, `undeclared config keys (add to .env.example): ${missing.join(", ")}`).toEqual([]);
   });
 
+  it("declares nothing in .env.example that no file consumes", () => {
+    const consumed = consumedKeys();
+    const dead = [...exampleKeys()].filter(key => !consumed.has(key));
+    expect(dead, `.env.example advertises keys nothing reads (wire it through its boundary, or delete it): ${dead.join(", ")}`).toEqual([]);
+  });
+
   it("forwards every container env key declared for the Worker", () => {
     const example = exampleKeys();
     const missing = workerPassthroughKeys().filter(key => !example.has(key));
     expect(missing, `worker passthrough keys missing from .env.example: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("forwards every key the server reads at runtime", () => {
+    const forwarded = new Set(workerPassthroughKeys());
+    const unreadable = [...serverReadKeys()].filter(key => !forwarded.has(key) && !RUNTIME_PROVIDED.has(key));
+    expect(unreadable, `read under server/ but absent from CONTAINER_ENV_KEYS in src/worker.ts, so it can never be set in the container: ${unreadable.join(", ")}`).toEqual([]);
   });
 
   it("forwards runtime server secrets that must reach the container", () => {
