@@ -76,10 +76,10 @@ export default function ReferralConversation() {
   if (!isSignedIn) {
     return (
       <main data-skipwait-screen="referral-conversation-sign-in" className="mx-auto max-w-xl px-5 py-6 text-black">
-        <button type="button" onClick={() => go(returnPath)} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</button>
+        <button type="button" onClick={() => go(returnPath)} className="inline-flex items-center gap-1 text-sm font-bold text-muted-foreground"><ArrowLeft className="h-4 w-4" />Back</button>
         <h1 className="mt-6 text-3xl font-semibold tracking-[-.02em]">Continue securely.</h1>
-        <p className="mt-3 text-sm leading-6 text-[#505050]">Sign in to access your accepted referral conversation.</p>
-        <div className="mt-6"><SignInButton><button type="button" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 text-sm font-bold text-white">Secure sign in</button></SignInButton></div>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Sign in to access your accepted referral conversation.</p>
+        <div className="mt-6"><SignInButton><button type="button" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-bold text-white">Secure sign in</button></SignInButton></div>
       </main>
     );
   }
@@ -109,11 +109,11 @@ export default function ReferralConversation() {
       <div className="mb-4 flex items-center justify-between gap-3">
         <button type="button" onClick={() => go(returnPath)} className="text-link"><ArrowLeft className="size-4" />All requests</button>
       </div>
-      {loading && !request ? <p className="mt-10 text-center text-sm text-[#505050]">Opening this private thread…</p> : null}
+      {loading && !request ? <p className="mt-10 text-center text-sm text-muted-foreground">Opening this private thread…</p> : null}
       {error ? (
         <section className="mx-auto mt-10 max-w-xl text-center">
           <h1 className="text-2xl font-semibold">This thread isn&apos;t available.</h1>
-          <p className="mt-2 text-sm leading-6 text-[#505050]">{error}</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">{error}</p>
           <button type="button" onClick={() => go(returnPath)} className="brand-button mt-6">Back to requests</button>
         </section>
       ) : null}

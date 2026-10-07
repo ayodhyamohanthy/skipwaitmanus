@@ -52,23 +52,23 @@ type RowProps = {
 function RequestRow({ request, withdrawing, onWithdraw }: RowProps) {
   const state = rowState(request);
   const label = `${request.companyDomain} request, ${state.label}`;
-  const rowClass = "flex min-h-16 items-center gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-4";
+  const rowClass = "flex min-h-16 items-center gap-3 rounded-2xl border border-border bg-white p-4";
   const inner = (
     <>
       <span className="min-w-0 flex-1">
         <strong className="block truncate text-sm">{request.companyDomain}</strong>
-        <small className="mt-0.5 block text-xs text-[#505050]">{displayRef(request.id)} · {rowNote(request)}</small>
+        <small className="mt-0.5 block text-xs text-muted-foreground">{displayRef(request.id)} · {rowNote(request)}</small>
       </span>
       <StatusBadge label={state.label} tone={stateBadgeTones[state.tone]} />
-      <ArrowRight className="h-4 w-4 shrink-0 text-[#505050]" aria-hidden="true" />
+      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
     </>
   );
   return (
     <li>
       <Link href={`/conversation/${request.id}`} className={rowClass} aria-label={label}>{inner}</Link>
       {request.referrerMessage && request.status !== "pending" ? (
-        <aside aria-label="Referrer update" className="mt-2 rounded-xl border border-[#c2c2ff] bg-[#ededff]/60 p-3">
-          <p className="text-xs leading-5 text-[#505050]">{request.referrerMessage}</p>
+        <aside aria-label="Referrer update" className="mt-2 rounded-xl border border-primary bg-accent/60 p-3">
+          <p className="text-xs leading-5 text-muted-foreground">{request.referrerMessage}</p>
         </aside>
       ) : null}
       {canWithdraw(request) ? (
@@ -154,12 +154,12 @@ export default function MyRequests() {
   if (!isSignedIn) {
     return (
       <main data-skipwait-screen="my-requests-sign-in" className="mx-auto max-w-xl px-5 py-6 text-black">
-        <p className="text-[11px] font-bold uppercase tracking-[.14em] text-[#505050]">My asks</p>
+        <p className="text-[11px] font-bold uppercase tracking-[.14em] text-muted-foreground">My asks</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-[-.02em]">See the real status.</h1>
-        <p className="mt-3 text-sm leading-6 text-[#505050]">Return to your private request updates. We show routing, claim, and real decisions only.</p>
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">Return to your private request updates. We show routing, claim, and real decisions only.</p>
         <div className="mt-6">
           <SignInButton>
-            <button type="button" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 text-sm font-bold text-white">
+            <button type="button" className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-bold text-white">
               Secure sign in <ArrowRight className="h-4 w-4" />
             </button>
           </SignInButton>
@@ -189,12 +189,12 @@ export default function MyRequests() {
   } else if (requests.length === 0) {
     body = (
       <section aria-label="No referral requests" className="mt-6 flex flex-col items-center text-center">
-        <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#f0f0f0] text-[#505050]"><MailOpen className="h-4 w-4" /></span>
+        <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted text-muted-foreground"><MailOpen className="h-4 w-4" /></span>
         <h2 className="mt-3 text-lg font-bold tracking-[-.02em]">Nothing pending right now</h2>
-        <p className="mt-1 text-sm leading-6 text-[#505050]">Your sent requests and their outcomes will appear here.</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">Your sent requests and their outcomes will appear here.</p>
         <ZeroActivityShareCard audience="job_seeker" />
         <div className="mt-5 w-full">
-          <button type="button" onClick={() => go("/start")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 text-sm font-bold text-white">
+          <button type="button" onClick={() => go("/start")} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-bold text-white">
             Request a referral <ArrowRight className="h-4 w-4" />
           </button>
         </div>
@@ -204,9 +204,9 @@ export default function MyRequests() {
     body = (
       <section className="mt-6 text-center">
         <h2 className="text-lg font-bold">{tab === "active" ? "No open asks." : "Nothing closed yet."}</h2>
-        <p className="mt-1 text-sm leading-6 text-[#505050]">{tab === "active" ? "Request a referral to open your first ask." : "Answered, passed, or withdrawn asks will appear here."}</p>
+        <p className="mt-1 text-sm leading-6 text-muted-foreground">{tab === "active" ? "Request a referral to open your first ask." : "Answered, passed, or withdrawn asks will appear here."}</p>
         {tab === "active" ? (
-          <button type="button" onClick={() => go("/start")} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 text-sm font-bold text-white">
+          <button type="button" onClick={() => go("/start")} className="mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-bold text-white">
             Request a referral <ArrowRight className="h-4 w-4" />
           </button>
         ) : null}
@@ -231,31 +231,31 @@ export default function MyRequests() {
     <main data-skipwait-screen="my-requests" className="mx-auto max-w-xl px-5 py-6 text-black">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[.14em] text-[#505050]">My asks</p>
+          <p className="text-[11px] font-bold uppercase tracking-[.14em] text-muted-foreground">My asks</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-[-.02em]">Requests</h1>
-          <p className="mt-2 text-sm leading-6 text-[#505050]">Track every ask in one place. Answered, passed, or withdrawn asks free a slot.</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Track every ask in one place. Answered, passed, or withdrawn asks free a slot.</p>
         </div>
-        <button type="button" onClick={() => go("/start")} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#0000ff] px-4 py-2.5 text-sm font-bold text-white">
+        <button type="button" onClick={() => go("/start")} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white">
           <Plus className="h-4 w-4" />New ask
         </button>
       </div>
       {credits ? <div className="mt-5"><SeekerCreditsCard credits={credits} compact /></div> : null}
       <div className="mt-4 grid grid-cols-3 gap-2" aria-label="Request summary">
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">Open asks</p>
+        <div className="rounded-2xl border border-border bg-white p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">Open asks</p>
           <p className="mt-1 text-2xl font-semibold">{openCount}</p>
         </div>
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">In conversation</p>
+        <div className="rounded-2xl border border-border bg-white p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">In conversation</p>
           <p className="mt-1 text-2xl font-semibold">{inConversation}</p>
         </div>
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">Unread updates</p>
+        <div className="rounded-2xl border border-border bg-white p-3">
+          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-muted-foreground">Unread updates</p>
           <p className="mt-1 text-2xl font-semibold">{unreadTotal}</p>
         </div>
       </div>
       {requests.length > 0 && !showSkeleton && !error ? (
-        <div className="mt-6 flex gap-6 border-b border-[#e5e5e5]" role="tablist" aria-label="Request groups">
+        <div className="mt-6 flex gap-6 border-b border-border" role="tablist" aria-label="Request groups">
           {(["active", "closed"] as const).map(value => (
             <button
               key={value}
@@ -263,7 +263,7 @@ export default function MyRequests() {
               role="tab"
               aria-selected={tab === value}
               onClick={() => setTab(value)}
-              className={tab === value ? "min-h-11 border-b-2 border-[#0000ff] px-1 text-sm font-bold capitalize text-black" : "min-h-11 px-1 text-sm font-bold capitalize text-[#505050]"}
+              className={tab === value ? "min-h-11 border-b-2 border-primary px-1 text-sm font-bold capitalize text-black" : "min-h-11 px-1 text-sm font-bold capitalize text-muted-foreground"}
             >
               {value}
             </button>
@@ -274,14 +274,14 @@ export default function MyRequests() {
         <div role="alert" className="mt-4 rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4">
           <p className="text-sm font-bold text-[#B91C1C]">Withdraw didn't go through</p>
           <p className="mt-1 text-sm text-[#B91C1C]">{withdrawError}</p>
-          <p className="mt-1 text-sm text-[#505050]">Your request is still active and nothing was lost.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Your request is still active and nothing was lost.</p>
           <div className="mt-3 flex gap-2">
             {failedRequest ? (
               <button type="button" onClick={() => { void withdrawRequest(failedRequest); }} className="inline-flex min-h-11 items-center rounded-lg bg-[#B91C1C] px-4 text-sm font-bold text-white">
                 Try again
               </button>
             ) : null}
-            <button type="button" onClick={() => { setWithdrawError(""); setFailedRequest(null); }} className="inline-flex min-h-11 items-center rounded-lg border border-[#e5e5e5] bg-white px-4 text-sm font-bold text-black">
+            <button type="button" onClick={() => { setWithdrawError(""); setFailedRequest(null); }} className="inline-flex min-h-11 items-center rounded-lg border border-border bg-white px-4 text-sm font-bold text-black">
               Keep request
             </button>
           </div>
