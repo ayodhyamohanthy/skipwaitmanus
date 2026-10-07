@@ -30,13 +30,13 @@ export default function Support() {
     status="published"
     footnote="We never ask for passwords, one-time codes, or card numbers by email. Anything asking for those is not from us."
   >
-    <section aria-label="Contact support" className="rounded-2xl border border-[#c2c2ff] bg-white p-5 sm:p-6">
+    <section aria-label="Contact support" className="rounded-2xl border border-[#d9d9d1] bg-white p-5 sm:p-6">
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ededff] text-black"><Mail className="h-5 w-5" /></span>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#e9e9e2] text-black"><Mail className="h-5 w-5" /></span>
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold text-black">Email support</h2>
           <p className="mt-1 text-sm leading-6 text-[#505050]">Write from the email on your account and include a reference (Ref-0007, a payment id, or the link you opened). We reply from <span className="font-semibold text-black">{SUPPORT_EMAIL}</span>.</p>
-          <a href={mailto} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3 text-sm font-bold text-white hover:bg-[#0000cc] sm:w-auto">Email {SUPPORT_EMAIL} <ArrowRight className="h-4 w-4" /></a>
+          <a href={mailto} className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#131311] px-5 py-3 text-sm font-bold text-white hover:bg-[#2a2a25] sm:w-auto">Email {SUPPORT_EMAIL} <ArrowRight className="h-4 w-4" /></a>
           <p className="mt-3 text-xs leading-5 text-[#505050]">Response target: one business day (Mon–Fri, IST). Payment and account-safety issues are handled first.</p>
           <p className="mt-3 text-xs leading-5 text-[#505050]">Ayodhya Ram Mohanthy (sole proprietor, trading as SkipWait), D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India · <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a> (Mon–Fri, IST business hours).</p>
         </div>
