@@ -143,6 +143,16 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Later batches (one plan each, flagged, internal → 10% → 100%): public pages → seeker flows → trust flows → completion flows → admin deltas → billing (post-D2) → assistant access (post-gating + approval infra).
 - Every batch: phone + desktop pixel check vs `screens/`, `pnpm check`, affected Vitest files, `node scripts/design-token-audit.mjs`, no preview chips/sample data in shipped output.
 
+## Batch 1 record — shared app shell (foundation, dormant)
+
+- Commit: shell component + tests (this section appended same change).
+- Added `client/src/components/AppShell.tsx` (kit §7 navigation behavior on live DESIGN.md tokens) + `client/src/components/appShell.test.tsx` (3/3 pass).
+- Visual-contract call: DESIGN.md wins over kit `app/src/styles.css` (frozen contract + token audit). Kit Instrument Sans / oklch / 1.5rem radius / blue-fill active states NOT ported. Recorded deviations: 5 mobile tabs (kit: 8), pale-blue active state, inline More disclosure on desktop, bell without unread fetch.
+- Destinations are live routes only (/requests, /inbox, /referrer, /plans, /settings, /notifications, /support→help, /employer→companies). No link targets kit-only routes.
+- NOT wired into `client/src/App.tsx`: live task pages are self-contained h-dvh layouts; each screen batch converts its page and opts in. Zero production visual change.
+- Verification: token audit 0 findings on new files, `tsc --noEmit` clean, `git diff --check` clean.
+- Carry-forward: bell unread count, dark-mode tokens, kit font/radius takeover (owner call, needs DESIGN.md amendment).
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
