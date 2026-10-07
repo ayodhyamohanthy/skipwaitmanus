@@ -219,6 +219,14 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Real production bug fixed: saved-roles load effect looped on unstable `getToken` identity (request storm + clobbered PUT state) — stabilized with `usePersistFn`, the same guard MyRequests uses.
 - Verification: 5/5 tests, `tsc` clean, audit clean.
 
+## Batch 8 record — /alerts notification center (full kit fidelity)
+
+- Commit: kit alerts UX on the live notifications backend, shell-wrapped; `/notifications` redirects to `/alerts`.
+- New `client/src/pages/Alerts.tsx` + `alerts.test.tsx` (5/5): Today/Earlier groups from real timestamps, All/Unread filter with count, per-row mark-read + category routing (reused live mapping: status→requests, system→settings, work-email→inbox), parallel mark-all-read, truthful empty states, settings link.
+- Omitted: Saved alerts tab (no backend — no table, no firing job; a local-only tab would be fake functionality). Carry-forward with server build-out.
+- Shell bell now points at `/alerts`. Old `Notifications.tsx` kept (owner decides removal); its tests untouched.
+- Verification: 8/8 tests (incl. shell), `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

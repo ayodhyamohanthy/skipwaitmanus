@@ -41,7 +41,7 @@ describe("AppShell", () => {
       expect(link.getAttribute("href")).toBe(href);
     }
     expect(within(sidebar).getByText("Referrals are free. Always.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Notifications" }).getAttribute("href")).toBe("/notifications");
+    expect(screen.getByRole("link", { name: "Alerts" }).getAttribute("href")).toBe("/alerts");
   });
 
   it("marks the current route without inventing destinations", () => {
@@ -52,8 +52,8 @@ describe("AppShell", () => {
     );
     expect(within(screen.getByRole("complementary", { name: "App sidebar" })).getByRole("link", { name: "Requests" }).getAttribute("aria-current")).toBe("page");
     // Kit-only routes have no shell entry yet — nothing points at them.
-    expect(document.querySelector('a[href="/explore"]')).toBeNull();
-    expect(document.querySelector('a[href="/alerts"]')).toBeNull();
+    expect(document.querySelector('a[href="/profile"]')).toBeNull();
+    expect(document.querySelector('a[href="/work"]')).toBeNull();
   });
 
   it("opens the More drawer with help, companies, and sign-in on mobile", () => {

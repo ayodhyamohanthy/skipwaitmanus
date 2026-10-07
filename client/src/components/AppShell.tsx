@@ -156,8 +156,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           <span className="text-[11px] font-bold uppercase tracking-[.14em] text-[#767676]">Private by default</span>
           <Link
-            href="/notifications"
-            aria-label="Notifications"
+            href="/alerts"
+            aria-label="Alerts"
             className="ml-auto grid min-h-11 min-w-11 place-items-center rounded-[18px] text-black"
           >
             <Bell className="h-5 w-5" aria-hidden="true" />
