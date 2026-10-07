@@ -39,7 +39,7 @@ class ErrorBoundary extends Component<Props, State> {
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3 text-sm font-bold text-white"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#131311] px-5 py-3 text-sm font-bold text-white"
             >
               <RotateCcw className="h-4 w-4" />
               Reload page

@@ -1,63 +1,94 @@
+@import "@fontsource/barlow/400.css";
+@import "@fontsource/barlow/500.css";
+@import "@fontsource/barlow/600.css";
+@import "@fontsource/barlow/700.css";
+@import "@fontsource/barlow-condensed/500.css";
+@import "@fontsource/barlow-condensed/600.css";
+@import "@fontsource/barlow-condensed/700.css";
 @import "@fontsource/jetbrains-mono/500.css";
 @import "@fontsource/jetbrains-mono/700.css";
 @import "tailwindcss";
 
+/*
+ * Scoreboard world (see DESIGN.md at the repository root).
+ *
+ * Paper ground, ink, one signal red. Barlow Condensed carries display and
+ * headings, Barlow carries interface and body copy, JetBrains Mono carries
+ * numerals, counts, codes, and timestamps. The world has no pure white: its
+ * "white" is paper, so `bg-white` / `text-white` / `bg-black` / `text-black`
+ * resolve to the world's own paper and ink.
+ */
 @theme inline {
-  --font-sans: "Helvetica Neue", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Helvetica Neue", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Helvetica Neue", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Barlow", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Barlow", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Barlow Condensed", "Barlow", "Segoe UI", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --color-background: #ffffff;
-  --color-foreground: #000000;
-  --color-card: #ffffff;
-  --color-card-foreground: #000000;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #000000;
-  --color-primary: #0000ff;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f0f0f0;
-  --color-secondary-foreground: #000000;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #505050;
-  --color-accent: #ededff;
-  --color-accent-foreground: #0000ff;
-  --color-border: #e5e5e5;
-  --color-input: #cfcfcf;
-  --color-ring: #0000ff;
-  --color-ink: #000000;
-  --color-ink-soft: #1a1a1a;
-  --color-coal: #121212;
-  --color-paper: #ffffff;
-  --color-signal: #0000ff;
-  --color-signal-tint: #ededff;
-  --color-signal-line: #c2c2ff;
-  --color-fog: #505050;
-  --color-faint: #767676;
-  --color-line: #e5e5e5;
-  --radius: 1.125rem;
+
+  --color-paper: #f4f4f1;
+  --color-paper-dim: #e9e9e2;
+  --color-background: #f4f4f1;
+  --color-foreground: #131311;
+  --color-card: #fbfbf8;
+  --color-card-foreground: #131311;
+  --color-popover: #fbfbf8;
+  --color-popover-foreground: #131311;
+  --color-primary: #131311;
+  --color-primary-foreground: #f4f4f1;
+  --color-secondary: #e9e9e2;
+  --color-secondary-foreground: #131311;
+  --color-muted: #eaeae4;
+  --color-muted-foreground: #5f5f58;
+  --color-accent: #f7d8d1;
+  --color-accent-foreground: #131311;
+  --color-destructive: #b02318;
+  --color-destructive-foreground: #f4f4f1;
+  --color-border: #dcdcd4;
+  --color-input: #c4c4ba;
+  --color-ring: #131311;
+
+  --color-ink: #131311;
+  --color-ink-soft: #2a2a25;
+  --color-coal: #131311;
+  --color-white: #f4f4f1;
+  --color-black: #131311;
+  --color-signal: #e8442e;
+  --color-signal-deep: #c2351f;
+  --color-signal-tint: #fbe0da;
+  --color-signal-line: #f0b4a8;
+  --color-fog: #5f5f58;
+  --color-faint: #7a7a72;
+  --color-line: #dcdcd4;
+  --color-success: #1d6b3c;
+  --color-pending: #8a5a0b;
+  --color-error: #b02318;
+
+  --radius: 0.25rem;
 }
 
 * { border-color: var(--color-border); }
-html { scroll-behavior: smooth; background: #ffffff; }
-body { margin: 0; min-width: 320px; background: #ffffff; color: #000000; font-family: "Helvetica Neue", "Segoe UI", ui-sans-serif, system-ui, sans-serif; overscroll-behavior-y: contain; }
-h1, h2 { font-family: "Helvetica Neue", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-weight: 600; letter-spacing: -0.03em; text-wrap: balance; }
+html { scroll-behavior: smooth; background: #f4f4f1; }
+body { margin: 0; min-width: 320px; background: #f4f4f1; color: #131311; font-family: "Barlow", "Segoe UI", ui-sans-serif, system-ui, sans-serif; overscroll-behavior-y: contain; }
+h1, h2 { font-family: "Barlow Condensed", "Barlow", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-weight: 600; letter-spacing: -0.01em; text-wrap: balance; }
+h3 { font-family: "Barlow Condensed", "Barlow", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-weight: 600; letter-spacing: -0.005em; }
 /* Tabular numerals for counts, meters, and proof strips. */
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+/* Broadcast display: condensed, uppercase, one signal period allowed. */
+.display { font-family: "Barlow Condensed", "Barlow", "Segoe UI", ui-sans-serif, system-ui, sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: -0.005em; line-height: 0.88; text-wrap: balance; }
 button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
 button, a { touch-action: manipulation; }
-button:focus-visible, a:focus-visible, input:focus-visible { outline: 3px solid #0000ff; outline-offset: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 3px solid #131311; outline-offset: 2px; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 /* Disabled language: one solid state everywhere — no faded ghosts. */
-button:disabled { opacity: 1 !important; background-color: #e0e0e0 !important; color: #505050 !important; }
-button:disabled svg { color: #505050 !important; }
+button:disabled { opacity: 1 !important; background-color: #dcdcd4 !important; color: #5f5f58 !important; }
+button:disabled svg { color: #5f5f58 !important; }
 
-::placeholder { color: #505050; opacity: 1; }
-::selection { background: #fffc52; color: #000000; }
-input, textarea { caret-color: #0000ff; }
+::placeholder { color: #5f5f58; opacity: 1; }
+::selection { background: #e8442e; color: #131311; }
+input, textarea { caret-color: #131311; }
 ::-webkit-scrollbar { width: 10px; }
-::-webkit-scrollbar-track { background: #ffffff; }
-::-webkit-scrollbar-thumb { background: #cfcfcf; border-radius: 8px; border: 2px solid #ffffff; }
+::-webkit-scrollbar-track { background: #f4f4f1; }
+::-webkit-scrollbar-thumb { background: #c4c4ba; border-radius: 8px; border: 2px solid #f4f4f1; }
 @media (prefers-reduced-motion: no-preference) { button, a { transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1); } }
 
 @keyframes referral-success-pop {
@@ -65,6 +96,13 @@ input, textarea { caret-color: #0000ff; }
   to { opacity: 1; transform: scale(1); }
 }
 
+/* The live count on the landing wire strip: one stamp-in, never a loop. */
+@keyframes wire-count-in {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .referral-success-mark { animation: referral-success-pop 200ms cubic-bezier(0.23, 1, 0.32, 1) both; }
+  .wire-count { animation: wire-count-in 320ms cubic-bezier(0.23, 1, 0.32, 1) both; }
 }

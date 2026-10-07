@@ -1,59 +1,97 @@
-import { ArrowRight, ArrowUpRight, Check, FileText, LockKeyhole, Menu, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Menu, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Button, Dialog, DialogBody, DialogContent, DialogSurface, DialogTitle, FluentProvider, Tab, TabList, makeStyles, webLightTheme } from "@fluentui/react-components";
+import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { applySeo, faqJsonLd } from "@/lib/seo";
-import { LANDING_EMPLOYEE_STEPS, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_SEEKER_STEPS, LANDING_SUMMARY, LANDING_TITLE } from "@shared/landingContent";
+import { FREE_MONTHLY_ALLOWANCE } from "@shared/subscriptionPlans";
+import {
+  LANDING_COMMITMENTS,
+  LANDING_EMPLOYEE_STEPS,
+  LANDING_EMPLOYER_LINK,
+  LANDING_EXPLORE,
+  LANDING_FAQ,
+  LANDING_FAQ_HEADING,
+  LANDING_GUIDES,
+  LANDING_H1,
+  LANDING_SEEKER_STEPS,
+  LANDING_SUMMARY,
+  LANDING_TITLE,
+} from "@shared/landingContent";
 
-const sans = '"Helvetica Neue", "Segoe UI", sans-serif';
-const theme = { ...webLightTheme, fontFamilyBase: sans, colorBrandBackground: "#0000ff", colorBrandBackgroundHover: "#0000cc", colorBrandBackgroundPressed: "#000099", colorBrandForeground1: "#0000ff", colorBrandStroke1: "#0000ff", borderRadiusMedium: "18px" };
-const useStyles = makeStyles({
-  root: { minHeight: "100dvh", backgroundColor: "#ffffff", color: "#000000", fontFamily: sans, "& h1, & h2, & h3": { fontFamily: sans, margin: 0, textWrap: "balance" }, "& p": { margin: 0 }, "& a": { color: "inherit", textDecorationLine: "none" }, "& a:focus-visible": { outline: "3px solid #0000ff", outlineOffset: "5px" }, "& ::selection": { backgroundColor: "#fffc52", color: "#000000" } },
-  header: { maxWidth: "1280px", margin: "auto", height: "88px", padding: "0 32px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "20px", "@media(max-width:767px)": { padding: "0 20px", height: "72px" } },
-  brand: { display: "inline-flex", alignItems: "center", gap: "10px", fontSize: "24px", fontWeight: 600, letterSpacing: "-.04em" },
-  mark: { border: "1.5px solid #000000", width: "30px", height: "30px", display: "grid", placeItems: "center", borderRadius: "9px" },
-  nav: { display: "flex", alignItems: "center", gap: "30px", fontSize: "14px", "& a": { minHeight: "44px", display: "inline-flex", alignItems: "center" }, "@media(max-width:767px)": { display: "none" } },
-  menu: { display: "none", "@media(max-width:767px)": { display: "inline-flex", minHeight: "44px", minWidth: "44px" } },
-  workspace: { maxWidth: "1200px", margin: "auto", padding: "12px 20px", display: "flex", flexWrap: "wrap", gap: "8px" },
-  hero: { maxWidth: "1200px", margin: "auto", textAlign: "center", padding: "48px 24px 52px", "@media(max-width:767px)": { padding: "32px 20px 36px" } },
-  headline: { fontSize: "clamp(48px, 6.8vw, 92px)", lineHeight: ".98", letterSpacing: "-.04em", fontWeight: 500, "@media(max-width:767px)": { fontSize: "clamp(40px, 10vw, 60px)" } },
-  description: { maxWidth: "550px", margin: "24px auto 0", paddingTop: "24px", fontSize: "20px", lineHeight: "1.5", "@media(max-width:767px)": { fontSize: "17px", paddingTop: "20px" } },
-  actions: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "12px", marginTop: "28px", "& button": { minHeight: "54px", padding: "14px 24px", fontSize: "16px", whiteSpace: "nowrap" }, "@media(max-width:420px)": { "& button": { width: "100%" } } },
-  descriptionSub: { maxWidth: "620px", margin: "14px auto 0", fontSize: "15px", lineHeight: "1.6", color: "#505050", "@media(max-width:767px)": { fontSize: "14px" } },
-  secondary: { border: "1px solid #000000", color: "#000000", backgroundColor: "#ffffff", ":hover": { backgroundColor: "#000000", color: "#ffffff", border: "1px solid #000000" } },
-  playground: { maxWidth: "1200px", margin: "0 auto 80px", display: "grid", gridTemplateColumns: "1.1fr 1fr", backgroundColor: "#0000ff", color: "#ffffff", borderRadius: "76px", padding: "52px 64px", gap: "64px", alignItems: "center", "@media(max-width:1240px)": { marginLeft: "24px", marginRight: "24px", gap: "32px", padding: "44px" }, "@media(max-width:767px)": { gridTemplateColumns: "1fr", margin: "0 16px 48px", borderRadius: "38px", padding: "32px 24px", gap: "28px" } },
-  playCopy: { "& h2": { fontSize: "clamp(36px, 4vw, 54px)", fontWeight: 500, letterSpacing: "-.04em", lineHeight: "1.04" }, "& p": { maxWidth: "330px", fontSize: "16px", lineHeight: "1.65", paddingTop: "22px", color: "#ededff" } },
-  sphere: { width: "100px", height: "100px", borderRadius: "50%", backgroundColor: "#fffc52", marginTop: "32px", "@media(max-width:767px)": { display: "none" } },
-  guide: { backgroundColor: "#ffffff", color: "#000000", borderRadius: "38px", padding: "28px", minWidth: 0, "@media(max-width:767px)": { borderRadius: "24px", padding: "20px" } },
-  guideTop: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", fontSize: "13px", paddingBottom: "14px", borderBottom: "1px solid #cfcfcf" },
-  tabs: { margin: "14px 0 20px", "& button": { minHeight: "44px" } },
-  guideTitle: { fontSize: "25px", letterSpacing: "-.025em", lineHeight: "1.2", fontWeight: 500 },
-  list: { listStyleType: "none", padding: 0, margin: "22px 0", display: "grid", gap: "18px" },
-  item: { display: "flex", gap: "14px", alignItems: "flex-start", "& strong": { fontWeight: 600, fontSize: "14px" }, "& p": { color: "#505050", fontSize: "13px", lineHeight: "1.5", paddingTop: "4px" } },
-  number: { fontFamily: '"JetBrains Mono", monospace', fontSize: "11px", width: "28px", height: "28px", display: "grid", placeItems: "center", border: "1px solid #cfcfcf", borderRadius: "50%", flexShrink: 0 },
-  guideFoot: { display: "flex", alignItems: "center", gap: "8px", borderTop: "1px solid #cfcfcf", paddingTop: "16px", fontSize: "12px" },
-  reassurance: { maxWidth: "1100px", margin: "0 auto 80px", padding: "0 24px", display: "flex", alignItems: "center", gap: "56px", "& h2": { flex: 1, fontSize: "42px", lineHeight: "1.1", letterSpacing: "-.035em", fontWeight: 500 }, "& p": { flex: 1, fontSize: "17px", lineHeight: "1.7", color: "#505050" }, "@media(max-width:767px)": { flexDirection: "column", alignItems: "flex-start", gap: "20px", marginBottom: "48px", "& h2": { fontSize: "34px" } } },
-  faq: { maxWidth: "1100px", margin: "0 auto 80px", padding: "0 24px", "& h2": { fontSize: "42px", lineHeight: "1.1", letterSpacing: "-.035em", fontWeight: 500, maxWidth: "620px" }, "@media(max-width:767px)": { marginBottom: "48px", "& h2": { fontSize: "34px" } } },
-  faqList: { margin: "36px 0 0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "32px 48px", "@media(max-width:767px)": { gridTemplateColumns: "1fr", gap: "26px", marginTop: "26px" } },
-  faqItem: { "& dt": { fontSize: "17px", fontWeight: 600, letterSpacing: "-.01em" }, "& dd": { margin: "8px 0 0", fontSize: "15px", lineHeight: "1.65", color: "#505050" } },
-  dark: { backgroundColor: "#121212", color: "#ffffff", padding: "64px 24px", "@media(max-width:767px)": { padding: "36px 16px" } },
-  darkInner: { maxWidth: "1200px", margin: "auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "64px", alignItems: "center", "@media(max-width:767px)": { gridTemplateColumns: "1fr", gap: "32px" } },
-  yellow: { backgroundColor: "#fffc52", color: "#000000", borderRadius: "76px", padding: "60px 48px", "& h2": { fontSize: "clamp(40px, 5vw, 64px)", fontWeight: 500, lineHeight: "1.02", letterSpacing: "-.04em" }, "@media(max-width:767px)": { borderRadius: "38px", padding: "40px 28px" } },
-  commitments: { display: "grid", gap: "32px", padding: "0 16px", "& h3": { fontSize: "24px", fontWeight: 500, marginBottom: "10px" }, "& p": { color: "#cfcfcf", fontSize: "16px", lineHeight: "1.65", maxWidth: "390px" } },
-  footer: { maxWidth: "1280px", margin: "auto", padding: "28px 32px", display: "grid", gap: "10px", fontSize: "13px", "& a": { minHeight: "44px", display: "inline-flex", alignItems: "center", gap: "8px" }, "@media(max-width:767px)": { padding: "24px 20px" } },
-  footerRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: "20px", "@media(max-width:767px)": { flexDirection: "column", alignItems: "flex-start", gap: "4px" } },
-  footerLinks: { display: "flex", flexWrap: "wrap", gap: "4px 22px", "& a": { minHeight: "44px", color: "#505050", fontSize: "13px" }, "@media(max-width:767px)": { display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0 16px" } },
-  impact: { padding: "24px", textAlign: "center", fontSize: "14px" },
-  menuLinks: { display: "grid", gap: "12px", "& a": { display: "flex", alignItems: "center", minHeight: "44px" } },
-});
+/**
+ * The public landing page ("Scoreboard" world — see DESIGN.md).
+ *
+ * The referral is treated as live proof rather than a promise: an ink masthead
+ * with a stamp mark, a wire strip of real counts, and a ledger that shows what
+ * actually happens to one request. Every number on the page comes from the
+ * product or from @shared/landingContent; nothing here states an outcome the
+ * product does not produce.
+ */
+const PUBLIC_NAV = [
+  { href: "/jobs", label: "Browse roles" },
+  { href: "/wall", label: "Internal openings" },
+  { href: "/support", label: "How it works" },
+  { href: "/pricing", label: "Pricing" },
+  { href: "/privacy", label: "Privacy" },
+];
+
+const MONEY_LINE = `${FREE_MONTHLY_ALLOWANCE} referral requests are free every month · extra credits cost $1 each (₹99 in India) and never expire`;
+
+/** The request ledger: what a visitor is actually buying into, state by state. */
+const LEDGER_ROWS = [
+  {
+    index: "01",
+    title: "Posted",
+    stamp: "You",
+    note: "One role link, your resume, and a short note about your fit. The employer is identified from the link before anyone is notified.",
+  },
+  {
+    index: "02",
+    title: "Reviewed in private",
+    stamp: "Employees only",
+    note: "Only people who verified a work email at that company can open the request. Your contact details stay hidden from every reviewer.",
+  },
+  {
+    index: "03",
+    title: "Decided",
+    stamp: "One answer",
+    note: "An employee makes the introduction, or passes it on so someone else can decide. You can withdraw an unclaimed request at any time.",
+  },
+];
+
+function StampMark({ className = "border-ink text-ink" }: { className?: string }) {
+  return (
+    <span aria-hidden="true" className={`grid size-9 shrink-0 place-items-center border-[1.5px] ${className}`}>
+      <ArrowUpRight className="size-5" />
+    </span>
+  );
+}
+
+function StepRail({ label, steps, close }: { label: string; steps: readonly { title: string; body: string }[]; close: string }) {
+  return (
+    <div>
+      <h2 className="font-mono text-[11px] font-medium uppercase tracking-[.2em] text-fog">{label}</h2>
+      <ol className="mt-5 border-t border-ink/20">
+        {steps.map((step, index) => (
+          <li key={step.title} className="flex gap-5 border-b border-ink/20 py-4">
+            <span className="tnum mt-1 font-mono text-[11px] font-bold text-signal">{`0${index + 1}`}</span>
+            <div>
+              <p className="font-display text-xl uppercase leading-none text-ink">{step.title}</p>
+              <p className="mt-2 text-sm leading-6 text-fog">{step.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-3 font-mono text-[11px] uppercase tracking-[.14em] text-fog">{close}</p>
+    </div>
+  );
+}
 
 export default function Home() {
-  const s = useStyles();
   const [, go] = useLocation();
   const { isSignedIn } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [audience, setAudience] = useState("seeker");
   const [acceptedReferrals, setAcceptedReferrals] = useState<number | null>(null);
   useEffect(() => {
     let active = true;
@@ -67,20 +105,143 @@ export default function Home() {
     // route keeps whatever title the last visited screen set.
     applySeo({ title: LANDING_TITLE, description: LANDING_SUMMARY, path: "/", jsonLd: faqJsonLd(LANDING_FAQ) });
   }, []);
-  // The steps the crawlable landing snapshot prints, from one shared source.
-  const steps = audience === "seeker" ? LANDING_SEEKER_STEPS : LANDING_EMPLOYEE_STEPS;
-  return <FluentProvider theme={theme} className={s.root}>
-    <header className={s.header}><Link href="/" className={s.brand} aria-label="Skipwait home"><span className={s.mark}><ArrowUpRight size={22} aria-hidden="true" /></span>skipwait.me</Link><nav className={s.nav} aria-label="Public navigation"><Link href="/jobs">Browse roles</Link><Link href="/wall">Internal openings</Link><Link href="/support">How it works</Link><Link href="/pricing">Pricing</Link><Link href="/privacy">Privacy</Link><SignInButton><Button className={s.secondary} size="large">Sign in</Button></SignInButton></nav><Button className={s.menu} appearance="subtle" icon={<Menu size={22} />} aria-label="Open navigation menu" onClick={() => setMenuOpen(true)} /></header>
-    {isSignedIn && <nav className={s.workspace} aria-label="Your workspace"><Button onClick={() => go("/requests")}>My requests</Button><Button onClick={() => go("/inbox")}>My company inbox</Button><Button onClick={() => go("/wall")}>Internal openings</Button></nav>}
-    <main>
-      <section className={s.hero}><h1 className={s.headline}>Good work deserves<br />a good introduction.</h1><p className={s.description}>A private referral to your next role.<br />From someone who already works there.</p><p className={s.descriptionSub}>{LANDING_SUMMARY}</p><div className={s.actions}><Button appearance="primary" size="large" icon={<ArrowRight size={19} />} iconPosition="after" onClick={() => go("/start")}>I need a referral</Button><Button className={s.secondary} size="large" onClick={() => go("/referrer")}>I can refer someone</Button></div></section>
-      <section className={s.playground} aria-label="How referrals work"><div className={s.playCopy}><h2>Your next move.<br />All the right parts.</h2><p>A role worth pursuing. Your experience. Someone on the inside who can choose to help.</p><div className={s.sphere} aria-hidden="true" /></div><div className={s.guide}><div className={s.guideTop}><span>Make the introduction</span><FileText size={19} aria-hidden="true" /></div><TabList className={s.tabs} selectedValue={audience} onTabSelect={(_, data) => setAudience(String(data.value))} aria-label="Referral steps"><Tab value="seeker">Job seekers</Tab><Tab value="employee">Employees</Tab></TabList><h3 className={s.guideTitle}>{audience === "seeker" ? "A little context goes a long way." : "A referral on your terms."}</h3><ol className={s.list}>{steps.map((step, index) => <li key={step.title} className={s.item}><span className={s.number}>{index + 1}</span><div><strong>{step.title}</strong><p>{step.body}</p></div></li>)}</ol><div className={s.guideFoot}><LockKeyhole size={15} aria-hidden="true" />Private by default. Never a public feed.</div></div></section>
-      <section className={s.reassurance}><h2>Less cold outreach.<br />More real context.</h2><p>No searching for the perfect opening message. Share the role, your resume, and your fit in one complete request.</p></section>
-      <section className={s.faq} aria-labelledby="landing-faq-heading"><h2 id="landing-faq-heading">{LANDING_FAQ_HEADING}</h2><dl className={s.faqList}>{LANDING_FAQ.map(entry => <div key={entry.question} className={s.faqItem}><dt>{entry.question}</dt><dd>{entry.answer}</dd></div>)}</dl></section>
-      <section className={s.dark}><div className={s.darkInner}><div className={s.yellow}><h2>A careful yes.<br />An easy no.<br />Your choice.</h2></div><div className={s.commitments}><div><Check size={24} aria-hidden="true" /><h3>People, not a public feed.</h3><p>Your request is reviewed privately by verified employees at the target company.</p></div><div><h3>An introduction. Not a guarantee.</h3><p>Employees decide whether to help. A referral never guarantees an interview or a job.</p></div></div></div></section>
-      {acceptedReferrals ? <p className={s.impact}>{acceptedReferrals} referral requests accepted on skipwait.me · participants stay private.</p> : null}
+  // The crawler snapshot prints LANDING_H1 verbatim; the visible headline is the
+  // same words set in the world's display face, with the signal period added.
+  const headline = LANDING_H1.replace(/\.$/, "");
+  return <div className="min-h-dvh bg-paper text-ink">
+    <a href="#landing-main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:border focus:border-ink focus:bg-paper focus:px-4 focus:py-2 focus:text-sm focus:font-semibold">Skip to content</a>
+    <header className="sticky top-0 z-40 bg-ink text-paper">
+      <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-3 sm:px-8">
+        <Link href="/" className="flex min-h-11 items-center gap-2.5" aria-label="skipwait.me home">
+          <StampMark className="border-paper/50 text-paper" />
+          <span className="font-display text-2xl uppercase tracking-[.01em]">skipwait.me</span>
+        </Link>
+        <nav className="hidden items-center gap-7 font-mono text-[11px] uppercase tracking-[.16em] lg:flex" aria-label="Public navigation">
+          {PUBLIC_NAV.map(link => <Link key={link.href} href={link.href} className="flex min-h-11 items-center text-paper/80 hover:text-paper">{link.label}</Link>)}
+        </nav>
+        <div className="flex items-center gap-2">
+          <SignInButton><button type="button" className="min-h-11 border border-paper/50 px-4 font-mono text-[11px] uppercase tracking-[.16em] text-paper transition-colors hover:bg-paper hover:text-ink">Sign in</button></SignInButton>
+          <button type="button" onClick={() => setMenuOpen(true)} aria-label="Open navigation menu" className="grid size-11 place-items-center border border-paper/50 text-paper transition-colors hover:bg-paper hover:text-ink lg:hidden"><Menu className="size-5" /></button>
+        </div>
+      </div>
+      {/* Wire strip: the only counts on the page, all of them real. */}
+      <div className="border-t border-paper/20">
+        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-x-7 gap-y-1 px-5 py-2 font-mono text-[11px] uppercase tracking-[.14em] text-paper/70 sm:px-8">
+          <span>Private referrals</span>
+          <span className="flex items-center gap-1.5"><ShieldCheck className="size-3.5" aria-hidden="true" />Identity hidden</span>
+          {acceptedReferrals ? <span className="tnum wire-count text-paper">{`${acceptedReferrals.toLocaleString()} referral requests accepted on skipwait.me · participants stay private.`}</span> : null}
+          <span className="tnum">{FREE_MONTHLY_ALLOWANCE} free every month</span>
+        </div>
+      </div>
+    </header>
+    {isSignedIn ? <nav className="border-b border-ink/20 bg-paper-dim" aria-label="Your workspace"><div className="mx-auto flex max-w-[1280px] flex-wrap gap-2 px-5 py-2 sm:px-8">
+      {[{ path: "/requests", label: "My requests" }, { path: "/inbox", label: "My company inbox" }, { path: "/wall", label: "Internal openings" }].map(item => <button key={item.path} type="button" onClick={() => go(item.path)} className="min-h-11 border border-ink px-3 font-mono text-[11px] uppercase tracking-[.16em] text-ink transition-colors hover:bg-ink hover:text-paper">{item.label}</button>)}
+    </div></nav> : null}
+    <main id="landing-main">
+      {/* First viewport: display headline, one line of proof, two role plates. */}
+      <section className="border-b border-ink/20">
+        <div className="mx-auto max-w-[1280px] px-5 pt-10 pb-10 sm:px-8 sm:pt-16 sm:pb-14">
+          <p className="font-mono text-[11px] uppercase tracking-[.22em] text-signal">Private referrals from verified employees</p>
+          <h1 className="display mt-5 text-[clamp(46px,10.4vw,124px)]">{headline}<span className="text-signal">.</span></h1>
+          <p className="mt-6 max-w-2xl text-base leading-7 text-fog">{LANDING_SUMMARY}</p>
+          <div className="mt-9 grid gap-3 sm:grid-cols-2 sm:gap-4">
+            <button type="button" onClick={() => go("/start")} className="group flex min-h-16 items-center justify-between gap-4 bg-ink px-5 text-left text-paper transition-colors hover:bg-ink-soft">
+              <span className="font-display text-2xl uppercase leading-none">I need a referral</span>
+              <ArrowRight className="size-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+            </button>
+            <button type="button" onClick={() => go("/referrer")} className="group flex min-h-16 items-center justify-between gap-4 border-[1.5px] border-ink px-5 text-left text-ink transition-colors hover:bg-ink hover:text-paper">
+              <span className="font-display text-2xl uppercase leading-none">I can refer someone</span>
+              <ArrowUpRight className="size-5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" aria-hidden="true" />
+            </button>
+          </div>
+          <p className="tnum mt-4 font-mono text-[11px] leading-5 text-fog">{MONEY_LINE}.</p>
+        </div>
+      </section>
+      {/* Numbered sequences: the two roles, instruction-plate style. */}
+      <section aria-label="Referral steps" className="border-b border-ink/20 bg-paper-dim">
+        <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-12 sm:px-8 sm:py-16 lg:grid-cols-2 lg:gap-16">
+          <StepRail label="For job seekers" steps={LANDING_SEEKER_STEPS} close="Three steps. One request. No public feed." />
+          <StepRail label="For employees" steps={LANDING_EMPLOYEE_STEPS} close="Review on your phone, in minutes. Passing is always allowed." />
+        </div>
+      </section>
+      {/* The ledger: the mechanism shown as an artifact, not a promise. */}
+      <section className="border-b border-ink/20">
+        <div className="mx-auto max-w-[1280px] px-5 py-14 sm:px-8 sm:py-20">
+          <h2 className="display text-[clamp(34px,5.2vw,64px)]">One request.<br />Real people, in private.</h2>
+          <p className="mt-5 max-w-xl text-sm leading-6 text-fog">Every request moves through the same states. Reviewers are verified employees of the company behind the link, the decision belongs to one of them, and nothing about it is ever public.</p>
+          <div className="mt-10 border-[1.5px] border-ink">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b-[1.5px] border-ink bg-ink px-4 py-2.5 text-paper">
+              <span className="font-mono text-[11px] font-bold uppercase tracking-[.18em]">Request ledger</span>
+              <span className="font-mono text-[11px] uppercase tracking-[.18em] text-paper/70">Sample sequence</span>
+            </div>
+            <ol>
+              {LEDGER_ROWS.map(row => <li key={row.index} className="flex flex-wrap items-start gap-x-6 gap-y-2 border-b border-ink/20 px-4 py-5 last:border-b-0 sm:flex-nowrap">
+                <span className="tnum font-mono text-[11px] font-bold text-signal">{row.index}</span>
+                <span className="min-w-[9rem] font-display text-2xl uppercase leading-none">{row.title}</span>
+                <span className="order-last w-full text-sm leading-6 text-fog sm:order-none sm:w-auto sm:flex-1">{row.note}</span>
+                <span className="border border-ink px-2 py-1 font-mono text-[10px] font-bold uppercase tracking-[.14em] text-ink">{row.stamp}</span>
+              </li>)}
+            </ol>
+          </div>
+        </div>
+      </section>
+      {/* Commitments: ink block, one signal line. */}
+      <section className="bg-ink text-paper">
+        <div className="mx-auto grid max-w-[1280px] items-start gap-10 px-5 py-14 sm:px-8 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
+          <h2 className="display text-[clamp(40px,7.4vw,96px)]">A careful yes.<br />An easy no.<br /><span className="text-signal">Your choice.</span></h2>
+          <div className="grid gap-6">
+            {LANDING_COMMITMENTS.map(commitment => <div key={commitment.title} className="border-t border-paper/25 pt-4">
+              <h3 className="font-display text-2xl uppercase leading-none">{commitment.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-paper/70">{commitment.body}</p>
+            </div>)}
+          </div>
+        </div>
+      </section>
+      {/* Pre-signup questions, answered in visible copy and FAQ structured data. */}
+      <section aria-labelledby="landing-faq-heading" className="border-b border-ink/20">
+        <div className="mx-auto max-w-[1280px] px-5 py-14 sm:px-8 sm:py-20">
+          <h2 id="landing-faq-heading" className="display text-[clamp(34px,5.2vw,64px)]">{LANDING_FAQ_HEADING}</h2>
+          <dl className="mt-9 grid gap-x-12 gap-y-6 lg:grid-cols-2">
+            {LANDING_FAQ.map(entry => <div key={entry.question} className="border-t border-ink/20 pt-4">
+              <dt className="font-display text-xl uppercase leading-tight">{entry.question}</dt>
+              <dd className="mt-2 text-sm leading-6 text-fog">{entry.answer}</dd>
+            </div>)}
+          </dl>
+        </div>
+      </section>
     </main>
-    <footer className={s.footer}><div className={s.footerRow}><span>skipwait.me · Better introductions. On your terms.</span><Link href="/employer">Hiring for your company?<ArrowUpRight size={16} aria-hidden="true" /></Link></div><nav className={s.footerLinks} aria-label="skipwait.me pages">{LANDING_EXPLORE.map(link => <Link key={link.href} href={link.href}>{link.label}</Link>)}</nav><p className="font-semibold text-black">Guides</p><nav className={s.footerLinks} aria-label="Guides">{LANDING_GUIDES.map(link => <Link key={link.href} href={link.href}>{link.label}</Link>)}</nav></footer>
-    <Dialog open={menuOpen} onOpenChange={(_, data) => setMenuOpen(data.open)}><DialogSurface><DialogBody><DialogTitle action={<Button appearance="subtle" aria-label="Close navigation menu" icon={<X size={20} />} onClick={() => setMenuOpen(false)} />}>Menu</DialogTitle><DialogContent><nav className={s.menuLinks} aria-label="Mobile navigation"><Link href="/jobs" onClick={() => setMenuOpen(false)}>Browse roles</Link><Link href="/wall" onClick={() => setMenuOpen(false)}>Internal openings</Link><Link href="/support" onClick={() => setMenuOpen(false)}>How it works</Link><Link href="/pricing" onClick={() => setMenuOpen(false)}>Pricing</Link><Link href="/privacy" onClick={() => setMenuOpen(false)}>Privacy</Link><SignInButton><Button onClick={() => setMenuOpen(false)}>Sign in</Button></SignInButton></nav></DialogContent></DialogBody></DialogSurface></Dialog>
-  </FluentProvider>;
+    <footer className="bg-paper">
+      <div className="mx-auto max-w-[1280px] px-5 py-12 sm:px-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-ink/20 pb-6">
+          <Link href="/" className="flex items-center gap-2.5" aria-label="skipwait.me home">
+            <StampMark />
+            <span className="font-display text-2xl uppercase tracking-[.01em]">skipwait.me</span>
+          </Link>
+          <Link href={LANDING_EMPLOYER_LINK.href} className="flex min-h-11 items-center gap-2 border border-ink px-4 font-mono text-[11px] uppercase tracking-[.16em] text-ink transition-colors hover:bg-ink hover:text-paper">
+            {LANDING_EMPLOYER_LINK.label}<ArrowUpRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
+        <nav aria-label="skipwait.me pages" className="mt-8 grid grid-cols-2 gap-x-8 gap-y-3 sm:grid-cols-3 lg:grid-cols-4">
+          {LANDING_EXPLORE.map(link => <Link key={link.href} href={link.href} className="flex min-h-11 items-center text-sm font-medium text-ink hover:text-signal">{link.label}</Link>)}
+        </nav>
+        <p className="mt-6 font-mono text-[11px] uppercase tracking-[.18em] text-fog">Guides</p>
+        <nav aria-label="Guides" className="mt-3 grid gap-x-8 gap-y-2 sm:grid-cols-3">
+          {LANDING_GUIDES.map(link => <Link key={link.href} href={link.href} className="flex min-h-11 items-center text-sm text-ink hover:text-signal">{link.label}</Link>)}
+        </nav>
+        <p className="tnum mt-8 border-t border-ink/20 pt-4 font-mono text-[11px] leading-5 text-fog">skipwait.me · Better introductions, on your terms. {MONEY_LINE}. A referral never guarantees an interview, an offer, or a job.</p>
+      </div>
+    </footer>
+    <Dialog open={menuOpen} onOpenChange={setMenuOpen}>
+      <DialogContent aria-label="Menu" aria-describedby={undefined} showCloseButton={false} className="gap-0 border-ink bg-paper p-0 sm:max-w-sm">
+        <div className="flex items-center justify-between border-b border-ink/20 bg-ink px-4 py-3 text-paper">
+          <DialogTitle className="font-display text-xl uppercase tracking-[.02em]">Menu</DialogTitle>
+          <DialogClose className="grid size-11 place-items-center border border-paper/50 text-paper transition-colors hover:bg-paper hover:text-ink" aria-label="Close navigation menu"><X className="size-5" /></DialogClose>
+        </div>
+        <nav aria-label="Mobile navigation" className="grid p-2">
+          {PUBLIC_NAV.map(link => <Link key={link.href} href={link.href} onClick={() => setMenuOpen(false)} className="flex min-h-12 items-center border-b border-ink/15 px-2 font-display text-2xl uppercase text-ink last:border-b-0">{link.label}</Link>)}
+          <SignInButton><button type="button" onClick={() => setMenuOpen(false)} className="mt-3 flex min-h-12 items-center justify-center bg-ink px-4 font-mono text-[11px] uppercase tracking-[.16em] text-paper">Sign in</button></SignInButton>
+        </nav>
+      </DialogContent>
+    </Dialog>
+  </div>;
 }
