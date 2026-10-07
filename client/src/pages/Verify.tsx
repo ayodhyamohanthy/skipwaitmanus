@@ -130,14 +130,14 @@ export default function Verify() {
               <Building2 className="mb-3 text-[var(--primary)]" /><h2 className="text-2xl font-semibold">Where do you work?</h2><p className="mt-1 text-[var(--muted-foreground)]">Pick the company you&apos;ll refer into.</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Company">
                 {COMPANIES.map(item => (
-                  <button key={item.slug} type="button" role="radio" aria-checked={company === item.slug} onClick={() => setCompany(item.slug)} className={`flex min-h-14 items-center gap-3 rounded-2xl border p-3 text-left ${company === item.slug ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-[var(--border)]"}`}>
+                  <button key={item.slug} type="button" role="radio" aria-checked={company === item.slug} onClick={() => setCompany(item.slug)} className={`flex min-h-14 items-center gap-3 rounded-[20px] border p-3 text-left ${company === item.slug ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-[var(--border)]"}`}>
                     <span className="company-mark">{item.initials}</span>
                     <span className="min-w-0 flex-1"><strong className="block">{item.name}</strong><small className="text-[var(--muted-foreground)]">@{item.domain}</small></span>
                     {company === item.slug ? <Check className="text-[var(--primary)]" /> : null}
                   </button>
                 ))}
               </div>
-              <p className="mt-4 text-sm text-[var(--muted-foreground)]">Company not listed? More companies open as verified referrers join.</p>
+              <p className="mt-4 text-sm text-[var(--muted-foreground)]">Company not listed? <Link href="/suggest-company" className="text-link">Suggest it</Link> — we add companies after review.</p>
               <div className="mt-8 flex justify-end"><button type="button" className="brand-button" onClick={() => setStep("email")}>Continue <ArrowRight /></button></div>
             </div>
           ) : null}

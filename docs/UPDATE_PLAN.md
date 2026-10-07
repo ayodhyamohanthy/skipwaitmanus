@@ -388,6 +388,11 @@ Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visi
 - CSS: directory tabs, live-status pill variants, and supporting rules ported.
 - Verification: requests suites green, `tsc` clean.
 
+## Batch 26 record — dot-to-dot fidelity pass 4 (alerts, verify)
+
+- Commit: category icons on alert rows; verify pill buttons and suggest-company link per PNGs.
+- Verification: 15/15 tests, `tsc` clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
