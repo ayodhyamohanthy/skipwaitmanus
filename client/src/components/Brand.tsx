@@ -1,5 +1,10 @@
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "wouter";
-export function Brand(_: { dark?: boolean }) {
-  return <Link href="/" className="inline-flex items-center gap-2.5 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#0000ff]" aria-label="skipwait.me home"><span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-[9px] border-[1.5px] border-black bg-white text-black"><ArrowUpRight className="h-4 w-4" /></span><span className="text-xl font-semibold tracking-[-.04em] text-black">skipwait.me</span></Link>;
+
+/**
+ * skipwait.me stamp mark and wordmark (DESIGN.md, "Scoreboard" world).
+ * `dark` renders the paper-on-ink variant used on the ink masthead and dark blocks.
+ */
+export function Brand({ dark = false }: { dark?: boolean }) {
+  return <Link href="/" aria-label="skipwait.me home" className={`inline-flex min-h-11 items-center gap-2.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#131311] ${dark ? "text-paper" : "text-ink"}`}><span aria-hidden="true" className={`grid size-9 shrink-0 place-items-center border-[1.5px] ${dark ? "border-paper/50" : "border-ink"}`}><ArrowUpRight className="size-5" /></span><span className="font-display text-2xl uppercase tracking-[.01em]">skipwait.me</span></Link>;
 }

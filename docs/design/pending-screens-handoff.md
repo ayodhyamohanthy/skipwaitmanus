@@ -4,11 +4,12 @@ _Style preset: 17 Takram (Soft Precision) for layout, hierarchy, motion and copy
 
 > **Colour authority: [`DESIGN.md`](../../DESIGN.md) + `client/src/index.css`.**
 > This doc governs structure, states, copy and behaviour; it is not a colour
-> source. The original preset shipped `#0B57D0` on warm-paper neutrals, which
-> the approved "Moving Parts" system replaced with primary action blue
-> `#0000ff` on white. The tokens in §1 below are the approved values — use these
-> and never introduce a new hex. Run `node scripts/design-token-audit.mjs` to
-> prove the surface is clean.
+> source. Two palettes have been retired under it: the original `#0B57D0`
+> warm-paper preset, and the later "Moving Parts" system (action blue `#0000ff`
+> on white). The shipping "Scoreboard" world is paper `#f4f4f1`, ink `#131311`,
+> one signal red `#e8442e`, so **every hex quoted in §1 and below is
+> historical** — take colours from DESIGN.md and run
+> `node scripts/design-token-audit.mjs` to prove the surface is clean.
 
 ---
 
