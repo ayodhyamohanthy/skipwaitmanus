@@ -209,6 +209,15 @@ export default defineConfig(({ mode }) => ({
     fs: {
       strict: true,
       deny: ["**/.*"],
+      // Worktrees in this repository symlink node_modules to the primary
+      // checkout. With strict:true, Vite refuses to serve anything resolved
+      // through that symlink, which 403s every @fontsource file -- and the app
+      // then renders silently in a fallback font. The page still "works", so
+      // nothing fails; it just no longer matches the design, which is the
+      // hardest possible thing to diagnose. Opt in with
+      // VITE_FS_ALLOW=<path to the real node_modules> when running from a
+      // worktree. Unset, behaviour is exactly as before.
+      allow: [process.cwd(), ...(process.env.VITE_FS_ALLOW ? [process.env.VITE_FS_ALLOW] : [])],
     },
   },
 }));
