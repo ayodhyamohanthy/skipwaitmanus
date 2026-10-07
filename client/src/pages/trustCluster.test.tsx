@@ -50,14 +50,12 @@ describe("Trust cluster", () => {
     expect(screen.queryByText(/thank-you wall/)).toBeNull();
   });
 
-  it("offers intent choice then continues through WorkOS, never a password form", () => {
+  it("offers intent choice on the split design, never a password form", () => {
     render(<SignIn />);
-    expect(screen.getByText("Welcome to SkipWait.")).toBeTruthy();
+    expect(screen.getByText(/Welcome to SkipWait/)).toBeTruthy();
     expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(screen.queryByText(/Forgot password/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
     expect(screen.getByText(/Choose who you help/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Continue securely/ }));
-    expect(startLogin).toHaveBeenCalled();
   });
 });

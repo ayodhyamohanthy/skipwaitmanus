@@ -371,6 +371,13 @@ Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visi
 - `ExploreCompany.tsx`: added kit safety-guide link.
 - Verification: shell + explore suites green, `tsc` clean, audit clean.
 
+## Batch 24 record — dot-to-dot fidelity pass 2 (sign-in)
+
+- Commit: sign-in rebuilt to the exact kit split design (yellow story panel, door art, proof card, intent switch, context banner, Google/email continuations, create-account row, terms).
+- Ported all 67 kit auth rules verbatim; door art reused from public assets.
+- All three continuations route through WorkOS `startLogin` (Google + email live in AuthKit; no password form per D3).
+- Verification: sign-in + trust suites green, `tsc` clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
