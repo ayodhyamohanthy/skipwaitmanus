@@ -259,7 +259,7 @@ function ThreadBody(props: BodyProps) {
           <p className="text-[var(--muted-foreground)]">{role === "seeker" ? "Verified via work email" : claimed ? "Identity shared on accept" : "Identity hidden until you accept"}</p>
         </div>
         <div className="rounded-3xl border border-[var(--border)] p-5 text-sm text-[var(--muted-foreground)]">
-          <ShieldCheck className="mb-2 size-5 text-[var(--primary)]" />Referrals are free. Never pay or accept money for a referral.
+          <ShieldCheck className="mb-2 size-5 text-[var(--primary)]" />Referrals are free. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report</Link>
         </div>
       </aside>
     </div>

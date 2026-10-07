@@ -2,7 +2,7 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sq
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
@@ -335,6 +335,72 @@ export async function getPublicProfileByHandle(handle: string, viewerUserId?: nu
     workItems: items.map(item => ({ id: item.id, title: item.title, kind: item.kind, source: item.source, url: item.url, pinned: item.pinned, visibleOnProfile: item.visibleOnProfile })),
   };
 }
+export const SAFETY_REPORT_REASONS = [
+  "Asked for or offered money",
+  "Harassment or inappropriate messages",
+  "Fake job or scam",
+  "Pretending to work at a company",
+  "Spam or repeated asks",
+  "Something else",
+] as const;
+
+export async function createSafetyReport(userId: number, input: { reason?: unknown; details?: unknown; referralRequestId?: unknown; reportedUserId?: unknown; urgent?: unknown }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (typeof input.reason !== "string" || !(SAFETY_REPORT_REASONS as readonly string[]).includes(input.reason)) throw new Error("Choose the reason that fits best");
+  const details = typeof input.details === "string" ? input.details.trim().slice(0, 2000) : "";
+  let requestId: number | null = null;
+  if (input.referralRequestId !== undefined && input.referralRequestId !== null) {
+    requestId = Number(input.referralRequestId);
+    if (!Number.isInteger(requestId) || requestId <= 0) throw new Error("Invalid referral reference");
+    const target = (await db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1))[0];
+    if (!target) throw new Error("Invalid referral reference");
+    if (target.jobSeekerId !== userId && target.referrerId !== userId) throw new Error("You can only report conversations you are part of");
+  }
+  let reportedId: number | null = null;
+  if (input.reportedUserId !== undefined && input.reportedUserId !== null) {
+    reportedId = Number(input.reportedUserId);
+    if (!Number.isInteger(reportedId) || reportedId <= 0) throw new Error("Invalid reported account");
+    const account = (await db.select({ id: users.id }).from(users).where(eq(users.id, reportedId)).limit(1))[0];
+    if (!account) throw new Error("Invalid reported account");
+    if (reportedId === userId) throw new Error("You cannot report yourself");
+  }
+  const dayAgo = new Date(Date.now() - 86400000);
+  const today = (await db.select({ id: safetyReports.id }).from(safetyReports).where(and(eq(safetyReports.reporterUserId, userId), gt(safetyReports.createdAt, dayAgo))).limit(21)).length;
+  if (today >= 20) throw new Error("You have filed several reports today. Contact support directly for anything urgent.");
+  const inserted = await db.insert(safetyReports).values({ reporterUserId: userId, reason: input.reason, details: details || null, referralRequestId: requestId, reportedUserId: reportedId, urgent: Boolean(input.urgent) });
+  const id = Number(inserted[0].insertId);
+  return { id, reference: `R-${1000 + id}`, urgent: Boolean(input.urgent) };
+}
+
+export async function listMySafetyReports(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: safetyReports.id, reason: safetyReports.reason, status: safetyReports.status, urgent: safetyReports.urgent, createdAt: safetyReports.createdAt }).from(safetyReports).where(eq(safetyReports.reporterUserId, userId)).orderBy(desc(safetyReports.createdAt)).limit(50);
+}
+
+export async function createCompanySuggestion(userId: number, input: { companyName?: unknown; website?: unknown; role?: unknown }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  if (typeof input.companyName !== "string" || input.companyName.trim().length < 2 || input.companyName.trim().length > 160) throw new Error("Name the company you want to see");
+  const name = input.companyName.trim();
+  const role = input.role === "employee" ? "employee" : "seeker";
+  let website: string | null = null;
+  if (input.website !== undefined && input.website !== null && String(input.website).trim() !== "") {
+    website = String(input.website).trim();
+    if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(website) || website.length > 512) throw new Error("Company websites must start with http:// or https://");
+  }
+  const dayAgo = new Date(Date.now() - 86400000);
+  const today = (await db.select({ id: companySuggestions.id }).from(companySuggestions).where(and(eq(companySuggestions.submitterUserId, userId), gt(companySuggestions.createdAt, dayAgo))).limit(4)).length;
+  if (today >= 3) throw new Error("You can suggest up to 3 companies a day");
+  const dupe = (await db.select({ id: companySuggestions.id }).from(companySuggestions).where(and(eq(companySuggestions.status, "open"), sql`LOWER(${companySuggestions.companyName}) = ${name.toLowerCase()}`)).limit(1))[0];
+  if (dupe) throw new Error("This company was already suggested and is under review");
+  const inserted = await db.insert(companySuggestions).values({ submitterUserId: userId, companyName: name, website, role });
+  return { id: Number(inserted[0].insertId), companyName: name };
+}
+
+export async function listMyCompanySuggestions(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).where(eq(companySuggestions.submitterUserId, userId)).orderBy(desc(companySuggestions.createdAt)).limit(50);
+}
+
 export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));

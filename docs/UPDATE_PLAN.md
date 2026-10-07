@@ -276,6 +276,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - `SignIn.tsx` (standalone): intent picker + WorkOS continue (no password form — D3; no forgot link).
 - Verification: 4/4 tests, `tsc` clean, audit clean.
 
+## Batch 15 record — /report + /suggest-company with safety backend
+
+- Commit: kit report/suggest flows on a new additive intake backend.
+- Schema: `safetyReports` + `companySuggestions` tables; `drizzle/deploy/0066_*.sql` + `DESIRED_*` entries — guard green.
+- New `server/safetyRoutes.ts` (report intake with membership checks + 20/day guard, suggestion intake with URL validation + 3/day + duplicate detection) + contract tests; wired in `_core/index.ts`.
+- Pages `Report.tsx` (reasons/details/urgent/SLA timeline/real reference) + `SuggestCompany.tsx` (duplicate detection vs launch set, role, limit errors) + tests; thread banner links `/report`.
+- Deviations: block toggle omitted (no block infra — page states team-handled blocking honestly); admin review UI for these queues is future (admin-review batch); suggest approval has no auto-promotion.
+- Verification: 19/19 tests (client + server + guard + thread), `tsc` clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

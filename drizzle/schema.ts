@@ -80,6 +80,29 @@ export const workItems = mysqlTable("workItems", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("work_items_user_idx").on(table.userId)]);
 
+export const safetyReports = mysqlTable("safetyReports", {
+  id: int("id").autoincrement().primaryKey(),
+  reporterUserId: int("reporterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: varchar("reason", { length: 80 }).notNull(),
+  details: text("details"),
+  referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "set null" }),
+  reportedUserId: int("reportedUserId").references(() => users.id, { onDelete: "set null" }),
+  urgent: boolean("urgent").default(false).notNull(),
+  status: mysqlEnum("status", ["open", "under_review", "resolved", "dismissed"]).default("open").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("safety_reports_reporter_idx").on(table.reporterUserId), index("safety_reports_status_idx").on(table.status)]);
+
+export const companySuggestions = mysqlTable("companySuggestions", {
+  id: int("id").autoincrement().primaryKey(),
+  submitterUserId: int("submitterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyName: varchar("companyName", { length: 160 }).notNull(),
+  website: varchar("website", { length: 512 }),
+  role: mysqlEnum("role", ["seeker", "employee"]).default("seeker").notNull(),
+  status: mysqlEnum("status", ["open", "under_review", "approved", "dismissed"]).default("open").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("company_suggestions_submitter_idx").on(table.submitterUserId), index("company_suggestions_status_idx").on(table.status)]);
+
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 180 }).notNull(),
