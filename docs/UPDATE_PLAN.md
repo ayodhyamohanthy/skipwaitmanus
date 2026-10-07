@@ -227,6 +227,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Shell bell now points at `/alerts`. Old `Notifications.tsx` kept (owner decides removal); its tests untouched.
 - Verification: 8/8 tests (incl. shell), `tsc` clean, audit clean.
 
+## Batch 9 record — /onboarding profile setup + shared resume-upload lib
+
+- Commit: kit onboarding flow with device-local persistence + real resume upload; `/start` flow untouched.
+- New `client/src/lib/resumeUpload.ts` (validated + chunk-encrypted upload shared by Ask and onboarding); `Ask.tsx` refactored onto it (5/5 ask tests still green, no behavior change); live `ReferralRequest.tsx` deliberately untouched.
+- New `client/src/pages/ProfileSetup.tsx` on `/onboarding` (`profileSetup.test.tsx` 3/3): goal/roles-≤3/level/resume/links/location/ready-checklist, skip-anytime, `localStorage` draft (same honest device-local pattern as other drafts), real upload when signed in.
+- Critical save: kit source initially overwrote live `Onboarding.tsx` (`/start` funnel) — caught on re-read, restored from git, kit page lives in `ProfileSetup.tsx`. Live onboarding tests green.
+- Carry-forward: server profile backend to sync the device draft (goal, roles, links, location, work-auth).
+- Verification: 18/18 tests (incl. live onboarding + ask suites), `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

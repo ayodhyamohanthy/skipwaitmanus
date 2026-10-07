@@ -5,16 +5,11 @@ import { Link, useLocation } from "wouter";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 
 const NOTE_LIMIT = 600;
-const MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
-const MIME_BY_EXTENSION: Record<string, string> = { ".pdf": "application/pdf", ".doc": "application/msword", ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg" };
 const IDEMPOTENCY_KEY = "skipwait-ask-idempotency-key";
 
-function mimeFor(file: File) {
-  const extension = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-  return MIME_BY_EXTENSION[extension] ?? null;
-}
 function askIdempotencyKey() {
   const existing = sessionStorage.getItem(IDEMPOTENCY_KEY);
   if (existing) return existing;
@@ -22,24 +17,7 @@ function askIdempotencyKey() {
   sessionStorage.setItem(IDEMPOTENCY_KEY, created);
   return created;
 }
-// Mirrors the ReferralRequest chunk-upload protocol (AES-GCM per chunk). The
-// server chunk API is the contract; keep the two call sites in sync.
-function bytesToBase64(bytes: Uint8Array) {
-  let output = "";
-  for (let index = 0; index < bytes.length; index += 1) output += String.fromCharCode(bytes[index] || 0);
-  return btoa(output);
-}
-async function encryptChunk(blob: Blob) {
-  if (!crypto?.subtle) throw new Error("Your browser cannot securely prepare this resume upload. Please update it and try again.");
-  const key = crypto.getRandomValues(new Uint8Array(32));
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const cryptoKey = await crypto.subtle.importKey("raw", key, "AES-GCM", false, ["encrypt"]);
-  const source = new Uint8Array(await blob.arrayBuffer());
-  const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, source);
-  return { encryptedContent: bytesToBase64(new Uint8Array(encrypted)), encryptionKey: bytesToBase64(key), initializationVector: bytesToBase64(iv) };
-}
 
-type ResumeDoc = { id: number; fileName: string };
 
 export default function Ask() {
   const [, go] = useLocation();
@@ -81,30 +59,11 @@ export default function Ask() {
   const pickResume = (files: FileList | null) => {
     const file = files?.[0];
     if (!file) return;
-    if (!mimeFor(file)) { setError("Use a PDF, Word document, PNG, or JPEG resume."); return; }
-    if (file.size > MAX_DOCUMENT_BYTES) { setError(`"${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Documents must be 10 MB or smaller.`); return; }
+    const invalid = validateResumeFile(file);
+    if (invalid) { setError(invalid); return; }
     setError("");
     setResumeFile(file);
     setResume(null);
-  };
-
-  const uploadResume = async (file: File): Promise<ResumeDoc> => {
-    const mimeType = mimeFor(file);
-    if (!mimeType) throw new Error("Use a PDF, Word document, PNG, or JPEG resume");
-    const token = await fetchToken();
-    const headers = { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
-    const startResponse = await fetch("/api/documents/uploads", { method: "POST", headers, credentials: "include", body: JSON.stringify({ clientUploadId: crypto.randomUUID(), fileName: file.name, mimeType, fileSize: file.size }) });
-    const start = await readApiJson<{ sessionId?: string; chunkBytes?: number; error?: string }>(startResponse, "We could not prepare your private resume upload");
-    if (!startResponse.ok || !start.sessionId || !start.chunkBytes) throw new Error(start.error || "We could not prepare your private resume upload");
-    for (let offset = 0, index = 0; offset < file.size; offset += start.chunkBytes, index += 1) {
-      const encrypted = await encryptChunk(file.slice(offset, Math.min(file.size, offset + start.chunkBytes)));
-      const chunkResponse = await fetch(`/api/documents/uploads/${start.sessionId}/chunks`, { method: "POST", headers, credentials: "include", body: JSON.stringify({ chunkIndex: index, ...encrypted }) });
-      if (!chunkResponse.ok) throw new Error("We could not save part of your resume. Please try again.");
-    }
-    const completeResponse = await fetch(`/api/documents/uploads/${start.sessionId}/complete`, { method: "POST", headers, credentials: "include" });
-    const done = await readApiJson<ResumeDoc & { error?: string }>(completeResponse, "We could not verify your uploaded resume");
-    if (!completeResponse.ok) throw new Error(done.error || "We could not verify your uploaded resume");
-    return { id: done.id, fileName: done.fileName };
   };
 
   const ensureResume = async (): Promise<ResumeDoc> => {
@@ -112,7 +71,7 @@ export default function Ask() {
     if (!resumeFile) throw new Error("Add your resume before sending this ask.");
     setUploading(true);
     try {
-      const uploaded = await uploadResume(resumeFile);
+      const uploaded = await uploadResume(resumeFile, fetchToken);
       setResume(uploaded);
       setResumeFile(null);
       return uploaded;
