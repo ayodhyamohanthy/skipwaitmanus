@@ -63,6 +63,11 @@ export const profiles = mysqlTable("profiles", {
   anonymityOptIn: boolean("anonymityOptIn").default(false).notNull(),
   handle: varchar("handle", { length: 40 }),
   profileVisibility: mysqlEnum("profileVisibility", ["public", "link", "private"]).default("private").notNull(),
+  preferAreas: text("preferAreas"),
+  referrerVisibility: mysqlEnum("referrerVisibility", ["anon", "named"]).default("anon").notNull(),
+  notifyNewAsk: boolean("notifyNewAsk").default(true).notNull(),
+  notifyDigest: boolean("notifyDigest").default(false).notNull(),
+  paused: boolean("paused").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("profiles_user_id_unique").on(table.userId), uniqueIndex("profiles_handle_unique").on(table.handle)]);

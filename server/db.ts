@@ -273,6 +273,51 @@ function validateWorkItemInput(input: { title?: unknown; kind?: unknown; source?
   return out;
 }
 
+export const PREFER_AREA_OPTIONS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"] as const;
+
+export async function getReferrerPreferences(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const profile = await getProfileByUserId(userId);
+  let areas: string[] = [];
+  try { const parsed: unknown = JSON.parse(profile?.preferAreas ?? "[]"); if (Array.isArray(parsed)) areas = parsed.filter((item): item is string => typeof item === "string"); } catch { areas = []; }
+  return {
+    referralCapacity: profile?.referralCapacity ?? 3,
+    preferAreas: areas.filter(area => (PREFER_AREA_OPTIONS as readonly string[]).includes(area)),
+    referrerVisibility: profile?.referrerVisibility === "named" ? "named" : "anon",
+    notifyNewAsk: profile?.notifyNewAsk ?? true,
+    notifyDigest: profile?.notifyDigest ?? false,
+    paused: profile?.paused ?? false,
+  };
+}
+
+export async function updateReferrerPreferences(userId: number, input: { referralCapacity?: unknown; preferAreas?: unknown; referrerVisibility?: unknown; notifyNewAsk?: unknown; notifyDigest?: unknown; paused?: unknown }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const patch: Record<string, unknown> = {};
+  if (input.referralCapacity !== undefined) {
+    const capacity = Number(input.referralCapacity);
+    if (!Number.isInteger(capacity) || capacity < 1 || capacity > 15) throw new Error("Capacity is 1 to 15 asks");
+    patch.referralCapacity = capacity;
+  }
+  if (input.preferAreas !== undefined) {
+    if (!Array.isArray(input.preferAreas)) throw new Error("Choose job areas from the list");
+    const areas = input.preferAreas.filter((area): area is string => typeof area === "string" && (PREFER_AREA_OPTIONS as readonly string[]).includes(area));
+    if (areas.length > 9) throw new Error("Choose up to 9 job areas");
+    patch.preferAreas = JSON.stringify(areas);
+  }
+  if (input.referrerVisibility !== undefined) {
+    if (input.referrerVisibility !== "anon" && input.referrerVisibility !== "named") throw new Error("Choose anonymous or named visibility");
+    patch.referrerVisibility = input.referrerVisibility;
+  }
+  if (input.notifyNewAsk !== undefined) patch.notifyNewAsk = Boolean(input.notifyNewAsk);
+  if (input.notifyDigest !== undefined) patch.notifyDigest = Boolean(input.notifyDigest);
+  if (input.paused !== undefined) patch.paused = Boolean(input.paused);
+  if (Object.keys(patch).length === 0) return getReferrerPreferences(userId);
+  const existing = await getProfileByUserId(userId);
+  if (existing) await db.update(profiles).set({ ...patch, updatedAt: new Date() }).where(eq(profiles.userId, userId));
+  else await db.insert(profiles).values({ userId, ...(patch as { referralCapacity?: number }) });
+  return getReferrerPreferences(userId);
+}
+
 export async function listMyWorkItems(userId: number) {
   const db = await getDb(); if (!db) return [];
   return db.select().from(workItems).where(eq(workItems.userId, userId)).orderBy(desc(workItems.pinned), desc(workItems.updatedAt));
@@ -1064,10 +1109,10 @@ export async function prepareReferrerReviewEmailNotifications(requestId: number)
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
   const current = request[0]; if (!current || current.status !== "pending") return [];
-  const recipients = await db.select({ userId: profiles.userId, email: users.email, workEmailDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const recipients = await db.select({ userId: profiles.userId, email: users.email, workEmailDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const passes = await db.select({ referrerId: referralRequestPasses.referrerId }).from(referralRequestPasses).where(eq(referralRequestPasses.referralRequestId, requestId));
   const passed = new Set(passes.map(row => row.referrerId));
-  const eligible = recipients.filter(recipient => !passed.has(recipient.userId) && (!current.referrerId || recipient.userId === current.referrerId) && recipient.workEmailDomain === current.companyDomain && isVerifiedEmployeeOfCompany(recipient, current.companyDomain));
+  const eligible = recipients.filter(recipient => !recipient.paused && !passed.has(recipient.userId) && (!current.referrerId || recipient.userId === current.referrerId) && recipient.workEmailDomain === current.companyDomain && isVerifiedEmployeeOfCompany(recipient, current.companyDomain));
   const links=await createReferrerReviewEmailLinks(requestId, eligible.map(recipient => ({ userId: recipient.userId, email: recipient.email, companyDomain: current.companyDomain })));
   const pending=await db.select({referrerId:referralReviewDeliveries.referrerId,status:referralReviewDeliveries.status}).from(referralReviewDeliveries).where(and(eq(referralReviewDeliveries.referralRequestId,requestId),eq(referralReviewDeliveries.channel,"email"),eq(referralReviewDeliveries.grantVersion,1)));
   const deliverable=new Set(pending.filter(row=>row.status!=="sent"&&row.status!=="revoked").map(row=>row.referrerId));return links.filter(link=>deliverable.has(link.referrerId));

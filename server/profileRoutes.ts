@@ -1,5 +1,5 @@
 import express, { type Express, type Request } from "express";
-import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateWorkItem } from "./db";
+import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type Identity = { account: Account };
@@ -14,6 +14,8 @@ export type ProfileRouteDeps = {
   updateWorkItem?: typeof updateWorkItem;
   deleteWorkItem?: typeof deleteWorkItem;
   getPublicProfileByHandle?: typeof getPublicProfileByHandle;
+  getReferrerPreferences?: typeof getReferrerPreferences;
+  updateReferrerPreferences?: typeof updateReferrerPreferences;
 };
 
 const itemId = (raw: string) => {
@@ -70,6 +72,39 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json({ items: await myItems(identity.account.id) });
     } catch { res.status(500).json({ error: "We could not load your work" }); }
+  });
+
+  app.get("/api/referrer-preferences", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your referrer settings" });
+      const prefs = deps.getReferrerPreferences ?? getReferrerPreferences;
+      res.set("Cache-Control", "private, no-store");
+      res.json({ preferences: await prefs(identity.account.id) });
+    } catch { res.status(500).json({ error: "We could not load your referrer settings" }); }
+  });
+
+  app.put("/api/referrer-preferences", express.json(), async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to change your referrer settings" });
+      const body = (req.body ?? {}) as Record<string, unknown>;
+      const save = deps.updateReferrerPreferences ?? updateReferrerPreferences;
+      const preferences = await save(identity.account.id, {
+        referralCapacity: body.referralCapacity,
+        preferAreas: body.preferAreas,
+        referrerVisibility: body.referrerVisibility,
+        notifyNewAsk: body.notifyNewAsk,
+        notifyDigest: body.notifyDigest,
+        paused: body.paused,
+      });
+      record({ actorUserId: identity.account.id, action: "referrer_preferences.updated", outcome: "success", resourceType: "referrer_preferences" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ preferences });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not save your referrer settings";
+      res.status(/capacity|areas|visibility/i.test(message) ? 400 : 500).json({ error: message });
+    }
   });
 
   app.post("/api/work-items", express.json(), async (req, res) => {
