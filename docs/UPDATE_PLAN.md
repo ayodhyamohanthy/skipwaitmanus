@@ -236,6 +236,14 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Carry-forward: server profile backend to sync the device draft (goal, roles, links, location, work-auth).
 - Verification: 18/18 tests (incl. live onboarding + ask suites), `tsc` clean, audit clean.
 
+## Batch 10 record — /inbox unified thread list (full kit fidelity)
+
+- Commit: kit All/Asking/Referring list on live data; decision queue moved to `/queue` untouched.
+- New `client/src/pages/UnifiedInbox.tsx` + `unifiedInbox.test.tsx` (5/5): asking rows from mine-list (unread, status notes), referring rows from inbox new+completed scopes ("Seeker · identity hidden", never named), search, unread highlighting, review-queue entry card for verified referrers, honest empty state.
+- `/inbox` now serves the kit list (kit IA wins); `MyCompanyInbox.tsx` moved to `/queue` with zero behavior/test changes (auth, pending, unhandled suites green).
+- Deviations: no per-row last-message text on referring rows (no bulk message endpoint — status notes used); DMs stay separate at `/messages`.
+- Verification: 15/15 tests (incl. all queue suites), `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
