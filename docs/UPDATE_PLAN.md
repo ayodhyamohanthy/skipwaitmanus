@@ -308,6 +308,15 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Page `AdminReview.tsx` (standalone dark console): tabs with counts, SLA badges (urgent 4h), evidence, decisions gated on reviewer note, terminal panels, appeal-via-support note, admin gate without leaking contents.
 - Verification: 14/14 tests (client + server + guard), `tsc` clean, audit clean.
 
+## Batch 19 record — /app-states + /emails + /developers
+
+- Commit: system galleries and developer contract page, no invented behavior.
+- `AppStates.tsx`: all 9 kit states in phone frames; install prompt and push permission are REAL (beforeinstallprompt listener, Notification.requestPermission); payment-failed links live `/premium`.
+- `Emails.tsx`: 12 transactional templates mapped to real server triggers (evidenced from send sites); labeled internal reference; no sample mail.
+- `Developers.tsx`: assistant contract page that states the backend as pending (consent service, token ledger, audit log) instead of faking OAuth/token/approval flows. connect-assistant/assistants/approve/developer-console stay parked behind that build-out.
+- Legal pages (`/terms`, `/privacy`, `/guidelines` copy): deliberately untouched — live copy stands until legal reconciles it with kit drafts.
+- Verification: 3/3 tests, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
