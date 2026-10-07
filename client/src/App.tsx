@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/_core/auth";
 import { useEffect, useState } from "react";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { captureClientError } from "./lib/sentry";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -16,13 +16,9 @@ const Report = lazy(() => import("./pages/Report"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ReferralRequest = lazy(() => import("./pages/ReferralRequest"));
 const Referrer = lazy(() => import("./pages/Referrer"));
-const ReferrerImpact = lazy(() => import("./pages/ReferrerImpact"));
-const Premium = lazy(() => import("./pages/Premium"));
-const Messages = lazy(() => import("./pages/Messages"));
 const Plans = lazy(() => import("./pages/Plans"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Offline = lazy(() => import("./pages/Offline"));
-const OpportunityWall = lazy(() => import("./pages/OpportunityWall"));
 const PostOpportunity = lazy(() => import("./pages/PostOpportunity"));
 const AdminActivity = lazy(() => import("./pages/AdminActivity"));
 const Settings = lazy(() => import("./pages/Settings"));
@@ -44,8 +40,6 @@ const ShippingPolicy = lazy(() => import("./pages/ShippingPolicy"));
 const CancellationPolicy = lazy(() => import("./pages/CancellationPolicy"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
-const Pricing = lazy(() => import("./pages/Pricing"));
-const Support = lazy(() => import("./pages/Support"));
 // One component for all three guides: it reads its own path, so adding a guide
 // is a new Route here and a new entry in @shared/publicRoutes.ts.
 const GuidePage = lazy(() => import("./pages/GuidePage"));
@@ -70,7 +64,6 @@ const EmployerBilling = lazy(() => import("./pages/EmployerBilling"));
 const EmployerOpportunities = lazy(() => import("./pages/EmployerOpportunities"));
 const AdminPartners = lazy(() => import("./pages/AdminPartners"));
 const AdminSchema = lazy(() => import("./pages/AdminSchema"));
-const JobExplorer = lazy(() => import("./pages/JobExplorer"));
 const ComponentShowcase = lazy(() => import("./pages/ComponentShowcase"));
 const AdminSmoke = lazy(() => import("./pages/AdminSmoke"));
 const Admin = lazy(() => import("./pages/Admin"));
@@ -87,7 +80,20 @@ class RouteErrorBoundary extends React.Component<{ children: React.ReactNode }, 
   }
 }
 
-function Router(){return <RouteErrorBoundary><Suspense fallback={<RouteLoading/>}><Switch><Route path="/" component={LaunchHome}/><Route path="/fast/:linkCode" component={FastTrackLink}/><Route path="/refer/:companySlug/:vanityAlias" component={VanityFastTrackLink}/><Route path="/share-card/:token" component={ShareCard}/><Route path="/email-review/:linkToken" component={EmailReviewAction}/><Route path="/start" component={Onboarding}/><Route path="/request" component={ReferralRequest}/><Route path="/requests"><AppShell><MyRequests /></AppShell></Route><Route path="/verify"><AppShell><Verify /></AppShell></Route><Route path="/report"><AppShell><Report /></AppShell></Route><Route path="/conversation/:requestId"><AppShell><ReferralConversation /></AppShell></Route><Route path="/notifications" component={Notifications}/><Route path="/messages" component={Messages}/><Route path="/share" component={ShareHub}/><Route path="/inbox" component={MyCompanyInbox}/><Route path="/referrer" component={Referrer}/><Route path="/referrer/impact" component={ReferrerImpact}/><Route path="/premium" component={Premium}/><Route path="/plans" component={Plans}/><Route path="/settings" component={Settings}/><Route path="/privacy" component={TrustPrivacy}/><Route path="/terms" component={Terms}/><Route path="/safety" component={Safety}/><Route path="/guidelines" component={Guidelines}/><Route path="/help" component={Help}/><Route path="/sign-in" component={SignIn}/><Route path="/explore"><AppShell><Explore /></AppShell></Route><Route path="/explore/:slug"><AppShell><CompanyDetail /></AppShell></Route><Route path="/app-states"><AppShell><AppStates /></AppShell></Route><Route path="/emails" component={Emails}/><Route path="/developers" component={Developers}/><Route path="/connect-assistant" component={ConnectAssistant}/><Route path="/refunds" component={RefundPolicy}/><Route path="/shipping" component={ShippingPolicy}/><Route path="/cancellations" component={CancellationPolicy}/><Route path="/about" component={About}/><Route path="/contact" component={Contact}/><Route path="/pricing" component={Pricing}/><Route path="/support" component={Support}/><Route path="/job-referral-platforms" component={GuidePage}/><Route path="/choosing-a-job-referral-platform" component={GuidePage}/><Route path="/how-employees-refer-candidates" component={GuidePage}/><Route path="/offline" component={Offline}/><Route path="/wall" component={OpportunityWall}/><Route path="/jobs" component={JobExplorer}/><Route path="/employer" component={EmployerDashboard}/><Route path="/employer/talent" component={TalentDiscovery}/><Route path="/employer/billing" component={EmployerBilling}/><Route path="/employer/opportunities" component={EmployerOpportunities}/><Route path="/admin/partners" component={AdminPartners}/><Route path="/post-opportunity" component={PostOpportunity}/><Route path="/admin/activity" component={AdminActivity}/><Route path="/admin/approvals" component={AdminApprovalQueue}/><Route path="/admin/approvals/:kind/:id" component={AdminApprovalRecord}/><Route path="/admin/payments" component={AdminPaymentsReview}/><Route path="/admin/privacy-requests" component={AdminPrivacyRequests}/><Route path="/admin/flow-health" component={AdminFlowHealth}/><Route path="/admin/token-recovery" component={AdminTokenRecovery}/><Route path="/admin/users" component={AdminUsers}/><Route path="/admin/schema" component={AdminSchema}/><Route path="/admin/smoke" component={AdminSmoke}/><Route path="/admin" component={Admin}/>{import.meta.env.DEV ? <Route path="/components" component={ComponentShowcase}/> : null}<Route component={NotFound}/></Switch></Suspense></RouteErrorBoundary>}
+function Router(){return <RouteErrorBoundary><Suspense fallback={<RouteLoading/>}><Switch><Route path="/" component={LaunchHome}/><Route path="/fast/:linkCode" component={FastTrackLink}/><Route path="/refer/:companySlug/:vanityAlias" component={VanityFastTrackLink}/><Route path="/share-card/:token" component={ShareCard}/><Route path="/email-review/:linkToken" component={EmailReviewAction}/><Route path="/start" component={Onboarding}/><Route path="/request" component={ReferralRequest}/><Route path="/requests"><AppShell><MyRequests /></AppShell></Route><Route path="/verify"><AppShell><Verify /></AppShell></Route><Route path="/report"><AppShell><Report /></AppShell></Route><Route path="/conversation/:requestId"><AppShell><ReferralConversation /></AppShell></Route><Route path="/notifications" component={Notifications}/><Route path="/share" component={ShareHub}/><Route path="/inbox" component={MyCompanyInbox}/><Route path="/referrer" component={Referrer}/><Route path="/plans" component={Plans}/><Route path="/settings" component={Settings}/><Route path="/privacy" component={TrustPrivacy}/><Route path="/terms" component={Terms}/><Route path="/safety" component={Safety}/><Route path="/guidelines" component={Guidelines}/><Route path="/help" component={Help}/><Route path="/sign-in" component={SignIn}/><Route path="/explore"><AppShell><Explore /></AppShell></Route><Route path="/explore/:slug"><AppShell><CompanyDetail /></AppShell></Route><Route path="/app-states"><AppShell><AppStates /></AppShell></Route><Route path="/emails" component={Emails}/><Route path="/developers" component={Developers}/><Route path="/connect-assistant" component={ConnectAssistant}/><Route path="/refunds" component={RefundPolicy}/><Route path="/shipping" component={ShippingPolicy}/><Route path="/cancellations" component={CancellationPolicy}/><Route path="/about" component={About}/><Route path="/contact" component={Contact}/><Route path="/job-referral-platforms" component={GuidePage}/><Route path="/choosing-a-job-referral-platform" component={GuidePage}/><Route path="/how-employees-refer-candidates" component={GuidePage}/><Route path="/offline" component={Offline}/><Route path="/employer" component={EmployerDashboard}/><Route path="/employer/talent" component={TalentDiscovery}/><Route path="/employer/billing" component={EmployerBilling}/><Route path="/employer/opportunities" component={EmployerOpportunities}/><Route path="/admin/partners" component={AdminPartners}/><Route path="/post-opportunity" component={PostOpportunity}/><Route path="/admin/activity" component={AdminActivity}/><Route path="/admin/approvals" component={AdminApprovalQueue}/><Route path="/admin/approvals/:kind/:id" component={AdminApprovalRecord}/><Route path="/admin/payments" component={AdminPaymentsReview}/><Route path="/admin/privacy-requests" component={AdminPrivacyRequests}/><Route path="/admin/flow-health" component={AdminFlowHealth}/><Route path="/admin/token-recovery" component={AdminTokenRecovery}/><Route path="/admin/users" component={AdminUsers}/><Route path="/admin/schema" component={AdminSchema}/><Route path="/admin/smoke" component={AdminSmoke}/><Route path="/admin" component={Admin}/>{import.meta.env.DEV ? <Route path="/components" component={ComponentShowcase}/> : null}{/* Pre-v4 routes that kit v4 replaces. The kit's own rule is that existing URLs keep
+    working, so each old path redirects to the v4 screen instead of 404ing. Written as
+    literal path strings on purpose: the route tables in functions/_middleware.ts and
+    scripts/screen-coverage.mjs are scanned from source, and a `path={expr}` would be
+    invisible to both, which reads as a route that no longer exists. /offline is
+    deliberately absent: it is the service-worker fallback, not a design screen. */}
+<Route path="/premium"><Redirect to="/plans" /></Route>
+<Route path="/pricing"><Redirect to="/plans" /></Route>
+<Route path="/messages"><Redirect to="/inbox" /></Route>
+<Route path="/support"><Redirect to="/help" /></Route>
+<Route path="/referrer/impact"><Redirect to="/referrer" /></Route>
+<Route path="/wall"><Redirect to="/explore" /></Route>
+<Route path="/jobs"><Redirect to="/explore" /></Route>
+<Route component={NotFound}/></Switch></Suspense></RouteErrorBoundary>}
 function PwaSessionContinuity(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(isLoaded&&isSignedIn)markSecureSessionVerified()},[isLoaded,isSignedIn]);return null}
 const personalInviteStorageKey="skipwait:personal-invite-code";
 function PersonalInviteAttribution(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(typeof window==="undefined")return;const inviteCode=new URLSearchParams(window.location.search).get("invite")?.trim()??"";if(/^r\d+-[a-f0-9]{8}$/i.test(inviteCode))sessionStorage.setItem(personalInviteStorageKey,inviteCode)},[]);useEffect(()=>{if(!isLoaded||!isSignedIn)return;const inviteCode=sessionStorage.getItem(personalInviteStorageKey);if(!inviteCode)return;void fetch("/api/personal-invites/claim",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({inviteCode})}).finally(()=>sessionStorage.removeItem(personalInviteStorageKey))},[isLoaded,isSignedIn]);return null}

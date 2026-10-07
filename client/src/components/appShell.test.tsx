@@ -51,8 +51,10 @@ describe("AppShell", () => {
       </AppShell>
     );
     expect(within(screen.getByRole("complementary", { name: "App sidebar" })).getByRole("link", { name: "Requests" }).getAttribute("aria-current")).toBe("page");
-    // Kit-only routes have no shell entry yet — nothing points at them.
-    expect(document.querySelector('a[href="/explore"]')).toBeNull();
+    // /explore exists now, so the shell points at it — this assertion used to
+    // read the opposite way, when the route had not been built yet.
+    expect(document.querySelector('a[href="/explore"]')).not.toBeNull();
+    // /alerts is still kit-only on this branch — nothing points at it yet.
     expect(document.querySelector('a[href="/alerts"]')).toBeNull();
   });
 

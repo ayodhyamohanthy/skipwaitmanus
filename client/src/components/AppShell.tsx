@@ -58,7 +58,7 @@ function NavItem({ to, label, onNavigate }: { to: string; label: string; onNavig
       onClick={onNavigate}
       aria-current={active ? "page" : undefined}
       className={`flex min-h-11 items-center gap-3 rounded-[18px] px-3 text-sm font-semibold ${
-        active ? "bg-[#ededff] text-black" : "text-[#505050]"
+        active ? "bg-accent text-black" : "text-muted-foreground"
       }`}
     >
       <Icon className="h-5 w-5" aria-hidden="true" />
@@ -76,14 +76,14 @@ function ShellBody({ onNavigate }: { onNavigate: () => void }) {
           <NavItem key={item.to} to={item.to} label={item.label} onNavigate={onNavigate} />
         ))}
       </nav>
-      <p className="px-3 pb-1 pt-5 text-[11px] font-bold uppercase tracking-[.14em] text-[#767676]">Your space</p>
+      <p className="px-3 pb-1 pt-5 text-[11px] font-bold uppercase tracking-[.14em] text-muted-foreground">Your space</p>
       <nav aria-label="Your space" className="grid gap-1">
         {SHELL_SPACE.map(item => (
           <NavItem key={item.to} to={item.to} label={item.label} onNavigate={onNavigate} />
         ))}
       </nav>
       <details className="group pt-2">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-[18px] px-3 text-sm font-semibold text-[#505050]">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-[18px] px-3 text-sm font-semibold text-muted-foreground">
           More
         </summary>
         <nav aria-label="More" className="grid gap-1 pt-1">
@@ -93,12 +93,12 @@ function ShellBody({ onNavigate }: { onNavigate: () => void }) {
         </nav>
       </details>
       <div className="mt-auto pt-6">
-        <div className="rounded-[18px] border border-[#e5e5e5] bg-[#f5f5f5] p-4">
+        <div className="rounded-[18px] border border-border bg-muted p-4">
           <p className="flex items-start gap-2 text-sm font-bold text-black">
             <ShieldCheck className="h-5 w-5 shrink-0" aria-hidden="true" />
             Referrals are free. Always.
           </p>
-          <p className="mt-1 text-xs leading-5 text-[#505050]">No commissions. No paid priority.</p>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">No commissions. No paid priority.</p>
         </div>
         <div className="mt-3">
           {isSignedIn ? (
@@ -107,7 +107,7 @@ function ShellBody({ onNavigate }: { onNavigate: () => void }) {
             <SignInButton>
               <button
                 type="button"
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-[18px] bg-[#0000ff] px-5 text-sm font-bold text-white"
+                className="inline-flex min-h-11 w-full items-center justify-center rounded-[18px] bg-primary px-5 text-sm font-bold text-white"
               >
                 Sign in
               </button>
@@ -125,7 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const close = () => setDrawer(false);
   return (
     <div className="min-h-dvh bg-white text-black">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-[#e5e5e5] bg-white p-5 md:flex" aria-label="App sidebar">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-border bg-white p-5 md:flex" aria-label="App sidebar">
         <Brand />
         <div className="mt-5 flex min-h-0 flex-1 flex-col">
           <ShellBody onNavigate={() => undefined} />
@@ -146,7 +146,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <div className="md:pl-60">
-        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-2 border-b border-[#e5e5e5] bg-white px-4 pt-[env(safe-area-inset-top)]">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-2 border-b border-border bg-white px-4 pt-[env(safe-area-inset-top)]">
           <button
             type="button"
             onClick={() => setDrawer(true)}
@@ -155,7 +155,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <span className="text-[11px] font-bold uppercase tracking-[.14em] text-[#767676]">Private by default</span>
+          <span className="text-[11px] font-bold uppercase tracking-[.14em] text-muted-foreground">Private by default</span>
           <Link
             href="/notifications"
             aria-label="Notifications"
@@ -165,7 +165,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Link>
         </header>
         <div className="pb-[calc(76px+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
-        <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#e5e5e5] bg-white px-1 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden">
+        <nav aria-label="Mobile navigation" className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-white px-1 pb-[env(safe-area-inset-bottom)] pt-2 md:hidden">
           {SHELL_TABS.map(item => {
             const active = isActive(path, item.to);
             return (
@@ -174,7 +174,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 href={item.to}
                 aria-current={active ? "page" : undefined}
                 className={`flex min-h-11 flex-col items-center justify-center gap-1 rounded-[18px] text-[10px] font-semibold ${
-                  active ? "text-[#0000ff]" : "text-[#505050]"
+                  active ? "text-primary" : "text-muted-foreground"
                 }`}
               >
                 <item.icon className="h-5 w-5" aria-hidden="true" />
@@ -186,7 +186,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={() => setDrawer(true)}
             aria-label="Open menu"
-            className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-[18px] text-[10px] font-semibold text-[#505050]"
+            className="flex min-h-11 flex-col items-center justify-center gap-1 rounded-[18px] text-[10px] font-semibold text-muted-foreground"
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
             More
