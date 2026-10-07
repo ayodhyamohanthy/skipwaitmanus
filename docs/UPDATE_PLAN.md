@@ -393,6 +393,11 @@ Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visi
 - Commit: category icons on alert rows; verify pill buttons and suggest-company link per PNGs.
 - Verification: 15/15 tests, `tsc` clean.
 
+## Batch 27 record — dot-to-dot fidelity pass 5 (referrer-home)
+
+- Commit: kit header copy, meter icons, aside-bottom pause control per PNGs. Record labels stay on real impact fields.
+- Verification: 7/7 tests, `tsc` clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

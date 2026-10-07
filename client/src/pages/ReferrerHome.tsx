@@ -96,13 +96,12 @@ export default function ReferrerHome() {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <span className="eyebrow">Referrer home{domain ? ` · ${domain}` : ""}</span>
-          <h1 className="mt-2 text-4xl font-semibold">Good work.</h1>
+          <h1 className="mt-2 text-4xl font-semibold">Good evening<span className="brand-dot">.</span></h1>
           <p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Here&apos;s what needs you today. Nothing here is urgent unless it says so.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {verified ? <span className="flex items-center gap-1 text-sm"><BadgeCheck className="size-4 text-[var(--primary)]" />Verified · {domain}</span> : <Link href="/verify" className="brand-button">Become a referrer</Link>}
           <Link href="/queue" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Queue &amp; settings</Link>
-          {verified && !paused ? <button type="button" disabled={resuming} onClick={() => { void setPausedValue(true); }} className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Pause new asks</button> : null}
         </div>
       </div>
 
@@ -177,6 +176,9 @@ export default function ReferrerHome() {
                 <p className="mt-2 text-[var(--muted-foreground)]">More verified colleagues means faster answers for seekers.</p>
                 <Link href="/invite" className="text-link mt-2 text-sm">Invite someone inside →</Link>
               </div>
+              <button type="button" disabled={resuming} onClick={() => { void setPausedValue(!paused); }} className="brand-button w-full">
+                {paused ? (resuming ? "Resuming…" : "Resume new asks") : (resuming ? "Pausing…" : "Pause new asks")}
+              </button>
             </aside>
           </div>
         </>
