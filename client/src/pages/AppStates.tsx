@@ -176,7 +176,7 @@ export default function AppStates() {
             type="button"
             aria-pressed={state === name}
             onClick={() => setState(name)}
-            className={`min-h-11 rounded-full border px-4 text-xs font-semibold ${state === name ? "border-primary bg-accent" : "border-border"}`}
+            className={`min-h-11 rounded-full border px-4 text-xs font-semibold ${state === name ? "border-primary bg-primary/5" : "border-border"}`}
           >
             {name}
           </button>

@@ -42,7 +42,7 @@ export function ReferrerCreditsCard({ compact = false }: { compact?: boolean }) 
   const outOfCredits = credits.totalAvailable <= 0;
 
   return (
-    <section aria-label="Referral credits" className={`rounded-xl border border-primary bg-accent ${compact ? "p-3" : "p-4"}`}>
+    <section aria-label="Referral credits" className={`rounded-xl border border-primary bg-primary/5 ${compact ? "p-3" : "p-4"}`}>
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[.12em] text-black">
           <HeartHandshake className="h-3.5 w-3.5" /> Referral credits

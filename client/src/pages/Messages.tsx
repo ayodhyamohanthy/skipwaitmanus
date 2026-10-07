@@ -26,7 +26,7 @@ function relativeTime(iso: string) {
 }
 
 function PaywallCard() {
-  return <div data-skipwait-screen="dm-paywall" className="rounded-xl border border-primary bg-accent p-5">
+  return <div data-skipwait-screen="dm-paywall" className="rounded-xl border border-primary bg-primary/5 p-5">
     <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-black"><Crown className="h-5 w-5" /></span>
     <h2 className="mt-4 text-xl font-semibold tracking-[-.02em] text-black">Direct messaging is for members</h2>
     <p className="mt-2 text-sm leading-6 text-black">Pro members can message verified referrers directly and get answers faster. Pro includes 10 referral credits monthly — the core referral loop stays free for everyone. Or follow each other to message free — many referrers follow back.</p>

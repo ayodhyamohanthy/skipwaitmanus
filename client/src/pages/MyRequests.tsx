@@ -67,7 +67,7 @@ function RequestRow({ request, withdrawing, onWithdraw }: RowProps) {
     <li>
       <Link href={`/conversation/${request.id}`} className={rowClass} aria-label={label}>{inner}</Link>
       {request.referrerMessage && request.status !== "pending" ? (
-        <aside aria-label="Referrer update" className="mt-2 rounded-xl border border-primary bg-accent/60 p-3">
+        <aside aria-label="Referrer update" className="mt-2 rounded-xl border border-primary bg-primary/5/60 p-3">
           <p className="text-xs leading-5 text-muted-foreground">{request.referrerMessage}</p>
         </aside>
       ) : null}

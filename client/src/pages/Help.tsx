@@ -66,9 +66,9 @@ export default function Help() {
       </label>
 
       <div className="mt-4 flex flex-wrap gap-2">
-        <button type="button" aria-pressed={category === "All"} onClick={() => setCategory("All")} className={`min-h-11 rounded-full border px-4 text-sm ${category === "All" ? "border-primary bg-accent font-semibold" : "border-border"}`}>All</button>
+        <button type="button" aria-pressed={category === "All"} onClick={() => setCategory("All")} className={`min-h-11 rounded-full border px-4 text-sm ${category === "All" ? "border-primary bg-primary/5 font-semibold" : "border-border"}`}>All</button>
         {CATEGORIES.map(([name, Icon]) => (
-          <button key={name} type="button" aria-pressed={category === name} onClick={() => setCategory(name)} className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm ${category === name ? "border-primary bg-accent font-semibold" : "border-border"}`}>
+          <button key={name} type="button" aria-pressed={category === name} onClick={() => setCategory(name)} className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm ${category === name ? "border-primary bg-primary/5 font-semibold" : "border-border"}`}>
             <Icon className="size-4" aria-hidden="true" />{name}
           </button>
         ))}

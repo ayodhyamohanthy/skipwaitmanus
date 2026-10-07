@@ -92,7 +92,7 @@ export default function Report() {
             {REASONS.map(option => {
               const selected = reason === option.id;
               return (
-                <label key={option.id} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-4 ${selected ? "border-primary bg-accent" : "border-border"}`}>
+                <label key={option.id} className={`flex min-h-14 cursor-pointer items-center gap-3 rounded-lg border p-4 ${selected ? "border-primary bg-primary/5" : "border-border"}`}>
                   <input type="radio" name="report-reason" value={option.id} checked={selected} onChange={() => setReason(option.id)} className="size-4 shrink-0" />
                   <span className="min-w-0">
                     <strong className="block text-sm font-semibold">{option.label}</strong>
@@ -128,7 +128,7 @@ export default function Report() {
               type="button"
               aria-pressed={block}
               onClick={() => setBlock(current => !current)}
-              className={`flex min-h-14 w-full items-center gap-3 rounded-lg border p-4 text-left ${block ? "border-primary bg-accent" : "border-border"}`}
+              className={`flex min-h-14 w-full items-center gap-3 rounded-lg border p-4 text-left ${block ? "border-primary bg-primary/5" : "border-border"}`}
             >
               <Ban className="size-5 shrink-0" aria-hidden="true" />
               <span className="min-w-0 flex-1">

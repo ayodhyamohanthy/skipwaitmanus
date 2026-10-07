@@ -34,7 +34,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
   return (
     <section
       aria-label="Referral credits"
-      className={`rounded-xl border border-primary bg-accent ${compact ? "p-3" : "p-4"}`}
+      className={`rounded-xl border border-primary bg-primary/5 ${compact ? "p-3" : "p-4"}`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[.12em] text-black">

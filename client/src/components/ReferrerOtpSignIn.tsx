@@ -51,7 +51,7 @@ export function ReferrerOtpSignIn() {
     );
   }
   return (
-    <div className="w-full rounded-xl border border-primary bg-accent p-4">
+    <div className="w-full rounded-xl border border-primary bg-primary/5 p-4">
       <p className="text-sm font-semibold text-black">Code sent to {email.trim().toLowerCase()}</p>
       {notice && <p role="status" className="mt-1 text-xs text-[#15803d]">{notice}</p>}
       <label htmlFor="otp-referrer-code" className="mt-3 block text-xs font-semibold text-black">Six-digit code</label>
