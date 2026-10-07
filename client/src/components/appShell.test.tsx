@@ -33,7 +33,7 @@ describe("AppShell", () => {
     for (const [name, href] of [
       ["Requests", "/requests"],
       ["Inbox", "/inbox"],
-      ["Refer", "/referrer"],
+      ["Refer", "/referrer-home"],
       ["Profile", "/profile"],
       ["My work", "/work"],
       ["Plans & credits", "/plans"],

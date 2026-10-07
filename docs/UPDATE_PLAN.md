@@ -253,6 +253,13 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Deviations: display name is read-only (from sign-in account); no "open to roles" chips (no server roles — onboarding sync is future); owner/visitor toggle omitted (role from data).
 - Verification: 19/19 tests (client + server + guard), `tsc` clean, audit clean.
 
+## Batch 12 record — /referrer-home + /invite (full kit fidelity)
+
+- Commit: kit referrer daily view + colleague invites on live backends; shell Refer now points at `/referrer-home`.
+- New `ReferrerHome.tsx` + `Invite.tsx` + `referrerHome.test.tsx` (6/6): verified badge from access API, new-asks list from inbox scope, in-review + capacity meter from impact + profile capacity, 90-day re-verify banner from the real verified date, private record from impact numbers, invite link from personal-invites API with copy/share/email.
+- Deviations: no Pause (no pause endpoint), no thank-you wall (no thank-you store), no expiring panel (no expiry), no ask-strength/expiry row data (not exposed), capacity is a display value (no adjust endpoint — lands with referrer-setup prefs), request-a-company mode omitted until suggest-company backend exists.
+- Verification: 9/9 tests (incl. shell), `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

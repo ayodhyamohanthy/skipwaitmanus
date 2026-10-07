@@ -25,7 +25,7 @@ import { Brand } from "./Brand";
 export const SHELL_NAV = [
   { to: "/requests", label: "Requests", icon: ListChecks },
   { to: "/inbox", label: "Inbox", icon: Inbox },
-  { to: "/referrer", label: "Refer", icon: ArrowUpRight },
+  { to: "/referrer-home", label: "Refer", icon: ArrowUpRight },
 ] as const;
 
 export const SHELL_SPACE = [
