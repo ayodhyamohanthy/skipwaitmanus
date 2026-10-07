@@ -57,7 +57,7 @@ describe("My Requests withdraw flow", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/12/withdraw", expect.objectContaining({ method: "POST" })));
     // Withdrawn rows leave Active for the Closed tab.
     expect(await screen.findByText("No open asks.")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "closed" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Closed" }));
     expect(await screen.findByText("Withdrawn")).toBeTruthy();
     expect(screen.getByText("3 left")).toBeTruthy();
   });

@@ -464,4 +464,14 @@ input, textarea { caret-color: var(--primary); }
 /* kit auth line 192 */.intent-switch>button{white-space:normal;line-height:1.25;min-width:0;height:auto;min-height:52px;padding:8px 10px;font-size:12px;}
 /* kit auth line 193 */.intent-switch>button svg{flex:0 0 auto;}
 /* kit auth line 196 */.intent-switch{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
-/* kit auth line 196 */.intent-switch>button{white-space:normal!important;}
+/* kit auth line 196 */.intent-switch>button{white-space:normal!important;}/* kit line 144 */.directory-tabs{display:flex;gap:26px;border-bottom:1px solid var(--border);}
+/* kit line 144 */.directory-tabs button{border-radius:0;height:48px;padding:0 2px;color:var(--muted-foreground);}
+/* kit line 144 */.directory-tabs button.selected{border-bottom:3px solid var(--primary);color:var(--foreground);}
+/* kit line 144 */.section-tabs{margin-top:28px;}
+/* kit line 147 */.directory-tabs{gap:24px;}
+/* kit line 147 */.directory-tabs button{font-size:12px;height:46px;}
+/* kit line 170 */.status-declined,.status-expired{color:var(--destructive)}
+/* kit line 181 */.directory-tabs{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:20px;scroll-snap-type:x proximity;}
+/* kit line 182 */.directory-tabs::-webkit-scrollbar{display:none;}
+/* kit line 183 */.directory-tabs button{flex:0 0 auto;scroll-snap-align:start;min-height:44px;}/* live-status pill variants (kit success group) */
+.status-intro_made,.status-interview,.status-offer{border-color:var(--success);color:var(--success);}

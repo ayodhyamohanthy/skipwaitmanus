@@ -103,8 +103,8 @@ export default function Onboarding() {
           <Target className="mb-3 text-[var(--primary)]" /><h1 className="text-3xl font-semibold">Where are you in your search?</h1><p className="mt-2 text-[var(--muted-foreground)]">This only tunes what we show you. Nobody else sees it.</p>
           <div className="mt-6 grid gap-3" role="radiogroup" aria-label="Search goal">
             {GOALS.map(([goal, hint]) => (
-              <button key={goal} type="button" role="radio" aria-checked={state.goal === goal} onClick={() => patch({ goal })} className={`flex min-h-16 items-center justify-between rounded-2xl border p-4 text-left ${state.goal === goal ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-[var(--border)]"}`}>
-                <span><strong className="block">{goal}</strong><small className="text-[var(--muted-foreground)]">{hint}</small></span>
+              <button key={goal} type="button" role="radio" aria-checked={state.goal === goal} onClick={() => patch({ goal })} className={`flex min-h-20 items-center justify-between rounded-[28px] border p-5 text-left ${state.goal === goal ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-[var(--border)]"}`}>
+                <span><strong className="block text-[17px]">{goal}</strong><small className="text-sm text-[var(--muted-foreground)]">{hint}</small></span>
                 {state.goal === goal ? <Check className="text-[var(--primary)]" /> : null}
               </button>
             ))}

@@ -1,9 +1,8 @@
-import { ArrowRight, MailOpen, Plus } from "lucide-react";
+import { ArrowRight, Check, Clock3, MailOpen, Plus, X } from "lucide-react";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link, useLocation } from "wouter";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
-import StatusBadge from "@/components/StatusBadge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { SeekerCreditsCard, type SeekerCredits } from "@/components/SeekerCreditsCard";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
@@ -13,9 +12,8 @@ import { readApiJson } from "@/lib/apiResponse";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { usePersistFn } from "@/hooks/usePersistFn";
 
-type ReferralRequest = { id: number; targetRoleUrl: string | null; companyDomain: string; compensation?: string | null; status: ReferralStatus; referrerId: number | null; queueStatus?: "available_for_review" | "waiting_for_coverage" | null; referrerMessage: string | null; unreadMessageCount: number; createdAt: string; updatedAt: string; attachmentCount: number };
+type ReferralRequest = { id: number; title?: string | null; targetRoleUrl: string | null; companyDomain: string; compensation?: string | null; status: ReferralStatus; referrerId: number | null; queueStatus?: "available_for_review" | "waiting_for_coverage" | null; referrerMessage: string | null; unreadMessageCount: number; createdAt: string; updatedAt: string; attachmentCount: number };
 
-const stateBadgeTones = { blue: "blue", amber: "amber", emerald: "green", slate: "slate" } as const;
 const CLOSED_STATUSES: ReferralStatus[] = ["declined", "closed", "withdrawn"];
 
 function compactDate(value: string) {
@@ -52,20 +50,19 @@ type RowProps = {
 function RequestRow({ request, withdrawing, onWithdraw }: RowProps) {
   const state = rowState(request);
   const label = `${request.companyDomain} request, ${state.label}`;
-  const rowClass = "flex min-h-16 items-center gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-4";
-  const inner = (
-    <>
-      <span className="min-w-0 flex-1">
-        <strong className="block truncate text-sm">{request.companyDomain}</strong>
-        <small className="mt-0.5 block text-xs text-[#505050]">{displayRef(request.id)} · {rowNote(request)}</small>
-      </span>
-      <StatusBadge label={state.label} tone={stateBadgeTones[state.tone]} />
-      <ArrowRight className="h-4 w-4 shrink-0 text-[#505050]" aria-hidden="true" />
-    </>
-  );
+  const mark = (request.companyDomain.charAt(0) || "?").toUpperCase();
+  const PillIcon = ["approved", "intro_made", "interview", "offer", "closed"].includes(request.status) ? Check : request.status === "pending" ? Clock3 : X;
   return (
     <li>
-      <Link href={`/conversation/${request.id}`} className={rowClass} aria-label={label}>{inner}</Link>
+      <Link href={`/conversation/${request.id}`} className="flex min-h-20 items-center gap-3 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4" aria-label={label}>
+        <span className="company-mark" aria-hidden="true">{mark}</span>
+        <span className="min-w-0 flex-1">
+          <strong className="block truncate">{request.title || "Referral request"}</strong>
+          <small className="block truncate text-[var(--muted-foreground)]">{request.companyDomain} · {displayRef(request.id)} · {rowNote(request)}</small>
+        </span>
+        <span className={`status-pill status-${request.status}`}><PillIcon />{state.label}</span>
+        <ArrowRight className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />
+      </Link>
       {request.referrerMessage && request.status !== "pending" ? (
         <aside aria-label="Referrer update" className="mt-2 rounded-xl border border-[#c2c2ff] bg-[#ededff]/60 p-3">
           <p className="text-xs leading-5 text-[#505050]">{request.referrerMessage}</p>
@@ -228,34 +225,25 @@ export default function MyRequests() {
   }
 
   return (
-    <main data-skipwait-screen="my-requests" className="mx-auto max-w-xl px-5 py-6 text-black">
-      <div className="flex items-start justify-between gap-3">
+    <main data-skipwait-screen="my-requests" className="page-content">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-bold uppercase tracking-[.14em] text-[#505050]">My asks</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-[-.02em]">Requests</h1>
-          <p className="mt-2 text-sm leading-6 text-[#505050]">Track every ask in one place. Answered, passed, or withdrawn asks free a slot.</p>
+          <span className="eyebrow">My asks</span>
+          <h1 className="mt-2">Requests<span className="brand-dot">.</span></h1>
+          <p className="mt-2 max-w-xl">Track every ask in one place. Answered, passed, or withdrawn asks free a slot.</p>
         </div>
-        <button type="button" onClick={() => go("/start")} className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-[#0000ff] px-4 py-2.5 text-sm font-bold text-white">
-          <Plus className="h-4 w-4" />New ask
+        <button type="button" onClick={() => go("/explore")} className="brand-button shrink-0">
+          <Plus className="size-4" />New ask
         </button>
       </div>
-      {credits ? <div className="mt-5"><SeekerCreditsCard credits={credits} compact /></div> : null}
-      <div className="mt-4 grid grid-cols-3 gap-2" aria-label="Request summary">
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">Open asks</p>
-          <p className="mt-1 text-2xl font-semibold">{openCount}</p>
-        </div>
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">In conversation</p>
-          <p className="mt-1 text-2xl font-semibold">{inConversation}</p>
-        </div>
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
-          <p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#505050]">Unread updates</p>
-          <p className="mt-1 text-2xl font-semibold">{unreadTotal}</p>
-        </div>
+      {credits ? <div className="mb-4"><SeekerCreditsCard credits={credits} compact /></div> : null}
+      <div className="grid gap-3 sm:grid-cols-3" aria-label="Request summary">
+        <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">Open asks</span><p className="mt-1 text-3xl font-semibold">{openCount}</p></section>
+        <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">In conversation</span><p className="mt-1 text-3xl font-semibold">{inConversation}</p></section>
+        <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">Unread updates</span><p className="mt-1 text-3xl font-semibold">{unreadTotal}</p></section>
       </div>
       {requests.length > 0 && !showSkeleton && !error ? (
-        <div className="mt-6 flex gap-6 border-b border-[#e5e5e5]" role="tablist" aria-label="Request groups">
+        <div className="directory-tabs section-tabs mt-6" role="tablist" aria-label="Request groups">
           {(["active", "closed"] as const).map(value => (
             <button
               key={value}
@@ -263,9 +251,9 @@ export default function MyRequests() {
               role="tab"
               aria-selected={tab === value}
               onClick={() => setTab(value)}
-              className={tab === value ? "min-h-11 border-b-2 border-[#0000ff] px-1 text-sm font-bold capitalize text-black" : "min-h-11 px-1 text-sm font-bold capitalize text-[#505050]"}
+              className={tab === value ? "selected" : ""}
             >
-              {value}
+              {value === "active" ? "Active" : "Closed"}
             </button>
           ))}
         </div>

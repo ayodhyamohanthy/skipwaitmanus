@@ -153,14 +153,14 @@ export default function Ask() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 sm:p-8">
           <label className="block text-sm font-medium">Official job link
-            <input value={url} onChange={event => setUrl(event.target.value)} placeholder="https://careers.company.com/…" inputMode="url" className={`mt-2 h-12 w-full rounded-xl border bg-[var(--background)] px-4 text-base ${url && !officialUrl ? "border-[var(--destructive)]" : "border-[var(--input)]"}`} />
+            <input value={url} onChange={event => setUrl(event.target.value)} placeholder="https://careers.company.com/…" inputMode="url" className={`mt-2 h-12 w-full rounded-full border bg-[var(--background)] px-5 text-base ${url && !officialUrl ? "border-[var(--destructive)]" : "border-[var(--input)]"}`} />
           </label>
           {url && !officialUrl ? <p className="mt-2 flex gap-2 text-sm text-[var(--destructive)]"><AlertTriangle className="size-4 shrink-0" />That doesn&apos;t look like a job posting link.</p> : null}
           <label className="mt-5 block text-sm font-medium">Compensation (optional)
-            <input value={compensation} onChange={event => setCompensation(event.target.value)} placeholder="e.g. ₹18–22 LPA" maxLength={80} className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
+            <input value={compensation} onChange={event => setCompensation(event.target.value)} placeholder="e.g. ₹18–22 LPA" maxLength={80} className="mt-2 h-12 w-full rounded-full border border-[var(--input)] bg-[var(--background)] px-5 text-base" />
           </label>
           <label className="mt-5 block text-sm font-medium">Your note
-            <textarea value={note} maxLength={NOTE_LIMIT} onChange={event => setNote(event.target.value)} placeholder="Name the role, one result that proves fit, and what you'd like from the referrer." rows={7} className="mt-2 min-h-44 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] p-4 text-base" />
+            <textarea value={note} maxLength={NOTE_LIMIT} onChange={event => setNote(event.target.value)} placeholder="Name the role, one result that proves fit, and what you'd like from the referrer." rows={7} className="mt-2 min-h-44 w-full rounded-[28px] border border-[var(--input)] bg-[var(--background)] p-5 text-base" />
           </label>
           <div className="mt-1 flex justify-between text-xs text-[var(--muted-foreground)]"><span>Tip: one specific result beats a list of skills.</span><span>{note.length}/{NOTE_LIMIT}</span></div>
           <button type="button" onClick={() => { void draftFromResume(); }} disabled={drafting || uploading} className="brand-button mt-3 border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">

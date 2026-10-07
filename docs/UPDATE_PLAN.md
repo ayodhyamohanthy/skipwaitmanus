@@ -378,6 +378,16 @@ Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visi
 - All three continuations route through WorkOS `startLogin` (Google + email live in AuthKit; no password form per D3).
 - Verification: sign-in + trust suites green, `tsc` clean.
 
+## Batch 25 record — dot-to-dot fidelity pass 3 (ask, requests, onboarding, detail)
+
+- Commit: field shapes, rows, pills, tabs, and cards matched to reference PNGs.
+- `Ask.tsx`: pill inputs, rounded note area, kit aside structure kept.
+- `MyRequests.tsx`: kit header/meters/tabs/rows with icon status pills and job titles; credits card and withdraw flow preserved; New ask → `/explore`.
+- `ProfileSetup.tsx`: kit card radius and type scale on goal step.
+- `ExploreCompany.tsx`: kit safety-guide link restored.
+- CSS: directory tabs, live-status pill variants, and supporting rules ported.
+- Verification: requests suites green, `tsc` clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
