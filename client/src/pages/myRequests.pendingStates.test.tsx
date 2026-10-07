@@ -6,10 +6,8 @@ import MyRequests from "./MyRequests";
 
 const { go, getToken } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mockResolvedValue("test-token") }));
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/requests", go] }));
-vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
-vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div data-skipwait-logo-mark="true" /> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
 const pendingRequest = { id: 12, targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", status: "pending", referrerId: 77, referrerMessage: null, unreadMessageCount: 0, createdAt: "2026-09-01T09:41:00.000Z", updatedAt: "2026-09-02T14:05:00.000Z", attachmentCount: 1 };
@@ -26,12 +24,12 @@ describe("My Requests pending states", () => {
     expect(screen.getByRole("button", { name: "Request a referral" })).toBeTruthy();
   });
 
-  it("renders a status history that never names the Referrer", async () => {
+  it("renders the pending row with a review state and never names the Referrer", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [pendingRequest] }) })));
     render(<MyRequests />);
-    const history = await screen.findByLabelText("Status history");
-    expect(history.textContent).toMatch(/Request sent.*Claimed by a verified employee.*Decision.*waiting/);
-    expect(history.textContent).not.toContain("77");
+    const row = await screen.findByLabelText("acme.com request, Under review");
+    expect(row.textContent).toContain("acme.com");
+    expect(row.textContent).not.toContain("77");
   });
 
   it("keeps the list intact and retries after a failed load", async () => {
@@ -48,7 +46,7 @@ describe("My Requests pending states", () => {
     expect(alert.textContent).toContain("nothing was lost");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
-    expect(await screen.findByLabelText("Status history")).toBeTruthy();
+    expect(await screen.findByLabelText("acme.com request, Under review")).toBeTruthy();
     expect(fetchMock.mock.calls.filter(([url]) => String(url).includes("/company-referrals/mine")).length).toBe(2);
   });
 
