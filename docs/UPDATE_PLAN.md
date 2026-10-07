@@ -260,6 +260,13 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Deviations: no Pause (no pause endpoint), no thank-you wall (no thank-you store), no expiring panel (no expiry), no ask-strength/expiry row data (not exposed), capacity is a display value (no adjust endpoint — lands with referrer-setup prefs), request-a-company mode omitted until suggest-company backend exists.
 - Verification: 9/9 tests (incl. shell), `tsc` clean, audit clean.
 
+## Batch 13 record — /settings shell adoption + profile shortcut
+
+- Commit: settings wrapped in shell with a profile-visibility shortcut; all live sections untouched.
+- `Settings.tsx` gains one kit-token section (Edit profile / Manage work links); App route shell-wrapped. All 4 settings suites green unchanged.
+- Kit sections NOT shipped (no backends — recorded as the largest backend gap cluster): Region/i18n, notification toggles, dark toggle, sessions list, blocked list, assistants link, consent controls. Each needs server persistence + send-site enforcement, not local toggles that would lie.
+- Verification: 9/9 settings tests, `tsc` clean, audit clean.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
