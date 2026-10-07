@@ -87,7 +87,6 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "safetyReports", name: "safety_reports_status_idx", columns: "`status`", nonUnique: true },
   { table: "companySuggestions", name: "company_suggestions_submitter_idx", columns: "`submitterUserId`", nonUnique: true },
   { table: "companySuggestions", name: "company_suggestions_status_idx", columns: "`status`", nonUnique: true },
-  { table: "workItems", name: "work_items_user_idx", columns: "`userId`", nonUnique: true },
   { table: "profiles", name: "profiles_handle_unique", columns: "`handle`" },
 ];
 
@@ -109,7 +108,6 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "safetyReports", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
   { table: "safetyReports", column: "reportedUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "companySuggestions", column: "submitterUserId", referencedTable: "users", referencedColumn: "id" },
-  { table: "workItems", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

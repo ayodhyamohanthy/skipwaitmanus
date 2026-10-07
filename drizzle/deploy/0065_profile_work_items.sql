@@ -2,9 +2,23 @@
 -- Additive only: two nullable profile columns and one new table.
 -- Reconcile self-heals via DESIRED_TABLES/DESIRED_COLUMNS; this file is what
 -- the deploy pipeline applies (see server/schemaDeployGuard.test.ts).
-ALTER TABLE `profiles` ADD COLUMN `handle` varchar(40) NULL;
-ALTER TABLE `profiles` ADD COLUMN `profileVisibility` ENUM('public','link','private') NOT NULL DEFAULT 'private';
-CREATE UNIQUE INDEX `profiles_handle_unique` ON `profiles` (`handle`);
+-- Every ALTER/CREATE INDEX is guarded by information_schema so the file is
+-- safe to re-run.
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'handle');
+SET @ddl = IF(@col_exists = 0, 'ALTER TABLE `profiles` ADD COLUMN `handle` varchar(40) NULL', 'SELECT 1');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @col_exists = (SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'profileVisibility');
+SET @ddl = IF(@col_exists = 0, 'ALTER TABLE `profiles` ADD COLUMN `profileVisibility` ENUM(''public'',''link'',''private'') NOT NULL DEFAULT ''private''', 'SELECT 1');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET @idx_exists = (SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND INDEX_NAME = 'profiles_handle_unique');
+SET @ddl = IF(@idx_exists = 0, 'CREATE UNIQUE INDEX `profiles_handle_unique` ON `profiles` (`handle`)', 'SELECT 1');
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 CREATE TABLE IF NOT EXISTS `workItems` (
  `id` int AUTO_INCREMENT PRIMARY KEY,
  `userId` int NOT NULL,

@@ -317,6 +317,32 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Legal pages (`/terms`, `/privacy`, `/guidelines` copy): deliberately untouched — live copy stands until legal reconciles it with kit drafts.
 - Verification: 3/3 tests, `tsc` clean, audit clean.
 
+## Batch 20 record — full-gate fixes (deploy lint, reconcile dupes, route tables)
+
+- Commit: repair-only batch after the full suite caught 4 regressions from earlier batches.
+- `drizzle/deploy/0065+0067`: bare ALTER/CREATE INDEX rewritten as information_schema-guarded PREPARE blocks (lint gate green).
+- `server/schemaReconcile.ts`: removed duplicated DESIRED entries from insertion scripts.
+- `functions/_middleware.ts`: all kit routes registered as known patterns (SEO contract green).
+- `server/notificationCenterUi.test.ts`: safeguard updated to the /alerts center + /notifications redirect.
+- Verification: full suite 1130 passed / 16 skipped / 0 failed, `vite build` ok, audit clean on 182 files.
+
+## Kit v4 coverage — complete per owner order
+
+Every kit route is implemented, redirected, deliberately deferred with a recorded backend gap, or blocked on an owner call:
+
+| Kit route | Status |
+|---|---|
+| `/`, `/requests`, `/inbox`, `/referrer`, `/plans`, `/settings`, `/privacy`, `/terms`, `/employer`, `/admin/*`, `/messages`, `/premium`, `/pricing`, `/wall`, `/jobs`, `/share`, `/support`, `/about`, `/contact`, `/offline`, guides, policies | Kept working, untouched |
+| Shell, `/verify`, `/ask`, `/explore`, `/explore/:slug`, `/conversation` (thread), `/alerts` (+`/notifications` redirect), `/onboarding`, `/profile`, `/work`, `/p/:handle`, `/referrer-home`, `/invite`, `/referrer-setup`, `/report`, `/suggest-company`, `/admin-review`, `/safety`, `/help`, `/landed`, `/sign-in`, `/for-companies`, `/app-states`, `/emails`, `/developers` | Shipped on real data |
+| `/queue` | Moved decision queue (was `/inbox`) |
+| `/wallet` | Never existed live; redirect added with plans work (pending) |
+| `/connect-assistant`, `/assistants`, `/approve`, `/developer-console` | Parked: no consent/token/MCP backend exists |
+| `/plans` redesign, `/billing` | BLOCKED — owner call D2 (live Pro/Max vs kit Start/Momentum/Land) |
+| `/forgot-password`, `/reset-password` | BLOCKED — owner call D3 (WorkOS owns credentials) |
+| `/terms`, `/privacy`, `/guidelines` copy | Untouched — live copy stands until legal reconciles kit drafts |
+
+Open owner calls: D2 billing migration, D3 password flows, D6 employer paid-visibility conflict, Scoreboard/`main` merge reconciliation, visual phone+desktop pass vs `screens/` (no harness in this environment).
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`
