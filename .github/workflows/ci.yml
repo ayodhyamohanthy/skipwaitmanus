@@ -37,6 +37,13 @@ jobs:
       # work merged on Sep 24 and never deployed. Nothing called it either.
       - name: Deploy trigger coverage
         run: node scripts/check-deploy-triggers.mjs
+      # Kit v4 designs 42 screens and most are not built yet, so this asserts a
+      # ratchet rather than the gap: coverage may not go backwards, no designed
+      # route may lose its mapping, and a mapping may not point at a route that
+      # no longer exists. Without it, "implement every screen" is a promise with
+      # nothing watching it -- the same shape as the two dead guards above.
+      - name: Kit v4 screen coverage
+        run: node scripts/screen-coverage.mjs
 
   test:
     name: unit + component + route tests
