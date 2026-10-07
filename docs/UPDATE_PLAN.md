@@ -153,6 +153,17 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 - Verification: token audit 0 findings on new files, `tsc --noEmit` clean, `git diff --check` clean.
 - Carry-forward: bell unread count, dark-mode tokens, kit font/radius takeover (owner call, needs DESIGN.md amendment).
 
+## Batch 2 record — /requests list UX + first shell adoption
+
+- Commit: redesigned list on real data, wrapped in `AppShell` (this section appended same change).
+- Rewrote `client/src/pages/MyRequests.tsx` (297 lines; `RequestRow` extracted): header + New ask → `/start`, live `SeekerCreditsCard`, meters (Open asks / In conversation / Unread updates — all computed from `/api/company-referrals/mine`), Active/Closed tabs, rows linking to `/conversation/:id` when messageable, inline referrer-message excerpt for non-pending rows, per-row Withdraw (pending + unclaimed) with confirm dialog + retryable failure alert + credit restore.
+- Rewrote 3 test files preserving intent (empty honesty, failed-load retry + slow notice, withdraw offer/hide/confirm/restore/failure). Dropped: fabricated `data-skipwait-empty-preview` card (kit honesty rule — its assertion now verifies absence), detail-carousel selectors (timeline/history move to the /thread batch), Back button (shell owns nav).
+- Deviations (server lacks primitives, no server changes in this batch): no slots x/3 meter or slots-full nudge (no open-ask cap enforced anywhere — needs product/server decision); no "Expiring soon" (no `expiresAt`, no expired status); Closed = declined/closed/withdrawn; New ask → `/start` until `/explore` ships; per-request status timeline deferred to /thread batch.
+- Structural note: first draft hit a TSX parse failure in deeply nested ternary+fragment+map JSX; rewrote with `RequestRow` + if/else body (also better sizing). Exact trigger unidentified — flagged if it recurs.
+- Verification: 13/13 tests (3 files + shell), `tsc --noEmit` clean, token audit 0 findings, `git diff --check` clean.
+- Visual check vs `screens/06_requests*` pending — no screenshot harness in this environment; needs phone (360px) + desktop pass before rollout.
+- Carry-forward: /thread batch (full detail + withdraw re-home + timeline), server open-ask cap + expiry decisions.
+
 ## Verification for this doc
 
 - [x] `git status --short` clean; branch `agent/opencode/kit-v4-update-plan` from `07cf59a`

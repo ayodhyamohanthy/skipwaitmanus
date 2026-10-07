@@ -30,7 +30,7 @@ describe("My Requests withdraw flow", () => {
     stubRequestsFetch([pendingRequest]);
     render(<MyRequests />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
-    expect(screen.getByText("Ref-1012")).toBeTruthy();
+    expect(screen.getByText(/Ref-1012/)).toBeTruthy();
     expect(screen.getByText("2 left")).toBeTruthy();
   });
 
@@ -77,7 +77,7 @@ describe("My Requests withdraw flow", () => {
     expect(alert.textContent).toContain("Your request is still active and nothing was lost.");
     expect(within(alert).getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(within(alert).getByRole("button", { name: "Keep request" })).toBeTruthy();
-    expect(screen.getByText("Ref-1012")).toBeTruthy();
+    expect(screen.getByText(/Ref-1012/)).toBeTruthy();
     fireEvent.click(within(alert).getByRole("button", { name: "Keep request" }));
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
