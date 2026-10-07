@@ -74,17 +74,17 @@ export const DESIGNED_ROUTES = {
   "thread": "/conversation/:requestId",   // kit rename
   "verify": "/verify",                    // built: 5fb6395d
   "work": null,
-  "x": "*",                               // 404 catch-all
+  "x": "/",                               // 00_x is the HOMEPAGE, not the 404 -- "x" stands in for the root route
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 31;
+export const BASELINE_IMPLEMENTED = 30;
 
 // Screens the kit designs that have NO capture in screens/. The homepage is in
 // SCREENS.md but absent from both screens/web and screens/mobile, so deriving
 // the designed set from captures alone silently under-counts it -- which is how
 // "/" sat on the old design while every other screen moved to v4.
-const UNCAPPED_DESIGNED = ["/"];
+const UNCAPPED_DESIGNED = [];   // every designed screen has a capture; 00_x IS the homepage
 const designedSlugs = [...new Set([
   ...(fs.existsSync(screensDir)
     ? fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, ""))
