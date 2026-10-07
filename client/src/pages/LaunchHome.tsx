@@ -45,7 +45,7 @@ export default function LaunchHome() {
           <Link className="launch-mobile-signin" href="/sign-in" onClick={() => setMenu(false)}>Sign in <ArrowRight size={14} aria-hidden="true" /></Link>
         </nav>
         <div className="launch-header-actions">
-          <Link className="brand-button launch-signin" href="/sign-in">Sign in</Link>
+          <Link className="launch-signin" href="/sign-in">Sign in</Link>
           <Link className="brand-button" href="/explore">Explore <ArrowUpRight aria-hidden="true" /></Link>
           <button
             type="button"
