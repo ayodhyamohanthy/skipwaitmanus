@@ -33,13 +33,13 @@ class ErrorBoundary extends Component<Props, State> {
               <AlertTriangle className="h-5 w-5" />
             </span>
             <h1 className="mt-5 text-2xl font-semibold tracking-[-.02em]">Something went wrong.</h1>
-            <div role="alert" className="mt-3 w-full rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4 text-sm leading-6 text-[#505050]">
+            <div role="alert" className="mt-3 w-full rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4 text-sm leading-6 text-muted-foreground">
               The page ran into an unexpected error. Nothing was sent or changed — you can reload to try again.
             </div>
             <button
               type="button"
               onClick={() => window.location.reload()}
-              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-[#0000ff] px-5 py-3 text-sm font-bold text-white"
+              className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-5 py-3 text-sm font-bold text-white"
             >
               <RotateCcw className="h-4 w-4" />
               Reload page

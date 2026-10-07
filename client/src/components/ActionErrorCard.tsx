@@ -22,11 +22,11 @@ export function ActionErrorCard({ title, detail, reassurance, retryLabel = "Try 
 }) {
   return <div role="alert" data-skipwait-error="true" className={`rounded-xl border border-[#b91c1c]/30 bg-[#b91c1c]/10 p-4 ${className}`}>
     <p className="text-sm font-bold text-[#b91c1c]">{title}</p>
-    {detail ? <p className="mt-1 text-sm leading-6 text-[#505050]">{detail}</p> : null}
-    {reassurance ? <p className="mt-1 text-sm leading-6 text-[#505050]">{reassurance}</p> : null}
+    {detail ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{detail}</p> : null}
+    {reassurance ? <p className="mt-1 text-sm leading-6 text-muted-foreground">{reassurance}</p> : null}
     {onRetry || onDismiss ? <div className="mt-3 flex gap-2">
-      {onRetry ? <button type="button" disabled={retrying} onClick={onRetry} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-[#0000ff] px-4 py-2.5 text-sm font-bold text-white">{retrying ? "Retrying…" : retryLabel}</button> : null}
-      {onDismiss ? <button type="button" onClick={onDismiss} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white px-4 py-2.5 text-sm font-bold text-[#505050]">{dismissLabel ?? "Dismiss"}</button> : null}
+      {onRetry ? <button type="button" disabled={retrying} onClick={onRetry} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white">{retrying ? "Retrying…" : retryLabel}</button> : null}
+      {onDismiss ? <button type="button" onClick={onDismiss} className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-border bg-white px-4 py-2.5 text-sm font-bold text-muted-foreground">{dismissLabel ?? "Dismiss"}</button> : null}
     </div> : null}
   </div>;
 }
