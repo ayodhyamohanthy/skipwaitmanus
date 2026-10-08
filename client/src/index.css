@@ -516,3 +516,7 @@ input, textarea { caret-color: var(--primary); }
 
 /* .page-content at mobile width -- was appended under the wrong gate. */
 @media(max-width:768px){.page-content{padding:28px 20px 15px;}}
+
+/* Restored: dropped by hand while correcting the mis-gated mobile rule below.
+ * At >=1500px the kit widens .page-content's top padding. */
+@media(min-width:1500px){.page-content{padding-top:62px;}}

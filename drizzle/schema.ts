@@ -760,6 +760,54 @@ export const documentBlobs = mysqlTable("documentBlobs", {
   id: int("id").autoincrement().primaryKey(),
   fileKey: varchar("fileKey", { length: 512 }).notNull().unique(),
   data: longblob("data").notNull(),
-  sizeBytes: int("sizeBytes").notNull().default(0),
+  sizeBytes: int("sizeBytes").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+/**
+ * Developer applications -- the OAuth clients third-party apps, AI agents and
+ * MCP servers register so their users can act on SkipWait.
+ *
+ * WHY THIS TABLE EXISTS: /developer-console is designed to list and register
+ * apps, and nothing in the schema could hold one. Building the screen against
+ * mock rows would have produced a console that appears to issue credentials and
+ * does not.
+ *
+ * SCOPE, STATED PLAINLY: this table and the routes over it implement
+ * REGISTRATION AND REVIEW. The OAuth authorization-code flow, the consent
+ * screen, scope enforcement on the API, and the MCP endpoint are NOT built here.
+ * An app can be registered and approved; nothing can yet authenticate as one.
+ * That boundary is deliberate -- an OAuth flow written in a hurry is a security
+ * hole, and the console says so rather than implying otherwise.
+ *
+ * clientSecretHash holds a HASH. The plaintext secret is returned exactly once,
+ * at creation, and is never stored or re-readable -- the same contract as a
+ * password reset token.
+ */
+export const developerApps = mysqlTable("developerApps", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 120 }).notNull(),
+  /** What the registrant is building. Drives which scopes are even offered. */
+  kind: mysqlEnum("kind", ["app", "agent", "server"]).notNull(),
+  websiteUrl: varchar("websiteUrl", { length: 512 }),
+  /** JSON array of absolute https URLs. Validated on write, not trusted on read. */
+  redirectUrls: text("redirectUrls").notNull(),
+  description: text("description").notNull(),
+  /** JSON array of scope strings from DEVELOPER_SCOPES. */
+  scopes: text("scopes").notNull(),
+  status: mysqlEnum("status", ["draft", "in_review", "approved", "rejected", "suspended"]).default("in_review").notNull(),
+  /** Shown to users on the consent screen; opaque and non-sequential. */
+  clientId: varchar("clientId", { length: 64 }).notNull().unique(),
+  /** SHA-256 of the secret. The secret itself is never stored. */
+  clientSecretHash: varchar("clientSecretHash", { length: 64 }).notNull(),
+  /** Test-mode apps can only touch test users and cannot spend credits. */
+  isTestMode: boolean("isTestMode").default(true).notNull(),
+  reviewNote: varchar("reviewNote", { length: 512 }),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [
+  index("developer_apps_owner_idx").on(table.ownerId, table.createdAt),
+  index("developer_apps_status_idx").on(table.status),
+]);

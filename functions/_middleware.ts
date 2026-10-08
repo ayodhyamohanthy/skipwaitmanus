@@ -102,6 +102,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/forgot-password",
   "/reset-password",
   "/billing",
+  "/developer-console",
 ];
 
 /**

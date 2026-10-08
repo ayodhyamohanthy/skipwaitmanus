@@ -42,7 +42,7 @@ export const DESIGNED_ROUTES = {
   "assistants": "/assistants",
   "billing": "/billing",
   "connect-assistant": "/connect-assistant",
-  "developer-console": null,
+  "developer-console": "/developer-console",
   "developers": "/developers",
   "emails": "/emails",
   "employer": "/employer",
@@ -78,7 +78,7 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 41;
+export const BASELINE_IMPLEMENTED = 42;
 
 // Screens the kit designs that have NO capture in screens/. The homepage is in
 // SCREENS.md but absent from both screens/web and screens/mobile, so deriving
