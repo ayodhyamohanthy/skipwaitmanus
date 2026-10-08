@@ -122,6 +122,7 @@ describe("ask expiry", () => {
     tables.requests = [requestRow(new Date(NOW.getTime() - 8 * DAY))];
     const result = await expireStalePendingReferralRequest(7, 501, NOW.getTime());
     expect(result.expired).toBe(true);
+    if (!result.expired) throw new Error("expected the stale ask to expire");
     expect(result.status).toBe("closed");
     expect(tables.requests[0].status).toBe("closed");
     expect(tables.wallets[0].monthlyCreditsRemaining).toBe(3);
