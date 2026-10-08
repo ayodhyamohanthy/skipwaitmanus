@@ -5,7 +5,6 @@ import { Link } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { ActionErrorCard } from "@/components/ActionErrorCard";
 
 type AssistantConnection = {
   id: number;

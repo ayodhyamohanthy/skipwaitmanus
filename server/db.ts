@@ -7,7 +7,6 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID }
 import { ENV } from "./_core/env";
 import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
 import {
-  APPROVAL_TTL_MS,
   ASSISTANT_MIN_PLAN,
   DEVELOPER_APP_SCOPES,
   getApprovalExpiresAtMs,
