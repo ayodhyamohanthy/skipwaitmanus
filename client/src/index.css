@@ -510,3 +510,5 @@ input, textarea { caret-color: var(--primary); }
 .referrer-band-grid .brand-button{background:var(--background);color:var(--foreground);}
 @media(max-width:768px){.launch-header-actions .launch-signin{display:inline-flex;}}
 @media(max-width:768px){.launch-header-actions .launch-menu{display:inline-flex;background:transparent;color:var(--foreground);border:0;box-shadow:none;min-width:44px;padding:0;}}
+@media(max-width:768px){.topbar-actions [data-skipwait-notification-bell]{border-color:transparent;background:transparent;box-shadow:none;}}
+@media(max-width:768px){.app-topbar:has([data-skipwait-notification-bell]) .mobile-brand a[aria-label="Alerts"]{display:none;}.topbar-actions [data-skipwait-notification-bell]{width:44px;height:44px;}.topbar-actions [data-skipwait-notification-bell] svg{width:22px;height:22px;}}
