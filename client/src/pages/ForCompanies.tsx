@@ -25,11 +25,11 @@ export default function ForCompanies() {
         </nav>
       </header>
       <main className="mx-auto max-w-6xl px-5 pb-16">
-        <section className="py-14 text-center">
+        <section className="pb-10 pt-12 text-left md:pt-[70px]">
           <span className="eyebrow">For employers</span>
-          <h1 className="mx-auto mt-3 max-w-3xl text-5xl font-semibold leading-[1.05]">Your best hires already<br />know someone inside<span className="brand-dot">.</span></h1>
-          <p className="mx-auto mt-4 max-w-xl text-[var(--muted-foreground)]">SkipWait turns employee referrals into a trusted channel. Candidates never pay. Your team stays in control.</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <h1 className="mt-4 text-[clamp(36px,6vw,68px)] font-semibold leading-[1.05]">Your best hires already<br />know someone inside<span className="brand-dot">.</span></h1>
+          <p className="mt-4 max-w-[620px] text-[17px] leading-relaxed text-[var(--muted-foreground)]">SkipWait turns employee referrals into a trusted, measurable channel. Candidates never pay. Your team stays in control.</p>
+          <div className="mt-8 flex flex-wrap justify-start gap-3">
             <a href="#demo" className="brand-button">Book a demo <ArrowRight /></a>
             <Link href="/pricing" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">See pricing</Link>
           </div>
