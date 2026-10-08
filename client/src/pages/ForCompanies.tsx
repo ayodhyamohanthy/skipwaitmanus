@@ -35,10 +35,10 @@ export default function ForCompanies() {
           </div>
         </section>
 
-        <section aria-label="Launch companies" className="border-y border-[var(--border)] py-8">
-          <p className="text-center text-xs font-semibold text-[var(--muted-foreground)]">REFERRAL DOORS OPEN AT LAUNCH</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-x-8 gap-y-3">
-            {LAUNCH_COMPANIES.map(item => <span key={item.slug} className="flex items-center gap-2 text-sm font-semibold"><Building2 className="size-4" />{item.name}</span>)}
+        <section aria-label="Launch companies" className="py-8">
+          <span className="eyebrow">REFERRAL DOORS OPEN AT LAUNCH</span>
+          <div className="mt-3.5 flex flex-wrap gap-3">
+            {LAUNCH_COMPANIES.map(item => <span key={item.slug} className="inline-flex items-center gap-2 rounded-[14px] border border-[var(--border)] px-4 py-3 font-semibold"><Building2 className="size-4 text-[var(--primary)]" />{item.name}</span>)}
           </div>
         </section>
 
@@ -55,15 +55,16 @@ export default function ForCompanies() {
           </div>
         </section>
 
-        <section className="rounded-3xl border-2 border-[var(--foreground)] bg-[var(--secondary)] p-6 shadow-[var(--shadow-offset)]">
-          <ul className="grid gap-3 sm:grid-cols-2">
+        <section className="flex items-start gap-4 rounded-3xl border-2 border-[var(--foreground)] bg-[var(--secondary)] p-6 shadow-[var(--shadow-offset)]">
+          <ShieldCheck className="mt-0.5 size-6 shrink-0" aria-hidden="true" />
+          <ul className="grid flex-1 gap-3 sm:grid-cols-2">
             {["Candidates never pay to be referred", "No paid ranking of candidates", "Employees can decline without pressure", "Names shared only on acceptance"].map(text => (
               <li key={text} className="flex items-start gap-2 text-sm font-semibold"><Check className="mt-0.5 size-4 shrink-0 text-[var(--primary)]" />{text}</li>
             ))}
           </ul>
         </section>
 
-        <section id="demo" aria-label="Book a demo" className="mx-auto mt-14 max-w-xl rounded-3xl border border-[var(--border)] p-6 sm:p-8">
+        <section id="demo" aria-label="Book a demo" className="mt-14 max-w-[520px] rounded-3xl border-2 border-[var(--foreground)] p-6 shadow-[var(--shadow-offset)] sm:p-7">
           <h2 className="text-2xl font-semibold">Book a 20-minute demo</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Opens your email app addressed to our team — nothing is submitted silently.</p>
           <label className="mt-5 block text-sm font-semibold">Work email
