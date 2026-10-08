@@ -22,6 +22,7 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "safetyReports", createSql: `CREATE TABLE IF NOT EXISTS \`safetyReports\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`reporterUserId\` int NOT NULL, \`reason\` varchar(80) NOT NULL, \`details\` text NULL, \`referralRequestId\` int NULL, \`reportedUserId\` int NULL, \`urgent\` boolean NOT NULL DEFAULT false, \`status\` ENUM('open','under_review','resolved','dismissed') NOT NULL DEFAULT 'open', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`safetyReports_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`safety_reports_reporter_fk\` FOREIGN KEY (\`reporterUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`safety_reports_reporter_idx\`(\`reporterUserId\`), INDEX \`safety_reports_status_idx\`(\`status\`))` },
   { table: "companySuggestions", createSql: `CREATE TABLE IF NOT EXISTS \`companySuggestions\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`submitterUserId\` int NOT NULL, \`companyName\` varchar(160) NOT NULL, \`website\` varchar(512) NULL, \`role\` ENUM('seeker','employee') NOT NULL DEFAULT 'seeker', \`status\` ENUM('open','under_review','approved','dismissed') NOT NULL DEFAULT 'open', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companySuggestions_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`company_suggestions_submitter_fk\` FOREIGN KEY (\`submitterUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`company_suggestions_submitter_idx\`(\`submitterUserId\`), INDEX \`company_suggestions_status_idx\`(\`status\`))` },
   { table: "workItems", createSql: `CREATE TABLE IF NOT EXISTS \`workItems\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`title\` varchar(160) NOT NULL, \`kind\` ENUM('case_study','project','article','code','other') NOT NULL DEFAULT 'other', \`source\` varchar(80) NULL, \`url\` varchar(2048) NULL, \`pinned\` boolean NOT NULL DEFAULT false, \`visibleOnProfile\` boolean NOT NULL DEFAULT false, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`workItems_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`work_items_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`work_items_user_idx\`(\`userId\`))` },
+  { table: "seekerAlerts", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAlerts\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`companyDomain\` varchar(255) NOT NULL, \`paused\` boolean NOT NULL DEFAULT false, \`notifiedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`seekerAlerts_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_alerts_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_alerts_user_domain_unique\`(\`userId\`,\`companyDomain\`), INDEX \`seeker_alerts_user_idx\`(\`userId\`), INDEX \`seeker_alerts_domain_idx\`(\`companyDomain\`))` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -90,6 +91,9 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "companySuggestions", name: "company_suggestions_submitter_idx", columns: "`submitterUserId`", nonUnique: true },
   { table: "companySuggestions", name: "company_suggestions_status_idx", columns: "`status`", nonUnique: true },
   { table: "profiles", name: "profiles_handle_unique", columns: "`handle`" },
+  { table: "seekerAlerts", name: "seeker_alerts_user_domain_unique", columns: "`userId`,`companyDomain`" },
+  { table: "seekerAlerts", name: "seeker_alerts_user_idx", columns: "`userId`", nonUnique: true },
+  { table: "seekerAlerts", name: "seeker_alerts_domain_idx", columns: "`companyDomain`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -110,6 +114,7 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "safetyReports", column: "referralRequestId", referencedTable: "referralRequests", referencedColumn: "id" },
   { table: "safetyReports", column: "reportedUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "companySuggestions", column: "submitterUserId", referencedTable: "users", referencedColumn: "id" },
+  { table: "seekerAlerts", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

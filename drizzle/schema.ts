@@ -110,6 +110,15 @@ export const companySuggestions = mysqlTable("companySuggestions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("company_suggestions_submitter_idx").on(table.submitterUserId), index("company_suggestions_status_idx").on(table.status)]);
 
+export const seekerAlerts = mysqlTable("seekerAlerts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
+  paused: boolean("paused").default(false).notNull(),
+  notifiedAt: timestamp("notifiedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("seeker_alerts_user_domain_unique").on(table.userId, table.companyDomain), index("seeker_alerts_user_idx").on(table.userId), index("seeker_alerts_domain_idx").on(table.companyDomain)]);
+
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 180 }).notNull(),
