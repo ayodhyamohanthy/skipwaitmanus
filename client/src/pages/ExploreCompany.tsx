@@ -79,7 +79,7 @@ export default function ExploreCompany() {
       <section className="company-hero">
         <span className="company-mark large" aria-hidden="true">{company.initials}</span>
         <div>
-          {(jobs?.length ?? 0) > 0 ? <span className="availability"><span />{jobs!.length} open {jobs!.length === 1 ? "role" : "roles"} listed</span> : null}
+          <span className="availability"><span />People open to referral requests{(jobs?.length ?? 0) > 0 ? ` · ${jobs!.length} open ${jobs!.length === 1 ? "role" : "roles"} listed` : ""}</span>
           <h1>{company.name}<span className="brand-dot">.</span></h1>
           <p>{company.blurb}</p>
           <div className="company-meta"><span><BriefcaseBusiness />{company.industry}</span><span><MapPin />{company.location}</span></div>
