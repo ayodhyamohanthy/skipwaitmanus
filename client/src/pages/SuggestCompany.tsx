@@ -58,26 +58,26 @@ export default function SuggestCompany() {
   return (
     <main data-skipwait-screen="suggest-company" className="page-content mx-auto max-w-2xl">
       <Link href="/explore" className="back-link"><ArrowLeft />Back to explore</Link>
-      <div className="mb-6"><span className="eyebrow">New doors</span><h1 className="mt-2 text-4xl font-semibold">Suggest a company<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Tell us where you want to work — or where you work. Reviewers look at every suggestion.</p></div>
+      <div className="mb-6"><span className="eyebrow">Grow the map</span><h1 className="mt-2 text-4xl font-semibold">Suggest a company<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Real employers only. We review every suggestion before it appears.</p></div>
       <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 sm:p-8">
         <label className="block text-sm font-semibold">Company name
-          <input value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="Acme Corp" className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
+          <input value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
         </label>
         {duplicate ? <p className="mt-2 flex items-start gap-2 text-sm text-[var(--muted-foreground)]"><Building2 className="mt-0.5 size-4 shrink-0" />Good news — this company is already listed. <Link href={`/explore/${LAUNCH_COMPANIES.find(c => c.name.toLowerCase() === name.trim().toLowerCase())?.slug}`} className="text-link">Open it</Link></p> : null}
         <label className="mt-4 block text-sm font-semibold">Company website (optional)
-          <input value={website} inputMode="url" onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="https://acme.example" className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
+          <input value={website} inputMode="url" onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
         </label>
         <fieldset className="mt-4">
           <legend className="text-sm font-semibold">I&apos;m suggesting as</legend>
           <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {(["seeker", "employee"] as const).map(value => (
-              <button key={value} type="button" aria-pressed={role === value} onClick={() => setRole(value)} className={`min-h-11 rounded-xl border px-3 text-sm capitalize ${role === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "seeker" ? "Job seeker" : "Employee there"}</button>
+              <button key={value} type="button" aria-pressed={role === value} onClick={() => setRole(value)} className={`min-h-11 rounded-xl border px-3 text-sm capitalize ${role === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "seeker" ? "Looking to join" : "Working there now"}</button>
             ))}
           </div>
         </fieldset>
         {error ? <p role="alert" className="mt-4 text-sm font-semibold text-[var(--destructive)]">{error}</p> : null}
-        <div className="mt-6 flex justify-end">
-          <button type="button" disabled={submitting || duplicate} onClick={() => { void submit(); }} className="brand-button">{submitting ? "Sending…" : "Suggest company"}</button>
+        <div className="mt-6">
+          <button type="button" disabled={submitting || duplicate} onClick={() => { void submit(); }} className="brand-button w-full">{submitting ? "Sending…" : <>Submit for review <ArrowRight /></>}</button>
         </div>
       </section>
     </main>

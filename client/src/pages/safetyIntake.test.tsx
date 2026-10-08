@@ -56,12 +56,12 @@ describe("SuggestCompany flow", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<SuggestCompany />);
-    fireEvent.change(screen.getByPlaceholderText("Acme Corp"), { target: { value: "Wipro" } });
+    fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Wipro" } });
     expect(screen.getByText(/already listed/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Suggest company" }).hasAttribute("disabled")).toBe(true);
-    fireEvent.change(screen.getByPlaceholderText("Acme Corp"), { target: { value: "Acme Corp" } });
-    fireEvent.click(screen.getByRole("button", { name: /Employee there/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Suggest company" }));
+    expect(screen.getByRole("button", { name: "Submit for review" }).hasAttribute("disabled")).toBe(true);
+    fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Acme Corp" } });
+    fireEvent.click(screen.getByRole("button", { name: /Working there now/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
     expect(await screen.findByText("Suggestion received.")).toBeTruthy();
   });
 });
