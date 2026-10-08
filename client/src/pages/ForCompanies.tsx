@@ -44,7 +44,7 @@ export default function ForCompanies() {
 
         <section className="py-14">
           <h2 className="text-3xl font-semibold">What you get</h2>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {VALUE.map(item => (
               <article key={item.title} className="rounded-3xl border border-[var(--border)] p-6">
                 <item.icon className="size-6 text-[var(--primary)]" />
