@@ -519,3 +519,5 @@ input, textarea { caret-color: var(--primary); }
 [data-skipwait-screen="my-requests"] h1{font-size:44px;line-height:1.12;font-weight:600;margin:12px 0;}
 @media(max-width:768px){[data-skipwait-screen="my-requests"] h1{font-size:32px;margin:9px 0 10px;}}
 .app-topbar:has([data-skipwait-notification-bell]) .topbar-actions>a[aria-label="Alerts"]{display:none;}
+/* iOS Safari zooms into inputs under 16px on focus. Keep them at 16px there so pinch zoom can stay enabled. */
+@supports (-webkit-touch-callout:none){@media(max-width:768px){input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px!important;}}}
