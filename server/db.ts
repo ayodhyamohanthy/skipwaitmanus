@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
@@ -6,7 +6,7 @@ import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityL
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
-import { isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
@@ -1223,8 +1223,9 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, savedAt: referralRequests.savedAt, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.savedAt, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
   const scopedRows = rows.filter(row => {
     const isQueueAllocationForYou = row.queueAllocationId !== null && row.referrerId === userId;
-    if (state === "new") return row.status === "pending" && !row.savedByYouAt && (!row.referrerId || row.referrerId === userId || isQueueAllocationForYou);
-    if (state === "saved") return row.status === "pending" && Boolean(row.savedByYouAt) && (!row.referrerId || row.referrerId === userId);
+    const staleUnclaimed = row.status === "pending" && isAskExpired({ status: "pending", referrerId: row.referrerId, createdAt: row.createdAt });
+    if (state === "new") return row.status === "pending" && !row.savedByYouAt && !staleUnclaimed && (!row.referrerId || row.referrerId === userId || isQueueAllocationForYou);
+    if (state === "saved") return row.status === "pending" && Boolean(row.savedByYouAt) && !staleUnclaimed && (!row.referrerId || row.referrerId === userId);
     return row.referrerId === userId && row.status !== "pending";
   });
   const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
@@ -1265,12 +1266,76 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     const existing=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId,debit.id)).limit(1))[0];
     const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!wallet)throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
     if(existing){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});return{withdrawn:true as const,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet(wallet)};}
-    let patch:{balance:number;monthlyCreditsRemaining:number}={balance:wallet.balance,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining};
-    if(debit.source==="purchased_balance")patch.balance+=1;else if(debit.source==="monthly_allowance"&&debit.sourceCycleKey===wallet.monthlyCycleKey)patch.monthlyCreditsRemaining=Math.min(wallet.monthlyAllowance,patch.monthlyCreditsRemaining+1);
-    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id,wallet.id));await tx.insert(tokenTransactions).values({userId,role:"job_seeker",tokenCount:debit.source==="monthly_allowance"&&debit.sourceCycleKey!==wallet.monthlyCycleKey?0:1,kind:"withdrawal_refund",source:debit.source,sourceCycleKey:debit.sourceCycleKey,referenceType:"referral_request",referenceId:String(requestId),reversesTransactionId:debit.id,balanceAfter:patch.balance,monthlyCreditsAfter:patch.monthlyCreditsRemaining});
+    const patch=await refundReferralDebitTx(tx,{userId,requestId,debit,wallet,kind:"withdrawal_refund"});
     const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});
     return{withdrawn:true as const,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet({...wallet,...patch})};
   });
+}
+
+/**
+ * Returns a reserved referral credit to its bucket. Identical math to a
+ * withdraw (purchased balance +1; same-cycle monthly allowance +1 capped;
+ * old-cycle monthly converts to nothing) — only the ledger kind differs so
+ * the cause stays auditable. Throws when the wallet is missing while a debit
+ * exists, exactly like a withdraw.
+ */
+async function refundReferralDebitTx(tx: any, input: { userId: number; requestId: number; debit: { id: number; source: string | null; sourceCycleKey: string | null }; wallet: { id: number; balance: number; monthlyCreditsRemaining: number; monthlyAllowance: number; monthlyCycleKey: string | null }; kind: "withdrawal_refund" | "expiry_refund" }) {
+  const { userId, requestId, debit, wallet, kind } = input;
+  const patch: { balance: number; monthlyCreditsRemaining: number } = { balance: wallet.balance, monthlyCreditsRemaining: wallet.monthlyCreditsRemaining };
+  if (debit.source === "purchased_balance") patch.balance += 1;
+  else if (debit.source === "monthly_allowance" && debit.sourceCycleKey === wallet.monthlyCycleKey) patch.monthlyCreditsRemaining = Math.min(wallet.monthlyAllowance, patch.monthlyCreditsRemaining + 1);
+  await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet.id));
+  await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: debit.source === "monthly_allowance" && debit.sourceCycleKey !== wallet.monthlyCycleKey ? 0 : 1, kind, source: debit.source, sourceCycleKey: debit.sourceCycleKey, referenceType: "referral_request", referenceId: String(requestId), reversesTransactionId: debit.id, balanceAfter: patch.balance, monthlyCreditsAfter: patch.monthlyCreditsRemaining });
+  return patch;
+}
+
+/**
+ * Expires one stale ask: unclaimed pending past ASK_TTL_DAYS transitions to
+ * "closed" with the reserved credit refunded and a "credit returned"
+ * notification, so early seekers are never left hanging on a dead ask.
+ * Idempotent via the transition operationKey plus the reversal-uniqueness
+ * check; concurrency-safe through row locking and revision CAS.
+ */
+export async function expireStalePendingReferralRequest(userId: number, requestId: number, nowMs: number = Date.now()) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, debitTransactionId: referralRequests.debitTransactionId, createdAt: referralRequests.createdAt }).from(referralRequests).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
+    if (!current) throw new Error("This referral request is not in your account");
+    if (current.status !== "pending" || current.referrerId !== null) return { expired: false as const, requestId, status: current.status };
+    const expiresAt = getAskExpiresAtMs(current.createdAt);
+    if (expiresAt === null || nowMs < expiresAt) return { expired: false as const, requestId, status: current.status };
+    const debit = current.debitTransactionId ? (await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.id, current.debitTransactionId), eq(tokenTransactions.userId, userId), eq(tokenTransactions.kind, "direct_request"))).limit(1).for("update"))[0] : undefined;
+    const wallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
+    if (debit?.source && !wallet) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
+    const existing = debit ? (await tx.select({ id: tokenTransactions.id }).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId, debit.id)).limit(1))[0] : undefined;
+    let creditSummary;
+    if (debit?.source && wallet && !existing) {
+      const patch = await refundReferralDebitTx(tx, { userId, requestId, debit, wallet, kind: "expiry_refund" });
+      creditSummary = creditSummaryFromWallet({ ...wallet, ...patch });
+    } else if (wallet) creditSummary = creditSummaryFromWallet(wallet);
+    const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize: row => { if (row.jobSeekerId !== userId || row.referrerId !== null) throw new Error("This request is already in conversation and cannot expire"); }, notification: { userId, title: "Your ask expired — credit returned", body: "No verified employee claimed it within 7 days. Your reserved credit is back on your balance; send a fresh ask anytime." } });
+    return { expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary };
+  });
+}
+
+/**
+ * Reconcile-on-read for the seeker home: expires every stale unclaimed ask.
+ * Fail-open per request — a failed expiry never blocks listing; the next
+ * read retries. Returns the ids that transitioned so the route can report
+ * them honestly.
+ */
+export async function reconcileExpiredPendingReferrals(userId: number, nowMs: number = Date.now()) {
+  const db = await getDb(); if (!db) return { expiredRequestIds: [] as number[] };
+  const cutoff = new Date(nowMs - ASK_TTL_MS);
+  const stale = await db.select({ id: referralRequests.id }).from(referralRequests).where(and(eq(referralRequests.jobSeekerId, userId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), lt(referralRequests.createdAt, cutoff)));
+  const expiredRequestIds: number[] = [];
+  for (const row of stale) {
+    try {
+      const result = await expireStalePendingReferralRequest(userId, row.id, nowMs);
+      if (result.expired) expiredRequestIds.push(row.id);
+    } catch { /* fail open: stays listed, retried on next read */ }
+  }
+  return { expiredRequestIds };
 }
 
 export async function listJobSeekerCompanyReferrals(userId: number) {
@@ -1387,6 +1452,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   return db.transaction(async tx => {
     const current = (await tx.select({ request: referralRequests, company: jobs.company }).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
     if (!current || current.request.status !== "pending" || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    if (current && isAskExpired({ status: "pending", referrerId: current.request.referrerId, createdAt: current.request.createdAt })) throw new ReferralTransitionConflict("This referral request expired before it could be claimed", { status: current.request.status, revision: current.request.revision });
     const passed = (await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
     if (passed) throw new Error("You already passed on this referral request");
     const result = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "claim", operationKey: `claim:${userId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId }, notification: { userId: current.request.jobSeekerId, title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." } });

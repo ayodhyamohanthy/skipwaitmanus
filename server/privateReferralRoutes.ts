@@ -10,7 +10,7 @@ import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
 import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
-import { isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { getAskExpiresAtMs, isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -61,6 +61,7 @@ export type PrivateReferralRouteDeps = {
   listCompanyReferralInboxByState?: (userId: number, state: "new" | "saved" | "completed") => Promise<unknown[]>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  reconcileExpiredPendingReferrals?: (userId: number, nowMs?: number) => Promise<{ expiredRequestIds: number[] }>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean }>;
@@ -714,9 +715,21 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to view your referral requests" });
-      const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id) ?? [];
-      record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length } });
-      res.json({ requests });
+      // Reconcile-on-read: stale unclaimed asks close with their credit
+      // refunded. Fail-open — a reconcile failure never blocks listing.
+      let expiredRequestIds: number[] = [];
+      try {
+        if (deps.reconcileExpiredPendingReferrals) expiredRequestIds = (await deps.reconcileExpiredPendingReferrals(identity.account.id, Date.now())).expiredRequestIds ?? [];
+      } catch { expiredRequestIds = []; }
+      const listed = await deps.listJobSeekerCompanyReferrals?.(identity.account.id) ?? [];
+      const toExpiresAt = (createdAt: unknown): string | null => {
+        if (typeof createdAt !== "string" && !(createdAt instanceof Date)) return null;
+        const expiresAt = getAskExpiresAtMs(createdAt);
+        return expiresAt === null ? null : new Date(expiresAt).toISOString();
+      };
+      const requests = (listed as Array<Record<string, unknown>>).map(row => ({ ...row, expiresAt: toExpiresAt(row.createdAt) }));
+      record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length, expiredCount: expiredRequestIds.length } });
+      res.json({ requests, expiredRequestIds });
     } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
   });
   app.get("/api/company-referrals/inbox", async (req, res) => {
@@ -931,7 +944,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
-      res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed|conflicts with the current state/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
+      res.status(/verify your (work|company) email/i.test(message) ? 403 : /no longer available|already claimed|conflicts with the current state|expired/i.test(message) ? 409 : /not in your account|not found|no longer exists/i.test(message) ? 404 : 500).json({ error: message, currentState });
     }
   });
   app.get("/api/admin/referrals/export.csv", async (req, res) => {
