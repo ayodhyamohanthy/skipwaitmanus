@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AdminActivity from "./AdminActivity";
 
@@ -9,6 +10,12 @@ vi.mock("@/_core/auth", () => ({
   SignInButton: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+
+function renderActivity() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><AdminActivity /></QueryClientProvider>);
+}
+
 describe("administrator activity viewer", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ events: [{ id: 7, action: "document.uploaded", outcome: "success", resourceType: "attachment", resourceId: "4", companyDomain: "acme.com", metadata: '{"mimeType":"application/pdf","fileSize":1024}', createdAt: "2026-08-14T00:00:00.000Z", actorName: "Avery", actorEmail: "avery@example.com" }] }) })));
@@ -16,7 +23,7 @@ describe("administrator activity viewer", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("renders minimized operational metadata and filters administrator diagnostic events", async () => {
-    render(<AdminActivity />);
+    renderActivity();
     await waitFor(() => expect(screen.getByText("document.uploaded")).toBeTruthy());
     expect(screen.getByText(/No document contents or names, target URLs, OTPs/i)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Search activity"), { target: { value: "document" } });
@@ -31,7 +38,7 @@ describe("administrator activity viewer", () => {
       attempts += 1;
       return attempts === 1 ? { ok: false, status: 503, json: async () => ({ error: "Activity is temporarily unavailable" }) } : { ok: true, json: async () => ({ events: [{ id: 7, action: "document.uploaded", outcome: "success", resourceType: "attachment", resourceId: "4", companyDomain: "acme.com", metadata: null, createdAt: "2026-08-14T00:00:00.000Z", actorName: "Avery", actorEmail: "avery@example.com" }] }) };
     }));
-    render(<AdminActivity />);
+    renderActivity();
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Activity is temporarily unavailable");
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
