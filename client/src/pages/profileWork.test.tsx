@@ -82,6 +82,22 @@ describe("Work showcase", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete Launch" }));
     await waitFor(() => expect(screen.queryByText("Launch")).toBeNull());
   });
+
+  it("previews the referrer view with only profile-visible pieces and no management controls", async () => {
+    const items = [
+      { id: 3, title: "Redesign", kind: "case_study", source: "Behance", url: null, pinned: true, visibleOnProfile: true },
+      { id: 4, title: "Private draft", kind: "project", source: null, url: null, pinned: false, visibleOnProfile: false },
+    ];
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ items })));
+    render(<Work />);
+    expect(await screen.findByText("Redesign")).toBeTruthy();
+    expect(screen.getByText("Private draft")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "What a referrer sees" }));
+    await waitFor(() => expect(screen.queryByText("Private draft")).toBeNull());
+    expect(screen.getByText("Redesign")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Pin" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Unpin" })).toBeNull();
+  });
 });
 
 describe("PublicProfile page", () => {

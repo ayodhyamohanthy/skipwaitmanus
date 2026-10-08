@@ -253,6 +253,11 @@ input, textarea { caret-color: var(--primary); }
 .company-functions{display:flex;flex-wrap:wrap;gap:7px;margin-top:auto;}
 .company-functions span{display:flex;gap:4px;align-items:center;border:1px solid var(--border);border-radius:5px;padding:5px 7px;font-size:10px;}
 .no-results{min-height:340px;display:grid;place-items:center;align-content:center;text-align:center;gap:12px;background:var(--muted);border-radius:8px;margin-bottom:28px;padding:30px 20px;}
+/* kit work-showcase thumbnails: the single allowed tint blend (DESIGN.md), primary/secondary wash with ink icon */
+.work-thumb{position:relative;display:grid;place-items:center;height:120px;background:linear-gradient(135deg,color-mix(in oklch,var(--primary) 14%,transparent),color-mix(in oklch,var(--secondary) 65%,transparent));color:var(--primary);}
+.work-thumb>svg{width:34px;height:34px;}
+.work-thumb .pinned-pill{position:absolute;top:12px;left:12px;display:inline-flex;align-items:center;gap:4px;background:var(--foreground);color:var(--background);border-radius:999px;padding:5px 10px;font-size:10px;font-weight:700;}
+.work-thumb .pinned-pill svg{width:11px;height:11px;}
 .no-results>svg{width:42px;height:42px;color:var(--primary);}
 .no-results h2{font-size:24px;font-weight:600;}
 .no-results p{font-size:13px;color:var(--muted-foreground);}
