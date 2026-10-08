@@ -4,7 +4,7 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
-import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, revokeReferralShareCard } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
@@ -61,6 +61,7 @@ export type PrivateReferralRouteDeps = {
   listCompanyReferralInboxByState?: (userId: number, state: "new" | "saved" | "completed") => Promise<unknown[]>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
+  listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
   reconcileExpiredPendingReferrals?: (userId: number, nowMs?: number) => Promise<{ expiredRequestIds: number[] }>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
@@ -538,6 +539,16 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!summary) return res.status(500).json({ error: "We could not load your referral credits" });
       res.json({ summary });
     } catch { res.status(500).json({ error: "We could not load your referral credits" }); }
+  });
+  app.get("/api/billing/receipts", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your receipts" });
+      const role = req.query.role === "referrer" ? "referrer" : "job_seeker";
+      const receipts = await (deps.listMyPaymentReceipts ?? listMyPaymentReceipts)(identity.account.id, role);
+      res.set("Cache-Control", "private, no-store");
+      res.json({ receipts });
+    } catch { res.status(500).json({ error: "We could not load your receipts" }); }
   });
   app.get("/api/company-referrals/access", async (req, res) => {
     try {

@@ -1456,6 +1456,12 @@ export async function getReferralFlowHealth() {
   };
 }
 
+export async function listMyPaymentReceipts(userId: number, role: "job_seeker" | "referrer" = "job_seeker", limit = 50) {
+  const db = await getDb(); if (!db) return [];
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  return db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, tokenCount: paymentFulfillments.tokenCount, status: paymentFulfillments.status, providerInvoiceId: paymentFulfillments.providerInvoiceId, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.role, role), inArray(paymentFulfillments.status, ["credited", "refunded"]))).orderBy(desc(paymentFulfillments.createdAt)).limit(safeLimit);
+}
+
 export async function getCreditLedgerAudit(limit = 200) {
   const db=await getDb();if(!db)return {mismatches:[],integrity:[],checkedWallets:0};
   const wallets=await db.select().from(tokenBalances).orderBy(desc(tokenBalances.updatedAt)).limit(Math.max(1,Math.min(limit,500)));
