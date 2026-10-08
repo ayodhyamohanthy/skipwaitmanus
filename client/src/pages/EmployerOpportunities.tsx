@@ -1,6 +1,7 @@
 import { ArrowLeft, Sparkles, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { AccountMenu } from "@/components/AccountMenu";
 import { Brand } from "@/components/Brand";
@@ -12,25 +13,24 @@ const SPONSOR_TIERS: Array<{ id: Tier; label: string; days: number; cost: number
 
 export default function EmployerOpportunities() {
   const [, go] = useLocation();
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [sponsorFor, setSponsorFor] = useState<Opportunity | null>(null);
   const [tier, setTier] = useState<Tier>("featured");
   const [sponsoring, setSponsoring] = useState(false);
   const [sponsorAttemptKey, setSponsorAttemptKey] = useState("");
-
-  const load = async () => {
-    setLoading(true); setError("");
-    try {
+  const opportunitiesQuery = useQuery({
+    queryKey: ["employer-opportunities"],
+    retry: false,
+    staleTime: 30_000,
+    queryFn: async () => {
       const response = await fetch("/api/employer/opportunities", { credentials: "include" });
       const payload = await readApiJson<{ opportunities?: Opportunity[]; error?: string }>(response, "We could not load your opportunities");
       if (!response.ok) throw new Error(payload.error || "We could not load your opportunities");
-      setOpportunities(payload.opportunities || []);
-    } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "We could not load your opportunities"); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { void load(); }, []);
+      return payload.opportunities || [];
+    },
+  });
+  const opportunities = opportunitiesQuery.data ?? [];
+  const loading = opportunitiesQuery.isFetching;
+  const error = opportunitiesQuery.error instanceof Error ? opportunitiesQuery.error.message : "";
 
   const sponsor = async () => {
     if (!sponsorFor) return;
@@ -44,7 +44,7 @@ export default function EmployerOpportunities() {
       toast(`Sponsored as ${payload.sponsorship?.tier ?? tier}.`);
       setSponsorFor(null);
       setSponsorAttemptKey("");
-      void load();
+      void opportunitiesQuery.refetch();
     } catch (sponsorError) { toast(sponsorError instanceof Error ? sponsorError.message : "We could not sponsor this role"); }
     finally { setSponsoring(false); }
   };
