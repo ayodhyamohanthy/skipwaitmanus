@@ -1,4 +1,4 @@
-import { Bell, BellOff, BriefcaseBusiness, CheckCheck, CheckCircle2, CircleDollarSign, MessageCircle } from "lucide-react";
+import { Bell, BellOff, BriefcaseBusiness, CheckCheck, CheckCircle2, CircleDollarSign, MessageCircle, Pause, Play, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { SignInButton, useAuth, useUser } from "@/_core/auth";
 import { Link, useLocation } from "wouter";
@@ -7,6 +7,7 @@ import { readApiJson } from "@/lib/apiResponse";
 
 type NotificationCategory = "referral" | "message" | "status" | "system";
 type NotificationItem = { id: number; category: NotificationCategory; title: string; body: string; readAt: string | null; createdAt: string };
+type SeekerAlertItem = { id: number; companyDomain: string; paused: boolean; notifiedAt: string | null; createdAt: string };
 
 function timeAgo(value: string) {
   const date = new Date(value);
@@ -47,6 +48,13 @@ export default function Alerts() {
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const [openingId, setOpeningId] = useState<number | null>(null);
+  const [tab, setTab] = useState<"notifications" | "saved">("notifications");
+  const [alerts, setAlerts] = useState<SeekerAlertItem[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
+  const [alertError, setAlertError] = useState("");
+  const [newDomain, setNewDomain] = useState("");
+  const [addingAlert, setAddingAlert] = useState(false);
+  const [plan, setPlan] = useState("free");
 
   const hasVerifiedWorkEmail = Boolean(user?.emailAddresses?.some(address => {
     const domain = address.emailAddress.trim().toLowerCase().split("@")[1];
@@ -69,7 +77,66 @@ export default function Alerts() {
     finally { setLoading(false); }
   };
 
+  const loadAlerts = async () => {
+    if (!isSignedIn) return;
+    setAlertsLoading(true); setAlertError("");
+    try {
+      const token = await fetchToken();
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const [alertsResponse, creditsResponse] = await Promise.all([
+        fetch("/api/seeker-alerts", { credentials: "include", headers }),
+        fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers }),
+      ]);
+      const alertsPayload = await readApiJson<{ alerts?: SeekerAlertItem[]; error?: string }>(alertsResponse, "We could not load your saved alerts");
+      if (!alertsResponse.ok) throw new Error(alertsPayload.error || "We could not load your saved alerts");
+      setAlerts(Array.isArray(alertsPayload.alerts) ? alertsPayload.alerts : []);
+      if (creditsResponse.ok) {
+        const creditsPayload = await readApiJson<{ summary?: { plan?: string } }>(creditsResponse, "");
+        if (typeof creditsPayload.summary?.plan === "string") setPlan(creditsPayload.summary.plan);
+      }
+    } catch (reason) { setAlertError(reason instanceof Error ? reason.message : "We could not load your saved alerts"); }
+    finally { setAlertsLoading(false); }
+  };
+
   useEffect(() => { void load(); }, [fetchToken, isSignedIn]);
+  useEffect(() => { if (tab === "saved") void loadAlerts(); }, [tab, fetchToken, isSignedIn]);
+
+  const addAlert = async () => {
+    const domain = newDomain.trim();
+    if (!domain || addingAlert) return;
+    setAddingAlert(true); setAlertError("");
+    try {
+      const token = await fetchToken();
+      const response = await fetch("/api/seeker-alerts", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ companyDomain: domain }) });
+      const payload = await readApiJson<{ alert?: SeekerAlertItem; error?: string }>(response, "We could not save this alert");
+      if (!response.ok || !payload.alert) throw new Error(payload.error || "We could not save this alert");
+      setAlerts(current => [payload.alert as SeekerAlertItem, ...current]);
+      setNewDomain("");
+    } catch (reason) { setAlertError(reason instanceof Error ? reason.message : "We could not save this alert"); }
+    finally { setAddingAlert(false); }
+  };
+
+  const toggleAlertPaused = async (alert: SeekerAlertItem) => {
+    try {
+      const token = await fetchToken();
+      const response = await fetch(`/api/seeker-alerts/${alert.id}`, { method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ paused: !alert.paused }) });
+      const payload = await readApiJson<{ alert?: SeekerAlertItem; error?: string }>(response, "We could not update this alert");
+      if (!response.ok || !payload.alert) throw new Error(payload.error || "We could not update this alert");
+      setAlerts(current => current.map(item => item.id === alert.id ? { ...item, paused: Boolean(payload.alert?.paused) } : item));
+    } catch (reason) { setAlertError(reason instanceof Error ? reason.message : "We could not update this alert"); }
+  };
+
+  const removeAlert = async (alert: SeekerAlertItem) => {
+    try {
+      const token = await fetchToken();
+      const response = await fetch(`/api/seeker-alerts/${alert.id}`, { method: "DELETE", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!response.ok) {
+        const payload = await readApiJson<{ error?: string }>(response, "We could not remove this alert");
+        throw new Error(payload.error || "We could not remove this alert");
+      }
+      setAlerts(current => current.filter(item => item.id !== alert.id));
+    } catch (reason) { setAlertError(reason instanceof Error ? reason.message : "We could not remove this alert"); }
+  };
 
   const markRead = async (id: number) => {
     try {
@@ -120,6 +187,45 @@ export default function Alerts() {
     <main data-skipwait-screen="alerts" className="page-content">
       <div className="mb-2"><span className="eyebrow">Stay in the loop</span><h1 className="mt-2 text-4xl font-semibold">Alerts<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Only things that need you. No marketing, no “you might like”.</p></div>
 
+      <div className="mt-4 flex gap-2" role="tablist" aria-label="Alert views">
+        {(["notifications", "saved"] as const).map(value => (
+          <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={`min-h-11 rounded-full border px-4 text-sm ${tab === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "notifications" ? `Notifications${unread > 0 ? ` (${unread})` : ""}` : "Saved alerts"}</button>
+        ))}
+      </div>
+
+      {tab === "saved" ? (
+        <section aria-label="Saved alerts" className="mt-4">
+          <p className="text-sm text-[var(--muted-foreground)]">Watch a company. The moment a verified referrer there opens up, you hear first. {plan === "free" ? `Free accounts keep 3 alerts (${alerts.length} used).` : "Your plan allows unlimited alerts."}</p>
+          <form onSubmit={event => { event.preventDefault(); void addAlert(); }} className="mt-4 flex gap-2">
+            <label className="min-w-0 flex-1"><span className="sr-only">Company domain to watch</span>
+              <input value={newDomain} onChange={event => setNewDomain(event.target.value)} placeholder="acme.com" inputMode="url" autoComplete="off" className="h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
+            </label>
+            <button type="submit" disabled={addingAlert || !newDomain.trim()} className="brand-button shrink-0"><Plus />{addingAlert ? "Adding…" : "New alert"}</button>
+          </form>
+          {alertError ? <p role="alert" className="mt-4 rounded-xl border border-[var(--destructive)]/30 bg-[var(--destructive)]/10 p-4 text-sm">{alertError} <button type="button" className="font-bold underline" onClick={() => { void loadAlerts(); }}>Try again</button></p> : null}
+          {alertsLoading ? <p className="mt-10 text-center text-sm text-[var(--muted-foreground)]">Loading your saved alerts…</p> : null}
+          {!alertsLoading && !alertError && alerts.length === 0 ? (
+            <div className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--muted)] p-8 text-center">
+              <Bell className="mx-auto mb-3 size-8" />
+              <h2 className="text-lg font-semibold">No saved alerts yet.</h2>
+              <p className="mt-1 text-sm text-[var(--muted-foreground)]">Watch a company above and we will tell you when someone inside can refer.</p>
+            </div>
+          ) : null}
+          {!alertsLoading && alerts.length > 0 ? (
+            <ul className="mt-4 grid gap-3">
+              {alerts.map(alert => (
+                <li key={alert.id} className="flex items-center gap-3 rounded-3xl border border-[var(--border)] bg-[var(--card)] p-4">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-[var(--muted)]"><Bell className="size-5" /></span>
+                  <span className="min-w-0 flex-1"><strong className="block truncate text-sm">{alert.companyDomain}</strong><span className="block text-xs text-[var(--muted-foreground)]">{alert.paused ? "Paused" : alert.notifiedAt ? "Notified — door open" : "Watching · instant"}</span></span>
+                  <button type="button" onClick={() => { void toggleAlertPaused(alert); }} aria-label={alert.paused ? `Resume alert for ${alert.companyDomain}` : `Pause alert for ${alert.companyDomain}`} className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-[var(--border)]">{alert.paused ? <Play className="size-4" /> : <Pause className="size-4" />}</button>
+                  <button type="button" onClick={() => { void removeAlert(alert); }} aria-label={`Delete alert for ${alert.companyDomain}`} className="grid min-h-11 min-w-11 place-items-center rounded-xl border border-[var(--border)] text-[var(--destructive)]"><Trash2 className="size-4" /></button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : (
+      <>
       <div className="my-4 flex items-center justify-between gap-2">
         <div className="flex rounded-full bg-[var(--muted)] p-1 text-sm" role="tablist" aria-label="Alert filter">
           {(["all", "unread"] as const).map(value => (
@@ -169,6 +275,8 @@ export default function Alerts() {
           </div>
         );
       })}
+      </>
+      )}
       <p className="mt-4 text-center text-sm text-[var(--muted-foreground)]"><Link href="/settings" className="text-link">Choose what notifies you</Link></p>
     </main>
   );
