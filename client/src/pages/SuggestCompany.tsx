@@ -69,7 +69,7 @@ export default function SuggestCompany() {
         </label>
         <fieldset className="mt-4">
           <legend className="text-sm font-semibold">I&apos;m suggesting as</legend>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {(["seeker", "employee"] as const).map(value => (
               <button key={value} type="button" aria-pressed={role === value} onClick={() => setRole(value)} className={`min-h-11 rounded-xl border px-3 text-sm capitalize ${role === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "seeker" ? "Job seeker" : "Employee there"}</button>
             ))}
