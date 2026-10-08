@@ -2,9 +2,10 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, or
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
+import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
@@ -339,6 +340,69 @@ export async function updateReferrerPreferences(userId: number, input: { referra
 export async function listMyWorkItems(userId: number) {
   const db = await getDb(); if (!db) return [];
   return db.select().from(workItems).where(eq(workItems.userId, userId)).orderBy(desc(workItems.pinned), desc(workItems.updatedAt));
+}
+
+/**
+ * Saved job alerts. A seeker watches a company; the first verified referrer
+ * there notifies each unpaused watcher exactly once (eventKey dedup), then
+ * the alert is stamped notifiedAt. Free accounts keep FREE_ALERT_LIMIT
+ * alerts; paid plans are unlimited.
+ */
+export async function listSeekerAlerts(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: seekerAlerts.id, companyDomain: seekerAlerts.companyDomain, paused: seekerAlerts.paused, notifiedAt: seekerAlerts.notifiedAt, createdAt: seekerAlerts.createdAt }).from(seekerAlerts).where(eq(seekerAlerts.userId, userId)).orderBy(desc(seekerAlerts.createdAt));
+}
+
+export async function createSeekerAlert(userId: number, input: { companyDomain?: unknown }) {
+  const domain = normalizeAlertDomain(input.companyDomain);
+  if (!domain) throw new Error("Enter a valid company domain, like acme.com");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select({ id: seekerAlerts.id }).from(seekerAlerts).where(eq(seekerAlerts.userId, userId));
+  if (existing.length >= FREE_ALERT_LIMIT) {
+    const wallet = (await db.select({ plan: tokenBalances.plan }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
+    if (!wallet || wallet.plan === "free") throw new Error(`Free accounts keep ${FREE_ALERT_LIMIT} alerts. Upgrade for unlimited alerts.`);
+  }
+  try {
+    const inserted = await db.insert(seekerAlerts).values({ userId, companyDomain: domain });
+    const id = Number(inserted[0].insertId);
+    return (await db.select().from(seekerAlerts).where(eq(seekerAlerts.id, id)).limit(1))[0];
+  } catch (error) {
+    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already watch ${domain}`);
+    throw error instanceof Error ? error : new Error("We could not save this alert");
+  }
+}
+
+export async function setSeekerAlertPaused(userId: number, alertId: number, paused: boolean) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(seekerAlerts).where(and(eq(seekerAlerts.id, alertId), eq(seekerAlerts.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This alert is not in your account");
+  await db.update(seekerAlerts).set({ paused }).where(eq(seekerAlerts.id, alertId));
+  return { ...(current as object), paused };
+}
+
+export async function deleteSeekerAlert(userId: number, alertId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: seekerAlerts.id }).from(seekerAlerts).where(and(eq(seekerAlerts.id, alertId), eq(seekerAlerts.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This alert is not in your account");
+  await db.delete(seekerAlerts).where(eq(seekerAlerts.id, alertId));
+  return { deleted: true as const, id: alertId };
+}
+
+export async function notifySeekerAlertsForCompany(companyDomain: string, now: Date = new Date()) {
+  const domain = normalizeAlertDomain(companyDomain);
+  const db = await getDb(); if (!db || !domain) return { notified: 0 };
+  const watchers = await db.select({ id: seekerAlerts.id, userId: seekerAlerts.userId }).from(seekerAlerts).where(and(eq(seekerAlerts.companyDomain, domain), eq(seekerAlerts.paused, false), isNull(seekerAlerts.notifiedAt)));
+  let notified = 0;
+  for (const watcher of watchers) {
+    try {
+      // Claim the alert first: concurrent runs race here, exactly one wins.
+      const stamped = await db.update(seekerAlerts).set({ notifiedAt: now }).where(and(eq(seekerAlerts.id, watcher.id), isNull(seekerAlerts.notifiedAt)));
+      if (Number(stamped[0]?.affectedRows) !== 1) continue;
+      await db.insert(notifications).values({ userId: watcher.userId, category: "status", title: `Someone inside ${domain} can refer`, body: `A verified employee at ${domain} is now open to referral requests. Send your ask while the door is open.`, eventKey: `alert-coverage:${watcher.id}` }).onDuplicateKeyUpdate({ set: { eventKey: `alert-coverage:${watcher.id}` } });
+      notified += 1;
+    } catch { /* fail open per watcher: a missed alert never breaks verification */ }
+  }
+  return { notified };
 }
 
 export async function createWorkItem(userId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
