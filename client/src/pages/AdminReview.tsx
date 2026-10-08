@@ -80,7 +80,7 @@ export default function AdminReview() {
     <div data-skipwait-screen="admin-review" className="min-h-screen bg-[var(--muted)]">
       <header className="flex flex-wrap items-center justify-between gap-3 bg-[var(--foreground)] px-5 py-3 text-[var(--background)]">
         <span className="text-xs font-semibold tracking-widest">INTERNAL OPERATIONS · REVIEW QUEUE</span>
-        <Link href="/admin/approvals" className="rounded-lg bg-[var(--background)] px-3 py-2 text-xs font-bold text-[var(--foreground)]">Admin approvals</Link>
+        <Link href="/admin" className="rounded-lg bg-[var(--background)] px-3 py-2 text-xs font-bold text-[var(--foreground)]">Admin overview</Link>
       </header>
       <div className="mx-auto grid max-w-6xl gap-4 p-5 lg:grid-cols-[360px_minmax(0,1fr)]">
         <section className="rounded-3xl bg-[var(--background)] p-3">

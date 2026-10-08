@@ -1,4 +1,4 @@
-import { Activity, CheckSquare, CreditCard, Database, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake } from "lucide-react";
+import { Activity, CheckSquare, CreditCard, Database, Gauge, HeartPulse, ShieldCheck, UsersRound, Wallet, EyeOff, Handshake } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Brand } from "@/components/Brand";
 import { Link } from "wouter";
@@ -12,9 +12,10 @@ import { Link } from "wouter";
  * quiet pills. On narrow viewports the row scrolls horizontally instead of
  * wrapping into a wall of buttons.
  */
-export type AdminSection = "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema";
+export type AdminSection = "overview" | "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema";
 
 const sections: Array<{ id: AdminSection; href: string; label: string; icon: LucideIcon }> = [
+  { id: "overview", href: "/admin", label: "Overview", icon: Gauge },
   { id: "approvals", href: "/admin/approvals", label: "Approvals", icon: CheckSquare },
   { id: "payments", href: "/admin/payments", label: "Payment reviews", icon: CreditCard },
   { id: "partners", href: "/admin/partners", label: "Partners", icon: Handshake },
