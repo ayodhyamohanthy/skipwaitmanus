@@ -1,17 +1,33 @@
-import { ArrowRight, BadgeCheck, CalendarClock, CheckCircle2, Inbox } from "lucide-react";
+import { ArrowRight, BadgeCheck, CalendarClock, Clock3, Inbox } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link, useLocation } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { getAskExpiresAtMs } from "@shared/referral";
 
-type InboxItem = { id: number; companyDomain: string; status: string; savedAt: string | null; createdAt: string; updatedAt: string; isClaimedByYou: boolean; unreadMessageCount: number };
+type InboxItem = { id: number; companyDomain: string; status: string; savedAt: string | null; createdAt: string; updatedAt: string; isClaimedByYou: boolean; unreadMessageCount: number; expiresAt?: string | null };
 type Impact = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
 type Access = { verifiedCompanyAccess: boolean; workEmailDomain: string | null };
 type ProfileShape = { workEmailVerifiedAt: string | null; referralCapacity: number | null };
 
 const REVERIFY_DAYS = 90;
 const REVERIFY_WARNING_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function inboxExpiryMs(item: Pick<InboxItem, "expiresAt" | "createdAt">): number | null {
+  const ms = item.expiresAt ? Date.parse(item.expiresAt) : getAskExpiresAtMs(item.createdAt);
+  return ms === null || Number.isNaN(ms) ? null : ms;
+}
+
+/** Countdown for unclaimed asks, from the same expiry instant the seeker sees. Null when none applies. */
+function inboxCountdown(item: InboxItem): { label: string; urgent: boolean } | null {
+  if (item.status !== "pending" || item.isClaimedByYou) return null;
+  const ms = inboxExpiryMs(item);
+  if (ms === null || ms <= Date.now()) return null;
+  const days = Math.ceil((ms - Date.now()) / DAY_MS);
+  return days <= 1 ? { label: "1 day left", urgent: true } : { label: `${days} days left`, urgent: false };
+}
 
 export default function ReferrerHome() {
   const [, go] = useLocation();
@@ -89,6 +105,11 @@ export default function ReferrerHome() {
   const used = active.length;
   const left = Math.max(0, capacity - used);
   const atCapacity = verified && used >= capacity;
+  const expiringCount = fresh.filter(item => {
+    if (item.status !== "pending" || item.isClaimedByYou) return false;
+    const ms = inboxExpiryMs(item);
+    return ms !== null && ms > Date.now() && ms - Date.now() <= DAY_MS;
+  }).length;
   const isNew = verified && fresh.length === 0 && (impact?.reviewed ?? 0) === 0;
 
   return (
@@ -128,7 +149,7 @@ export default function ReferrerHome() {
         <>
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-3xl border border-[var(--border)] p-5"><Inbox className="mb-2 size-5" /><strong className="text-3xl">{fresh.length}</strong><p className="text-sm text-[var(--muted-foreground)]">New asks waiting</p></div>
-            <div className="rounded-3xl border border-[var(--border)] p-5"><CheckCircle2 className="mb-2 size-5" /><strong className="text-3xl">{active.length}</strong><p className="text-sm text-[var(--muted-foreground)]">In review with you</p></div>
+            <div className="rounded-3xl border border-[var(--border)] p-5"><Clock3 className="mb-2 size-5" /><strong className="text-3xl">{expiringCount}</strong><p className="text-sm text-[var(--muted-foreground)]">Expiring within 24h</p></div>
             <div className="rounded-3xl border border-[var(--border)] p-5">
               <strong className="text-3xl">{left}<span className="text-lg text-[var(--muted-foreground)]">/{capacity}</span></strong>
               <p className="text-sm text-[var(--muted-foreground)]">Capacity left this month</p>
@@ -149,15 +170,18 @@ export default function ReferrerHome() {
                 </div>
               ) : (
                 <ul className="space-y-3">
-                  {fresh.map(item => (
-                    <li key={item.id}>
-                      <Link href={`/conversation/${item.id}?from=inbox`} className="flex min-h-16 items-center gap-3 rounded-3xl border border-[var(--border)] p-4" aria-label={`Private ask · Ref-${1000 + item.id}`}>
-                        <span className="company-mark">{(item.companyDomain.charAt(0) || "?").toUpperCase()}</span>
-                        <span className="min-w-0 flex-1"><strong className="block text-sm">Private ask · Ref-{1000 + item.id}</strong><small className="text-[var(--muted-foreground)]">{item.companyDomain}</small></span>
-                        <ArrowRight className="size-4 shrink-0" />
-                      </Link>
-                    </li>
-                  ))}
+                  {fresh.map(item => {
+                    const countdown = inboxCountdown(item);
+                    return (
+                      <li key={item.id}>
+                        <Link href={`/conversation/${item.id}?from=inbox`} className="flex min-h-16 items-center gap-3 rounded-3xl border border-[var(--border)] p-4" aria-label={`Private ask · Ref-${1000 + item.id}`}>
+                          <span className="company-mark">{(item.companyDomain.charAt(0) || "?").toUpperCase()}</span>
+                          <span className="min-w-0 flex-1"><strong className="block text-sm">Private ask · Ref-{1000 + item.id}</strong><small className={countdown?.urgent ? "font-semibold text-[#b91c1c]" : "text-[var(--muted-foreground)]"}>{item.companyDomain}{countdown ? ` · ${countdown.label}` : ""}</small></span>
+                          <ArrowRight className="size-4 shrink-0" />
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </section>
