@@ -117,9 +117,15 @@ export function registerDevAuthRoutes(app: Express) {
       res.status(500).json({ error: "Dev session could not be created" });
       return;
     }
-    const sessionToken = await sdk.createSessionToken(openId, { name });
-    res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-    res.json({ signedIn: true, account: { id: account.id, name: account.name, email: account.email, role: account.role } });
+    try {
+      const sessionToken = await sdk.createSessionToken(openId, { name });
+      res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
+      res.json({ signedIn: true, account: { id: account.id, name: account.name, email: account.email, role: account.role } });
+    } catch {
+      // Without a database the account lookup inside createSessionToken rejects
+      // (ACCOUNT_NOT_ACTIVE). An unhandled rejection here used to kill the process.
+      res.status(503).json({ error: "Dev session could not be created. Is DATABASE_URL set?" });
+    }
   });
 
   app.post("/api/dev-auth/logout", async (req: Request, res: Response) => {

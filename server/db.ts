@@ -352,18 +352,19 @@ export async function deleteWorkItem(userId: number, itemId: number) {
   return { deleted: true as const, id: itemId };
 }
 
-export async function getPublicProfileByHandle(handle: string, viewerUserId?: number) {
-  const db = await getDb(); if (!db) return undefined;
-  const normalized = normalizeProfileHandle(handle);
-  if (!normalized) return undefined;
-  const owner = (await db.select({ id: users.id, name: users.name }).from(users).innerJoin(profiles, eq(profiles.userId, users.id)).where(eq(profiles.handle, normalized)).limit(1))[0];
-  if (!owner) return undefined;
-  const profile = await getProfileByUserId(owner.id);
-  if (!profile) return undefined;
+// Pure visibility decision for /api/p/:handle. A missing or "private" value
+// hides everything from anyone but the owner; items are listed only when the
+// owner marked them visible.
+export function shapePublicProfile(
+  owner: { id: number; name: string | null },
+  profile: NonNullable<Awaited<ReturnType<typeof getProfileByUserId>>>,
+  allItems: Awaited<ReturnType<typeof listMyWorkItems>>,
+  viewerUserId?: number,
+) {
   const visibility = (profile.profileVisibility ?? "private") as ProfileVisibility;
   const isOwner = viewerUserId === owner.id;
   if (visibility === "private" && !isOwner) return { visible: false as const, visibility };
-  const items = (await listMyWorkItems(owner.id)).filter(item => isOwner || item.visibleOnProfile);
+  const items = allItems.filter(item => isOwner || item.visibleOnProfile);
   return {
     visible: true as const,
     visibility,
@@ -379,6 +380,17 @@ export async function getPublicProfileByHandle(handle: string, viewerUserId?: nu
     handle: profile.handle,
     workItems: items.map(item => ({ id: item.id, title: item.title, kind: item.kind, source: item.source, url: item.url, pinned: item.pinned, visibleOnProfile: item.visibleOnProfile })),
   };
+}
+
+export async function getPublicProfileByHandle(handle: string, viewerUserId?: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const normalized = normalizeProfileHandle(handle);
+  if (!normalized) return undefined;
+  const owner = (await db.select({ id: users.id, name: users.name }).from(users).innerJoin(profiles, eq(profiles.userId, users.id)).where(eq(profiles.handle, normalized)).limit(1))[0];
+  if (!owner) return undefined;
+  const profile = await getProfileByUserId(owner.id);
+  if (!profile) return undefined;
+  return shapePublicProfile(owner, profile, await listMyWorkItems(owner.id), viewerUserId);
 }
 export const SAFETY_REPORT_REASONS = [
   "Asked for or offered money",

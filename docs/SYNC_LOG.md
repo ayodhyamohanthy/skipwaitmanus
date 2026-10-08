@@ -241,3 +241,6 @@ Machine-appended by CI after every deploy attempt. Columns: timestamp | workflow
 | 2026-10-07T06:24:19Z | Deploy Web (Cloudflare Pages) | 9df78404421414e2d8ab05b80c282274d8070bcb | failure |
 | 2026-10-07T06:31:15Z | Deploy Web (Cloudflare Pages) | 908abe5de167001b3b76d2c691d5d29c4a4605e1 | failure |
 | 2026-10-07T06:34:26Z | Deploy Web (Cloudflare Pages) | 69847f1e5f291b27469520b1db3d5500a5275d85 | failure |
+| 2026-10-07T17:33:37Z | Deploy Web (Cloudflare Pages) | c789fe7679b7b0ab3e9ce45e8af1bedf52973fc9 | success |
+| 2026-10-08T08:11:46Z | Deploy Web (Cloudflare Pages) | 9cc27a50f63bf8c48bc9aefe4e6ad057f7c0342a | success |
+| 2026-10-08T08:42:59Z | Deploy Web (Cloudflare Pages) | e0547adb8f3f321dd342fb6231e4e1c986558254 | success |

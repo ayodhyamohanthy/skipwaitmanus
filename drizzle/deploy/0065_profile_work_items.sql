@@ -20,7 +20,7 @@ PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 CREATE TABLE IF NOT EXISTS `workItems` (
- `id` int AUTO_INCREMENT PRIMARY KEY,
+ `id` int AUTO_INCREMENT,
  `userId` int NOT NULL,
  `title` varchar(160) NOT NULL,
  `kind` ENUM('case_study','project','article','code','other') NOT NULL DEFAULT 'other',

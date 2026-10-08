@@ -2,7 +2,7 @@
 -- Additive only. The deploy pipeline applies this file
 -- (see server/schemaDeployGuard.test.ts).
 CREATE TABLE IF NOT EXISTS `safetyReports` (
- `id` int AUTO_INCREMENT PRIMARY KEY,
+ `id` int AUTO_INCREMENT,
  `reporterUserId` int NOT NULL,
  `reason` varchar(80) NOT NULL,
  `details` text NULL,
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS `safetyReports` (
  INDEX `safety_reports_status_idx`(`status`)
 );
 CREATE TABLE IF NOT EXISTS `companySuggestions` (
- `id` int AUTO_INCREMENT PRIMARY KEY,
+ `id` int AUTO_INCREMENT,
  `submitterUserId` int NOT NULL,
  `companyName` varchar(160) NOT NULL,
  `website` varchar(512) NULL,
