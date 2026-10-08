@@ -84,49 +84,67 @@ export const BASELINE_IMPLEMENTED = 42;
 // SCREENS.md but absent from both screens/web and screens/mobile, so deriving
 // the designed set from captures alone silently under-counts it -- which is how
 // "/" sat on the old design while every other screen moved to v4.
-const UNCAPPED_DESIGNED = [];   // every designed screen has a capture; 00_x IS the homepage
-const designedSlugs = [...new Set([
-  ...(fs.existsSync(screensDir)
-    ? fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, ""))
-    : []),
-  ...UNCAPPED_DESIGNED,
-])].sort();
 
-const livePaths = new Set([...fs.readFileSync(appTsx, "utf8").matchAll(/<Route\s+path="([^"]+)"/g)].map(match => match[1]));
-// The 404 screen is a pathless catch-all (`<Route component={NotFound}/>`), so
-// it never appears in the path scan above and has to be detected separately.
-const hasCatchAll = /<Route\s+component=\{NotFound\}/.test(fs.readFileSync(appTsx, "utf8"));
-const isLive = (live) => (live === "*" ? hasCatchAll : livePaths.has(live));
+/**
+ * The ratchet. Wrapped in a function and guarded so that IMPORTING this module
+ * has no side effects.
+ *
+ * It previously ran at module scope and ended in process.exit(). Any script that
+ * imported DESIGNED_ROUTES from here -- v4-screen-audit.mjs does -- therefore
+ * printed the ratchet's output and terminated before its own first line. A module
+ * that exits the process on import cannot be reused, and the failure looks like
+ * the importer silently producing nothing.
+ */
+export function runScreenCoverage() {
+  const UNCAPPED_DESIGNED = [];   // every designed screen has a capture; 00_x IS the homepage
+  const designedSlugs = [...new Set([
+    ...(fs.existsSync(screensDir)
+      ? fs.readdirSync(screensDir).filter(name => name.endsWith(".png")).map(name => name.replace(/__.*$/, "").replace(/^\d+_/, ""))
+      : []),
+    ...UNCAPPED_DESIGNED,
+  ])].sort();
 
-const unmapped = designedSlugs.filter(slug => !(slug in DESIGNED_ROUTES));
-const mapped = designedSlugs.filter(slug => slug in DESIGNED_ROUTES);
-const covered = mapped.filter(slug => DESIGNED_ROUTES[slug] !== null && isLive(DESIGNED_ROUTES[slug]));
-// A mapping that points at a route App.tsx no longer declares is a broken
-// pointer, not progress -- it reads as covered while the screen 404s.
-const dangling = mapped.filter(slug => DESIGNED_ROUTES[slug] !== null && !isLive(DESIGNED_ROUTES[slug]));
-const pending = mapped.filter(slug => DESIGNED_ROUTES[slug] === null);
-const implemented = covered;
+  const livePaths = new Set([...fs.readFileSync(appTsx, "utf8").matchAll(/<Route\s+path="([^"]+)"/g)].map(match => match[1]));
+  // The 404 screen is a pathless catch-all (`<Route component={NotFound}/>`), so
+  // it never appears in the path scan above and has to be detected separately.
+  const hasCatchAll = /<Route\s+component=\{NotFound\}/.test(fs.readFileSync(appTsx, "utf8"));
+  const isLive = (live) => (live === "*" ? hasCatchAll : livePaths.has(live));
 
-if (process.argv.includes("--json")) {
-  console.log(JSON.stringify({ designed: designedSlugs.length, implemented: implemented.length, baseline: BASELINE_IMPLEMENTED, pending: pending.map(s => s), unmapped, dangling }, null, 2));
-} else {
-  console.log(`kit v4 screen coverage: ${implemented.length}/${designedSlugs.length} designed routes reachable (baseline ${BASELINE_IMPLEMENTED})`);
-  if (pending.length) console.log(`  pending (${pending.length}): ${pending.join(", ")}`);
-  if (dangling.length) console.log(`  broken mappings (${dangling.length}): ${dangling.join(", ")}`);
+  const unmapped = designedSlugs.filter(slug => !(slug in DESIGNED_ROUTES));
+  const mapped = designedSlugs.filter(slug => slug in DESIGNED_ROUTES);
+  const covered = mapped.filter(slug => DESIGNED_ROUTES[slug] !== null && isLive(DESIGNED_ROUTES[slug]));
+  // A mapping that points at a route App.tsx no longer declares is a broken
+  // pointer, not progress -- it reads as covered while the screen 404s.
+  const dangling = mapped.filter(slug => DESIGNED_ROUTES[slug] !== null && !isLive(DESIGNED_ROUTES[slug]));
+  const pending = mapped.filter(slug => DESIGNED_ROUTES[slug] === null);
+  const implemented = covered;
+
+  if (process.argv.includes("--json")) {
+    console.log(JSON.stringify({ designed: designedSlugs.length, implemented: implemented.length, baseline: BASELINE_IMPLEMENTED, pending: pending.map(s => s), unmapped, dangling }, null, 2));
+  } else {
+    console.log(`kit v4 screen coverage: ${implemented.length}/${designedSlugs.length} designed routes reachable (baseline ${BASELINE_IMPLEMENTED})`);
+    if (pending.length) console.log(`  pending (${pending.length}): ${pending.join(", ")}`);
+    if (dangling.length) console.log(`  broken mappings (${dangling.length}): ${dangling.join(", ")}`);
+  }
+
+  let failed = false;
+  if (unmapped.length) {
+    console.error(`::error::designed route(s) with no mapping in DESIGNED_ROUTES: ${unmapped.join(", ")}`);
+    console.error("Add an entry (use null if not built yet) so the gap stays visible.");
+    failed = true;
+  }
+  if (dangling.length) {
+    console.error(`::error::mapping points at a route App.tsx no longer declares: ${dangling.map(slug => `${slug}->${DESIGNED_ROUTES[slug]}`).join(", ")}`);
+    failed = true;
+  }
+  if (implemented.length < BASELINE_IMPLEMENTED) {
+    console.error(`::error::screen coverage regressed: ${implemented.length} < baseline ${BASELINE_IMPLEMENTED}`);
+    failed = true;
+  }
+
+  return failed ? 1 : 0;
 }
 
-let failed = false;
-if (unmapped.length) {
-  console.error(`::error::designed route(s) with no mapping in DESIGNED_ROUTES: ${unmapped.join(", ")}`);
-  console.error("Add an entry (use null if not built yet) so the gap stays visible.");
-  failed = true;
+if (process.argv[1] && path.resolve(process.argv[1]) === import.meta.filename) {
+  process.exit(runScreenCoverage());
 }
-if (dangling.length) {
-  console.error(`::error::mapping points at a route App.tsx no longer declares: ${dangling.map(slug => `${slug}->${DESIGNED_ROUTES[slug]}`).join(", ")}`);
-  failed = true;
-}
-if (implemented.length < BASELINE_IMPLEMENTED) {
-  console.error(`::error::screen coverage regressed: ${implemented.length} < baseline ${BASELINE_IMPLEMENTED}`);
-  failed = true;
-}
-process.exit(failed ? 1 : 0);
