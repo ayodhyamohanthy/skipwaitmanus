@@ -4,9 +4,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ReferralConversation from "./ReferralConversation";
 
-const { authState, go } = vi.hoisted(() => ({ authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn() }));
+const { authState, userState, go } = vi.hoisted(() => ({
+  authState: { isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") },
+  userState: { user: { fullName: "Rahul K." as string | null } },
+  go: vi.fn(),
+}));
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => authState, SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => authState, useUser: () => userState, SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
+vi.mock("@/lib/trpc", () => ({ trpc: { profile: { mine: { useQuery: () => ({ data: undefined }) } } } }));
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
   useLocation: () => ["/conversation/601", go],
@@ -71,9 +76,12 @@ describe("ReferralConversation thread", () => {
     stubFetch(fetchMock);
     render(<ReferralConversation />);
     expect(await screen.findByText("Would you refer this person?")).toBeTruthy();
-    // Seeker identity stays hidden pre-accept (ask bubble + counterpart card).
-    expect(screen.getAllByText("Seeker · identity hidden").length).toBe(2);
+    // Seeker identity stays hidden pre-accept even though the preview payload carries a name.
+    expect(screen.getByText("Seeker · identity hidden")).toBeTruthy();
+    expect(screen.queryByText(/Asha R\./)).toBeNull();
     expect(screen.getByText(/Resume and profile shared after acceptance/)).toBeTruthy();
+    // No referrer question primitive exists, so the kit's "Ask one question" is not offered.
+    expect(screen.queryByRole("button", { name: /Ask one question/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: /Accept & connect/ }));
     const acceptButton = await screen.findByRole("button", { name: "Accept" });
@@ -121,7 +129,7 @@ describe("ReferralConversation thread", () => {
     expect(screen.getByText("Someone at acme.com")).toBeTruthy();
     const composer = screen.getByLabelText("Message");
     fireEvent.change(composer, { target: { value: "Thank you — what should I prepare next?" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
     await waitFor(() => expect(screen.getByText("Thank you — what should I prepare next?")).toBeTruthy());
   });
 
@@ -158,5 +166,80 @@ describe("ReferralConversation thread", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mark as referred/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Confirm/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
+  });
+  it("shows a retryable error when the network fails, then recovers", async () => {
+    let attempts = 0;
+    stubFetch(async (url: string) => {
+      attempts += 1;
+      if (attempts === 1) throw new TypeError("Failed to fetch");
+      if (url.endsWith("/mine")) return ok({ requests: [seekerPending] });
+      return fail(404, "gone");
+    });
+    render(<ReferralConversation />);
+    expect(await screen.findByText("This thread isn't available.")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toMatch(/couldn't reach SkipWait/);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
+  });
+
+  it("treats an unclaimed closed ask as expired, never hired, with no composer", async () => {
+    stubFetch(async (url: string) => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerPending, status: "closed", referrerId: null }] }) : fail(404, "gone")));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("This request expired.")).toBeTruthy();
+    expect(screen.queryByText("Hired. Congratulations.")).toBeNull();
+    expect(screen.getByRole("link", { name: /Find another referrer/ }).getAttribute("href")).toBe("/explore");
+    expect(screen.queryByLabelText("Message")).toBeNull();
+  });
+
+  it("hides withdraw once a verified employee has claimed the pending ask", async () => {
+    stubFetch(async (url: string) => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerPending, referrerId: 77 }] }) : fail(404, "gone")));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Withdraw request/ })).toBeNull();
+    expect(screen.getByText(/is reviewing your request/)).toBeTruthy();
+  });
+
+  it("reveals the candidate and resume only to the referrer who accepted", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "claimed");
+      if (url.endsWith("/conversation")) return ok({ messages: [] });
+      return ok({ request: { ...referrerPreview, status: "intro_made", referrerId: 9, attachments: [{ id: 31, fileName: "Resume.pdf", url: "/api/documents/31" }] } });
+    });
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Asha R.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Resume.pdf/ }).getAttribute("href")).toBe("/api/documents/31");
+    expect(screen.getByText("Rahul K.")).toBeTruthy();
+    expect(screen.getByText("Referral submitted")).toBeTruthy();
+    expect(screen.getByLabelText("Message")).toBeTruthy();
+  });
+
+  it("keeps the accept dialog open with the server error when accepting fails", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return ok({ request: referrerPreview });
+      if (url.includes("/one-click-review")) return fail(409, "Another verified employee already accepted this request");
+      return fail(404, "gone");
+    });
+    render(<ReferralConversation />);
+    fireEvent.click(await screen.findByRole("button", { name: /Accept & connect/ }));
+    fireEvent.click(screen.getByLabelText(/I'll refer only through/));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(await within(dialog).findByText("Another verified employee already accepted this request")).toBeTruthy();
+  });
+
+  it("surfaces a failed message send without losing the draft", async () => {
+    stubFetch(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return fail(403, "We could not send this private message");
+      if (url.endsWith("/mine")) return ok({ requests: [seekerApproved] });
+      return ok({ messages: [] });
+    });
+    render(<ReferralConversation />);
+    const composer = await screen.findByLabelText("Message");
+    fireEvent.change(composer, { target: { value: "Hello" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(await screen.findByText("We could not send this private message")).toBeTruthy();
+    expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("Hello");
   });
 });
