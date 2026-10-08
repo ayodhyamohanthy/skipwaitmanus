@@ -18,7 +18,7 @@ describe("Billing page", () => {
   it("shows the free plan with an empty receipt ledger, never invented methods", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok({ summary: freeSummary, receipts: [] })));
     render(<Billing />);
-    expect(await screen.findByText("Manage plan.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Manage plan." })).toBeTruthy();
     expect(screen.getAllByText("Free").length).toBeGreaterThan(0);
     expect(screen.getByText("No payments yet.")).toBeTruthy();
     expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
