@@ -48,37 +48,37 @@ export const DESIGNED_ROUTES = {
   "employer": "/employer",
   "explore": "/explore",
   "explore-skipwait": "/explore/:slug",     // company detail
-  "for-companies": null,
+  "for-companies": "/for-companies",
   "forgot-password": null,
   "guidelines": "/guidelines",
   "help": "/help",                        // kit help centre; /support stays as triage
   "inbox": "/inbox",
   "invite": "/share",
-  "landed": null,
+  "landed": "/landed",
   "onboarding": "/start",                 // kit rename
-  "p-asha": null,                         // public profile (/p/:handle)
+  "p-asha": "/p/:handle",                         // public profile (/p/:handle)
   "plans": "/plans",
   "privacy": "/privacy",
-  "profile": null,
+  "profile": "/profile",
   "referrer": "/referrer",
   "referrer-home": "/referrer/impact",
-  "referrer-setup": null,
+  "referrer-setup": "/referrer-setup",
   "report": "/report",                    // built: d7506a7a
   "requests": "/requests",
   "reset-password": null,
   "safety": "/safety",
   "settings": "/settings",
   "sign-in": "/sign-in",
-  "suggest-company": null,
+  "suggest-company": "/suggest-company",
   "terms": "/terms",
   "thread": "/conversation/:requestId",   // kit rename
   "verify": "/verify",                    // built: 5fb6395d
-  "work": null,
+  "work": "/work",
   "x": "/",                               // 00_x is the HOMEPAGE, not the 404 -- "x" stands in for the root route
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 30;
+export const BASELINE_IMPLEMENTED = 37;
 
 // Screens the kit designs that have NO capture in screens/. The homepage is in
 // SCREENS.md but absent from both screens/web and screens/mobile, so deriving
