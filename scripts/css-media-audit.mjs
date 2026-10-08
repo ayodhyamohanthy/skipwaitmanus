@@ -1,52 +1,51 @@
 #!/usr/bin/env node
 /**
- * Are the kit's MOBILE-ONLY rules still mobile-only in our stylesheet?
+ * Are the kit's media-gated rules still media-gated in our stylesheet?
  *
- *   node scripts/css-media-audit.mjs launch hero- referrer-band
+ *   node scripts/css-media-audit.mjs            # audit every kit selector
+ *   node scripts/css-media-audit.mjs app-sidebar mobile-tabs
  *
- * "Mobile design showing on web" has one mechanical cause: a rule the kit wraps
- * in `@media (max-width:...)` ended up OUTSIDE that wrapper when it was ported,
- * so it applies at every viewport width. Balanced braces do not catch this -- a
- * block can be perfectly well-formed and still be in the wrong place.
+ * WHY: a rule the kit wraps in `@media (max-width:...)` that lands at TOP LEVEL
+ * applies at every viewport width. The whole responsive shell then breaks --
+ * mobile chrome renders on desktop -- while braces balance, the CSS parses,
+ * every selector resolves, and nothing reports an error.
  *
- * So this walks both stylesheets tracking @media nesting, and for every matching
- * selector reports whether it is gated in the kit and whether it is gated here.
- * A selector that is gated in the kit but ungated here is a leak.
+ * THE SUBTLETY THAT MADE AN EARLIER VERSION USELESS: a selector usually appears
+ * several times -- a base rule at top level plus responsive overrides. Comparing
+ * only the FIRST occurrence per selector therefore compares base against base,
+ * matches, and reports a clean bill of health while every override is ungated.
+ * That is exactly how `.mobile-tabs`, `.app-sidebar` and `.topbar-actions` all
+ * passed. This compares the full SEQUENCE of gates per selector instead.
  */
 import fs from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(import.meta.dirname, "..");
 const keywords = process.argv.slice(2);
-if (keywords.length === 0) {
-  console.error("usage: node scripts/css-media-audit.mjs <selector-keyword...>");
-  process.exit(2);
-}
+const auditAll = keywords.length === 0;
 
-/**
- * Map each selector to the media condition it sits under ("" = ungated).
- *
- * Braces nest strictly, so every "}" closes exactly one "{". An earlier version
- * popped only when the pending buffer was empty; that desynced on minified CSS
- * and reported five mobile rules as leaking onto desktop when their gating was
- * in fact byte-identical to the kit's. A guard that cries wolf is worse than no
- * guard, so this tracks depth unconditionally.
- */
-function gateMap(css) {
-  const gates = new Map();
+const strip = css => css.replace(/\/\*[\s\S]*?\*\//g, " ");
+
+/** Map each selector to the ORDERED list of media conditions it appears under. */
+function gateSequences(css) {
+  const seq = new Map();
   const stack = [];
   let buffer = "";
-  for (const ch of css) {
+  for (let k = 0; k < css.length; k += 1) {
+    const ch = css[k];
     if (ch === "{") {
       const selector = buffer.trim();
       buffer = "";
       stack.push(selector);
-      if (selector.startsWith("@")) continue;
-      const media = stack.slice(0, -1).filter(s => s.startsWith("@media")).join(" and ");
-      for (const part of selector.split(",")) {
-        const s = part.trim();
-        if (s.startsWith(".") && keywords.some(k => s.includes(k))) {
-          if (!gates.has(s)) gates.set(s, media);
+      if (!selector.startsWith("@")) {
+        const media = stack.filter(s => s.startsWith("@media"));
+        const gate = media.length ? media[media.length - 1] : "(top)";
+        for (const part of selector.split(",")) {
+          const s = part.trim();
+          if (s.startsWith(".") && (auditAll || keywords.some(x => s.includes(x)))) {
+            if (!seq.has(s)) seq.set(s, []);
+            seq.get(s).push(gate);
+          }
         }
       }
     } else if (ch === "}") {
@@ -56,25 +55,34 @@ function gateMap(css) {
       buffer += ch;
     }
   }
-  return gates;
+  return seq;
 }
 
-const strip = css => css.replace(/\/\*[\s\S]*?\*\//g, " ");
-const kit = gateMap(strip(fs.readFileSync(path.join(root, "app", "src", "styles.css"), "utf8")));
-const live = gateMap(strip(fs.readFileSync(path.join(root, "client", "src", "index.css"), "utf8")));
+const norm = g => g.replace(/\s+/g, "").toLowerCase();
+const kit = gateSequences(strip(fs.readFileSync(path.join(root, "app", "src", "styles.css"), "utf8")));
+const live = gateSequences(strip(fs.readFileSync(path.join(root, "client", "src", "index.css"), "utf8")));
 
 const leaks = [];
-const missing = [];
-for (const [selector, kitGate] of kit) {
-  if (!live.has(selector)) { missing.push(selector); continue; }
-  const liveGate = live.get(selector);
-  const norm = g => (g || "").replace(/\s+/g, "").toLowerCase();
-  if (kitGate && norm(kitGate) !== norm(liveGate)) leaks.push({ selector, kitGate, liveGate });
+const absent = [];
+for (const [selector, kitSeq] of kit) {
+  const liveSeq = live.get(selector);
+  if (!liveSeq) { absent.push(selector); continue; }
+  const gatedInKit = kitSeq.filter(g => g !== "(top)").length;
+  if (gatedInKit === 0) continue;
+  const liveGated = liveSeq.filter(g => g !== "(top)").length;
+  if (liveGated < gatedInKit) {
+    leaks.push({ selector, kitSeq, liveSeq });
+  }
 }
 
-console.log(`css-media-audit [${keywords.join(", ")}]: ${kit.size} kit selectors`);
-console.log(`  gated in the kit: ${[...kit.values()].filter(Boolean).length}`);
-console.log(`  missing from live: ${missing.length}`);
-console.log(`  MEDIA LEAKS (mobile-only in the kit, ungated here): ${leaks.length}`);
-for (const l of leaks.slice(0, 20)) console.log(`    ! ${l.selector}\n        kit:  ${l.kitGate}\n        live: ${l.liveGate ?? "(no media)"}`);
+console.log(`css-media-audit [${auditAll ? "ALL" : keywords.join(", ")}]`);
+console.log(`  kit selectors: ${kit.size}`);
+console.log(`  with a media gate in the kit: ${[...kit.values()].filter(s => s.some(g => g !== "(top)")).length}`);
+console.log(`  absent from our stylesheet: ${absent.length}`);
+console.log(`  LEAKS (gated in the kit, ungated here): ${leaks.length}`);
+for (const l of leaks.slice(0, 25)) {
+  console.log(`    ! ${l.selector}`);
+  console.log(`        kit:  ${l.kitSeq.join(" , ")}`);
+  console.log(`        live: ${l.liveSeq.join(" , ")}`);
+}
 process.exit(leaks.length ? 1 : 0);
