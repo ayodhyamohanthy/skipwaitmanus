@@ -1,4 +1,4 @@
-import { ArrowRight, ArrowUpRight, Check, HeartHandshake, LockKeyhole, Menu, Minus, Plus, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Menu, Minus, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
@@ -60,11 +60,6 @@ export default function Home() {
             <div className="hero-assurances"><span><Check size={13} />Referrals are free</span><span><Check size={13} />Explore before signing in</span></div>
           </div>
           <span className="hero-side-note">YOUR NEXT CHAPTER STARTS WITH A CONNECTION.</span>
-        </section>
-        <section className="launch-trust-strip" aria-label="Our commitments">
-          <span><HeartHandshake />No referral fees.</span>
-          <span><LockKeyhole />Private by default.</span>
-          <span><ShieldCheck />No job guarantees.</span>
         </section>
         <section className="launch-section launch-companies">
           <div className="section-intro"><span className="eyebrow">Open doors at launch</span><h2>Start somewhere real.</h2><p>People at these companies have told SkipWait they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
