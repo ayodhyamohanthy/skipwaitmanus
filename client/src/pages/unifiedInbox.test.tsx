@@ -54,7 +54,7 @@ describe("UnifiedInbox", () => {
     stubAll(ASKING, REFERRING_NEW, []);
     render(<UnifiedInbox />);
     await screen.findByText("Product Designer");
-    fireEvent.click(screen.getByRole("tab", { name: "referring" }));
+    fireEvent.click(screen.getByRole("tab", { name: "Referring" }));
     expect(screen.queryByText("Product Designer")).toBeNull();
     expect(screen.getByText("Seeker · identity hidden")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "All" }));
