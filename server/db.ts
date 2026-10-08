@@ -785,7 +785,7 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
   }
   let decided = 0;
   let within3Days = 0;
-  for (const [requestId, decidedMs] of decidedAt) {
+  for (const [requestId, decidedMs] of Array.from(decidedAt)) {
     const claimMs = claimedAt.get(requestId);
     if (claimMs === undefined || decidedMs < claimMs) continue;
     decided += 1;

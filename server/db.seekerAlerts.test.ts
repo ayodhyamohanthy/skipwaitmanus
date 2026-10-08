@@ -43,11 +43,13 @@ function matches(condition: SQLQuery, row: Record<string, unknown>): boolean {
 
 function chainable(selected: () => Array<Record<string, unknown>>) {
   const slice = (n: number) => structuredClone(selected().slice(0, n));
-  return {
+  const self = {
+    orderBy: (..._cols: unknown[]) => self,
     limit: (n: number) => ({ for: async (_mode: string) => slice(n), then: (resolve: (v: unknown) => unknown) => Promise.resolve(slice(n)).then(resolve) }),
     for: async (_mode: string) => structuredClone(selected()),
     then: (resolve: (v: unknown) => unknown) => Promise.resolve(structuredClone(selected())).then(resolve),
   };
+  return self;
 }
 
 function fixtureDatabase() {
@@ -82,12 +84,22 @@ function fixtureDatabase() {
       }
       const rows = rowsFor(table);
       const id = rows.length + 1;
-      rows.push({ id, ...structuredClone(input) });
+      const defaults = table === seekerAlerts ? { paused: false, notifiedAt: null, createdAt: NOW } : {};
+      rows.push({ id, ...defaults, ...structuredClone(input) });
       const done = Promise.resolve([{ affectedRows: 1, insertId: id }]);
       return Object.assign(done, { onDuplicateKeyUpdate: async () => [{ affectedRows: 1, insertId: 0 }] });
     },
   });
-  const api = { select, update, insert };
+  const del = (table: Table) => ({
+    where: async (condition: SQLQuery) => {
+      const rows = rowsFor(table);
+      const keep = rows.filter(row => !matches(condition, row));
+      const removed = rows.length - keep.length;
+      rows.splice(0, rows.length, ...keep);
+      return [{ affectedRows: removed }];
+    },
+  });
+  const api = { select, update, insert, delete: del };
   return { ...api, transaction: async (cb: (tx: unknown) => Promise<unknown>) => cb(api) };
 }
 
