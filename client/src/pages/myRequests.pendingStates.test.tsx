@@ -32,6 +32,31 @@ describe("My Requests pending states", () => {
     expect(row.textContent).not.toContain("77");
   });
 
+  it("counts expiring asks and labels their countdown honestly", async () => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const expiring = { ...pendingRequest, id: 21, referrerId: null, createdAt: iso(now - 5 * day), updatedAt: iso(now - 5 * day) };
+    const urgent = { ...pendingRequest, id: 22, referrerId: null, createdAt: iso(now - 6 * day - 12 * 60 * 60 * 1000), updatedAt: iso(now - 6 * day) };
+    const fresh = { ...pendingRequest, id: 23, referrerId: null, createdAt: iso(now - day), updatedAt: iso(now - day) };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [expiring, urgent, fresh, pendingRequest] }) })));
+    render(<MyRequests />);
+    expect(await screen.findByText("acme.com · Ref-1021 · Expires in 2 days")).toBeTruthy();
+    expect(screen.getByText("Expiring soon").parentElement?.textContent).toContain("2");
+    const urgentNote = await screen.findByText("acme.com · Ref-1022 · Expires today");
+    expect(urgentNote.className).toContain("text-[#b91c1c]");
+  });
+
+  it("labels a lapsed ask Expired instead of hiding it", async () => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const lapsed = { ...pendingRequest, id: 31, referrerId: null, createdAt: iso(now - 9 * day), updatedAt: iso(now - 9 * day) };
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [lapsed] }) })));
+    render(<MyRequests />);
+    expect(await screen.findByText("acme.com · Ref-1031 · Expired")).toBeTruthy();
+  });
+
   it("keeps the list intact and retries after a failed load", async () => {
     let attempts = 0;
     const fetchMock = vi.fn(async (url: string) => {

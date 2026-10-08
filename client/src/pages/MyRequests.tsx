@@ -7,12 +7,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { SeekerCreditsCard, type SeekerCredits } from "@/components/SeekerCreditsCard";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { getJobSeekerReferralState, isPostApprovalReferralStatus, type ReferralStatus } from "@shared/referral";
+import { ASK_EXPIRING_SOON_MS, askDaysLeft, formatAskExpiry, getAskExpiresAtMs, getJobSeekerReferralState, isPostApprovalReferralStatus, type ReferralStatus } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { usePersistFn } from "@/hooks/usePersistFn";
 
-type ReferralRequest = { id: number; title?: string | null; targetRoleUrl: string | null; companyDomain: string; compensation?: string | null; status: ReferralStatus; referrerId: number | null; queueStatus?: "available_for_review" | "waiting_for_coverage" | null; referrerMessage: string | null; unreadMessageCount: number; createdAt: string; updatedAt: string; attachmentCount: number };
+type ReferralRequest = { id: number; title?: string | null; targetRoleUrl: string | null; companyDomain: string; compensation?: string | null; status: ReferralStatus; referrerId: number | null; queueStatus?: "available_for_review" | "waiting_for_coverage" | null; referrerMessage: string | null; unreadMessageCount: number; createdAt: string; updatedAt: string; attachmentCount: number; expiresAt?: string | null };
 
 const CLOSED_STATUSES: ReferralStatus[] = ["declined", "closed", "withdrawn"];
 
@@ -28,10 +28,20 @@ const canMessage = (request: ReferralRequest) => isPostApprovalReferralStatus(re
 const canWithdraw = (request: ReferralRequest) => request.status === "pending" && !request.referrerId;
 
 function rowNote(request: ReferralRequest) {
+  if (request.status === "pending" && !request.referrerId) {
+    const label = formatAskExpiry({ status: request.status, referrerId: request.referrerId, createdAt: request.expiresAt ?? request.createdAt }, Date.now());
+    if (label) return label;
+  }
   if (request.unreadMessageCount > 0 && canMessage(request)) return `${request.unreadMessageCount} new`;
   if (request.queueStatus === "available_for_review") return "Available for review";
   if (request.queueStatus === "waiting_for_coverage") return "Waiting for coverage";
   return `Updated ${compactDate(request.updatedAt)}`;
+}
+
+function expiryUrgency(request: ReferralRequest): boolean {
+  if (request.status !== "pending" || request.referrerId) return false;
+  const days = askDaysLeft({ createdAt: request.expiresAt ?? request.createdAt }, Date.now());
+  return days !== null && days <= 1;
 }
 
 function rowState(request: ReferralRequest) {
@@ -51,6 +61,7 @@ function RequestRow({ request, withdrawing, onWithdraw }: RowProps) {
   const state = rowState(request);
   const label = `${request.companyDomain} request, ${state.label}`;
   const mark = (request.companyDomain.charAt(0) || "?").toUpperCase();
+  const urgent = expiryUrgency(request);
   const PillIcon = ["approved", "intro_made", "interview", "offer", "closed"].includes(request.status) ? Check : request.status === "pending" ? Clock3 : X;
   return (
     <li>
@@ -58,7 +69,7 @@ function RequestRow({ request, withdrawing, onWithdraw }: RowProps) {
         <span className="company-mark" aria-hidden="true">{mark}</span>
         <span className="min-w-0 flex-1">
           <strong className="block truncate">{request.title || "Referral request"}</strong>
-          <small className="block truncate text-[var(--muted-foreground)]">{request.companyDomain} · {displayRef(request.id)} · {rowNote(request)}</small>
+          <small className={`block truncate ${urgent ? "font-semibold text-[#b91c1c]" : "text-[var(--muted-foreground)]"}`}>{request.companyDomain} · {displayRef(request.id)} · {rowNote(request)}</small>
         </span>
         <span className={`status-pill status-${request.status}`}><PillIcon />{state.label}</span>
         <ArrowRight className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />
@@ -167,7 +178,11 @@ export default function MyRequests() {
 
   const openCount = requests.filter(request => request.status === "pending").length;
   const inConversation = requests.filter(request => request.referrerId || isPostApprovalReferralStatus(request.status)).length;
-  const unreadTotal = requests.reduce((sum, request) => sum + request.unreadMessageCount, 0);
+  const expiringSoon = requests.filter(request => {
+    if (request.status !== "pending" || request.referrerId) return false;
+    const ms = request.expiresAt ? Date.parse(request.expiresAt) : getAskExpiresAtMs(request.createdAt);
+    return ms !== null && !Number.isNaN(ms) && ms > Date.now() && ms - Date.now() <= ASK_EXPIRING_SOON_MS;
+  }).length;
   const visible = requests.filter(request => (tab === "closed") === isClosed(request));
 
   let body: ReactNode;
@@ -230,7 +245,7 @@ export default function MyRequests() {
         <div>
           <span className="eyebrow">My asks</span>
           <h1 className="mt-2">Requests<span className="brand-dot">.</span></h1>
-          <p className="mt-2 max-w-xl">Track every ask in one place. Answered, passed, or withdrawn asks free a slot.</p>
+          <p className="mt-2 max-w-xl">Track every ask in one place. Answered, expired, passed, or withdrawn asks free a slot.</p>
         </div>
         <button type="button" onClick={() => go("/explore")} className="brand-button shrink-0">
           <Plus className="size-4" />New ask
@@ -240,7 +255,7 @@ export default function MyRequests() {
       <div className="grid gap-3 sm:grid-cols-3" aria-label="Request summary">
         <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">Open asks</span><p className="mt-1 text-3xl font-semibold">{openCount}</p></section>
         <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">In conversation</span><p className="mt-1 text-3xl font-semibold">{inConversation}</p></section>
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">Unread updates</span><p className="mt-1 text-3xl font-semibold">{unreadTotal}</p></section>
+        <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">Expiring soon</span><p className="mt-1 text-3xl font-semibold">{expiringSoon}</p></section>
       </div>
       {requests.length > 0 && !showSkeleton && !error ? (
         <div className="directory-tabs section-tabs mt-6" role="tablist" aria-label="Request groups">

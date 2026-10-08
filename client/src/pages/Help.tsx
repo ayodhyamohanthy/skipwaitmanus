@@ -6,7 +6,7 @@ const CATS = [["Asking", MessageSquare], ["Referring", BadgeCheck], ["Plans & cr
 const FAQS: Array<[string, string, string]> = [
   ["Asking", "Is asking for a referral really free?", "Yes. Asking and referring are free forever. Paid plans only add monthly credits on top of the free allowance."],
   ["Asking", "How many asks can I have open?", "Every account gets free referral credits each month plus any packs you buy. An answered, passed, or withdrawn ask frees its slot."],
-  ["Asking", "How long does an ask stay open?", "Until it is answered, passed, or withdrawn by you. Withdraw anytime from your requests to free the slot and get the credit back."],
+  ["Asking", "How long does an ask stay open?", "Seven days. An ask no verified employee claims expires automatically and the reserved credit returns to your balance. Withdraw anytime before that to free the slot early and get the credit back."],
   ["Asking", "Does a referral guarantee an interview?", "No. Referrers recommend; companies decide. We never promise outcomes."],
   ["Referring", "How do I become a referrer?", "Verify your work email with a one-time code, then review private requests for your company."],
   ["Referring", "My company uses a different email domain.", "Start verification anyway — unlisted domains go to a person for manual review."],
