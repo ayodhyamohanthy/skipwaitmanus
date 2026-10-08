@@ -24,8 +24,9 @@ function buildApp() {
     updateReferrerPreferences: async (_userId, input) => {
       if (input.referralCapacity !== undefined && (Number(input.referralCapacity) < 1 || Number(input.referralCapacity) > 15)) throw new Error("Capacity is 1 to 15 asks");
       if (input.preferAreas !== undefined && !Array.isArray(input.preferAreas)) throw new Error("Choose job areas from the list");
+      if (input.preferLevels !== undefined && !Array.isArray(input.preferLevels)) throw new Error("Choose levels from the list");
       if (input.referrerVisibility !== undefined && input.referrerVisibility !== "anon" && input.referrerVisibility !== "named") throw new Error("Choose anonymous or named visibility");
-      return { referralCapacity: Number(input.referralCapacity ?? 3), preferAreas: Array.isArray(input.preferAreas) ? input.preferAreas as string[] : ["Design"], referrerVisibility: (input.referrerVisibility as string) ?? "anon", notifyNewAsk: Boolean(input.notifyNewAsk ?? true), notifyDigest: Boolean(input.notifyDigest ?? false), paused: Boolean(input.paused ?? false) };
+      return { referralCapacity: Number(input.referralCapacity ?? 3), preferAreas: Array.isArray(input.preferAreas) ? input.preferAreas as string[] : ["Design"], preferLevels: Array.isArray(input.preferLevels) ? input.preferLevels as string[] : [], referrerVisibility: (input.referrerVisibility as string) ?? "anon", notifyNewAsk: Boolean(input.notifyNewAsk ?? true), notifyDigest: Boolean(input.notifyDigest ?? false), paused: Boolean(input.paused ?? false) };
     },
     getMyProfile: async userId => ({ displayName: `User ${userId}`, profile: profiles.get(userId) ?? null, workItems: items.filter(item => item.userId === userId) }),
     updateMyProfile: async (userId, input) => {
@@ -122,6 +123,7 @@ describe("profile and work showcase routes", () => {
     expect(current.body.preferences).toMatchObject({ referralCapacity: 3, paused: false });
     expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ referralCapacity: 99 })).status).toBe(400);
     expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ preferAreas: "Design" })).status).toBe(400);
+    expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ preferLevels: "Senior" })).status).toBe(400);
     expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ referrerVisibility: "everyone" })).status).toBe(400);
     const saved = await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ referralCapacity: 5, preferAreas: ["Design", "Product"], referrerVisibility: "named", paused: true });
     expect(saved.status).toBe(200);

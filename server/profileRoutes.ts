@@ -93,6 +93,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       const preferences = await save(identity.account.id, {
         referralCapacity: body.referralCapacity,
         preferAreas: body.preferAreas,
+        preferLevels: body.preferLevels,
         referrerVisibility: body.referrerVisibility,
         notifyNewAsk: body.notifyNewAsk,
         notifyDigest: body.notifyDigest,
@@ -103,7 +104,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.json({ preferences });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not save your referrer settings";
-      res.status(/capacity|areas|visibility/i.test(message) ? 400 : 500).json({ error: message });
+      res.status(/capacity|areas|levels|visibility/i.test(message) ? 400 : 500).json({ error: message });
     }
   });
 

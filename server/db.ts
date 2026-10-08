@@ -274,15 +274,21 @@ function validateWorkItemInput(input: { title?: unknown; kind?: unknown; source?
 }
 
 export const PREFER_AREA_OPTIONS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"] as const;
+export const PREFER_LEVEL_OPTIONS = ["Intern", "Early career", "Mid-level", "Senior", "Lead+"] as const;
+
+function parseOptionList(raw: unknown, options: readonly string[]): string[] {
+  let items: string[] = [];
+  try { const parsed: unknown = typeof raw === "string" ? JSON.parse(raw) : raw; if (Array.isArray(parsed)) items = parsed.filter((item): item is string => typeof item === "string"); } catch { items = []; }
+  return items.filter(item => (options as readonly string[]).includes(item));
+}
 
 export async function getReferrerPreferences(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const profile = await getProfileByUserId(userId);
-  let areas: string[] = [];
-  try { const parsed: unknown = JSON.parse(profile?.preferAreas ?? "[]"); if (Array.isArray(parsed)) areas = parsed.filter((item): item is string => typeof item === "string"); } catch { areas = []; }
   return {
     referralCapacity: profile?.referralCapacity ?? 3,
-    preferAreas: areas.filter(area => (PREFER_AREA_OPTIONS as readonly string[]).includes(area)),
+    preferAreas: parseOptionList(profile?.preferAreas, PREFER_AREA_OPTIONS),
+    preferLevels: parseOptionList((profile as { preferLevels?: unknown } | undefined)?.preferLevels, PREFER_LEVEL_OPTIONS),
     referrerVisibility: profile?.referrerVisibility === "named" ? "named" : "anon",
     notifyNewAsk: profile?.notifyNewAsk ?? true,
     notifyDigest: profile?.notifyDigest ?? false,
@@ -290,7 +296,7 @@ export async function getReferrerPreferences(userId: number) {
   };
 }
 
-export async function updateReferrerPreferences(userId: number, input: { referralCapacity?: unknown; preferAreas?: unknown; referrerVisibility?: unknown; notifyNewAsk?: unknown; notifyDigest?: unknown; paused?: unknown }) {
+export async function updateReferrerPreferences(userId: number, input: { referralCapacity?: unknown; preferAreas?: unknown; preferLevels?: unknown; referrerVisibility?: unknown; notifyNewAsk?: unknown; notifyDigest?: unknown; paused?: unknown }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const patch: Record<string, unknown> = {};
   if (input.referralCapacity !== undefined) {
@@ -303,6 +309,12 @@ export async function updateReferrerPreferences(userId: number, input: { referra
     const areas = input.preferAreas.filter((area): area is string => typeof area === "string" && (PREFER_AREA_OPTIONS as readonly string[]).includes(area));
     if (areas.length > 9) throw new Error("Choose up to 9 job areas");
     patch.preferAreas = JSON.stringify(areas);
+  }
+  if (input.preferLevels !== undefined) {
+    if (!Array.isArray(input.preferLevels)) throw new Error("Choose levels from the list");
+    const levels = input.preferLevels.filter((level): level is string => typeof level === "string" && (PREFER_LEVEL_OPTIONS as readonly string[]).includes(level));
+    if (levels.length > 5) throw new Error("Choose up to 5 levels");
+    patch.preferLevels = JSON.stringify(levels);
   }
   if (input.referrerVisibility !== undefined) {
     if (input.referrerVisibility !== "anon" && input.referrerVisibility !== "named") throw new Error("Choose anonymous or named visibility");

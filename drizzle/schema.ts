@@ -64,6 +64,7 @@ export const profiles = mysqlTable("profiles", {
   handle: varchar("handle", { length: 40 }),
   profileVisibility: mysqlEnum("profileVisibility", ["public", "link", "private"]).default("private").notNull(),
   preferAreas: text("preferAreas"),
+  preferLevels: text("preferLevels"),
   referrerVisibility: mysqlEnum("referrerVisibility", ["anon", "named"]).default("anon").notNull(),
   notifyNewAsk: boolean("notifyNewAsk").default(true).notNull(),
   notifyDigest: boolean("notifyDigest").default(false).notNull(),
