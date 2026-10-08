@@ -35,9 +35,9 @@ export default function Help() {
         <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search: credits, verify, expire…" className="h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] pl-12 pr-4" />
       </label>
       <div className="mt-4 flex flex-wrap gap-2" role="tablist" aria-label="Help categories">
-        <button type="button" role="tab" aria-selected={category === "All"} onClick={() => setCategory("All")} className={`min-h-10 rounded-full border px-4 text-sm ${category === "All" ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>All</button>
+        <button type="button" role="tab" aria-selected={category === "All"} onClick={() => setCategory("All")} className={`min-h-11 rounded-full border px-4 text-sm ${category === "All" ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>All</button>
         {CATS.map(([name, Icon]) => (
-          <button key={name} type="button" role="tab" aria-selected={category === name} onClick={() => setCategory(name)} className={`flex min-h-10 items-center gap-2 rounded-full border px-4 text-sm ${category === name ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}><Icon className="size-4" />{name}</button>
+          <button key={name} type="button" role="tab" aria-selected={category === name} onClick={() => setCategory(name)} className={`flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm ${category === name ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}><Icon className="size-4" />{name}</button>
         ))}
       </div>
       <ul className="mt-6 overflow-hidden rounded-3xl border border-[var(--border)]">
