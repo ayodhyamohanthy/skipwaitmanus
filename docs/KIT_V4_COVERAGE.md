@@ -68,4 +68,7 @@ Out of scope by founder decision: `/wallet`, `/early-member`.
 Verification results are recorded below as they land.
 
 ## Results
-(none yet)
+Oct 9, 03:50 IST (local build, fixture, signed-in shell):
+- `/requests` at 1280 vs `06_requests__default`: layout matches (eyebrow, h1 with brand dot, New ask, three stat cards, open-slot segments). List and tabs not exercised: the fixture has no request data.
+- `/referrer-home` at 1280 vs `12_referrer-home__default`: header, title, stat row and footer match. The kit's middle card is "Expiring within 24h", so the 22:53 direct push moved the card toward the kit. The fixture shows the unverified state only, so the verified layout (waiting list, thank-you wall, record) is not yet rendered.
+- Still to compare in this pass: both widths for the other routes in the audit queue.
