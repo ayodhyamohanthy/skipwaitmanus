@@ -487,3 +487,25 @@ input, textarea { caret-color: var(--primary); }
 /* kit line 182 */.directory-tabs::-webkit-scrollbar{display:none;}
 /* kit line 183 */.directory-tabs button{flex:0 0 auto;scroll-snap-align:start;min-height:44px;}/* live-status pill variants (kit success group) */
 .status-intro_made,.status-interview,.status-offer{border-color:var(--success);color:var(--success);}
+
+/* Kit v4 launch-page mobile audit block (app/src/styles.css 180-196). */
+@media (max-width: 640px){
+  .directory-tabs{overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;gap:20px;scroll-snap-type:x proximity;}
+  .directory-tabs::-webkit-scrollbar{display:none;}
+  .directory-tabs button{flex:0 0 auto;scroll-snap-align:start;min-height:44px;}
+  .intent-switch .brand-button{white-space:normal;line-height:1.25;text-align:center;min-width:0;}
+  .back-link,.auth-back,.text-link,.app-footer a,.launch-footer a,.launch-page a.text-link{min-height:44px;display:inline-flex;align-items:center;}
+  .launch-page a:not([class*="button"]):not(.wordmark){min-height:44px;display:inline-flex;align-items:center;}
+  .app-footer{flex-wrap:wrap;margin:20px 20px 0;align-items:center;}
+  .page-heading h1,.launch-page h1,.launch-page h2{overflow-wrap:anywhere;}
+}
+@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important;}}
+@media (max-width: 640px){
+  .intent-switch>button{white-space:normal;line-height:1.25;min-width:0;height:auto;min-height:52px;padding:8px 10px;font-size:12px;}
+  .intent-switch>button svg{flex:0 0 auto;}
+  .privacy-preview a,.profile-page a{min-height:44px;display:inline-flex;align-items:center;}
+}
+@media (max-width: 640px){.intent-switch{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}.intent-switch>button{white-space:normal!important;}}
+
+.launch-header-actions .launch-signin{display:none;}
+.launch-nav.open .launch-mobile-signin{display:flex!important;align-items:center;justify-content:space-between;color:var(--primary);border-top:1px solid var(--border);margin-top:8px;padding-top:20px;}
