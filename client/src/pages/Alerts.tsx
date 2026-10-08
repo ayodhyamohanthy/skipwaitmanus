@@ -123,7 +123,7 @@ export default function Alerts() {
       <div className="my-4 flex items-center justify-between gap-2">
         <div className="flex rounded-full bg-[var(--muted)] p-1 text-sm" role="tablist" aria-label="Alert filter">
           {(["all", "unread"] as const).map(value => (
-            <button key={value} type="button" role="tab" aria-selected={filter === value} onClick={() => setFilter(value)} className={`min-h-9 rounded-full px-4 capitalize ${filter === value ? "bg-[var(--background)] font-semibold shadow-sm" : "text-[var(--muted-foreground)]"}`}>
+            <button key={value} type="button" role="tab" aria-selected={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-full px-4 capitalize ${filter === value ? "bg-[var(--background)] font-semibold shadow-sm" : "text-[var(--muted-foreground)]"}`}>
               {value}{value === "unread" && unread > 0 ? ` (${unread})` : ""}
             </button>
           ))}
