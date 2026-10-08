@@ -1,6 +1,7 @@
 import { ArrowLeft, Copy, Facebook, Link2, Linkedin, Send, Share2, SquarePen, Twitter } from "lucide-react";
 import { useAuth } from "@/_core/auth";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { toast } from "sonner";
 import { AccountMenu } from "@/components/AccountMenu";
@@ -13,15 +14,28 @@ function open(url: string) { window.open(url, "_blank", "noopener,noreferrer"); 
 export default function ShareHub() {
   const [, go] = useLocation();
   const { isSignedIn } = useAuth();
-  const [inviteCode, setInviteCode] = useState(""); const [email, setEmail] = useState(""); const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const inviteQuery = useQuery({
+    queryKey: ["personal-invite"],
+    enabled: isSignedIn,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const response = await fetch("/api/personal-invites/me", { credentials: "include" });
+      if (!response.ok) throw new Error("Your personal invite link is temporarily unavailable. Please try again.");
+      const payload = await readApiJson<{ invite?: { inviteCode?: string } }>(response, "Your personal invite link is temporarily unavailable. Please try again.");
+      return payload.invite?.inviteCode ?? "";
+    },
+  });
+  const inviteCode = inviteQuery.data ?? "";
+  const loading = isSignedIn && inviteQuery.isPending;
+  const linkError = inviteQuery.error ? (inviteQuery.error instanceof Error ? inviteQuery.error.message : "We could not create your personal link. Try again.") : "";
+  const loadInvite = () => { void inviteQuery.refetch(); };
   const origin = typeof window === "undefined" ? "https://skipwait.me" : window.location.origin;
   const link = useMemo(() => inviteCode ? `${origin}/start?invite=${encodeURIComponent(inviteCode)}` : "", [inviteCode, origin]);
   const message = useMemo(() => link ? `You found an opportunity! Now help your friends do the same.\n\nJoin skipwait.me with my link. We each get 1 extra referral credit when you join.\n\n${link}` : "", [link]);
   const emailInviteHref = useMemo(() => { const recipient = email.trim(); if (!link || !/^\S+@\S+\.\S+$/.test(recipient)) return ""; return `mailto:${recipient}?subject=${encodeURIComponent("You found an opportunity. Help a friend do the same.")}&body=${encodeURIComponent(message)}`; }, [email, link, message]);
 
-  const [linkError, setLinkError] = useState("");
-  const loadInvite = useCallback(() => { if (!isSignedIn) return; setLoading(true); setLinkError(""); void fetch("/api/personal-invites/me", { credentials: "include" }).then(async response => { if (!response.ok) throw new Error("Your personal invite link is temporarily unavailable. Please try again."); return readApiJson<{ invite?: { inviteCode?: string } }>(response, "Your personal invite link is temporarily unavailable. Please try again."); }).then(data => setInviteCode(data.invite?.inviteCode ?? "")).catch((reason: Error) => setLinkError(reason.message || "We could not create your personal link. Try again.")).finally(() => setLoading(false)); }, [isSignedIn]);
-  useEffect(() => { loadInvite(); }, [loadInvite]);
   const copyLink = async () => { if (!link) return; try { await navigator.clipboard.writeText(link); toast("Personal link copied."); } catch { toast("Copy is unavailable in this browser."); } };
   const share = (channel: "x" | "facebook" | "linkedin" | "medium" | "telegram") => { if (!link) return; if (channel === "x") return open(`https://x.com/intent/post?text=${encodeURIComponent(message)}`); if (channel === "facebook") return open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`); if (channel === "linkedin") return open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(link)}`); if (channel === "telegram") return open(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`); void navigator.clipboard.writeText(message).then(() => toast("Invite copied. Paste it into a Medium story."), () => toast("Copy the personal link and paste it into Medium.")); open("https://medium.com/new-story"); };
 

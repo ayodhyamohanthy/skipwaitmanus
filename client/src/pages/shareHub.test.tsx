@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ShareHub from "./ShareHub";
 
 const { authState, go } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn() }));
@@ -13,12 +14,18 @@ vi.mock("@/const", () => ({ startLogin: vi.fn() }));
 vi.mock("wouter", () => ({ Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>, useLocation: () => ["/share", go] }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
+
+function renderHub() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><ShareHub /></QueryClientProvider>);
+}
+
 describe("ShareHub personal invites", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); go.mockClear(); authState.isSignedIn = true; });
 
   it("shows one personal link, reward-safe copy, email invite, and requested social share actions", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ invite: { inviteCode: "r7-abcdef12" } }) })));
-    render(<ShareHub />);
+    renderHub();
     await waitFor(() => expect(screen.getByText(/start\?invite=r7-abcdef12/i)).toBeTruthy());
     expect(screen.getByText(/You found an opportunity/i)).toBeTruthy();
     expect(screen.getByText(/you both receive one extra referral credit/i)).toBeTruthy();
@@ -32,6 +39,7 @@ describe("ShareHub personal invites", () => {
     expect(screen.getByRole("button", { name: "Share invite on Telegram" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Share invite on Medium" })).toBeTruthy();
     expect(screen.getByText(/Self-invites and duplicate accounts are not eligible/i)).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
     const content = document.querySelector('[data-skipwait-share-content="true"]');
     expect(content?.className).toContain("min-h-0");
     expect(content?.className).not.toContain("overflow-y-auto");
@@ -40,7 +48,7 @@ describe("ShareHub personal invites", () => {
 
   it("opens a native prefilled mailto invite only after a valid recipient email is entered", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ invite: { inviteCode: "r7-abcdef12" } }) })));
-    render(<ShareHub />);
+    renderHub();
     await waitFor(() => expect(screen.getByText(/start\?invite=r7-abcdef12/i)).toBeTruthy());
     const invite = screen.getByText("Invite").closest("a")!;
     expect(invite.getAttribute("href")).toBeNull();
@@ -51,7 +59,7 @@ describe("ShareHub personal invites", () => {
 
   it("asks a signed-out visitor to sign in before creating a personal link", () => {
     authState.isSignedIn = false;
-    render(<ShareHub />);
+    renderHub();
     expect(screen.getByText("Create your invite link.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign in to continue" })).toBeTruthy();
   });
@@ -62,7 +70,7 @@ describe("ShareHub personal invites", () => {
       attempts += 1;
       return attempts === 1 ? { ok: false, status: 503, json: async () => ({ error: "temporarily unavailable" }) } : { ok: true, json: async () => ({ invite: { inviteCode: "r7-abcdef12" } }) };
     }));
-    render(<ShareHub />);
+    renderHub();
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("temporarily unavailable");
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
@@ -75,7 +83,7 @@ describe("ShareHub personal invites", () => {
   it("shows a usable sign-in state instead of an unbounded loading shell while authentication initializes", () => {
     authState.isLoaded = false;
     authState.isSignedIn = false;
-    render(<ShareHub />);
+    renderHub();
     expect(screen.getByText("Create your invite link.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign in to continue" })).toBeTruthy();
     expect(screen.queryByText("Preparing your invite…")).toBeNull();
