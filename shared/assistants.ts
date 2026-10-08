@@ -33,7 +33,7 @@ export const ASSISTANT_NEVER: readonly string[] = [
 ];
 
 /**
- * Who can use assistants. The founder's rule (Oct 9, 2026): the Max plan only.
+ * Who can use assistants. Interim rule: the Max plan only, until the kit pricing (assistants unlock on Land) is live; then repoint this list.
  * Access is this explicit list of plan ids, never derived from a price, so a
  * future price change cannot silently change who has access. The test in
  * assistants.test.ts pins the Max price this decision was made against and
