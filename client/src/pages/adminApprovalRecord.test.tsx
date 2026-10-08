@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import AdminApprovalRecord from "./AdminApprovalRecord";
 
@@ -10,6 +11,12 @@ vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 
 const requestItem = { kind: "referral_request", id: 501, status: "under_review", companyDomain: "acme.com", createdAt: "2026-09-01T09:00:00.000Z", updatedAt: "2026-09-01T09:00:00.000Z", summary: "I led a measurable product design launch.", meta: { claimTime: "2026-09-01T09:05:00.000Z", seekerName: "Avery", seekerEmail: "avery@example.com", referrerName: "Blake", referrerEmail: "blake@acme.com", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", tokenCount: 1, creditReserved: true, pitch: "I led a measurable product design launch." } };
 const activityEvent = { id: 91, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: "501", metadata: null, createdAt: "2026-09-01T09:00:00.000Z", actorName: null, actorEmail: null };
+
+
+function renderRecord() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><AdminApprovalRecord /></QueryClientProvider>);
+}
 
 describe("administrator approval record detail", () => {
   beforeEach(() => {
@@ -23,7 +30,7 @@ describe("administrator approval record detail", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("renders the full record blocks and an ordered history with actors and timestamps", async () => {
-    render(<AdminApprovalRecord />);
+    renderRecord();
     await waitFor(() => expect(screen.getByRole("heading", { name: "Ref-1501" })).toBeTruthy());
     expect(screen.getByText("Avery")).toBeTruthy();
     expect(screen.getByText("avery@example.com")).toBeTruthy();
@@ -37,7 +44,7 @@ describe("administrator approval record detail", () => {
   });
 
   it("saves a decision note, posts the approve decision, and updates the badge plus history", async () => {
-    render(<AdminApprovalRecord />);
+    renderRecord();
     await waitFor(() => expect(screen.getByRole("heading", { name: "Ref-1501" })).toBeTruthy());
     fireEvent.change(screen.getByLabelText(/Decision note/), { target: { value: "Domain matches the invite code" } });
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
@@ -58,7 +65,7 @@ describe("administrator approval record detail", () => {
       if (url.includes("/api/admin/activity")) return { ok: true, json: async () => ({ events: [activityEvent] }) };
       return { ok: true, json: async () => ({ items: [requestItem] }) };
     }));
-    render(<AdminApprovalRecord />);
+    renderRecord();
     await waitFor(() => expect(screen.getByRole("heading", { name: "Ref-1501" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(screen.getByText(/Decision failed to save/)).toBeTruthy());

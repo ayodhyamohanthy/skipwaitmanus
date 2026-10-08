@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowLeft, CheckCircle2, History, Link2, LoaderCircle, ShieldCheck, WalletCards } from "lucide-react";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Brand } from "@/components/Brand";
@@ -11,6 +12,8 @@ import { readApiJson } from "@/lib/apiResponse";
 type ReviewDecision = "approved" | "rejected";
 type HistoryEvent = { id: string; label: string; actor: string; time: string | Date; note?: string };
 type ActivityEvent = { id: number; action: string; outcome: "success" | "failure" | "denied"; resourceType: string | null; resourceId: string | null; metadata: string | null; createdAt: string | Date; actorName: string | null; actorEmail: string | null };
+
+type RecordResult = { denied: boolean; item: AdminApprovalQueueItem | null; events: HistoryEvent[] };
 
 const activityResourceTypes: Record<AdminApprovalQueueKind, string[]> = { referral_request: ["referral_request"], referrer_enrollment: ["referrer_enrollment"], payment: ["payment_fulfillment"] };
 
@@ -47,54 +50,62 @@ function RecordBlock({ icon: Icon, eyebrow, title, children }: { icon: React.Com
 
 export default function AdminApprovalRecord() {
   const { isSignedIn, getToken } = useAuth();
+  const queryClient = useQueryClient();
   const [match, params] = useRoute<{ kind: string; id: string }>("/admin/approvals/:kind/:id");
   const kind = (match ? params.kind : "") as AdminApprovalQueueKind;
   const itemId = Number(match ? params.id : 0);
-  const [item, setItem] = useState<AdminApprovalQueueItem | null>(null);
-  const [events, setEvents] = useState<HistoryEvent[]>([]);
   const [note, setNote] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [denied, setDenied] = useState(false);
-  const [workingDecision, setWorkingDecision] = useState<ReviewDecision | null>(null);
-  const [decisionError, setDecisionError] = useState<{ message: string; decision: ReviewDecision } | null>(null);
-
-  const load = async () => {
-    if (!isSignedIn) return;
-    setLoading(true); setError(""); setDenied(false);
-    try {
+  const recordQuery = useQuery({
+    queryKey: ["admin-approval-record", kind, itemId],
+    enabled: isSignedIn && Boolean(match),
+    retry: false,
+    staleTime: 30_000,
+    queryFn: async (): Promise<RecordResult> => {
       const token = await getToken();
       const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
       const [queueResponse, activityResponse] = await Promise.all([fetch("/api/admin/approval-queue?limit=250", { headers, credentials: "include" }), fetch("/api/admin/activity?limit=250", { headers, credentials: "include" })]);
-      if (queueResponse.status === 403) { setDenied(true); return; }
+      if (queueResponse.status === 403) return { denied: true, item: null, events: [] };
       const queuePayload = await readApiJson<{ items?: AdminApprovalQueueItem[]; error?: string }>(queueResponse, "We could not load the approval record");
       const activityPayload = await readApiJson<{ events?: ActivityEvent[]; error?: string }>(activityResponse, "We could not load the record history");
       if (!queueResponse.ok) throw new Error(queuePayload.error || "We could not load the approval record");
       if (!activityResponse.ok) throw new Error(activityPayload.error || "We could not load the record history");
       const record = (queuePayload.items || []).find(row => row.kind === kind && row.id === itemId) || null;
-      setItem(record);
-      setEvents(record ? buildHistory(record, activityPayload.events || []) : []);
-    } catch (loadError) { setError(loadError instanceof Error ? loadError.message : "We could not load the approval record"); }
-    finally { setLoading(false); }
-  };
+      return { denied: false, item: record, events: record ? buildHistory(record, activityPayload.events || []) : [] };
+    },
+  });
+  const item = recordQuery.data?.item ?? null;
+  const events = recordQuery.data?.events ?? [];
+  const loading = isSignedIn && Boolean(match) && recordQuery.isPending;
+  const error = recordQuery.error?.message ?? "";
+  const denied = recordQuery.data?.denied ?? false;
+  const load = () => { void recordQuery.refetch(); };
 
-  const decide = async (decision: ReviewDecision) => {
-    if (!item || !kind) return;
-    setWorkingDecision(decision); setDecisionError(null);
-    try {
+
+  const decisionMutation = useMutation({
+    mutationFn: async (decision: ReviewDecision) => {
+      if (!item || !kind) throw new Error("We could not record this approval decision");
       const token = await getToken();
       const response = await fetch(`/api/admin/approval-queue/${kind}/${item.id}/decision`, { method: "POST", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ decision, note: note.trim() || undefined }) });
       const payload = await readApiJson<{ ok?: boolean; status?: string; error?: string }>(response, "We could not record this approval decision");
       if (!response.ok) throw new Error(payload.error || "We could not record this approval decision");
-      const nextStatus = (payload.status ?? (decision === "approved" ? "approved" : "declined")) as AdminApprovalQueueItem["status"];
+      return { decision, nextStatus: (payload.status ?? (decision === "approved" ? "approved" : "declined")) as AdminApprovalQueueItem["status"], decisionNote: note.trim() };
+    },
+    onSuccess: ({ decision, nextStatus, decisionNote }) => {
       const now = new Date();
-      setItem(current => current ? { ...current, status: nextStatus, meta: { ...current.meta, approvalNote: note.trim() || current.meta.approvalNote } } : current);
-      setEvents(current => [...current.filter(event => event.label !== (decision === "approved" ? "Approved by admin" : "Rejected by admin")), { id: `local-decision-${now.getTime()}`, label: decision === "approved" ? "Approved by admin" : "Rejected by admin", actor: "You (administrator)", time: now, note: note.trim() || undefined }].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()));
-    } catch (resolveError) { setDecisionError({ message: resolveError instanceof Error ? resolveError.message : "We could not record this approval decision", decision }); }
-    finally { setWorkingDecision(null); }
-  };
+      queryClient.setQueryData<RecordResult>(["admin-approval-record", kind, itemId], current => {
+        if (!current?.item) return current;
+        return {
+          ...current,
+          item: { ...current.item, status: nextStatus, meta: { ...current.item.meta, approvalNote: decisionNote || current.item.meta.approvalNote } },
+          events: [...current.events.filter(event => event.label !== (decision === "approved" ? "Approved by admin" : "Rejected by admin")), { id: `local-decision-${now.getTime()}`, label: decision === "approved" ? "Approved by admin" : "Rejected by admin", actor: "You (administrator)", time: now, note: decisionNote || undefined }].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()),
+        };
+      });
+    },
+  });
+  const workingDecision = decisionMutation.isPending ? (decisionMutation.variables as ReviewDecision) : null;
+  const decisionError = decisionMutation.error ? { message: decisionMutation.error.message, decision: (decisionMutation.variables as ReviewDecision) } : null;
+  const decide = (decision: ReviewDecision) => { void decisionMutation.mutate(decision); };
 
-  useEffect(() => { void load(); }, [isSignedIn, kind, itemId]);
   if (!isSignedIn) return <main className="min-h-screen bg-white px-6 py-6 text-black"><div className="mx-auto max-w-xl"><Brand /><section className="mt-20 rounded-2xl border border-[#e5e5e5] bg-white p-8"><ShieldCheck className="h-7 w-7 text-black" /><h1 className="mt-4 text-2xl font-semibold">Administrator record</h1><p className="mt-2 text-sm leading-6 text-[#505050]">Sign in with an administrator account to view and decide this record.</p><SignInButton><button type="button" className="mt-5 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white">Secure sign in</button></SignInButton></section></div></main>;
   if (denied) return <main className="min-h-screen bg-white px-6 py-6 text-black"><div className="mx-auto max-w-xl"><Brand /><section className="mt-20 rounded-2xl border border-[#e5e5e5] bg-white p-8"><ShieldCheck className="h-7 w-7 text-black" /><h1 className="mt-4 text-2xl font-semibold">Administrator access is required</h1><p className="mt-2 text-sm leading-6 text-[#505050]">This record is available only to the designated administrator account.</p><a href="/admin/approvals" className="mt-5 inline-flex items-center rounded-lg border border-[#cfcfcf] bg-white px-4 py-3 text-sm font-semibold text-[#505050] hover:border-[#141414] hover:bg-[#f5f5f5]">Back to approvals</a></section></div></main>;
   const badge = item ? approvalStatusLabels[item.status] : null;
