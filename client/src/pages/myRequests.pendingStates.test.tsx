@@ -67,6 +67,35 @@ describe("My Requests pending states", () => {
     expect(await screen.findByText("acme.com · Ref-1031 · Expired")).toBeTruthy();
   });
 
+  it("meters open slots against the real monthly allowance", async () => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const ask = { ...pendingRequest, id: 41, referrerId: null, createdAt: iso(now - day), updatedAt: iso(now - day) };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/credits/summary")) return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 2, totalAvailable: 2 } }) };
+      return { ok: true, json: async () => ({ requests: [ask] }) };
+    }));
+    render(<MyRequests />);
+    const meter = await screen.findByLabelText("Open slots: 2 of 3");
+    expect(meter.textContent).toContain("2/3");
+    expect(screen.queryByText(/All 3 slots are in use/)).toBeNull();
+  });
+
+  it("nudges to plans when every slot is in use", async () => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const asks = [51, 52, 53].map(id => ({ ...pendingRequest, id, referrerId: null, createdAt: iso(now - day), updatedAt: iso(now - day) }));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/credits/summary")) return { ok: true, json: async () => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 0, totalAvailable: 0 } }) };
+      return { ok: true, json: async () => ({ requests: asks }) };
+    }));
+    render(<MyRequests />);
+    expect(await screen.findByText("All 3 slots are in use.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "See plans" }).getAttribute("href")).toBe("/plans");
+  });
+
   it("keeps the list intact and retries after a failed load", async () => {
     let attempts = 0;
     const fetchMock = vi.fn(async (url: string) => {

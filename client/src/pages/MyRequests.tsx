@@ -177,6 +177,8 @@ export default function MyRequests() {
   }
 
   const openCount = requests.filter(request => request.status === "pending").length;
+  const allowance = credits?.monthlyAllowance && credits.monthlyAllowance > 0 ? credits.monthlyAllowance : 3;
+  const openSlots = Math.max(0, allowance - openCount);
   const inConversation = requests.filter(request => request.referrerId || isPostApprovalReferralStatus(request.status)).length;
   const expiringSoon = requests.filter(request => {
     if (request.status !== "pending" || request.referrerId) return false;
@@ -253,10 +255,22 @@ export default function MyRequests() {
       </div>
       {credits ? <div className="mb-4"><SeekerCreditsCard credits={credits} compact /></div> : null}
       <div className="grid gap-3 sm:grid-cols-3" aria-label="Request summary">
-        <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">Open asks</span><p className="mt-1 text-3xl font-semibold">{openCount}</p></section>
+        <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5" aria-label={`Open slots: ${openSlots} of ${allowance}`}><span className="eyebrow">Open slots</span><p className="mt-1 text-3xl font-semibold">{openSlots}<span className="text-lg text-[var(--muted-foreground)]">/{allowance}</span></p>
+          {allowance <= 5 ? (
+            <div className="mt-3 flex gap-1.5" aria-hidden="true">{Array.from({ length: allowance }, (_, i) => <span key={i} className={`h-2 flex-1 rounded-full ${i < openSlots ? "bg-[var(--primary)]" : "bg-[var(--muted)]"}`} />)}</div>
+          ) : (
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--muted)]" aria-hidden="true"><span className="block h-full rounded-full bg-[var(--primary)]" style={{ width: `${Math.min(100, (openSlots / allowance) * 100)}%` }} /></div>
+          )}
+        </section>
         <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">In conversation</span><p className="mt-1 text-3xl font-semibold">{inConversation}</p></section>
         <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5"><span className="eyebrow">Expiring soon</span><p className="mt-1 text-3xl font-semibold">{expiringSoon}</p></section>
       </div>
+      {openSlots === 0 && requests.length > 0 && !showSkeleton && !error ? (
+        <div role="status" className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4">
+          <p className="text-sm"><strong>All {allowance} slots are in use.</strong> <span className="text-[var(--muted-foreground)]">Answered, expired, or withdrawn asks free a slot.</span></p>
+          <Link href="/plans" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">See plans</Link>
+        </div>
+      ) : null}
       {requests.length > 0 && !showSkeleton && !error ? (
         <div className="directory-tabs section-tabs mt-6" role="tablist" aria-label="Request groups">
           {(["active", "closed"] as const).map(value => (
