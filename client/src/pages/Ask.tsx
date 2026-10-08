@@ -198,6 +198,7 @@ export default function Ask() {
           <p className="text-center text-xs text-[var(--muted-foreground)]">Referrals are always free</p>
         </aside>
       </div>
+      <footer className="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] pt-4 text-xs text-[var(--muted-foreground)]"><span>SkipWait · A warmer way in.</span><span>Free referrals. Real expectations.</span></footer>
     </main>
   );
 }
