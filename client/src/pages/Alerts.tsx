@@ -117,7 +117,7 @@ export default function Alerts() {
   }
 
   return (
-    <main data-skipwait-screen="alerts" className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
+    <main data-skipwait-screen="alerts" className="page-content">
       <div className="mb-2"><span className="eyebrow">Stay in the loop</span><h1 className="mt-2 text-4xl font-semibold">Alerts<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Only things that need you. No marketing, no “you might like”.</p></div>
 
       <div className="my-4 flex items-center justify-between gap-2">
