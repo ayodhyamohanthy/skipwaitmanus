@@ -77,4 +77,32 @@ describe("Alerts center", () => {
     expect(await screen.findByText("No notifications yet.")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Explore companies" })).toBeTruthy();
   });
+
+  it("manages saved company alerts without inventing matches", async () => {
+    const alerts = [{ id: 1, companyDomain: "acme.com", paused: false, notifiedAt: null, createdAt: new Date(now).toISOString() }];
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/seeker-alerts") && init?.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        return { ok: true, json: async () => ({ alert: { id: 2, companyDomain: body.companyDomain, paused: false, notifiedAt: null, createdAt: new Date().toISOString() } }) };
+      }
+      if (String(url).includes("/seeker-alerts/1") && init?.method === "PATCH") return { ok: true, json: async () => ({ alert: { ...alerts[0], paused: true } }) };
+      if (String(url).includes("/seeker-alerts/1") && init?.method === "DELETE") return { ok: true, json: async () => ({}) };
+      if (String(url).includes("/seeker-alerts")) return { ok: true, json: async () => ({ alerts }) };
+      if (String(url).includes("/credits/summary")) return { ok: true, json: async () => ({ summary: { plan: "free" } }) };
+      return { ok: true, json: async () => ({ notifications: [] }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Alerts />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Saved alerts" }));
+    expect(await screen.findByText("acme.com")).toBeTruthy();
+    expect(screen.getByText(/Free accounts keep 3 alerts/)).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText("acme.com"), { target: { value: "Globex" } });
+    fireEvent.click(screen.getByRole("button", { name: "New alert" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/seeker-alerts", expect.objectContaining({ method: "POST" })));
+    expect(await screen.findByText("Globex")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pause alert for acme.com" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Resume alert for acme.com" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Delete alert for acme.com" }));
+    await waitFor(() => expect(screen.queryByText("acme.com")).toBeNull());
+  });
 });
