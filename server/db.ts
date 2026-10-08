@@ -561,6 +561,7 @@ export async function editAssistantApproval(userId: number, approvalId: number, 
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const current = (await db.select().from(assistantApprovals).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.userId, userId))).limit(1))[0];
   if (!current) throw new Error("This approval is not in your account");
+  if (current.status === "expired") throw new Error("This approval expired");
   if (current.status !== "pending") throw new Error("This approval was already handled");
   if (isApprovalExpired(current.expiresAt.getTime())) throw new Error("This approval expired");
   await db.update(assistantApprovals).set({ note }).where(eq(assistantApprovals.id, approvalId));
@@ -571,6 +572,7 @@ export async function decideAssistantApproval(userId: number, approvalId: number
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const current = (await db.select().from(assistantApprovals).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.userId, userId))).limit(1))[0];
   if (!current) throw new Error("This approval is not in your account");
+  if (current.status === "expired") throw new Error("This approval expired");
   if (current.status !== "pending") throw new Error("This approval was already handled");
   if (isApprovalExpired(current.expiresAt.getTime())) {
     await db.update(assistantApprovals).set({ status: "expired", decidedAt: new Date() }).where(eq(assistantApprovals.id, approvalId));

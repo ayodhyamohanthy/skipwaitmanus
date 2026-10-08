@@ -67,7 +67,7 @@ export default function DeveloperConsole() {
   const [agreed, setAgreed] = useState(true);
   const [webhook, setWebhook] = useState("");
 
-  const headers = useCallback(async () => {
+  const headers = useCallback(async (): Promise<RequestInit> => {
     const token = await fetchToken();
     return { credentials: "include" as const, headers: token ? { Authorization: `Bearer ${token}` } : {} };
   }, [fetchToken]);

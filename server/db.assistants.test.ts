@@ -53,6 +53,13 @@ const COLUMN_DEFAULTS: Record<string, Row> = {
   assistantApprovals: { status: "pending" },
 };
 
+// The dialect serialises Date params to MySQL "YYYY-MM-DD HH:MM:SS.mmm" (UTC) strings.
+function asTime(value: unknown): number | null {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)) return new Date(`${value.replace(" ", "T")}Z`).getTime();
+  return null;
+}
+
 function matches(condition: SQLQuery, row: Row): boolean {
   const query = dialect.sqlToQuery(condition);
   const tokens = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s*(=|<|>|is null|is not null)/gi)];
@@ -71,8 +78,10 @@ function matches(condition: SQLQuery, row: Row): boolean {
     const param = query.params[i++];
     const rowValue = row[col];
     if (op === "=" && !sameValue(rowValue, param)) return false;
-    if (op === "<" && !(rowValue instanceof Date && param instanceof Date ? rowValue.getTime() < param.getTime() : false)) return false;
-    if (op === ">" && !(rowValue instanceof Date && param instanceof Date ? rowValue.getTime() > param.getTime() : false)) return false;
+    const rowTime = asTime(rowValue);
+    const paramTime = asTime(param);
+    if (op === "<" && !(rowTime !== null && paramTime !== null && rowTime < paramTime)) return false;
+    if (op === ">" && !(rowTime !== null && paramTime !== null && rowTime > paramTime)) return false;
   }
   return true;
 }
@@ -232,7 +241,8 @@ describe("assistant approvals", () => {
     await expect(editAssistantApproval(7, stale!.id, { note: "x".repeat(10) })).rejects.toThrow(/expired/);
     const listed = await listAssistantApprovals(7);
     expect(listed[0].status).toBe("expired");
-    await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/already handled/);
+    // Once expired it stays honestly "expired", never "already handled".
+    await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/expired/);
   });
 });
 

@@ -13,7 +13,7 @@ function setup(deps: Partial<AssistantRouteDeps>) {
   return app;
 }
 
-const authed = (app: express.Express) => request(app).set("x-test-user", "seeker");
+const authed = (app: express.Express) => request.agent(app).set("x-test-user", "seeker");
 
 describe("assistant access routes", () => {
   it("requires sign-in for every operation", async () => {

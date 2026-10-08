@@ -43,7 +43,7 @@ export default function Approve() {
   const [workingId, setWorkingId] = useState<number | null>(null);
   const [result, setResult] = useState<{ approval: AssistantApproval; decision: "approved" | "declined" } | null>(null);
 
-  const headers = useCallback(async () => {
+  const headers = useCallback(async (): Promise<RequestInit> => {
     const token = await fetchToken();
     return { credentials: "include" as const, headers: token ? { Authorization: `Bearer ${token}` } : {} };
   }, [fetchToken]);
@@ -220,7 +220,7 @@ export default function Approve() {
               <>
                 <h2 className="mt-2 text-2xl font-semibold">Run this paid tool?</h2>
                 <p className="mt-1 text-sm text-[var(--muted-foreground)]">For {approval.role ?? approval.companyDomain ?? "your ask"}</p>
-                <p className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4"><Coins className="size-6" /><span className="flex-1"><strong className="block">{approval.creditCount ?? 1} credits</strong><small className="text-[var(--muted-foreground)]">{creditsAfter !== null ? `You have ${credits.totalAvailable} · ${creditsAfter} after this` : "The cost shows before anything is spent"}</small></span></p>
+                <p className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4"><Coins className="size-6" /><span className="flex-1"><strong className="block">{approval.creditCount ?? 1} credits</strong><small className="text-[var(--muted-foreground)]">{credits && creditsAfter !== null ? `You have ${credits.totalAvailable} · ${creditsAfter} after this` : "The cost shows before anything is spent"}</small></span></p>
                 <div className="mt-5 grid grid-cols-2 gap-2">
                   <button type="button" disabled={workingId === approval.id} onClick={() => { void decide(approval, "declined"); }} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[var(--border)] text-sm font-semibold">Not now</button>
                   <button type="button" disabled={workingId === approval.id} onClick={() => { void decide(approval, "approved"); }} className="brand-button inline-flex min-h-12 items-center justify-center">Use {approval.creditCount ?? 1} credits</button>
