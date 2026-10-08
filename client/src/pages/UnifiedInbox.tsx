@@ -105,7 +105,7 @@ export default function UnifiedInbox() {
 
   return (
     <main data-skipwait-screen="inbox" className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
-      <div className="mb-2"><span className="eyebrow">Messages</span><h1 className="mt-2 text-4xl font-semibold">Inbox</h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Conversations open when a referrer accepts. Until then, identities stay private.</p></div>
+      <div className="mb-2"><span className="eyebrow">Messages</span><h1 className="mt-2 text-4xl font-semibold">Inbox<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Conversations open when a referrer accepts. Until then, identities stay private.</p></div>
 
       {hasVerifiedWorkEmail && queueCount !== null && queueCount > 0 ? (
         <button type="button" onClick={() => go("/queue")} className="mt-4 flex w-full items-center gap-3 rounded-2xl border-2 border-[var(--foreground)] bg-[var(--secondary)] p-4 text-left shadow-[var(--shadow-offset)]">
