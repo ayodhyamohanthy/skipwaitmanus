@@ -102,7 +102,7 @@ export function normalizeScopes(raw: unknown, allowed: readonly string[]): strin
   if (!Array.isArray(raw) || raw.length === 0) return null;
   const scopes = raw.filter((scope): scope is string => typeof scope === "string" && (allowed as readonly unknown[]).includes(scope));
   if (scopes.length === 0 || scopes.length !== raw.length) return null;
-  return [...new Set(scopes)];
+  return Array.from(new Set(scopes));
 }
 
 export function normalizeAppKind(raw: unknown): AppKind | null {
@@ -142,7 +142,7 @@ export function validateRedirectUrls(raw: unknown): string[] | null {
     if (!url) return null;
     urls.push(url);
   }
-  return [...new Set(urls)];
+  return Array.from(new Set(urls));
 }
 
 export function validateDescription(raw: unknown, maxLength = 2000): string | null {
