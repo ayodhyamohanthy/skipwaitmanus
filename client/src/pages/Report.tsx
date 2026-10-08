@@ -37,6 +37,14 @@ export default function Report() {
     );
   }
 
+  const reportRequestId = (() => {
+    if (typeof window === "undefined") return null;
+    const id = Number(new URLSearchParams(window.location.search).get("request"));
+    return Number.isInteger(id) && id > 0 ? id : null;
+  })();
+  const backTarget = reportRequestId ? `/conversation/${reportRequestId}` : "/requests";
+  const backLabel = reportRequestId ? "Back to conversation" : "Back to requests";
+
   const submit = async () => {
     setSubmitting(true); setError("");
     try {
@@ -56,7 +64,7 @@ export default function Report() {
 
   return (
     <main data-skipwait-screen="report" className="page-content">
-      <button type="button" onClick={() => go("/requests")} className="text-link mb-4 inline-flex items-center gap-1 text-sm"><ArrowLeft className="size-4" />Back to requests</button>
+      <button type="button" onClick={() => go(backTarget)} className="text-link mb-4 inline-flex items-center gap-1 text-sm"><ArrowLeft className="size-4" />{backLabel}</button>
 
       {step === 0 ? (
         <section>
