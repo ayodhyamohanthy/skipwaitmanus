@@ -40,6 +40,7 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "profiles", column: "handle", definition: "VARCHAR(40) NULL" },
   { table: "profiles", column: "preferAreas", definition: "TEXT NULL" },
   { table: "profiles", column: "preferLevels", definition: "TEXT NULL" },
+  { table: "profiles", column: "openTo", definition: "TEXT NULL" },
   { table: "profiles", column: "referrerVisibility", definition: "ENUM('anon','named') NOT NULL DEFAULT 'anon'" },
   { table: "profiles", column: "notifyNewAsk", definition: "boolean NOT NULL DEFAULT true" },
   { table: "profiles", column: "notifyDigest", definition: "boolean NOT NULL DEFAULT false" },

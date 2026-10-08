@@ -219,7 +219,7 @@ export async function getMyProfile(userId: number) {
   return { displayName: account.name, profile: profile ?? null, workItems: items };
 }
 
-export async function updateMyProfile(userId: number, input: { headline?: string; currentTitle?: string; location?: string; bio?: string; skills?: string; handle?: string | null; profileVisibility?: string }) {
+export async function updateMyProfile(userId: number, input: { headline?: string; currentTitle?: string; location?: string; bio?: string; skills?: string; openTo?: unknown; handle?: string | null; profileVisibility?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const patch: Record<string, unknown> = {};
   for (const key of ["headline", "currentTitle", "location", "bio", "skills"] as const) {
@@ -231,6 +231,12 @@ export async function updateMyProfile(userId: number, input: { headline?: string
   if (input.profileVisibility !== undefined) {
     if (!(PROFILE_VISIBILITIES as readonly string[]).includes(input.profileVisibility)) throw new Error("Choose public, link-only, or private visibility");
     patch.profileVisibility = input.profileVisibility;
+  }
+  if (input.openTo !== undefined) {
+    if (!Array.isArray(input.openTo)) throw new Error("List the roles you are open to as an array");
+    const roles = input.openTo.filter((role): role is string => typeof role === "string" && role.trim().length > 0 && role.trim().length <= 60).map(role => role.trim());
+    if (roles.length > 5) throw new Error("List up to 5 roles you are open to");
+    patch.openTo = JSON.stringify(roles);
   }
   if (input.handle !== undefined) {
     if (input.handle === null || input.handle === "") patch.handle = null;
@@ -367,6 +373,14 @@ export async function deleteWorkItem(userId: number, itemId: number) {
 // Pure visibility decision for /api/p/:handle. A missing or "private" value
 // hides everything from anyone but the owner; items are listed only when the
 // owner marked them visible.
+function parseProfileOpenTo(raw: unknown): string[] {
+  try {
+    const parsed: unknown = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((role): role is string => typeof role === "string" && role.trim().length > 0 && role.trim().length <= 60).map(role => role.trim()).slice(0, 5);
+  } catch { return []; }
+}
+
 export function shapePublicProfile(
   owner: { id: number; name: string | null },
   profile: NonNullable<Awaited<ReturnType<typeof getProfileByUserId>>>,
@@ -387,6 +401,7 @@ export function shapePublicProfile(
     location: profile.location,
     bio: profile.bio,
     skills: profile.skills,
+    openTo: parseProfileOpenTo((profile as { openTo?: unknown }).openTo),
     company: profile.company,
     verifiedWork: profile.workEmailVerifiedAt ? { domain: profile.workEmailDomain, verifiedAt: profile.workEmailVerifiedAt } : null,
     handle: profile.handle,

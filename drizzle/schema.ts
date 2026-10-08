@@ -54,6 +54,7 @@ export const profiles = mysqlTable("profiles", {
   currentTitle: varchar("currentTitle", { length: 160 }),
   resumeUrl: varchar("resumeUrl", { length: 1024 }),
   skills: text("skills"),
+  openTo: text("openTo"),
   experience: text("experience"),
   expertise: text("expertise"),
   referralCapacity: int("referralCapacity").default(3),

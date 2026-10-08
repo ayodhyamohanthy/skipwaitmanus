@@ -53,6 +53,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
         location: body.location as string | undefined,
         bio: body.bio as string | undefined,
         skills: body.skills as string | undefined,
+        openTo: body.openTo as unknown,
         handle: (body.handle as string | null | undefined) ?? undefined,
         profileVisibility: body.profileVisibility as string | undefined,
       });
@@ -61,7 +62,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not update your profile";
-      res.status(/taken|reserved|visibility|must be|string/i.test(message) ? 400 : 500).json({ error: message });
+      res.status(/taken|reserved|visibility|must be|string|roles|open to/i.test(message) ? 400 : 500).json({ error: message });
     }
   });
 
