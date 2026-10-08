@@ -37,11 +37,11 @@ Fixture note: signed-in screens are checked with route-interception fixtures, ne
 | 19 | plans (+2 steps) | `/plans` | Built, unverified | Kit tiers (Start/Momentum/Land) NOT adopted: live pricing stays Pro/Max. QA payment battery passed 3:57 PM Oct 8. |
 | 20 | billing (cancelling, default, free, payment-issue) | `/billing` | Pushed direct, unreviewed | Manage-plan page on the real ledger (02:11). Was 404 at the edge until #173. Kit tier names not adopted. |
 | 21 | settings | `/settings` | Verified | #169. Kit Region tab not ported (no backend). |
-| 22 | assistants (4) | none | Held | AI-assistant group C. Needs founder decision on product fit. |
-| 23 | approve (6) | none | Held | Group C |
-| 24 | connect-assistant (7) | none | Held | Group C |
+| 22 | assistants (4) | `/assistants` | Built, unverified | Fullstack: connections/tokens/activity on real tables; Max gate; token shown once. |
+| 23 | approve (6) | `/approve` | Built, unverified | Pending ask/credit approvals with edit/send/decline; slots-full from real slot data; 24h TTL. |
+| 24 | connect-assistant (7) | `/connect-assistant` | Built, unverified | Consent with locked read scopes; approve records a real connection; expired/unverified/signed-out/not-on-max states. |
 | 25 | developers | `/developers` | Built, unverified | |
-| 26 | developer-console (6) | none | Held | Group C |
+| 26 | developer-console (6) | `/developer-console` | Built, unverified | Register apps (kind/scopes/terms), client-id copy, webhook save, submit-for-review; in-review/rejected/suspended states. |
 | 27 | safety | `/safety` | Built, unverified | Footer stays "Safety" until the Guidelines decision. |
 | 28 | help | `/help` | Verified at 1280 only | 390 still to compare. |
 | 29 | report (+2 steps) | `/report` | Verified | #171 |
@@ -119,30 +119,30 @@ W = `screens/web` PNG exists, M = `screens/mobile` PNG exists. Status is the rou
 | 20 billing (cancelling, default, free, payment-issue) | free | Y | Y | `/billing` | Pushed direct, unreviewed | todo | todo |
 | 20 billing (cancelling, default, free, payment-issue) | payment-issue | Y | Y | `/billing` | Pushed direct, unreviewed | todo | todo |
 | 21 settings | default | Y | Y | `/settings` | Verified | todo | todo |
-| 22 assistants (4) | activity | Y | Y | none | Held | todo | todo |
-| 22 assistants (4) | api-tokens | Y | Y | none | Held | todo | todo |
-| 22 assistants (4) | default | Y | Y | none | Held | todo | todo |
-| 22 assistants (4) | momentum-or-start | Y | Y | none | Held | todo | todo |
-| 23 approve (6) | declined | Y | Y | none | Held | todo | todo |
-| 23 approve (6) | default | Y | Y | none | Held | todo | todo |
-| 23 approve (6) | editing | Y | Y | none | Held | todo | todo |
-| 23 approve (6) | sent | Y | Y | none | Held | todo | todo |
-| 23 approve (6) | slots-full | Y | Y | none | Held | todo | todo |
-| 23 approve (6) | spend-credits | Y | Y | none | Held | todo | todo |
-| 24 connect-assistant (7) | approved | Y | Y | none | Held | todo | todo |
-| 24 connect-assistant (7) | declined | Y | Y | none | Held | todo | todo |
-| 24 connect-assistant (7) | default | Y | Y | none | Held | todo | todo |
-| 24 connect-assistant (7) | expired | Y | Y | none | Held | todo | todo |
-| 24 connect-assistant (7) | not-on-land | Y | Y | none | Held | todo | todo |
-| 24 connect-assistant (7) | signed-out | Y | Y | none | Held | todo | todo |
-| 24 connect-assistant (7) | unverified-app | Y | Y | none | Held | todo | todo |
+| 22 assistants (4) | activity | Y | Y | `/assistants` | Built, unverified | todo | todo |
+| 22 assistants (4) | api-tokens | Y | Y | `/assistants` | Built, unverified | todo | todo |
+| 22 assistants (4) | default | Y | Y | `/assistants` | Built, unverified | todo | todo |
+| 22 assistants (4) | momentum-or-start | Y | Y | `/assistants` | Built, unverified | todo | todo |
+| 23 approve (6) | declined | Y | Y | `/approve` | Built, unverified | todo | todo |
+| 23 approve (6) | default | Y | Y | `/approve` | Built, unverified | todo | todo |
+| 23 approve (6) | editing | Y | Y | `/approve` | Built, unverified | todo | todo |
+| 23 approve (6) | sent | Y | Y | `/approve` | Built, unverified | todo | todo |
+| 23 approve (6) | slots-full | Y | Y | `/approve` | Built, unverified | todo | todo |
+| 23 approve (6) | spend-credits | Y | Y | `/approve` | Built, unverified | todo | todo |
+| 24 connect-assistant (7) | approved | Y | Y | `/connect-assistant` | Built, unverified | todo | todo |
+| 24 connect-assistant (7) | declined | Y | Y | `/connect-assistant` | Built, unverified | todo | todo |
+| 24 connect-assistant (7) | default | Y | Y | `/connect-assistant` | Built, unverified | todo | todo |
+| 24 connect-assistant (7) | expired | Y | Y | `/connect-assistant` | Built, unverified | todo | todo |
+| 24 connect-assistant (7) | not-on-land | Y | Y | `/connect-assistant` | Built, unverified | todo | todo |
+| 24 connect-assistant (7) | signed-out | Y | Y | `/connect-assistant` | Built, unverified | todo | todo |
+| 24 connect-assistant (7) | unverified-app | Y | Y | `/connect-assistant` | Built, unverified | todo | todo |
 | 25 ? | default | Y | Y | ? | ? | todo | todo |
-| 26 developer-console (6) | app-details | Y | Y | none | Held | todo | todo |
-| 26 developer-console (6) | default | Y | Y | none | Held | todo | todo |
-| 26 developer-console (6) | in-review | Y | Y | none | Held | todo | todo |
-| 26 developer-console (6) | new-app | Y | Y | none | Held | todo | todo |
-| 26 developer-console (6) | rejected | Y | Y | none | Held | todo | todo |
-| 26 developer-console (6) | suspended | Y | Y | none | Held | todo | todo |
+| 26 developer-console (6) | app-details | Y | Y | `/developer-console` | Built, unverified | todo | todo |
+| 26 developer-console (6) | default | Y | Y | `/developer-console` | Built, unverified | todo | todo |
+| 26 developer-console (6) | in-review | Y | Y | `/developer-console` | Built, unverified | todo | todo |
+| 26 developer-console (6) | new-app | Y | Y | `/developer-console` | Built, unverified | todo | todo |
+| 26 developer-console (6) | rejected | Y | Y | `/developer-console` | Built, unverified | todo | todo |
+| 26 developer-console (6) | suspended | Y | Y | `/developer-console` | Built, unverified | todo | todo |
 | 27 safety | default | Y | Y | `/safety` | Built, unverified | todo | todo |
 | 28 help | default | Y | Y | `/help` | Verified at 1280 only | todo | todo |
 | 29 report (+2 steps) | default | Y | Y | `/report` | Verified | todo | todo |
@@ -178,7 +178,7 @@ Totals: 105 web PNGs, 106 mobile PNGs, 106 distinct (group, state) screens.
 ## Audit queue (order)
 1. Pushed direct, unreviewed (user-visible, 14 routes).
 2. Built, unverified.
-3. Gaps: only missing items are group C (held) and the Ask additions that need founder sign-off. No other screen group lacks a route.
+3. Gaps: the Ask additions that need founder sign-off. No other screen group lacks a route. Group C (assistants/approve/connect-assistant/developer-console) built fullstack 2026-10-09: shared contract, 4 tables + 0072 migration, owner-scoped APIs, four pages; kit top tier Land mapped to live max plan.
 
 Verification results are recorded below as they land.
 

@@ -1,5 +1,5 @@
 import { SignInButton, useAuth } from "@/_core/auth";
-import { ArrowRight, ArrowUpRight, Bell, Briefcase, Building2, ChevronDown, Compass, Crown, Ellipsis, Globe2, Inbox, ListChecks, Menu, ShieldCheck, UserRound, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Bell, Bot, Briefcase, Building2, ChevronDown, Compass, Crown, Ellipsis, Globe2, Inbox, ListChecks, Menu, ShieldCheck, UserRound, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { AccountMenu } from "./AccountMenu";
@@ -38,6 +38,7 @@ function MoreMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
       <DropdownMenuContent align={mobile ? "end" : "start"} side={mobile ? "top" : "bottom"} sideOffset={8} className="w-56 max-w-[calc(100vw-2rem)]">
         <DropdownMenuLabel>Help &amp; info</DropdownMenuLabel>
         <DropdownMenuItem asChild className="min-h-11"><Link href="/help" onClick={onNavigate}><ShieldCheck />Help &amp; safety</Link></DropdownMenuItem>
+        <DropdownMenuItem asChild className="min-h-11"><Link href="/assistants" onClick={onNavigate}><Bot />Connected assistants</Link></DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>For teams</DropdownMenuLabel>
         <DropdownMenuItem asChild className="min-h-11"><Link href="/for-companies" onClick={onNavigate}><Building2 />For companies</Link></DropdownMenuItem>
