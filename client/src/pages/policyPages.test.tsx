@@ -61,6 +61,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(document.querySelector('[data-skipwait-screen="guidelines"]')).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Guidelines." })).toBeTruthy();
     expect(screen.getByText(/No money, gifts, or favours change hands/)).toBeTruthy();
+    expect(screen.getByText("Short version")).toBeTruthy();
     expect(screen.getByText(/Draft · pending legal review/)).toBeTruthy();
     expect(policyLinks(container)).toContain("/guidelines");
     expect(screen.getByRole("navigation", { name: "On this page" })).toBeTruthy();

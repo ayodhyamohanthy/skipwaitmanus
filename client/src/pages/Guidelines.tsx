@@ -29,6 +29,15 @@ export default function Guidelines() {
     ]}
     footnote="Questions about these guidelines: write to support and a person will reply."
   >
+    <section aria-label="Short version" className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">
+      <p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">Short version</p>
+      <ul className="mt-3 space-y-1.5 pl-5 text-sm leading-6 text-[#505050] [&_li]:list-disc [&_strong]:text-black">
+        <li><strong>Never pay or charge for a referral.</strong> No money, gifts, or favours — before or after.</li>
+        <li><strong>Ask for one specific role, honestly.</strong> Link the official posting and say why you fit.</li>
+        <li><strong>Passing is always okay.</strong> Pressure is never okay.</li>
+        <li><strong>Report anything that feels off.</strong> Reporting is confidential.</li>
+      </ul>
+    </section>
     <PolicySection number="01" title="Referrals are free">
       <p>No money, gifts, or favours change hands — before or after a referral. If anyone asks for payment, do not pay. <Link href="/report" className="font-semibold text-black">Report it</Link> — reports are confidential.</p>
     </PolicySection>
