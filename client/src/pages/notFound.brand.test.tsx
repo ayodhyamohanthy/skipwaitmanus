@@ -13,8 +13,9 @@ afterEach(cleanup);
 describe("Not Found recovery", () => {
   it("uses skipwait.me branding and a clear return-home action", () => {
     render(<NotFound />);
-    expect(screen.getByRole("heading", { name: "This page isn’t on skipwait.me." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "This door doesn't lead anywhere." })).toBeTruthy();
     expect(screen.queryByText(/Bridge/)).toBeNull();
+    expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
     expect(screen.getByRole("link", { name: "Return home" }).getAttribute("href")).toBe("/");
   });
 });
