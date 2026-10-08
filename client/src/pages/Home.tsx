@@ -40,15 +40,14 @@ export default function Home() {
           <Link href="/explore" onClick={() => setMenu(false)}>Explore companies</Link>
           <Link href="/referrer" onClick={() => setMenu(false)}>For referrers</Link>
           <Link href="/safety" onClick={() => setMenu(false)}>Help &amp; safety</Link>
-          <Link href="/sign-in" className="launch-mobile-signin" onClick={() => setMenu(false)}>Sign in <ArrowRight size={14} /></Link>
+          {isSignedIn ? <Link href="/requests" className="launch-mobile-signin" onClick={() => setMenu(false)}>Open app <ArrowRight size={14} /></Link> : <Link href="/sign-in" className="launch-mobile-signin" onClick={() => setMenu(false)}>Sign in <ArrowRight size={14} /></Link>}
         </nav>
         <div className="launch-header-actions">
-          <SignInButton><span className="launch-signin brand-button">Sign in</span></SignInButton>
+          {isSignedIn ? <Link href="/requests" className="launch-signin brand-button">Open app</Link> : <SignInButton><span className="launch-signin brand-button">Sign in</span></SignInButton>}
           <Link href="/explore" className="brand-button">Explore <ArrowUpRight /></Link>
           <button type="button" className="launch-menu brand-button" aria-label={menu ? "Close navigation" : "Open navigation"} onClick={() => setMenu(!menu)}>{menu ? <X /> : <Menu />}</button>
         </div>
       </header>
-      {isSignedIn ? <nav aria-label="Your workspace" className="mx-auto flex max-w-6xl flex-wrap gap-2 px-5 py-3"><button type="button" className="brand-button" onClick={() => go("/requests")}>My requests</button><button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={() => go("/inbox")}>My company inbox</button><button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={() => go("/wall")}>Internal openings</button></nav> : null}
       <main>
         <section className="launch-hero">
           <img className="launch-hero-image" src="/launch-door.jpg" alt="An open blue door with a yellow path leading through it" width={1600} height={1008} />

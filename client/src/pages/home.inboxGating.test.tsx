@@ -23,14 +23,17 @@ vi.mock("@/_core/auth", () => ({
 afterEach(() => { cleanup(); go.mockReset(); });
 
 describe("homepage profile entries", () => {
-  it("surfaces the signed-in workspace next to the main referral actions", () => {
+  it("swaps Sign in for Open app in the header when signed in, with no workspace pill row", () => {
     signedIn.value = true;
     render(<Home />);
 
-    expect(screen.getByRole("navigation", { name: "Your workspace" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "My requests" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "My company inbox" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Internal openings" })).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Your workspace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "My requests" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Internal openings" })).toBeNull();
+    const open = screen.getAllByRole("link", { name: /Open app/ });
+    expect(open.length).toBeGreaterThan(0);
+    expect(open[0].getAttribute("href")).toBe("/requests");
+    expect(screen.queryByText("Sign in")).toBeNull();
     signedIn.value = false;
   });
 
