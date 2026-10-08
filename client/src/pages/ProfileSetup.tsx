@@ -118,7 +118,7 @@ export default function Onboarding() {
           <div className="mt-6 flex flex-wrap gap-2">
             {ROLES.map(role => {
               const on = state.roles.includes(role);
-              return <button key={role} type="button" aria-pressed={on} disabled={!on && state.roles.length >= 3} onClick={() => toggleRole(role)} className={`min-h-11 rounded-full border px-4 text-sm disabled:opacity-40 ${on ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]" : "border-[var(--border)]"}`}>{on ? "✓ " : ""}{role}</button>;
+              return <button key={role} type="button" aria-pressed={on} disabled={!on && state.roles.length >= 3} onClick={() => toggleRole(role)} className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm ${on ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]" : "border-[var(--border)]"}`}>{on ? <Check className="size-4" aria-hidden="true" /> : null}{role}</button>;
             })}
           </div>
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">{state.roles.length}/3 selected</p>
