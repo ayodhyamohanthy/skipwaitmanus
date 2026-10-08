@@ -16,7 +16,7 @@ type Deps = {
   createSubscriptionCheckout?: typeof createChargebeeSubscriptionCheckout;
   createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: PaidSubscriptionPlan; itemPriceId: string; amount: number; currency: "INR" | "USD" }) => Promise<unknown>;
   applySubscriptionEvent?: (input: NonNullable<ReturnType<typeof parseSubscriptionEvent>>) => Promise<unknown>;
-  getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
+  getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; plan?: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
   cancelSubscription?: typeof scheduleChargebeeSubscriptionCancellation;
   resolveHostedPage?: (input: { invoiceId?: string; amount: number; currency: string; site: string; apiKey: string }) => Promise<{ hostedPageId: string; invoiceId?: string; passThruContent?: string; amount?: number; currency?: string; pageState: string; invoiceStatus?: string; paymentStatus?: string; paid: boolean } | undefined>;
@@ -221,6 +221,42 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       console.error("[Chargebee] subscription cancellation error", error);
       if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
       return res.status(502).json({ error: "We could not schedule your cancellation. Please try again." });
+    }
+  });
+
+  /**
+   * GET the current plan and credit position.
+   *
+   * The dependency for this already existed -- Deps.getUserSubscription and
+   * Deps.getCreditSummary -- but no route read them, so /billing had no way to
+   * show a real plan and would have had to invent one. Reads are separated from
+   * writes here on purpose: subscription-cancel is a POST because it changes
+   * provider state, this is a GET because it only observes it.
+   *
+   * subscriptionId is deliberately NOT returned. It is a Chargebee identifier
+   * the client never needs, and handing it out would let a caller pass a
+   * provider id back into a request -- the kind of value that should stay
+   * server-side.
+   */
+  app.get("/api/chargebee/subscription", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your plan" });
+      const role = roleFromBody(req.query?.role);
+      const [subscription, credits] = await Promise.all([
+        deps.getUserSubscription?.(identity.account.id, role),
+        deps.getCreditSummary?.(identity.account.id, role),
+      ]);
+      return res.json({
+        subscription: subscription
+          ? { plan: subscription.plan ?? null, status: subscription.status, currentTermEnd: subscription.currentTermEnd ?? null }
+          : null,
+        credits: credits ?? null,
+      });
+    } catch (error) {
+      console.error("[Chargebee] subscription read error", error);
+      if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
+      return res.status(502).json({ error: "We could not load your plan. Please try again." });
     }
   });
 

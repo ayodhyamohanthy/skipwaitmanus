@@ -2063,7 +2063,10 @@ export async function getTokenWallet(userId: number, role: WalletRole) {
 export async function getUserSubscription(userId: number, role: WalletRole) {
   const wallet = await ensureTokenWallet(userId, role);
   if (!wallet.subscriptionId || wallet.plan === "free" || (wallet.subscriptionStatus !== "active" && wallet.subscriptionStatus !== "non_renewing")) return undefined;
-  return { subscriptionId: wallet.subscriptionId, status: wallet.subscriptionStatus, currentTermEnd: wallet.subscriptionCurrentTermEnd ?? undefined };
+  // `plan` is returned so /billing can name the plan the account is on. Without it the
+  // client can tell that a paid subscription exists but not whether it is Pro or Max,
+  // and would have to guess -- which is how a screen ends up showing an invented plan.
+  return { subscriptionId: wallet.subscriptionId, plan: wallet.plan, status: wallet.subscriptionStatus, currentTermEnd: wallet.subscriptionCurrentTermEnd ?? undefined };
 }
 
 export async function markSubscriptionNonRenewing(userId: number, role: WalletRole, subscriptionId: string, currentTermEnd?: Date) {
