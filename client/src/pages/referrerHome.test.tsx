@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ReferrerHome from "./ReferrerHome";
 import Invite from "./Invite";
 
@@ -34,10 +35,16 @@ function stubHome(overrides: { verified?: boolean; reviewed?: number; verifiedAt
   }));
 }
 
+
+function renderHome() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><ReferrerHome /></QueryClientProvider>);
+}
+
 describe("ReferrerHome", () => {
   it("shows real new asks, capacity, and private record for verified referrers", async () => {
     stubHome();
-    render(<ReferrerHome />);
+    renderHome();
     expect(await screen.findByText("Verified · wipro.com")).toBeTruthy();
     expect(screen.getByText("New asks waiting")).toBeTruthy();
     expect(screen.getByText("Your record · Private")).toBeTruthy();
@@ -54,13 +61,13 @@ describe("ReferrerHome", () => {
       if (String(url).includes("scope=completed")) return ok({ requests: [{ id: 40, companyDomain: "wipro.com", status: "approved", isClaimedByYou: true, unreadMessageCount: 0, createdAt: "2026-09-01T08:00:00Z", updatedAt: "2026-09-02T08:00:00Z" }] });
       return ok({});
     }));
-    render(<ReferrerHome />);
+    renderHome();
     expect(await screen.findByText("You've hit your capacity.")).toBeTruthy();
   });
 
   it("shows the verify gate without fabricating referrer state", async () => {
     stubHome({ verified: false });
-    render(<ReferrerHome />);
+    renderHome();
     expect(await screen.findByText("Verify a work email to begin.")).toBeTruthy();
     expect(screen.queryByText("New asks waiting")).toBeNull();
   });
@@ -68,7 +75,7 @@ describe("ReferrerHome", () => {
   it("warns when re-verification approaches, driven by the real verified date", async () => {
     const old = new Date(Date.now() - 80 * 86400000).toISOString();
     stubHome({ verifiedAt: old });
-    render(<ReferrerHome />);
+    renderHome();
     expect(await screen.findByText(/Re-verify your wipro.com email soon/)).toBeTruthy();
   });
 
@@ -82,7 +89,7 @@ describe("ReferrerHome", () => {
       return ok({ requests: [] });
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<ReferrerHome />);
+    renderHome();
     expect(await screen.findByText("New asks are paused. Open conversations still work.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Resume" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/referrer-preferences", expect.objectContaining({ method: "PUT" })));

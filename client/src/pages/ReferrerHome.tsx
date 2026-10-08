@@ -4,6 +4,7 @@ import { SignInButton, useAuth } from "@/_core/auth";
 import { Link, useLocation } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { useQuery } from "@tanstack/react-query";
 
 type InboxItem = { id: number; companyDomain: string; status: string; savedAt: string | null; createdAt: string; updatedAt: string; isClaimedByYou: boolean; unreadMessageCount: number };
 type Impact = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
@@ -17,49 +18,48 @@ export default function ReferrerHome() {
   const [, go] = useLocation();
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
-  const [access, setAccess] = useState<Access | null>(null);
-  const [capacity, setCapacity] = useState(3);
-  const [verifiedAt, setVerifiedAt] = useState<string | null>(null);
-  const [impact, setImpact] = useState<Impact | null>(null);
-  const [fresh, setFresh] = useState<InboxItem[]>([]);
-  const [active, setActive] = useState<InboxItem[]>([]);
   const [paused, setPaused] = useState(false);
   const [resuming, setResuming] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!isSignedIn) return;
-    let on = true;
-    setLoading(true);
-    void (async () => {
-      try {
-        const token = await fetchToken();
-        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const get = async <T,>(path: string) => {
-          const response = await fetch(path, { credentials: "include", headers });
-          const payload = await readApiJson<T & { error?: string }>(response, "");
-          return response.ok ? payload : undefined;
-        };
-        const [accessPayload, profilePayload, impactPayload, newPayload, donePayload, prefsPayload] = await Promise.all([
-          get<{ verifiedCompanyAccess?: boolean; workEmailDomain?: string | null }>("/api/company-referrals/access"),
-          get<{ profile?: ProfileShape | null }>("/api/profile/me"),
-          get<{ summary?: Impact }>("/api/referrer-impact/me"),
-          get<{ requests?: InboxItem[] }>("/api/company-referrals/inbox?scope=new"),
-          get<{ requests?: InboxItem[] }>("/api/company-referrals/inbox?scope=completed"),
-          get<{ preferences?: { paused?: boolean } }>("/api/referrer-preferences"),
-        ]);
-        if (!on) return;
-        if (typeof prefsPayload?.preferences?.paused === "boolean") setPaused(prefsPayload.preferences.paused);
-        if (accessPayload) setAccess({ verifiedCompanyAccess: Boolean(accessPayload.verifiedCompanyAccess), workEmailDomain: accessPayload.workEmailDomain ?? null });
-        if (typeof profilePayload?.profile?.referralCapacity === "number") setCapacity(profilePayload.profile.referralCapacity);
-        if (profilePayload?.profile?.workEmailVerifiedAt) setVerifiedAt(profilePayload.profile.workEmailVerifiedAt);
-        if (impactPayload?.summary) setImpact(impactPayload.summary);
-        setFresh(newPayload?.requests ?? []);
-        setActive((donePayload?.requests ?? []).filter(item => item.isClaimedByYou && (item.status === "approved" || item.unreadMessageCount > 0)));
-      } finally { if (on) setLoading(false); }
-    })();
-    return () => { on = false; };
-  }, [fetchToken, isSignedIn]);
+  const homeQuery = useQuery({
+    queryKey: ["referrer-home", isSignedIn],
+    enabled: isSignedIn,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const token = await fetchToken();
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
+      const get = async <T,>(path: string) => {
+        const response = await fetch(path, { credentials: "include", headers });
+        const payload = await readApiJson<T & { error?: string }>(response, "");
+        return response.ok ? payload : undefined;
+      };
+      const [accessPayload, profilePayload, impactPayload, newPayload, donePayload, prefsPayload] = await Promise.all([
+        get<{ verifiedCompanyAccess?: boolean; workEmailDomain?: string | null }>("/api/company-referrals/access"),
+        get<{ profile?: ProfileShape | null }>("/api/profile/me"),
+        get<{ summary?: Impact }>("/api/referrer-impact/me"),
+        get<{ requests?: InboxItem[] }>("/api/company-referrals/inbox?scope=new"),
+        get<{ requests?: InboxItem[] }>("/api/company-referrals/inbox?scope=completed"),
+        get<{ preferences?: { paused?: boolean } }>("/api/referrer-preferences"),
+      ]);
+      return {
+        access: accessPayload ? { verifiedCompanyAccess: Boolean(accessPayload.verifiedCompanyAccess), workEmailDomain: accessPayload.workEmailDomain ?? null } : null,
+        capacity: typeof profilePayload?.profile?.referralCapacity === "number" ? profilePayload.profile.referralCapacity : null,
+        verifiedAt: profilePayload?.profile?.workEmailVerifiedAt ?? null,
+        impact: impactPayload?.summary ?? null,
+        fresh: newPayload?.requests ?? [],
+        active: (donePayload?.requests ?? []).filter(item => item.isClaimedByYou && (item.status === "approved" || item.unreadMessageCount > 0)),
+        paused: typeof prefsPayload?.preferences?.paused === "boolean" ? prefsPayload.preferences.paused : null,
+      };
+    },
+  });
+  const access = homeQuery.data?.access ?? null;
+  const capacity = homeQuery.data?.capacity ?? 3;
+  const verifiedAt = homeQuery.data?.verifiedAt ?? null;
+  const impact = homeQuery.data?.impact ?? null;
+  const fresh = homeQuery.data?.fresh ?? [];
+  const active = homeQuery.data?.active ?? [];
+  const loading = homeQuery.isPending;
+  useEffect(() => { if (typeof homeQuery.data?.paused === "boolean") setPaused(homeQuery.data.paused); }, [homeQuery.data]);
 
   if (!isSignedIn) {
     return (
