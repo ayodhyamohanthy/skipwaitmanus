@@ -105,6 +105,8 @@ async function measure(browser, base, route, capture, outDir, slug, platform) {
     // its target. A wrong measurement that looks like a finding is worse than a
     // crash, so this refuses to measure rather than reporting a number it cannot
     // trust.
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(400);
     const fontsOk = await page.evaluate(() => document.fonts.check('600 66px "Instrument Sans"'));
     if (!fontsOk) {
       await page.close();
@@ -118,6 +120,25 @@ async function measure(browser, base, route, capture, outDir, slug, platform) {
     await page.screenshot({ path: shot, fullPage: true });
     await page.close();
     const size = pngSize(shot);
+
+    // A fullPage screenshot that comes back exactly the viewport height means the
+    // capture was CLIPPED -- the document had not finished laying out. /plans
+    // reported 1000px against a 5132px capture this way, which reads as an 80%
+    // design failure and is nothing of the kind. Refuse it rather than record it.
+    // Distinguish CLIPPED from SHORT. A page whose content is shorter than the
+    // viewport legitimately returns a fullPage screenshot equal to the viewport
+    // height -- /sign-in is one. A page TALLER than the viewport that still
+    // returns the viewport height was clipped, and only that case is a bad
+    // measurement. The first version of this guard compared height alone and
+    // discarded 25 of 36 valid web measurements as clipped.
+    const scrollHeight = await page.evaluate(() => document.documentElement.scrollHeight).catch(() => 0);
+    if (size.height === vh && scrollHeight > vh + 4) {
+      throw new Error(
+        `${slug}/${platform}: document is ${scrollHeight}px tall but the fullPage screenshot came back at `
+        + `the viewport height (${vh}px), so it was clipped rather than captured.`,
+      );
+    }
+
     const delta = Math.abs(size.height - capture.height);
     if (!best || delta < best.delta) best = { shot, height: size.height, delta, vh };
     if (delta === 0) break;
@@ -151,7 +172,16 @@ for (const slug of slugs) {
     const capturePath = captures.get(slug);
     if (!capturePath) { row[platform] = { verdict: "MISSING", note: "no capture" }; continue; }
     const capture = pngSize(capturePath);
-    const result = await measure(browser, base, route, capture, outDir, slug, platform);
+    let result;
+    try {
+      result = await measure(browser, base, route, capture, outDir, slug, platform);
+    } catch (error) {
+      // One unusable screen must not discard the other 83 measurements. The
+      // reason is recorded rather than swallowed, because "we could not measure
+      // this" and "this is wrong" are different findings.
+      row[platform] = { verdict: "UNMEASURED", note: error.message.split(": ").slice(1).join(": ").slice(0, 120) };
+      continue;
+    }
     const pct = (result.delta / capture.height) * 100;
     row[platform] = {
       verdict: pct <= 1 ? "MATCH" : pct <= 3 ? "CLOSE" : "OFF",
@@ -162,6 +192,10 @@ for (const slug of slugs) {
     };
   }
   rows.push(row);
+  if (asJson) {
+    const { writeFileSync } = await import("node:fs");
+    writeFileSync("/tmp/v4-audit-partial.json", JSON.stringify(rows, null, 2));
+  }
   const w = row.web, m = row.mobile;
   console.error(`${slug.padEnd(20)} web ${(w.verdict ?? "-").padEnd(8)}${String(w.deltaPct ?? "").padStart(7)}%   mobile ${(m.verdict ?? "-").padEnd(8)}${String(m.deltaPct ?? "").padStart(7)}%`);
 }
