@@ -1,5 +1,5 @@
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, HeartHandshake } from "lucide-react";
-import { useEffect, useState } from "react";
 import { useAuth } from "@/_core/auth";
 
 type ReferrerCredits = {
@@ -20,22 +20,20 @@ type ReferrerCredits = {
  */
 export function ReferrerCreditsCard({ compact = false }: { compact?: boolean }) {
   const { isSignedIn, getToken } = useAuth();
-  const [credits, setCredits] = useState<ReferrerCredits | null>(null);
-
-  useEffect(() => {
-    if (!isSignedIn) return;
-    let active = true;
-    void (async () => {
-      try {
-        const token = await getToken();
-        const response = await fetch("/api/credits/summary?role=referrer", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (!response.ok || !active) return;
-        const data = await response.json() as { summary?: ReferrerCredits };
-        if (data.summary && active) setCredits(data.summary);
-      } catch { /* meter is non-critical context */ }
-    })();
-    return () => { active = false; };
-  }, [getToken, isSignedIn]);
+  const creditsQuery = useQuery({
+    queryKey: ["referrer-credits"],
+    enabled: isSignedIn,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const token = await getToken();
+      const response = await fetch("/api/credits/summary?role=referrer", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      if (!response.ok) return null; // meter is non-critical context
+      const data = await response.json() as { summary?: ReferrerCredits };
+      return data.summary ?? null;
+    },
+  });
+  const credits = creditsQuery.data ?? null;
 
   if (!isSignedIn || !credits) return null;
   const used = Math.max(0, credits.monthlyAllowance - credits.monthlyCreditsRemaining);

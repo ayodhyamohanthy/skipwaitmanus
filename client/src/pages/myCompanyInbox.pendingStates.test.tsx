@@ -2,6 +2,7 @@
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
 
 const { go, getToken } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mockResolvedValue("test-token") }));
@@ -31,6 +32,12 @@ function stubFetch(handler: (url: string, init?: RequestInit) => unknown) {
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
+
+function renderInbox() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><MyCompanyInbox /></QueryClientProvider>);
+}
+
 describe("My Company Inbox pending states", () => {
   it("asks for one confirmation before a decline is recorded, and can be cancelled", async () => {
     const fetchMock = stubFetch((url) => {
@@ -41,7 +48,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/one-click-review")) return { status: "declined", declineReason: "role_not_a_fit" };
       return {};
     });
-    render(<MyCompanyInbox />);
+    renderInbox();
     fireEvent.click(await screen.findByRole("button", { name: "Review candidate" }));
     fireEvent.click(await screen.findByRole("button", { name: "Not a fit" }));
 
@@ -67,7 +74,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/credits/summary")) return credits;
       return {};
     });
-    render(<MyCompanyInbox />);
+    renderInbox();
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("We couldn’t load your queue");
     expect(alert.textContent).toContain("Private company inbox is temporarily unavailable");
@@ -88,7 +95,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/one-click-review") && init?.method === "POST") return { __status: 409, error: "This referral request is no longer available" };
       return {};
     });
-    render(<MyCompanyInbox />);
+    renderInbox();
     fireEvent.click(await screen.findByRole("button", { name: "Review candidate" }));
     fireEvent.click(await screen.findByRole("button", { name: "Accept & submit referral" }));
     const alert = await screen.findByRole("alert");
@@ -107,7 +114,7 @@ describe("My Company Inbox pending states", () => {
       if (url.includes("/inbox?scope=new")) return new Promise(resolve => { release = () => resolve({ ok: true, json: async () => ({ requests: [] }) }); });
       return Promise.resolve({ ok: true, json: async () => (url.includes("/credits/summary") ? credits : {}) });
     }));
-    render(<MyCompanyInbox />);
+    renderInbox();
     await waitFor(() => expect(document.querySelector('[data-skipwait-loading="true"]')).toBeTruthy());
     expect(document.querySelector('[data-skipwait-loading-slow="true"]')).toBeNull();
 

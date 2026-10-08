@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
 
 const { go, authState } = vi.hoisted(() => ({ go: vi.fn(), authState: { signedIn: false } }));
@@ -18,12 +19,18 @@ vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</di
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
+
+function renderInbox() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><MyCompanyInbox /></QueryClientProvider>);
+}
+
 beforeEach(() => { authState.signedIn = false; });
 afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); });
 
 describe("My Company Inbox employee access", () => {
   it("routes signed-out employees to the dedicated work-email-only sign-in flow", () => {
-    render(<MyCompanyInbox />);
+    renderInbox();
     expect(screen.getByRole("button", { name: "Use company email" })).toBeTruthy();
     expect(screen.queryByText("Secure employee sign in")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Use company email" }));
@@ -34,7 +41,7 @@ describe("My Company Inbox employee access", () => {
     authState.signedIn = true;
     const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("availability/open") ? { availability: { allocatedCount: 1 } } : { requests: [] } }));
     vi.stubGlobal("fetch", fetchMock);
-    render(<MyCompanyInbox />);
+    renderInbox();
     await waitFor(() => expect(document.querySelector('[aria-label="Open referral capacity"]')).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Open referral capacity" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/availability/open", expect.objectContaining({ method: "POST", body: JSON.stringify({ slotCount: 1 }) })));
@@ -49,7 +56,7 @@ describe("My Company Inbox employee access", () => {
       { id: 2, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/two", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false },
     ];
     vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=saved") ? [] : newRequests }) })));
-    render(<MyCompanyInbox />);
+    renderInbox();
     await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
     fireEvent.click(screen.getByRole("tab", { name: "Saved" }));
     await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
@@ -60,7 +67,7 @@ describe("My Company Inbox employee access", () => {
     const inboxRequest = { id: 7, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false };
     const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : url.includes("one-click-review") ? { status: "approved" } : { requests: [inboxRequest] } }));
     vi.stubGlobal("fetch", fetchMock);
-    render(<MyCompanyInbox />);
+    renderInbox();
     await waitFor(() => expect(screen.getByRole("button", { name: "Review candidate" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Review candidate" }));
     await waitFor(() => expect(screen.getByText("Avery")).toBeTruthy());
@@ -78,7 +85,7 @@ describe("My Company Inbox employee access", () => {
     authState.signedIn = true;
     const completedRequest = { id: 11, companyDomain: "acme.com", status: "approved", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, unreadMessageCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-02", isClaimedByYou: true };
     vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=completed") ? [completedRequest] : [] }) })));
-    render(<MyCompanyInbox />);
+    renderInbox();
     await waitFor(() => expect(screen.getByRole("tab", { name: "Done" })).toBeTruthy());
     fireEvent.click(screen.getByRole("tab", { name: "Done" }));
     await waitFor(() => expect(screen.getByText("The Job Seeker sent 1 new private message.")).toBeTruthy());

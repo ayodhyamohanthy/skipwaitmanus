@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import MyCompanyInbox from "./MyCompanyInbox";
 
@@ -22,12 +23,18 @@ vi.mock("sonner", () => ({ toast: vi.fn() }));
 // unhandled rejection (fails the whole test run, noise in browsers). The
 // test below fails the RUN pre-fix and passes post-fix; the assertion itself
 // only checks the error UI.
+
+function renderInbox() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><MyCompanyInbox /></QueryClientProvider>);
+}
+
 describe("inbox parallel secondary loads", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("handles secondary failures when the primary load also fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 503, json: async () => ({ error: "everything is down" }) })));
-    render(<MyCompanyInbox />);
+    renderInbox();
     expect(await screen.findByRole("alert")).toBeTruthy();
   });
 });
