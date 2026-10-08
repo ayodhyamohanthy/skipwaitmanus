@@ -25,7 +25,12 @@ function rowsFor(table: Table): Array<Record<string, unknown>> {
   throw new Error("Unexpected table");
 }
 
-const asMs = (value: unknown) => (value instanceof Date ? value.getTime() : value);
+// drizzle hands timestamp params to the driver as "YYYY-MM-DD HH:MM:SS.mmm" (UTC) strings.
+const asMs = (value: unknown) => {
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)) return Date.parse(`${value.replace(" ", "T")}Z`);
+  return value;
+};
 
 function matches(condition: SQLQuery, row: Record<string, unknown>): boolean {
   const query = dialect.sqlToQuery(condition);

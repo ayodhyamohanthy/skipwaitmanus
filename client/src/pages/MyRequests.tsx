@@ -29,7 +29,7 @@ const canWithdraw = (request: ReferralRequest) => request.status === "pending" &
 
 function rowNote(request: ReferralRequest) {
   if (request.status === "pending" && !request.referrerId) {
-    const label = formatAskExpiry({ status: request.status, referrerId: request.referrerId, createdAt: request.expiresAt ?? request.createdAt }, Date.now());
+    const label = formatAskExpiry({ status: request.status, referrerId: request.referrerId, createdAt: request.createdAt }, Date.now());
     if (label) return label;
   }
   if (request.unreadMessageCount > 0 && canMessage(request)) return `${request.unreadMessageCount} new`;
@@ -40,7 +40,7 @@ function rowNote(request: ReferralRequest) {
 
 function expiryUrgency(request: ReferralRequest): boolean {
   if (request.status !== "pending" || request.referrerId) return false;
-  const days = askDaysLeft({ createdAt: request.expiresAt ?? request.createdAt }, Date.now());
+  const days = askDaysLeft({ createdAt: request.createdAt }, Date.now());
   return days !== null && days <= 1;
 }
 
