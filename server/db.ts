@@ -2,10 +2,29 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, or
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
+import {
+  APPROVAL_TTL_MS,
+  ASSISTANT_MIN_PLAN,
+  DEVELOPER_APP_SCOPES,
+  getApprovalExpiresAtMs,
+  isApprovalExpired,
+  normalizeAppKind,
+  normalizeAssistantProvider,
+  normalizeScopes,
+  validateAppName,
+  validateApprovalNote,
+  validateDescription,
+  validateRedirectUrls,
+  validateUrl,
+  type AssistantApproval,
+  type AssistantConnection,
+  type AssistantToken,
+  type DeveloperApp,
+} from "../shared/assistant";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
@@ -403,6 +422,247 @@ export async function notifySeekerAlertsForCompany(companyDomain: string, now: D
     } catch { /* fail open per watcher: a missed alert never breaks verification */ }
   }
   return { notified };
+}
+
+/**
+ * Assistant access (kit screens 22 / 23 / 24 / 26).
+ * Connections are the revocable consent record an OAuth/MCP
+ * handshake completes. Tokens are stored sha256-hashed and
+ * shown exactly once. Developer apps register third-party
+ * clients (test mode until reviewed). Approvals queue
+ * assistant actions for the user's explicit decision and
+ * expire 24 hours after creation, computed in JavaScript.
+ */
+function parseJsonArray(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getAssistantAccessPlan(userId: number): Promise<string> {
+  const db = await getDb(); if (!db) return "free";
+  const wallet = (await db.select({ plan: tokenBalances.plan }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
+  return wallet?.plan ?? "free";
+}
+
+function assertAssistantAccess(plan: string) {
+  if (plan !== ASSISTANT_MIN_PLAN) throw new Error(`Assistants are part of the ${ASSISTANT_MIN_PLAN} plan. Upgrade to connect ChatGPT, Claude or your own tools.`);
+}
+
+export async function listAssistantConnections(userId: number): Promise<AssistantConnection[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(assistantConnections).where(eq(assistantConnections.userId, userId)).orderBy(desc(assistantConnections.createdAt));
+  return rows.map(row => ({ id: row.id, provider: row.provider, appName: row.appName, scopes: parseJsonArray(row.scopes), status: row.status, lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null, connectedAt: row.connectedAt.toISOString() }));
+}
+
+export async function connectAssistant(userId: number, input: { provider?: unknown; appName?: unknown; scopes?: unknown }) {
+  const provider = normalizeAssistantProvider(input.provider);
+  if (!provider) throw new Error("Choose ChatGPT, Claude, or another assistant");
+  const appName = validateAppName(input.appName) ?? (provider === "chatgpt" ? "ChatGPT" : provider === "claude" ? "Claude" : "Assistant");
+  const scopes = normalizeScopes(input.scopes, ["read", "draft", "send", "credits"]) ?? ["read", "draft"];
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  const current = await db.select({ id: assistantConnections.id, status: assistantConnections.status }).from(assistantConnections).where(and(eq(assistantConnections.userId, userId), eq(assistantConnections.provider, provider)));
+  const active = current.filter(row => row.status === "connected");
+  if (active.length > 0) throw new Error(`${appName} is already connected`);
+  const inserted = await db.insert(assistantConnections).values({ userId, provider, appName, scopes: JSON.stringify(scopes) });
+  const id = Number(inserted[0].insertId);
+  return (await listAssistantConnections(userId)).find(connection => connection.id === id) ?? null;
+}
+
+export async function disconnectAssistant(userId: number, connectionId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(assistantConnections).where(and(eq(assistantConnections.id, connectionId), eq(assistantConnections.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This assistant is not connected to your account");
+  await db.update(assistantConnections).set({ status: "revoked", revokedAt: new Date() }).where(eq(assistantConnections.id, connectionId));
+  return { revoked: true as const, id: connectionId };
+}
+
+export async function listAssistantTokens(userId: number): Promise<AssistantToken[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: assistantTokens.id, name: assistantTokens.name, prefix: assistantTokens.prefix, lastUsedAt: assistantTokens.lastUsedAt, createdAt: assistantTokens.createdAt }).from(assistantTokens).where(eq(assistantTokens.userId, userId)).orderBy(desc(assistantTokens.createdAt));
+  return rows.map(row => ({ id: row.id, name: row.name, prefix: row.prefix, lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null, createdAt: row.createdAt.toISOString() }));
+}
+
+export async function createAssistantToken(userId: number, input: { name?: unknown }) {
+  const name = validateAppName(input.name);
+  if (!name) throw new Error("Give the token a name, like “Notion tracker”");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  const plaintext = `sw_${randomBytes(24).toString("base64url")}`;
+  const tokenHash = createHash("sha256").update(plaintext).digest("hex");
+  const prefix = plaintext.slice(0, 10);
+  try {
+    const inserted = await db.insert(assistantTokens).values({ userId, name, tokenHash, prefix });
+    const id = Number(inserted[0].insertId);
+    return { id, name, prefix, token: plaintext, createdAt: new Date().toISOString() };
+  } catch (error) {
+    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already have a token named “${name}”`);
+    throw error instanceof Error ? error : new Error("We could not create this token");
+  }
+}
+
+export async function revokeAssistantToken(userId: number, tokenId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: assistantTokens.id }).from(assistantTokens).where(and(eq(assistantTokens.id, tokenId), eq(assistantTokens.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This token is not in your account");
+  await db.update(assistantTokens).set({ revokedAt: new Date() }).where(eq(assistantTokens.id, tokenId));
+  return { revoked: true as const, id: tokenId };
+}
+
+export async function listAssistantApprovals(userId: number): Promise<AssistantApproval[]> {
+  const db = await getDb(); if (!db) return [];
+  const now = new Date();
+  await db.update(assistantApprovals).set({ status: "expired", decidedAt: now }).where(and(eq(assistantApprovals.userId, userId), eq(assistantApprovals.status, "pending"), lt(assistantApprovals.expiresAt, now)));
+  const rows = await db.select().from(assistantApprovals).where(eq(assistantApprovals.userId, userId)).orderBy(desc(assistantApprovals.createdAt)).limit(50);
+  return rows.map(row => ({
+    id: row.id,
+    kind: row.kind,
+    status: row.status,
+    provider: row.provider,
+    companyDomain: row.companyDomain,
+    role: row.role,
+    note: row.note,
+    creditCount: row.creditCount,
+    slotCount: row.slotCount,
+    createdAt: row.createdAt.toISOString(),
+    expiresAt: row.expiresAt.toISOString(),
+  }));
+}
+
+export async function createAssistantApproval(userId: number, input: {
+  kind?: unknown; provider?: unknown; connectionId?: unknown;
+  companyDomain?: unknown; role?: unknown; note?: unknown;
+  creditCount?: unknown; slotCount?: unknown;
+}) {
+  const kind = input.kind === "ask_send" || input.kind === "credit_spend" ? input.kind : null;
+  if (!kind) throw new Error("Approvals cover an ask or a credit spend");
+  const provider = typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
+  const companyDomain = typeof input.companyDomain === "string" && input.companyDomain.trim() ? input.companyDomain.trim().toLowerCase().slice(0, 255) : null;
+  const role = typeof input.role === "string" && input.role.trim() ? input.role.trim().slice(0, 180) : null;
+  const note = input.note === undefined || input.note === null ? null : validateApprovalNote(input.note);
+  const creditCount = typeof input.creditCount === "number" && Number.isInteger(input.creditCount) && input.creditCount > 0 ? input.creditCount : null;
+  const slotCount = typeof input.slotCount === "number" && Number.isInteger(input.slotCount) && input.slotCount >= 0 ? input.slotCount : null;
+  const connectionId = typeof input.connectionId === "number" && Number.isInteger(input.connectionId) && input.connectionId > 0 ? input.connectionId : null;
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const expiresAt = new Date(getApprovalExpiresAtMs(Date.now()));
+  const inserted = await db.insert(assistantApprovals).values({ userId, connectionId, kind, provider, companyDomain, role, note, creditCount, slotCount, expiresAt });
+  const id = Number(inserted[0].insertId);
+  const created = (await db.select().from(assistantApprovals).where(eq(assistantApprovals.id, id)).limit(1))[0];
+  return { id: created.id, kind: created.kind, status: created.status, provider: created.provider, companyDomain: created.companyDomain, role: created.role, note: created.note, creditCount: created.creditCount, slotCount: created.slotCount, createdAt: created.createdAt.toISOString(), expiresAt: created.expiresAt.toISOString() };
+}
+
+export async function editAssistantApproval(userId: number, approvalId: number, input: { note?: unknown }) {
+  const note = validateApprovalNote(input.note);
+  if (!note) throw new Error("Enter the ask note you want to send");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(assistantApprovals).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This approval is not in your account");
+  if (current.status !== "pending") throw new Error("This approval was already handled");
+  if (isApprovalExpired(current.expiresAt.getTime())) throw new Error("This approval expired");
+  await db.update(assistantApprovals).set({ note }).where(eq(assistantApprovals.id, approvalId));
+  return { id: approvalId, note };
+}
+
+export async function decideAssistantApproval(userId: number, approvalId: number, decision: "approved" | "declined") {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(assistantApprovals).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This approval is not in your account");
+  if (current.status !== "pending") throw new Error("This approval was already handled");
+  if (isApprovalExpired(current.expiresAt.getTime())) {
+    await db.update(assistantApprovals).set({ status: "expired", decidedAt: new Date() }).where(eq(assistantApprovals.id, approvalId));
+    throw new Error("This approval expired");
+  }
+  const result = await db.update(assistantApprovals).set({ status: decision, decidedAt: new Date() }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "pending")));
+  if (Number(result[0]?.affectedRows) !== 1) throw new Error("This approval was already handled");
+  return { id: approvalId, status: decision };
+}
+
+export async function listAssistantActivity(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome, resourceType: operationalActivityLogs.resourceType, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), like(operationalActivityLogs.action, "assistant.%"))).orderBy(desc(operationalActivityLogs.createdAt)).limit(50);
+  return rows.map(row => {
+    let metadata: Record<string, unknown> = {};
+    try { metadata = row.metadata ? JSON.parse(row.metadata) : {}; } catch { /* keep empty */ }
+    return { action: row.action, outcome: row.outcome, resourceType: row.resourceType, metadata, createdAt: row.createdAt.toISOString() };
+  });
+}
+
+export async function listDeveloperApps(userId: number): Promise<DeveloperApp[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(developerApps).where(eq(developerApps.userId, userId)).orderBy(desc(developerApps.createdAt));
+  return rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    description: row.description,
+    website: row.website,
+    redirectUrls: parseJsonArray(row.redirectUrls),
+    scopes: parseJsonArray(row.scopes),
+    status: row.status,
+    rejectReasons: parseJsonArray(row.rejectReasons),
+    webhookUrl: row.webhookUrl,
+    clientId: row.clientId,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+export async function createDeveloperApp(userId: number, input: {
+  name?: unknown; kind?: unknown; description?: unknown;
+  website?: unknown; redirectUrls?: unknown; scopes?: unknown;
+  agreeToTerms?: unknown;
+}) {
+  const name = validateAppName(input.name);
+  if (!name) throw new Error("Give your app a name (2–80 characters)");
+  const kind = normalizeAppKind(input.kind);
+  if (!kind) throw new Error("Choose what you are building");
+  const description = validateDescription(input.description);
+  if (!description) throw new Error("Describe what your app does for job seekers");
+  const website = input.website === undefined || input.website === null || input.website === "" ? null : validateUrl(input.website);
+  if (website === null && input.website !== undefined && input.website !== null && input.website !== "") throw new Error("Enter a valid website URL");
+  const redirectUrls = validateRedirectUrls(input.redirectUrls);
+  if (!redirectUrls) throw new Error("Enter 1–10 valid redirect URLs");
+  const scopes = normalizeScopes(input.scopes, DEVELOPER_APP_SCOPES);
+  if (!scopes) throw new Error("Choose only the listed permissions");
+  if (input.agreeToTerms !== true) throw new Error("Agree to the developer terms to register an app");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  const tryInsert = (clientId: string) => db.insert(developerApps).values({ userId, name, kind, description, website, redirectUrls: JSON.stringify(redirectUrls), scopes: JSON.stringify(scopes), clientId });
+  let inserted: Awaited<ReturnType<typeof tryInsert>> | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const clientId = `sw_app_${randomBytes(8).toString("hex")}`;
+    try {
+      inserted = await tryInsert(clientId);
+      break;
+    } catch (error) {
+      if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY" && attempt < 2) continue;
+      throw error instanceof Error ? error : new Error("We could not register this app");
+    }
+  }
+  if (!inserted) throw new Error("We could not register this app");
+  const id = Number(inserted[0].insertId);
+  return (await listDeveloperApps(userId)).find(app => app.id === id) ?? null;
+}
+
+export async function getDeveloperApp(userId: number, appId: number): Promise<DeveloperApp | null> {
+  const db = await getDb(); if (!db) return null;
+  const row = (await db.select().from(developerApps).where(and(eq(developerApps.id, appId), eq(developerApps.userId, userId))).limit(1))[0];
+  if (!row) return null;
+  return { id: row.id, name: row.name, kind: row.kind, description: row.description, website: row.website, redirectUrls: parseJsonArray(row.redirectUrls), scopes: parseJsonArray(row.scopes), status: row.status, rejectReasons: parseJsonArray(row.rejectReasons), webhookUrl: row.webhookUrl, clientId: row.clientId, createdAt: row.createdAt.toISOString() };
+}
+
+export async function updateDeveloperAppWebhook(userId: number, appId: number, input: { webhookUrl?: unknown }) {
+  const webhookUrl = input.webhookUrl === undefined || input.webhookUrl === null || input.webhookUrl === "" ? null : validateUrl(input.webhookUrl);
+  if (webhookUrl === null && input.webhookUrl !== undefined && input.webhookUrl !== null && input.webhookUrl !== "") throw new Error("Enter a valid webhook URL");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: developerApps.id }).from(developerApps).where(and(eq(developerApps.id, appId), eq(developerApps.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This app is not in your console");
+  await db.update(developerApps).set({ webhookUrl }).where(eq(developerApps.id, appId));
+  return { id: appId, webhookUrl };
 }
 
 export async function createWorkItem(userId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
