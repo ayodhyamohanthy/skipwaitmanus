@@ -50,8 +50,15 @@ if (import.meta.env.DEV) {
   // current deploy and only fall back to the cached shell when offline.
   void navigator.serviceWorker?.register("/sw.js").then(registration => {
     registration.update().catch(() => undefined);
-    navigator.serviceWorker?.addEventListener("controllerchange", () => {
-      if (!sessionStorage.getItem("skipwait:sw-reloaded")) { sessionStorage.setItem("skipwait:sw-reloaded", "1"); window.location.reload(); }
+    // A waiting worker means a newer deploy is installed. Only prompt when an older worker
+    // already controls the page (first installs have nothing to update from).
+    const announce = (worker: ServiceWorker | null) => {
+      if (worker && navigator.serviceWorker.controller) window.dispatchEvent(new CustomEvent("skipwait:sw-update", { detail: worker }));
+    };
+    announce(registration.waiting);
+    registration.addEventListener("updatefound", () => {
+      const worker = registration.installing;
+      worker?.addEventListener("statechange", () => { if (worker.state === "installed") announce(worker); });
     });
   }).catch(() => undefined);
 }

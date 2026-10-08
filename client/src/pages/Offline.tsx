@@ -14,7 +14,7 @@ export default function Offline() {
         <h1 className="text-2xl font-semibold">No connection.</h1>
         <p className="mt-2 text-[var(--muted-foreground)]">Your drafts are saved on this device and will send when you're back online.</p>
         {hasDraft ? <p role="status" className="mt-4 break-words rounded-xl border border-[var(--foreground)] bg-[var(--muted)] px-4 py-3 text-sm font-semibold">Your referral draft is saved on this device: {draft?.targetUrl}</p> : null}
-        <button type="button" onClick={() => window.location.reload()} className="brand-button mt-6 w-full"><RefreshCw className="h-4 w-4" aria-hidden="true" />Try again</button>
+        <button type="button" onClick={() => { const from = new URLSearchParams(window.location.search).get("from"); if (from && from.startsWith("/") && !from.startsWith("//")) window.location.assign(from); else window.location.reload(); }} className="brand-button mt-6 w-full"><RefreshCw className="h-4 w-4" aria-hidden="true" />Try again</button>
       </section>
     </main>
   );
