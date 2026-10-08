@@ -5,6 +5,7 @@ import { SignInButton, useAuth } from "@/_core/auth";
 import { applySeo, faqJsonLd } from "@/lib/seo";
 import { LAUNCH_COMPANIES } from "@/lib/companies";
 import { VisualJourney } from "@/components/VisualJourney";
+import CookieConsent from "@/components/CookieConsent";
 
 const QUESTIONS = [
   ["Are job referrals really free?", "Yes. No payments between seekers and referrers, no referral commission, and no paid priority. A referral is a voluntary introduction, not a purchase."],
@@ -124,12 +125,14 @@ export default function Home() {
         <span>A warmer way in. · skipwait.me</span>
         <span className="flex flex-wrap gap-4">
           <Link href="/help">Help</Link>
+          <Link href="/guidelines">Guidelines</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
           <Link href="/safety">Safety</Link>
           <Link href="/for-companies">For companies <ArrowUpRight size={14} /></Link>
         </span>
       </footer>
+      <CookieConsent />
     </div>
   );
 }

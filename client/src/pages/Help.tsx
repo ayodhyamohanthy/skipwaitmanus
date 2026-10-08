@@ -58,6 +58,7 @@ export default function Help() {
           <ShieldCheck className="mb-2 size-5" /><h2 className="font-semibold">Rules &amp; policies</h2>
           <ul className="mt-2 space-y-2 text-sm">
             <li><Link href="/terms" className="text-link">Terms of service</Link></li>
+            <li><Link href="/guidelines" className="text-link">Community guidelines</Link></li>
             <li><Link href="/privacy" className="text-link">Privacy &amp; trust</Link></li>
             <li><Link href="/safety" className="text-link">Safety</Link></li>
           </ul>

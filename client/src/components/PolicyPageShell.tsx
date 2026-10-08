@@ -21,6 +21,7 @@ export const POLICIES_PUBLISHED = true;
 export const SUPPORT_EMAIL = "support@skipwait.me";
 export const policyLinks = [
   { href: "/terms", label: "Terms of Service" },
+  { href: "/guidelines", label: "Community guidelines" },
   { href: "/privacy", label: "Privacy & trust" },
   { href: "/refunds", label: "Refunds & cancellation" },
   { href: "/cancellations", label: "Cancellation policy" },
@@ -37,6 +38,7 @@ export const policyLinks = [
  */
 const POLICY_SCREEN_PATHS: Record<string, string> = {
   terms: "/terms",
+  guidelines: "/guidelines",
   "refund-policy": "/refunds",
   "cancellation-policy": "/cancellations",
   "shipping-policy": "/shipping",

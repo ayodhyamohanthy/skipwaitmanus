@@ -37,7 +37,7 @@ describe("Trust cluster", () => {
     const policies = screen.getByText("Rules & policies").closest("div") as HTMLElement;
     expect(policies.innerHTML).toContain("/terms");
     expect(policies.innerHTML).toContain("/safety");
-    expect(policies.innerHTML).not.toContain("/guidelines");
+    expect(policies.innerHTML).toContain("/guidelines");
   });
 
   it("walks the landed journey with a copyable thanks and no fabricated outcome", () => {

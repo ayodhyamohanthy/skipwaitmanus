@@ -3,6 +3,7 @@ import React from "react";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
+import Guidelines from "./Guidelines";
 import RefundPolicy from "./RefundPolicy";
 import ShippingPolicy from "./ShippingPolicy";
 import About from "./About";
@@ -49,8 +50,17 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
-    expect(policyLinks(container)).toEqual(["/terms", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
+    expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");
+  });
+
+  it("Guidelines state the free-referral rules and stay in draft until legal review", () => {
+    const { container } = render(<Guidelines />);
+    expect(document.querySelector('[data-skipwait-screen="guidelines"]')).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1, name: "Guidelines." })).toBeTruthy();
+    expect(screen.getByText(/No money, gifts, or favours change hands/)).toBeTruthy();
+    expect(screen.getByText(/Draft · pending legal review/)).toBeTruthy();
+    expect(policyLinks(container)).toContain("/guidelines");
   });
 
   it("Refund policy matches the billing rules the product enforces", () => {
