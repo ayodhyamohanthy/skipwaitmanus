@@ -85,6 +85,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/verify",
   "/wall",
   "/work",
+  "/admin",
   "/admin/activity",
   "/admin/approvals",
   "/admin/approvals/:kind/:id",
