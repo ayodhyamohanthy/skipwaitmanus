@@ -117,7 +117,7 @@ export default function UnifiedInbox() {
       <div className="mb-4 mt-6 flex flex-wrap items-center gap-2">
         <div className="flex rounded-full bg-[var(--muted)] p-1 text-sm" role="tablist" aria-label="Inbox side">
           {(["all", "asking", "referring"] as const).map(value => (
-            <button key={value} type="button" role="tab" aria-selected={side === value} onClick={() => setSide(value)} className={`min-h-9 rounded-full px-4 capitalize ${side === value ? "bg-[var(--background)] font-semibold shadow-sm" : "text-[var(--muted-foreground)]"}`}>{value === "all" ? "All" : value}</button>
+            <button key={value} type="button" role="tab" aria-selected={side === value} onClick={() => setSide(value)} className={`min-h-11 rounded-full px-4 capitalize ${side === value ? "bg-[var(--background)] font-semibold shadow-sm" : "text-[var(--muted-foreground)]"}`}>{value === "all" ? "All" : value === "asking" ? "Asking" : "Referring"}</button>
           ))}
         </div>
         <label className="relative min-w-0 flex-1">
