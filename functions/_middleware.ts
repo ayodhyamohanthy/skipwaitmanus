@@ -94,6 +94,10 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/admin/smoke",
   "/admin/token-recovery",
   "/admin/users",
+  "/admin",
+  "/assistants",
+  "/connect-assistant",
+  "/guidelines",
 ];
 
 /**
