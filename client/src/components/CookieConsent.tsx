@@ -31,7 +31,7 @@ export default function CookieConsent() {
   };
 
   return (
-    <div role="dialog" aria-live="polite" aria-label="Cookie consent" className="fixed inset-x-0 bottom-0 z-50 border-t-2 border-[var(--foreground)] bg-[var(--background)] px-5 py-4 text-[var(--foreground)]">
+    <div role="dialog" aria-live="polite" aria-label="Cookie consent" className="fixed inset-x-0 bottom-0 z-50 border-t-2 border-[var(--foreground)] bg-[var(--background)] px-5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-[var(--foreground)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm leading-6">
           <strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve — never sold, never ads.{" "}
