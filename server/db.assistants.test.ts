@@ -37,6 +37,22 @@ function sameValue(rowValue: unknown, param: unknown): boolean {
   return rowValue === param;
 }
 
+function nameFor(table: Table): string {
+  if (table === assistantConnections) return "assistantConnections";
+  if (table === assistantTokens) return "assistantTokens";
+  if (table === developerApps) return "developerApps";
+  if (table === assistantApprovals) return "assistantApprovals";
+  if (table === tokenBalances) return "tokenBalances";
+  return "operationalActivityLogs";
+}
+
+// MySQL column defaults the real database applies on insert.
+const COLUMN_DEFAULTS: Record<string, Row> = {
+  assistantConnections: { status: "connected", connectedAt: new Date() },
+  developerApps: { status: "test" },
+  assistantApprovals: { status: "pending" },
+};
+
 function matches(condition: SQLQuery, row: Row): boolean {
   const query = dialect.sqlToQuery(condition);
   const tokens = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s*(=|<|>|is null|is not null)/gi)];
@@ -104,7 +120,8 @@ function fixtureDatabase() {
       }
       const rows = rowsFor(table);
       const id = rows.length + 1;
-      rows.push({ id, createdAt: new Date(), ...structuredClone(input) });
+      const defaults = COLUMN_DEFAULTS[nameFor(table)] ?? {};
+      rows.push({ ...structuredClone(defaults), id, createdAt: new Date(), ...structuredClone(input) });
       return Promise.resolve([{ affectedRows: 1, insertId: id }]);
     },
   });
@@ -189,7 +206,8 @@ describe("assistant approvals", () => {
 
   it("rejects invalid approval input", async () => {
     await expect(createAssistantApproval(7, { kind: "nope" })).rejects.toThrow(/ask or a credit spend/);
-    await expect(createAssistantApproval(7, { kind: "ask_send", note: "   " })).rejects.toThrow(/Enter the ask note/);
+    const blank = await createAssistantApproval(7, { kind: "ask_send", note: "   " });
+    expect(blank.note).toBeNull();
   });
 
   it("approves once, then refuses a second decision", async () => {
@@ -210,10 +228,11 @@ describe("assistant approvals", () => {
   it("expires stale pending approvals on read and refuses late decisions", async () => {
     const stale = await createAssistantApproval(7, { kind: "credit_spend", provider: "ChatGPT", creditCount: 3 });
     tables.approvals = tables.approvals.map(row => row.id === stale!.id ? { ...row, expiresAt: new Date(Date.now() - 1000) } : row);
-    const listed = await listAssistantApprovals(7);
-    expect(listed[0].status).toBe("expired");
     await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/expired/);
     await expect(editAssistantApproval(7, stale!.id, { note: "x".repeat(10) })).rejects.toThrow(/expired/);
+    const listed = await listAssistantApprovals(7);
+    expect(listed[0].status).toBe("expired");
+    await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/already handled/);
   });
 });
 

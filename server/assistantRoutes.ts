@@ -15,6 +15,7 @@ import {
   listAssistantTokens,
   listDeveloperApps,
   revokeAssistantToken,
+  submitDeveloperAppForReview,
   updateDeveloperAppWebhook,
 } from "./db";
 

@@ -32,7 +32,7 @@ describe("Developer console", () => {
     render(<DeveloperConsole />);
     expect(await screen.findByText("Your apps")).toBeTruthy();
     expect(await screen.findByText("Instinct")).toBeTruthy();
-    expect(screen.getByText("AI agent or MCP client · Test")).toBeTruthy();
+    expect(screen.getByText("AI agent or MCP client · Test mode")).toBeTruthy();
   });
 
   it("shows app details with the client id and webhook", async () => {

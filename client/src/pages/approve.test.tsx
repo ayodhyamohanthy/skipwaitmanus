@@ -52,7 +52,7 @@ describe("Approve page", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Approve />);
     expect(await screen.findByText("Send this ask to wipro.com?")).toBeTruthy();
-    expect(screen.getByText(/Senior Product Designer/)).toBeTruthy();
+    expect(screen.getByText("Senior Product Designer · uses 1 of your open slots")).toBeTruthy();
     expect(screen.getByText("Hi — I'd love a referral for the Senior Product Designer role.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Done")).toBeTruthy();
