@@ -120,3 +120,6 @@ backups/
 # CI build artifact (baked commit sha)
 commit-sha.txt
 .openclaw_runs.json
+
+# kit screen fidelity harness output
+.kit-screens/
