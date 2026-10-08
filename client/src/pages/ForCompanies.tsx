@@ -13,6 +13,7 @@ const VALUE = [
 export default function ForCompanies() {
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
+  const [teamSize, setTeamSize] = useState("11–50");
 
   return (
     <div data-skipwait-screen="for-companies">
@@ -73,8 +74,13 @@ export default function ForCompanies() {
           <label className="mt-4 block text-sm font-semibold">Company
             <input value={company} onChange={event => setCompany(event.target.value)} placeholder="Company name" className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
           </label>
+          <label className="mt-4 block text-sm font-semibold">Team size
+            <select value={teamSize} onChange={event => setTeamSize(event.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base">
+              {["1–10", "11–50", "51–200", "201+"].map(size => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
           <a
-            href={`mailto:hello@skipwait.me?subject=${encodeURIComponent(`Demo request${company.trim() ? ` — ${company.trim()}` : ""}`)}&body=${encodeURIComponent(`Hi SkipWait team,\n\nWe'd like a 20-minute demo for ${company.trim() || "our company"}.\n\nContact: ${email.trim()}\n\nThanks!`)}`}
+            href={`mailto:hello@skipwait.me?subject=${encodeURIComponent(`Demo request${company.trim() ? ` — ${company.trim()}` : ""}`)}&body=${encodeURIComponent(`Hi SkipWait team,\n\nWe'd like a 20-minute demo for ${company.trim() || "our company"} (team size ${teamSize}).\n\nContact: ${email.trim()}\n\nThanks!`)}`}
             className="brand-button mt-6 w-full"
           >
             Request demo <ArrowRight />

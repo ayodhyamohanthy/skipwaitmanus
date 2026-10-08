@@ -23,6 +23,8 @@ describe("ForCompanies sales page", () => {
     const demo = screen.getByRole("link", { name: /Request demo/ });
     expect(demo.getAttribute("href")).toMatch(/^mailto:hello@skipwait\.me\?/);
     expect(demo.getAttribute("href")).toContain(encodeURIComponent("Acme"));
+    fireEvent.change(screen.getByLabelText("Team size"), { target: { value: "51–200" } });
+    expect(screen.getByRole("link", { name: /Request demo/ }).getAttribute("href")).toContain(encodeURIComponent("51–200"));
     expect(screen.getAllByRole("link", { name: "Employer workspace" }).every(link => link.getAttribute("href") === "/employer")).toBe(true);
   });
 });
