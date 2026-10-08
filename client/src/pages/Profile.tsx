@@ -77,7 +77,13 @@ export default function Profile() {
         <div className="flex flex-wrap gap-2">
           {form.handle ? <Link href={`/p/${form.handle}`} className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">View public profile <ArrowRight /></Link> : null}
           <Link href="/verify" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Verify work email</Link>
+          <Link href="/onboarding" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Setup guide</Link>
+          <Link href="/settings" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Settings</Link>
         </div>
+      </div>
+      <div className="intent-switch profile-switch mb-6" role="navigation" aria-label="Profile type">
+        <span className="brand-button selected" aria-current="page"><UserRound />Seeker profile</span>
+        <Link href="/referrer-setup" className="brand-button"><ShieldCheck />Referrer profile</Link>
       </div>
 
       {loading ? <p className="mt-10 text-center text-sm text-[var(--muted-foreground)]">Loading your profile…</p> : (
