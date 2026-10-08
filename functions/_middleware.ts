@@ -99,6 +99,8 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/connect-assistant",
   "/guidelines",
   "/approve",
+  "/forgot-password",
+  "/reset-password",
 ];
 
 /**

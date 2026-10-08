@@ -49,7 +49,7 @@ export const DESIGNED_ROUTES = {
   "explore": "/explore",
   "explore-skipwait": "/explore/:slug",     // company detail
   "for-companies": "/for-companies",
-  "forgot-password": null,
+  "forgot-password": "/forgot-password",
   "guidelines": "/guidelines",
   "help": "/help",                        // kit help centre; /support stays as triage
   "inbox": "/inbox",
@@ -65,7 +65,7 @@ export const DESIGNED_ROUTES = {
   "referrer-setup": "/referrer-setup",
   "report": "/report",                    // built: d7506a7a
   "requests": "/requests",
-  "reset-password": null,
+  "reset-password": "/reset-password",
   "safety": "/safety",
   "settings": "/settings",
   "sign-in": "/sign-in",
@@ -78,7 +78,7 @@ export const DESIGNED_ROUTES = {
 };
 
 /** Implemented count as of this commit. Raise it; never lower it. */
-export const BASELINE_IMPLEMENTED = 38;
+export const BASELINE_IMPLEMENTED = 40;
 
 // Screens the kit designs that have NO capture in screens/. The homepage is in
 // SCREENS.md but absent from both screens/web and screens/mobile, so deriving
