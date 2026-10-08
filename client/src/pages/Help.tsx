@@ -28,7 +28,7 @@ export default function Help() {
 
   return (
     <main data-skipwait-screen="help" className="page-content mx-auto max-w-4xl">
-      <div className="mb-6"><span className="eyebrow">Help centre</span><h1 className="mt-2 text-4xl font-semibold">How can we help</h1></div>
+      <div className="mb-6"><span className="eyebrow">Help centre</span><h1 className="mt-2 text-4xl font-semibold">How can we help<span className="brand-dot">.</span></h1></div>
       <label className="relative block">
         <Search className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[var(--muted-foreground)]" />
         <span className="sr-only">Search help</span>
