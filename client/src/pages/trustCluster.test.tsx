@@ -43,6 +43,7 @@ describe("Trust cluster", () => {
   it("walks the landed journey with a copyable thanks and no fabricated outcome", () => {
     render(<Landed />);
     expect(screen.getByText("You did it.")).toBeTruthy();
+    expect(screen.getByText(/Illustrative outcome, not a real hire/)).toBeTruthy();
     expect(screen.queryByText(/Product Designer at Wipro/)).toBeNull();
     expect(screen.queryByText(/Rahul/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Thank your referrer/ }));

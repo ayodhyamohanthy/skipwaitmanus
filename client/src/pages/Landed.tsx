@@ -23,6 +23,7 @@ export default function Landed() {
           <li key={label}><span className={`block h-1.5 rounded-full ${i <= step ? "bg-[var(--primary)]" : "bg-[var(--muted)]"}`} /><span className="mt-1.5 block text-xs text-[var(--muted-foreground)]">{label}</span></li>
         ))}
       </ol>
+      <p className="mb-8 rounded-xl bg-[var(--muted)] px-4 py-2.5 text-[11px] font-bold uppercase tracking-[.14em] text-[var(--muted-foreground)]">Example · Illustrative outcome, not a real hire</p>
 
       {step === 0 ? (
         <section className="text-center">
