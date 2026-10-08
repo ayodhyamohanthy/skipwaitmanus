@@ -4,7 +4,7 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
-import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, revokeReferralShareCard } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, notifySeekerAlertsForCompany, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
@@ -62,6 +62,11 @@ export type PrivateReferralRouteDeps = {
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
   listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
+  listSeekerAlerts?: (userId: number) => Promise<unknown[]>;
+  createSeekerAlert?: (userId: number, input: { companyDomain?: unknown }) => Promise<unknown>;
+  setSeekerAlertPaused?: (userId: number, alertId: number, paused: boolean) => Promise<unknown>;
+  deleteSeekerAlert?: (userId: number, alertId: number) => Promise<{ deleted: boolean; id: number }>;
+  notifySeekerAlertsForCompany?: (companyDomain: string) => Promise<{ notified: number }>;
   reconcileExpiredPendingReferrals?: (userId: number, nowMs?: number) => Promise<{ expiredRequestIds: number[] }>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
@@ -463,6 +468,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         if (!completed) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
         record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: completed.workEmailDomain, metadata: { verification: "server_otp_receipt", replayed: completed.replayed } });
         if (completed.reward.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: completed.workEmailDomain, metadata: { tokenCount: completed.reward.tokenCount ?? 0 } });
+        try { await (deps.notifySeekerAlertsForCompany ?? notifySeekerAlertsForCompany)(completed.workEmailDomain); } catch { /* alerts never break enrollment */ }
         return res.json({ verified: true, workEmailDomain: completed.workEmailDomain, reward: completed.reward });
       }
       const profile = await deps.saveVerifiedWorkEmail(identity.account.id, verifiedEmail.emailAddress);
@@ -470,6 +476,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const reward = inviteCode && profile?.workEmailDomain && deps.fulfillCompanyCoverageInvitation ? await deps.fulfillCompanyCoverageInvitation(identity.account.id, { inviteCode, workEmailDomain: profile.workEmailDomain }) : { rewarded: false };
       record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: profile?.workEmailDomain ?? undefined, metadata: { verification: "email_code" } });
       if (reward.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: profile?.workEmailDomain ?? undefined, metadata: { tokenCount: reward.tokenCount ?? 0 } });
+      if (profile?.workEmailDomain) { try { await (deps.notifySeekerAlertsForCompany ?? notifySeekerAlertsForCompany)(profile.workEmailDomain); } catch { /* alerts never break enrollment */ } }
       res.json({ verified: true, workEmailDomain: profile?.workEmailDomain, reward });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not verify your work email";
@@ -549,6 +556,54 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.set("Cache-Control", "private, no-store");
       res.json({ receipts });
     } catch { res.status(500).json({ error: "We could not load your receipts" }); }
+  });
+  app.get("/api/seeker-alerts", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your alerts" });
+      const alerts = await (deps.listSeekerAlerts ?? listSeekerAlerts)(identity.account.id);
+      res.set("Cache-Control", "private, no-store");
+      res.json({ alerts });
+    } catch { res.status(500).json({ error: "We could not load your alerts" }); }
+  });
+  app.post("/api/seeker-alerts", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to watch a company" });
+      const alert = await (deps.createSeekerAlert ?? createSeekerAlert)(identity.account.id, { companyDomain: req.body?.companyDomain });
+      record({ actorUserId: identity.account.id, action: "seeker_alert.created", outcome: "success", resourceType: "seeker_alert", resourceId: (alert as { id?: number }).id });
+      res.status(201).json({ alert });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not save this alert";
+      res.status(/valid company domain|alerts|already watch/i.test(message) ? 400 : 500).json({ error: message });
+    }
+  });
+  app.patch("/api/seeker-alerts/:alertId", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const alertId = Number(req.params.alertId);
+      if (!identity) return res.status(401).json({ error: "Sign in to change your alerts" });
+      if (!Number.isInteger(alertId) || alertId <= 0) return res.status(400).json({ error: "Invalid alert" });
+      const alert = await (deps.setSeekerAlertPaused ?? setSeekerAlertPaused)(identity.account.id, alertId, req.body?.paused !== false);
+      res.json({ alert });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not update this alert";
+      res.status(/not in your account/i.test(message) ? 404 : 500).json({ error: message });
+    }
+  });
+  app.delete("/api/seeker-alerts/:alertId", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const alertId = Number(req.params.alertId);
+      if (!identity) return res.status(401).json({ error: "Sign in to remove your alerts" });
+      if (!Number.isInteger(alertId) || alertId <= 0) return res.status(400).json({ error: "Invalid alert" });
+      const result = await (deps.deleteSeekerAlert ?? deleteSeekerAlert)(identity.account.id, alertId);
+      record({ actorUserId: identity.account.id, action: "seeker_alert.deleted", outcome: "success", resourceType: "seeker_alert", resourceId: alertId });
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not remove this alert";
+      res.status(/not in your account/i.test(message) ? 404 : 500).json({ error: message });
+    }
   });
   app.get("/api/company-referrals/access", async (req, res) => {
     try {
