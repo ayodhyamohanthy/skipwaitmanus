@@ -227,7 +227,7 @@ export default function MyRequests() {
   return (
     <main data-skipwait-screen="my-requests" className="page-content">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div className="page-heading">
+        <div>
           <span className="eyebrow">My asks</span>
           <h1 className="mt-2">Requests<span className="brand-dot">.</span></h1>
           <p className="mt-2 max-w-xl">Track every ask in one place. Answered, passed, or withdrawn asks free a slot.</p>
