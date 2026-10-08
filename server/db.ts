@@ -671,7 +671,7 @@ export async function getVerifiedWorkEmailAccess(userId: number) {
   return { workEmailDomain: profile.workEmailDomain };
 }
 
-export type PrivateReferrerImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
+export type PrivateReferrerImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number; repliedWithin3DaysPct: number | null };
 
 export async function getPrivateReferrerImpactSummary(userId: number): Promise<PrivateReferrerImpactSummary> {
   const access = await getVerifiedWorkEmailAccess(userId);
@@ -679,12 +679,34 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const rows = await db.select({ status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.referrerId, userId));
   const statusCount = (status: ReferralStatus) => rows.filter(row => row.status === status).length;
+  // Reply latency from the append-only transition log: claim instant vs the
+  // referrer's first decision (approve, review, or pass) on the same ask.
+  // Computed in JS from stored timestamps; null when nothing decided yet.
+  const DECISION_ACTIONS = new Set(["approve", "review", "pass"]);
+  const trail = await db.select({ requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, at: referralTransitionEvents.createdAt }).from(referralTransitionEvents).where(eq(referralTransitionEvents.actorUserId, userId));
+  const claimedAt = new Map<number, number>();
+  const decidedAt = new Map<number, number>();
+  for (const event of trail) {
+    const at = event.at instanceof Date ? event.at.getTime() : new Date(event.at).getTime();
+    if (!Number.isFinite(at)) continue;
+    if (event.action === "claim") claimedAt.set(event.requestId, Math.min(claimedAt.get(event.requestId) ?? Infinity, at));
+    else if (DECISION_ACTIONS.has(event.action)) decidedAt.set(event.requestId, Math.min(decidedAt.get(event.requestId) ?? Infinity, at));
+  }
+  let decided = 0;
+  let within3Days = 0;
+  for (const [requestId, decidedMs] of decidedAt) {
+    const claimMs = claimedAt.get(requestId);
+    if (claimMs === undefined || decidedMs < claimMs) continue;
+    decided += 1;
+    if (decidedMs - claimMs <= 3 * 24 * 60 * 60 * 1000) within3Days += 1;
+  }
   return {
     reviewed: rows.length,
     approved: statusCount("approved") + statusCount("intro_made") + statusCount("interview") + statusCount("offer"),
     introductions: statusCount("intro_made") + statusCount("interview") + statusCount("offer"),
     interviews: statusCount("interview") + statusCount("offer"),
     offers: statusCount("offer"),
+    repliedWithin3DaysPct: decided === 0 ? null : Math.round((within3Days / decided) * 100),
   };
 }
 

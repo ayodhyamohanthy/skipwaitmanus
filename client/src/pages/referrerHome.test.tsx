@@ -80,6 +80,22 @@ describe("ReferrerHome", () => {
     expect(urgentRow.className).toContain("text-[#b91c1c]");
   });
 
+  it("shows private record metrics without ranking generosity", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/profile/me")) return ok({ profile: { workEmailVerifiedAt: "2026-08-01T00:00:00Z", referralCapacity: 3 } });
+      if (String(url).endsWith("/referrer-impact/me")) return ok({ summary: { reviewed: 4, approved: 3, introductions: 2, interviews: 1, offers: 0, repliedWithin3DaysPct: 100 } });
+      if (String(url).includes("scope=new")) return ok({ requests: [] });
+      if (String(url).includes("scope=completed")) return ok({ requests: [] });
+      return ok({});
+    }));
+    render(<ReferrerHome />);
+    expect(await screen.findByText("Your record · Private")).toBeTruthy();
+    expect(screen.getByText("People helped")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
+    expect(screen.queryByText("Thank-yous")).toBeNull();
+  });
+
   it("shows the verify gate without fabricating referrer state", async () => {
     stubHome({ verified: false });
     render(<ReferrerHome />);

@@ -7,7 +7,7 @@ import { readApiJson } from "@/lib/apiResponse";
 import { getAskExpiresAtMs } from "@shared/referral";
 
 type InboxItem = { id: number; companyDomain: string; status: string; savedAt: string | null; createdAt: string; updatedAt: string; isClaimedByYou: boolean; unreadMessageCount: number; expiresAt?: string | null };
-type Impact = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
+type Impact = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number; repliedWithin3DaysPct?: number | null };
 type Access = { verifiedCompanyAccess: boolean; workEmailDomain: string | null };
 type ProfileShape = { workEmailVerifiedAt: string | null; referralCapacity: number | null };
 
@@ -189,8 +189,8 @@ export default function ReferrerHome() {
               <div className="rounded-3xl border border-[var(--border)] p-5">
                 <span className="eyebrow">Your record · Private</span>
                 <dl className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                  {[["Reviewed", impact?.reviewed ?? 0], ["Accepted", impact?.approved ?? 0], ["Introductions", impact?.introductions ?? 0], ["Interviews", impact?.interviews ?? 0]].map(([label, value]) => (
-                    <div key={label as string}><dt className="text-[var(--muted-foreground)]">{label as string}</dt><dd className="text-xl font-semibold">{value as number}</dd></div>
+                  {[["Introductions", impact?.introductions ?? 0], ["People helped", impact?.approved ?? 0], ["Replied within 3 days", impact?.repliedWithin3DaysPct ?? null] as const].map(([label, value]) => (
+                    <div key={label as string}><dt className="text-[var(--muted-foreground)]">{label as string}</dt><dd className="text-xl font-semibold">{typeof value === "number" ? (label === "Replied within 3 days" ? `${value}%` : value) : "—"}</dd></div>
                   ))}
                 </dl>
                 <p className="mt-3 text-xs text-[var(--muted-foreground)]">Never ranked. Never public.</p>
