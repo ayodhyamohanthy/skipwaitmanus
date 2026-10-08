@@ -103,7 +103,7 @@ describe("My Company Inbox pending states", () => {
     const now = Date.now();
     const day = 24 * 60 * 60 * 1000;
     const iso = (ms: number) => new Date(ms).toISOString();
-    const item = { ...inboxItem, id: 9, createdAt: iso(now - 5 * day), updatedAt: iso(now - 5 * day) };
+    const item = { ...inboxItem, id: 9, createdAt: iso(now - 5 * day + 60_000), updatedAt: iso(now - 5 * day + 60_000) };
     stubFetch((url) => {
       if (url.includes("/preview")) return previewPayload;
       if (url.includes("/inbox?scope=new")) return { requests: [item] };
