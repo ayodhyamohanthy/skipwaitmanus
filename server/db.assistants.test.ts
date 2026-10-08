@@ -6,7 +6,7 @@ import {
   connectAssistant, createAssistantApproval, createAssistantToken, createDeveloperApp,
   decideAssistantApproval, disconnectAssistant, editAssistantApproval, getAssistantAccessPlan,
   getDeveloperApp, listAssistantApprovals, listAssistantConnections, listAssistantTokens,
-  listDeveloperApps, revokeAssistantToken, updateDeveloperAppWebhook,
+  listDeveloperApps, revokeAssistantToken, submitDeveloperAppForReview, updateDeveloperAppWebhook,
 } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -252,5 +252,13 @@ describe("developer apps", () => {
     expect(await updateDeveloperAppWebhook(7, app!.id, { webhookUrl: "" })).toEqual({ id: app!.id, webhookUrl: null });
     await expect(updateDeveloperAppWebhook(8, app!.id, { webhookUrl: "https://x.app/h" })).rejects.toThrow(/not in your console/);
     await expect(updateDeveloperAppWebhook(7, app!.id, { webhookUrl: "bad" })).rejects.toThrow(/webhook URL/);
+  });
+
+  it("submits test and rejected apps for review only", async () => {
+    tables.wallets = [walletRow("max")];
+    const app = await createDeveloperApp(7, { name: "Instinct", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"], agreeToTerms: true });
+    expect(await submitDeveloperAppForReview(7, app!.id)).toEqual({ id: app!.id, status: "in_review" });
+    await expect(submitDeveloperAppForReview(7, app!.id)).rejects.toThrow(/Only test apps/);
+    await expect(submitDeveloperAppForReview(8, app!.id)).rejects.toThrow(/not in your console/);
   });
 });

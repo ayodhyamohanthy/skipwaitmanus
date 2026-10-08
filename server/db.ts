@@ -665,6 +665,15 @@ export async function updateDeveloperAppWebhook(userId: number, appId: number, i
   return { id: appId, webhookUrl };
 }
 
+export async function submitDeveloperAppForReview(userId: number, appId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: developerApps.id, status: developerApps.status }).from(developerApps).where(and(eq(developerApps.id, appId), eq(developerApps.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This app is not in your console");
+  if (current.status !== "test" && current.status !== "rejected") throw new Error("Only test apps can be submitted for review");
+  await db.update(developerApps).set({ status: "in_review" }).where(eq(developerApps.id, appId));
+  return { id: appId, status: "in_review" as const };
+}
+
 export async function createWorkItem(userId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const patch = validateWorkItemInput(input);

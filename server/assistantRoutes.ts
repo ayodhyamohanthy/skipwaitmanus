@@ -40,6 +40,7 @@ export type AssistantRouteDeps = {
   createDeveloperApp?: typeof createDeveloperApp;
   getDeveloperApp?: typeof getDeveloperApp;
   updateDeveloperAppWebhook?: typeof updateDeveloperAppWebhook;
+  submitDeveloperAppForReview?: typeof submitDeveloperAppForReview;
   getAssistantAccessPlan?: typeof getAssistantAccessPlan;
 };
 
@@ -52,7 +53,7 @@ const parseId = (raw: string | undefined) => {
 function classify(error: unknown): { status: number; message: string } {
   const message = error instanceof Error ? error.message : "We could not complete that";
   const status = /not in your account|not connected|already handled|not in your console|expired/i.test(message) ? 404
-    : /Enter|Choose|Agree|Describe|valid|name|permissions|URL|urls|note|kind|spend|cover/i.test(message) ? 400
+    : /Enter|Choose|Agree|Describe|valid|name|permissions|URL|urls|note|kind|spend|cover|submit/i.test(message) ? 400
     : /plan|Upgrade|Max/i.test(message) ? 402
     : 500;
   return { status, message };
@@ -75,6 +76,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   const doCreateApp = deps.createDeveloperApp ?? createDeveloperApp;
   const getApp = deps.getDeveloperApp ?? getDeveloperApp;
   const doUpdateWebhook = deps.updateDeveloperAppWebhook ?? updateDeveloperAppWebhook;
+  const doSubmitApp = deps.submitDeveloperAppForReview ?? submitDeveloperAppForReview;
   const accessPlan = deps.getAssistantAccessPlan ?? getAssistantAccessPlan;
 
   app.get("/api/assistants/access", async (req, res) => {
@@ -276,6 +278,21 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
       const result = await doUpdateWebhook(identity.account.id, appId, { webhookUrl: req.body?.webhookUrl });
       record({ actorUserId: identity.account.id, action: "developer.webhook_updated", outcome: "success", resourceType: "developer_app", resourceId: appId });
       res.json(result);
+    } catch (error) {
+      const { status, message } = classify(error);
+      res.status(status).json({ error: message });
+    }
+  });
+
+  app.post("/api/developer-apps/:appId/submit", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to submit this app" });
+      const appId = parseId(req.params.appId);
+      if (!appId) return res.status(400).json({ error: "Invalid app" });
+      const result = await doSubmitApp(identity.account.id, appId);
+      record({ actorUserId: identity.account.id, action: "developer.app_submitted", outcome: "success", resourceType: "developer_app", resourceId: appId });
+      res.json({ app: result });
     } catch (error) {
       const { status, message } = classify(error);
       res.status(status).json({ error: message });

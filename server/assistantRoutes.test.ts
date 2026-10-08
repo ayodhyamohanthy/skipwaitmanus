@@ -143,4 +143,15 @@ describe("assistant access routes", () => {
     const missingTerms = setup({ createDeveloperApp: async () => { throw new Error("Agree to the developer terms to register an app"); } });
     expect((await authed(missingTerms).post("/api/developer-apps").send({ name: "X", kind: "web_app", description: "d", redirectUrls: ["https://a.app/cb"], scopes: ["companies:read"] })).status).toBe(400);
   });
+
+  it("submits a test app for review", async () => {
+    const submit = vi.fn(async () => ({ id: 1, status: "in_review" }));
+    const app = setup({ submitDeveloperAppForReview: submit });
+    const response = await authed(app).post("/api/developer-apps/1/submit");
+    expect(response.status).toBe(200);
+    expect(response.body.app.status).toBe("in_review");
+    expect(submit).toHaveBeenCalledWith(7, 1);
+    const blocked = setup({ submitDeveloperAppForReview: async () => { throw new Error("Only test apps can be submitted for review"); } });
+    expect((await authed(blocked).post("/api/developer-apps/1/submit")).status).toBe(400);
+  });
 });
