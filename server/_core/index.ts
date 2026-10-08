@@ -43,6 +43,7 @@ import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
+import { registerAssistantRoutes } from "../assistantRoutes";
 import { registerProfileRoutes } from "../profileRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";

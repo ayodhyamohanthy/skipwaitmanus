@@ -82,9 +82,9 @@ export default function Assistants() {
   const [copied, setCopied] = useState(false);
   const [workingId, setWorkingId] = useState<number | null>(null);
 
-  const headers = useCallback(async () => {
+  const authHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
     const token = await fetchToken();
-    return { credentials: "include" as const, headers: token ? { Authorization: `Bearer ${token}` } : {} };
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
   }, [fetchToken]);
 
   const load = useCallback(async () => {
@@ -92,10 +92,10 @@ export default function Assistants() {
     setLoading(true); setError("");
     try {
       const [accessResponse, connectionsResponse, tokensResponse, activityResponse] = await Promise.all([
-        fetch("/api/assistants/access", await headers()),
-        fetch("/api/assistants/connections", await headers()),
-        fetch("/api/assistants/tokens", await headers()),
-        fetch("/api/assistants/activity", await headers()),
+        fetch("/api/assistants/access", { credentials: "include", headers: await authHeaders() }),
+        fetch("/api/assistants/connections", { credentials: "include", headers: await authHeaders() }),
+        fetch("/api/assistants/tokens", { credentials: "include", headers: await authHeaders() }),
+        fetch("/api/assistants/activity", { credentials: "include", headers: await authHeaders() }),
       ]);
       const accessPayload = await readApiJson<{ plan?: string; error?: string }>(accessResponse, "We could not load assistant access");
       if (!accessResponse.ok) throw new Error(accessPayload.error || "We could not load assistant access");
@@ -114,14 +114,14 @@ export default function Assistants() {
     } finally {
       setLoading(false);
     }
-  }, [isSignedIn, headers]);
+  }, [isSignedIn, authHeaders]);
 
   useEffect(() => { void load(); }, [load]);
 
   const disconnect = async (connection: AssistantConnection) => {
     setWorkingId(connection.id);
     try {
-      const response = await fetch(`/api/assistants/connections/${connection.id}`, { method: "DELETE", ...(await headers()) });
+      const response = await fetch(`/api/assistants/connections/${connection.id}`, { method: "DELETE", credentials: "include", headers: await authHeaders() });
       const payload = await readApiJson<{ error?: string }>(response, "We could not disconnect this assistant");
       if (!response.ok) throw new Error(payload.error || "We could not disconnect this assistant");
       setConnections(current => current.filter(item => item.id !== connection.id));
@@ -137,7 +137,7 @@ export default function Assistants() {
     if (!name || creatingToken) return;
     setCreatingToken(true);
     try {
-      const response = await fetch("/api/assistants/tokens", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(await headers()).headers }, body: JSON.stringify({ name }) });
+      const response = await fetch("/api/assistants/tokens", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ name }) });
       const payload = await readApiJson<{ token?: { id: number; token: string }; error?: string }>(response, "We could not create this token");
       if (!response.ok || !payload.token) throw new Error(payload.error || "We could not create this token");
       setOnceToken({ id: payload.token.id, token: payload.token.token });
@@ -153,7 +153,7 @@ export default function Assistants() {
   const revokeToken = async (token: AssistantToken) => {
     setWorkingId(token.id);
     try {
-      const response = await fetch(`/api/assistants/tokens/${token.id}`, { method: "DELETE", ...(await headers()) });
+      const response = await fetch(`/api/assistants/tokens/${token.id}`, { method: "DELETE", credentials: "include", headers: await authHeaders() });
       const payload = await readApiJson<{ error?: string }>(response, "We could not revoke this token");
       if (!response.ok) throw new Error(payload.error || "We could not revoke this token");
       setTokens(current => current.filter(item => item.id !== token.id));

@@ -43,9 +43,9 @@ export default function Approve() {
   const [workingId, setWorkingId] = useState<number | null>(null);
   const [result, setResult] = useState<{ approval: AssistantApproval; decision: "approved" | "declined" } | null>(null);
 
-  const headers = useCallback(async () => {
+  const authHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
     const token = await fetchToken();
-    return { credentials: "include" as const, headers: token ? { Authorization: `Bearer ${token}` } : {} };
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
   }, [fetchToken]);
 
   const load = useCallback(async () => {
@@ -53,8 +53,8 @@ export default function Approve() {
     setLoading(true); setError("");
     try {
       const [approvalsResponse, creditsResponse] = await Promise.all([
-        fetch("/api/assistants/approvals", await headers()),
-        fetch("/api/credits/summary?role=job_seeker", await headers()),
+        fetch("/api/assistants/approvals", { credentials: "include", headers: await authHeaders() }),
+        fetch("/api/credits/summary?role=job_seeker", { credentials: "include", headers: await authHeaders() }),
       ]);
       const approvalsPayload = await readApiJson<{ approvals?: AssistantApproval[]; error?: string }>(approvalsResponse, "We could not load your approvals");
       if (!approvalsResponse.ok) throw new Error(approvalsPayload.error || "We could not load your approvals");
@@ -68,7 +68,7 @@ export default function Approve() {
     } finally {
       setLoading(false);
     }
-  }, [isSignedIn, headers]);
+  }, [isSignedIn, authHeaders]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -78,7 +78,7 @@ export default function Approve() {
       const response = await fetch(`/api/assistants/approvals/${approval.id}/decision`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(await headers()).headers },
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({ decision }),
       });
       const payload = await readApiJson<{ error?: string }>(response, "We could not record that decision");
@@ -99,7 +99,7 @@ export default function Approve() {
       const response = await fetch(`/api/assistants/approvals/${approval.id}`, {
         method: "PATCH",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(await headers()).headers },
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({ note: draftNote.trim() }),
       });
       const payload = await readApiJson<{ error?: string }>(response, "We could not save that note");
@@ -171,8 +171,9 @@ export default function Approve() {
 
       {!loading && !error && pending.map(approval => {
         const slotsFull = approval.kind === "ask_send" && approval.slotCount === 0;
-        const creditsAfter = credits && approval.creditCount !== null && typeof credits.totalAvailable === "number"
-          ? Math.max(0, credits.totalAvailable - approval.creditCount) : null;
+        const balance = credits && typeof credits.totalAvailable === "number" ? credits.totalAvailable : null;
+        const creditsAfter = balance !== null && approval.creditCount !== null ? Math.max(0, balance - approval.creditCount) : null;
+        const spendLine = balance !== null && creditsAfter !== null ? `You have ${balance} · ${creditsAfter} after this` : "The cost shows before anything is spent";
         return (
           <div key={approval.id} className="mt-6 rounded-[2rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-xl sm:p-6">
             <p className="flex items-center gap-2 text-sm text-[var(--muted-foreground)]"><Bot className="size-4" />{approval.provider} · {timeUntil(approval.expiresAt)}</p>
@@ -220,7 +221,7 @@ export default function Approve() {
               <>
                 <h2 className="mt-2 text-2xl font-semibold">Run this paid tool?</h2>
                 <p className="mt-1 text-sm text-[var(--muted-foreground)]">For {approval.role ?? approval.companyDomain ?? "your ask"}</p>
-                <p className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4"><Coins className="size-6" /><span className="flex-1"><strong className="block">{approval.creditCount ?? 1} credits</strong><small className="text-[var(--muted-foreground)]">{creditsAfter !== null ? `You have ${credits.totalAvailable} · ${creditsAfter} after this` : "The cost shows before anything is spent"}</small></span></p>
+                <p className="mt-4 flex items-center gap-3 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4"><Coins className="size-6" /><span className="flex-1"><strong className="block">{approval.creditCount ?? 1} credits</strong><small className="text-[var(--muted-foreground)]">{spendLine}</small></span></p>
                 <div className="mt-5 grid grid-cols-2 gap-2">
                   <button type="button" disabled={workingId === approval.id} onClick={() => { void decide(approval, "declined"); }} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[var(--border)] text-sm font-semibold">Not now</button>
                   <button type="button" disabled={workingId === approval.id} onClick={() => { void decide(approval, "approved"); }} className="brand-button inline-flex min-h-12 items-center justify-center">Use {approval.creditCount ?? 1} credits</button>

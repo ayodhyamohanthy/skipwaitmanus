@@ -67,16 +67,16 @@ export default function DeveloperConsole() {
   const [agreed, setAgreed] = useState(true);
   const [webhook, setWebhook] = useState("");
 
-  const headers = useCallback(async () => {
+  const authHeaders = useCallback(async (): Promise<Record<string, string> | undefined> => {
     const token = await fetchToken();
-    return { credentials: "include" as const, headers: token ? { Authorization: `Bearer ${token}` } : {} };
+    return token ? { Authorization: `Bearer ${token}` } : undefined;
   }, [fetchToken]);
 
   const load = useCallback(async () => {
     if (!isSignedIn) return;
     setLoading(true); setError("");
     try {
-      const response = await fetch("/api/developer-apps", await headers());
+      const response = await fetch("/api/developer-apps", { credentials: "include", headers: await authHeaders() });
       const payload = await readApiJson<{ apps?: DeveloperApp[]; error?: string }>(response, "We could not load your apps");
       if (!response.ok) throw new Error(payload.error || "We could not load your apps");
       setApps(Array.isArray(payload.apps) ? payload.apps : []);
@@ -85,7 +85,7 @@ export default function DeveloperConsole() {
     } finally {
       setLoading(false);
     }
-  }, [isSignedIn, headers]);
+  }, [isSignedIn, authHeaders]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -96,7 +96,7 @@ export default function DeveloperConsole() {
       const response = await fetch("/api/developer-apps", {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(await headers()).headers },
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({
           name, kind, description,
           website: website.trim() || undefined,
@@ -123,7 +123,7 @@ export default function DeveloperConsole() {
       const response = await fetch(`/api/developer-apps/${selected.id}/webhook`, {
         method: "PUT",
         credentials: "include",
-        headers: { "Content-Type": "application/json", ...(await headers()).headers },
+        headers: { "Content-Type": "application/json", ...(await authHeaders()) },
         body: JSON.stringify({ webhookUrl: webhook.trim() || "" }),
       });
       const payload = await readApiJson<{ webhookUrl?: string | null; error?: string }>(response, "We could not save that webhook");
@@ -140,7 +140,7 @@ export default function DeveloperConsole() {
     if (!selected || working) return;
     setWorking(true); setError("");
     try {
-      const response = await fetch(`/api/developer-apps/${selected.id}/submit`, { method: "POST", ...(await headers()) });
+      const response = await fetch(`/api/developer-apps/${selected.id}/submit`, { method: "POST", credentials: "include", headers: await authHeaders() });
       const payload = await readApiJson<{ app?: { status: string }; error?: string }>(response, "We could not submit this app");
       if (!response.ok) throw new Error(payload.error || "We could not submit this app");
       setSelected({ ...selected, status: "in_review" });
