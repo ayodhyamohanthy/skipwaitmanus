@@ -5,14 +5,23 @@ import { Link } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
-type Profile = { headline: string | null; currentTitle: string | null; location: string | null; bio: string | null; skills: string | null; company: string | null; workEmailDomain: string | null; workEmailVerifiedAt: string | null; handle: string | null; profileVisibility: string };
+type Profile = { headline: string | null; currentTitle: string | null; location: string | null; bio: string | null; skills: string | null; openTo: string | null; company: string | null; workEmailDomain: string | null; workEmailVerifiedAt: string | null; handle: string | null; profileVisibility: string };
+
+function openToTextFromStored(raw: string | null | undefined): string {
+  if (!raw) return "";
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.filter((role): role is string => typeof role === "string").join(", ");
+  } catch { /* fall through to plain text */ }
+  return raw;
+}
 
 export default function Profile() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [displayName, setDisplayName] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [form, setForm] = useState({ headline: "", currentTitle: "", location: "", bio: "", skills: "", handle: "", profileVisibility: "private" });
+  const [form, setForm] = useState({ headline: "", currentTitle: "", location: "", bio: "", skills: "", openToText: "", handle: "", profileVisibility: "private" });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -36,6 +45,7 @@ export default function Profile() {
         location: current?.location ?? "",
         bio: current?.bio ?? "",
         skills: current?.skills ?? "",
+        openToText: openToTextFromStored(current?.openTo ?? null),
         handle: current?.handle ?? "",
         profileVisibility: current?.profileVisibility ?? "private",
       });
@@ -49,7 +59,7 @@ export default function Profile() {
     setSaving(true); setError(""); setNotice("");
     try {
       const token = await fetchToken();
-      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ ...form, handle: form.handle.trim() === "" ? null : form.handle }) });
+      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ ...form, openTo: form.openToText.split(",").map(role => role.trim()).filter(role => role.length > 0), handle: form.handle.trim() === "" ? null : form.handle }) });
       const payload = await readApiJson<{ profile?: Profile | null; error?: string }>(response, "We could not save your profile");
       if (!response.ok) throw new Error(payload.error || "We could not save your profile");
       setProfile(payload.profile ?? null);
@@ -100,6 +110,9 @@ export default function Profile() {
             <label className="mt-4 block text-sm font-semibold">Location<input value={form.location} maxLength={120} onChange={event => setForm({ ...form, location: event.target.value })} placeholder="Bengaluru, India" className={field} /></label>
             <label className="mt-4 block text-sm font-semibold">Bio<textarea value={form.bio} maxLength={2000} rows={4} onChange={event => setForm({ ...form, bio: event.target.value })} placeholder="What you do and what you're looking for." className="mt-2 min-h-28 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] p-4 text-base" /></label>
             <label className="mt-4 block text-sm font-semibold">Skills (comma separated)<input value={form.skills} maxLength={1000} onChange={event => setForm({ ...form, skills: event.target.value })} placeholder="Design systems, prototyping, research" className={field} /></label>
+            <label className="mt-4 block text-sm font-semibold">Open to (comma separated, up to 5)<input value={form.openToText} maxLength={400} onChange={event => setForm({ ...form, openToText: event.target.value })} placeholder="Product Designer, UX Lead, Design Systems" className={field} />
+              <small className="mt-1 block font-normal text-[var(--muted-foreground)]">Shown as chips on your public page.</small>
+            </label>
             <label className="mt-4 block text-sm font-semibold">Profile handle
               <div className="mt-2 flex items-center gap-2">
                 <span className="shrink-0 text-sm text-[var(--muted-foreground)]">skipwait.me/p/</span>

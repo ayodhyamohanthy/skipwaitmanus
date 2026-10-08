@@ -15,6 +15,7 @@ type PublicProfile = {
   location?: string | null;
   bio?: string | null;
   skills?: string | null;
+  openTo?: string[] | null;
   verifiedWork?: { domain: string | null; verifiedAt: string } | null;
   handle?: string | null;
   workItems?: WorkItem[];
@@ -137,6 +138,12 @@ export default function PublicProfile() {
             </section>
             {profile.bio ? <p className="mt-5 max-w-2xl leading-7">{profile.bio}</p> : null}
             {profile.skills ? <p className="mt-3 text-sm text-[var(--muted-foreground)]">{profile.skills}</p> : null}
+            {profile.openTo && profile.openTo.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--muted-foreground)]">Open to</p>
+                <ul className="mt-2 flex flex-wrap gap-2">{profile.openTo.map(role => <li key={role} className="rounded-full border border-[var(--border)] px-3 py-1.5 text-sm font-medium">{role}</li>)}</ul>
+              </div>
+            ) : null}
 
             <section className="mt-10" aria-label="Work">
               <div className="mb-4 flex items-end justify-between gap-3">

@@ -44,6 +44,23 @@ describe("Profile page", () => {
     render(<Profile />);
     expect(screen.getByText(/Profile & privacy/)).toBeTruthy();
   });
+
+  it("saves open-to roles from the comma-separated field", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/profile/me") && init?.method === "PUT") {
+        bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+        return ok({ displayName: "Asha R.", profile: { headline: "", currentTitle: null, location: null, bio: null, skills: null, openTo: '["Product Designer"]', handle: "asha-r", profileVisibility: "link" } });
+      }
+      return ok({ displayName: "Asha R.", profile: { headline: "", currentTitle: null, location: null, bio: null, skills: null, openTo: null, handle: "asha-r", profileVisibility: "link" } });
+    }));
+    render(<Profile />);
+    const openToInput = await screen.findByPlaceholderText("Product Designer, UX Lead, Design Systems");
+    fireEvent.change(openToInput, { target: { value: "Product Designer, UX Lead" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save profile/ }));
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
+    expect(bodies[bodies.length - 1].openTo).toEqual(["Product Designer", "UX Lead"]);
+  });
 });
 
 describe("Work showcase", () => {
@@ -109,6 +126,14 @@ describe("PublicProfile page", () => {
     expect(screen.getByText("Redesign")).toBeTruthy();
     expect(document.head.querySelector('meta[name="robots"]')?.getAttribute("content")).toBe("noindex");
     expect(screen.queryByText("Rahul")).toBeNull();
+  });
+
+  it("renders open-to chips from the public profile", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "public", isOwner: false, displayName: "Asha R.", headline: null, currentTitle: null, location: null, bio: null, skills: null, openTo: ["Product Designer", "UX Lead"], verifiedWork: null, handle: "asha-r", workItems: [] } })));
+    render(<PublicProfile />);
+    expect(await screen.findByText("Open to")).toBeTruthy();
+    expect(screen.getByText("Product Designer")).toBeTruthy();
+    expect(screen.getByText("UX Lead")).toBeTruthy();
   });
 
   it("shows the private gate to visitors with no leaked content", async () => {
