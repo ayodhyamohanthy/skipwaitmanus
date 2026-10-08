@@ -78,6 +78,7 @@ for (const [selector, seq] of kitSeq) {
 }
 
 let wrapped = 0;
+let appended = 0;
 const unresolved = [];
 
 for (const selector of leaking) {
@@ -119,8 +120,41 @@ for (const selector of leaking) {
   }
 }
 
+// SECOND PASS: some gated kit rules were never ported at all -- our stylesheet
+// has the base rule and nothing for the breakpoint. Those cannot be "re-gated"
+// because there is nothing to wrap, so they are appended verbatim, wrapped.
+// Appending inside @media is safe: a media-gated rule cannot override a base
+// rule outside its range.
+const additions = [];
+for (const selector of leaking) {
+  const live = liveSeq.get(selector) || [];
+  const liveBodies = new Set(live.map(r => r.body));
+  const liveGates = new Set(live.map(r => r.gate));
+  for (const kitRule of kitSeq.get(selector)) {
+    if (kitRule.gate === "(top)") continue;
+    // Already present with this declaration?
+    if (liveBodies.has(kitRule.body)) continue;
+    // Count how many rules we already have under this gate for this selector.
+    if (liveGates.has(kitRule.gate) && live.filter(r => r.gate === kitRule.gate).length >=
+        kitSeq.get(selector).filter(r => r.gate === kitRule.gate).length) continue;
+    additions.push({ selector, gate: kitRule.gate, body: kitRule.body });
+  }
+}
+
+if (additions.length) {
+  let block = "\n/* Breakpoint rules the port dropped entirely, restored from\n"
+    + " * app/src/styles.css by scripts/css-regate.mjs. Without these the shell's\n"
+    + " * responsive behaviour is missing rather than wrong, which looks the same\n"
+    + " * from the source and only shows up when rendered at the other width. */\n";
+  for (const a of additions) {
+    block += a.gate + "{" + a.selector + "{" + a.body + "}}\n";
+    appended += 1;
+  }
+  live += block;
+}
+
 if (!dry) fs.writeFileSync(path.join(root, "client", "src", "index.css"), live);
-console.log(`css-regate${dry ? " (dry run)" : ""}: ${leaking.length} leaking selectors, ${wrapped} rule(s) wrapped`);
+console.log(`css-regate${dry ? " (dry run)" : ""}: ${leaking.length} leaking selectors, ${wrapped} wrapped, ${appended} appended`);
 if (unresolved.length) {
   console.log(`  could not place ${unresolved.length}: ${unresolved.slice(0, 10).join(", ")}`);
 }
