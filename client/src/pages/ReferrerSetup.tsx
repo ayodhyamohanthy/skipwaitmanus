@@ -6,6 +6,7 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
 const FUNCTIONS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"];
+const LEVELS = ["Intern", "Early career", "Mid-level", "Senior", "Lead+"];
 const STEPS = ["Areas", "Capacity", "Visibility", "Notifications", "Ready"] as const;
 type Visibility = "anon" | "named";
 
@@ -15,6 +16,7 @@ export default function ReferrerSetup() {
   const fetchToken = usePersistFn(getToken);
   const [step, setStep] = useState(0);
   const [areas, setAreas] = useState<string[]>([]);
+  const [levels, setLevels] = useState<string[]>([]);
   const [capacity, setCapacity] = useState(3);
   const [visibility, setVisibility] = useState<Visibility>("anon");
   const [notifyEmail, setNotifyEmail] = useState(true);
@@ -39,10 +41,11 @@ export default function ReferrerSetup() {
           setVerified(Boolean(access.verifiedCompanyAccess));
         } else setVerified(false);
         if (prefsResponse.ok) {
-          const payload = await readApiJson<{ preferences?: { preferAreas?: string[]; referralCapacity?: number; referrerVisibility?: string; notifyNewAsk?: boolean } }>(prefsResponse, "");
+          const payload = await readApiJson<{ preferences?: { preferAreas?: string[]; preferLevels?: string[]; referralCapacity?: number; referrerVisibility?: string; notifyNewAsk?: boolean } }>(prefsResponse, "");
           const prefs = payload.preferences;
           if (prefs) {
             if (Array.isArray(prefs.preferAreas)) setAreas(prefs.preferAreas.filter(area => FUNCTIONS.includes(area)));
+            if (Array.isArray(prefs.preferLevels)) setLevels(prefs.preferLevels.filter(level => LEVELS.includes(level)));
             if (typeof prefs.referralCapacity === "number") setCapacity(prefs.referralCapacity);
             if (prefs.referrerVisibility === "named") setVisibility("named");
             if (typeof prefs.notifyNewAsk === "boolean") setNotifyEmail(prefs.notifyNewAsk);
@@ -54,12 +57,13 @@ export default function ReferrerSetup() {
   }, [fetchToken, isSignedIn]);
 
   const toggleArea = (area: string) => setAreas(current => current.includes(area) ? current.filter(item => item !== area) : [...current, area]);
+  const toggleLevel = (level: string) => setLevels(current => current.includes(level) ? current.filter(item => item !== level) : [...current, level]);
 
   const save = async () => {
     setSaving(true); setError("");
     try {
       const token = await fetchToken();
-      const response = await fetch("/api/referrer-preferences", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ preferAreas: areas, referralCapacity: capacity, referrerVisibility: visibility, notifyNewAsk: notifyEmail }) });
+      const response = await fetch("/api/referrer-preferences", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ preferAreas: areas, preferLevels: levels, referralCapacity: capacity, referrerVisibility: visibility, notifyNewAsk: notifyEmail }) });
       const payload = await readApiJson<{ error?: string }>(response, "We could not save your setup");
       if (!response.ok) throw new Error(payload.error || "We could not save your setup");
       setStep(4);
@@ -105,6 +109,13 @@ export default function ReferrerSetup() {
                   return <button key={area} type="button" aria-pressed={on} onClick={() => toggleArea(area)} className={`min-h-11 rounded-full border px-4 text-sm ${on ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]" : "border-[var(--border)]"}`}>{area}</button>;
                 })}
               </div>
+              <h2 className="mt-8 text-sm font-semibold">Levels</h2>
+              <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Levels">
+                {LEVELS.map(level => {
+                  const on = levels.includes(level);
+                  return <button key={level} type="button" aria-pressed={on} onClick={() => toggleLevel(level)} className={`min-h-11 rounded-full border px-4 text-sm ${on ? "border-[var(--primary)] bg-[var(--primary)] text-[var(--primary-foreground)]" : "border-[var(--border)]"}`}>{level}</button>;
+                })}
+              </div>
             </section>
           ) : null}
 
@@ -146,7 +157,7 @@ export default function ReferrerSetup() {
             <section className="text-center">
               <Check className="mx-auto size-12 text-[var(--primary)]" />
               <h1 className="mt-4 text-3xl font-semibold">You&apos;re open for asks.</h1>
-              <p className="mt-2 text-[var(--muted-foreground)]">{areas.join(", ") || "No areas yet"} · {capacity}/month · {visibility === "anon" ? "anonymous" : "named"}</p>
+              <p className="mt-2 text-[var(--muted-foreground)]">{areas.join(", ") || "No areas yet"} · {levels.join(", ") || "All levels"} · {capacity}/month · {visibility === "anon" ? "anonymous" : "named"}</p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <Link href="/profile" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Edit profile</Link>
                 <Link href="/referrer-home" className="brand-button">Go to referrer home <ArrowRight /></Link>
