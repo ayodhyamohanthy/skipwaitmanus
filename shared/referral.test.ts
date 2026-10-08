@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canReviewReferral, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, isPostApprovalReferralStatus, isReferralProgressUpdateStatus, referralStatusLabels } from "./referral";
+import { ASK_EXPIRING_SOON_MS, ASK_TTL_MS, askDaysLeft, canReviewReferral, formatAskExpiry, getAskExpiresAtMs, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, isAskExpired, isPostApprovalReferralStatus, isReferralProgressUpdateStatus, referralStatusLabels } from "./referral";
 
 describe("Referral Request state helpers", () => {
   it("provides the prescribed request state labels", () => {
@@ -39,5 +39,34 @@ describe("Referral Request state helpers", () => {
     expect(getReferrerInboxState({ status: "pending", referrerId: null, savedAt: new Date() })).toBe("saved");
     expect(getReferrerInboxState({ status: "pending", referrerId: 2, savedAt: null })).toBe("saved");
     expect(getReferrerInboxState({ status: "approved", referrerId: 2, savedAt: null })).toBe("completed");
+  });
+
+  it("expires unclaimed pending asks 7 days after creation, computed in JS", () => {
+    const now = new Date("2026-10-08T00:00:00.000Z").getTime();
+    expect(ASK_TTL_MS).toBe(7 * 24 * 60 * 60 * 1000);
+    const fresh = new Date("2026-10-06T00:00:00.000Z");
+    expect(getAskExpiresAtMs(fresh)).toBe(new Date("2026-10-13T00:00:00.000Z").getTime());
+    expect(isAskExpired({ status: "pending", referrerId: null, createdAt: fresh }, now)).toBe(false);
+    const stale = new Date("2026-09-30T00:00:00.000Z");
+    expect(isAskExpired({ status: "pending", referrerId: null, createdAt: stale }, now)).toBe(true);
+    // Claimed asks and decided asks never auto-expire.
+    expect(isAskExpired({ status: "pending", referrerId: 9, createdAt: stale }, now)).toBe(false);
+    expect(isAskExpired({ status: "approved", referrerId: 9, createdAt: stale }, now)).toBe(false);
+    // Unknown timestamps fail open: never strand an ask.
+    expect(getAskExpiresAtMs(undefined)).toBeNull();
+    expect(getAskExpiresAtMs("not-a-date")).toBeNull();
+    expect(isAskExpired({ status: "pending", referrerId: null, createdAt: undefined }, now)).toBe(false);
+  });
+
+  it("labels the expiry countdown honestly", () => {
+    const now = new Date("2026-10-08T12:00:00.000Z").getTime();
+    expect(formatAskExpiry({ status: "pending", referrerId: null, createdAt: new Date("2026-10-03T12:00:00.000Z") }, now)).toBe("Expires in 2 days");
+    expect(formatAskExpiry({ status: "pending", referrerId: null, createdAt: new Date("2026-10-02T12:00:00.000Z") }, now)).toBe("Expires tomorrow");
+    expect(formatAskExpiry({ status: "pending", referrerId: null, createdAt: new Date("2026-10-01T13:00:00.000Z") }, now)).toBe("Expires today");
+    expect(formatAskExpiry({ status: "pending", referrerId: null, createdAt: new Date("2026-09-01T00:00:00.000Z") }, now)).toBe("Expired");
+    expect(formatAskExpiry({ status: "pending", referrerId: 9, createdAt: new Date("2026-09-01T00:00:00.000Z") }, now)).toBeNull();
+    expect(formatAskExpiry({ status: "approved", referrerId: 9, createdAt: new Date("2026-10-03T12:00:00.000Z") }, now)).toBeNull();
+    expect(askDaysLeft({ createdAt: undefined }, now)).toBeNull();
+    expect(ASK_EXPIRING_SOON_MS).toBe(2 * 24 * 60 * 60 * 1000);
   });
 });

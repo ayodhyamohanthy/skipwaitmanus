@@ -61,3 +61,55 @@ export function getReferrerInboxState(input: { status: ReferralStatus; referrerI
   if (input.referrerId || input.savedAt) return "saved";
   return "new";
 }
+
+/**
+ * Ask shelf life. A pending ask that no verified employee claims expires
+ * ASK_TTL_DAYS after creation so early seekers are never left hanging: the
+ * reserved credit returns automatically and the slot frees. Only unclaimed
+ * pending asks expire — anything in conversation is untouched.
+ *
+ * Timestamps are always computed in JS (Date.now), never from DB NOW(),
+ * because the app clock and Azure MySQL can skew.
+ */
+export const ASK_TTL_DAYS = 7;
+export const ASK_TTL_MS = ASK_TTL_DAYS * 24 * 60 * 60 * 1000;
+/** Cards and urgency copy treat an ask as "expiring soon" inside this window. */
+export const ASK_EXPIRING_SOON_DAYS = 2;
+export const ASK_EXPIRING_SOON_MS = ASK_EXPIRING_SOON_DAYS * 24 * 60 * 60 * 1000;
+
+function createdAtMs(createdAt: Date | string | number | null | undefined): number | null {
+  if (createdAt == null) return null;
+  const ms = createdAt instanceof Date ? createdAt.getTime() : typeof createdAt === "number" ? createdAt : Date.parse(createdAt);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+/** Absolute expiry instant for an ask, or null when it cannot be established (fail open: never strand). */
+export function getAskExpiresAtMs(createdAt: Date | string | number | null | undefined): number | null {
+  const base = createdAtMs(createdAt);
+  return base === null ? null : base + ASK_TTL_MS;
+}
+
+/** True only for unclaimed pending asks past their shelf life. */
+export function isAskExpired(input: { status: ReferralStatus; referrerId?: number | null; createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): boolean {
+  if (input.status !== "pending" || input.referrerId != null) return false;
+  const expiresAt = getAskExpiresAtMs(input.createdAt);
+  return expiresAt !== null && nowMs >= expiresAt;
+}
+
+/** Whole days left before expiry. Null when unstated; <=0 means expired. */
+export function askDaysLeft(input: { createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): number | null {
+  const expiresAt = getAskExpiresAtMs(input.createdAt);
+  if (expiresAt === null) return null;
+  return Math.floor((expiresAt - nowMs) / (24 * 60 * 60 * 1000));
+}
+
+/** Row countdown copy. Returns null when no expiry applies. */
+export function formatAskExpiry(input: { status: ReferralStatus; referrerId?: number | null; createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): string | null {
+  if (input.status !== "pending" || input.referrerId != null) return null;
+  const days = askDaysLeft(input, nowMs);
+  if (days === null) return null;
+  if (days < 0) return "Expired";
+  if (days === 0) return "Expires today";
+  if (days === 1) return "Expires tomorrow";
+  return `Expires in ${days} days`;
+}
