@@ -56,6 +56,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/onboarding",
   "/p/:handle",
   "/plans",
+  "/billing",
   "/post-opportunity",
   "/premium",
   "/pricing",
