@@ -49,6 +49,8 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Plain terms");
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
+    expect(screen.getByText("Short version")).toBeTruthy();
+    expect(screen.getByText(/Referrals are always free/)).toBeTruthy();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
     expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");

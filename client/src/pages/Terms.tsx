@@ -20,6 +20,15 @@ export default function Terms() {
     updated="September 23, 2026"
     footnote="These terms describe how the product works today. If we change them, we will update the date above."
   >
+    <section aria-label="Short version" className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">
+      <p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">Short version</p>
+      <ul className="mt-3 space-y-1.5 pl-5 text-sm leading-6 text-[#505050] [&_li]:list-disc [&_strong]:text-black">
+        <li><strong>Referrals are always free.</strong> Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes.</li>
+        <li><strong>Referrers decide each ask.</strong> A referral is an introduction, never a promise of an interview or a job.</li>
+        <li><strong>Private by default.</strong> Resumes and referrer identities stay hidden until a referrer accepts.</li>
+        <li><strong>Be honest.</strong> Misuse — bulk asks, misrepresentation, harassment — can limit or close an account.</li>
+      </ul>
+    </section>
     <PolicySection number="01" title="What skipwait.me is">
       <p>skipwait.me lets a <strong>Job Seeker</strong> send one private referral request for a specific role to verified employees of the company behind that role. A verified employee (a <strong>Referrer</strong>) may accept or decline. We route and record the request; we are not an employer, recruiter, or hiring agent.</p>
       <p>A referral is an introduction. <strong>We do not promise an interview, an offer, or any hiring outcome</strong>, and neither does a Referrer by accepting.</p>
