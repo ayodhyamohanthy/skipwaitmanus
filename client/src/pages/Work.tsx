@@ -128,7 +128,7 @@ export default function Work() {
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Link a case study, project, article, or code.</p>
         </section>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
+        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map(item => (
             <li key={item.id}>
               <article className={`rounded-3xl border p-5 ${item.pinned ? "border-2 border-[var(--foreground)] shadow-[var(--shadow-offset)]" : "border-[var(--border)]"}`}>
