@@ -1,8 +1,9 @@
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { ArrowRight, ArrowUpRight, Bell, Briefcase, Building2, ChevronDown, Compass, Crown, Ellipsis, Globe2, Inbox, ListChecks, Menu, ShieldCheck, UserRound, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { AccountMenu } from "./AccountMenu";
+import { Button } from "@/components/kit/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 /**
@@ -31,9 +32,9 @@ function MoreMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label="More" className={mobile ? "!flex h-auto min-h-[45px] flex-col gap-[5px] rounded-none p-0 text-[9px] text-muted-foreground" : "nav-item h-auto min-h-12 w-full justify-start"}>
+        <Button variant="ghost" aria-label="More" className={mobile ? "!flex h-auto min-h-[45px] flex-col gap-[5px] rounded-none p-0 text-[9px] text-muted-foreground" : "nav-item h-auto min-h-12 w-full justify-start"}>
           <Ellipsis size={20} /><span>More</span>{!mobile && <ChevronDown className="ml-auto" />}
-        </button>
+        </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={mobile ? "end" : "start"} side={mobile ? "top" : "bottom"} sideOffset={8} className="w-56 max-w-[calc(100vw-2rem)]">
         <DropdownMenuLabel>Help &amp; info</DropdownMenuLabel>
@@ -74,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="sidebar-bottom !pt-6">
           <div className="free-promise"><ShieldCheck size={21} /><strong>Referrals are free.<br />Always.</strong></div>
           <p>No commissions. No paid priority.<br />Just people opening doors.</p>
-          {isSignedIn ? <AccountMenu /> : <SignInButton><span className="brand-button w-full">Sign in</span></SignInButton>}
+          {isSignedIn ? <AccountMenu /> : <Button variant="outline" asChild><Link href="/sign-in" onClick={close}>Sign in</Link></Button>}
           <div className="global-note"><Globe2 size={14} />Built for your next move.</div>
         </div>
       </aside>
@@ -82,15 +83,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="app-main">
         <header className="app-topbar">
           <div className="mobile-brand">
-            <button type="button" aria-label={drawer ? "Close menu" : "Open menu"} onClick={() => setDrawer(!drawer)} className="grid min-h-11 min-w-11 place-items-center">{drawer ? <X /> : <Menu />}</button>
+            <Button variant="ghost" size="icon" aria-label={drawer ? "Close menu" : "Open menu"} onClick={() => setDrawer(!drawer)}>{drawer ? <X /> : <Menu />}</Button>
             <Link href="/" className="wordmark">SkipWait<span className="brand-dot">.</span></Link>
-            <Link href="/alerts" aria-label="Alerts" className="ml-auto grid min-h-11 min-w-11 place-items-center md:hidden"><Bell /></Link>
+            <Button variant="ghost" size="icon" asChild className="ml-auto md:hidden"><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
           </div>
           <span className="desktop-top-label">GOOD OPPORTUNITIES START WITH PEOPLE.</span>
           <div className="topbar-actions">
             <span className="private-note"><ShieldCheck size={15} />Private by default</span>
-            <Link href="/alerts" aria-label="Alerts" className="grid min-h-11 min-w-11 place-items-center"><Bell /></Link>
-            {isSignedIn ? <AccountMenu /> : <Link href="/sign-in" className="brand-button">Sign in</Link>}
+            <Button variant="ghost" size="icon" asChild><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
+            {isSignedIn ? <AccountMenu /> : <Button variant="ghost" asChild><Link href="/sign-in">Sign in</Link></Button>}
           </div>
         </header>
         {children}
