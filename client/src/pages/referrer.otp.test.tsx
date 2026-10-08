@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Referrer, { ReferralCoverageInviteBanner } from "./Referrer";
 
@@ -68,6 +69,12 @@ function stubReferrerFetch() {
   }));
 }
 
+
+function renderReferrer() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><Referrer /></QueryClientProvider>);
+}
+
 describe("Referrer work-email OTP verification", () => {
   beforeEach(() => {
     resetReferrerState();
@@ -78,14 +85,14 @@ describe("Referrer work-email OTP verification", () => {
 
   it("asks a signed-in personal account to switch to the dedicated work-email sign-in instead of adding a potentially taken company address", async () => {
     authState.sessionEmail = "employee@gmail.com";
-    render(<Referrer />);
+    renderReferrer();
     await waitFor(() => expect(screen.getByRole("button", { name: "Continue with work email" })).toBeTruthy());
     expect(authState.createEmailAddress).not.toHaveBeenCalled();
   });
 
   it("opens directly to one compact company-email OTP action before secure employee sign-in", async () => {
     authState.isSignedIn = false;
-    render(<Referrer />);
+    renderReferrer();
     expect(screen.getByText("Become a verified referrer")).toBeTruthy();
     expect(screen.getByText("Two quick steps: sign in, then verify your work email.")).toBeTruthy();
     expect(screen.getByLabelText("Company email")).toBeTruthy();
@@ -100,7 +107,7 @@ describe("Referrer work-email OTP verification", () => {
 
   it("rejects a personal email before initiating private Referrer authentication", async () => {
     authState.isSignedIn = false;
-    render(<Referrer />);
+    renderReferrer();
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "Personal email providers cannot access private referral requests. Use your company address." }) })));
     fireEvent.change(screen.getByLabelText("Company email"), { target: { value: "person@gmail.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
@@ -111,7 +118,7 @@ describe("Referrer work-email OTP verification", () => {
 
   it("shows an icon-first request mockup and direct voluntary share channels only after company-email enrollment", async () => {
     sessionStorage.setItem("skipwait:employee-sign-in-email", "employee@acme.com");
-    render(<Referrer />);
+    renderReferrer();
     await waitFor(() => expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeTruthy());
     expect(screen.getByRole("link", { name: "Share on WhatsApp" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Share by email" })).toBeTruthy();
@@ -128,7 +135,7 @@ describe("Referrer work-email OTP verification", () => {
       if (url.endsWith("/901/review") && init?.method === "POST") return { ok: true, json: async () => ({ status: "approved" }) };
       return { ok: true, json: async () => ({}) };
     }));
-    render(<Referrer />);
+    renderReferrer();
     await waitFor(() => expect(screen.getByRole("button", { name: "Approve referral" })).toBeTruthy());
     expect(screen.getByText("Reviewing is free.")).toBeTruthy();
     expect(screen.queryByText(/token per approved referral/i)).toBeNull();
@@ -145,7 +152,7 @@ describe("Referrer work-email OTP verification", () => {
     stubReferrerFetch();
     authState.isSignedIn = false;
     window.history.pushState({}, "", "/referrer?company=acme.com&source=coverage&invite=abc123");
-    render(<Referrer />);
+    renderReferrer();
     const banner = screen.getByRole("region", { name: "Strengthen private coverage at acme.com" });
     expect(banner.textContent).toMatch(/verify a work email and choose whether to help/i);
     const emailShare = screen.getByRole("link", { name: "Share by email" });
@@ -178,7 +185,7 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<Referrer />);
+    renderReferrer();
     expect(await screen.findByRole("link", { name: "https://careers.acme.com/jobs/physics" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();
     expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/verify-work-email"))).toBe(false);
@@ -193,7 +200,7 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
       if (url.endsWith("/api/company-referrals/inbox")) return { ok: false, status: 403, json: async () => ({ error: "Your company's private referral inbox is paused." }) };
       return { ok: true, json: async () => ({}) };
     }));
-    render(<Referrer />);
+    renderReferrer();
     expect(await screen.findByText("Your company's private referral inbox is paused.")).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain("Your company's private referral inbox is paused.");
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();
@@ -204,7 +211,7 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
 
   it("shows the illustrative empty-inbox preview when the compat session has no private requests yet", async () => {
     authState.sessionEmail = "employee@acme.com";
-    render(<Referrer />);
+    renderReferrer();
     await waitFor(() => expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeTruthy());
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();
   });

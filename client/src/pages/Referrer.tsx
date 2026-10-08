@@ -8,6 +8,7 @@ import { OneTapShareActions } from "@/components/OneTapShareActions";
 import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { AccountMenu } from "@/components/AccountMenu";
 import { readApiJson } from "@/lib/apiResponse";
+import { useQuery } from "@tanstack/react-query";
 import { applySeo } from "@/lib/seo";
 import { isCompanyEmail } from "@/lib/workEmail";
 
@@ -50,15 +51,30 @@ export default function Referrer() {
   const [deciding, setDeciding] = useState(false);
   const [message, setMessage] = useState("");
   const [activeDocument, setActiveDocument] = useState(0);
-  const [inbox, setInbox] = useState<CompanyInboxItem[]>([]);
-  const [inboxReady, setInboxReady] = useState(false);
-  const [claimedRequest, setClaimedRequest] = useState<ClaimedCompanyRequest | null>(null);
-  const [inboxError, setInboxError] = useState("");
+  const [employeeEnrollmentReady, setEmployeeEnrollmentReady] = useState(false);
+  const [showWorkEmailEnrollment, setShowWorkEmailEnrollment] = useState(true);
+  const [actionError, setActionError] = useState("");
+  const inboxQuery = useQuery({
+    queryKey: ["referrer-company-inbox", claimedRequestId],
+    enabled: isSignedIn && employeeEnrollmentReady,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: () => companyFetch(Number.isInteger(claimedRequestId) && claimedRequestId > 0 ? `/api/company-referrals/${claimedRequestId}` : "/api/company-referrals/inbox"),
+  });
+  const claimedRequest = claimedRequestId > 0 ? inboxQuery.data?.request ?? null : null;
+  const inbox = claimedRequestId > 0 ? [] : inboxQuery.data?.requests ?? [];
+  const inboxReady = !inboxQuery.isPending;
+  const inboxError = actionError || (inboxQuery.error
+    ? claimedRequestId > 0
+      ? "This private request is not available to your verified employee account."
+      : sessionEmailIsCompany
+        ? inboxQuery.error instanceof Error ? inboxQuery.error.message : "We could not load private company requests."
+        : "Verify your work email to view private company requests."
+    : "");
+  useEffect(() => { if (claimedRequestId > 0 && inboxQuery.isSuccess) setActiveDocument(0); }, [claimedRequestId, inboxQuery.isSuccess]);
   const [claimingId, setClaimingId] = useState<number | null>(null);
   const [workEmailError, setWorkEmailError] = useState("");
   const [coverageRewardMessage, setCoverageRewardMessage] = useState("");
-  const [employeeEnrollmentReady, setEmployeeEnrollmentReady] = useState(false);
-  const [showWorkEmailEnrollment, setShowWorkEmailEnrollment] = useState(true);
   const attachments = claimedRequest?.attachments ?? [];
   const document = attachments[activeDocument];
   const previewable = Boolean(document && (document.mimeType === "application/pdf" || document.mimeType.startsWith("image/")));
@@ -103,41 +119,19 @@ export default function Referrer() {
     return () => { active = false; };
   }, [isSignedIn, employeeSignInEmail, sessionEmailIsCompany]);
 
-  useEffect(() => {
-    if (!isSignedIn || claimedRequest || !employeeEnrollmentReady) return;
-    let active = true;
-    const path = Number.isInteger(claimedRequestId) && claimedRequestId > 0 ? `/api/company-referrals/${claimedRequestId}` : "/api/company-referrals/inbox";
-    void companyFetch(path).then(payload => {
-      if (!active) return;
-      if (claimedRequestId > 0) { setClaimedRequest(payload.request || null); setActiveDocument(0); }
-      else setInbox(payload.requests || []);
-    }).catch((error: unknown) => {
-      if (!active) return;
-      if (claimedRequestId > 0) setInboxError("This private request is not available to your verified employee account.");
-      else if (sessionEmailIsCompany) {
-        // The session email is the verified company address (OTP enrollment ran
-        // server-side), so a failure here is transient/specific — surface it
-        // without the "verify your work email" mask. Never flash the
-        // enrollment card or sign the user out for this.
-        setInboxError(error instanceof Error ? error.message : "We could not load private company requests.");
-      } else setInboxError("Verify your work email to view private company requests.");
-    }).finally(() => { if (active) setInboxReady(true); });
-    return () => { active = false; };
-  }, [isSignedIn, claimedRequest, claimedRequestId, employeeEnrollmentReady, sessionEmailIsCompany]);
-
   useEffect(() => { if (isSignedIn && inboxReady && !claimedRequest && !showWorkEmailEnrollment && !claimedRequestId && !inboxError) go(safeReturnTo || "/inbox"); }, [claimedRequest, claimedRequestId, go, inboxError, inboxReady, isSignedIn, safeReturnTo, showWorkEmailEnrollment]);
 
   const decide = async (approved: boolean) => {
     if (!claimedRequest || deciding) return;
-    setDeciding(true); setInboxError("");
+    setDeciding(true); setActionError("");
     try {
       await companyFetch(`/api/company-referrals/${claimedRequest.id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: approved ? "approved" : "declined", message: message.trim() || undefined }) });
       setDecision(approved ? "approved" : "declined");
-    } catch (error) { setInboxError(error instanceof Error ? error.message : "We could not record this referral decision"); }
+    } catch (error) { setActionError(error instanceof Error ? error.message : "We could not record this referral decision"); }
     finally { setDeciding(false); }
   };
   const switchToWorkEmail = async () => { setWorkEmailError(""); try { await signOut?.(); } catch { setWorkEmailError("We could not switch accounts. Try signing out from the account menu, then use your company email."); } };
-  const claim = async (requestId: number) => { setClaimingId(requestId); setInboxError(""); try { await companyFetch(`/api/company-referrals/${requestId}/claim`, { method: "POST" }); go(`/referrer?request=${requestId}`); } catch (error) { setInboxError(error instanceof Error ? error.message : "This request is no longer available"); } finally { setClaimingId(null); } };
+  const claim = async (requestId: number) => { setClaimingId(requestId); setActionError(""); try { await companyFetch(`/api/company-referrals/${requestId}/claim`, { method: "POST" }); go(`/referrer?request=${requestId}`); } catch (error) { setActionError(error instanceof Error ? error.message : "This request is no longer available"); } finally { setClaimingId(null); } };
 
   if (decision) return <main data-skipwait-screen="referrer-decision" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><ReferrerFlowHeader backHref="/inbox" /><section className="flex min-h-0 flex-1 flex-col justify-center"><span className={`grid h-12 w-12 place-items-center rounded-xl ${decision === "approved" ? "bg-[#15803d]/10 text-[#15803d]" : "bg-[#f0f0f0] text-[#505050]"}`}>{decision === "approved" ? <CheckCircle2 className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}</span><h1 className="font-display mt-3 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">{decision === "approved" ? "Referral approved." : "Request declined."}</h1><p className="mt-4 text-sm leading-6 text-[#505050]">{decision === "approved" ? "You can now continue privately with this Job Seeker." : "The Job Seeker will receive your update privately."}</p>{decision === "approved" && claimedRequest ? <div className="mt-5"><ReferralCoverageInviteBanner companyDomain={claimedRequest.companyDomain} /></div> : null}</section><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4">{decision === "approved" && claimedRequest ? <button type="button" onClick={() => go(`/conversation/${claimedRequest.id}?from=inbox`)} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3.5 text-sm font-bold text-white">Message Job Seeker <ArrowRight className="h-4 w-4" /></button> : null}<Link href="/inbox" className={`${decision === "approved" ? "mt-3 " : ""}block text-center text-sm font-semibold text-[#505050]`}>Return to My Company Inbox</Link></footer></div></main>;
 
