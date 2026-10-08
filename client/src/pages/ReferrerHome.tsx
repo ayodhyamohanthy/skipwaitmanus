@@ -131,7 +131,7 @@ export default function ReferrerHome() {
             <div className="rounded-3xl border border-[var(--border)] p-5"><CheckCircle2 className="mb-2 size-5" /><strong className="text-3xl">{active.length}</strong><p className="text-sm text-[var(--muted-foreground)]">In review with you</p></div>
             <div className="rounded-3xl border border-[var(--border)] p-5">
               <strong className="text-3xl">{left}<span className="text-lg text-[var(--muted-foreground)]">/{capacity}</span></strong>
-              <p className="text-sm text-[var(--muted-foreground)]">Capacity left</p>
+              <p className="text-sm text-[var(--muted-foreground)]">Capacity left this month</p>
               <div className="mt-2 h-1.5 rounded-full bg-[var(--muted)]" role="progressbar" aria-valuenow={used} aria-valuemin={0} aria-valuemax={capacity} aria-label="Capacity used"><span className="block h-full rounded-full bg-[var(--primary)]" style={{ width: `${capacity ? Math.min(100, (used / capacity) * 100) : 0}%` }} /></div>
             </div>
           </div>
