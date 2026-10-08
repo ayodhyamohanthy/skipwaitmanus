@@ -61,7 +61,7 @@ export default function Explore() {
           <Building2 /><h2>Try a wider search.</h2><p>Clear a filter, or tell us where you want a door to open next.</p>
           <div>
             <button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={clear}>Clear filters</button>
-            <Link href="/invite" className="brand-button">Request a company <ArrowUpRight /></Link>
+            <Link href="/suggest-company" className="brand-button">Request a company <ArrowUpRight /></Link>
           </div>
         </section>
       )}
