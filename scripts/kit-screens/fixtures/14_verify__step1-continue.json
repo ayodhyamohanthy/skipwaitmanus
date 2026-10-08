@@ -1,0 +1,11 @@
+{
+  "signedIn": { "id": 41, "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "exact", "status": 200, "body": { "notifications": [] } }
+  ],
+  "actions": [
+    { "waitFor": "text=Where do you work?" },
+    { "click": "text=Continue" },
+    { "waitFor": "text=Your Wipro email" }
+  ]
+}
