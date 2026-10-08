@@ -83,7 +83,7 @@ export function PolicySection({ number, title, children }: { number: string; tit
   </section>;
 }
 
-export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, updated, status = POLICIES_PUBLISHED ? "published" : "draft", children, footnote }: {
+export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, updated, status = POLICIES_PUBLISHED ? "published" : "draft", sections, children, footnote }: {
   screen: string;
   icon: LucideIcon;
   eyebrow: string;
@@ -91,6 +91,8 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
   intro: string;
   updated: string;
   status?: "draft" | "published";
+  /** Anchor-nav entries for the numbered sections. Rendered as a left rail on desktop only; mobile keeps the stacked flow. */
+  sections?: ReadonlyArray<{ id: string; label: string }>;
   children: ReactNode;
   footnote?: string;
 }) {
@@ -104,7 +106,7 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
     if (canonicalPath) applySeo({ title, description: routeDescription ?? intro, path: canonicalPath });
   }, [canonicalPath, intro, routeDescription, title]);
   return <main data-skipwait-screen={screen} className="min-h-screen bg-white px-5 py-5 text-black sm:px-6 sm:py-8">
-    <div className="mx-auto max-w-3xl">
+    <div className={`mx-auto ${sections ? "max-w-5xl" : "max-w-3xl"}`}>
       <header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#505050] hover:text-black"><ArrowLeft className="h-4 w-4" />Back</Link></header>
       {canonicalPath ? <div className="mt-8"><Breadcrumbs path={canonicalPath} /></div> : null}
       <section className="mt-8 rounded-2xl border border-[#e5e5e5] bg-white p-6 sm:p-9">
@@ -117,7 +119,20 @@ export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, upd
         <p className="mt-4 max-w-2xl text-sm leading-6 text-[#505050]">{intro}</p>
         <p className="mt-4 text-xs font-semibold text-[#505050]">Last updated {updated}</p>
       </section>
-      <div className="mt-5 grid gap-3">{children}</div>
+      <div className={sections ? "mt-5 grid min-w-0 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]" : "mt-5 grid gap-3"}>
+        {sections ? (
+          <nav aria-label="On this page" className="hidden lg:block">
+            <ol className="sticky top-6 space-y-1">
+              {sections.map(section => (
+                <li key={section.id}>
+                  <a href={`#policy-${section.id}`} className="block rounded-lg px-3 py-2 text-sm font-semibold text-[#505050] hover:bg-[#f5f5f5] hover:text-black">{section.label}</a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+        ) : null}
+        <div className="grid min-w-0 gap-3">{children}</div>
+      </div>
       <nav aria-label="Policies" className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-[#505050]">
         {policyLinks.map(link => <Link key={link.href} href={link.href} className="hover:text-black">{link.label}</Link>)}
       </nav>

@@ -18,6 +18,20 @@ export default function Terms() {
     title="Plain terms for a private referral handoff."
     intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
     updated="September 23, 2026"
+    status="published"
+    sections={[
+      { id: "01", label: "What skipwait.me is" },
+      { id: "02", label: "Accounts and verification" },
+      { id: "03", label: "Credits, plans, and payment" },
+      { id: "04", label: "Privacy inside a request" },
+      { id: "05", label: "Acceptable use" },
+      { id: "06", label: "Administrator review" },
+      { id: "07", label: "Liability and changes" },
+      { id: "08", label: "Contact" },
+      { id: "09", label: "Business identity" },
+      { id: "10", label: "Governing law" },
+      { id: "11", label: "Grievance officer" },
+    ]}
     footnote="These terms describe how the product works today. If we change them, we will update the date above."
   >
     <section aria-label="Short version" className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">

@@ -19,6 +19,14 @@ export default function Guidelines() {
     intro="How seekers and referrers treat each other on SkipWait: free referrals, honest asks, respectful passes, zero tolerance for scams. Breaking these rules can limit or close an account."
     updated="October 8, 2026"
     status="draft"
+    sections={[
+      { id: "01", label: "Referrals are free" },
+      { id: "02", label: "For seekers" },
+      { id: "03", label: "For referrers" },
+      { id: "04", label: "Respect" },
+      { id: "05", label: "Scams and impersonation" },
+      { id: "06", label: "What happens if rules are broken" },
+    ]}
     footnote="Questions about these guidelines: write to support and a person will reply."
   >
     <PolicySection number="01" title="Referrals are free">

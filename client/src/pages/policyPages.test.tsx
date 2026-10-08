@@ -63,6 +63,7 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getByText(/No money, gifts, or favours change hands/)).toBeTruthy();
     expect(screen.getByText(/Draft · pending legal review/)).toBeTruthy();
     expect(policyLinks(container)).toContain("/guidelines");
+    expect(screen.getByRole("navigation", { name: "On this page" })).toBeTruthy();
   });
 
   it("Refund policy matches the billing rules the product enforces", () => {
