@@ -100,4 +100,21 @@ describe("PublicProfile page", () => {
     render(<PublicProfile />);
     expect(await screen.findByText("This profile is private.")).toBeTruthy();
   });
+
+  it("lets the owner switch visibility inline without leaving the page", async () => {
+    const visibility: { value: string } = { value: "link" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/profile/me") && init?.method === "PUT") {
+        visibility.value = (JSON.parse(String(init.body)) as { profileVisibility: string }).profileVisibility;
+        return ok({});
+      }
+      return ok({ profile: { visible: true, visibility: visibility.value, isOwner: true, displayName: "Asha R.", headline: null, currentTitle: null, location: null, bio: null, skills: null, verifiedWork: null, handle: "asha-r", workItems: [] } });
+    }));
+    render(<PublicProfile />);
+    expect(await screen.findByText("Who can see this")).toBeTruthy();
+    expect(screen.getByRole("radio", { name: "Link only" })).toHaveProperty("ariaChecked", "true");
+    fireEvent.click(screen.getByRole("radio", { name: "Private" }));
+    await waitFor(() => expect(visibility.value).toBe("private"));
+    await waitFor(() => expect(screen.getByRole("radio", { name: "Private" })).toHaveProperty("ariaChecked", "true"));
+  });
 });
