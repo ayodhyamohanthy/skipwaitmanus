@@ -17,7 +17,7 @@ export default function Landed() {
   };
 
   return (
-    <main data-skipwait-screen="landed" className="page-content mx-auto max-w-2xl">
+    <main data-skipwait-screen="landed" className="page-content">
       <ol className="mb-8 grid grid-cols-4 gap-1.5" aria-label="Landed journey">
         {STEPS.map((label, i) => (
           <li key={label}><span className={`block h-1.5 rounded-full ${i <= step ? "bg-[var(--primary)]" : "bg-[var(--muted)]"}`} /><span className="mt-1.5 block text-xs text-[var(--muted-foreground)]">{label}</span></li>

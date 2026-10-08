@@ -55,7 +55,7 @@ export default function Report() {
   };
 
   return (
-    <main data-skipwait-screen="report" className="page-content mx-auto max-w-2xl">
+    <main data-skipwait-screen="report" className="page-content">
       <button type="button" onClick={() => go("/requests")} className="text-link mb-4 inline-flex items-center gap-1 text-sm"><ArrowLeft className="size-4" />Back to requests</button>
 
       {step === 0 ? (

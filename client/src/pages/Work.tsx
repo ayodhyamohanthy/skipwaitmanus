@@ -92,7 +92,7 @@ export default function Work() {
 
   const pinned = items.filter(item => item.pinned);
   return (
-    <main data-skipwait-screen="work" className="mx-auto w-full max-w-6xl px-4 py-6 md:px-6">
+    <main data-skipwait-screen="work" className="page-content">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div><span className="eyebrow">Your space</span><h1 className="mt-2 text-4xl font-semibold">My work<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Profile-only showcase. Pin up to your best, and choose per item whether it appears on your public profile or only inside requests.</p></div>
         <button type="button" onClick={() => { setAdding(current => !current); setError(""); }} className="brand-button"><Plus />{adding ? "Close" : "Add work"}</button>
