@@ -38,18 +38,18 @@ export function registerMcpRoutes(app: Express, deps: McpRouteDeps) {
   };
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
 
-  // The public address is skipwait.me/mcp; a Pages function forwards it to /api/mcp.
+  // Live address: skipwait.me/api/mcp (the API zone route covers /api/* only).
   app.post("/api/mcp", express.json({ limit: "64kb" }), async (req, res) => {
     res.set("Cache-Control", "no-store");
     const token = bearerFrom(req);
     if (!token || !ASSISTANT_BEARER_RE.test(token)) {
-      res.set("WWW-Authenticate", 'Bearer realm="skipwait"');
+      res.set("WWW-Authenticate", 'Bearer realm="skipwait", resource_metadata="https://skipwait.me/.well-known/oauth-protected-resource"');
       return res.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "Send your SkipWait token as a Bearer token" } });
     }
     try {
       const auth = await deps.verifyBearer(hashBearer(token));
       if (!auth) {
-        res.set("WWW-Authenticate", 'Bearer realm="skipwait", error="invalid_token"');
+        res.set("WWW-Authenticate", 'Bearer realm="skipwait", error="invalid_token", resource_metadata="https://skipwait.me/.well-known/oauth-protected-resource"');
         return res.status(401).json({ jsonrpc: "2.0", id: null, error: { code: -32001, message: "This token is not valid. It may have been revoked." } });
       }
       if (!(await deps.hasAccess(auth.userId))) {
