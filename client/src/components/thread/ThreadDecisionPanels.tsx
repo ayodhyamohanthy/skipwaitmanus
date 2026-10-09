@@ -81,36 +81,7 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
   if (stage === "Hired") {
     return <p className="mt-2 text-sm text-muted-foreground"><Link href="/landed" className="text-link">Open the landed journey <ArrowRight className="size-3.5" /></Link></p>;
   }
-<<<<<<< HEAD
-  if (status === "closed") {
-    return (
-      <div>
-        <h2>This request is closed.</h2>
-        <p>Your private history stays protected. Thank your referrer with a message when you&apos;re ready.</p>
-        <button type="button" className="brand-button mt-4 w-full" onClick={() => go("/landed")}>Open the landed journey <ArrowRight /></button>
-      </div>
-    );
-  }
-  const next = SEEKER_MILESTONES.filter(milestone => STATUS_ORDER.indexOf(milestone.status) > order);
-  return (
-    <div>
-      <h2>Update your progress</h2>
-      <div className="mt-3 grid gap-2">
-        {next.map(milestone => (
-          <ProgressButton key={milestone.status} status={milestone.status} label={milestone.label} onProgress={onProgress} />
-        ))}
-      </div>
-      <p>Use messages to coordinate. Keep personal contact details off this thread unless you both choose to share them.</p>
-    </div>
-  );
-}
-
-function ProgressButton({ status, label, onProgress }: { status: string; label: string; onProgress: (status: string) => Promise<void> }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-=======
   const next = SEEKER_MILESTONES.filter(milestone => stageIndex(milestone.stage) > idx);
->>>>>>> 57d8bbdec3818a6d6bb1dff1e38f9b552b201c81
   return (
     <>
       <h2 className="mt-2 text-lg font-semibold">Update your progress</h2>
