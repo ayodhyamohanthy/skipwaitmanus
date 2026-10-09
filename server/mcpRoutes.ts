@@ -38,7 +38,7 @@ export function registerMcpRoutes(app: Express, deps: McpRouteDeps) {
   };
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
 
-  // The public address is skipwait.me/mcp; a Pages function forwards it to /api/mcp.
+  // Live address: skipwait.me/api/mcp (the API zone route covers /api/* only).
   app.post("/api/mcp", express.json({ limit: "64kb" }), async (req, res) => {
     res.set("Cache-Control", "no-store");
     const token = bearerFrom(req);

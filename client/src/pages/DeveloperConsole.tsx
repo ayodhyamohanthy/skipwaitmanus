@@ -253,7 +253,7 @@ export default function DeveloperConsole() {
               </label>
             </div>
             {kind === "agent_mcp" ? (
-              <p className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4 text-sm">MCP clients can also connect with no registration through <code className="rounded bg-[var(--background)] px-1">skipwait.me/mcp</code> (dynamic registration). Registering gets you a verified badge, your logo on the approval screen and higher limits.</p>
+              <p className="mt-4 rounded-2xl border border-[var(--border)] bg-[var(--muted)] p-4 text-sm">MCP clients can also connect with no registration through <code className="rounded bg-[var(--background)] px-1">skipwait.me/api/mcp</code> (dynamic registration). Registering gets you a verified badge, your logo on the approval screen and higher limits.</p>
             ) : null}
             <fieldset className="mt-6">
               <legend className="font-semibold">Permissions</legend>
