@@ -187,3 +187,33 @@ Oct 9, 03:50 IST (local build, fixture, signed-in shell):
 - `/requests` at 1280 vs `06_requests__default`: layout matches (eyebrow, h1 with brand dot, New ask, three stat cards, open-slot segments). List and tabs not exercised: the fixture has no request data.
 - `/referrer-home` at 1280 vs `12_referrer-home__default`: header, title, stat row and footer match. The kit's middle card is "Expiring within 24h", so the 22:53 direct push moved the card toward the kit. The fixture shows the unverified state only, so the verified layout (waiting list, thank-you wall, record) is not yet rendered.
 - Still to compare in this pass: both widths for the other routes in the audit queue.
+
+## PR #172 (`feat/kit-v4-screens`) — two-width verification, Oct 9 2026
+
+Every state below was captured with `scripts/kit-screens/capture.mjs` at 1280 (web) and 390 @2x (mobile) against the matching PNG, with route-interception fixtures in `scripts/kit-screens/fixtures/<stem>.json`, and compared slice by slice. "Mostly matched" = layout, type, colour and spacing match; the remaining differences are the kit's preview chips/banners (never shipped), genuinely data-driven text, or a recorded backend gap. Not live until the PR merges.
+
+| # | Route | PR #172 status | Commit | Backend gaps recorded (state rendered honestly instead) |
+|---|---|---|---|---|
+| 00 | `/` | Matched both widths | 29d71ff | Consent banner wired to Clarity consent on every route. |
+| 01-02 | `/explore`, `/explore/:slug` (+2 steps) | Mostly matched | 72284bf | Door dialog hands off to `/ask` (no create-from-dialog primitive); no per-company referrer counts. |
+| 03 | `/sign-in` (+mobile step) | Mostly matched | 43a94e6 | No password auth: email step continues to AuthKit with a login hint; no forgot/reset (31, 32 N/A). |
+| 04 | `/onboarding` (+skip) | Mostly matched | fd0dbb9 | Answers are saved on the device; no server-side seeker profile fields. |
+| 05 | `/ask` | Mostly matched | 056b19a | Role-location / work-authorization checks need profile data. |
+| 06 | `/requests` (4 states) | Mostly matched | 85c3821 + merge | Open-slot meter counts free slots from the credit summary (kit image shows used slots). |
+| 07 | `/inbox` (2 states) | Mostly matched | 668c044 | Seeker list has no referrer display name. |
+| 08 | `/conversation/:id` (4 states) | Mostly matched | 1ad8ee0 | No anonymous pre-accept question; preview has no expiry timestamps. |
+| 09 | `/alerts` (3 states) | Mostly matched | 51acc55 + merge | Saved alerts on the seekerAlerts backend; alerts have no function field; notifications expose no event kind for icons. |
+| 11 | `/referrer`, `/referrer/impact`, `/queue` | Mostly matched | 5ec8dd7 | Inbox rows have no job title/function/fit note; no standalone pass-privately; no conversation/outcome counts. Now inside the app shell. |
+| 12-13, 15 | `/referrer-home` (5), `/referrer-setup` (+step), `/invite` | Mostly matched | ae057a1 | No thank-you store; inbox payload has no ask strength. |
+| 14 | `/verify` (+2 steps) | Mostly matched | 1aee634 | No periodic re-verification job. |
+| 16-18 | `/profile` (+referrer), `/p/:handle`, `/work` | Mostly matched | 223865a | No import from other platforms; pinned limit is client-side. |
+| 19-20 | `/plans` (+2 steps), `/billing` (4 states) | Mostly matched | c96fbd8 | Live Pro/Max kept. No yearly prices; no payment-failure/dunning record; no plan-change or undo-cancel endpoint. |
+| 22-23 | `/assistants` (4), `/approve` (6) | Mostly matched | 3433fc1 | No "Sent with" provenance for referrers; approvals send no push/Alerts notification; credit_spend approvals move no credits. |
+| 24-26 | `/connect-assistant` (7), `/developers`, `/developer-console` (6) | Mostly matched | dc753ad | Developer apps have no client secret and cannot authenticate yet; webhooks stored, never delivered; no per-app limits. |
+| 27-28, 30 | `/safety`, `/help`, `/suggest-company` | Mostly matched | 5ecfe07 | No review SLA; block and deletion stay support-handled. |
+| 33 | `/app-states` (9) + 404 | Mostly matched | 89587ae | No web push (no VAPID/subscription). Gallery now inside the shell. |
+| 35 | `/employer` (2) | Mostly matched | bc7f6e3 | No company-level referral stats; no domains/invite/settings backends. |
+| 36-37 | `/admin` (+step), `/admin-review` | Mostly matched | 3e4ce96 | Flow-health has all-time totals only (no weekly series). |
+| 38-41 | `/emails`, `/guidelines`, `/terms`, `/privacy` | Mostly matched | 2841e68 | All live legal text kept (sentence-checked); guidelines text unchanged pending founder decision; no push channel. |
+
+Not re-done on this branch (already Verified above by the founder session): 10 landed, 21 settings, 29 report, 34 for-companies.
