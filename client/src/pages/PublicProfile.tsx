@@ -143,53 +143,9 @@ export default function PublicProfile() {
             </section>
             {profile.openTo && profile.openTo.length > 0 ? <ul className="mt-5 flex flex-wrap gap-2" aria-label="Open to">{profile.openTo.map(role => <li key={role} className="rounded-full bg-muted px-3 py-1.5 text-sm">Open to: {role}</li>)}</ul> : null}
             {profile.bio ? <p className="mt-5 max-w-2xl leading-7">{profile.bio}</p> : null}
-<<<<<<< HEAD
-            {!profile.isOwner && profile.verifiedWork?.domain ? (
-              <div className="mt-5">
-                <Link href="/explore" className="brand-button">Ask for a referral <ArrowRight /></Link>
-              </div>
-            ) : null}
-            {profile.skills ? <p className="mt-3 text-sm text-[var(--muted-foreground)]">{profile.skills}</p> : null}
-            {profile.openTo && profile.openTo.length > 0 ? (
-              <div className="mt-4">
-                <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--muted-foreground)]">Open to</p>
-                <ul className="mt-2 flex flex-wrap gap-2">{profile.openTo.map(role => <li key={role} className="rounded-full border border-[var(--border)] px-3 py-1.5 text-sm font-medium">{role}</li>)}</ul>
-              </div>
-            ) : null}
-
-            <section className="mt-10" aria-label="Work">
-              <div className="mb-4 flex items-end justify-between gap-3">
-                <h2 className="text-xl font-semibold">Work</h2>
-                {profile.isOwner ? <Link href="/work" className="text-link text-sm">Manage work →</Link> : null}
-              </div>
-              {!profile.workItems?.length ? (
-                <div className="rounded-3xl border border-dashed border-[var(--border)] p-10 text-center">
-                  <p className="font-medium">{profile.isOwner ? "Add one piece you're proud of." : "No public work yet."}</p>
-                  {profile.isOwner ? <Link href="/work" className="brand-button mt-4">Add work</Link> : null}
-                </div>
-              ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  {profile.workItems.map(item => (
-                    <article key={item.id} className="rounded-3xl border border-[var(--border)] p-5">
-                      <div className="mb-10 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-                        <span className="flex items-center gap-1"><Globe className="size-3.5" />{item.source || "Link"}</span>
-                        {item.pinned ? <span className="flex items-center gap-1 text-[var(--foreground)]"><Pin className="size-3.5" />Pinned</span> : null}
-                      </div>
-                      <span className="eyebrow">{(KIND_LABELS[item.kind] ?? item.kind).toUpperCase()}</span>
-                      <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
-                      {item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="text-link mt-2 text-sm">Open link <ArrowRight className="size-3" /></a> : null}
-                      {profile.isOwner ? <p className="mt-3 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">{item.visibleOnProfile ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}{item.visibleOnProfile ? "Visible on profile" : "Shown only in requests"}</p> : null}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-            <p className="mt-12 text-center text-sm text-[var(--muted-foreground)]">No feed. No followers. No likes. Just work. · <Link href="/" className="text-link">Make your own on SkipWait</Link></p>
-=======
             {profile.skills ? <p className="mt-3 text-sm text-muted-foreground">{profile.skills}</p> : null}
             <PublicWorkGrid items={profile.workItems ?? []} isOwner={profile.isOwner === true} />
             <p className="mt-12 text-center text-sm text-muted-foreground">No feed. No followers. No likes. Just work. · <Link href="/" className="text-link">Make your own on SkipWait</Link></p>
->>>>>>> 57d8bbdec3818a6d6bb1dff1e38f9b552b201c81
           </>
         ) : null}
       </main>
