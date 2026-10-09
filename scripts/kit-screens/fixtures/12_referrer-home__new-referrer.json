@@ -1,0 +1,94 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera.iyer@wipro.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "wipro.com"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer-preferences",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "referralCapacity": 3,
+          "preferAreas": [
+            "Design"
+          ],
+          "referrerVisibility": "anon",
+          "notifyNewAsk": true,
+          "notifyDigest": false,
+          "paused": false,
+          "preferLevels": [
+            "Mid-level",
+            "Senior"
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/inbox",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [],
+        "scope": "new"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/profile/me",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "displayName": "Meera Iyer",
+        "profile": {
+          "userId": 11,
+          "accountType": "referrer",
+          "workEmailDomain": "wipro.com",
+          "workEmailVerifiedAt": "2026-10-07T09:00:00.000Z",
+          "referralCapacity": 3
+        },
+        "workItems": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer-impact/me",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "reviewed": 0,
+          "approved": 0,
+          "introductions": 0,
+          "interviews": 0,
+          "offers": 0,
+          "repliedWithin3DaysPct": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    }
+  ]
+}

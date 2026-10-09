@@ -1,0 +1,6 @@
+{
+  "signedIn": false,
+  "routes": [
+    { "method": "GET", "path": "/api/jobs", "match": "exact", "status": 200, "body": { "jobs": [] } }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "signedIn": {
+    "id": 12,
+    "name": "Asha R.",
+    "email": "asha.r@example.com",
+    "role": "user"
+  },
+  "trpc": {
+    "profile.mine": {
+      "id": 5,
+      "userId": 12,
+      "accountType": "job_seeker",
+      "headline": "Senior Product Designer",
+      "currentTitle": "Senior Product Designer",
+      "company": null,
+      "location": "Bengaluru",
+      "bio": null,
+      "skills": null,
+      "experience": null,
+      "expertise": null,
+      "resumeUrl": null,
+      "workEmailDomain": null,
+      "workEmailVerifiedAt": null,
+      "referralCapacity": 0
+    }
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "status": 200,
+      "body": {
+        "requests": [
+          {
+            "id": 601,
+            "title": "Product Designer",
+            "pitch": "I've led two end-to-end redesigns for enterprise workflow products and would value an honest fit check for this role.",
+            "targetRoleUrl": "https://careers.wipro.com/jobs/product-designer",
+            "companyDomain": "wipro.com",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "waitingForCoverage": false,
+            "referrerMessage": null,
+            "createdAt": "2026-10-07T17:00:00.000Z",
+            "updatedAt": "2026-10-07T17:00:00.000Z",
+            "attachmentCount": 1,
+            "queueStatus": null,
+            "unreadMessageCount": 0,
+            "expiresAt": "2026-10-14T17:00:00.000Z"
+          }
+        ],
+        "expiredRequestIds": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": [],
+        "unreadCount": 0
+      }
+    }
+  ]
+}

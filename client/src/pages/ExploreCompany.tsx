@@ -1,77 +1,23 @@
-import { ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, BriefcaseBusiness, ExternalLink, LockKeyhole, MapPin } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, BriefcaseBusiness, LockKeyhole, MapPin } from "lucide-react";
+import { useState } from "react";
 import { Link, useRoute } from "wouter";
-import { useAuth } from "@/_core/auth";
-import { usePersistFn } from "@/hooks/usePersistFn";
-import { getLaunchCompany, companySlugForJobCompany } from "@/lib/companies";
-import { readApiJson } from "@/lib/apiResponse";
-
-type Job = { id: number; title: string; company: string; location: string; seniority: string; workMode: string; targetRoleUrl: string | null };
+import { Button } from "@/components/kit/button";
+import { CompanyRoles } from "@/components/explore/CompanyRoles";
+import { RequestDialog } from "@/components/explore/RequestDialog";
+import { useCompanyJobs } from "@/components/explore/roleQueries";
+import { getLaunchCompany, type LaunchCompany } from "@/lib/companies";
 
 export default function ExploreCompany() {
   const [, params] = useRoute("/explore/:slug");
-  const { isSignedIn, getToken } = useAuth();
-  const fetchToken = usePersistFn(getToken);
   const company = getLaunchCompany(params?.slug ?? "");
-  const [jobs, setJobs] = useState<Job[] | null>(null);
-  const [saved, setSaved] = useState<Set<number>>(new Set());
-  const [savingId, setSavingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!company) return;
-    let active = true;
-    void (async () => {
-      try {
-        const response = await fetch(`/api/jobs?query=${encodeURIComponent(company.name)}`);
-        if (!response.ok) { if (active) setJobs([]); return; }
-        const payload = (await response.json()) as { jobs?: Job[] };
-        const matches = Array.isArray(payload.jobs) ? payload.jobs.filter(job => companySlugForJobCompany(job.company) === company.slug) : [];
-        if (active) setJobs(matches);
-      } catch { if (active) setJobs([]); }
-    })();
-    return () => { active = false; };
-  }, [company]);
-
-  useEffect(() => {
-    if (!isSignedIn) return;
-    let active = true;
-    void (async () => {
-      try {
-        const token = await fetchToken();
-        const response = await fetch("/api/saved-roles", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (!response.ok) return;
-        const payload = await readApiJson<{ saved?: Array<{ jobId: number }> }>(response, "");
-        if (active && Array.isArray(payload.saved)) setSaved(new Set(payload.saved.map(item => item.jobId)));
-      } catch { /* save toggles stay unsigned */ }
-    })();
-    return () => { active = false; };
-  }, [fetchToken, isSignedIn]);
-
-  const toggleSave = async (jobId: number) => {
-    if (savingId !== null) return;
-    const adding = !saved.has(jobId);
-    setSavingId(jobId);
-    try {
-      const token = await fetchToken();
-      const response = await fetch(`/api/saved-roles/${jobId}`, { method: adding ? "PUT" : "DELETE", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      if (!response.ok) return;
-      setSaved(current => {
-        const next = new Set(current);
-        if (adding) next.add(jobId); else next.delete(jobId);
-        return next;
-      });
-    } finally { setSavingId(null); }
-  };
-
   if (!company) {
-    return (
-      <main data-skipwait-screen="explore-missing" className="page-content">
-        <Link href="/explore" className="back-link"><ArrowLeft />All companies</Link>
-        <h1 className="mt-4 text-3xl font-semibold">This door isn&apos;t open yet.</h1>
-        <p className="mt-2 text-[var(--muted-foreground)]">More companies open as verified referrers join.</p>
-      </main>
-    );
+    return <main data-skipwait-screen="explore-missing" className="page-content">
+      <Link className="back-link" href="/explore"><ArrowLeft />All companies</Link>
+      <h1 className="mt-4 text-3xl font-semibold">This door isn&apos;t open yet.</h1>
+      <p className="mt-2 text-muted-foreground">More companies open as verified referrers join.</p>
+    </main>;
   }
+<<<<<<< HEAD
 
   return (
     <main data-skipwait-screen="explore-company" className="page-content">
@@ -132,4 +78,22 @@ export default function ExploreCompany() {
       </section>
     </main>
   );
+=======
+  return <CompanyPage company={company} />;
+}
+
+function CompanyPage({ company }: { company: LaunchCompany }) {
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(0);
+  const jobs = useCompanyJobs(company);
+  const roleCount = jobs.data?.length ?? 0;
+  return <main data-skipwait-screen="explore-company" className="page-content company-page">
+    <Link className="back-link" href="/explore"><ArrowLeft />All companies</Link>
+    <section className="company-hero"><span className="company-mark large" aria-hidden="true">{company.initials}</span><div><span className="availability"><span /> PEOPLE OPEN TO REFERRAL REQUESTS{roleCount > 0 ? ` · ${roleCount} OPEN ${roleCount === 1 ? "ROLE" : "ROLES"} LISTED` : ""}</span><h1>{company.name}<span className="brand-dot">.</span></h1><p>{company.blurb}</p><div className="company-meta"><span><BriefcaseBusiness />{company.industry}</span><span><MapPin />{company.location}</span></div></div><Button onClick={() => { setStep(0); setOpen(true); }}>Ask for a referral <ArrowRight /></Button></section>
+    <section className="company-detail-grid"><div><span className="eyebrow">BEFORE YOU ASK</span><h2>Bring the role.<br />We’ll guide the request.</h2><p>Find a role on the company’s own careers site, copy its link, and explain why your experience fits. A focused request is easier to review.</p></div><ol className="quality-list"><li><span>1</span><div><strong>Use the exact job link</strong><p>This keeps the request specific and current.</p></div></li><li><span>2</span><div><strong>Make your fit easy to see</strong><p>Share the most relevant experience, not a generic pitch.</p></div></li><li><span>3</span><div><strong>Respect the decision</strong><p>People choose what they can support. A pass stays private.</p></div></li></ol></section>
+    <section className="privacy-preview"><LockKeyhole /><div><strong>What is shared, and when?</strong><p>Your job link and note are shared with an available referrer. Personal contact details and documents remain private until a request is accepted.</p></div><Link href="/safety">Read safety guide <ArrowRight /></Link></section>
+    <CompanyRoles company={company} />
+    <RequestDialog company={company} open={open} step={step} onStepChange={setStep} onOpenChange={setOpen} />
+  </main>;
+>>>>>>> 57d8bbdec3818a6d6bb1dff1e38f9b552b201c81
 }

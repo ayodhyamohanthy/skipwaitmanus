@@ -27,6 +27,8 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "assistantTokens", createSql: `CREATE TABLE IF NOT EXISTS \`assistantTokens\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`name\` varchar(160) NOT NULL, \`tokenHash\` varchar(128) NOT NULL, \`prefix\` varchar(16) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`lastUsedAt\` timestamp NULL, \`revokedAt\` timestamp NULL, CONSTRAINT \`assistantTokens_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`assistant_tokens_user_name_unique\`(\`userId\`,\`name\`), CONSTRAINT \`assistant_tokens_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`assistant_tokens_user_idx\`(\`userId\`))` },
   { table: "developerApps", createSql: `CREATE TABLE IF NOT EXISTS \`developerApps\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`name\` varchar(160) NOT NULL, \`kind\` ENUM('web_app','agent_mcp','server_integration') NOT NULL, \`description\` text NOT NULL, \`website\` varchar(512) NULL, \`redirectUrls\` text NOT NULL, \`scopes\` text NOT NULL, \`status\` ENUM('test','in_review','live','rejected','suspended') NOT NULL DEFAULT 'test', \`rejectReasons\` text NULL, \`webhookUrl\` varchar(512) NULL, \`clientId\` varchar(64) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`developerApps_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`developer_apps_client_id_unique\`(\`clientId\`), CONSTRAINT \`developer_apps_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`developer_apps_user_idx\`(\`userId\`), INDEX \`developer_apps_status_idx\`(\`status\`))` },
   { table: "assistantApprovals", createSql: `CREATE TABLE IF NOT EXISTS \`assistantApprovals\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`connectionId\` int NULL, \`kind\` ENUM('ask_send','credit_spend') NOT NULL, \`status\` ENUM('pending','approved','declined','expired') NOT NULL DEFAULT 'pending', \`provider\` varchar(80) NOT NULL, \`companyDomain\` varchar(255) NULL, \`role\` varchar(180) NULL, \`note\` text NULL, \`creditCount\` int NULL, \`slotCount\` int NULL, \`expiresAt\` timestamp NOT NULL, \`decidedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`assistantApprovals_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`assistant_approvals_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`assistant_approvals_connection_fk\` FOREIGN KEY (\`connectionId\`) REFERENCES \`assistantConnections\` (\`id\`) ON DELETE SET NULL, INDEX \`assistant_approvals_user_idx\`(\`userId\`), INDEX \`assistant_approvals_status_idx\`(\`status\`), INDEX \`assistant_approvals_expiry_idx\`(\`expiresAt\`))` },
+  { table: "oauthClients", createSql: `CREATE TABLE IF NOT EXISTS \`oauthClients\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`clientId\` varchar(64) NOT NULL, \`clientName\` varchar(160) NOT NULL, \`redirectUris\` text NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthClients_clientId_unique\`(\`clientId\`))` },
+  { table: "oauthAuthCodes", createSql: `CREATE TABLE IF NOT EXISTS \`oauthAuthCodes\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`codeHash\` varchar(64) NOT NULL, \`clientId\` varchar(64) NOT NULL, \`userId\` int NOT NULL, \`redirectUri\` varchar(512) NOT NULL, \`codeChallenge\` varchar(64) NOT NULL, \`expiresAt\` timestamp NOT NULL, \`usedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthAuthCodes_codeHash_unique\`(\`codeHash\`), CONSTRAINT \`oauth_auth_codes_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`oauth_auth_codes_user_idx\`(\`userId\`), INDEX \`oauth_auth_codes_expiry_idx\`(\`expiresAt\`))` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -46,6 +48,10 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "profiles", column: "preferAreas", definition: "TEXT NULL" },
   { table: "profiles", column: "preferLevels", definition: "TEXT NULL" },
   { table: "profiles", column: "openTo", definition: "TEXT NULL" },
+  { table: "assistantApprovals", column: "targetRoleUrl", definition: "TEXT NULL" },
+  { table: "assistantApprovals", column: "attachmentIds", definition: "TEXT NULL" },
+  { table: "assistantApprovals", column: "idempotencyKey", definition: "VARCHAR(64) NULL" },
+  { table: "assistantApprovals", column: "executedRequestId", definition: "INT NULL" },
   { table: "profiles", column: "referrerVisibility", definition: "ENUM('anon','named') NOT NULL DEFAULT 'anon'" },
   { table: "profiles", column: "notifyNewAsk", definition: "boolean NOT NULL DEFAULT true" },
   { table: "profiles", column: "notifyDigest", definition: "boolean NOT NULL DEFAULT false" },
@@ -107,6 +113,10 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "assistantApprovals", name: "assistant_approvals_user_idx", columns: "`userId`", nonUnique: true },
   { table: "assistantApprovals", name: "assistant_approvals_status_idx", columns: "`status`", nonUnique: true },
   { table: "assistantApprovals", name: "assistant_approvals_expiry_idx", columns: "`expiresAt`", nonUnique: true },
+  { table: "oauthClients", name: "oauthClients_clientId_unique", columns: "`clientId`" },
+  { table: "oauthAuthCodes", name: "oauthAuthCodes_codeHash_unique", columns: "`codeHash`" },
+  { table: "oauthAuthCodes", name: "oauth_auth_codes_user_idx", columns: "`userId`", nonUnique: true },
+  { table: "oauthAuthCodes", name: "oauth_auth_codes_expiry_idx", columns: "`expiresAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is

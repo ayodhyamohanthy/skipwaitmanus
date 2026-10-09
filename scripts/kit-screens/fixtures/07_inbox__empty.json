@@ -1,0 +1,39 @@
+{
+  "signedIn": {
+    "id": 42,
+    "name": "Ravi Menon",
+    "email": "ravi.menon@tcs.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [],
+        "expiredRequestIds": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/inbox",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [],
+        "scope": "new"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    }
+  ]
+}

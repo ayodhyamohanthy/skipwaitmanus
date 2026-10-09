@@ -27,7 +27,8 @@ describe("My Company Inbox employee access", () => {
     expect(screen.getByRole("button", { name: "Use company email" })).toBeTruthy();
     expect(screen.queryByText("Secure employee sign in")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Use company email" }));
-    expect(go).toHaveBeenCalledWith("/referrer");
+    // ?setup=work-email opens the work-email OTP dialog on the referrer workspace directly.
+    expect(go).toHaveBeenCalledWith("/referrer?setup=work-email");
   });
 
   it("gives a verified employee a one-tap private capacity action when the New inbox is empty", async () => {
@@ -61,8 +62,8 @@ describe("My Company Inbox employee access", () => {
     const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : url.includes("one-click-review") ? { status: "approved" } : { requests: [inboxRequest] } }));
     vi.stubGlobal("fetch", fetchMock);
     render(<MyCompanyInbox />);
-    await waitFor(() => expect(screen.getByRole("button", { name: "Review candidate" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Review candidate" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Open request" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Open request" }));
     await waitFor(() => expect(screen.getByText("Avery")).toBeTruthy());
     expect(screen.getByText("I led a measurable product design launch.")).toBeTruthy();
     expect(screen.getByText("avery-resume.pdf")).toBeTruthy();

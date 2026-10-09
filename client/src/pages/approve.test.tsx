@@ -52,13 +52,53 @@ describe("Approve page", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Approve />);
     expect(await screen.findByText("Send this ask to wipro.com?")).toBeTruthy();
-    expect(screen.getByText("Senior Product Designer · uses 1 of your open slots")).toBeTruthy();
+    expect(screen.getByText("Senior Product Designer · uses 1 of your 3 open slots")).toBeTruthy();
     expect(screen.getByText("Hi — I'd love a referral for the Senior Product Designer role.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
     expect(await screen.findByText("Done")).toBeTruthy();
     const decisionCall = fetchMock.mock.calls.find(([url, init]) => String(url).includes("/decision") && init?.method === "POST");
     expect(decisionCall).toBeTruthy();
-    expect(JSON.parse(String(decisionCall?.[1]?.body ?? "{}"))).toEqual({ decision: "approved" });
+    expect(JSON.parse(String(decisionCall?.[1]?.body ?? "{}"))).toEqual({ decision: "approved", kind: "ask_send" });
+    expect(screen.getByRole("link", { name: "Open requests" }).getAttribute("href")).toBe("/requests");
+  });
+
+  it("does not claim checks, labels or notifications the product does not have", async () => {
+    stubFetch(url => (String(url).includes("/api/assistants/approvals") ? { ok: true, json: async () => ({ approvals: [ASK_APPROVAL] }) } : { ok: true, json: async () => CREDITS }));
+    render(<Approve />);
+    expect(await screen.findByText("Send this ask to wipro.com?")).toBeTruthy();
+    expect(screen.queryByText(/Quality check passed/)).toBeNull();
+    expect(screen.queryByText(/Sent with/)).toBeNull();
+    expect(screen.queryByText(/push notification/)).toBeNull();
+    expect(screen.getByText("Unanswered approvals expire after 24 hours.")).toBeTruthy();
+  });
+
+  it("shows the credit cost of an assistant-proposed ask", async () => {
+    const proposed = { ...ASK_APPROVAL, provider: "assistant", role: null, note: null, creditCount: 1, slotCount: null };
+    stubFetch(url => (String(url).includes("/api/assistants/approvals") ? { ok: true, json: async () => ({ approvals: [proposed] }) } : { ok: true, json: async () => CREDITS }));
+    render(<Approve />);
+    expect(await screen.findByText("uses 1 of your open slots · 1 credit")).toBeTruthy();
+    expect(screen.getByText(/Your assistant · 1 minute ago · 23 h left/)).toBeTruthy();
+    expect(screen.getByText("No note yet. Tap Edit to add one.")).toBeTruthy();
+  });
+
+  it("keeps the approval on screen with the reason when a decision fails", async () => {
+    stubFetch((url, init) => {
+      if (init?.method === "POST") return { ok: false, json: async () => ({ error: "This approval expired" }) };
+      if (String(url).includes("/api/assistants/approvals")) return { ok: true, json: async () => ({ approvals: [ASK_APPROVAL] }) };
+      return { ok: true, json: async () => CREDITS };
+    });
+    render(<Approve />);
+    fireEvent.click(await screen.findByRole("button", { name: "Send" }));
+    expect(await screen.findByText("This approval expired")).toBeTruthy();
+    expect(screen.getByText("Send this ask to wipro.com?")).toBeTruthy();
+    expect(screen.queryByText("Done")).toBeNull();
+  });
+
+  it("offers a retry when approvals fail to load", async () => {
+    stubFetch(() => ({ ok: false, json: async () => ({ error: "We could not load your approvals" }) }));
+    render(<Approve />);
+    expect(await screen.findByText("We could not load your approvals")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 
   it("edits the note before sending", async () => {

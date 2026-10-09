@@ -1,97 +1,55 @@
-import { ArrowLeft, ArrowRight, BadgeCheck, Bell, Check, Gauge, Layers, UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ArrowRight, BadgeCheck } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
-import { Link, useLocation } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { readApiJson } from "@/lib/apiResponse";
+import { Button, buttonVariants } from "@/components/kit/button";
+import { Heading, Panel } from "@/components/kit/preview-kit";
+import { SetupWizard } from "@/components/referrer-home/SetupWizard";
+import { companyIdentity, fetchCompanyAccess, fetchReferrerPreferences, type CompanyAccess, type ReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
 
-const FUNCTIONS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"];
-const LEVELS = ["Intern", "Early career", "Mid-level", "Senior", "Lead+"];
-const STEPS = ["Areas", "Capacity", "Visibility", "Notifications", "Ready"] as const;
-type Visibility = "anon" | "named";
+type SetupData = { access: CompanyAccess; preferences: ReferrerPreferences | null };
+
+async function fetchSetup(getToken: TokenSource): Promise<SetupData> {
+  const access = await fetchCompanyAccess(getToken);
+  if (!access.verified) return { access, preferences: null };
+  return { access, preferences: await fetchReferrerPreferences(getToken) };
+}
 
 export default function ReferrerSetup() {
-  const [, go] = useLocation();
-  const { isSignedIn, getToken } = useAuth();
+  const { isSignedIn, userId, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
-  const [step, setStep] = useState(0);
-  const [areas, setAreas] = useState<string[]>([]);
-  const [levels, setLevels] = useState<string[]>([]);
-  const [capacity, setCapacity] = useState(3);
-  const [visibility, setVisibility] = useState<Visibility>("anon");
-  const [notifyEmail, setNotifyEmail] = useState(true);
-  const [verified, setVerified] = useState<boolean | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    if (!isSignedIn) return;
-    let active = true;
-    void (async () => {
-      try {
-        const token = await fetchToken();
-        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-        const [accessResponse, prefsResponse] = await Promise.all([
-          fetch("/api/company-referrals/access", { credentials: "include", headers }),
-          fetch("/api/referrer-preferences", { credentials: "include", headers }),
-        ]);
-        if (!active) return;
-        if (accessResponse.ok) {
-          const access = await readApiJson<{ verifiedCompanyAccess?: boolean }>(accessResponse, "");
-          setVerified(Boolean(access.verifiedCompanyAccess));
-        } else setVerified(false);
-        if (prefsResponse.ok) {
-          const payload = await readApiJson<{ preferences?: { preferAreas?: string[]; preferLevels?: string[]; referralCapacity?: number; referrerVisibility?: string; notifyNewAsk?: boolean } }>(prefsResponse, "");
-          const prefs = payload.preferences;
-          if (prefs) {
-            if (Array.isArray(prefs.preferAreas)) setAreas(prefs.preferAreas.filter(area => FUNCTIONS.includes(area)));
-            if (Array.isArray(prefs.preferLevels)) setLevels(prefs.preferLevels.filter(level => LEVELS.includes(level)));
-            if (typeof prefs.referralCapacity === "number") setCapacity(prefs.referralCapacity);
-            if (prefs.referrerVisibility === "named") setVisibility("named");
-            if (typeof prefs.notifyNewAsk === "boolean") setNotifyEmail(prefs.notifyNewAsk);
-          }
-        }
-      } catch { if (active) setVerified(false); }
-    })();
-    return () => { active = false; };
-  }, [fetchToken, isSignedIn]);
-
-  const toggleArea = (area: string) => setAreas(current => current.includes(area) ? current.filter(item => item !== area) : [...current, area]);
-  const toggleLevel = (level: string) => setLevels(current => current.includes(level) ? current.filter(item => item !== level) : [...current, level]);
-
-  const save = async () => {
-    setSaving(true); setError("");
-    try {
-      const token = await fetchToken();
-      const response = await fetch("/api/referrer-preferences", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ preferAreas: areas, preferLevels: levels, referralCapacity: capacity, referrerVisibility: visibility, notifyNewAsk: notifyEmail }) });
-      const payload = await readApiJson<{ error?: string }>(response, "We could not save your setup");
-      if (!response.ok) throw new Error(payload.error || "We could not save your setup");
-      setStep(4);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not save your setup"); }
-    finally { setSaving(false); }
-  };
+  const queryClient = useQueryClient();
+  // Seeded once from the saved settings; the wizard owns edits until Finish.
+  const setup = useQuery({ queryKey: ["referrer-setup", userId ?? null], queryFn: () => fetchSetup(fetchToken), enabled: Boolean(isSignedIn), retry: 1, refetchOnWindowFocus: false, staleTime: Infinity });
 
   if (!isSignedIn) {
     return (
-      <main data-skipwait-screen="referrer-setup-sign-in" className="mx-auto max-w-xl px-5 py-6">
-        <p className="eyebrow">Referrer setup</p>
-        <h1 className="mt-2 text-3xl font-semibold">Set up referring.</h1>
-        <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">Sign in, verify a work email, then choose what you can judge.</p>
-        <div className="mt-6"><SignInButton><button type="button" className="brand-button w-full">Sign in</button></SignInButton></div>
+      <main data-skipwait-screen="referrer-setup-sign-in" className="page-content mx-auto max-w-2xl">
+        <Heading eyebrow="REFERRER SETUP" title="Set up referring" text="Sign in, verify a work email, then choose what you can judge." />
+        <SignInButton className={buttonVariants()}>Sign in</SignInButton>
       </main>
     );
   }
 
+  const data = setup.data;
   return (
     <main data-skipwait-screen="referrer-setup" className="page-content mx-auto max-w-2xl">
-      {verified === false ? (
-        <section className="rounded-3xl border border-[var(--border)] p-8 text-center">
-          <BadgeCheck className="mx-auto mb-3 size-8 text-[var(--primary)]" />
+      {setup.isPending ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your referrer setup…</p> : setup.isError ? (
+        <Panel tone="muted" className="text-center">
+          <h1 className="text-2xl font-semibold">We could not load your setup.</h1>
+          <p role="alert" className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{setup.error.message || "Check your connection and try again."}</p>
+          <Button className="mt-4" disabled={setup.isFetching} onClick={() => { void setup.refetch(); }}>{setup.isFetching ? "Trying again…" : "Try again"}</Button>
+        </Panel>
+      ) : !data?.access.verified || !data.preferences ? (
+        <Panel className="text-center">
+          <BadgeCheck className="mx-auto mb-3 size-8 text-primary" />
           <h1 className="text-2xl font-semibold">Verify first.</h1>
-          <p className="mx-auto mt-2 max-w-md text-[var(--muted-foreground)]">Setup opens after a one-time code confirms your work email.</p>
-          <Link href="/verify" className="brand-button mt-6">Verify work email <ArrowRight /></Link>
-        </section>
+          <p className="mx-auto mt-2 max-w-md text-muted-foreground">Setup opens after a one-time code confirms your work email.</p>
+          <Button className="mt-6" asChild><Link href="/verify">Verify work email <ArrowRight /></Link></Button>
+        </Panel>
       ) : (
+<<<<<<< HEAD
         <>
           <div className="mb-4 flex items-center gap-2 text-sm"><BadgeCheck className="size-4 text-[var(--primary)]" />Verified referrer setup</div>
           <ol className="mb-8 grid grid-cols-5 gap-1.5" aria-label="Setup progress">
@@ -176,6 +134,14 @@ export default function ReferrerSetup() {
             </footer>
           ) : null}
         </>
+=======
+        <SetupWizard
+          initial={data.preferences}
+          companyName={data.access.domain ? companyIdentity(data.access.domain).name : "your company"}
+          fetchToken={fetchToken}
+          onSaved={() => { void queryClient.invalidateQueries({ queryKey: ["referrer-home"] }); void queryClient.invalidateQueries({ queryKey: ["referrer-setup"] }); }}
+        />
+>>>>>>> 57d8bbdec3818a6d6bb1dff1e38f9b552b201c81
       )}
     </main>
   );

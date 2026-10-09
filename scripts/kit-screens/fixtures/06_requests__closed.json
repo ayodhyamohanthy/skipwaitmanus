@@ -1,0 +1,153 @@
+{
+  "signedIn": {
+    "id": 4106,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "expiredRequestIds": [],
+        "requests": [
+          {
+            "id": 41,
+            "title": "Product Designer",
+            "pitch": "I have shipped similar work and would value a referral for this role.",
+            "targetRoleUrl": "https://careers.wipro.com/jobs/product-designer",
+            "companyDomain": "wipro.com",
+            "compensation": null,
+            "status": "approved",
+            "referrerId": 501,
+            "waitingForCoverage": false,
+            "queueStatus": null,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-09-30T06:00:00.000Z",
+            "updatedAt": "2026-10-04T09:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": "2026-10-07T06:00:00.000Z"
+          },
+          {
+            "id": 42,
+            "title": "Data Analyst",
+            "pitch": "I have shipped similar work and would value a referral for this role.",
+            "targetRoleUrl": "https://www.merkle.com/careers/data-analyst",
+            "companyDomain": "merkle.com",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "waitingForCoverage": false,
+            "queueStatus": null,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-06T06:00:00.000Z",
+            "updatedAt": "2026-10-06T06:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": "2026-10-13T06:00:00.000Z"
+          },
+          {
+            "id": 43,
+            "title": "UX Researcher",
+            "pitch": "I have shipped similar work and would value a referral for this role.",
+            "targetRoleUrl": "https://www.tcs.com/careers/ux-researcher",
+            "companyDomain": "tcs.com",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "waitingForCoverage": false,
+            "queueStatus": null,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-10-02T16:30:00.000Z",
+            "updatedAt": "2026-10-02T16:30:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": "2026-10-09T16:30:00.000Z"
+          },
+          {
+            "id": 44,
+            "title": "Product Manager",
+            "pitch": "I have shipped similar work and would value a referral for this role.",
+            "targetRoleUrl": "https://goneutrinos.com/careers/product-manager",
+            "companyDomain": "goneutrinos.com",
+            "compensation": null,
+            "status": "interview",
+            "referrerId": 502,
+            "waitingForCoverage": false,
+            "queueStatus": null,
+            "referrerMessage": null,
+            "unreadMessageCount": 0,
+            "createdAt": "2026-09-22T06:00:00.000Z",
+            "updatedAt": "2026-10-06T11:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": "2026-09-29T06:00:00.000Z"
+          },
+          {
+            "id": 45,
+            "title": "Designer",
+            "pitch": "I have shipped similar work and would value a referral for this role.",
+            "targetRoleUrl": "https://skipwait.me/careers/designer",
+            "companyDomain": "skipwait.me",
+            "compensation": null,
+            "status": "declined",
+            "referrerId": 503,
+            "waitingForCoverage": false,
+            "queueStatus": null,
+            "referrerMessage": "Not my team",
+            "unreadMessageCount": 0,
+            "createdAt": "2026-09-25T06:00:00.000Z",
+            "updatedAt": "2026-09-28T06:00:00.000Z",
+            "attachmentCount": 1,
+            "expiresAt": "2026-10-02T06:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "free",
+          "monthlyAllowance": 3,
+          "monthlyCreditsRemaining": 1,
+          "purchasedCreditsRemaining": 0,
+          "promoCreditsRemaining": 0,
+          "promoExpiresAt": null,
+          "promoStatus": null,
+          "promoOfferActive": false,
+          "totalAvailable": 1,
+          "cycleKey": "2026-10",
+          "subscriptionStatus": null,
+          "subscriptionCurrentTermEnd": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "[role=tab]:has-text(\"Closed\")"
+    },
+    {
+      "click": "[role=tab]:has-text(\"Closed\")"
+    },
+    {
+      "wait": 300
+    }
+  ]
+}

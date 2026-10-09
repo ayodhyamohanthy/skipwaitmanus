@@ -172,6 +172,10 @@ export const assistantApprovals = mysqlTable("assistantApprovals", {
   note: text("note"),
   creditCount: int("creditCount"),
   slotCount: int("slotCount"),
+  targetRoleUrl: text("targetRoleUrl"),
+  attachmentIds: text("attachmentIds"),
+  idempotencyKey: varchar("idempotencyKey", { length: 64 }),
+  executedRequestId: int("executedRequestId"),
   expiresAt: timestamp("expiresAt").notNull(),
   decidedAt: timestamp("decidedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -504,6 +508,14 @@ export const userFollows = mysqlTable("userFollows", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("user_follows_pair_unique").on(table.followerUserId, table.followingUserId), index("user_follows_following_idx").on(table.followingUserId)]);
 
+export const userBlocks = mysqlTable("userBlocks", {
+  id: int("id").autoincrement().primaryKey(),
+  blockerUserId: int("blockerUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  blockedUserId: int("blockedUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: varchar("reason", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("user_blocks_pair_unique").on(table.blockerUserId, table.blockedUserId), index("user_blocks_blocked_idx").on(table.blockedUserId)]);
+
 export const messages = mysqlTable("messages", {
   id: int("id").autoincrement().primaryKey(),
   referralRequestId: int("referralRequestId").references(() => referralRequests.id, { onDelete: "set null" }),
@@ -832,3 +844,24 @@ export const documentBlobs = mysqlTable("documentBlobs", {
   sizeBytes: int("sizeBytes").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+// OAuth for connected assistants (authorization code + PKCE S256, public clients).
+export const oauthClients = mysqlTable("oauthClients", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: varchar("clientId", { length: 64 }).notNull().unique(),
+  clientName: varchar("clientName", { length: 160 }).notNull(),
+  redirectUris: text("redirectUris").notNull(), // JSON array
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  codeHash: varchar("codeHash", { length: 64 }).notNull().unique(),
+  clientId: varchar("clientId", { length: 64 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  redirectUri: varchar("redirectUri", { length: 512 }).notNull(),
+  codeChallenge: varchar("codeChallenge", { length: 64 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);

@@ -2,15 +2,22 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyRequests from "./MyRequests";
 
 const { go, getToken } = vi.hoisted(() => ({ go: vi.fn(), getToken: vi.fn().mockResolvedValue("test-token") }));
 
 // A stable getToken matters here: MyRequests' load effect depends on it, so a
 // per-render vi.fn() would re-run the effect on every render in tests.
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: true, userId: 4106, getToken }), SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</> }));
 vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>, useLocation: () => ["/requests", go] }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
+
+function renderPage() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><MyRequests /></QueryClientProvider>);
+}
+
 
 beforeEach(() => {
   vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) })));
@@ -28,16 +35,19 @@ function stubRequestsFetch(requests: unknown[]) {
 describe("My Requests withdraw flow", () => {
   it("offers Withdraw on a pending unclaimed row and shows its Ref reference", async () => {
     stubRequestsFetch([pendingRequest]);
-    render(<MyRequests />);
+    renderPage();
     await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
     expect(screen.getByText(/Ref-1012/)).toBeTruthy();
-    expect(screen.getByText("2 left")).toBeTruthy();
+    // The kit slot meter is the live monthly wallet: 2 of 3 slots still open.
+    expect(screen.getByText("OPEN SLOTS · FREE")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("2"));
   });
 
   it("hides Withdraw once a verified employee has claimed the request", async () => {
     stubRequestsFetch([claimedRequest]);
-    render(<MyRequests />);
-    await waitFor(() => expect(screen.getByLabelText("acme.com request, Available for review")).toBeTruthy());
+    renderPage();
+    const row = await waitFor(() => screen.getByLabelText("acme.com request, Requested"));
+    expect(row.closest("li")?.textContent).toContain("Available for review");
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
   });
 
@@ -46,7 +56,7 @@ describe("My Requests withdraw flow", () => {
       ? { ok: true, json: async () => ({ withdrawn: true, requestId: 12, status: "withdrawn", creditSummary: creditSummary(3).summary }) }
       : { ok: true, json: async () => String(url).includes("/api/credits/summary") ? creditSummary(2) : { requests: [pendingRequest] } });
     vi.stubGlobal("fetch", fetchMock);
-    render(<MyRequests />);
+    renderPage();
     await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
     const dialog = await screen.findByRole("alertdialog");
@@ -59,7 +69,8 @@ describe("My Requests withdraw flow", () => {
     expect(await screen.findByText("No open asks.")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Closed" }));
     expect(await screen.findByText("Withdrawn")).toBeTruthy();
-    expect(screen.getByText("3 left")).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("3");
+    expect(screen.getByLabelText("Open slots: 3 of 3")).toBeTruthy();
   });
 
   it("keeps the request and offers Try again when the withdraw fails", async () => {
@@ -67,7 +78,7 @@ describe("My Requests withdraw flow", () => {
       ? { ok: false, status: 409, json: async () => ({ error: "The network dropped before we could reach the server" }) }
       : { ok: true, json: async () => String(url).includes("/api/credits/summary") ? creditSummary(2) : { requests: [pendingRequest] } });
     vi.stubGlobal("fetch", fetchMock);
-    render(<MyRequests />);
+    renderPage();
     await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
     fireEvent.click(await screen.findByRole("button", { name: "Withdraw request" }));

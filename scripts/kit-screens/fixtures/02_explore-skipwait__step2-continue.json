@@ -1,0 +1,14 @@
+{
+  "signedIn": false,
+  "routes": [
+    { "method": "GET", "path": "/api/jobs", "match": "exact", "status": 200, "body": { "jobs": [] } }
+  ],
+  "actions": [
+    { "click": "button:has-text('Ask for a referral')" },
+    { "waitFor": ".request-dialog #job-url" },
+    { "fill": ["#job-url", "https://skipwait.me/careers/product-designer"] },
+    { "click": ".request-dialog button:has-text('Continue')" },
+    { "waitFor": ".request-dialog #fit-note" },
+    { "wait": 200 }
+  ]
+}

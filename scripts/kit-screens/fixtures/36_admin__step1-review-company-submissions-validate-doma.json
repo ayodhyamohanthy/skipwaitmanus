@@ -1,0 +1,153 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Ayo Admin",
+    "email": "ops@skipwait.me",
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/flow-health",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "health": {
+          "funnel": {
+            "requestsCreated": 48,
+            "requestsClaimed": 31,
+            "decisionsRecorded": 22,
+            "waitingForCoverage": 9
+          },
+          "coverageGaps": [
+            {
+              "companyDomain": "freshworks.com",
+              "waitingRequests": 4,
+              "verifiedCoverage": 0
+            },
+            {
+              "companyDomain": "zoho.com",
+              "waitingRequests": 2,
+              "verifiedCoverage": 0
+            }
+          ],
+          "instrumentation": {
+            "uploadedDocuments": 40,
+            "recordedFailures": 3
+          }
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/approval-queue",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "items": [
+          {
+            "kind": "referrer_enrollment",
+            "id": 311,
+            "status": "pending",
+            "companyDomain": "wipro.co.in",
+            "createdAt": "2026-10-08T02:30:00.000Z",
+            "updatedAt": "2026-10-08T02:30:00.000Z",
+            "summary": "Referrer enrollment",
+            "meta": {
+              "otpTime": "2026-10-08T02:29:00.000Z",
+              "referrerName": "Kiran M.",
+              "referrerEmail": "kiran.m@wipro.co.in"
+            }
+          },
+          {
+            "kind": "referral_request",
+            "id": 501,
+            "status": "pending",
+            "companyDomain": "tcs.com",
+            "createdAt": "2026-10-08T01:00:00.000Z",
+            "updatedAt": "2026-10-08T01:00:00.000Z",
+            "summary": "Referral request",
+            "meta": {
+              "waitingForCoverage": true
+            }
+          },
+          {
+            "kind": "referrer_enrollment",
+            "id": 309,
+            "status": "pending",
+            "companyDomain": "merkle.com",
+            "createdAt": "2026-10-07T04:30:00.000Z",
+            "updatedAt": "2026-10-07T04:30:00.000Z",
+            "summary": "Referrer enrollment",
+            "meta": {
+              "otpTime": "2026-10-07T04:28:00.000Z",
+              "referrerName": null,
+              "referrerEmail": "a.shah@merkle.com"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/safety-reports",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "reports": [
+          {
+            "id": 1048,
+            "reporterUserId": 90,
+            "reason": "Asked for or offered money",
+            "details": "They asked for ₹5,000 to push my profile.",
+            "referralRequestId": 812,
+            "reportedUserId": 377,
+            "urgent": true,
+            "status": "open",
+            "createdAt": "2026-10-08T03:52:00.000Z",
+            "updatedAt": "2026-10-08T03:52:00.000Z"
+          },
+          {
+            "id": 1045,
+            "reporterUserId": 91,
+            "reason": "Spam or repeated asks",
+            "details": "Same note text 14 times in one hour.",
+            "referralRequestId": null,
+            "reportedUserId": 402,
+            "urgent": false,
+            "status": "open",
+            "createdAt": "2026-10-07T23:30:00.000Z",
+            "updatedAt": "2026-10-07T23:30:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/company-suggestions",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "suggestions": [
+          {
+            "id": 87,
+            "submitterUserId": 92,
+            "companyName": "Freshworks",
+            "website": "https://www.freshworks.com",
+            "role": "seeker",
+            "status": "open",
+            "createdAt": "2026-10-07T04:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "click": "text=Review company submissions"
+    },
+    {
+      "wait": 300
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "signedIn": { "id": 41, "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "exact", "status": 200, "body": { "notifications": [] } },
+    { "method": "POST", "path": "/api/work-email/otp/send", "match": "exact", "status": 200, "body": { "sent": true } }
+  ],
+  "actions": [
+    { "waitFor": "text=Where do you work?" },
+    { "click": "text=Continue" },
+    { "fill": ["input[type=email]", "asha@wipro.com"] },
+    { "click": "text=Send code" },
+    { "waitFor": "text=Enter the code" },
+    { "wait": 300 }
+  ]
+}

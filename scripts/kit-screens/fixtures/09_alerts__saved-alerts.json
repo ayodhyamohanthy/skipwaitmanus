@@ -1,0 +1,120 @@
+{
+  "signedIn": {
+    "id": 4101,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": [
+          {
+            "id": 501,
+            "category": "status",
+            "title": "Your ask was accepted",
+            "body": "A verified referrer at Wipro accepted · Product Designer",
+            "readAt": null,
+            "createdAt": "2026-10-08T04:18:00.000Z"
+          },
+          {
+            "id": 502,
+            "category": "message",
+            "title": "New message",
+            "body": "“Happy to help — I'll submit this week.”",
+            "readAt": null,
+            "createdAt": "2026-10-08T04:20:00.000Z"
+          },
+          {
+            "id": 503,
+            "category": "referral",
+            "title": "New referrer at Merkle",
+            "body": "Matches your alert: Merkle · Design",
+            "readAt": "2026-10-08T03:00:00.000Z",
+            "createdAt": "2026-10-08T02:30:00.000Z"
+          },
+          {
+            "id": 504,
+            "category": "status",
+            "title": "Ask expires in 1 day",
+            "body": "TCS · Data Analyst — refresh your note or let it go",
+            "readAt": "2026-10-07T06:00:00.000Z",
+            "createdAt": "2026-10-07T04:30:00.000Z"
+          },
+          {
+            "id": 505,
+            "category": "system",
+            "title": "6 plan credits expire Friday",
+            "body": "Use them on an interview dossier or mock interview",
+            "readAt": "2026-10-06T06:00:00.000Z",
+            "createdAt": "2026-10-06T04:30:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/seeker-alerts",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "alerts": [
+          {
+            "id": 31,
+            "companyDomain": "merkle.com",
+            "paused": false,
+            "notifiedAt": null,
+            "createdAt": "2026-10-07T09:15:00.000Z"
+          },
+          {
+            "id": 30,
+            "companyDomain": "skipwait.me",
+            "paused": false,
+            "notifiedAt": null,
+            "createdAt": "2026-10-05T12:40:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "free",
+          "monthlyAllowance": 3,
+          "monthlyCreditsRemaining": 1,
+          "purchasedCreditsRemaining": 0,
+          "promoCreditsRemaining": 0,
+          "promoExpiresAt": null,
+          "promoStatus": null,
+          "promoOfferActive": false,
+          "totalAvailable": 1,
+          "cycleKey": "2026-10",
+          "subscriptionStatus": null,
+          "subscriptionCurrentTermEnd": null
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Your ask was accepted"
+    },
+    {
+      "click": "[role=tab]:has-text('Saved alerts')"
+    },
+    {
+      "waitFor": "text=merkle.com"
+    },
+    {
+      "waitFor": "text=Free accounts keep 3 alerts"
+    }
+  ]
+}

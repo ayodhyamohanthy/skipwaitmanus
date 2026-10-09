@@ -27,7 +27,7 @@ import {
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
-import { normalizeTargetRoleUrl } from "../shared/referralUrl";
+import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
@@ -505,6 +505,20 @@ export async function createAssistantToken(userId: number, input: { name?: unkno
   }
 }
 
+/** Resolves a bearer token hash to its owner. Revoked or unknown tokens return null. */
+export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId: number; tokenId: number } | null> {
+  const db = await getDb(); if (!db) return null;
+  const row = (await db.select({ id: assistantTokens.id, userId: assistantTokens.userId }).from(assistantTokens).where(and(eq(assistantTokens.tokenHash, tokenHash), isNull(assistantTokens.revokedAt))).limit(1))[0];
+  if (!row) return null;
+  await db.update(assistantTokens).set({ lastUsedAt: new Date() }).where(eq(assistantTokens.id, row.id)).catch(() => undefined);
+  return { userId: row.userId, tokenId: row.id };
+}
+
+/** True when the owner's plan still includes assistants. */
+export async function hasAssistantAccess(userId: number): Promise<boolean> {
+  try { return (await getAssistantAccessPlan(userId)) === ASSISTANT_MIN_PLAN; } catch { return false; }
+}
+
 export async function revokeAssistantToken(userId: number, tokenId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const current = (await db.select({ id: assistantTokens.id }).from(assistantTokens).where(and(eq(assistantTokens.id, tokenId), eq(assistantTokens.userId, userId))).limit(1))[0];
@@ -567,6 +581,45 @@ export async function editAssistantApproval(userId: number, approvalId: number, 
   return { id: approvalId, note };
 }
 
+/** One credit is what the existing ask path spends (monthly allowance first, then purchased credits). */
+export const ASSISTANT_ASK_CREDIT_COST = 1;
+const MAX_PENDING_ASSISTANT_ASKS = 5;
+
+/** The member's own resume documents that are not attached to a request yet. Ids and names only. */
+export async function listMyUnattachedResumes(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, createdAt: referralAttachments.createdAt }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId))).orderBy(desc(referralAttachments.createdAt)).limit(25);
+}
+
+/**
+ * An assistant proposes an ask. This ONLY creates a pending approval carrying the full payload.
+ * Nothing is sent and no credit moves until the owner approves it in the app. The cost is fixed
+ * here by the server; nothing the assistant supplies sets it. The referrer is never chosen by the assistant:
+ * the request goes through the normal company routing when (and only if) the owner approves.
+ */
+export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown; provider?: unknown }) {
+  const rawUrl = typeof input.targetRoleUrl === "string" ? input.targetRoleUrl.trim() : "";
+  if (!rawUrl || rawUrl.length > 2048 || !isValidTargetRoleUrl(rawUrl)) throw new Error("Add a complete public job link for the role");
+  const ids = Array.isArray(input.attachmentIds) ? Array.from(new Set(input.attachmentIds.filter((v): v is number => typeof v === "number" && Number.isInteger(v) && v > 0))) : [];
+  if (ids.length === 0 || ids.length > 5) throw new Error("Choose one to five of the member's own resume documents");
+  const message = typeof input.message === "string" && input.message.trim() ? validateApprovalNote(input.message) : null;
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const owned = await db.select({ id: referralAttachments.id }).from(referralAttachments).where(and(inArray(referralAttachments.id, ids), eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId)));
+  if (owned.length !== ids.length) throw new Error("One or more resume documents are unavailable");
+  const now = new Date();
+  const pending = await db.select({ id: assistantApprovals.id }).from(assistantApprovals).where(and(eq(assistantApprovals.userId, userId), eq(assistantApprovals.status, "pending"), gt(assistantApprovals.expiresAt, now))).limit(MAX_PENDING_ASSISTANT_ASKS + 1);
+  if (pending.length >= MAX_PENDING_ASSISTANT_ASKS) throw new Error("The member already has several asks waiting for approval. Ask them to review those first");
+  const targetRoleUrl = normalizeTargetRoleUrl(rawUrl);
+  const companyDomain = directEmployerDomainFromTargetUrl(targetRoleUrl) ?? null;
+  const provider = typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
+  const inserted = await db.insert(assistantApprovals).values({
+    userId, connectionId: null, kind: "ask_send", provider, companyDomain, role: null, note: message,
+    creditCount: ASSISTANT_ASK_CREDIT_COST, slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
+    idempotencyKey: randomBytes(24).toString("base64url").slice(0, 40), expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())),
+  });
+  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost: ASSISTANT_ASK_CREDIT_COST, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
+}
+
 export async function decideAssistantApproval(userId: number, approvalId: number, decision: "approved" | "declined") {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const current = (await db.select().from(assistantApprovals).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.userId, userId))).limit(1))[0];
@@ -578,6 +631,22 @@ export async function decideAssistantApproval(userId: number, approvalId: number
   }
   const result = await db.update(assistantApprovals).set({ status: decision, decidedAt: new Date() }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "pending")));
   if (Number(result[0]?.affectedRows) !== 1) throw new Error("This approval was already handled");
+  // An assistant-proposed ask carries its payload. It runs only here, after the owner approved it
+  // themselves, through the same path as the in-app ask form (which spends the credit). The key is fixed
+  // on the approval so a retry can never send twice. If it cannot run (for example, no credits),
+  // the approval goes back to pending and the owner sees why.
+  if (decision === "approved" && current.kind === "ask_send" && current.targetRoleUrl && current.idempotencyKey) {
+    let attachmentIds: number[] = [];
+    try { const parsed = JSON.parse(current.attachmentIds ?? "[]"); if (Array.isArray(parsed)) attachmentIds = parsed.filter((v: unknown): v is number => typeof v === "number"); } catch { /* handled below */ }
+    try {
+      const created = await createCompanyReferralRequest(userId, { targetRoleUrl: current.targetRoleUrl, personalPitch: current.note?.trim() || "No personal note was included with this referral request.", attachmentIds, idempotencyKey: current.idempotencyKey });
+      await db.update(assistantApprovals).set({ executedRequestId: created.requestId }).where(eq(assistantApprovals.id, approvalId));
+      return { id: approvalId, status: "approved" as const, requestId: created.requestId };
+    } catch (error) {
+      await db.update(assistantApprovals).set({ status: "pending", decidedAt: null }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "approved")));
+      throw error;
+    }
+  }
   return { id: approvalId, status: decision };
 }
 

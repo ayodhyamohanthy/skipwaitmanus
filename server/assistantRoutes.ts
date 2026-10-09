@@ -53,7 +53,8 @@ const parseId = (raw: string | undefined) => {
 /** Validation and ownership failures map to 4xx; plan-gate failures to 402. */
 function classify(error: unknown): { status: number; message: string } {
   const message = error instanceof Error ? error.message : "We could not complete that";
-  const status = /not in your account|not connected|already handled|not in your console|expired/i.test(message) ? 404
+  const status = /not available yet/i.test(message) ? 503
+    : /not in your account|not connected|already handled|not in your console|expired/i.test(message) ? 404
     : /Enter|Choose|Agree|Describe|valid|name|permissions|URL|urls|note|kind|spend|cover|submit/i.test(message) ? 400
     : /plan|Upgrade|Max/i.test(message) ? 402
     : 500;

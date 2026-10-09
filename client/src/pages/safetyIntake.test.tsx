@@ -68,12 +68,45 @@ describe("SuggestCompany flow", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<SuggestCompany />);
+    expect(screen.queryByText(/DESIGN PREVIEW|NOTHING IS SUBMITTED/i)).toBeNull();
+    const submit = () => screen.getByRole("button", { name: "Submit for review" });
+    expect(submit().hasAttribute("disabled")).toBe(true);
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Wipro" } });
-    expect(screen.getByText(/already listed/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Submit for review" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/is already on SkipWait/)).toBeTruthy();
+    expect(submit().hasAttribute("disabled")).toBe(true);
+    fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Delta" } });
+    fireEvent.click(submit());
+    expect((await screen.findByRole("alert")).textContent).toContain("up to 3 companies a day");
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Acme Corp" } });
+    fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "not a site" } });
+    expect(screen.getByText(/Enter the company website/)).toBeTruthy();
+    expect(submit().hasAttribute("disabled")).toBe(true);
+    fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Working there now/ }));
+    fireEvent.click(submit());
+    expect(await screen.findByText(/Acme Corp is in review/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Verify work email" }).getAttribute("href")).toBe("/verify");
+    const posts = fetchMock.mock.calls.filter(([, init]) => init?.method === "POST");
+    expect(JSON.parse(String(posts[posts.length - 1]?.[1]?.body))).toEqual({ companyName: "Acme Corp", website: "https://acme.com", role: "employee" });
+  });
+
+  it("keeps a website the visitor typed with a scheme and offers an invite to seekers", async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => ok({ suggestion: { id: 6, companyName: JSON.parse(String(init?.body)).companyName } }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<SuggestCompany />);
+    fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Zerodha" } });
+    fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "http://zerodha.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
-    expect(await screen.findByText("Suggestion received.")).toBeTruthy();
+    expect(await screen.findByText(/Zerodha is in review/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Invite someone" }).getAttribute("href")).toBe("/invite?mode=invite");
+    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ companyName: "Zerodha", website: "http://zerodha.com", role: "seeker" });
+  });
+
+  it("asks signed-out visitors to sign in instead of showing the form", () => {
+    authState.isSignedIn = false;
+    vi.stubGlobal("fetch", vi.fn(async () => ok({})));
+    render(<SuggestCompany />);
+    expect(screen.getByRole("button", { name: /Sign in/ })).toBeTruthy();
+    expect(screen.queryByPlaceholderText("e.g. Freshworks")).toBeNull();
   });
 });

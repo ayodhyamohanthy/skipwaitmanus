@@ -6,7 +6,7 @@ import {
   connectAssistant, createAssistantApproval, createAssistantToken, createDeveloperApp,
   decideAssistantApproval, disconnectAssistant, editAssistantApproval, getAssistantAccessPlan,
   getDeveloperApp, listAssistantApprovals, listAssistantConnections, listAssistantTokens,
-  listDeveloperApps, revokeAssistantToken, submitDeveloperAppForReview, updateDeveloperAppWebhook,
+  listDeveloperApps, revokeAssistantToken, verifyAssistantBearer, hasAssistantAccess, submitDeveloperAppForReview, updateDeveloperAppWebhook,
 } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -202,6 +202,23 @@ describe("assistant approvals", () => {
     expect(Math.abs(new Date(approval.expiresAt).getTime() - (Date.now() + DAY))).toBeLessThan(1000);
     const listed = await listAssistantApprovals(7);
     expect(listed[0]).toMatchObject({ kind: "ask_send", status: "pending", companyDomain: "wipro.com" });
+  });
+
+  it("verifies a bearer by hash, rejects revoked and unknown, and stamps last use", async () => {
+    const token = await createAssistantToken(7, { name: "Notion tracker" });
+    const { createHash } = await import("node:crypto");
+    const hash = createHash("sha256").update(token!.token).digest("hex");
+    expect(await verifyAssistantBearer(hash)).toEqual({ userId: 7, tokenId: token!.id });
+    expect(tables.tokens[0].lastUsedAt).toBeInstanceOf(Date);
+    expect(await verifyAssistantBearer("0".repeat(64))).toBeNull();
+    await revokeAssistantToken(7, token!.id);
+    expect(await verifyAssistantBearer(hash)).toBeNull();
+  });
+
+  it("reports assistant access from the owner's plan", async () => {
+    expect(await hasAssistantAccess(7)).toBe(true);
+    tables.wallets = [walletRow("pro")];
+    expect(await hasAssistantAccess(7)).toBe(false);
   });
 
   it("rejects invalid approval input", async () => {

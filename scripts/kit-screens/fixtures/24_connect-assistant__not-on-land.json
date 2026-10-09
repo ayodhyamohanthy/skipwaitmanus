@@ -1,0 +1,24 @@
+{
+  "signedIn": {
+    "id": 7,
+    "name": "Asha Rao",
+    "email": "asha@gmail.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/assistants/access",
+      "status": 200,
+      "body": {
+        "plan": "pro",
+        "hasAccess": false
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Assistants need Max"
+    }
+  ]
+}

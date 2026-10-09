@@ -1,0 +1,44 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera.iyer@wipro.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "wipro.com"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/referrer/impact-summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "acceptedReferrals": 0,
+        "pendingRequests": 0,
+        "declinedRequests": 0,
+        "unreadMessages": 0,
+        "creditsRemaining": 3,
+        "recentAccepted": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": [],
+        "unreadCount": 0
+      }
+    }
+  ]
+}

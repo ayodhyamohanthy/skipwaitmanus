@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import Home from "./Home";
 
 vi.mock("@/_core/auth", () => ({
@@ -52,6 +52,12 @@ describe("landing kit composition", () => {
     const journey = screen.getByRole("region", { name: "How referrals work" });
     expect(within(journey).getAllByText(/^0[123]$/)).toHaveLength(3);
     for (const title of ["Find a company", "Ask for a referral", "Connect privately"]) expect(within(journey).getByText(title)).toBeTruthy();
+    const ask = within(journey).getByRole("button", { name: /Ask for a referral/ });
+    expect(ask.getAttribute("aria-pressed")).toBe("false");
+    fireEvent.click(ask);
+    expect(ask.getAttribute("aria-pressed")).toBe("true");
+    expect(ask.className).toContain("is-selected");
+    expect(within(journey).getByText(/The referrer chooses whether to accept\. No payments, no paid priority\./)).toBeTruthy();
   });
 
   it("shows every referrer commitment, never a promise of an outcome", () => {
@@ -62,7 +68,7 @@ describe("landing kit composition", () => {
 
   it("closes with the free-forever final call to action", () => {
     render(<Home />);
-    expect(screen.getByText("What's on the other side?")).toBeTruthy();
+    expect(screen.getByText("What’s on the other side?")).toBeTruthy();
     expect(screen.getByText("Referrals are free. Always.")).toBeTruthy();
   });
 });

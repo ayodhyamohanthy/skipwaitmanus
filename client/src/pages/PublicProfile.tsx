@@ -1,10 +1,13 @@
-import { ArrowRight, BadgeCheck, Copy, Eye, EyeOff, Globe, Link2, LockKeyhole, MapPin, Pin } from "lucide-react";
+import { ArrowRight, BadgeCheck, Copy, Link2, LockKeyhole, MapPin, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { readApiJson } from "@/lib/apiResponse";
+import { Button } from "@/components/kit/button";
+import { PublicWorkGrid } from "@/components/profile/PublicWorkGrid";
+import { asProfileVisibility, VisibilityOptions, type ProfileVisibility } from "@/components/profile/VisibilityOptions";
+import type { WorkItem } from "@/components/profile/workItems";
 
-type WorkItem = { id: number; title: string; kind: string; source: string | null; url: string | null; pinned: boolean; visibleOnProfile: boolean };
 type PublicProfile = {
   visible: boolean;
   visibility: string;
@@ -20,8 +23,6 @@ type PublicProfile = {
   handle?: string | null;
   workItems?: WorkItem[];
 };
-
-const KIND_LABELS: Record<string, string> = { case_study: "Case study", project: "Project", article: "Article", code: "Code", other: "Work" };
 
 export default function PublicProfile() {
   const [, params] = useRoute("/p/:handle");
@@ -64,7 +65,7 @@ export default function PublicProfile() {
     return () => { active = false; };
   }, [handle]);
 
-  const saveVisibility = async (visibility: "public" | "link" | "private") => {
+  const saveVisibility = async (visibility: ProfileVisibility) => {
     if (!profile?.isOwner || savingVisibility) return;
     setSavingVisibility(true); setVisibilityError("");
     try {
@@ -89,54 +90,60 @@ export default function PublicProfile() {
   }, [profile]);
 
   const initials = (profile?.displayName ?? "?").trim().split(/\s+/).map(part => part.charAt(0)).join("").slice(0, 2).toUpperCase() || "?";
+  const publicUrl = `https://skipwait.me/p/${profile?.handle ?? handle}`;
+  const copyLink = () => { void navigator.clipboard?.writeText(publicUrl); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  const share = () => {
+    if (typeof navigator.share === "function") { void navigator.share({ title: profile?.displayName ?? "SkipWait profile", url: publicUrl }).catch(() => undefined); return; }
+    copyLink();
+  };
 
   return (
-    <div data-skipwait-screen="public-profile" className="min-h-screen bg-[var(--background)]">
+    <div data-skipwait-screen="public-profile" className="min-h-screen bg-background">
       <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
-        <Link href="/" className="text-xl font-semibold tracking-[-.04em]" aria-label="skipwait.me home">SkipWait<span className="brand-dot">.</span></Link>
-        {profile?.visible && profile.isOwner ? <span className="eyebrow">Your public page · {profile.visibility === "link" ? "link only" : profile.visibility}</span> : null}
+        <Link href="/" className="wordmark" aria-label="skipwait.me home">SkipWait<span className="brand-dot">.</span></Link>
+        {profile?.visible && profile.isOwner ? <Link href="/profile" className="text-link text-sm">Manage profile</Link> : null}
       </header>
       <main className="mx-auto max-w-5xl px-5 pb-16">
-        {loading ? <p className="mt-10 text-center text-sm text-[var(--muted-foreground)]">Loading this profile…</p> : null}
+        {loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading this profile…</p> : null}
         {!loading && (missing || (profile && !profile.visible)) ? (
-          <section className="rounded-3xl bg-[var(--muted)] p-10 text-center">
+          <section className="rounded-3xl bg-muted p-10 text-center">
             <LockKeyhole className="mx-auto mb-3 size-8" />
             <h1 className="text-2xl font-semibold">This profile is private.</h1>
-            <p className="mt-2 text-[var(--muted-foreground)]">It&apos;s shared only with referrers this person asks.</p>
-            <Link href="/explore" className="brand-button mt-6">Explore companies <ArrowRight /></Link>
+            <p className="mt-2 text-muted-foreground">It&apos;s shared only with referrers this person asks.</p>
+            <Button asChild className="mt-6"><Link href="/explore">Explore companies <ArrowRight /></Link></Button>
           </section>
         ) : null}
         {profile?.visible ? (
           <>
             {profile.isOwner ? (
-              <section className="mb-6 rounded-3xl border border-[var(--border)] p-5" aria-label="Manage profile visibility">
+              <section className="mb-6 rounded-3xl border border-border p-5" aria-label="Manage profile visibility">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="min-w-0"><span className="eyebrow">Who can see this</span><p className="mt-1 flex items-center gap-2 text-sm"><Link2 className="size-4 shrink-0" /><span className="truncate">skipwait.me/p/{profile.handle}</span></p></div>
+                  <div className="min-w-0"><span className="eyebrow">WHO CAN SEE THIS</span><p className="mt-1 flex items-center gap-2 text-sm"><Link2 className="size-4 shrink-0" /><span className="truncate">skipwait.me/p/{profile.handle}</span></p></div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => { void navigator.clipboard?.writeText(`https://skipwait.me/p/${profile.handle}`); setCopied(true); setTimeout(() => setCopied(false), 1500); }} className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]"><Copy />{copied ? "Copied" : "Copy link"}</button>
-                    <Link href="/profile" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Manage</Link>
+                    <Button variant="outline" onClick={copyLink}><Copy />{copied ? "Copied" : "Copy link"}</Button>
+                    <Button variant="outline" size="icon" aria-label="Share" onClick={share}><Share2 /></Button>
                   </div>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Profile visibility">
-                  {(["public", "link", "private"] as const).map(value => (
-                    <button key={value} type="button" role="radio" aria-checked={profile.visibility === value} disabled={savingVisibility} onClick={() => { void saveVisibility(value); }} className={`min-h-11 rounded-xl border px-2 text-sm ${profile.visibility === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "link" ? "Link only" : value === "public" ? "Public" : "Private"}</button>
-                  ))}
-                </div>
-                {visibilityError ? <p role="alert" className="mt-3 text-sm font-semibold text-[var(--destructive)]">{visibilityError}</p> : null}
+                <VisibilityOptions value={asProfileVisibility(profile.visibility)} onChange={value => { void saveVisibility(value); }} disabled={savingVisibility} />
+                {visibilityError ? <p role="alert" className="mt-3 text-sm font-semibold text-destructive">{visibilityError}</p> : null}
               </section>
             ) : null}
             <section className="flex flex-col gap-5 sm:flex-row sm:items-center">
-              <span className="grid size-24 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-3xl font-semibold" aria-hidden="true">{initials}</span>
+              <span className="grid size-24 shrink-0 place-items-center rounded-full bg-accent text-3xl font-semibold text-accent-foreground" aria-hidden="true">{initials}</span>
               <div className="min-w-0 flex-1">
                 <h1 className="text-3xl font-semibold sm:text-4xl">{profile.displayName}</h1>
                 {(profile.currentTitle || profile.headline) ? <p className="mt-1 text-lg">{[profile.currentTitle, profile.headline].filter(Boolean).join(" · ")}</p> : null}
-                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-[var(--muted-foreground)]">
-                  {profile.location ? <span className="flex items-center gap-1"><MapPin className="size-4" />{profile.location}</span> : null}
-                  {profile.verifiedWork ? <span className="flex items-center gap-1 text-[var(--foreground)]"><BadgeCheck className="size-4 text-[var(--primary)]" />Verified at {profile.verifiedWork.domain} via work email</span> : null}
-                </p>
+                {(profile.location || profile.verifiedWork) ? (
+                  <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    {profile.location ? <span className="flex items-center gap-1"><MapPin className="size-4" />{profile.location}</span> : null}
+                    {profile.verifiedWork ? <span className="flex items-center gap-1 text-foreground"><BadgeCheck className="size-4 text-primary" />Verified at {profile.verifiedWork.domain} via work email</span> : null}
+                  </p>
+                ) : null}
               </div>
             </section>
+            {profile.openTo && profile.openTo.length > 0 ? <ul className="mt-5 flex flex-wrap gap-2" aria-label="Open to">{profile.openTo.map(role => <li key={role} className="rounded-full bg-muted px-3 py-1.5 text-sm">Open to: {role}</li>)}</ul> : null}
             {profile.bio ? <p className="mt-5 max-w-2xl leading-7">{profile.bio}</p> : null}
+<<<<<<< HEAD
             {!profile.isOwner && profile.verifiedWork?.domain ? (
               <div className="mt-5">
                 <Link href="/explore" className="brand-button">Ask for a referral <ArrowRight /></Link>
@@ -178,6 +185,11 @@ export default function PublicProfile() {
               )}
             </section>
             <p className="mt-12 text-center text-sm text-[var(--muted-foreground)]">No feed. No followers. No likes. Just work. · <Link href="/" className="text-link">Make your own on SkipWait</Link></p>
+=======
+            {profile.skills ? <p className="mt-3 text-sm text-muted-foreground">{profile.skills}</p> : null}
+            <PublicWorkGrid items={profile.workItems ?? []} isOwner={profile.isOwner === true} />
+            <p className="mt-12 text-center text-sm text-muted-foreground">No feed. No followers. No likes. Just work. · <Link href="/" className="text-link">Make your own on SkipWait</Link></p>
+>>>>>>> 57d8bbdec3818a6d6bb1dff1e38f9b552b201c81
           </>
         ) : null}
       </main>
