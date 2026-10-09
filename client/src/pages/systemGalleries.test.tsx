@@ -2,7 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import AppStates from "./AppStates";
+import { AppStatesGallery } from "./AppStates";
 import Emails from "./Emails";
 import Developers from "./Developers";
 import { DOCUMENTED_MCP_TOOLS } from "@/components/developers/mcpTools";
@@ -16,14 +16,16 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("System galleries", () => {
   it("walks every app state with real install and push behavior", async () => {
-    render(<AppStates />);
-    expect(screen.getByText("Every edge, designed")).toBeTruthy();
-    fireEvent.click(screen.getByRole("tab", { name: "Payment failed" }));
-    expect(screen.getByText("Payment didn't go through")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Try again/ }).getAttribute("href")).toBe("/premium");
-    fireEvent.click(screen.getByRole("tab", { name: "Push permission" }));
-    fireEvent.click(screen.getByRole("button", { name: "Allow push" }));
-    expect(await screen.findByRole("status")).toBeTruthy();
+    render(<AppStatesGallery />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Every edge, designed.");
+    fireEvent.click(screen.getByRole("button", { name: "Payment failed" }));
+    expect(screen.getByText("Payment didn't go through.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Try another card" }).getAttribute("href")).toBe("/plans");
+    expect(screen.queryByText(/UPI/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Push permission" }));
+    fireEvent.click(screen.getByRole("button", { name: "Turn on notifications" }));
+    expect((await screen.findByRole("status")).textContent).toBe("This browser doesn't support notifications.");
+    expect(screen.queryByText(/Design Preview/i)).toBeNull();
   });
 
   it("documents the real transactional templates, never sample mail", () => {

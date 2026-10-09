@@ -1,0 +1,4 @@
+{
+  "signedIn": false,
+  "actions": [{ "click": "[aria-label=Screen] button:has-text(\"Not found\")" }, { "wait": 300 }]
+}
