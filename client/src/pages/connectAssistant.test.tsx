@@ -55,9 +55,14 @@ describe("ConnectAssistant", () => {
 
   it("switch account signs the member out", async () => {
     stubFetch(url => maxAccess(url) ?? { ok: true, json: async () => ({}) });
+    const before = `${window.location.pathname}${window.location.search}`;
+    window.history.replaceState(null, "", "/connect-assistant?client=ChatGPT&state=abc");
     render(<ConnectAssistant />);
     fireEvent.click(await screen.findByRole("button", { name: "Switch account" }));
     await waitFor(() => expect(authState.signOut).toHaveBeenCalledTimes(1));
+    // Switching account returns to this consent screen with its OAuth query intact.
+    expect(authState.signOut).toHaveBeenCalledWith({ returnTo: "/connect-assistant?client=ChatGPT&state=abc" });
+    window.history.replaceState(null, "", before);
   });
 
   it("approves and records the real connection", async () => {
