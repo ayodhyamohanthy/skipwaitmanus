@@ -14,96 +14,65 @@ export default function Terms() {
   return <PolicyPageShell
     screen="terms"
     icon={ScrollText}
-    eyebrow="Terms of Service"
-    title="Plain terms for a private referral handoff."
-    intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
-    updated="September 23, 2026"
+    eyebrow="TERMS OF SERVICE"
+    title="Terms"
+    intro=""
+    updated="6 Oct 2026"
     status="published"
     sections={[
-      { id: "01", label: "What skipwait.me is" },
-      { id: "02", label: "Accounts and verification" },
-      { id: "03", label: "Credits, plans, and payment" },
-      { id: "04", label: "Privacy inside a request" },
-      { id: "05", label: "Acceptable use" },
-      { id: "06", label: "Administrator review" },
-      { id: "07", label: "Liability and changes" },
-      { id: "08", label: "Contact" },
-      { id: "09", label: "Business identity" },
-      { id: "10", label: "Governing law" },
-      { id: "11", label: "Grievance officer" },
+      { id: "who", label: "Who can use SkipWait" },
+      { id: "referrals", label: "Referrals" },
+      { id: "paid", label: "Plans, credits and payments" },
+      { id: "content", label: "Your content" },
+      { id: "conduct", label: "Conduct" },
+      { id: "liability", label: "No guarantees" },
+      { id: "changes", label: "Changes and contact" },
     ]}
-    footnote="These terms describe how the product works today. If we change them, we will update the date above."
   >
     <section aria-label="Short version" className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">
-      <p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">Short version</p>
+      <p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">The short version</p>
       <ul className="mt-3 space-y-1.5 pl-5 text-sm leading-6 text-[#505050] [&_li]:list-disc [&_strong]:text-black">
-        <li><strong>Referrals are always free.</strong> Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes.</li>
-        <li><strong>Referrers decide each ask.</strong> A referral is an introduction, never a promise of an interview or a job.</li>
-        <li><strong>Private by default.</strong> Resumes and referrer identities stay hidden until a referrer accepts.</li>
-        <li><strong>Be honest.</strong> Misuse — bulk asks, misrepresentation, harassment — can limit or close an account.</li>
+        <li>Asking for and giving referrals is free. Always.</li>
+        <li>Paid plans and credits buy preparation tools — never queue position or acceptance.</li>
+        <li>Referrers decide freely. Companies decide hiring. We do not promise an interview, an offer, or any hiring outcome.</li>
+        <li>Be honest about who you are and where you work.</li>
       </ul>
     </section>
-    <PolicySection number="01" title="What skipwait.me is">
-      <p>skipwait.me lets a <strong>Job Seeker</strong> send one private referral request for a specific role to verified employees of the company behind that role. A verified employee (a <strong>Referrer</strong>) may accept or decline. We route and record the request; we are not an employer, recruiter, or hiring agent.</p>
-      <p>A referral is an introduction. <strong>We do not promise an interview, an offer, or any hiring outcome</strong>, and neither does a Referrer by accepting.</p>
+
+    <PolicySection number="1" title="Who can use SkipWait">
+      <p>You must be at least 18 and legally able to work or seek work where you live.</p>
+      <p>One account per person. Referrers must verify a current work email for each company they refer into.</p>
     </PolicySection>
 
-    <PolicySection number="02" title="Accounts and verification">
-      <ul>
-        <li>You must be at least 18 and provide accurate information.</li>
-        <li>Referrers verify a company email address by one-time code. Referrer access to a company’s requests ends when that verification no longer applies.</li>
-        <li>You are responsible for activity under your session. Signing out on shared devices clears your local session data.</li>
-      </ul>
+    <PolicySection number="2" title="Referrals">
+      <p>A referral is a referrer's personal recommendation through their employer's own process. SkipWait is not the employer, recruiter, or agent.</p>
+      <p>Nobody may request, offer, or accept money, gifts, or favours in exchange for a referral. Doing so ends your account.</p>
     </PolicySection>
 
-    <PolicySection number="03" title="Credits, plans, and payment">
-      <ul>
-        <li>Every Job Seeker account includes <strong>3 free referral credits each month</strong>. One credit is reserved when a request is sent and <strong>returned automatically</strong> if you withdraw before a Referrer claims it, or if a Referrer declines.</li>
-        <li>Additional credits can be bought individually and never expire. Pro and Max plans add a monthly allowance that renews each cycle.</li>
-        <li>Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Credits are added only after the payment is verified. Refund and cancellation rules are in the <Link href="/refunds" className="font-semibold text-black">Refunds & cancellation policy</Link>.</li>
-        <li>Reviewing and accepting referrals is always free for Referrers.</li>
-      </ul>
+    <PolicySection number="3" title="Plans, credits and payments">
+      <p>Every Job Seeker account includes 3 free referral credits each month.</p>
+      <p>Plans renew monthly or yearly until cancelled. Cancelling stops the next renewal; you keep access until the period ends.</p>
+      <p>Purchased credits don't expire. Plan credits roll over as described on the Plans page. Credits have no cash value.</p>
+      <p>Paying never changes queue order, visibility to referrers, or a referrer's decision.</p>
     </PolicySection>
 
-    <PolicySection number="04" title="Privacy inside a request">
-      <ul>
-        <li>Your resume and note are visible only to you and verified employees of the target company, and then only to the single Referrer who claims your request.</li>
-        <li>Referrer identities are hidden from Job Seekers until the Referrer accepts and chooses to message.</li>
-        <li>Conversations open only after acceptance and are never public. Details are in our <Link href="/privacy" className="font-semibold text-black">Privacy & trust</Link> page.</li>
-      </ul>
+    <PolicySection number="4" title="Your content">
+      <p>You own what you upload. You let us store and show it only to the people you choose, to run the service.</p>
+      <p>Don't upload anything you don't have the right to share, including confidential employer material.</p>
     </PolicySection>
 
-    <PolicySection number="05" title="Acceptable use">
-      <p>Do not use skipwait.me to send unsolicited bulk requests, misrepresent your identity or employment, upload content you do not have the right to share, harass anyone, or attempt to access another person’s requests, documents, or conversations. We may pause or close accounts that do, and may withhold credits obtained through misuse.</p>
+    <PolicySection number="5" title="Conduct">
+      <p>Follow the Community Guidelines. We may warn, restrict, or remove accounts that break them, and you can appeal within 14 days.</p>
     </PolicySection>
 
-    <PolicySection number="06" title="Administrator review">
-      <p>Some actions — such as payment reconciliation, data-export and deletion requests, and reports of misuse — are reviewed by a skipwait.me administrator rather than applied silently. Reviews are logged in a privacy-safe activity record so decisions can be audited.</p>
+    <PolicySection number="6" title="No guarantees">
+      <p>SkipWait is provided as is. We aren't responsible for hiring decisions, a referrer's actions, or third-party job postings.</p>
     </PolicySection>
 
-    <PolicySection number="07" title="Liability and changes">
-      <p>The service is provided as-is. To the extent permitted by law, skipwait.me is not liable for hiring decisions, a Referrer’s or Job Seeker’s conduct, or losses that follow from an introduction. If we change these terms materially, we will show the new date here and, for signed-in users, a notice in the product before the change applies.</p>
+    <PolicySection number="7" title="Changes and contact">
+      <p>We'll tell you about material changes at least 14 days before they apply.</p>
+      <p className="mt-4 text-sm text-muted-foreground">Questions? Write to <strong className="text-foreground">hello@skipwait.me</strong> (placeholder address).</p>
     </PolicySection>
 
-    <PolicySection number="08" title="Contact">
-      <p>Questions about these terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>, or visit the <Link href="/support" className="font-semibold text-black">Support</Link> page.</p>
-    </PolicySection>
-
-    <PolicySection number="09" title="Business identity">
-      <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as SkipWait.</p>
-      <ul>
-        <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
-        <li>Phone: <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a> (Mon–Fri, IST business hours).</li>
-        <li>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</li>
-      </ul>
-    </PolicySection>
-
-    <PolicySection number="10" title="Governing law">
-      <p>These terms are governed by the laws of India.</p>
-    </PolicySection>
-
-    <PolicySection number="11" title="Grievance officer">
-      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Phone <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a>. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
-    </PolicySection>
   </PolicyPageShell>;
 }
