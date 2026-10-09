@@ -23,21 +23,32 @@ describe("Trust cluster", () => {
     expect(screen.getByText(/Only with a referrer who accepted/)).toBeTruthy();
     expect(screen.queryByText(/DESIGN PREVIEW/i)).toBeNull();
     expect(screen.queryByText(/before the platform launches/i)).toBeNull();
+    expect(screen.queryByText(/This design preview/i)).toBeNull();
+    expect(screen.getByRole("link", { name: /Explore/ }).getAttribute("href")).toBe("/explore");
   });
 
   it("searches help honestly and links only live policy pages", () => {
     render(<Help />);
     expect(screen.getByText("How can we help")).toBeTruthy();
+    expect(screen.queryByText(/Momentum and Land allow more/)).toBeNull();
+    expect(screen.queryByText(/preparation tools and more open asks/)).toBeNull();
     fireEvent.change(screen.getByPlaceholderText(/Search: credits/), { target: { value: "expire" } });
-    expect(screen.queryByText("No answers for")).toBeNull();
+    expect(screen.queryByText(/No answers for/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Why did my ask expire?" }));
+    // Mirrors shared/referral.ts ASK_TTL_DAYS: unclaimed asks expire after seven days and the credit returns.
+    expect(screen.getByText(/claimed it within seven days/).textContent).toContain("reserved credit returned");
+    expect(screen.queryByText(/usually within 2 days/)).toBeNull();
     fireEvent.change(screen.getByPlaceholderText(/Search: credits/), { target: { value: "zzz-no-such-topic" } });
     expect(screen.getByText(/No answers for/)).toBeTruthy();
-    expect(screen.queryByText(/Momentum and Land allow more/)).toBeNull();
-    expect(screen.queryByText(/7 days it closes automatically/)).toBeNull();
-    const policies = screen.getByText("Rules & policies").closest("div") as HTMLElement;
+    fireEvent.change(screen.getByPlaceholderText(/Search: credits/), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("tab", { name: /Safety/ }));
+    expect(screen.getAllByRole("button", { expanded: false }).map(button => button.textContent)).toEqual(["Someone asked me for money.", "How do I block someone?"]);
+    const policies = screen.getByText("Rules & policies").closest("section") as HTMLElement;
     expect(policies.innerHTML).toContain("/terms");
     expect(policies.innerHTML).toContain("/safety");
     expect(policies.innerHTML).toContain("/guidelines");
+    expect(policies.innerHTML).toContain("/privacy");
+    expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
   });
 
   it("walks the landed journey with a copyable thanks and no fabricated outcome", () => {

@@ -1,85 +1,101 @@
-import { ArrowLeft, ArrowRight, Building2, Check } from "lucide-react";
+import { AlertTriangle, ArrowRight, Building2, Check } from "lucide-react";
 import { useState } from "react";
-import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
+import { SignInButton, useAuth } from "@/_core/auth";
+import { Button, buttonVariants } from "@/components/kit/button";
+import { Heading, Panel, field } from "@/components/kit/preview-kit";
 import { LAUNCH_COMPANIES } from "@/lib/companies";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+
+// Kit v4 /suggest-company (app/src/routes/suggest-company.tsx) on the live
+// POST /api/company-suggestions intake (auth required, 3 a day, open-duplicate
+// check server side).
+type SuggestRole = "seeker" | "employee";
+const ROLES: ReadonlyArray<readonly [SuggestRole, string]> = [["seeker", "Looking to join"], ["employee", "Working there now"]];
+const SITE_PATTERN = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+/i;
+
+/** The API only accepts http(s) URLs; a bare domain like "freshworks.com" gets https://. */
+function normalizeCompanyWebsite(input: string): string | undefined {
+  const site = input.trim();
+  if (!site) return undefined;
+  return /^https?:\/\//i.test(site) ? site : `https://${site}`;
+}
 
 export default function SuggestCompany() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
-  const [role, setRole] = useState<"seeker" | "employee">("seeker");
+  const [role, setRole] = useState<SuggestRole>("seeker");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
+  const [sentName, setSentName] = useState<string | null>(null);
 
-  const duplicate = LAUNCH_COMPANIES.some(company => company.name.toLowerCase() === name.trim().toLowerCase());
+  const listed = LAUNCH_COMPANIES.find(company => company.name.toLowerCase() === name.trim().toLowerCase());
+  const siteOk = !website.trim() || SITE_PATTERN.test(website.trim());
 
   if (!isSignedIn) {
     return (
-      <main data-skipwait-screen="suggest-company-sign-in" className="mx-auto max-w-xl px-5 py-6">
-        <p className="eyebrow">New doors</p>
-        <h1 className="mt-2 text-3xl font-semibold">Suggest a company.</h1>
-        <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">Sign in so we can follow up once reviewers look at your suggestion.</p>
-        <div className="mt-6"><SignInButton><button type="button" className="brand-button w-full">Sign in</button></SignInButton></div>
+      <main data-skipwait-screen="suggest-company-sign-in" className="page-content mx-auto max-w-2xl">
+        <Heading eyebrow="GROW THE MAP" title="Suggest a company" text="Real employers only. We review every suggestion before it appears." />
+        <Panel>
+          <p className="text-sm text-muted-foreground">Sign in so we can follow up once reviewers look at your suggestion.</p>
+          <SignInButton><button type="button" className={buttonVariants({ className: "mt-6 w-full" })}>Sign in <ArrowRight /></button></SignInButton>
+        </Panel>
       </main>
     );
   }
 
   const submit = async () => {
     if (name.trim().length < 2) { setError("Name the company you want to see."); return; }
+    if (!siteOk) return;
     setSubmitting(true); setError("");
     try {
       const token = await fetchToken();
-      const response = await fetch("/api/company-suggestions", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ companyName: name.trim(), website: website.trim() || undefined, role }) });
+      const response = await fetch("/api/company-suggestions", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ companyName: name.trim(), website: normalizeCompanyWebsite(website), role }) });
       const payload = await readApiJson<{ error?: string }>(response, "We could not save this suggestion");
       if (!response.ok) throw new Error(payload.error || "We could not save this suggestion");
-      setDone(true);
+      setSentName(name.trim());
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not save this suggestion"); }
     finally { setSubmitting(false); }
   };
 
-  if (done) {
+  if (sentName !== null) {
     return (
-      <main data-skipwait-screen="suggest-company-done" className="mx-auto max-w-xl px-5 py-10 text-center">
-        <span className="mx-auto grid size-20 place-items-center rounded-full bg-[var(--accent)]"><Check className="size-10 text-[var(--primary)]" /></span>
-        <h1 className="mt-4 text-3xl font-semibold">Suggestion received.</h1>
-        <p className="mt-2 text-[var(--muted-foreground)]">Reviewers look at every suggestion. You can suggest up to 3 companies a day.</p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <Link href="/explore" className="brand-button">Explore companies <ArrowRight /></Link>
-        </div>
+      <main data-skipwait-screen="suggest-company-done" className="page-content mx-auto max-w-xl text-center">
+        <Check className="mx-auto size-12 text-primary" />
+        <h1 className="mt-4 text-3xl font-semibold">Thanks — {sentName} is in review.</h1>
+        <p className="mt-2 text-muted-foreground">We check the domain and careers page. We&apos;ll notify you when it&apos;s reviewed.</p>
+        <Panel tone="muted" className="mt-6 text-left">
+          <strong>Speed it up</strong>
+          <p className="mt-1 text-sm text-muted-foreground">{role === "employee" ? "Verify your work email — unlisted domains go to a person for review." : "Know someone there? Invite them to be the first referrer."}</p>
+          <Button asChild className="mt-3">{role === "employee" ? <Link href="/verify">Verify work email</Link> : <Link href="/invite">Invite someone</Link>}</Button>
+        </Panel>
+        <p className="mt-4 text-xs text-muted-foreground">You can suggest up to 3 companies a day.</p>
       </main>
     );
   }
 
   return (
     <main data-skipwait-screen="suggest-company" className="page-content mx-auto max-w-2xl">
-      <Link href="/explore" className="back-link"><ArrowLeft />Back to explore</Link>
-      <div className="mb-6"><span className="eyebrow">Grow the map</span><h1 className="mt-2 text-4xl font-semibold">Suggest a company<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Real employers only. We review every suggestion before it appears.</p></div>
-      <section className="rounded-3xl border border-[var(--border)] bg-[var(--card)] p-5 sm:p-8">
-        <label className="block text-sm font-semibold">Company name
-          <input value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
-        </label>
-        {duplicate ? <p className="mt-2 flex items-start gap-2 text-sm text-[var(--muted-foreground)]"><Building2 className="mt-0.5 size-4 shrink-0" />Good news — this company is already listed. <Link href={`/explore/${LAUNCH_COMPANIES.find(c => c.name.toLowerCase() === name.trim().toLowerCase())?.slug}`} className="text-link">Open it</Link></p> : null}
-        <label className="mt-4 block text-sm font-semibold">Company website (optional)
-          <input value={website} inputMode="url" onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" className="mt-2 h-12 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] px-4 text-base" />
-        </label>
+      <Heading eyebrow="GROW THE MAP" title="Suggest a company" text="Real employers only. We review every suggestion before it appears." />
+      <Panel>
+        <label className="block text-sm font-medium">Company name<input className={field} value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" /></label>
+        {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
+        <label className="mt-4 block text-sm font-medium">Website<input className={field} value={website} inputMode="url" maxLength={500} onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" /></label>
+        {siteOk ? null : <p className="mt-2 text-sm text-muted-foreground">Enter the company website, like freshworks.com.</p>}
         <fieldset className="mt-4">
-          <legend className="text-sm font-semibold">I&apos;m suggesting as</legend>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {(["seeker", "employee"] as const).map(value => (
-              <button key={value} type="button" aria-pressed={role === value} onClick={() => setRole(value)} className={`min-h-11 rounded-xl border px-3 text-sm capitalize ${role === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "seeker" ? "Looking to join" : "Working there now"}</button>
+          <legend className="text-sm font-medium">You are</legend>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {ROLES.map(([value, label]) => (
+              <button key={value} type="button" aria-pressed={role === value} onClick={() => setRole(value)} className={`flex min-h-12 items-center gap-2 rounded-xl border px-4 text-left ${role === value ? "border-primary bg-primary/5" : "border-border"}`}><Building2 className="size-4" />{label}</button>
             ))}
           </div>
         </fieldset>
-        {error ? <p role="alert" className="mt-4 text-sm font-semibold text-[var(--destructive)]">{error}</p> : null}
-        <div className="mt-6">
-          <button type="button" disabled={submitting || duplicate} onClick={() => { void submit(); }} className="brand-button w-full">{submitting ? "Sending…" : <>Submit for review <ArrowRight /></>}</button>
-        </div>
-      </section>
+        {error ? <p role="alert" className="mt-4 text-sm font-semibold text-destructive">{error}</p> : null}
+        <Button className="mt-6 w-full" disabled={submitting || name.trim().length < 2 || !siteOk || Boolean(listed)} onClick={() => { void submit(); }}>{submitting ? "Sending…" : <>Submit for review <ArrowRight /></>}</Button>
+      </Panel>
     </main>
   );
 }
