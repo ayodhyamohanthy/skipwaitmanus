@@ -41,9 +41,10 @@ describe("Assistants page", () => {
     render(<Assistants />);
     expect(await screen.findByText("Connected assistants")).toBeTruthy();
     expect(await screen.findByText("ChatGPT")).toBeTruthy();
-    expect(screen.getByText("Read companies and requests · Draft asks for review")).toBeTruthy();
+    expect(screen.getByText("Read · Draft")).toBeTruthy();
+    expect(screen.getByText("Connected 2 hours ago")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "API tokens" }));
-    expect(await screen.findByText("Notion tracker")).toBeTruthy();
+    expect(await screen.findByText(/Notion tracker · created/)).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Activity" }));
     expect(await screen.findByText("Connected ChatGPT")).toBeTruthy();
   });
@@ -53,6 +54,56 @@ describe("Assistants page", () => {
     render(<Assistants />);
     expect(await screen.findByText(/Assistants and API tokens come with Max/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Upgrade to Max" }).getAttribute("href")).toBe("/plans");
+    fireEvent.click(screen.getByRole("tab", { name: "API tokens" }));
+    expect(screen.getByText(/Assistants and API tokens come with Max/)).toBeTruthy();
+    expect(screen.queryByText("Your tokens")).toBeNull();
+  });
+
+  it("shows the always-on safety rules as fixed, not as switches a visitor can flip", async () => {
+    stubFetch(url => {
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max" }) };
+      if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
+      if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
+      return { ok: true, json: async () => ({ activity: [] }) };
+    });
+    render(<Assistants />);
+    expect(await screen.findByText("No assistants connected")).toBeTruthy();
+    expect(screen.getByText("Ask me before any ask is sent")).toBeTruthy();
+    expect(screen.getByText("Ask me before credits are spent")).toBeTruthy();
+    expect(screen.queryByRole("switch")).toBeNull();
+    expect(screen.getByText("skipwait.me/api/mcp")).toBeTruthy();
+  });
+
+  it("describes real MCP activity and blocked calls honestly", async () => {
+    stubFetch(url => {
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max" }) };
+      if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
+      if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
+      return { ok: true, json: async () => ({ activity: [
+        { action: "assistant.mcp.tool", outcome: "success", resourceType: "assistant_token", metadata: { tool: "list_my_requests" }, createdAt: new Date(now - 60000).toISOString() },
+        { action: "assistant.mcp.denied", outcome: "denied", resourceType: "assistant_token", metadata: {}, createdAt: new Date(now - 120000).toISOString() },
+      ] }) };
+    });
+    render(<Assistants />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Activity" }));
+    expect(await screen.findByText("Read your open requests")).toBeTruthy();
+    expect(screen.getByText("Blocked: your plan does not include assistants")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Review waiting approval" }).getAttribute("href")).toBe("/approve");
+  });
+
+  it("keeps the token list visible when a revoke fails", async () => {
+    stubFetch((url, init) => {
+      if (url.includes("/api/assistants/tokens/2") && init?.method === "DELETE") return { ok: false, json: async () => ({ error: "We could not revoke this token" }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max" }) };
+      if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
+      if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: TOKENS }) };
+      return { ok: true, json: async () => ({ activity: [] }) };
+    });
+    render(<Assistants />);
+    fireEvent.click(await screen.findByRole("tab", { name: "API tokens" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
+    expect(await screen.findByText("We could not revoke this token")).toBeTruthy();
+    expect(screen.getByText(/Notion tracker/)).toBeTruthy();
   });
 
   it("creates a token and shows it exactly once", async () => {
@@ -99,6 +150,6 @@ describe("Assistants page", () => {
     stubFetch(() => ({ ok: false, json: async () => ({ error: "We could not load assistant access" }) }));
     render(<Assistants />);
     expect(await screen.findByText(/We could not load assistant access/)).toBeTruthy();
-    expect(screen.getByText("Try again")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 });
