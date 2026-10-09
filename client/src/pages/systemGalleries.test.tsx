@@ -31,9 +31,9 @@ describe("System galleries", () => {
   it("documents the real transactional templates, never sample mail", () => {
     render(<Emails />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("EMAIL & IN-APP TEMPLATES");
-    expect(screen.getByText(/Twelve templates, each fired by exactly one real event/)).toBeTruthy();
+    expect(screen.getByText(/Thirteen templates, each fired by exactly one real event/)).toBeTruthy();
     const nav = screen.getByRole("navigation", { name: "Templates" });
-    expect(nav.querySelectorAll("button")).toHaveLength(12);
+    expect(nav.querySelectorAll("button")).toHaveLength(13);
     // The first template is selected and previewed as an email, with the code masked.
     expect(screen.getByRole("button", { name: "Work-email code" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("article", { name: "Work-email code" }).textContent).toContain("SkipWait <noreply@skipwait.me>");
