@@ -84,16 +84,12 @@ describe("Referrer work-email OTP verification", () => {
     expect(authState.createEmailAddress).not.toHaveBeenCalled();
   });
 
-  it("opens one compact company-email OTP action from the kit referrer workspace before secure employee sign-in", async () => {
+  it("opens the work-email OTP login first for signed-out visitors, with the overview behind it", async () => {
     authState.isSignedIn = false;
     render(<Referrer />);
-    // Kit v4: signed-out visitors land on the workspace overview; "Set up as a referrer" opens the work-email step.
-    expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("referrer-workspace");
-    expect(screen.getByRole("tab", { name: "Overview" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.queryByLabelText("Company email")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Set up as a referrer/ }));
-    const dialog = screen.getByRole("dialog", { name: "Verify work email." });
-    expect(dialog.getAttribute("aria-modal")).toBe("true");
+    // /referrer is the employee login door: the OTP step greets visitors
+    // directly instead of waiting behind the workspace overview.
+    expect(screen.getByRole("dialog", { name: "Verify work email." })).toBeTruthy();
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     expect(screen.getAllByRole("button", { name: "Send sign-in code" })).toHaveLength(1);
     expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeNull();
@@ -101,6 +97,8 @@ describe("Referrer work-email OTP verification", () => {
     expect(screen.queryByText(/no password, social sign-in, or personal email access/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Close setup" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+    // Dismissed stays dismissed: the overview remains reachable.
+    expect(screen.getByRole("button", { name: /Set up as a referrer/ })).toBeTruthy();
   });
 
   it("opens the work-email step directly for ?setup=work-email links", () => {

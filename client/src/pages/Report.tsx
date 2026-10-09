@@ -25,6 +25,9 @@ export default function Report() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [reference, setReference] = useState("");
+  const [alsoBlock, setAlsoBlock] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockError, setBlockError] = useState("");
 
   if (!isSignedIn) {
     return (
@@ -58,6 +61,15 @@ export default function Report() {
       if (!response.ok) throw new Error(payload.error || "We could not file this report");
       setReference(payload.report?.reference ?? "");
       setStep(2);
+      if (alsoBlock && requestId) {
+        try {
+          const blockResponse = await fetch("/api/blocks", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ referralRequestId: requestId }) });
+          if (!blockResponse.ok) throw new Error("filed, but the block did not go through — you can block from Settings");
+          setBlocked(true);
+        } catch (blockReason) {
+          setBlockError(blockReason instanceof Error ? blockReason.message : "Your report was filed, but the block did not go through");
+        }
+      }
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not file this report"); }
     finally { setSubmitting(false); }
   };
@@ -95,7 +107,15 @@ export default function Report() {
             <span className="flex-1"><strong className="block text-sm">I feel unsafe</strong><small className="text-[var(--muted-foreground)]">Reviewed first, within hours.</small></span>
             {urgent ? <Check className="text-[var(--destructive)]" /> : null}
           </button>
-          <div className="mt-4 flex items-start gap-2 rounded-2xl bg-[var(--muted)] p-4 text-sm text-[var(--muted-foreground)]"><Ban className="mt-0.5 size-4 shrink-0" />To block someone immediately, contact support from this page after filing — blocking both directions is handled by our team for now.</div>
+          {reportRequestId ? (
+            <button type="button" aria-pressed={alsoBlock} onClick={() => setAlsoBlock(!alsoBlock)} className={`mt-4 flex min-h-14 w-full items-center gap-3 rounded-2xl border p-4 text-left ${alsoBlock ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-[var(--border)]"}`}>
+              <Ban className="size-5 shrink-0" />
+              <span className="flex-1"><strong className="block text-sm">Also block this person</strong><small className="text-[var(--muted-foreground)]">They can&apos;t message you or appear in your inbox. They aren&apos;t told.</small></span>
+              {alsoBlock ? <Check /> : null}
+            </button>
+          ) : (
+            <div className="mt-4 flex items-start gap-2 rounded-2xl bg-[var(--muted)] p-4 text-sm text-[var(--muted-foreground)]"><Ban className="mt-0.5 size-4 shrink-0" />To block someone immediately, contact support from this page after filing — blocking both directions is handled by our team for now.</div>
+          )}
           {error ? <p role="alert" className="mt-4 text-sm font-semibold text-[var(--destructive)]">{error}</p> : null}
           <div className="mt-8 flex justify-between gap-3">
             <button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={() => setStep(0)}><ArrowLeft />Back</button>
@@ -119,6 +139,8 @@ export default function Report() {
               ))}
             </ol>
           </div>
+          {blocked ? <div className="mt-4 rounded-2xl bg-[var(--muted)] p-4 text-left text-sm"><Ban className="mb-2 size-5" />This person is now blocked. They can&apos;t message you or appear in your inbox.</div> : null}
+          {blockError ? <p role="alert" className="mt-4 text-sm font-semibold text-[var(--destructive)]">{blockError}</p> : null}
           {urgent ? <div className="mt-4 rounded-2xl bg-[var(--muted)] p-4 text-left text-sm"><LifeBuoy className="mb-2 size-5" />If you&apos;re in immediate danger, contact local emergency services first.</div> : null}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/support" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Contact support</Link>

@@ -2,6 +2,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowLeft, ArrowRight, Link2, PenLine, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 import { Button } from "@/components/kit/button";
 import { ASK_NOTE_LIMIT, saveAskPrefill } from "@/lib/askPrefill";
@@ -19,6 +20,7 @@ type RequestDialogProps = { company: LaunchCompany; open: boolean; step: number;
  */
 export function RequestDialog({ company, open, step, onStepChange, onOpenChange }: RequestDialogProps) {
   const [, go] = useLocation();
+  const { isSignedIn } = useAuth();
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
   const [urlError, setUrlError] = useState(false);
@@ -29,7 +31,10 @@ export function RequestDialog({ company, open, step, onStepChange, onOpenChange 
     if (step < LAST_STEP) { onStepChange(step + 1); return; }
     saveAskPrefill({ companySlug: company.slug, targetRoleUrl: url, note });
     onOpenChange(false);
-    go("/ask");
+    // The fit note survives in tab session storage; signed-out seekers go
+    // through job-seeker login first and land back in the ask composer.
+    if (isSignedIn) go("/ask");
+    else window.location.assign(`/api/auth/workos/sign-in?${new URLSearchParams({ returnTo: "/ask" })}`);
   };
 
   return <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
@@ -44,7 +49,7 @@ export function RequestDialog({ company, open, step, onStepChange, onOpenChange 
           {step === 1 && <div className="request-fields"><label htmlFor="fit-note">Why are you a strong fit?</label><textarea id="fit-note" rows={5} maxLength={ASK_NOTE_LIMIT} placeholder="Share 2–3 relevant strengths or outcomes. Keep it useful and human." value={note} onChange={event => setNote(event.target.value)} /><span>{note.length} / {ASK_NOTE_LIMIT}</span></div>}
           {step === 2 && <div className="share-preview"><ShieldCheck /><h3>You stay in control.</h3><p>Before acceptance, the referrer sees your role link and note. Your name and resume remain private. After acceptance, you choose what to share in the conversation.</p></div>}
           {step === 3 && <div className="review-request"><span className="company-mark">{company.initials}</span><div><strong>{company.name}</strong><p>{hasNote ? "Job link + fit note + privacy choices" : "Job link + privacy choices · add your fit note next"}</p></div><span className="status-pill">{hasNote ? <><Sparkles />Ready</> : <><PenLine />Draft</>}</span></div>}
-          <div className="dialog-footer">{step > 0 && <Button variant="ghost" onClick={() => onStepChange(step - 1)}><ArrowLeft />Back</Button>}<Button onClick={next}>{step < LAST_STEP ? "Continue" : "Preview request"}{step < LAST_STEP ? <ArrowRight /> : <Send />}</Button></div>
+          <div className="dialog-footer">{step > 0 && <Button variant="ghost" onClick={() => onStepChange(step - 1)}><ArrowLeft />Back</Button>}<Button onClick={next}>{step < LAST_STEP ? "Continue" : isSignedIn ? "Preview request" : "Sign in to continue"}{step < LAST_STEP ? <ArrowRight /> : <Send />}</Button></div>
           <p className="design-note">NOTHING IS SENT UNTIL YOU CONFIRM</p>
         </DialogPrimitive.Content>
       </DialogPrimitive.Overlay>
