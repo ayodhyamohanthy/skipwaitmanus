@@ -28,11 +28,23 @@ describe("System galleries", () => {
 
   it("documents the real transactional templates, never sample mail", () => {
     render(<Emails />);
-    expect(screen.getByText(/Every email we send/)).toBeTruthy();
-    expect(screen.getByText("Work-email code")).toBeTruthy();
-    expect(screen.getByText("Ask passed")).toBeTruthy();
-    expect(screen.queryByText(/123456/)).toBeNull();
-    expect(screen.queryByText(/Design Preview/i)).toBeNull();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("EMAIL & IN-APP TEMPLATES");
+    expect(screen.getByText(/Twelve templates, each fired by exactly one real event/)).toBeTruthy();
+    const nav = screen.getByRole("navigation", { name: "Templates" });
+    expect(nav.querySelectorAll("button")).toHaveLength(12);
+    // The first template is selected and previewed as an email, with the code masked.
+    expect(screen.getByRole("button", { name: "Work-email code" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("article", { name: "Work-email code" }).textContent).toContain("SkipWait <noreply@skipwait.me>");
+    expect(screen.getByText(/6 digits, 10-minute expiry, 5 attempts/)).toBeTruthy();
+    // Selecting another template swaps the preview; in-app templates are not shown as mail.
+    fireEvent.click(screen.getByRole("button", { name: "Ask passed" }));
+    expect(screen.getByRole("button", { name: "Ask passed" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByText(/The ask stays active for other employees/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "New message" }));
+    expect(screen.getByRole("article", { name: "New message" }).textContent).not.toContain("noreply@skipwait.me");
+    expect(screen.getByRole("link", { name: /See in-app updates/ }).getAttribute("href")).toBe("/alerts");
+    // No sample codes, people, companies or preview scaffolding.
+    expect(document.body.textContent).not.toMatch(/123456|482 913|Wipro|Design Preview|EXAMPLE/i);
   });
 
   it("documents only the live assistant surface, never preview APIs", () => {

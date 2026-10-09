@@ -46,14 +46,32 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Terms restate credit and privacy behaviour and never promise a hiring outcome", () => {
     const { container } = render(<Terms />);
     expect(document.querySelector('[data-skipwait-screen="terms"]')).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Plain terms");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Terms.");
+    // The live preamble, including the acceptance clause, stays on the page.
+    expect(screen.getByText(/Plain terms for a private referral handoff\. .*By creating an account or using skipwait\.me, you agree to these terms\./)).toBeTruthy();
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
-    expect(screen.getByText("Short version")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
     expect(screen.getByText(/Referrals are always free/)).toBeTruthy();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
+    // The kit's design-only banner never ships.
+    expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
     expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
-    expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("link", { name: "SkipWait home" }).getAttribute("href")).toBe("/");
+    expect(screen.getByRole("navigation", { name: "Legal" }).querySelector('[aria-current="page"]')?.getAttribute("href")).toBe("/terms");
+  });
+
+  it("Terms keep every live clause, each reachable from the On this page rail", () => {
+    const { container } = render(<Terms />);
+    const clauses = ["What skipwait.me is", "Accounts and verification", "Credits, plans, and payment", "Privacy inside a request", "Acceptable use", "Administrator review", "Liability and changes", "Contact", "Business identity", "Governing law", "Grievance officer"];
+    const headings = screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent);
+    clauses.forEach((clause, index) => expect(headings).toContain(`${index + 1}. ${clause}`));
+    const rail = screen.getByRole("navigation", { name: "On this page" });
+    const anchors = Array.from(rail.querySelectorAll("a"));
+    expect(anchors.map(anchor => anchor.textContent)).toEqual(clauses);
+    for (const anchor of anchors) expect(container.querySelector(anchor.getAttribute("href") ?? "#missing")).toBeTruthy();
+    expect(screen.getByText(/Grievance officer: /).textContent).toContain("within 48 hours");
+    expect(screen.getAllByRole("link", { name: "support@skipwait.me" }).every(link => link.getAttribute("href") === "mailto:support@skipwait.me")).toBe(true);
   });
 
   it("Guidelines state the free-referral rules and stay in draft until legal review", () => {
@@ -61,8 +79,9 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(document.querySelector('[data-skipwait-screen="guidelines"]')).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Guidelines." })).toBeTruthy();
     expect(screen.getByText(/No money, gifts, or favours change hands/)).toBeTruthy();
-    expect(screen.getByText("Short version")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
     expect(screen.getByText(/Draft · pending legal review/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Report it" }).getAttribute("href")).toBe("/report");
     expect(policyLinks(container)).toContain("/guidelines");
     expect(screen.getByRole("navigation", { name: "On this page" })).toBeTruthy();
   });

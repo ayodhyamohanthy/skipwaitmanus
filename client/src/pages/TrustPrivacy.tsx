@@ -1,21 +1,74 @@
 import { Link } from "wouter";
-import { useEffect } from "react";
-import { ArrowLeft, BadgeCheck, CreditCard, FileKey2, HeartHandshake, ShieldCheck, UserRoundCheck } from "lucide-react";
-import { Brand } from "@/components/Brand";
-import { Breadcrumbs, SUPPORT_EMAIL } from "@/components/PolicyPageShell";
-import { applySeo } from "@/lib/seo";
-import { publicRoute } from "@shared/publicRoutes";
+import { Button } from "@/components/kit/button";
+import { PolicyPageShell, PolicySection, SUPPORT_EMAIL } from "@/components/PolicyPageShell";
 
-const safeguards = [
-  { icon: UserRoundCheck, title: "Company-matched by design", body: "A referral request is visible only to verified employees at the company behind the role link." },
-  { icon: FileKey2, title: "Documents stay private", body: "Your resume is available only to you and the Referrer assigned to your request. It is never public." },
-  { icon: HeartHandshake, title: "Conversation opens after acceptance", body: "Job Seekers and Referrers can message only after the Referrer accepts that specific request." },
-  { icon: CreditCard, title: "Hosted payment checkout", body: "Payment details are handled by the payment provider’s checkout. Referral decisions are always free for Referrers." },
-];
-
+/**
+ * /privacy — Privacy & trust, in the kit v4 legal layout
+ * (app/src/routes/privacy.tsx). Every safeguard and disclosure is the live
+ * text, restructured into numbered sections; nothing here describes a control
+ * the product does not have.
+ */
 export default function TrustPrivacy() {
-  // /privacy is a canonical public route, so it gets the same title, description
-  // and breadcrumb as the pages rendered by PolicyPageShell.
-  useEffect(() => { const route = publicRoute("/privacy")!; applySeo({ title: route.title, description: route.description, path: route.route }); }, []);
-  return <main className="min-h-screen bg-white px-5 py-5 text-black sm:px-6 sm:py-8"><div className="mx-auto max-w-3xl"><header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050] hover:text-black"><ArrowLeft className="h-4 w-4" />Back</Link></header><div className="mt-8"><Breadcrumbs path="/privacy" /></div><section className="mt-2 rounded-2xl border border-[#e5e5e5] bg-white p-6 sm:p-9"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[#f5f5f5] text-black"><ShieldCheck className="h-5 w-5" /></span><p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-black">Privacy & trust</p><h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-[-.02em]">A private handoff, not a public marketplace.</h1><p className="mt-4 max-w-2xl text-sm leading-6 text-[#505050]">skipwait.me is designed to help one Job Seeker and the right verified employee move a referral forward with the least necessary exposure. We do not publish resumes, Referrer identities, or private request conversations.</p></section><section aria-label="Short version" className="mt-5 rounded-2xl bg-[#f5f5f5] p-5 sm:p-6"><p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">Short version</p><ul className="mt-3 space-y-1.5 pl-5 text-sm leading-6 text-[#505050] [&_li]:list-disc [&_strong]:text-black"><li><strong>Resumes and identities stay private</strong> until a referrer accepts your ask.</li><li><strong>Requests reach only verified employees</strong> of the company behind the role.</li><li><strong>Payments run on hosted checkout;</strong> skipwait.me never sees card numbers.</li><li><strong>Export or delete your data</strong> anytime from Settings.</li></ul></section><section className="mt-5 grid gap-3 sm:grid-cols-2">{safeguards.map(({ icon: Icon, title, body }) => <article key={title} className="rounded-2xl border border-[#e5e5e5] bg-white p-5"><Icon className="h-5 w-5 text-black" /><h2 className="mt-4 text-base font-semibold text-black">{title}</h2><p className="mt-2 text-sm leading-6 text-[#505050]">{body}</p></article>)}</section><section className="mt-5 rounded-2xl border border-[#e5e5e5] bg-white p-6 sm:p-8"><div className="flex items-start gap-3"><BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-[#15803d]" /><div><h2 className="text-lg font-semibold text-black">Your account controls</h2><p className="mt-2 text-sm leading-6 text-[#505050]">When signed in, Settings gives you a copy of the personal data held for your account and lets you request account deletion review. Requests are reviewed rather than silently deleting records that may need reconciliation or security handling.</p><Link href="/settings" className="mt-5 inline-flex items-center justify-center rounded-lg bg-[#141414] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0000cc]">Open privacy controls</Link></div></div></section><section className="mt-5 rounded-2xl border border-[#e5e5e5] bg-white p-6 sm:p-8"><h2 className="text-lg font-semibold text-black">Data, payments & cookies</h2><div className="mt-3 space-y-3 text-sm leading-6 text-[#505050]"><p><strong className="text-black">What we collect.</strong> Account details (name, email), referral content you submit (job links, notes, resumes), and transaction records (provider references, amounts, timestamps). Referrers additionally verify a company email address by one-time code.</p><p><strong className="text-black">Payments.</strong> Card and bank details are entered only on the payment provider’s hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). skipwait.me never sees, touches, or stores card numbers; providers share back only the payment result and reference needed to credit your account.</p><p><strong className="text-black">Cookies & on-device storage.</strong> A session cookie keeps you signed in, a short-lived security cookie protects admin checks, and an offline cache lets installed app pages open without a network. No advertising cookies and no cross-site tracking.</p><p><strong className="text-black">Retention & your rights.</strong> Account and referral data is kept while your account is active and as needed for fraud prevention and financial records. You can export your data or request account deletion review anytime from Settings; payment disputes follow the <Link href="/refunds" className="font-semibold text-black">Refunds & cancellation policy</Link>. Grievance and privacy questions: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</p></div></section><nav aria-label="Policies" className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-[#505050]"><Link href="/terms" className="hover:text-black">Terms of Service</Link><Link href="/refunds" className="hover:text-black">Refunds & cancellation</Link><Link href="/support" className="hover:text-black">Support</Link></nav><p className="mx-auto mt-4 max-w-2xl text-center text-xs leading-5 text-[#505050]">This page explains product safeguards and available controls. It is not a substitute for jurisdiction-specific legal notices or formal compliance certification.</p></div></main>;
+  return <PolicyPageShell
+    screen="privacy"
+    eyebrow="PRIVACY POLICY"
+    title="Privacy"
+    intro="A private handoff, not a public marketplace. skipwait.me is designed to help one Job Seeker and the right verified employee move a referral forward with the least necessary exposure. We do not publish resumes, Referrer identities, or private request conversations."
+    updated="8 Oct 2026"
+    summary={[
+      "Resumes and identities stay private until a referrer accepts your ask.",
+      "Requests reach only verified employees of the company behind the role.",
+      "Payments run on hosted checkout; skipwait.me never sees card numbers.",
+      "Export or delete your data anytime from Settings.",
+    ]}
+    sections={[
+      { id: "01", label: "Company-matched by design" },
+      { id: "02", label: "Documents stay private" },
+      { id: "03", label: "Conversation opens after acceptance" },
+      { id: "04", label: "Hosted payment checkout" },
+      { id: "05", label: "What we collect" },
+      { id: "06", label: "Payments" },
+      { id: "07", label: "Cookies & on-device storage" },
+      { id: "08", label: "Retention & your rights" },
+      { id: "09", label: "Your account controls" },
+    ]}
+    footnote="This page explains product safeguards and available controls. It is not a substitute for jurisdiction-specific legal notices or formal compliance certification."
+  >
+    <PolicySection number="01" title="Company-matched by design">
+      <p>A referral request is visible only to verified employees at the company behind the role link.</p>
+    </PolicySection>
+
+    <PolicySection number="02" title="Documents stay private">
+      <p>Your resume is available only to you and the Referrer assigned to your request. It is never public.</p>
+    </PolicySection>
+
+    <PolicySection number="03" title="Conversation opens after acceptance">
+      <p>Job Seekers and Referrers can message only after the Referrer accepts that specific request.</p>
+    </PolicySection>
+
+    <PolicySection number="04" title="Hosted payment checkout">
+      <p>Payment details are handled by the payment provider’s checkout. Referral decisions are always free for Referrers.</p>
+    </PolicySection>
+
+    <PolicySection number="05" title="What we collect">
+      <p>Account details (name, email), referral content you submit (job links, notes, resumes), and transaction records (provider references, amounts, timestamps). Referrers additionally verify a company email address by one-time code.</p>
+    </PolicySection>
+
+    <PolicySection number="06" title="Payments">
+      <p>Card and bank details are entered only on the payment provider’s hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). skipwait.me never sees, touches, or stores card numbers; providers share back only the payment result and reference needed to credit your account.</p>
+    </PolicySection>
+
+    <PolicySection number="07" title="Cookies & on-device storage">
+      <p>A session cookie keeps you signed in, a short-lived security cookie protects admin checks, and an offline cache lets installed app pages open without a network. No advertising cookies and no cross-site tracking.</p>
+    </PolicySection>
+
+    <PolicySection number="08" title="Retention & your rights">
+      <p>Account and referral data is kept while your account is active and as needed for fraud prevention and financial records. You can export your data or request account deletion review anytime from Settings; payment disputes follow the <Link href="/refunds" className="font-semibold text-foreground">Refunds & cancellation policy</Link>. Grievance and privacy questions: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-foreground">{SUPPORT_EMAIL}</a>.</p>
+    </PolicySection>
+
+    <PolicySection number="09" title="Your account controls">
+      <p>When signed in, Settings gives you a copy of the personal data held for your account and lets you request account deletion review. Requests are reviewed rather than silently deleting records that may need reconciliation or security handling.</p>
+      <Button asChild variant="outline" className="text-foreground"><Link href="/settings">Open privacy controls</Link></Button>
+    </PolicySection>
+  </PolicyPageShell>;
 }
