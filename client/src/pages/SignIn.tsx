@@ -30,6 +30,7 @@ export default function SignIn() {
           <button type="button" onClick={() => startLogin()} className="brand-button"><Mail />Continue with email</button>
         </div>
         <p className="auth-new">New to SkipWait? <button type="button" className="text-link" onClick={() => startLogin()}>Create a free account</button></p>
+        <p className="auth-new"><Link href="/forgot-password" className="text-link">Forgot password?</Link></p>
         <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className="underline">Terms</Link> and acknowledge the <Link href="/privacy" className="underline">Privacy Policy</Link>. Referrals are free and never guarantee an interview.</p>
       </div></section>
     </main>
