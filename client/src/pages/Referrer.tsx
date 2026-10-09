@@ -46,6 +46,7 @@ export default function Referrer() {
   const sessionEmail = user?.primaryEmailAddress?.emailAddress?.trim().toLowerCase() || "";
   const sessionEmailIsCompany = Boolean(sessionEmail) && isCompanyEmail(sessionEmail);
   const [signInOpen, setSignInOpen] = useState(wantsSignIn);
+  const [signInDismissed, setSignInDismissed] = useState(false);
   const [decision, setDecision] = useState<"" | "approved" | "declined">("");
   const [deciding, setDeciding] = useState(false);
   const [message, setMessage] = useState("");
@@ -64,6 +65,13 @@ export default function Referrer() {
     // instead of inheriting the current shell metadata.
     applySeo({ title: "Verify a work email to review private referrals", description: "Verify a company email once, then review private referral requests for your own company and choose whether to help. Reviewing is always free.", path: "/referrer" });
   }, []);
+  useEffect(() => {
+    // /referrer is the employee login door: signed-out visitors meet the
+    // work-email OTP step first (dismissible; the overview stays behind it).
+    // Deep links (?setup=work-email, invites, claimed requests) already open
+    // it via wantsSignIn; the setup tab keeps its own inline sign-in action.
+    if (isLoaded !== false && !isSignedIn && !signInDismissed && view !== "setup") setSignInOpen(true);
+  }, [isLoaded, isSignedIn, signInDismissed, view]);
 
   const companyFetch = async (path: string, init?: RequestInit) => {
     const token = await getToken();
@@ -206,7 +214,7 @@ export default function Referrer() {
         ? <CapacitySettingsPanel isSignedIn={isSignedIn} getToken={getToken} onSignIn={() => setSignInOpen(true)} />
         : <ReferrerOverview onPreviewAsks={() => go("/queue")} />}
       {signedInStatus}
-      {signInOpen && !isSignedIn && isLoaded !== false ? <ReferrerSignInDialog inviteCompany={inviteCompany || undefined} inviteCode={inviteCode || undefined} onClose={() => setSignInOpen(false)} /> : null}
+      {signInOpen && !isSignedIn && isLoaded !== false ? <ReferrerSignInDialog inviteCompany={inviteCompany || undefined} inviteCode={inviteCode || undefined} onClose={() => { setSignInOpen(false); setSignInDismissed(true); }} /> : null}
     </ReferrerWorkspace>
   );
 }
