@@ -15,6 +15,8 @@ function setup(over: Partial<McpRouteDeps> = {}) {
     searchJobs: async () => [{ id: 1, title: "Designer", company: "Wipro", location: "Pune", seniority: "Senior", compensation: "n/a", description: "secret long text", postedBy: "hr@wipro.com" }],
     listRequests: async () => [{ id: 9, jobTitle: "Designer", company: "Wipro", status: "pending", referrerId: 88, jobSeekerId: 7, personalPitch: "my private pitch", referrerMessage: "x", createdAt: new Date("2026-10-01T00:00:00Z"), updatedAt: new Date("2026-10-02T00:00:00Z") }],
     listAlerts: async () => [{ id: 4, companyDomain: "acme.com", paused: false, notifiedAt: null, createdAt: new Date("2026-10-01T00:00:00Z"), userId: 7 }],
+    listResumes: async () => [{ id: 21, fileName: "cv.pdf", createdAt: new Date("2026-10-02T00:00:00Z"), fileKey: "secret/key", ownerId: 7 }],
+    proposeAsk: async () => ({ id: 55, status: "pending" as const, creditCost: 1, expiresAt: "2026-10-10T00:00:00.000Z" }),
     ...over,
   };
   const app = express();
@@ -64,16 +66,36 @@ describe("MCP authentication", () => {
 });
 
 describe("MCP protocol", () => {
-  it("initializes and lists only read-only tools", async () => {
+  it("initializes and lists the tools", async () => {
     const { app } = setup();
     const init = await rpc(app, { jsonrpc: "2.0", id: 1, method: "initialize", params: {} });
     expect(init.body.result).toMatchObject({ serverInfo: { name: "skipwait" }, capabilities: { tools: {} } });
     const list = await rpc(app, { jsonrpc: "2.0", id: 2, method: "tools/list" });
-    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual(["search_jobs", "list_my_requests", "list_my_alerts"]);
-    for (const tool of MCP_TOOLS) expect(tool.annotations.readOnlyHint).toBe(true);
+    expect(list.body.result.tools.map((t: { name: string }) => t.name)).toEqual(["search_jobs", "list_my_requests", "list_my_alerts", "list_my_resumes", "propose_ask"]);
+    for (const tool of MCP_TOOLS) if (tool.name !== "propose_ask") expect(tool.annotations.readOnlyHint).toBe(true);
   });
-  it("offers no tool that sends, accepts, passes, refers, spends or buys", () => {
-    expect(MCP_TOOL_NAMES.join(" ")).not.toMatch(/send|accept|pass|refer_|approve|spend|buy|purchase|pay|credit|delete|create/i);
+  it("offers no tool that sends, accepts, passes, spends or buys; propose_ask is the only non-read tool", () => {
+    expect(MCP_TOOL_NAMES.join(" ")).not.toMatch(/send|accept|pass|approve|spend|buy|purchase|pay|credit|delete|create/i);
+    expect(MCP_TOOLS.filter(t => !t.annotations.readOnlyHint).map(t => t.name)).toEqual(["propose_ask"]);
+  });
+  it("propose_ask only creates a pending approval and reports that nothing was sent or spent", async () => {
+    const calls: unknown[] = [];
+    const { app } = setup({ proposeAsk: async (userId, input) => { calls.push({ userId, input }); return { id: 55, status: "pending" as const, creditCost: 1, expiresAt: "2026-10-10T00:00:00.000Z" }; } });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 5, method: "tools/call", params: { name: "propose_ask", arguments: { targetRoleUrl: "https://boards.example.com/j/1", attachmentIds: [21], message: "hi", userId: 99, creditCost: 0 } } });
+    const body = JSON.parse(res.body.result.content[0].text);
+    expect(body).toMatchObject({ approvalId: 55, status: "pending", creditCostIfApproved: 1 });
+    expect(body.nextStep).toMatch(/Nothing has been sent/);
+    expect(calls).toEqual([{ userId: 7, input: { targetRoleUrl: "https://boards.example.com/j/1", attachmentIds: [21], message: "hi" } }]);
+  });
+  it("propose_ask surfaces validation errors as tool errors", async () => {
+    const { app } = setup({ proposeAsk: async () => { throw new Error("Choose one to five of the member's own resume documents"); } });
+    const res = await rpc(app, { jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "propose_ask", arguments: {} } });
+    expect(res.body.result.isError).toBe(true);
+  });
+  it("list_my_resumes returns only ids and file names", async () => {
+    const { app } = setup();
+    const res = await rpc(app, { jsonrpc: "2.0", id: 7, method: "tools/call", params: { name: "list_my_resumes" } });
+    expect(JSON.parse(res.body.result.content[0].text).resumes).toEqual([{ id: 21, fileName: "cv.pdf", uploadedAt: "2026-10-02T00:00:00.000Z" }]);
   });
   it("answers notifications with 202 and no body, and unknown methods with an error", async () => {
     const { app } = setup();
