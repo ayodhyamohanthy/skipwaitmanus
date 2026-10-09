@@ -44,6 +44,8 @@ import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
 import { registerAssistantRoutes } from "../assistantRoutes";
+import { registerOAuthRoutes } from "../oauthRoutes";
+import { consumeAuthCode, getOAuthClient, issueAuthCode, registerOAuthClient } from "../oauthStore";
 import { registerMcpRoutes } from "../mcpRoutes";
 import { registerProfileRoutes } from "../profileRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
@@ -171,6 +173,16 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     listAlerts: userId => db.listSeekerAlerts(userId),
     listResumes: userId => db.listMyUnattachedResumes(userId),
     proposeAsk: (userId, input) => db.proposeAssistantAsk(userId, input),
+  });
+  // OAuth (authorization code + PKCE) so ChatGPT/Claude can connect without pasting a token.
+  registerOAuthRoutes(app, {
+    resolveIdentity,
+    registerClient: registerOAuthClient,
+    getClient: getOAuthClient,
+    issueCode: async (userId, input) => { if (!(await db.hasAssistantAccess(userId))) throw new Error("No assistant access"); return issueAuthCode(userId, input); },
+    consumeCode: consumeAuthCode,
+    mintToken: (userId, name) => db.createAssistantToken(userId, { name }),
+    recordActivity: db.recordOperationalActivity,
   });
   // Seeker/referrer profiles, work showcases, and shareable public profiles.
   registerProfileRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, getMyProfile: db.getMyProfile, updateMyProfile: db.updateMyProfile, listMyWorkItems: db.listMyWorkItems, createWorkItem: db.createWorkItem, updateWorkItem: db.updateWorkItem, deleteWorkItem: db.deleteWorkItem, getPublicProfileByHandle: db.getPublicProfileByHandle });

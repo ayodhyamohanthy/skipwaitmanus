@@ -60,9 +60,51 @@ export default function ConnectAssistant() {
   const query = new URLSearchParams(queryString);
   const requestedProvider = PROVIDERS.includes((query.get("provider") ?? "") as (typeof PROVIDERS)[number]) ? (query.get("provider") as (typeof PROVIDERS)[number]) : "chatgpt";
   const provider = requestedProvider;
-  const label = PROVIDER_LABEL[provider];
+  // OAuth mode: an assistant sent the member here with a registered client, an exact redirect and a PKCE challenge.
+  const oauth = query.get("client_id") && query.get("redirect_uri") && query.get("code_challenge") && query.get("response_type") === "code"
+    ? { clientId: query.get("client_id")!, redirectUri: query.get("redirect_uri")!, codeChallenge: query.get("code_challenge")!, method: query.get("code_challenge_method") ?? "", state: query.get("state") ?? "" }
+    : null;
+  const [clientName, setClientName] = useState<string | null>(null);
+  const label = oauth && clientName ? clientName : PROVIDER_LABEL[provider];
+  useEffect(() => {
+    if (!oauth) return;
+    void (async () => {
+      try {
+        const response = await fetch(`/api/oauth/client?client_id=${encodeURIComponent(oauth.clientId)}&redirect_uri=${encodeURIComponent(oauth.redirectUri)}`);
+        const payload = await readApiJson<{ clientName?: string }>(response, "");
+        if (response.ok && typeof payload.clientName === "string") setClientName(payload.clientName);
+        else setStage("expired");
+      } catch { setStage("expired"); }
+    })();
+  }, [oauth?.clientId, oauth?.redirectUri]);
+  const finishOAuth = async (decision: "approve" | "deny") => {
+    if (!oauth || working) return;
+    setWorking(true); setError("");
+    try {
+      const token = await fetchToken();
+      const response = await fetch("/api/oauth/authorize", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ client_id: oauth.clientId, redirect_uri: oauth.redirectUri, code_challenge: oauth.codeChallenge, code_challenge_method: oauth.method, state: oauth.state, decision }),
+      });
+      const payload = await readApiJson<{ error?: string; redirectTo?: string }>(response, "We could not connect this assistant");
+      if (!response.ok || !payload.redirectTo) {
+        if (response.status === 402) { setStage("not-on-max"); return; }
+        throw new Error(payload.error || "We could not connect this assistant");
+      }
+      if (decision === "approve") setStage("approved");
+      else setStage("declined");
+      window.location.assign(payload.redirectTo);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "We could not connect this assistant");
+    } finally {
+      setWorking(false);
+    }
+  };
 
   const approve = async () => {
+    if (oauth) { await finishOAuth("approve"); return; }
     if (working) return;
     setWorking(true); setError("");
     try {
@@ -149,7 +191,7 @@ export default function ConnectAssistant() {
           </section>
           <p className="mt-4 flex gap-2 text-xs text-[var(--muted-foreground)]"><Lock className="size-4 shrink-0" />Asks it sends show “Sent with {label}” to the referrer. You can disconnect anytime in Settings → Connected assistants.</p>
           <div className="mt-6 grid gap-2 sm:grid-cols-2">
-            <button type="button" onClick={() => setStage("declined")} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[var(--border)] text-sm font-semibold">Cancel connection</button>
+            <button type="button" onClick={() => { if (oauth) void finishOAuth("deny"); else setStage("declined"); }} className="inline-flex min-h-12 items-center justify-center rounded-xl border border-[var(--border)] text-sm font-semibold">Cancel connection</button>
             <button type="button" disabled={working} onClick={() => { void approve(); }} className="brand-button inline-flex min-h-12 items-center justify-center gap-1">{working ? "Connecting…" : "Approve"}</button>
           </div>
         </>
