@@ -132,6 +132,7 @@ const walletRow = (plan: string) => ({ id: 1, userId: 7, role: "job_seeker", bal
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+  vi.stubEnv("ASSISTANT_TOKENS_LIVE", "1");
   tables = {
     connections: [],
     tokens: [],
@@ -202,6 +203,12 @@ describe("assistant approvals", () => {
     expect(Math.abs(new Date(approval.expiresAt).getTime() - (Date.now() + DAY))).toBeLessThan(1000);
     const listed = await listAssistantApprovals(7);
     expect(listed[0]).toMatchObject({ kind: "ask_send", status: "pending", companyDomain: "wipro.com" });
+  });
+
+  it("refuses to issue tokens until the MCP endpoint is live", async () => {
+    vi.stubEnv("ASSISTANT_TOKENS_LIVE", "");
+    await expect(createAssistantToken(7, { name: "Notion tracker" })).rejects.toThrow(/not available yet/);
+    expect(tables.tokens).toHaveLength(0);
   });
 
   it("rejects invalid approval input", async () => {
