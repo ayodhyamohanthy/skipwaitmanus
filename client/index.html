@@ -33,21 +33,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Analytics loads only when both values were provided at build time;
-      // an unset placeholder previously produced a broken request on every page.
-      (function () {
-        try {
-          var endpoint = "%VITE_ANALYTICS_ENDPOINT%";
-          var websiteId = "%VITE_ANALYTICS_WEBSITE_ID%";
-          if (!endpoint || endpoint.indexOf("%") === 0 || !websiteId || websiteId.indexOf("%") === 0) return;
-          var s = document.createElement("script");
-          s.defer = true;
-          s.src = endpoint + "/umami";
-          s.setAttribute("data-website-id", websiteId);
-          document.head.appendChild(s);
-        } catch (e) {}
-      })();
-    </script>
   </body>
 </html>
