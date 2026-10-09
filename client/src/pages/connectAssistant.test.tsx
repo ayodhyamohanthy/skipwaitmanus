@@ -89,8 +89,11 @@ describe("ConnectAssistant", () => {
       return maxAccess(url) ?? { ok: true, json: async () => ({}) };
     });
     render(<ConnectAssistant />);
-    expect(await screen.findByText(/Callback: chatgpt\.com/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Approve" }));
+    // A self-registered client that calls itself "ChatGPT" is still shown as unverified, with its callback host.
+    expect(await screen.findByText("“ChatGPT” isn't verified by SkipWait")).toBeTruthy();
+    expect(screen.getByText(/will send you back to chatgpt\.com/)).toBeTruthy();
+    expect(screen.queryByText("Connect ChatGPT to SkipWait")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Continue, read & draft only" }));
     expect(await screen.findByText("Taking you back to ChatGPT…")).toBeTruthy();
     const body = JSON.parse(String(fetchMock.mock.calls.find(([url]) => String(url) === "/api/oauth/authorize")?.[1]?.body ?? "{}"));
     expect(body).toMatchObject({ client_id: "swc_abcdefghijklmnopqrstuvwx", code_challenge: "challenge123", decision: "approve", state: "st_1" });
@@ -104,7 +107,7 @@ describe("ConnectAssistant", () => {
   });
 
   it("names an unverified OAuth client and limits it to read and draft", async () => {
-    search.value = `${OAUTH_QUERY}&unverified=1`;
+    search.value = OAUTH_QUERY;
     stubFetch(url => (url.startsWith("/api/oauth/client") ? { ok: true, json: async () => ({ clientName: "JobBot" }) } : maxAccess(url) ?? { ok: true, json: async () => ({}) }));
     render(<ConnectAssistant />);
     expect(await screen.findByText("“JobBot” isn't verified by SkipWait")).toBeTruthy();
@@ -126,11 +129,13 @@ describe("ConnectAssistant", () => {
     expect(screen.getByRole("button", { name: "Sign in to SkipWait" })).toBeTruthy();
   });
 
-  it("shows the expired link state", () => {
-    search.value = "state=expired";
-    stubFetch(url => maxAccess(url) ?? { ok: true, json: async () => ({}) });
+  it("never derives a screen from URL flags the client controls", async () => {
+    // An OAuth state of "expired" or an unverified=0 flag must not change what the person is shown.
+    search.value = `${OAUTH_QUERY.replace("state=st_1", "state=expired")}&unverified=0`;
+    stubFetch(url => (url.startsWith("/api/oauth/client") ? { ok: true, json: async () => ({ clientName: "JobBot" }) } : maxAccess(url) ?? { ok: true, json: async () => ({}) }));
     render(<ConnectAssistant />);
-    expect(screen.getByText("This link has expired")).toBeTruthy();
+    expect(await screen.findByText("“JobBot” isn't verified by SkipWait")).toBeTruthy();
+    expect(screen.queryByText("This link has expired")).toBeNull();
   });
 
   it("cancels to the declined state", async () => {

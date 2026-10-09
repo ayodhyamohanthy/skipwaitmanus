@@ -34,13 +34,13 @@
   ],
   "actions": [
     {
-      "waitFor": "text=Connect ChatGPT to SkipWait"
+      "waitFor": "text=isn't verified by SkipWait"
     },
     {
-      "click": "button:has-text('Approve')"
+      "click": "button:has-text('Continue, read & draft only')"
     },
     {
-      "waitFor": "text=ChatGPT is connected"
+      "waitFor": "text=is connected"
     }
   ]
 }

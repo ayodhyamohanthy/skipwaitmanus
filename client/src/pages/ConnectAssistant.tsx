@@ -55,11 +55,6 @@ export default function ConnectAssistant() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const query = new URLSearchParams(queryString);
-    if (query.get("state") === "expired") setStage("expired");
-    else if (query.get("unverified") === "1") setStage("unverified");
-  }, [queryString]);
-  useEffect(() => {
     if (!isSignedIn) {
       setStage("signed-out");
       return;
@@ -88,8 +83,12 @@ export default function ConnectAssistant() {
       try {
         const response = await fetch(`/api/oauth/client?client_id=${encodeURIComponent(oauth.clientId)}&redirect_uri=${encodeURIComponent(oauth.redirectUri)}`);
         const payload = await readApiJson<{ clientName?: string }>(response, "");
-        if (response.ok && typeof payload.clientName === "string") setClientName(payload.clientName);
-        else setStage("expired");
+        if (response.ok && typeof payload.clientName === "string") {
+          setClientName(payload.clientName);
+          // OAuth clients register themselves (dynamic registration), so the name is self-declared and
+          // SkipWait has verified none of them: always show the unverified-app screen, never a trusted consent.
+          setStage(current => (current === "consent" ? "unverified" : current));
+        } else setStage("expired");
       } catch { setStage("expired"); }
     })();
   }, [oauth?.clientId, oauth?.redirectUri]);
@@ -173,7 +172,7 @@ export default function ConnectAssistant() {
         <Panel className="border-destructive">
           <ShieldAlert className="size-8 text-destructive" />
           <h1 className="mt-3 text-2xl font-semibold">{oauth && clientName ? `“${clientName}” isn't verified by SkipWait` : "This app isn't verified by SkipWait"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">It connected through the open MCP link. It can only read and draft until it's verified. Only continue if you trust it.</p>
+          <p className="mt-2 text-sm text-muted-foreground">{oauth && clientName ? `It named itself “${clientName}”${callback ? ` and will send you back to ${callback}` : ""}. SkipWait has not checked who runs it.` : "It connected through the open MCP link."} It can only read and draft. Only continue if you started this from an app you trust.</p>
           {errorLine}
           <div className="mt-5 grid gap-2 sm:grid-cols-2"><Button variant="outline" onClick={cancel}>Cancel</Button><Button disabled={working} onClick={() => { setChecked(["read", "draft"]); void approve(["read", "draft"]); }}>{working ? "Connecting…" : "Continue, read & draft only"}</Button></div>
         </Panel>
