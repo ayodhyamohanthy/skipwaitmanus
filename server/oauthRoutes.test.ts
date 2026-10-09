@@ -122,3 +122,14 @@ describe("registration and client lookup", () => {
     expect(last).toBe(429);
   });
 });
+
+describe("static discovery files", () => {
+  it("match what the API serves (Pages cannot proxy to the API Worker, so these are static)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const { app } = setup();
+    const auth = JSON.parse(readFileSync(new URL("../client/public/.well-known/oauth-authorization-server", import.meta.url), "utf8"));
+    const res = JSON.parse(readFileSync(new URL("../client/public/.well-known/oauth-protected-resource", import.meta.url), "utf8"));
+    expect(auth).toEqual((await request(app).get("/api/oauth/authorization-server")).body);
+    expect(res).toEqual((await request(app).get("/api/oauth/protected-resource")).body);
+  });
+});
