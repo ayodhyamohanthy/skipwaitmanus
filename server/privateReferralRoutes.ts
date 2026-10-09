@@ -4,7 +4,8 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
-import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, notifySeekerAlertsForCompany, revokeReferralShareCard } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, isWorkEmailDomain, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, notifySeekerAlertsForCompany, revokeReferralShareCard, getExploreCoverage } from "./db";
+import { hasDeliverableMailDomain } from "./workEmailOtp";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
@@ -39,6 +40,7 @@ export type PrivateReferralRouteDeps = {
   clearUnattachedResumeUploads?: (ownerId: number) => Promise<{ cleared: number; fileKeys: string[] }>;
   completeResumeUploadSession?: (ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
+  getExploreCoverage?: () => Promise<Array<{ companyDomain: string; referrerCount: number }>>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
   getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
   getReferrerImpactSummary?: (userId: number) => Promise<{ acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> }>;
@@ -418,6 +420,26 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(privacyRequest.alreadyRequested ? 200 : 201).json({ request: privacyRequest });
     } catch { res.status(500).json({ error: "We could not create your account deletion request" }); }
   });
+  app.post("/api/work-email/domain-check", async (req, res) => {
+    // Kit v4 /verify company step for firms outside the launch list: confirms a
+    // domain is a deliverable WORK domain before the picker offers it. Shares
+    // the OTP plane's validators (consumer blocklist + MX/A deliverability);
+    // never sends a code and never discloses accounts or directory membership.
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in before checking a work domain" });
+      const domain = typeof req.body?.domain === "string" ? req.body.domain.trim().toLowerCase() : "";
+      if (!domain || domain.length > 253 || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)) {
+        return res.status(400).json({ error: "Enter a company domain, like acme.com" });
+      }
+      if (!isWorkEmailDomain(domain)) return res.json({ domain, workDomain: false, reason: "personal" });
+      const deliverable = await hasDeliverableMailDomain(domain);
+      res.set("Cache-Control", "private, no-store");
+      return res.json(deliverable
+        ? { domain, workDomain: true }
+        : { domain, workDomain: false, reason: "undeliverable" });
+    } catch { res.status(500).json({ error: "We could not check that domain" }); }
+  });
   app.post("/api/work-email/otp/send", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
@@ -604,6 +626,17 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const message = error instanceof Error ? error.message : "We could not remove this alert";
       res.status(/not in your account/i.test(message) ? 404 : 500).json({ error: message });
     }
+  });
+  app.get("/api/explore/coverage", async (_req, res) => {
+    // Kit v4 /explore company cards: live referrer availability as a
+    // privacy-safe aggregate (distinct verified referrers with open capacity
+    // per domain). Public — explore is a signed-out funnel. No identity, no
+    // names, no per-person data leaves the server.
+    try {
+      const coverage = await (deps.getExploreCoverage ?? getExploreCoverage)();
+      res.set("Cache-Control", "public, max-age=60");
+      return res.json({ coverage });
+    } catch { res.status(500).json({ error: "We could not load company availability" }); }
   });
   app.get("/api/company-referrals/access", async (req, res) => {
     try {

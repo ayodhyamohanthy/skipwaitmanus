@@ -6,7 +6,7 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
 type Company = { name: string; slug: string; initials: string; domain: string };
-const COMPANIES: Company[] = [
+const LAUNCH_COMPANIES: Company[] = [
   { name: "SkipWait", slug: "skipwait", initials: "SW", domain: "skipwait.me" },
   { name: "Wipro", slug: "wipro", initials: "W", domain: "wipro.com" },
   { name: "Go Neutrinos", slug: "go-neutrinos", initials: "GN", domain: "goneutrinos.com" },
@@ -17,12 +17,22 @@ const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com"
 const MAX_ATTEMPTS = 5;
 type Step = "company" | "email" | "code" | "done";
 
+function companyForDomain(domain: string): Company {
+  const found = LAUNCH_COMPANIES.find(item => item.domain === domain.toLowerCase());
+  if (found) return found;
+  const host = domain.toLowerCase().split(".")[0] || domain.toLowerCase();
+  return { name: domain, slug: `custom:${domain.toLowerCase()}`, initials: host.slice(0, 2).toUpperCase(), domain: domain.toLowerCase() };
+}
+
 export default function Verify() {
   const [, go] = useLocation();
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [step, setStep] = useState<Step>("company");
   const [company, setCompany] = useState("wipro");
+  const [customDomain, setCustomDomain] = useState("");
+  const [customError, setCustomError] = useState("");
+  const [checking, setChecking] = useState(false);
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState("");
   const [sending, setSending] = useState(false);
@@ -33,7 +43,9 @@ export default function Verify() {
   const [resendIn, setResendIn] = useState(0);
   const [validUntil, setValidUntil] = useState("");
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
-  const selected = COMPANIES.find(item => item.slug === company) ?? COMPANIES[1];
+  const selected = company.startsWith("custom:")
+    ? companyForDomain(company.slice("custom:".length))
+    : LAUNCH_COMPANIES.find(item => item.slug === company) ?? LAUNCH_COMPANIES[1];
   const locked = attempts >= MAX_ATTEMPTS;
 
   useEffect(() => {
@@ -51,6 +63,27 @@ export default function Verify() {
       throw new Error(payload.error || "Work-email verification is unavailable right now" + (retry > 0 ? ` Try again in ${Math.ceil(retry / 60)} minutes.` : ""));
     }
     return payload;
+  };
+
+  const checkCustomDomain = async () => {
+    const domain = customDomain.trim().toLowerCase();
+    if (!domain) { setCustomError("Enter your company domain, like acme.com"); return; }
+    setCustomError(""); setChecking(true);
+    try {
+      const token = await fetchToken();
+      const response = await fetch("/api/work-email/domain-check", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ domain }) });
+      const payload = await readApiJson<{ workDomain?: boolean; reason?: string; error?: string }>(response, "We could not check that domain");
+      if (!response.ok) throw new Error(payload.error || "We could not check that domain");
+      if (!payload.workDomain) {
+        setCustomError(payload.reason === "personal"
+          ? "Personal inboxes can't prove where you work. Enter your company domain instead."
+          : "That domain can't receive email. Check the spelling or suggest the company instead.");
+        return;
+      }
+      setCompany(`custom:${domain}`);
+      setStep("email");
+    } catch (reason) { setCustomError(reason instanceof Error ? reason.message : "We could not check that domain"); }
+    finally { setChecking(false); }
   };
 
   const sendCode = async () => {
@@ -129,13 +162,22 @@ export default function Verify() {
             <div>
               <Building2 className="mb-3 text-[var(--primary)]" /><h2 className="text-2xl font-semibold">Where do you work?</h2><p className="mt-1 text-[var(--muted-foreground)]">Pick the company you&apos;ll refer into.</p>
               <div className="mt-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Company">
-                {COMPANIES.map(item => (
+                {LAUNCH_COMPANIES.map(item => (
                   <button key={item.slug} type="button" role="radio" aria-checked={company === item.slug} onClick={() => setCompany(item.slug)} className={`flex min-h-14 items-center gap-3 rounded-[20px] border p-3 text-left ${company === item.slug ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-[var(--border)]"}`}>
                     <span className="company-mark">{item.initials}</span>
                     <span className="min-w-0 flex-1"><strong className="block">{item.name}</strong><small className="text-[var(--muted-foreground)]">@{item.domain}</small></span>
                     {company === item.slug ? <Check className="text-[var(--primary)]" /> : null}
                   </button>
                 ))}
+              </div>
+              <div className="mt-6 rounded-2xl border border-[var(--border)] p-4">
+                <label className="block text-sm font-medium">Work somewhere else?
+                  <span className="mt-2 flex gap-2">
+                    <input value={customDomain} onChange={event => { setCustomDomain(event.target.value); setCustomError(""); }} onKeyDown={event => { if (event.key === "Enter") void checkCustomDomain(); }} placeholder="acme.com" inputMode="url" autoComplete="off" aria-invalid={Boolean(customError)} aria-describedby="custom-domain-msg" className={`h-12 min-w-0 flex-1 rounded-xl border bg-[var(--background)] px-4 text-base ${customError ? "border-[var(--destructive)]" : "border-[var(--input)]"}`} />
+                    <button type="button" className="brand-button shrink-0" disabled={checking} onClick={() => { void checkCustomDomain(); }}>{checking ? "Checking…" : <>Check <ArrowRight /></>}</button>
+                  </span>
+                </label>
+                {customError ? <p id="custom-domain-msg" role="alert" className="mt-2 flex items-start gap-2 text-sm text-[var(--destructive)]"><AlertTriangle className="mt-0.5 size-4 shrink-0" />{customError}</p> : <p id="custom-domain-msg" className="mt-2 text-sm text-[var(--muted-foreground)]">We check the domain can receive email before offering it — no code is sent yet.</p>}
               </div>
               <p className="mt-4 text-sm text-[var(--muted-foreground)]">Company not listed? <Link href="/suggest-company" className="text-link">Suggest it</Link> — we add companies after review.</p>
               <div className="mt-8 flex justify-end"><button type="button" className="brand-button" onClick={() => setStep("email")}>Continue <ArrowRight /></button></div>

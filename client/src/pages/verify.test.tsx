@@ -81,4 +81,30 @@ describe("Verify work email", () => {
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
     expect(await screen.findByText(/Too many code requests/)).toBeTruthy();
   });
+
+  it("verifies any deliverable company domain, not only the launch list", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/domain-check")
+      ? ok({ domain: "acme.com", workDomain: true })
+      : ok({ sent: true })));
+    render(<Verify />);
+    fireEvent.change(screen.getByPlaceholderText("acme.com"), { target: { value: "acme.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+    expect(await screen.findByText("Your acme.com email")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@acme.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
+    expect(await screen.findByText("Enter the code")).toBeTruthy();
+  });
+
+  it("refuses personal and undeliverable domains before any code is sent", async () => {
+    const seen: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      seen.push(String(url));
+      return String(url).includes("/domain-check") ? ok({ domain: "gmail.com", workDomain: false, reason: "personal" }) : ok({ sent: true });
+    }));
+    render(<Verify />);
+    fireEvent.change(screen.getByPlaceholderText("acme.com"), { target: { value: "gmail.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "Check" }));
+    expect(await screen.findByText(/Personal inboxes can't prove where you work/)).toBeTruthy();
+    expect(seen.every(url => !url.includes("/otp/send"))).toBe(true);
+  });
 });
