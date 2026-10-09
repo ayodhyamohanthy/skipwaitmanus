@@ -210,7 +210,7 @@ Every state below was captured with `scripts/kit-screens/capture.mjs` at 1280 (w
 | 19-20 | `/plans` (+2 steps), `/billing` (4 states) | Mostly matched | c96fbd8 | Live Pro/Max kept. No yearly prices; no payment-failure/dunning record; no plan-change or undo-cancel endpoint. |
 | 22-23 | `/assistants` (4), `/approve` (6) | Mostly matched | 3433fc1 | No "Sent with" provenance for referrers; approvals send no push/Alerts notification; credit_spend approvals move no credits. |
 | 24-26 | `/connect-assistant` (7), `/developers`, `/developer-console` (6) | Mostly matched | dc753ad | Developer apps have no client secret and cannot authenticate yet; webhooks stored, never delivered; no per-app limits. |
-| 27-28, 30 | `/safety`, `/help`, `/suggest-company` | Mostly matched | 5ecfe07 | No review SLA; block and deletion stay support-handled. |
+| 27-28, 30 | `/safety`, `/help`, `/suggest-company` | Mostly matched | 5ecfe07 | No review SLA; blocking is self-serve (Report flow "Also block this person" toggle; Settings lists and unblocks); deletion stays support-handled. |
 | 33 | `/app-states` (9) + 404 | Mostly matched | 89587ae | No web push (no VAPID/subscription). Gallery now inside the shell. |
 | 35 | `/employer` (2) | Mostly matched | bc7f6e3 | No company-level referral stats; no domains/invite/settings backends. |
 | 36-37 | `/admin` (+step), `/admin-review` | Mostly matched | 3e4ce96 | Flow-health has all-time totals only (no weekly series). |
