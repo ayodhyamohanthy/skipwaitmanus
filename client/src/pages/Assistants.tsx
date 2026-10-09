@@ -181,6 +181,8 @@ export default function Assistants() {
   }
 
   const onMax = plan === "max";
+  // plan is null until access loads (or when it fails); never show the upsell to someone whose plan we do not know.
+  const planKnownNotMax = plan !== null && !onMax;
 
   return (
     <main data-skipwait-screen="assistants" className="page-content mx-auto max-w-3xl">
@@ -188,7 +190,7 @@ export default function Assistants() {
       <h1 className="mt-2 text-4xl font-semibold">Connected assistants<span className="brand-dot">.</span></h1>
       <p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Use SkipWait from ChatGPT, Claude and your own tools. You stay in control of every ask and every credit.</p>
 
-      {!onMax ? (
+      {planKnownNotMax ? (
         <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--muted)] p-8 text-center">
           <Bot className="mx-auto mb-3 size-8" />
           <h2 className="text-lg font-semibold">Assistants and API tokens come with Max</h2>

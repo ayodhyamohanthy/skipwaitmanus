@@ -232,7 +232,8 @@ describe("assistant approvals", () => {
     await expect(editAssistantApproval(7, stale!.id, { note: "x".repeat(10) })).rejects.toThrow(/expired/);
     const listed = await listAssistantApprovals(7);
     expect(listed[0].status).toBe("expired");
-    await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/already handled/);
+    // Once expired it stays honestly "expired", never "already handled".
+    await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/expired/);
   });
 });
 
