@@ -491,9 +491,6 @@ export async function createAssistantToken(userId: number, input: { name?: unkno
   const name = validateAppName(input.name);
   if (!name) throw new Error("Give the token a name, like “Notion tracker”");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  // Nothing verifies these tokens yet (the MCP endpoint is not live), so issuing one would hand a
-  // user a credential that does nothing. Off until the endpoint ships; then set ASSISTANT_TOKENS_LIVE=1.
-  if (process.env.ASSISTANT_TOKENS_LIVE !== "1") throw new Error("API tokens are not available yet. They turn on when assistants can connect.");
   assertAssistantAccess(await getAssistantAccessPlan(userId));
   const plaintext = `sw_${randomBytes(24).toString("base64url")}`;
   const tokenHash = createHash("sha256").update(plaintext).digest("hex");
@@ -506,6 +503,20 @@ export async function createAssistantToken(userId: number, input: { name?: unkno
     if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already have a token named “${name}”`);
     throw error instanceof Error ? error : new Error("We could not create this token");
   }
+}
+
+/** Resolves a bearer token hash to its owner. Revoked or unknown tokens return null. */
+export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId: number; tokenId: number } | null> {
+  const db = await getDb(); if (!db) return null;
+  const row = (await db.select({ id: assistantTokens.id, userId: assistantTokens.userId }).from(assistantTokens).where(and(eq(assistantTokens.tokenHash, tokenHash), isNull(assistantTokens.revokedAt))).limit(1))[0];
+  if (!row) return null;
+  await db.update(assistantTokens).set({ lastUsedAt: new Date() }).where(eq(assistantTokens.id, row.id)).catch(() => undefined);
+  return { userId: row.userId, tokenId: row.id };
+}
+
+/** True when the owner's plan still includes assistants. */
+export async function hasAssistantAccess(userId: number): Promise<boolean> {
+  try { return (await getAssistantAccessPlan(userId)) === ASSISTANT_MIN_PLAN; } catch { return false; }
 }
 
 export async function revokeAssistantToken(userId: number, tokenId: number) {
