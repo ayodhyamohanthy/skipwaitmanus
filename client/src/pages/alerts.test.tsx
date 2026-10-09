@@ -16,15 +16,17 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/alerts", go],
 }));
 
-const now = Date.now();
+// Fixed local midday: "12 minutes ago" must be today whatever time CI runs (a run just after
+// midnight UTC used to push these onto yesterday and break the Today group).
+const now = new Date(2026, 9, 9, 12, 0, 0).getTime();
 const ITEMS = [
   { id: 1, category: "referral", title: "Your ask was accepted", body: "A verified referrer at Wipro accepted", readAt: null, createdAt: new Date(now - 12 * 60000).toISOString() },
   { id: 2, category: "message", title: "New message", body: "Happy to help", readAt: null, createdAt: new Date(now - 60 * 60000).toISOString() },
   { id: 3, category: "system", title: "Weekly summary", body: "Your week on SkipWait", readAt: new Date(now - 2 * 86400000).toISOString(), createdAt: new Date(now - 2 * 86400000).toISOString() },
 ];
 
-beforeEach(() => { authState.isSignedIn = true; go.mockReset(); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+beforeEach(() => { authState.isSignedIn = true; go.mockReset(); vi.useFakeTimers({ toFake: ["Date"], now }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("Alerts center", () => {
   it("groups real notifications into Today and Earlier with unread counts", async () => {
