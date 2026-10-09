@@ -145,6 +145,21 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "assistantApprovals", column: "connectionId", referencedTable: "assistantConnections", referencedColumn: "id" },
 ];
 
+// Foreign keys the running code relies on. Unlike tables and columns, a FK is
+// never created here: reconcile only READS, so every entry must already be
+// created by a drizzle/deploy/*.sql migration, which server/schemaDeployGuard.test.ts
+// enforces. Keep in sync with the .references() calls in drizzle/schema.ts.
+//
+// Dropped 2026-09-24: this list also required resumeUploadChunks.acceptedAttemptId
+// -> resumeUploadAttempts.id. Production satisfies it, but no file in the
+// repository can: schema.ts declares neither the column nor the table, and no
+// deploy migration creates them, so a database rebuilt from repo SQL could never
+// pass and would sit at /api/health/ready 503 forever. Nothing reads the column.
+// The live table it implies is undocumented source/prod drift, not a requirement.
+export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; referencedTable: string; referencedColumn: string }> = [
+  { table: "referralAttachments", column: "uploadSessionId", referencedTable: "resumeUploadSessions", referencedColumn: "id" },
+];
+
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
 // from DESIRED_COLUMNS + DESIRED_TABLES above. Nothing request-controlled is
 // ever interpolated — the admin trigger just chooses WHEN the allowlist runs.
