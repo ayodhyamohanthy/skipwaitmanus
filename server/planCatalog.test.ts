@@ -14,7 +14,7 @@ describe("plan catalog matches the kit and the recommended numbers", () => {
     expect(plan("land_100")).toMatchObject({ creditsPerMonth: 120, openRequests: 30, carryover: "subscribed" });
     expect(plan("land_100").prices.yearly.USD).toBe(100_000);
   });
-  it("Land levels: $200 and Concierge follow the recommendation", () => {
+  it("Land levels: $200 and Concierge follow the locked table", () => {
     expect(plan("land_200")).toMatchObject({ creditsPerMonth: 300, openRequests: 60 });
     expect(plan("land_500")).toMatchObject({ creditsPerMonth: 1_000, openRequests: null });
     expect([100, 200, 500].map(d => plan(`land_${d}`).prices.monthly.USD)).toEqual([10_000, 20_000, 50_000]);

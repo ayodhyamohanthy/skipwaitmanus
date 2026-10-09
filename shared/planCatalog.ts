@@ -1,11 +1,10 @@
 /**
  * Kit v4 plan catalog (screens 19 plans, 20 billing). Data only: nothing reads it
  * yet, so adding it changes no live behavior. The live price book stays in
- * subscriptionPlans.ts (Pro/Max) until the founder-approved switch.
+ * subscriptionPlans.ts (Pro/Max) until the live switch.
  *
- * Numbers: kit screens for Start, Momentum and Land $100 (credits, open requests,
- * carryover). Land $200 and Concierge, the credit packs and all INR prices are the
- * founder-delegated recommendation of Oct 9, 2026, and are changeable data here.
+ * Pricing per kit screens (19_plans/20_billing), locked Oct 9 2026; INR table ~Rs 86/$.
+ * Changeable data.
  */
 export type CatalogTier = "free" | "start" | "momentum" | "land";
 export type CatalogInterval = "monthly" | "yearly";
