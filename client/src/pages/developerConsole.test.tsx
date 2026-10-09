@@ -8,6 +8,7 @@ const { authState, go } = vi.hoisted(() => ({ authState: { isSignedIn: true, get
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => authState,
+  useUser: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, user: authState.isSignedIn ? { primaryEmailAddress: { emailAddress: "dev@instinct.app" } } : null }),
   SignInButton: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
 }));
 vi.mock("wouter", () => ({
@@ -32,7 +33,27 @@ describe("Developer console", () => {
     render(<DeveloperConsole />);
     expect(await screen.findByText("Your apps")).toBeTruthy();
     expect(await screen.findByText("Instinct")).toBeTruthy();
-    expect(screen.getByText("AI agent or MCP client · Test mode")).toBeTruthy();
+    expect(screen.getByText("AI agent · Test mode")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "dev@instinct.app" }).getAttribute("href")).toBe("/settings");
+  });
+
+  it("shows an honest empty state when no apps are registered", async () => {
+    stubFetch(url => (String(url).includes("/api/developer-apps") ? { ok: true, json: async () => ({ apps: [] }) } : { ok: true, json: async () => ({}) }));
+    render(<DeveloperConsole />);
+    expect(await screen.findByText("No apps yet")).toBeTruthy();
+  });
+
+  it("shows the load error with a retry", async () => {
+    let calls = 0;
+    stubFetch(url => {
+      if (!String(url).includes("/api/developer-apps")) return { ok: true, json: async () => ({}) };
+      calls += 1;
+      return calls === 1 ? { ok: false, json: async () => ({ error: "We could not load your apps" }) } : { ok: true, json: async () => ({ apps: APPS }) };
+    });
+    render(<DeveloperConsole />);
+    expect((await screen.findByRole("alert")).textContent).toContain("We could not load your apps");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Instinct")).toBeTruthy();
   });
 
   it("shows app details with the client id and webhook", async () => {
@@ -42,6 +63,40 @@ describe("Developer console", () => {
     expect(await screen.findByText("Credentials")).toBeTruthy();
     expect(screen.getByText("sw_app_7f3k29ab")).toBeTruthy();
     expect(screen.getByLabelText("Webhook URL")).toBeTruthy();
+    // No client secret exists yet; never show a masked fake one.
+    expect(screen.getByText("Not issued yet")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Rotate" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Your apps" }));
+    expect(await screen.findByText("Your apps")).toBeTruthy();
+  });
+
+  it("opens an in-review app on its status, with credentials one tap away", async () => {
+    stubFetch(url => (String(url).includes("/api/developer-apps") ? { ok: true, json: async () => ({ apps: [{ ...APPS[0], status: "in_review" }] }) } : { ok: true, json: async () => ({}) }));
+    render(<DeveloperConsole />);
+    fireEvent.click(await screen.findByText("Instinct"));
+    expect(await screen.findByText("Instinct is in review")).toBeTruthy();
+    expect(screen.queryByText("Credentials")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open test credentials" }));
+    expect(await screen.findByText("sw_app_7f3k29ab")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Submit for review" })).toBeNull();
+  });
+
+  it("shows a suspended app with the safety-team contact", async () => {
+    stubFetch(url => (String(url).includes("/api/developer-apps") ? { ok: true, json: async () => ({ apps: [{ ...APPS[0], status: "suspended" }] }) } : { ok: true, json: async () => ({}) }));
+    render(<DeveloperConsole />);
+    fireEvent.click(await screen.findByText("Instinct"));
+    expect(await screen.findByText("App suspended")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Contact safety team" }).getAttribute("href")).toBe("/help");
+  });
+
+  it("does not register an app without a name and description", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => (String(url).includes("/api/developer-apps") && !init?.method ? { ok: true, json: async () => ({ apps: [] }) } : { ok: true, json: async () => ({}) }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<DeveloperConsole />);
+    fireEvent.click(await screen.findByRole("button", { name: /New app/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Create app" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Add the app name");
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
   });
 
   it("submits a test app for review", async () => {
@@ -99,6 +154,25 @@ describe("Developer console", () => {
     fireEvent.click(await screen.findByText("Instinct"));
     expect(await screen.findByText("Changes needed")).toBeTruthy();
     expect(screen.getByText("Your app sends asks without showing the user the final note first.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Edit and resubmit" }));
+    expect(await screen.findByText("Register an app")).toBeTruthy();
+    expect((screen.getByPlaceholderText("Instinct") as HTMLInputElement).value).toBe("Instinct");
+  });
+
+  it("lets a rejected app be resubmitted as is from its details", async () => {
+    const rejected = [{ ...APPS[0], status: "rejected", rejectReasons: ["Privacy policy link is missing."] }];
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/api/developer-apps") && !init?.method) return { ok: true, json: async () => ({ apps: rejected }) };
+      if (String(url).includes("/submit") && init?.method === "POST") return { ok: true, json: async () => ({ app: { status: "in_review" } }) };
+      return { ok: true, json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<DeveloperConsole />);
+    fireEvent.click(await screen.findByText("Instinct"));
+    fireEvent.click(await screen.findByRole("button", { name: "Open app details" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Submit for review" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/developer-apps/1/submit", expect.objectContaining({ method: "POST" })));
+    expect(await screen.findByText("Instinct is in review")).toBeTruthy();
   });
 
   it("asks signed-out visitors to sign in", () => {

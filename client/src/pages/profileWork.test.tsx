@@ -61,6 +61,43 @@ describe("Profile page", () => {
     await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
     expect(bodies[bodies.length - 1].openTo).toEqual(["Product Designer", "UX Lead"]);
   });
+
+  it("switches to the referrer profile with the verified company and honest privacy copy", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).endsWith("/referrer-preferences")) return ok({ preferences: { referrerVisibility: "named" } });
+      return ok({ displayName: "Asha R.", profile: { headline: "Design Lead", currentTitle: null, location: null, bio: null, skills: null, openTo: null, company: null, workEmailDomain: "wipro.com", workEmailVerifiedAt: "2026-01-01", handle: "asha-r", profileVisibility: "private" } });
+    }));
+    render(<Profile />);
+    expect(await screen.findByText("Only referrers reviewing your ask see context.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "Referrer profile" }));
+    expect(screen.getByRole("option", { name: "wipro.com" })).toBeTruthy();
+    expect(screen.queryByText("Resume")).toBeNull();
+    expect(await screen.findByText("Seekers see your name, company and function.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Referrer settings" }).getAttribute("href")).toBe("/referrer-setup");
+  });
+
+  it("never claims a public profile is undiscoverable and ships no preview scaffolding", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ displayName: "Asha R.", profile: { headline: null, currentTitle: null, location: null, bio: null, skills: null, openTo: null, company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: null, profileVisibility: "public" } })));
+    render(<Profile />);
+    expect(await screen.findByText("Publicly discoverable")).toBeTruthy();
+    expect(screen.queryByText("Not publicly discoverable")).toBeNull();
+    expect(screen.queryByText(/PREVIEW ONLY/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /View public profile/ })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Referrer profile" }));
+    expect(screen.getByRole("option", { name: "Select verified company" })).toBeTruthy();
+  });
+
+  it("offers a retry when the profile cannot load", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      calls += 1;
+      if (calls === 1) return { ok: false, status: 500, json: async () => ({ error: "We could not load your profile" }) };
+      return ok({ displayName: "Asha R.", profile: { headline: "Designer", currentTitle: null, location: null, bio: null, skills: null, openTo: null, company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: null, profileVisibility: "private" } });
+    }));
+    render(<Profile />);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByDisplayValue("Designer")).toBeTruthy();
+  });
 });
 
 describe("Work showcase", () => {
@@ -90,8 +127,8 @@ describe("Work showcase", () => {
     render(<Work />);
     expect(await screen.findByText("Redesign")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Add work" }));
-    fireEvent.change(screen.getByPlaceholderText("Enterprise approvals redesign"), { target: { value: "Launch" } });
-    fireEvent.click(screen.getByRole("button", { name: "Save work" }));
+    fireEvent.change(screen.getByPlaceholderText("e.g. Redesigned onboarding for a fintech app"), { target: { value: "Launch" } });
+    fireEvent.click(screen.getByRole("button", { name: "Publish to profile" }));
     expect(await screen.findByText("Launch")).toBeTruthy();
     const launchCard = screen.getByText("Launch").closest("article") as HTMLElement;
     fireEvent.click(within(launchCard).getByRole("button", { name: "Pin" }));
@@ -115,6 +152,56 @@ describe("Work showcase", () => {
     expect(screen.queryByRole("button", { name: "Pin" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Unpin" })).toBeNull();
   });
+
+  it("publishes privately or to the profile and switches visibility per piece", async () => {
+    const posts: Array<Record<string, unknown>> = [];
+    const patches: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/work-items") && init?.method === "POST") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        posts.push(body);
+        return ok({ item: { id: 7, title: body.title, kind: body.kind, source: null, url: null, pinned: false, visibleOnProfile: body.visibleOnProfile } });
+      }
+      if (init?.method === "PATCH") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        patches.push(body);
+        return ok({ item: { id: 3, title: "Redesign", kind: "case_study", source: null, url: null, pinned: false, visibleOnProfile: body.visibleOnProfile } });
+      }
+      if (String(url).endsWith("/profile/me")) return ok({ displayName: "Asha R.", profile: { headline: "Designer", handle: "asha-r" } });
+      return ok({ items: [{ id: 3, title: "Redesign", kind: "case_study", source: null, url: null, pinned: false, visibleOnProfile: true }] });
+    }));
+    render(<Work />);
+    expect(await screen.findByText("Redesign")).toBeTruthy();
+    expect(await screen.findByText("asha-r")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Add work" }));
+    fireEvent.click(screen.getByRole("button", { name: "Publish to profile" }));
+    expect(await screen.findByText("Give each work item a title.")).toBeTruthy();
+    expect(posts).toHaveLength(0);
+    fireEvent.change(screen.getByPlaceholderText("e.g. Redesigned onboarding for a fintech app"), { target: { value: "Notes" } });
+    fireEvent.click(screen.getByRole("radio", { name: "Article" }));
+    fireEvent.click(screen.getByRole("button", { name: "Only me" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save privately" }));
+    await waitFor(() => expect(posts).toHaveLength(1));
+    expect(posts[0]).toMatchObject({ title: "Notes", kind: "article", visibleOnProfile: false });
+    const card = (await screen.findByText("Redesign")).closest("article") as HTMLElement;
+    fireEvent.change(within(card).getByRole("combobox", { name: "Who can see this" }), { target: { value: "hidden" } });
+    await waitFor(() => expect(patches).toEqual([{ visibleOnProfile: false }]));
+    expect(screen.queryByText(/Import from other platforms/)).toBeNull();
+    expect(screen.queryByText(/DESIGN PREVIEW/)).toBeNull();
+  });
+
+  it("shows a retry when work cannot load", async () => {
+    let calls = 0;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).endsWith("/profile/me")) return ok({ displayName: "Asha R.", profile: null });
+      calls += 1;
+      if (calls === 1) return { ok: false, status: 500, json: async () => ({ error: "We could not load your work" }) };
+      return ok({ items: [{ id: 3, title: "Redesign", kind: "case_study", source: null, url: null, pinned: false, visibleOnProfile: true }] });
+    }));
+    render(<Work />);
+    fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Redesign")).toBeTruthy();
+  });
 });
 
 describe("PublicProfile page", () => {
@@ -131,9 +218,8 @@ describe("PublicProfile page", () => {
   it("renders open-to chips from the public profile", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "public", isOwner: false, displayName: "Asha R.", headline: null, currentTitle: null, location: null, bio: null, skills: null, openTo: ["Product Designer", "UX Lead"], verifiedWork: null, handle: "asha-r", workItems: [] } })));
     render(<PublicProfile />);
-    expect(await screen.findByText("Open to")).toBeTruthy();
-    expect(screen.getByText("Product Designer")).toBeTruthy();
-    expect(screen.getByText("UX Lead")).toBeTruthy();
+    expect(await screen.findByText("Open to: Product Designer")).toBeTruthy();
+    expect(screen.getByText("Open to: UX Lead")).toBeTruthy();
   });
 
   it("shows the private gate to visitors with no leaked content", async () => {
@@ -152,10 +238,20 @@ describe("PublicProfile page", () => {
       return ok({ profile: { visible: true, visibility: visibility.value, isOwner: true, displayName: "Asha R.", headline: null, currentTitle: null, location: null, bio: null, skills: null, verifiedWork: null, handle: "asha-r", workItems: [] } });
     }));
     render(<PublicProfile />);
-    expect(await screen.findByText("Who can see this")).toBeTruthy();
+    expect(await screen.findByText("WHO CAN SEE THIS")).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Link only" })).toHaveProperty("ariaChecked", "true");
     fireEvent.click(screen.getByRole("radio", { name: "Private" }));
     await waitFor(() => expect(visibility.value).toBe("private"));
     await waitFor(() => expect(screen.getByRole("radio", { name: "Private" })).toHaveProperty("ariaChecked", "true"));
+  });
+  it("labels owner-only pieces honestly and ships no preview toggles", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "link", isOwner: true, displayName: "Asha R.", headline: null, currentTitle: null, location: null, bio: null, skills: null, openTo: [], verifiedWork: null, handle: "asha-r", workItems: [{ id: 4, title: "Prototype kit", kind: "code", source: "GitHub", url: null, pinned: false, visibleOnProfile: false }] } })));
+    render(<PublicProfile />);
+    expect(await screen.findByText("Prototype kit")).toBeTruthy();
+    expect(screen.getByText("Only visible to you")).toBeTruthy();
+    expect(screen.queryByText("Shown only in requests")).toBeNull();
+    expect(screen.queryByText("Visitor")).toBeNull();
+    expect(screen.queryByText(/EXAMPLE PROFILE/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Share" })).toBeTruthy();
   });
 });

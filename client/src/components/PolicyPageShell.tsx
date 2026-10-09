@@ -1,19 +1,21 @@
 import { useEffect, type ReactNode } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Brand } from "@/components/Brand";
 import { applySeo } from "@/lib/seo";
+import { cn } from "@/lib/utils";
 import { breadcrumbsFor, publicRoute } from "@shared/publicRoutes";
 
 /**
- * Long-form disclosure shell shared by /terms, /refunds, /shipping, and /support.
+ * Kit v4 legal/reading layout (app/src/components/legal-page.tsx) shared by
+ * /terms, /privacy, /guidelines, /refunds, /cancellations, /shipping, /about,
+ * /contact, /pricing and /support.
  *
- * These are reading pages, not guided flows, so they scroll normally
- * (`min-h-screen`) like /privacy. One hero card, numbered sections, and a
- * footer that cross-links the other policies so a reader never dead-ends.
- * The "Draft" pill stays until founder/legal review signs off (see
- * docs/pre-launch-checklist.md, P0 legal disclosures).
+ * Wordmark header with the legal nav, eyebrow + title, "Last updated", an
+ * optional "The short version" card, then numbered sections with an
+ * "On this page" rail on desktop. Reading pages scroll normally. The kit's
+ * design-only draft banner is never rendered; a page that is genuinely
+ * awaiting review passes `status="draft"` and shows an inline status instead.
  */
 /** Founder approved publishing Terms and Refunds on Sep 23, 2026 (removes the Draft badge). */
 export const POLICIES_PUBLISHED = true;
@@ -30,6 +32,14 @@ export const policyLinks = [
   { href: "/about", label: "About us" },
   { href: "/contact", label: "Contact us" },
   { href: "/support", label: "Support" },
+] as const;
+
+/** Kit legal header nav. Help collapses on phones exactly as the kit does. */
+const LEGAL_NAV = [
+  { href: "/terms", label: "Terms", phone: true },
+  { href: "/privacy", label: "Privacy", phone: true },
+  { href: "/guidelines", label: "Guidelines", phone: true },
+  { href: "/help", label: "Help", phone: false },
 ] as const;
 
 /**
@@ -54,19 +64,19 @@ const POLICY_SCREEN_PATHS: Record<string, string> = {
  * page and the no-JavaScript HTML the build writes agree; the structured data
  * for it comes from `applySeo`.
  */
-export function Breadcrumbs({ path }: { path: string }) {
+export function Breadcrumbs({ path, className = "mb-4" }: { path: string; className?: string }) {
   const route = publicRoute(path);
   const trail = route ? breadcrumbsFor(route) : [];
   if (trail.length < 2) return null;
   return (
-    <nav aria-label="Breadcrumb" className="mb-4">
-      <ol className="flex flex-wrap items-center gap-1 text-xs font-semibold text-[#505050]">
+    <nav aria-label="Breadcrumb" className={className}>
+      <ol className="flex flex-wrap items-center gap-1 text-xs font-semibold text-muted-foreground">
         {trail.map((crumb, index) => {
           const isLast = index === trail.length - 1;
           return (
             <li key={crumb.path} className="flex items-center gap-1" aria-current={isLast ? "page" : undefined}>
-              {index > 0 ? <ChevronRight aria-hidden className="h-3 w-3 text-[#767676]" /> : null}
-              {isLast ? <span className="text-black">{crumb.label}</span> : <Link href={crumb.path} className="hover:text-black hover:underline">{crumb.label}</Link>}
+              {index > 0 ? <ChevronRight aria-hidden className="size-3" /> : null}
+              {isLast ? <span className="text-foreground">{crumb.label}</span> : <Link href={crumb.path} className="hover:text-foreground hover:underline">{crumb.label}</Link>}
             </li>
           );
         })}
@@ -75,68 +85,90 @@ export function Breadcrumbs({ path }: { path: string }) {
   );
 }
 
+/** "01" renders as the kit's "1." while non-numeric labels pass through. */
+function sectionNumber(number: string): string {
+  const parsed = Number.parseInt(number, 10);
+  return Number.isNaN(parsed) ? number : String(parsed);
+}
+
 export function PolicySection({ number, title, children }: { number: string; title: string; children: ReactNode }) {
-  return <section aria-labelledby={`policy-${number}`} className="rounded-2xl border border-[#e5e5e5] bg-white p-5 sm:p-6">
-    <p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">{number}</p>
-    <h2 id={`policy-${number}`} className="mt-1 text-base font-semibold text-black">{title}</h2>
-    <div className="mt-3 space-y-3 text-sm leading-6 text-[#505050] [&_li]:list-disc [&_ul]:space-y-1.5 [&_ul]:pl-5 [&_strong]:text-black">{children}</div>
+  return <section aria-labelledby={`policy-${number}`}>
+    <h2 id={`policy-${number}`} className="scroll-mt-6 text-xl font-semibold">{sectionNumber(number)}. {title}</h2>
+    <div className="mt-3 space-y-3 leading-relaxed text-muted-foreground [&_strong]:text-foreground [&_ul]:space-y-3">{children}</div>
   </section>;
 }
 
-export function PolicyPageShell({ screen, icon: Icon, eyebrow, title, intro, updated, status = POLICIES_PUBLISHED ? "published" : "draft", sections, children, footnote }: {
+export function PolicyPageShell({ screen, eyebrow, title, intro, updated, status = POLICIES_PUBLISHED ? "published" : "draft", summary, sections, children, footnote }: {
   screen: string;
-  icon: LucideIcon;
+  /** Accepted for existing callers; the kit legal layout has no icon tile. */
+  icon?: LucideIcon;
   eyebrow: string;
   title: string;
   intro: string;
   updated: string;
   status?: "draft" | "published";
+  /** Bullets for the kit "The short version" card. */
+  summary?: readonly string[];
   /** Anchor-nav entries for the numbered sections. Rendered as a left rail on desktop only; mobile keeps the stacked flow. */
   sections?: ReadonlyArray<{ id: string; label: string }>;
   children: ReactNode;
   footnote?: string;
 }) {
   const canonicalPath = POLICY_SCREEN_PATHS[screen];
-  // The description a search engine shows is the one declared for this route,
-  // so the <head> a crawler reads and the page it lands on cannot disagree.
-  const routeDescription = canonicalPath ? publicRoute(canonicalPath)?.description : undefined;
+  const route = canonicalPath ? publicRoute(canonicalPath) : undefined;
+  // The title and description a search engine shows are the ones declared for
+  // this route, so the <head> a crawler reads and the page it lands on agree.
+  const seoTitle = route?.title ?? title;
+  const seoDescription = route?.description ?? intro;
   useEffect(() => {
     // Keeps title, canonical, and share copy correct when a visitor navigates
     // between policy screens inside the single-page app.
-    if (canonicalPath) applySeo({ title, description: routeDescription ?? intro, path: canonicalPath });
-  }, [canonicalPath, intro, routeDescription, title]);
-  return <main data-skipwait-screen={screen} className="min-h-screen bg-white px-5 py-5 text-black sm:px-6 sm:py-8">
-    <div className={`mx-auto ${sections ? "max-w-5xl" : "max-w-3xl"}`}>
-      <header className="flex items-center justify-between gap-4"><Brand /><Link href="/" className="inline-flex min-h-10 items-center gap-1 text-sm font-bold text-[#505050] hover:text-black"><ArrowLeft className="h-4 w-4" />Back</Link></header>
-      {canonicalPath ? <div className="mt-8"><Breadcrumbs path={canonicalPath} /></div> : null}
-      <section className="mt-8 rounded-2xl border border-[#e5e5e5] bg-white p-6 sm:p-9">
-        <div className="flex items-start justify-between gap-3">
-          <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#f5f5f5] text-black"><Icon className="h-5 w-5" /></span>
-          {status === "draft" ? <span className="rounded-full border border-[#b45309]/30 bg-[#b45309]/10 px-3 py-1 text-[11px] font-bold text-[#b45309]">Draft · pending legal review</span> : null}
-        </div>
-        <p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-black">{eyebrow}</p>
-        <h1 className="mt-3 max-w-2xl text-4xl font-semibold tracking-[-.02em]">{title}</h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-[#505050]">{intro}</p>
-        <p className="mt-4 text-xs font-semibold text-[#505050]">Last updated {updated}</p>
-      </section>
-      <div className={sections ? "mt-5 grid min-w-0 gap-6 lg:grid-cols-[220px_minmax(0,1fr)]" : "mt-5 grid gap-3"}>
-        {sections ? (
-          <nav aria-label="On this page" className="hidden lg:block">
-            <ol className="sticky top-6 space-y-1">
-              {sections.map(section => (
-                <li key={section.id}>
-                  <a href={`#policy-${section.id}`} className="block rounded-lg px-3 py-2 text-sm font-semibold text-[#505050] hover:bg-[#f5f5f5] hover:text-black">{section.label}</a>
-                </li>
-              ))}
-            </ol>
-          </nav>
-        ) : null}
-        <div className="grid min-w-0 gap-3">{children}</div>
-      </div>
-      <nav aria-label="Policies" className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-[#505050]">
-        {policyLinks.map(link => <Link key={link.href} href={link.href} className="hover:text-black">{link.label}</Link>)}
+    if (canonicalPath) applySeo({ title: seoTitle, description: seoDescription, path: canonicalPath });
+  }, [canonicalPath, seoDescription, seoTitle]);
+  // The kit sets the closing full stop as the blue brand dot.
+  const heading = title.endsWith(".") ? title.slice(0, -1) : title;
+  // The live intro (including any acceptance clause) leads the reading column,
+  // so the kit header stays eyebrow, title and date.
+  const body = <>
+    <p className="leading-relaxed text-muted-foreground">{intro}</p>
+    {children}
+    {footnote ? <p className="text-sm text-muted-foreground">{footnote}</p> : null}
+    {sections ? <p className="text-sm text-muted-foreground">Questions? Write to <a href={`mailto:${SUPPORT_EMAIL}`} className="font-bold text-foreground">{SUPPORT_EMAIL}</a>.</p> : null}
+  </>;
+  return <div data-skipwait-screen={screen} className="min-h-screen bg-background">
+    <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
+      <Link href="/" className="wordmark" aria-label="SkipWait home">SkipWait<span className="brand-dot">.</span></Link>
+      <nav aria-label="Legal" className="flex gap-4 text-sm">
+        {LEGAL_NAV.map(item => {
+          const active = item.href === canonicalPath;
+          return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn(active && "font-semibold", !item.phone && "hidden sm:inline")}>{item.label}</Link>;
+        })}
       </nav>
-      {footnote ? <p className="mx-auto mt-4 max-w-2xl text-center text-xs leading-5 text-[#505050]">{footnote}</p> : null}
-    </div>
-  </main>;
+    </header>
+    <main className="mx-auto max-w-5xl px-5 pb-20">
+      {/* The breadcrumb trail sits where the kit's design-only draft banner sat. */}
+      <div className="mb-6 flex min-h-7 items-center">{canonicalPath ? <Breadcrumbs path={canonicalPath} className="" /> : null}</div>
+      <span className="eyebrow">{eyebrow}</span>
+      <h1 className="mt-2 max-w-3xl text-4xl font-semibold sm:text-5xl">{heading}<span className="brand-dot">.</span></h1>
+      <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+        <span>Last updated {updated}</span>
+        {status === "draft" ? <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">Draft · pending legal review</span> : null}
+      </p>
+      {summary ? <section aria-labelledby="policy-summary" className="mt-8 rounded-3xl bg-accent p-6 text-accent-foreground">
+        <h2 id="policy-summary" className="font-semibold">The short version</h2>
+        <ul className="mt-3 space-y-2">{summary.map(item => <li key={item} className="flex gap-2"><span aria-hidden>•</span>{item}</li>)}</ul>
+      </section> : null}
+      {sections ? <div className="mt-10 grid gap-10 md:grid-cols-[200px_minmax(0,1fr)]">
+        <nav className="hidden md:block" aria-label="On this page">
+          <ul className="sticky top-6 space-y-2 text-sm">
+            {sections.map(section => <li key={section.id}><a href={`#policy-${section.id}`} className="text-muted-foreground hover:text-foreground">{section.label}</a></li>)}
+          </ul>
+        </nav>
+        <article className="min-w-0 space-y-10">{body}</article>
+      </div> : <article className="mt-10 min-w-0 max-w-3xl space-y-10">{body}</article>}
+      <nav aria-label="Policies" className="mt-16 flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-6 text-xs text-muted-foreground">
+        {policyLinks.map(link => <Link key={link.href} href={link.href} className="hover:text-foreground">{link.label}</Link>)}
+      </nav>
+    </main>
+  </div>;
 }

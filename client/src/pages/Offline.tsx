@@ -12,7 +12,7 @@ export default function Offline() {
       <section className="m-auto w-full max-w-sm px-6 py-10 text-center">
         <span className="mx-auto mb-4 grid size-16 place-items-center rounded-full bg-[var(--muted)]"><WifiOff aria-hidden="true" /></span>
         <h1 className="text-2xl font-semibold">No connection.</h1>
-        <p className="mt-2 text-[var(--muted-foreground)]">Your drafts are saved on this device and will send when you're back online.</p>
+        <p className="mt-2 text-[var(--muted-foreground)]">Your drafts are saved on this device. Send them when you're back online.</p>
         {hasDraft ? <p role="status" className="mt-4 break-words rounded-xl border border-[var(--foreground)] bg-[var(--muted)] px-4 py-3 text-sm font-semibold">Your referral draft is saved on this device: {draft?.targetUrl}</p> : null}
         <button type="button" onClick={() => { const from = new URLSearchParams(window.location.search).get("from"); if (from && from.startsWith("/") && !from.startsWith("//")) window.location.assign(from); else window.location.reload(); }} className="brand-button mt-6 w-full"><RefreshCw className="h-4 w-4" aria-hidden="true" />Try again</button>
       </section>

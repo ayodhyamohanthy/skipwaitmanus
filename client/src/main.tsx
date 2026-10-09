@@ -13,6 +13,7 @@ import "./index.css";
 import { bootstrapSmoke, smokeFetch } from "./contexts/smokeRuntime";
 import { captureClientError, initClientSentry, testClientSentry } from "./lib/sentry";
 import { initClarity } from "./lib/clarity";
+import { applyAnalyticsConsent, readCookieConsent } from "./components/CookieConsent";
 
 const clientSentryActive = initClientSentry();
 if (import.meta.env.DEV) {
@@ -20,6 +21,8 @@ if (import.meta.env.DEV) {
   window.__sentryTest = testClientSentry;
 }
 const clarityActive = initClarity();
+// Apply the stored cookie choice on every entry route, not only when the home page mounts the banner.
+applyAnalyticsConsent(readCookieConsent());
 if (import.meta.env.DEV) {
   console.info(`[Clarity] replay reporting ${clarityActive ? "ACTIVE" : "INACTIVE (set VITE_CLARITY_PROJECT_ID and restart dev to enable)"}`);
 }

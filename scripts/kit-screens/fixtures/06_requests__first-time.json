@@ -1,0 +1,51 @@
+{
+  "signedIn": {
+    "id": 4106,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "expiredRequestIds": [],
+        "requests": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "free",
+          "monthlyAllowance": 3,
+          "monthlyCreditsRemaining": 3,
+          "purchasedCreditsRemaining": 0,
+          "promoCreditsRemaining": 0,
+          "promoExpiresAt": null,
+          "promoStatus": null,
+          "promoOfferActive": false,
+          "totalAvailable": 3,
+          "cycleKey": "2026-10",
+          "subscriptionStatus": null,
+          "subscriptionCurrentTermEnd": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    }
+  ]
+}

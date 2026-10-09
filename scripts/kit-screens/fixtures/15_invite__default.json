@@ -1,0 +1,30 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera.iyer@wipro.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/personal-invites/me",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "invite": {
+          "inviteCode": "r11-a1b2c3d4"
+        }
+      }
+    }
+  ]
+}

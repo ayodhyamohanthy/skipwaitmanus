@@ -42,7 +42,7 @@ describe("My Company Inbox pending states", () => {
       return {};
     });
     render(<MyCompanyInbox />);
-    fireEvent.click(await screen.findByRole("button", { name: "Review candidate" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
     fireEvent.click(await screen.findByRole("button", { name: "Not a fit" }));
 
     // Confirm step: nothing has been posted yet and the accept CTA is out of the way.
@@ -89,7 +89,7 @@ describe("My Company Inbox pending states", () => {
       return {};
     });
     render(<MyCompanyInbox />);
-    fireEvent.click(await screen.findByRole("button", { name: "Review candidate" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
     fireEvent.click(await screen.findByRole("button", { name: "Accept & submit referral" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Accept failed");

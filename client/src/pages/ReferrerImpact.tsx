@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { useEffect, useState, type ReactNode } from "react";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
-import { ArrowLeft, ArrowRight, CheckCircle2, Clock3, Inbox, RefreshCw, ShieldCheck, Sparkles, Wallet } from "lucide-react";
-import { AccountMenu } from "@/components/AccountMenu";
-import { Brand } from "@/components/Brand";
-import { SignInButton } from "@/_core/auth";
+import { ArrowRight, CheckCircle2, HeartHandshake, LoaderCircle, RefreshCw, ShieldCheck, type LucideIcon } from "lucide-react";
+import { Button } from "@/components/kit/button";
+import { ReferrerWorkspace, referrerSetUpHref } from "@/components/referrer/ReferrerWorkspace";
 import { readApiJson } from "@/lib/apiResponse";
 
 type ReferrerImpactSummary = { acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
@@ -18,12 +17,26 @@ function relativeDays(iso: string) {
   return `${days} days ago`;
 }
 
-function ImpactStat({ label, value, detail, icon: Icon, accent, valueClass }: { label: string; value: number; detail: string; icon: typeof Inbox; accent: string; valueClass?: string }) {
-  return <div className="rounded-2xl border border-[#e5e5e5] bg-white p-5"><div className="flex items-start justify-between gap-4"><div><p className="text-sm font-medium text-[#505050]">{label}</p><p className={`mt-2 text-3xl font-semibold tracking-[-0.05em] ${valueClass || "text-black"}`}>{value}</p><p className="mt-2 text-xs font-medium text-[#505050]">{detail}</p></div><span className={`grid h-10 w-10 place-items-center rounded-xl ${accent}`}><Icon className="h-5 w-5" /></span></div></div>;
+/** Kit v4 impact-zero frame: door icon, eyebrow, heading, copy, then real content. */
+function ImpactState({ icon: Icon, eyebrow, title, text, alert = false, busy = false, children }: { icon: LucideIcon; eyebrow: string; title: string; text?: string; alert?: boolean; busy?: boolean; children?: ReactNode }) {
+  return (
+    <section className="impact-zero" role={alert ? "alert" : busy ? "status" : undefined} aria-busy={busy || undefined}>
+      <span className="impact-door"><Icon className={busy ? "animate-spin motion-reduce:animate-none" : undefined} /></span>
+      <span className="eyebrow">{eyebrow}</span>
+      <h2>{title}</h2>
+      {text ? <p>{text}</p> : null}
+      {children}
+    </section>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return <span><strong>{value}</strong>{label}</span>;
 }
 
 export default function ReferrerImpact() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const [, go] = useLocation();
+  const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const [summary, setSummary] = useState<ReferrerImpactSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -45,24 +58,54 @@ export default function ReferrerImpact() {
   };
   useEffect(() => { void loadCompanyAccess(); }, [isSignedIn]);
   useEffect(() => { if (isSignedIn && hasVerifiedWorkEmail) void loadSummary(); }, [isSignedIn, hasVerifiedWorkEmail]);
-  if (!isLoaded) return <main data-skipwait-screen="referrer-impact-loading" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><div className="h-9 w-9 animate-pulse rounded-full bg-[#f0f0f0]" /></header><section className="flex min-h-0 flex-1 items-center"><div className="w-full animate-pulse rounded-2xl border border-[#e5e5e5] bg-white p-6"><div className="h-3 w-28 rounded bg-[#f0f0f0]" /><div className="mt-5 h-9 w-3/4 rounded bg-[#f0f0f0]" /><div className="mt-3 h-4 w-full rounded bg-[#f0f0f0]" /><div className="mt-7 h-12 w-full rounded-lg bg-[#f0f0f0]" /></div></section></div></main>;
+  const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} onSetUp={() => go(referrerSetUpHref(Boolean(isSignedIn)))}>{content}</ReferrerWorkspace>;
+  const loadingState = <ImpactState icon={LoaderCircle} eyebrow="PRIVATE BY DEFAULT" title="Loading your private impact…" busy />;
 
-  if (!isSignedIn) return <main data-skipwait-screen="referrer-impact-sign-in" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><section className="flex min-h-0 flex-1 flex-col items-center justify-center text-center"><span aria-hidden="true" className="grid h-14 w-14 place-items-center rounded-3xl bg-[#f5f5f5] text-black"><Sparkles className="h-6 w-6" /></span><h1 className="font-display mt-3 text-[1.85rem] font-semibold leading-[1.04] tracking-[-.02em]">Sign in with your work email to see your referral impact</h1><p className="mt-3 text-sm leading-6 text-[#505050]">Accepted referrals, pending decisions, and private messages — all in one private view.</p><SignInButton><button type="button" className="mt-6 rounded-lg bg-[#141414] px-5 py-3 text-sm font-semibold text-white">Secure sign in</button></SignInButton></section></div></main>;
+  if (!isLoaded) return frame("referrer-impact-loading", loadingState);
 
-  if (!accessReady) return <main data-skipwait-screen="referrer-impact-loading" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><section className="flex min-h-0 flex-1 items-center"><div className="w-full animate-pulse rounded-2xl border border-[#e5e5e5] bg-white p-6"><div className="h-3 w-28 rounded bg-[#f0f0f0]" /><div className="mt-5 h-9 w-3/4 rounded bg-[#f0f0f0]" /><div className="mt-3 h-4 w-full rounded bg-[#f0f0f0]" /><div className="mt-7 grid grid-cols-2 gap-3"><div className="h-28 rounded-xl bg-[#f0f0f0]" /><div className="h-28 rounded-xl bg-[#f0f0f0]" /><div className="h-28 rounded-xl bg-[#f0f0f0]" /><div className="h-28 rounded-xl bg-[#f0f0f0]" /></div></div></section></div></main>;
+  if (!isSignedIn) return frame("referrer-impact-sign-in", <ImpactState icon={HeartHandshake} eyebrow="PRIVATE BY DEFAULT" title="Sign in with your work email to see your referral impact" text="Accepted referrals, pending decisions, and private messages — all in one private view.">
+    {/* The kit Button is not a bare <button>, so it calls openSignIn itself instead of nesting inside SignInButton. */}
+    <Button type="button" className="mt-8" onClick={() => openSignIn?.()}>Secure sign in</Button>
+  </ImpactState>);
 
-  if (!hasVerifiedWorkEmail) return <main data-skipwait-screen="referrer-impact-setup" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><Link href="/inbox" className="mt-5 inline-flex w-fit items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back to inbox</Link><section className="flex min-h-0 flex-1 flex-col items-center justify-center text-center"><span aria-hidden="true" className="grid h-14 w-14 place-items-center rounded-3xl bg-[#f5f5f5] text-black"><ShieldCheck className="h-6 w-6" /></span><h1 className="font-display mt-3 text-[1.85rem] font-semibold leading-[1.04] tracking-[-.02em]">Verify your work email</h1><p className="mt-3 text-sm leading-6 text-[#505050]">Confirm a company email with a one-time code to unlock your private referral impact.</p><Link href="/referrer?setup=work-email" className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3 text-sm font-semibold text-white">Add work email <ArrowRight className="h-4 w-4" /></Link></section></div></main>;
+  if (!accessReady) return frame("referrer-impact-loading", loadingState);
 
-  if (loading && !summary && !error) return <main data-skipwait-screen="referrer-impact-loading" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><section className="flex min-h-0 flex-1 items-center"><div className="w-full animate-pulse rounded-2xl border border-[#e5e5e5] bg-white p-6"><div className="h-3 w-28 rounded bg-[#f0f0f0]" /><div className="mt-5 h-9 w-3/4 rounded bg-[#f0f0f0]" /><div className="mt-3 h-4 w-full rounded bg-[#f0f0f0]" /><div className="mt-7 grid grid-cols-2 gap-3"><div className="h-28 rounded-xl bg-[#f0f0f0]" /><div className="h-28 rounded-xl bg-[#f0f0f0]" /><div className="h-28 rounded-xl bg-[#f0f0f0]" /><div className="h-28 rounded-xl bg-[#f0f0f0]" /></div></div></section></div></main>;
+  if (!hasVerifiedWorkEmail) return frame("referrer-impact-setup", <ImpactState icon={ShieldCheck} eyebrow="PRIVATE BY DEFAULT" title="Verify your work email" text="Confirm a company email with a one-time code to unlock your private referral impact.">
+    <Button asChild className="mt-8"><Link href="/referrer?setup=work-email">Add work email <ArrowRight /></Link></Button>
+  </ImpactState>);
 
-  if (error) return <main data-skipwait-screen="referrer-impact-error" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><section className="flex min-h-0 flex-1 flex-col justify-center"><div role="alert" className="rounded-2xl border border-[#b91c1c]/30 bg-white p-6"><p className="text-xs font-bold uppercase tracking-[.16em] text-[#B91C1C]">Something went wrong</p><h1 className="font-display mt-2 text-2xl font-semibold tracking-[-.03em]">We could not load your referral impact.</h1><p className="mt-3 text-sm leading-6 text-[#505050]">{error}</p><button type="button" onClick={() => { void loadSummary(); }} className="mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3 text-sm font-semibold text-white"><RefreshCw className="h-4 w-4" />Try again</button></div></section></div></main>;
+  if (loading && !summary && !error) return frame("referrer-impact-loading", loadingState);
+
+  if (error) return frame("referrer-impact-error", <ImpactState icon={RefreshCw} eyebrow="SOMETHING WENT WRONG" title="We could not load your referral impact." text={error} alert>
+    <Button type="button" className="mt-8" onClick={() => { void loadSummary(); }}><RefreshCw />Try again</Button>
+  </ImpactState>);
 
   if (!summary) return null;
-  const hasAccepted = summary.acceptedReferrals > 0;
-  return <main data-skipwait-screen="referrer-impact" className="min-h-dvh bg-white px-5 py-4 text-black"><div className="mx-auto flex min-h-[calc(100dvh-2rem)] max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><AccountMenu /></header><Link href="/inbox" className="mt-5 inline-flex w-fit items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back to inbox</Link><section className="flex-1 pb-8 pt-5"><h1 className="font-display mt-3 text-3xl font-semibold tracking-[-.04em]">Your private impact at a glance.</h1><p className="mt-3 text-sm leading-6 text-[#505050]">Only you can see this. Acceptances, pending decisions, and private messages from the requests you covered.</p>
-    {hasAccepted ? <div className="mt-6 grid gap-3 sm:grid-cols-2"><ImpactStat label="Accepted referrals" value={summary.acceptedReferrals} detail="Candidates you chose to help" icon={CheckCircle2} accent="bg-[#15803d]/10 text-[#15803d]" valueClass="text-[#15803d]" /><ImpactStat label="Pending decisions" value={summary.pendingRequests} detail="Waiting for your review" icon={Clock3} accent="bg-[#b45309]/10 text-[#B45309]" valueClass="text-[#B45309]" /><ImpactStat label="Unread messages" value={summary.unreadMessages} detail="Private notes from Job Seekers" icon={Inbox} accent="bg-[#f5f5f5] text-black" valueClass="text-black" /><ImpactStat label="Credits remaining" value={summary.creditsRemaining} detail="Available to accept new requests" icon={Wallet} accent="bg-[#f0f0f0] text-[#505050]" /></div> : <div className="mt-6 rounded-2xl border border-dashed border-[#141414] bg-white p-6 text-center"><span aria-hidden="true" className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#f5f5f5] text-black"><Sparkles className="h-5 w-5" /></span><p className="mt-4 text-sm font-semibold text-black">Your impact will show here once you accept your first referral</p><p className="mt-2 text-sm leading-6 text-[#505050]">Open your inbox to review the private requests waiting at your company.</p><Link href="/inbox" className="mt-5 inline-flex items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3 text-sm font-semibold text-white">Open my inbox <ArrowRight className="h-4 w-4" /></Link></div>}
-    {hasAccepted && summary.recentAccepted.length ? <div className="mt-6 rounded-2xl border border-[#e5e5e5] bg-white p-5"><p className="text-xs font-bold uppercase tracking-[.14em] text-[#505050]">Recent referrals</p><ul className="mt-4 space-y-3">{summary.recentAccepted.map(item => <li key={item.id} className="flex items-center gap-3"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#15803d]/10 text-[#15803d]"><CheckCircle2 className="h-4 w-4" /></span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-black">{item.companyDomain}</span><span className="block text-xs text-[#505050]">Accepted {relativeDays(item.acceptedAt)}</span></span></li>)}</ul></div> : null}
-    {hasAccepted ? <div className="mt-6 grid gap-3 sm:grid-cols-2"><Link href="/inbox" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3 text-sm font-semibold text-white">Open my inbox <ArrowRight className="h-4 w-4" /></Link><Link href="/share" className="inline-flex items-center justify-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-5 py-3 text-sm font-semibold text-black">Share skipwait.me</Link></div> : null}
-    <p className="mt-8 flex items-start gap-2 text-xs leading-5 text-[#505050]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#15803d]" />Your identity stays hidden unless you accept a request. Job Seekers never see your work email.</p>
-  </section></div></main>;
+
+  if (summary.acceptedReferrals === 0) return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="YOUR IMPACT STARTS AT ZERO" title="No invented scoreboards." text="When real introductions happen, this space can reflect actions you control: thoughtful replies, introductions made, and people helped. It will never rank generosity.">
+    <div aria-label="Your private impact"><Stat value={summary.acceptedReferrals} label="referrals accepted" /><Stat value={summary.pendingRequests} label="pending decisions" /><Stat value={summary.unreadMessages} label="unread messages" /></div>
+    <Button asChild><Link href="/queue">Open request queue <ArrowRight /></Link></Button>
+  </ImpactState>);
+
+  return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="ONLY YOU CAN SEE THIS" title="Your private impact at a glance." text="Acceptances, pending decisions, and private messages from the requests you covered.">
+    <div aria-label="Your private impact"><Stat value={summary.acceptedReferrals} label="referrals accepted" /><Stat value={summary.pendingRequests} label="pending decisions" /><Stat value={summary.unreadMessages} label="unread messages" /><Stat value={summary.creditsRemaining} label="credits remaining" /></div>
+    {summary.recentAccepted.length ? (
+      <section aria-label="Recent referrals" className="mb-8 w-full max-w-xl rounded-[8px] border border-border p-5 text-left">
+        <span className="eyebrow">Recent referrals</span>
+        <ul className="mt-4 grid gap-3">
+          {summary.recentAccepted.map(item => (
+            <li key={item.id} className="flex items-center gap-3">
+              <span className="grid size-9 shrink-0 place-items-center rounded-[7px] bg-muted text-[var(--success)]"><CheckCircle2 className="size-4" /></span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold">{item.companyDomain}</span><span className="block text-xs text-muted-foreground">Accepted {relativeDays(item.acceptedAt)}</span></span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ) : null}
+    <nav aria-label="Next steps" className="flex flex-wrap justify-center gap-3">
+      <Button asChild><Link href="/inbox">Open my inbox <ArrowRight /></Link></Button>
+      <Button asChild variant="outline"><Link href="/share">Share skipwait.me</Link></Button>
+    </nav>
+    <small className="mt-8 flex max-w-xl items-start gap-2 text-left text-xs leading-5 text-muted-foreground"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />Your identity stays hidden unless you accept a request. Job Seekers never see your work email.</small>
+  </ImpactState>);
 }

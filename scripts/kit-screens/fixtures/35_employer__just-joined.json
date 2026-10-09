@@ -1,0 +1,9 @@
+{
+  "signedIn": { "id": 41, "name": "Priya Menon", "email": "priya.menon@merkle.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "prefix", "status": 200, "body": { "notifications": [] } },
+    { "method": "GET", "path": "/api/employer/account", "match": "exact", "status": 200, "body": { "account": { "id": 7, "userId": 41, "companyName": "Merkle", "billingEmail": "priya.menon@merkle.com", "credits": 0, "budgetMonthlyUsdCents": 0, "creditDebt": 0, "approvalStatus": "approved", "approvedAt": "2026-10-08T09:00:00.000Z", "submittedAt": "2026-10-07T09:00:00.000Z", "decidedAt": "2026-10-08T09:00:00.000Z", "decisionNote": null } } },
+    { "method": "GET", "path": "/api/employer/opportunities", "match": "exact", "status": 200, "body": { "opportunities": [] } },
+    { "method": "GET", "path": "/api/employer/spend-history", "match": "exact", "status": 200, "body": { "spend": [] } }
+  ]
+}

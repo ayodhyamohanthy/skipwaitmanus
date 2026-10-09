@@ -1,0 +1,52 @@
+{
+  "signedIn": {
+    "id": 77,
+    "name": "Rahul K.",
+    "email": "rahul.k@wipro.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "status": 200,
+      "body": {
+        "requests": [],
+        "expiredRequestIds": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/601/preview",
+      "status": 200,
+      "body": {
+        "request": {
+          "id": 601,
+          "title": "Product Designer",
+          "targetRoleUrl": "https://careers.wipro.com/jobs/product-designer",
+          "companyDomain": "wipro.com",
+          "candidateName": "Asha R.",
+          "candidateMessage": "I've led two end-to-end redesigns for enterprise workflow products and would value an honest fit check for this role.",
+          "attachments": [
+            {
+              "id": 31,
+              "fileName": "Resume.pdf",
+              "mimeType": "application/pdf",
+              "fileSize": 182344,
+              "availability": "after_claim"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": [],
+        "unreadCount": 0
+      }
+    }
+  ]
+}

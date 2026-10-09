@@ -1,0 +1,113 @@
+{
+  "signedIn": {
+    "id": 41,
+    "name": "Asha Rao",
+    "email": "asha.rao@wipro.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [
+          {
+            "id": 311,
+            "title": "Product Designer",
+            "pitch": null,
+            "targetRoleUrl": "https://careers.wipro.com/job/311",
+            "companyDomain": "wipro.com",
+            "compensation": null,
+            "status": "approved",
+            "referrerId": 9,
+            "waitingForCoverage": false,
+            "referrerMessage": "Happy to help — I'll submit this week.",
+            "createdAt": "2026-10-05T09:00:00.000Z",
+            "updatedAt": "2026-10-08T04:20:00.000Z",
+            "attachmentCount": 1,
+            "queueStatus": null,
+            "unreadMessageCount": 0,
+            "expiresAt": "2026-10-12T09:00:00.000Z"
+          },
+          {
+            "id": 298,
+            "title": "Data Analyst",
+            "pitch": null,
+            "targetRoleUrl": "https://careers.merkle.com/job/298",
+            "companyDomain": "merkle.com",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "waitingForCoverage": false,
+            "referrerMessage": null,
+            "createdAt": "2026-10-06T04:30:00.000Z",
+            "updatedAt": "2026-10-06T04:30:00.000Z",
+            "attachmentCount": 1,
+            "queueStatus": null,
+            "unreadMessageCount": 0,
+            "expiresAt": "2026-10-13T04:30:00.000Z"
+          },
+          {
+            "id": 254,
+            "title": "Data Analyst",
+            "pitch": null,
+            "targetRoleUrl": "https://careers.tcs.com/job/254",
+            "companyDomain": "tcs.com",
+            "compensation": null,
+            "status": "intro_made",
+            "referrerId": 14,
+            "waitingForCoverage": false,
+            "referrerMessage": "Referred! Reference ID TC-4410",
+            "createdAt": "2026-09-28T04:30:00.000Z",
+            "updatedAt": "2026-10-03T04:30:00.000Z",
+            "attachmentCount": 1,
+            "queueStatus": null,
+            "unreadMessageCount": 0,
+            "expiresAt": null
+          }
+        ],
+        "expiredRequestIds": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/inbox",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "requests": [
+          {
+            "id": 330,
+            "targetRoleUrl": "https://careers.wipro.com/job/330",
+            "companyDomain": "wipro.com",
+            "compensation": null,
+            "status": "pending",
+            "referrerId": null,
+            "savedAt": null,
+            "createdAt": "2026-10-08T03:30:00.000Z",
+            "updatedAt": "2026-10-08T03:30:00.000Z",
+            "attachmentCount": 1,
+            "queueAllocationId": null,
+            "savedByYouAt": null,
+            "inboxState": "new",
+            "isClaimedByYou": false,
+            "isQueueOpenAllocation": false,
+            "unreadMessageCount": 0
+          }
+        ],
+        "scope": "new"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    }
+  ]
+}

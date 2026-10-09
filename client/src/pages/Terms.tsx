@@ -1,5 +1,4 @@
 import { Link } from "wouter";
-import { ScrollText } from "lucide-react";
 import { PolicyPageShell, PolicySection, SUPPORT_EMAIL } from "@/components/PolicyPageShell";
 
 /**
@@ -7,18 +6,24 @@ import { PolicyPageShell, PolicySection, SUPPORT_EMAIL } from "@/components/Poli
  *
  * Every clause here restates behaviour the product already enforces (credit
  * accounting, one-referrer-per-request, private conversations, admin
- * review). Nothing is promised that the code does not do. Marked draft
- * until the founder/legal review in docs/pre-launch-checklist.md signs off.
+ * review). Nothing is promised that the code does not do. Founder approved
+ * publishing on Sep 23, 2026. Kit v4 legal layout (app/src/routes/terms.tsx)
+ * carries the live clauses unchanged.
  */
 export default function Terms() {
   return <PolicyPageShell
     screen="terms"
-    icon={ScrollText}
-    eyebrow="Terms of Service"
-    title="Plain terms for a private referral handoff."
-    intro="These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
-    updated="September 23, 2026"
+    eyebrow="TERMS OF SERVICE"
+    title="Terms"
+    intro="Plain terms for a private referral handoff. These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
+    updated="23 Sep 2026"
     status="published"
+    summary={[
+      "Referrals are always free. Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes.",
+      "Referrers decide each ask. A referral is an introduction, never a promise of an interview or a job.",
+      "Private by default. Resumes and referrer identities stay hidden until a referrer accepts.",
+      "Be honest. Misuse — bulk asks, misrepresentation, harassment — can limit or close an account.",
+    ]}
     sections={[
       { id: "01", label: "What skipwait.me is" },
       { id: "02", label: "Accounts and verification" },
@@ -34,15 +39,6 @@ export default function Terms() {
     ]}
     footnote="These terms describe how the product works today. If we change them, we will update the date above."
   >
-    <section aria-label="Short version" className="rounded-2xl bg-[#f5f5f5] p-5 sm:p-6">
-      <p className="text-[11px] font-bold uppercase tracking-[.16em] text-black">Short version</p>
-      <ul className="mt-3 space-y-1.5 pl-5 text-sm leading-6 text-[#505050] [&_li]:list-disc [&_strong]:text-black">
-        <li><strong>Referrals are always free.</strong> Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes.</li>
-        <li><strong>Referrers decide each ask.</strong> A referral is an introduction, never a promise of an interview or a job.</li>
-        <li><strong>Private by default.</strong> Resumes and referrer identities stay hidden until a referrer accepts.</li>
-        <li><strong>Be honest.</strong> Misuse — bulk asks, misrepresentation, harassment — can limit or close an account.</li>
-      </ul>
-    </section>
     <PolicySection number="01" title="What skipwait.me is">
       <p>skipwait.me lets a <strong>Job Seeker</strong> send one private referral request for a specific role to verified employees of the company behind that role. A verified employee (a <strong>Referrer</strong>) may accept or decline. We route and record the request; we are not an employer, recruiter, or hiring agent.</p>
       <p>A referral is an introduction. <strong>We do not promise an interview, an offer, or any hiring outcome</strong>, and neither does a Referrer by accepting.</p>
@@ -60,7 +56,7 @@ export default function Terms() {
       <ul>
         <li>Every Job Seeker account includes <strong>3 free referral credits each month</strong>. One credit is reserved when a request is sent and <strong>returned automatically</strong> if you withdraw before a Referrer claims it, or if a Referrer declines.</li>
         <li>Additional credits can be bought individually and never expire. Pro and Max plans add a monthly allowance that renews each cycle.</li>
-        <li>Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Credits are added only after the payment is verified. Refund and cancellation rules are in the <Link href="/refunds" className="font-semibold text-black">Refunds & cancellation policy</Link>.</li>
+        <li>Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Credits are added only after the payment is verified. Refund and cancellation rules are in the <Link href="/refunds" className="font-semibold text-foreground">Refunds & cancellation policy</Link>.</li>
         <li>Reviewing and accepting referrals is always free for Referrers.</li>
       </ul>
     </PolicySection>
@@ -69,7 +65,7 @@ export default function Terms() {
       <ul>
         <li>Your resume and note are visible only to you and verified employees of the target company, and then only to the single Referrer who claims your request.</li>
         <li>Referrer identities are hidden from Job Seekers until the Referrer accepts and chooses to message.</li>
-        <li>Conversations open only after acceptance and are never public. Details are in our <Link href="/privacy" className="font-semibold text-black">Privacy & trust</Link> page.</li>
+        <li>Conversations open only after acceptance and are never public. Details are in our <Link href="/privacy" className="font-semibold text-foreground">Privacy & trust</Link> page.</li>
       </ul>
     </PolicySection>
 
@@ -86,15 +82,15 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="08" title="Contact">
-      <p>Questions about these terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>, or visit the <Link href="/support" className="font-semibold text-black">Support</Link> page.</p>
+      <p>Questions about these terms: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-foreground">{SUPPORT_EMAIL}</a>, or visit the <Link href="/support" className="font-semibold text-foreground">Support</Link> page.</p>
     </PolicySection>
 
     <PolicySection number="09" title="Business identity">
       <p>skipwait.me is operated by <strong>Ayodhya Ram Mohanthy</strong>, a sole proprietor based in India, trading as SkipWait.</p>
       <ul>
         <li>Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India.</li>
-        <li>Phone: <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a> (Mon–Fri, IST business hours).</li>
-        <li>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>.</li>
+        <li>Phone: <a href="tel:+919513064808" className="font-semibold text-foreground">+91 95130 64808</a> (Mon–Fri, IST business hours).</li>
+        <li>Email: <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-foreground">{SUPPORT_EMAIL}</a>.</li>
       </ul>
     </PolicySection>
 
@@ -103,7 +99,7 @@ export default function Terms() {
     </PolicySection>
 
     <PolicySection number="11" title="Grievance officer">
-      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Phone <a href="tel:+919513064808" className="font-semibold text-black">+91 95130 64808</a>. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
+      <p>Grievance officer: <strong>Ayodhya Ram Mohanthy</strong>, Proprietor. Phone <a href="tel:+919513064808" className="font-semibold text-foreground">+91 95130 64808</a>. Email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-foreground">{SUPPORT_EMAIL}</a>. We acknowledge complaints within 48 hours and resolve them within one month.</p>
     </PolicySection>
   </PolicyPageShell>;
 }

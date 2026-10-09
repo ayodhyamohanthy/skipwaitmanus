@@ -1,0 +1,82 @@
+{
+  "signedIn": {
+    "id": 21,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "max",
+          "monthlyAllowance": 120,
+          "monthlyCreditsRemaining": 112,
+          "purchasedCreditsRemaining": 0,
+          "promoCreditsRemaining": 0,
+          "totalAvailable": 112
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistants/approvals",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "approvals": [
+          {
+            "id": 6,
+            "kind": "credit_spend",
+            "status": "pending",
+            "provider": "ChatGPT",
+            "companyDomain": "wipro.com",
+            "role": "Senior Product Designer",
+            "note": null,
+            "creditCount": 3,
+            "slotCount": null,
+            "createdAt": "2026-10-08T04:29:40.000Z",
+            "expiresAt": "2026-10-09T04:29:40.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/assistants/approvals/",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "approval": {
+          "id": 6,
+          "status": "approved"
+        }
+      }
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/assistants/approvals/",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "approval": {
+          "id": 6,
+          "note": "Hi \u2014 I'm a product designer with 5 years in fintech. I'd love a referral for the Senior Product Designer role (req #44120). My one-pager is attached. Thank you for considering it."
+        }
+      }
+    }
+  ]
+}

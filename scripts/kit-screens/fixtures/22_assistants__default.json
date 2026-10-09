@@ -1,0 +1,148 @@
+{
+  "signedIn": {
+    "id": 21,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistants/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "plan": "max",
+        "hasAccess": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistants/connections",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "connections": [
+          {
+            "id": 1,
+            "provider": "chatgpt",
+            "appName": "ChatGPT",
+            "scopes": [
+              "read",
+              "draft",
+              "send",
+              "credits"
+            ],
+            "status": "connected",
+            "lastUsedAt": "2026-10-08T02:30:00.000Z",
+            "connectedAt": "2026-09-20T05:00:00.000Z"
+          },
+          {
+            "id": 2,
+            "provider": "claude",
+            "appName": "Claude",
+            "scopes": [
+              "read",
+              "draft"
+            ],
+            "status": "connected",
+            "lastUsedAt": "2026-10-05T04:30:00.000Z",
+            "connectedAt": "2026-09-28T05:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistants/tokens",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "tokens": [
+          {
+            "id": 4,
+            "name": "Job-tracker script",
+            "prefix": "sw_7QkA2bLm",
+            "lastUsedAt": null,
+            "createdAt": "2026-10-01T06:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/assistants/activity",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "activity": [
+          {
+            "action": "assistant.approval_requested",
+            "outcome": "success",
+            "resourceType": "assistant_approval",
+            "metadata": {
+              "kind": "ask_send",
+              "provider": "ChatGPT"
+            },
+            "createdAt": "2026-10-08T04:14:00.000Z"
+          },
+          {
+            "action": "assistant.mcp.tool",
+            "outcome": "success",
+            "resourceType": "assistant_token",
+            "metadata": {
+              "tool": "search_jobs"
+            },
+            "createdAt": "2026-10-08T04:02:00.000Z"
+          },
+          {
+            "action": "assistant.approval_approved",
+            "outcome": "success",
+            "resourceType": "assistant_approval",
+            "metadata": {
+              "kind": "credit_spend"
+            },
+            "createdAt": "2026-10-07T09:20:00.000Z"
+          },
+          {
+            "action": "assistant.mcp.tool",
+            "outcome": "success",
+            "resourceType": "assistant_token",
+            "metadata": {
+              "tool": "list_my_requests"
+            },
+            "createdAt": "2026-10-07T07:10:00.000Z"
+          },
+          {
+            "action": "assistant.mcp.denied",
+            "outcome": "denied",
+            "resourceType": "assistant_token",
+            "metadata": {},
+            "createdAt": "2026-10-02T08:00:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "max",
+          "totalAvailable": 112
+        }
+      }
+    }
+  ]
+}

@@ -1,196 +1,78 @@
-import { AlertTriangle, Building2, Check, Clock3, FileText, ShieldAlert } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ArrowLeft, Check, Clock3, Inbox, ShieldCheck } from "lucide-react";
+import { type ReactNode, useState } from "react";
+import { Link, useSearch } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
-import { Link } from "wouter";
+import { Button, buttonVariants } from "@/components/kit/button";
+import { AdminAccessError, ADMIN_ACCESS_MESSAGE, adminKeys, adminRequest, adminRetry, companySuggestionsSchema, decisionResultSchema, loadEnrollments, safetyReportsSchema } from "@/components/admin/adminApi";
+import { ReviewCaseDetail } from "@/components/admin/ReviewCaseDetail";
+import { caseAge, companyCase, enrollmentCase, queueOrder, reportCase, type ReviewCase, statusLabel } from "@/components/admin/reviewCases";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { readApiJson } from "@/lib/apiResponse";
 
-type Report = { id: number; reason: string; details: string | null; referralRequestId: number | null; reportedUserId: number | null; urgent: boolean; status: string; createdAt: string };
-type Suggestion = { id: number; companyName: string; website: string | null; role: string; status: string; createdAt: string };
-type Tab = "all" | "reports" | "companies";
+const TABS = [["all", "All"], ["reports", "Reports"], ["verifications", "Verifications"], ["companies", "Companies"]] as const;
+type Tab = (typeof TABS)[number][0];
+const KIND_BY_TAB: Record<Exclude<Tab, "all">, ReviewCase["kind"]> = { reports: "report", verifications: "verification", companies: "company" };
+const isTab = (value: string | null): value is Tab => TABS.some(([id]) => id === value);
 
-const REPORT_DECISIONS = [["under_review", "Mark under review"], ["resolved", "Resolve with action"], ["dismissed", "Dismiss, no violation"]] as const;
-const COMPANY_DECISIONS = [["under_review", "Mark under review"], ["approved", "Approve for listing"], ["dismissed", "Dismiss"]] as const;
+function Frame({ children }: { children: ReactNode }) {
+  return <div className="min-h-screen bg-muted">
+    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-foreground px-5 py-3 text-background"><span className="text-xs font-semibold tracking-widest">INTERNAL OPERATIONS · REVIEW QUEUE</span><Button variant="secondary" size="sm" asChild><Link href="/admin"><ArrowLeft />Admin overview</Link></Button></header>
+    {children}
+  </div>;
+}
+
+function GateCard({ screen, title = "Review queue.", body, children }: { screen: string; title?: string; body: string; children?: ReactNode }) {
+  return <main data-skipwait-screen={screen} className="mx-auto max-w-xl p-5"><section className="rounded-3xl bg-background p-6" role={children ? undefined : "alert"}><span className="grid size-11 place-items-center rounded-2xl bg-muted"><ShieldCheck className="size-5" /></span><p className="eyebrow mt-4">INTERNAL OPERATIONS</p><h1 className="mt-2 text-2xl font-semibold">{title}</h1><p className="mt-1 text-sm text-muted-foreground">{body}</p>{children}</section></main>;
+}
 
 export default function AdminReview() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
-  const [tab, setTab] = useState<Tab>("all");
-  const [reports, setReports] = useState<Report[]>([]);
-  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
-  const [selected, setSelected] = useState<{ kind: "report" | "company"; id: number } | null>(null);
+  const queryClient = useQueryClient();
+  const requestedTab = new URLSearchParams(useSearch()).get("tab");
+  const [tab, setTab] = useState<Tab>(isTab(requestedTab) ? requestedTab : "all");
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [note, setNote] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [forbidden, setForbidden] = useState(false);
-  const [deciding, setDeciding] = useState(false);
+  const reports = useQuery({ queryKey: adminKeys.reports, enabled: isSignedIn, retry: adminRetry, queryFn: async () => (await adminRequest("/api/admin/safety-reports", safetyReportsSchema, fetchToken, "We could not load safety reports")).reports });
+  const suggestions = useQuery({ queryKey: adminKeys.suggestions, enabled: isSignedIn, retry: adminRetry, queryFn: async () => (await adminRequest("/api/admin/company-suggestions", companySuggestionsSchema, fetchToken, "We could not load company suggestions")).suggestions });
+  const enrollments = useQuery({ queryKey: adminKeys.enrollments, enabled: isSignedIn, retry: adminRetry, queryFn: () => loadEnrollments(fetchToken) });
+  const decide = useMutation({
+    mutationFn: async ({ item, value, reason }: { item: ReviewCase; value: string; reason: string }) => {
+      const path = item.kind === "report" ? `/api/admin/safety-reports/${item.id}/decision` : item.kind === "company" ? `/api/admin/company-suggestions/${item.id}/decision` : `/api/admin/approval-queue/referrer_enrollment/${item.id}/decision`;
+      const body: Record<string, string> = item.kind === "verification" ? { decision: value, note: reason } : { status: value, note: reason };
+      return adminRequest(path, decisionResultSchema, fetchToken, "We could not record this decision", body);
+    },
+    onSuccess: () => setNote(""),
+    onSettled: (_data, _error, { item }) => queryClient.invalidateQueries({ queryKey: item.kind === "report" ? adminKeys.reports : item.kind === "company" ? adminKeys.suggestions : adminKeys.enrollments }),
+  });
 
-  const load = async () => {
-    if (!isSignedIn) return;
-    setLoading(true); setError(""); setForbidden(false);
-    try {
-      const token = await fetchToken();
-      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
-      const [reportsResponse, suggestionsResponse] = await Promise.all([
-        fetch("/api/admin/safety-reports", { credentials: "include", headers }),
-        fetch("/api/admin/company-suggestions", { credentials: "include", headers }),
-      ]);
-      if (reportsResponse.status === 403 || suggestionsResponse.status === 403) { setForbidden(true); return; }
-      const reportsPayload = await readApiJson<{ reports?: Report[] }>(reportsResponse, "We could not load safety reports");
-      const suggestionsPayload = await readApiJson<{ suggestions?: Suggestion[] }>(suggestionsResponse, "We could not load company suggestions");
-      if (!reportsResponse.ok || !suggestionsResponse.ok) throw new Error("We could not load the review queue");
-      setReports(Array.isArray(reportsPayload.reports) ? reportsPayload.reports : []);
-      setSuggestions(Array.isArray(suggestionsPayload.suggestions) ? suggestionsPayload.suggestions : []);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load the review queue"); }
-    finally { setLoading(false); }
-  };
+  if (!isSignedIn) return <Frame><GateCard screen="admin-review-sign-in" body="Sign in with the designated administrator account."><SignInButton className={buttonVariants({ className: "mt-5 w-full" })}>Sign in</SignInButton></GateCard></Frame>;
 
-  useEffect(() => { void load(); }, [fetchToken, isSignedIn]);
+  const queries = [reports, suggestions, enrollments];
+  const forbidden = queries.some(query => query.error instanceof AdminAccessError);
+  const loading = queries.some(query => query.isLoading);
+  const errors = Array.from(new Set(queries.flatMap(query => query.error && !(query.error instanceof AdminAccessError) ? [query.error.message] : [])));
+  const cases = [...queueOrder((reports.data ?? []).map(reportCase)), ...queueOrder((enrollments.data ?? []).map(enrollmentCase)), ...queueOrder((suggestions.data ?? []).map(companyCase))];
+  const count = (id: Tab) => id === "all" ? cases.length : cases.filter(item => item.kind === KIND_BY_TAB[id]).length;
+  const list = tab === "all" ? cases : cases.filter(item => item.kind === KIND_BY_TAB[tab]);
+  const current = list.find(item => item.key === selectedKey) ?? list[0];
+  const select = (key: string) => { setSelectedKey(key); setNote(""); decide.reset(); };
 
-  const decide = async (status: string) => {
-    if (!selected || !note.trim() || deciding) return;
-    setDeciding(true); setError("");
-    try {
-      const token = await fetchToken();
-      const path = selected.kind === "report" ? `/api/admin/safety-reports/${selected.id}/decision` : `/api/admin/company-suggestions/${selected.id}/decision`;
-      const response = await fetch(path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ status, note: note.trim() }) });
-      const payload = await readApiJson<{ error?: string }>(response, "We could not record this decision");
-      if (!response.ok) throw new Error(payload.error || "We could not record this decision");
-      setNote("");
-      await load();
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not record this decision"); }
-    finally { setDeciding(false); }
-  };
+  if (forbidden) return <Frame><GateCard screen="admin-review-forbidden" title={ADMIN_ACCESS_MESSAGE} body="Queue contents stay hidden without administrator access. Sign in with the designated administrator account." /></Frame>;
 
-  if (!isSignedIn) {
-    return (
-      <main data-skipwait-screen="admin-review-sign-in" className="mx-auto max-w-xl px-5 py-6">
-        <p className="eyebrow">Internal operations</p>
-        <h1 className="mt-2 text-3xl font-semibold">Review queue.</h1>
-        <div className="mt-6"><SignInButton><button type="button" className="brand-button w-full">Sign in</button></SignInButton></div>
-      </main>
-    );
-  }
-
-  const current = selected?.kind === "report" ? reports.find(item => item.id === selected.id) : suggestions.find(item => item.id === selected?.id);
-  const decisions = selected?.kind === "company" ? COMPANY_DECISIONS : REPORT_DECISIONS;
-  const terminal = current && (current.status === "resolved" || current.status === "dismissed" || current.status === "approved");
-
-  return (
-    <div data-skipwait-screen="admin-review" className="min-h-screen bg-[var(--muted)]">
-      <header className="flex flex-wrap items-center justify-between gap-3 bg-[var(--foreground)] px-5 py-3 text-[var(--background)]">
-        <span className="text-xs font-semibold tracking-widest">INTERNAL OPERATIONS · REVIEW QUEUE</span>
-        <Link href="/admin" className="rounded-lg bg-[var(--background)] px-3 py-2 text-xs font-bold text-[var(--foreground)]">Admin overview</Link>
-      </header>
-      <div className="mx-auto grid max-w-6xl gap-4 p-5 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <section className="rounded-3xl bg-[var(--background)] p-3">
-          <div className="flex gap-1 overflow-x-auto p-1" role="tablist" aria-label="Review kinds">
-            {(["all", "reports", "companies"] as const).map(value => (
-              <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={`min-h-9 shrink-0 rounded-full px-3 text-sm ${tab === value ? "bg-[var(--foreground)] text-[var(--background)]" : "text-[var(--muted-foreground)]"}`}>
-                {value === "all" ? `All ${reports.length + suggestions.length}` : value === "reports" ? `Reports ${reports.length}` : `Companies ${suggestions.length}`}
-              </button>
-            ))}
-          </div>
-          {loading ? <p className="p-4 text-sm text-[var(--muted-foreground)]">Loading the queue…</p> : null}
-          {forbidden ? <p role="alert" className="p-4 text-sm font-semibold">Administrator access is required.</p> : null}
-          {error ? <p role="alert" className="p-4 text-sm font-semibold text-[var(--destructive)]">{error} <button type="button" className="underline" onClick={() => { void load(); }}>Try again</button></p> : null}
-          <ul className="mt-2 space-y-1">
-            {(tab === "all" || tab === "reports") && reports.map(item => (
-              <li key={`r-${item.id}`}>
-                <button type="button" onClick={() => { setSelected({ kind: "report", id: item.id }); setNote(""); }} className={`w-full rounded-2xl p-3 text-left ${selected?.kind === "report" && selected.id === item.id ? "bg-[var(--muted)]" : ""}`}>
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className={`rounded-full px-2 py-0.5 font-semibold ${item.urgent ? "bg-[var(--destructive)] text-[var(--destructive-foreground)]" : "bg-[var(--muted)]"}`}>{item.urgent ? "Urgent" : item.status}</span>
-                    <span className="text-[var(--muted-foreground)]">{new Date(item.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <strong className="mt-1 block text-sm">{item.reason}</strong>
-                  <small className="text-[var(--muted-foreground)]">R-{1000 + item.id}</small>
-                </button>
-              </li>
-            ))}
-            {(tab === "all" || tab === "companies") && suggestions.map(item => (
-              <li key={`c-${item.id}`}>
-                <button type="button" onClick={() => { setSelected({ kind: "company", id: item.id }); setNote(""); }} className={`w-full rounded-2xl p-3 text-left ${selected?.kind === "company" && selected.id === item.id ? "bg-[var(--muted)]" : ""}`}>
-                  <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="rounded-full bg-[var(--muted)] px-2 py-0.5 font-semibold">{item.status}</span>
-                    <span className="text-[var(--muted-foreground)]">{new Date(item.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <strong className="mt-1 block text-sm">{item.companyName}</strong>
-                  <small className="text-[var(--muted-foreground)]">Suggested company · {item.role}</small>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <section className="min-w-0 rounded-3xl bg-[var(--background)] p-5 sm:p-6" aria-live="polite">
-          {!current ? <p className="text-sm text-[var(--muted-foreground)]">Select a case to review its evidence and record a decision.</p> : selected?.kind === "report" ? (
-            <ReportDetail item={reports.find(item => item.id === selected.id)!} note={note} setNote={setNote} deciding={deciding} terminal={Boolean(terminal)} onDecide={status => { void decide(status); }} />
-          ) : (
-            <CompanyDetail item={suggestions.find(item => item.id === selected!.id)!} note={note} setNote={setNote} deciding={deciding} terminal={Boolean(terminal)} onDecide={status => { void decide(status); }} />
-          )}
-        </section>
-      </div>
+  return <Frame>
+    <div data-skipwait-screen="admin-review" className="mx-auto grid max-w-6xl gap-4 p-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+      <section className="min-w-0 rounded-3xl bg-background p-3" aria-label="Cases">
+        <div className="flex gap-1 overflow-x-auto p-1" role="tablist" aria-label="Review kinds">{TABS.map(([id, label]) => <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => { setTab(id); setNote(""); decide.reset(); }} className={`min-h-9 shrink-0 rounded-full px-3 text-sm ${tab === id ? "bg-foreground text-background" : "text-muted-foreground"}`}>{label} <span className="opacity-60">{count(id)}</span></button>)}</div>
+        {loading ? <div className="mt-2 space-y-1" aria-busy="true" aria-label="Loading the queue">{[0, 1, 2].map(index => <div key={index} className="h-[76px] animate-pulse rounded-2xl bg-muted" />)}</div> : null}
+        {errors.length ? <p role="alert" className="p-4 text-sm font-semibold text-destructive">{errors.join(" ")} <button type="button" className="underline" onClick={() => { for (const query of queries) if (query.error) void query.refetch(); }}>Try again</button></p> : null}
+        {!loading && !errors.length && list.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No cases here right now.</p> : null}
+        <ul className="mt-2 space-y-1">{list.map(item => <li key={item.key}><button type="button" aria-current={current?.key === item.key || undefined} onClick={() => select(item.key)} className={`w-full rounded-2xl p-3 text-left ${current?.key === item.key ? "bg-muted" : "hover:bg-muted/60"}`}><div className="flex items-center justify-between gap-2 text-xs"><span className={`rounded-full px-2 py-0.5 font-semibold ${item.urgent ? "bg-destructive text-destructive-foreground" : "bg-muted"}`}>{item.urgent ? "Urgent" : "Normal"}</span><span className="text-muted-foreground">{item.terminal ? <Check className="inline size-3.5" /> : <Clock3 className="inline size-3.5" />} {item.terminal ? statusLabel(item.status) : caseAge(item.createdAt)}</span></div><strong className="mt-1 block text-sm">{item.title}</strong><small className="text-muted-foreground">{item.ref} · {item.sub}</small></button></li>)}</ul>
+      </section>
+      <section className="min-w-0 rounded-3xl bg-background p-5 sm:p-6" aria-live="polite">
+        {current ? <ReviewCaseDetail key={current.key} item={current} note={note} onNote={setNote} deciding={decide.isPending} error={decide.error && decide.variables?.item.key === current.key ? decide.error.message : ""} onDecide={value => { const reason = note.trim(); if (reason && !decide.isPending) { setSelectedKey(current.key); decide.mutate({ item: current, value, reason }); } }} />
+          : <div className="flex flex-wrap items-start gap-3" aria-busy={loading || undefined}><span className="grid size-11 place-items-center rounded-2xl bg-muted"><Inbox className="size-5" /></span><div className="min-w-0 flex-1"><h1 className="text-2xl font-semibold">{loading ? "Loading cases…" : errors.length ? "Some cases could not load." : "Nothing to review right now."}</h1><p className="text-sm text-muted-foreground">New reports, enrollments, and company submissions appear here.</p></div></div>}
+      </section>
     </div>
-  );
-}
-
-function ReportDetail({ item, note, setNote, deciding, terminal, onDecide }: { item: { id: number; reason: string; details: string | null; referralRequestId: number | null; reportedUserId: number | null; urgent: boolean; status: string; createdAt: string }; note: string; setNote: (value: string) => void; deciding: boolean; terminal: boolean; onDecide: (status: string) => void }) {
-  return (
-    <>
-      <div className="flex flex-wrap items-start gap-3">
-        <span className="grid size-11 place-items-center rounded-2xl bg-[var(--muted)]"><ShieldAlert className="size-5" /></span>
-        <div className="min-w-0 flex-1">
-          <span className="text-xs text-[var(--muted-foreground)]">REPORT · R-{1000 + item.id} · opened {new Date(item.createdAt).toLocaleDateString()}</span>
-          <h1 className="text-2xl font-semibold">{item.reason}</h1>
-        </div>
-        {item.urgent ? <span className="flex items-center gap-1 text-sm font-semibold text-[var(--destructive)]"><AlertTriangle className="size-4" />SLA 4h</span> : <span className="flex items-center gap-1 text-sm text-[var(--muted-foreground)]"><Clock3 className="size-4" />SLA 48h</span>}
-      </div>
-      <h2 className="mt-6 text-sm font-semibold">Evidence</h2>
-      <ul className="mt-2 space-y-2">
-        {item.details ? <li className="flex gap-2 rounded-xl bg-[var(--muted)] p-3 text-sm"><FileText className="size-4 shrink-0" />{item.details}</li> : <li className="rounded-xl bg-[var(--muted)] p-3 text-sm text-[var(--muted-foreground)]">No written details — reason only.</li>}
-        {item.referralRequestId ? <li className="flex gap-2 rounded-xl bg-[var(--muted)] p-3 text-sm"><FileText className="size-4 shrink-0" />Linked referral request #{item.referralRequestId}</li> : null}
-        {item.reportedUserId ? <li className="flex gap-2 rounded-xl bg-[var(--muted)] p-3 text-sm"><FileText className="size-4 shrink-0" />Reported account #{item.reportedUserId}</li> : null}
-      </ul>
-      {terminal ? (
-        <div className="mt-6 rounded-2xl bg-[var(--accent)] p-4"><strong className="flex items-center gap-2"><Check className="size-4" />Decision: {item.status}</strong><p className="mt-1 text-sm">Reporter notified. Appeal within 14 days via support.</p></div>
-      ) : (
-        <>
-          <h2 className="mt-6 text-sm font-semibold">Decision</h2>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {REPORT_DECISIONS.map(([value, label]) => (
-              <button key={value} type="button" disabled={!note.trim() || deciding} onClick={() => onDecide(value)} className="min-h-14 rounded-2xl border border-[var(--border)] p-3 text-left text-sm font-semibold disabled:opacity-40">{label}</button>
-            ))}
-          </div>
-          <label className="mt-4 block text-sm font-medium">Reviewer note (required)<textarea value={note} onChange={event => setNote(event.target.value)} rows={3} placeholder="Why this decision? Visible to other reviewers only." className="mt-2 min-h-24 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] p-3" /></label>
-        </>
-      )}
-    </>
-  );
-}
-
-function CompanyDetail({ item, note, setNote, deciding, terminal, onDecide }: { item: { id: number; companyName: string; website: string | null; role: string; status: string; createdAt: string }; note: string; setNote: (value: string) => void; deciding: boolean; terminal: boolean; onDecide: (status: string) => void }) {
-  return (
-    <>
-      <div className="flex flex-wrap items-start gap-3">
-        <span className="grid size-11 place-items-center rounded-2xl bg-[var(--muted)]"><Building2 className="size-5" /></span>
-        <div className="min-w-0 flex-1">
-          <span className="text-xs text-[var(--muted-foreground)]">COMPANY · opened {new Date(item.createdAt).toLocaleDateString()}</span>
-          <h1 className="text-2xl font-semibold">{item.companyName}</h1>
-          <p className="text-sm text-[var(--muted-foreground)]">Suggested by a {item.role}{item.website ? <> · {item.website}</> : ""}</p>
-        </div>
-      </div>
-      {terminal ? (
-        <div className="mt-6 rounded-2xl bg-[var(--accent)] p-4"><strong className="flex items-center gap-2"><Check className="size-4" />Decision: {item.status}</strong><p className="mt-1 text-sm">Submitter notified.</p></div>
-      ) : (
-        <>
-          <h2 className="mt-6 text-sm font-semibold">Decision</h2>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {[["under_review", "Mark under review"], ["approved", "Approve for listing"], ["dismissed", "Dismiss"]].map(([value, label]) => (
-              <button key={value} type="button" disabled={!note.trim() || deciding} onClick={() => onDecide(value)} className="min-h-14 rounded-2xl border border-[var(--border)] p-3 text-left text-sm font-semibold disabled:opacity-40">{label}</button>
-            ))}
-          </div>
-          <label className="mt-4 block text-sm font-medium">Reviewer note (required)<textarea value={note} onChange={event => setNote(event.target.value)} rows={3} placeholder="Why this decision? Visible to other reviewers only." className="mt-2 min-h-24 w-full rounded-xl border border-[var(--input)] bg-[var(--background)] p-3" /></label>
-        </>
-      )}
-    </>
-  );
+  </Frame>;
 }

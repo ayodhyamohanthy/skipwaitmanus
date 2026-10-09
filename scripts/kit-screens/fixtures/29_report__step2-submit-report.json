@@ -1,0 +1,7 @@
+{
+  "signedIn": { "id": 4101, "name": "Asha Rao", "email": "asha.rao@example.com", "role": "user" },
+  "routes": [
+    { "method": "POST", "path": "/api/safety-reports", "match": "exact", "status": 201, "body": { "report": { "id": 1048, "reference": "R-2048", "urgent": false } } }
+  ],
+  "actions": [{ "click": "text=Continue" }, { "waitFor": "text=Add details" }, { "click": "text=Submit report" }, { "waitFor": "text=Thanks. We're on it." }]
+}
