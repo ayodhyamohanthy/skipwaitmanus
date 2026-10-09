@@ -1,4 +1,4 @@
-import { and, desc, eq, or } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import express, { type Express, type Request } from "express";
 import { referralRequests, userBlocks, users } from "../drizzle/schema";
 import { getDb } from "./db";
@@ -73,6 +73,36 @@ export async function isBlockedBetween(userA: number, userB: number): Promise<bo
   if (!db) return false;
   const rows = await db.select({ id: userBlocks.id }).from(userBlocks).where(or(and(eq(userBlocks.blockerUserId, userA), eq(userBlocks.blockedUserId, userB)), and(eq(userBlocks.blockerUserId, userB), eq(userBlocks.blockedUserId, userA)))).limit(1);
   return rows.length > 0;
+}
+
+/**
+ * Batched block check for referral lists and thread guards. Returns the subset
+ * of request ids where the other participant is blocked with the viewer, in
+ * either direction. One extra query regardless of list size; caller filters.
+ */
+export async function getBlockedRequestIds(userId: number, requestIds: number[]): Promise<Set<number>> {
+  const blocked = new Set<number>();
+  const db = await getDb();
+  if (!db) return blocked;
+  const ids = [...new Set(requestIds.filter(id => Number.isInteger(id) && id > 0))].slice(0, 200);
+  if (ids.length === 0) return blocked;
+  const [rows, blocks] = await Promise.all([
+    db.select({ requestId: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(inArray(referralRequests.id, ids)),
+    db.select({ blockerUserId: userBlocks.blockerUserId, blockedUserId: userBlocks.blockedUserId }).from(userBlocks).where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId))).limit(500),
+  ]);
+  const blockedWith = new Set<number>();
+  for (const block of blocks) blockedWith.add(block.blockerUserId === userId ? block.blockedUserId : block.blockerUserId);
+  if (blockedWith.size === 0) return blocked;
+  for (const row of rows) {
+    const other = row.jobSeekerId === userId ? row.referrerId : row.jobSeekerId;
+    if (other !== null && other !== undefined && blockedWith.has(other)) blocked.add(row.requestId);
+  }
+  return blocked;
+}
+
+export async function getThreadBlockStatus(userId: number, requestId: number): Promise<{ blocked: boolean }> {
+  if (!Number.isInteger(requestId) || requestId <= 0) return { blocked: false };
+  return { blocked: (await getBlockedRequestIds(userId, [requestId])).has(requestId) };
 }
 
 function toPositiveInt(raw: unknown): number | undefined {
