@@ -2,9 +2,28 @@ import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, or
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
+import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
+import {
+  ASSISTANT_MIN_PLAN,
+  DEVELOPER_APP_SCOPES,
+  getApprovalExpiresAtMs,
+  isApprovalExpired,
+  normalizeAppKind,
+  normalizeAssistantProvider,
+  normalizeScopes,
+  validateAppName,
+  validateApprovalNote,
+  validateDescription,
+  validateRedirectUrls,
+  validateUrl,
+  type AssistantApproval,
+  type AssistantConnection,
+  type AssistantToken,
+  type DeveloperApp,
+} from "../shared/assistant";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
@@ -219,7 +238,7 @@ export async function getMyProfile(userId: number) {
   return { displayName: account.name, profile: profile ?? null, workItems: items };
 }
 
-export async function updateMyProfile(userId: number, input: { headline?: string; currentTitle?: string; location?: string; bio?: string; skills?: string; handle?: string | null; profileVisibility?: string }) {
+export async function updateMyProfile(userId: number, input: { headline?: string; currentTitle?: string; location?: string; bio?: string; skills?: string; openTo?: unknown; handle?: string | null; profileVisibility?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const patch: Record<string, unknown> = {};
   for (const key of ["headline", "currentTitle", "location", "bio", "skills"] as const) {
@@ -231,6 +250,12 @@ export async function updateMyProfile(userId: number, input: { headline?: string
   if (input.profileVisibility !== undefined) {
     if (!(PROFILE_VISIBILITIES as readonly string[]).includes(input.profileVisibility)) throw new Error("Choose public, link-only, or private visibility");
     patch.profileVisibility = input.profileVisibility;
+  }
+  if (input.openTo !== undefined) {
+    if (!Array.isArray(input.openTo)) throw new Error("List the roles you are open to as an array");
+    const roles = input.openTo.filter((role): role is string => typeof role === "string" && role.trim().length > 0 && role.trim().length <= 60).map(role => role.trim());
+    if (roles.length > 5) throw new Error("List up to 5 roles you are open to");
+    patch.openTo = JSON.stringify(roles);
   }
   if (input.handle !== undefined) {
     if (input.handle === null || input.handle === "") patch.handle = null;
@@ -274,15 +299,21 @@ function validateWorkItemInput(input: { title?: unknown; kind?: unknown; source?
 }
 
 export const PREFER_AREA_OPTIONS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"] as const;
+export const PREFER_LEVEL_OPTIONS = ["Intern", "Early career", "Mid-level", "Senior", "Lead+"] as const;
+
+function parseOptionList(raw: unknown, options: readonly string[]): string[] {
+  let items: string[] = [];
+  try { const parsed: unknown = typeof raw === "string" ? JSON.parse(raw) : raw; if (Array.isArray(parsed)) items = parsed.filter((item): item is string => typeof item === "string"); } catch { items = []; }
+  return items.filter(item => (options as readonly string[]).includes(item));
+}
 
 export async function getReferrerPreferences(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const profile = await getProfileByUserId(userId);
-  let areas: string[] = [];
-  try { const parsed: unknown = JSON.parse(profile?.preferAreas ?? "[]"); if (Array.isArray(parsed)) areas = parsed.filter((item): item is string => typeof item === "string"); } catch { areas = []; }
   return {
     referralCapacity: profile?.referralCapacity ?? 3,
-    preferAreas: areas.filter(area => (PREFER_AREA_OPTIONS as readonly string[]).includes(area)),
+    preferAreas: parseOptionList(profile?.preferAreas, PREFER_AREA_OPTIONS),
+    preferLevels: parseOptionList((profile as { preferLevels?: unknown } | undefined)?.preferLevels, PREFER_LEVEL_OPTIONS),
     referrerVisibility: profile?.referrerVisibility === "named" ? "named" : "anon",
     notifyNewAsk: profile?.notifyNewAsk ?? true,
     notifyDigest: profile?.notifyDigest ?? false,
@@ -290,7 +321,7 @@ export async function getReferrerPreferences(userId: number) {
   };
 }
 
-export async function updateReferrerPreferences(userId: number, input: { referralCapacity?: unknown; preferAreas?: unknown; referrerVisibility?: unknown; notifyNewAsk?: unknown; notifyDigest?: unknown; paused?: unknown }) {
+export async function updateReferrerPreferences(userId: number, input: { referralCapacity?: unknown; preferAreas?: unknown; preferLevels?: unknown; referrerVisibility?: unknown; notifyNewAsk?: unknown; notifyDigest?: unknown; paused?: unknown }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const patch: Record<string, unknown> = {};
   if (input.referralCapacity !== undefined) {
@@ -303,6 +334,12 @@ export async function updateReferrerPreferences(userId: number, input: { referra
     const areas = input.preferAreas.filter((area): area is string => typeof area === "string" && (PREFER_AREA_OPTIONS as readonly string[]).includes(area));
     if (areas.length > 9) throw new Error("Choose up to 9 job areas");
     patch.preferAreas = JSON.stringify(areas);
+  }
+  if (input.preferLevels !== undefined) {
+    if (!Array.isArray(input.preferLevels)) throw new Error("Choose levels from the list");
+    const levels = input.preferLevels.filter((level): level is string => typeof level === "string" && (PREFER_LEVEL_OPTIONS as readonly string[]).includes(level));
+    if (levels.length > 5) throw new Error("Choose up to 5 levels");
+    patch.preferLevels = JSON.stringify(levels);
   }
   if (input.referrerVisibility !== undefined) {
     if (input.referrerVisibility !== "anon" && input.referrerVisibility !== "named") throw new Error("Choose anonymous or named visibility");
@@ -321,6 +358,333 @@ export async function updateReferrerPreferences(userId: number, input: { referra
 export async function listMyWorkItems(userId: number) {
   const db = await getDb(); if (!db) return [];
   return db.select().from(workItems).where(eq(workItems.userId, userId)).orderBy(desc(workItems.pinned), desc(workItems.updatedAt));
+}
+
+/**
+ * Saved job alerts. A seeker watches a company; the first verified referrer
+ * there notifies each unpaused watcher exactly once (eventKey dedup), then
+ * the alert is stamped notifiedAt. Free accounts keep FREE_ALERT_LIMIT
+ * alerts; paid plans are unlimited.
+ */
+export async function listSeekerAlerts(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: seekerAlerts.id, companyDomain: seekerAlerts.companyDomain, paused: seekerAlerts.paused, notifiedAt: seekerAlerts.notifiedAt, createdAt: seekerAlerts.createdAt }).from(seekerAlerts).where(eq(seekerAlerts.userId, userId)).orderBy(desc(seekerAlerts.createdAt));
+}
+
+export async function createSeekerAlert(userId: number, input: { companyDomain?: unknown }) {
+  const domain = normalizeAlertDomain(input.companyDomain);
+  if (!domain) throw new Error("Enter a valid company domain, like acme.com");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const existing = await db.select({ id: seekerAlerts.id }).from(seekerAlerts).where(eq(seekerAlerts.userId, userId));
+  if (existing.length >= FREE_ALERT_LIMIT) {
+    const wallet = (await db.select({ plan: tokenBalances.plan }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
+    if (!wallet || wallet.plan === "free") throw new Error(`Free accounts keep ${FREE_ALERT_LIMIT} alerts. Upgrade for unlimited alerts.`);
+  }
+  try {
+    const inserted = await db.insert(seekerAlerts).values({ userId, companyDomain: domain });
+    const id = Number(inserted[0].insertId);
+    return (await db.select().from(seekerAlerts).where(eq(seekerAlerts.id, id)).limit(1))[0];
+  } catch (error) {
+    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already watch ${domain}`);
+    throw error instanceof Error ? error : new Error("We could not save this alert");
+  }
+}
+
+export async function setSeekerAlertPaused(userId: number, alertId: number, paused: boolean) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(seekerAlerts).where(and(eq(seekerAlerts.id, alertId), eq(seekerAlerts.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This alert is not in your account");
+  await db.update(seekerAlerts).set({ paused }).where(eq(seekerAlerts.id, alertId));
+  return { ...(current as object), paused };
+}
+
+export async function deleteSeekerAlert(userId: number, alertId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: seekerAlerts.id }).from(seekerAlerts).where(and(eq(seekerAlerts.id, alertId), eq(seekerAlerts.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This alert is not in your account");
+  await db.delete(seekerAlerts).where(eq(seekerAlerts.id, alertId));
+  return { deleted: true as const, id: alertId };
+}
+
+export async function notifySeekerAlertsForCompany(companyDomain: string, now: Date = new Date()) {
+  const domain = normalizeAlertDomain(companyDomain);
+  const db = await getDb(); if (!db || !domain) return { notified: 0 };
+  const watchers = await db.select({ id: seekerAlerts.id, userId: seekerAlerts.userId }).from(seekerAlerts).where(and(eq(seekerAlerts.companyDomain, domain), eq(seekerAlerts.paused, false), isNull(seekerAlerts.notifiedAt)));
+  let notified = 0;
+  for (const watcher of watchers) {
+    try {
+      // Claim the alert first: concurrent runs race here, exactly one wins.
+      const stamped = await db.update(seekerAlerts).set({ notifiedAt: now }).where(and(eq(seekerAlerts.id, watcher.id), isNull(seekerAlerts.notifiedAt)));
+      if (Number(stamped[0]?.affectedRows) !== 1) continue;
+      await db.insert(notifications).values({ userId: watcher.userId, category: "status", title: `Someone inside ${domain} can refer`, body: `A verified employee at ${domain} is now open to referral requests. Send your ask while the door is open.`, eventKey: `alert-coverage:${watcher.id}` }).onDuplicateKeyUpdate({ set: { eventKey: `alert-coverage:${watcher.id}` } });
+      notified += 1;
+    } catch { /* fail open per watcher: a missed alert never breaks verification */ }
+  }
+  return { notified };
+}
+
+/**
+ * Assistant access (kit screens 22 / 23 / 24 / 26).
+ * Connections are the revocable consent record an OAuth/MCP
+ * handshake completes. Tokens are stored sha256-hashed and
+ * shown exactly once. Developer apps register third-party
+ * clients (test mode until reviewed). Approvals queue
+ * assistant actions for the user's explicit decision and
+ * expire 24 hours after creation, computed in JavaScript.
+ */
+function parseJsonArray(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getAssistantAccessPlan(userId: number): Promise<string> {
+  const db = await getDb(); if (!db) return "free";
+  const wallet = (await db.select({ plan: tokenBalances.plan }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
+  return wallet?.plan ?? "free";
+}
+
+function assertAssistantAccess(plan: string) {
+  if (plan !== ASSISTANT_MIN_PLAN) throw new Error(`Assistants are part of the ${ASSISTANT_MIN_PLAN} plan. Upgrade to connect ChatGPT, Claude or your own tools.`);
+}
+
+export async function listAssistantConnections(userId: number): Promise<AssistantConnection[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(assistantConnections).where(eq(assistantConnections.userId, userId)).orderBy(desc(assistantConnections.createdAt));
+  return rows.map(row => ({ id: row.id, provider: row.provider, appName: row.appName, scopes: parseJsonArray(row.scopes), status: row.status, lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null, connectedAt: row.connectedAt.toISOString() }));
+}
+
+export async function connectAssistant(userId: number, input: { provider?: unknown; appName?: unknown; scopes?: unknown }) {
+  const provider = normalizeAssistantProvider(input.provider);
+  if (!provider) throw new Error("Choose ChatGPT, Claude, or another assistant");
+  const appName = validateAppName(input.appName) ?? (provider === "chatgpt" ? "ChatGPT" : provider === "claude" ? "Claude" : "Assistant");
+  const scopes = normalizeScopes(input.scopes, ["read", "draft", "send", "credits"]) ?? ["read", "draft"];
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  const current = await db.select({ id: assistantConnections.id, status: assistantConnections.status }).from(assistantConnections).where(and(eq(assistantConnections.userId, userId), eq(assistantConnections.provider, provider)));
+  const active = current.filter(row => row.status === "connected");
+  if (active.length > 0) throw new Error(`${appName} is already connected`);
+  const inserted = await db.insert(assistantConnections).values({ userId, provider, appName, scopes: JSON.stringify(scopes) });
+  const id = Number(inserted[0].insertId);
+  return (await listAssistantConnections(userId)).find(connection => connection.id === id) ?? null;
+}
+
+export async function disconnectAssistant(userId: number, connectionId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(assistantConnections).where(and(eq(assistantConnections.id, connectionId), eq(assistantConnections.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This assistant is not connected to your account");
+  await db.update(assistantConnections).set({ status: "revoked", revokedAt: new Date() }).where(eq(assistantConnections.id, connectionId));
+  return { revoked: true as const, id: connectionId };
+}
+
+export async function listAssistantTokens(userId: number): Promise<AssistantToken[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: assistantTokens.id, name: assistantTokens.name, prefix: assistantTokens.prefix, lastUsedAt: assistantTokens.lastUsedAt, createdAt: assistantTokens.createdAt }).from(assistantTokens).where(eq(assistantTokens.userId, userId)).orderBy(desc(assistantTokens.createdAt));
+  return rows.map(row => ({ id: row.id, name: row.name, prefix: row.prefix, lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null, createdAt: row.createdAt.toISOString() }));
+}
+
+export async function createAssistantToken(userId: number, input: { name?: unknown }) {
+  const name = validateAppName(input.name);
+  if (!name) throw new Error("Give the token a name, like “Notion tracker”");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  const plaintext = `sw_${randomBytes(24).toString("base64url")}`;
+  const tokenHash = createHash("sha256").update(plaintext).digest("hex");
+  const prefix = plaintext.slice(0, 10);
+  try {
+    const inserted = await db.insert(assistantTokens).values({ userId, name, tokenHash, prefix });
+    const id = Number(inserted[0].insertId);
+    return { id, name, prefix, token: plaintext, createdAt: new Date().toISOString() };
+  } catch (error) {
+    if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY") throw new Error(`You already have a token named “${name}”`);
+    throw error instanceof Error ? error : new Error("We could not create this token");
+  }
+}
+
+/** Resolves a bearer token hash to its owner. Revoked or unknown tokens return null. */
+export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId: number; tokenId: number } | null> {
+  const db = await getDb(); if (!db) return null;
+  const row = (await db.select({ id: assistantTokens.id, userId: assistantTokens.userId }).from(assistantTokens).where(and(eq(assistantTokens.tokenHash, tokenHash), isNull(assistantTokens.revokedAt))).limit(1))[0];
+  if (!row) return null;
+  await db.update(assistantTokens).set({ lastUsedAt: new Date() }).where(eq(assistantTokens.id, row.id)).catch(() => undefined);
+  return { userId: row.userId, tokenId: row.id };
+}
+
+/** True when the owner's plan still includes assistants. */
+export async function hasAssistantAccess(userId: number): Promise<boolean> {
+  try { return (await getAssistantAccessPlan(userId)) === ASSISTANT_MIN_PLAN; } catch { return false; }
+}
+
+export async function revokeAssistantToken(userId: number, tokenId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: assistantTokens.id }).from(assistantTokens).where(and(eq(assistantTokens.id, tokenId), eq(assistantTokens.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This token is not in your account");
+  await db.update(assistantTokens).set({ revokedAt: new Date() }).where(eq(assistantTokens.id, tokenId));
+  return { revoked: true as const, id: tokenId };
+}
+
+export async function listAssistantApprovals(userId: number): Promise<AssistantApproval[]> {
+  const db = await getDb(); if (!db) return [];
+  const now = new Date();
+  await db.update(assistantApprovals).set({ status: "expired", decidedAt: now }).where(and(eq(assistantApprovals.userId, userId), eq(assistantApprovals.status, "pending"), lt(assistantApprovals.expiresAt, now)));
+  const rows = await db.select().from(assistantApprovals).where(eq(assistantApprovals.userId, userId)).orderBy(desc(assistantApprovals.createdAt)).limit(50);
+  return rows.map(row => ({
+    id: row.id,
+    kind: row.kind,
+    status: row.status,
+    provider: row.provider,
+    companyDomain: row.companyDomain,
+    role: row.role,
+    note: row.note,
+    creditCount: row.creditCount,
+    slotCount: row.slotCount,
+    createdAt: row.createdAt.toISOString(),
+    expiresAt: row.expiresAt.toISOString(),
+  }));
+}
+
+export async function createAssistantApproval(userId: number, input: {
+  kind?: unknown; provider?: unknown; connectionId?: unknown;
+  companyDomain?: unknown; role?: unknown; note?: unknown;
+  creditCount?: unknown; slotCount?: unknown;
+}) {
+  const kind = input.kind === "ask_send" || input.kind === "credit_spend" ? input.kind : null;
+  if (!kind) throw new Error("Approvals cover an ask or a credit spend");
+  const provider = typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
+  const companyDomain = typeof input.companyDomain === "string" && input.companyDomain.trim() ? input.companyDomain.trim().toLowerCase().slice(0, 255) : null;
+  const role = typeof input.role === "string" && input.role.trim() ? input.role.trim().slice(0, 180) : null;
+  const note = input.note === undefined || input.note === null ? null : validateApprovalNote(input.note);
+  const creditCount = typeof input.creditCount === "number" && Number.isInteger(input.creditCount) && input.creditCount > 0 ? input.creditCount : null;
+  const slotCount = typeof input.slotCount === "number" && Number.isInteger(input.slotCount) && input.slotCount >= 0 ? input.slotCount : null;
+  const connectionId = typeof input.connectionId === "number" && Number.isInteger(input.connectionId) && input.connectionId > 0 ? input.connectionId : null;
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const expiresAt = new Date(getApprovalExpiresAtMs(Date.now()));
+  const inserted = await db.insert(assistantApprovals).values({ userId, connectionId, kind, provider, companyDomain, role, note, creditCount, slotCount, expiresAt });
+  const id = Number(inserted[0].insertId);
+  const created = (await db.select().from(assistantApprovals).where(eq(assistantApprovals.id, id)).limit(1))[0];
+  return { id: created.id, kind: created.kind, status: created.status, provider: created.provider, companyDomain: created.companyDomain, role: created.role, note: created.note, creditCount: created.creditCount, slotCount: created.slotCount, createdAt: created.createdAt.toISOString(), expiresAt: created.expiresAt.toISOString() };
+}
+
+export async function editAssistantApproval(userId: number, approvalId: number, input: { note?: unknown }) {
+  const note = validateApprovalNote(input.note);
+  if (!note) throw new Error("Enter the ask note you want to send");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(assistantApprovals).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This approval is not in your account");
+  if (current.status !== "pending") throw new Error("This approval was already handled");
+  if (isApprovalExpired(current.expiresAt.getTime())) throw new Error("This approval expired");
+  await db.update(assistantApprovals).set({ note }).where(eq(assistantApprovals.id, approvalId));
+  return { id: approvalId, note };
+}
+
+export async function decideAssistantApproval(userId: number, approvalId: number, decision: "approved" | "declined") {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select().from(assistantApprovals).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This approval is not in your account");
+  if (current.status !== "pending") throw new Error("This approval was already handled");
+  if (isApprovalExpired(current.expiresAt.getTime())) {
+    await db.update(assistantApprovals).set({ status: "expired", decidedAt: new Date() }).where(eq(assistantApprovals.id, approvalId));
+    throw new Error("This approval expired");
+  }
+  const result = await db.update(assistantApprovals).set({ status: decision, decidedAt: new Date() }).where(and(eq(assistantApprovals.id, approvalId), eq(assistantApprovals.status, "pending")));
+  if (Number(result[0]?.affectedRows) !== 1) throw new Error("This approval was already handled");
+  return { id: approvalId, status: decision };
+}
+
+export async function listAssistantActivity(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome, resourceType: operationalActivityLogs.resourceType, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), like(operationalActivityLogs.action, "assistant.%"))).orderBy(desc(operationalActivityLogs.createdAt)).limit(50);
+  return rows.map(row => {
+    let metadata: Record<string, unknown> = {};
+    try { metadata = row.metadata ? JSON.parse(row.metadata) : {}; } catch { /* keep empty */ }
+    return { action: row.action, outcome: row.outcome, resourceType: row.resourceType, metadata, createdAt: row.createdAt.toISOString() };
+  });
+}
+
+export async function listDeveloperApps(userId: number): Promise<DeveloperApp[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select().from(developerApps).where(eq(developerApps.userId, userId)).orderBy(desc(developerApps.createdAt));
+  return rows.map(row => ({
+    id: row.id,
+    name: row.name,
+    kind: row.kind,
+    description: row.description,
+    website: row.website,
+    redirectUrls: parseJsonArray(row.redirectUrls),
+    scopes: parseJsonArray(row.scopes),
+    status: row.status,
+    rejectReasons: parseJsonArray(row.rejectReasons),
+    webhookUrl: row.webhookUrl,
+    clientId: row.clientId,
+    createdAt: row.createdAt.toISOString(),
+  }));
+}
+
+export async function createDeveloperApp(userId: number, input: {
+  name?: unknown; kind?: unknown; description?: unknown;
+  website?: unknown; redirectUrls?: unknown; scopes?: unknown;
+  agreeToTerms?: unknown;
+}) {
+  const name = validateAppName(input.name);
+  if (!name) throw new Error("Give your app a name (2–80 characters)");
+  const kind = normalizeAppKind(input.kind);
+  if (!kind) throw new Error("Choose what you are building");
+  const description = validateDescription(input.description);
+  if (!description) throw new Error("Describe what your app does for job seekers");
+  const website = input.website === undefined || input.website === null || input.website === "" ? null : validateUrl(input.website);
+  if (website === null && input.website !== undefined && input.website !== null && input.website !== "") throw new Error("Enter a valid website URL");
+  const redirectUrls = validateRedirectUrls(input.redirectUrls);
+  if (!redirectUrls) throw new Error("Enter 1–10 valid redirect URLs");
+  const scopes = normalizeScopes(input.scopes, DEVELOPER_APP_SCOPES);
+  if (!scopes) throw new Error("Choose only the listed permissions");
+  if (input.agreeToTerms !== true) throw new Error("Agree to the developer terms to register an app");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  const tryInsert = (clientId: string) => db.insert(developerApps).values({ userId, name, kind, description, website, redirectUrls: JSON.stringify(redirectUrls), scopes: JSON.stringify(scopes), clientId });
+  let inserted: Awaited<ReturnType<typeof tryInsert>> | undefined;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const clientId = `sw_app_${randomBytes(8).toString("hex")}`;
+    try {
+      inserted = await tryInsert(clientId);
+      break;
+    } catch (error) {
+      if (error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY" && attempt < 2) continue;
+      throw error instanceof Error ? error : new Error("We could not register this app");
+    }
+  }
+  if (!inserted) throw new Error("We could not register this app");
+  const id = Number(inserted[0].insertId);
+  return (await listDeveloperApps(userId)).find(app => app.id === id) ?? null;
+}
+
+export async function getDeveloperApp(userId: number, appId: number): Promise<DeveloperApp | null> {
+  const db = await getDb(); if (!db) return null;
+  const row = (await db.select().from(developerApps).where(and(eq(developerApps.id, appId), eq(developerApps.userId, userId))).limit(1))[0];
+  if (!row) return null;
+  return { id: row.id, name: row.name, kind: row.kind, description: row.description, website: row.website, redirectUrls: parseJsonArray(row.redirectUrls), scopes: parseJsonArray(row.scopes), status: row.status, rejectReasons: parseJsonArray(row.rejectReasons), webhookUrl: row.webhookUrl, clientId: row.clientId, createdAt: row.createdAt.toISOString() };
+}
+
+export async function updateDeveloperAppWebhook(userId: number, appId: number, input: { webhookUrl?: unknown }) {
+  const webhookUrl = input.webhookUrl === undefined || input.webhookUrl === null || input.webhookUrl === "" ? null : validateUrl(input.webhookUrl);
+  if (webhookUrl === null && input.webhookUrl !== undefined && input.webhookUrl !== null && input.webhookUrl !== "") throw new Error("Enter a valid webhook URL");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: developerApps.id }).from(developerApps).where(and(eq(developerApps.id, appId), eq(developerApps.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This app is not in your console");
+  await db.update(developerApps).set({ webhookUrl }).where(eq(developerApps.id, appId));
+  return { id: appId, webhookUrl };
+}
+
+export async function submitDeveloperAppForReview(userId: number, appId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const current = (await db.select({ id: developerApps.id, status: developerApps.status }).from(developerApps).where(and(eq(developerApps.id, appId), eq(developerApps.userId, userId))).limit(1))[0];
+  if (!current) throw new Error("This app is not in your console");
+  if (current.status !== "test" && current.status !== "rejected") throw new Error("Only test apps can be submitted for review");
+  await db.update(developerApps).set({ status: "in_review" }).where(eq(developerApps.id, appId));
+  return { id: appId, status: "in_review" as const };
 }
 
 export async function createWorkItem(userId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
@@ -355,6 +719,14 @@ export async function deleteWorkItem(userId: number, itemId: number) {
 // Pure visibility decision for /api/p/:handle. A missing or "private" value
 // hides everything from anyone but the owner; items are listed only when the
 // owner marked them visible.
+function parseProfileOpenTo(raw: unknown): string[] {
+  try {
+    const parsed: unknown = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((role): role is string => typeof role === "string" && role.trim().length > 0 && role.trim().length <= 60).map(role => role.trim()).slice(0, 5);
+  } catch { return []; }
+}
+
 export function shapePublicProfile(
   owner: { id: number; name: string | null },
   profile: NonNullable<Awaited<ReturnType<typeof getProfileByUserId>>>,
@@ -375,6 +747,7 @@ export function shapePublicProfile(
     location: profile.location,
     bio: profile.bio,
     skills: profile.skills,
+    openTo: parseProfileOpenTo((profile as { openTo?: unknown }).openTo),
     company: profile.company,
     verifiedWork: profile.workEmailVerifiedAt ? { domain: profile.workEmailDomain, verifiedAt: profile.workEmailVerifiedAt } : null,
     handle: profile.handle,
@@ -671,7 +1044,7 @@ export async function getVerifiedWorkEmailAccess(userId: number) {
   return { workEmailDomain: profile.workEmailDomain };
 }
 
-export type PrivateReferrerImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
+export type PrivateReferrerImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number; repliedWithin3DaysPct: number | null };
 
 export async function getPrivateReferrerImpactSummary(userId: number): Promise<PrivateReferrerImpactSummary> {
   const access = await getVerifiedWorkEmailAccess(userId);
@@ -679,12 +1052,34 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const rows = await db.select({ status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.referrerId, userId));
   const statusCount = (status: ReferralStatus) => rows.filter(row => row.status === status).length;
+  // Reply latency from the append-only transition log: claim instant vs the
+  // referrer's first decision (approve, review, or pass) on the same ask.
+  // Computed in JS from stored timestamps; null when nothing decided yet.
+  const DECISION_ACTIONS = new Set(["approve", "review", "pass"]);
+  const trail = await db.select({ requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, at: referralTransitionEvents.createdAt }).from(referralTransitionEvents).where(eq(referralTransitionEvents.actorUserId, userId));
+  const claimedAt = new Map<number, number>();
+  const decidedAt = new Map<number, number>();
+  for (const event of trail) {
+    const at = event.at instanceof Date ? event.at.getTime() : new Date(event.at).getTime();
+    if (!Number.isFinite(at)) continue;
+    if (event.action === "claim") claimedAt.set(event.requestId, Math.min(claimedAt.get(event.requestId) ?? Infinity, at));
+    else if (DECISION_ACTIONS.has(event.action)) decidedAt.set(event.requestId, Math.min(decidedAt.get(event.requestId) ?? Infinity, at));
+  }
+  let decided = 0;
+  let within3Days = 0;
+  for (const [requestId, decidedMs] of Array.from(decidedAt)) {
+    const claimMs = claimedAt.get(requestId);
+    if (claimMs === undefined || decidedMs < claimMs) continue;
+    decided += 1;
+    if (decidedMs - claimMs <= 3 * 24 * 60 * 60 * 1000) within3Days += 1;
+  }
   return {
     reviewed: rows.length,
     approved: statusCount("approved") + statusCount("intro_made") + statusCount("interview") + statusCount("offer"),
     introductions: statusCount("intro_made") + statusCount("interview") + statusCount("offer"),
     interviews: statusCount("interview") + statusCount("offer"),
     offers: statusCount("offer"),
+    repliedWithin3DaysPct: decided === 0 ? null : Math.round((within3Days / decided) * 100),
   };
 }
 
@@ -1230,7 +1625,10 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   });
   const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
   const unreadByRequestId = new Map(unreadRows.map(row => [row.requestId, Number(row.unreadMessageCount)]));
-  return scopedRows.map(row => ({ ...row, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+  return scopedRows.map(row => {
+    const expiresAtMs = getAskExpiresAtMs(row.createdAt);
+    return { ...row, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
+  });
 }
 
 export async function getUnclaimedCompanyReferralPreview(userId: number, requestId: number) {
@@ -1429,6 +1827,12 @@ export async function getReferralFlowHealth() {
       domainIntegrityAffected: domainIntegrity.affectedCount,
     },
   };
+}
+
+export async function listMyPaymentReceipts(userId: number, role: "job_seeker" | "referrer" = "job_seeker", limit = 50) {
+  const db = await getDb(); if (!db) return [];
+  const safeLimit = Math.max(1, Math.min(limit, 100));
+  return db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, tokenCount: paymentFulfillments.tokenCount, status: paymentFulfillments.status, providerInvoiceId: paymentFulfillments.providerInvoiceId, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.role, role), inArray(paymentFulfillments.status, ["credited", "refunded"]))).orderBy(desc(paymentFulfillments.createdAt)).limit(safeLimit);
 }
 
 export async function getCreditLedgerAudit(limit = 200) {

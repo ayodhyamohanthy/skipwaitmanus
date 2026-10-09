@@ -43,6 +43,8 @@ import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
+import { registerAssistantRoutes } from "../assistantRoutes";
+import { registerMcpRoutes } from "../mcpRoutes";
 import { registerProfileRoutes } from "../profileRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
@@ -59,7 +61,6 @@ import { workEmailOtpService } from "../workEmailOtp";
 import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
-import { registerPasswordResetRoutes } from "../passwordResetRoutes";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
@@ -143,7 +144,6 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
   // Referrer OTP-first login is a public surface, always registered.
   registerReferrerOtpLoginRoutes(app);
-  registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
   else registerDevAuthRoutes(app);
   app.use(materialErrorAlertMiddleware);
@@ -158,6 +158,18 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerDmRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, countRecentMessagesBySender: db.countRecentMessagesBySender });
   // X-style follow graph: follow members, see counts, and unlock free mutual-follow messaging.
   registerFollowRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // Assistant access (kit screens 22/23/24/26): connections, API
+  // tokens, assistant approvals and the developer app console.
+  registerAssistantRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // Read-only MCP endpoint for connected assistants (bearer-token auth, skipwait.me/mcp).
+  registerMcpRoutes(app, {
+    verifyBearer: db.verifyAssistantBearer,
+    hasAccess: db.hasAssistantAccess,
+    recordActivity: db.recordOperationalActivity,
+    searchJobs: input => db.listJobs(input),
+    listRequests: async userId => (await db.listReferralRequests(userId)).filter(row => row.jobSeekerId === userId),
+    listAlerts: userId => db.listSeekerAlerts(userId),
+  });
   // Seeker/referrer profiles, work showcases, and shareable public profiles.
   registerProfileRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, getMyProfile: db.getMyProfile, updateMyProfile: db.updateMyProfile, listMyWorkItems: db.listMyWorkItems, createWorkItem: db.createWorkItem, updateWorkItem: db.updateWorkItem, deleteWorkItem: db.deleteWorkItem, getPublicProfileByHandle: db.getPublicProfileByHandle });
   // Safety reports and company suggestions intake.

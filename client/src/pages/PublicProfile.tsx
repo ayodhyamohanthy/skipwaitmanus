@@ -1,6 +1,7 @@
 import { ArrowRight, BadgeCheck, Copy, Eye, EyeOff, Globe, Link2, LockKeyhole, MapPin, Pin } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
+import { useAuth } from "@/_core/auth";
 import { readApiJson } from "@/lib/apiResponse";
 
 type WorkItem = { id: number; title: string; kind: string; source: string | null; url: string | null; pinned: boolean; visibleOnProfile: boolean };
@@ -14,6 +15,7 @@ type PublicProfile = {
   location?: string | null;
   bio?: string | null;
   skills?: string | null;
+  openTo?: string[] | null;
   verifiedWork?: { domain: string | null; verifiedAt: string } | null;
   handle?: string | null;
   workItems?: WorkItem[];
@@ -24,10 +26,26 @@ const KIND_LABELS: Record<string, string> = { case_study: "Case study", project:
 export default function PublicProfile() {
   const [, params] = useRoute("/p/:handle");
   const handle = params?.handle ?? "";
+  const { getToken } = useAuth();
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [missing, setMissing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
+  const [visibilityError, setVisibilityError] = useState("");
+
+  const refresh = async () => {
+    if (!handle) return;
+    setLoading(true); setMissing(false);
+    try {
+      const response = await fetch(`/api/p/${encodeURIComponent(handle)}`, { credentials: "include" });
+      if (response.status === 404) { setMissing(true); return; }
+      const payload = await readApiJson<{ profile?: PublicProfile; error?: string }>(response, "We could not load this profile");
+      if (!response.ok || !payload.profile) throw new Error(payload.error || "We could not load this profile");
+      setProfile(payload.profile);
+    } catch { setMissing(true); }
+    finally { setLoading(false); }
+  };
 
   useEffect(() => {
     if (!handle) return;
@@ -45,6 +63,19 @@ export default function PublicProfile() {
     })();
     return () => { active = false; };
   }, [handle]);
+
+  const saveVisibility = async (visibility: "public" | "link" | "private") => {
+    if (!profile?.isOwner || savingVisibility) return;
+    setSavingVisibility(true); setVisibilityError("");
+    try {
+      const token = await getToken();
+      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ profileVisibility: visibility }) });
+      const payload = await readApiJson<{ error?: string }>(response, "We could not update visibility");
+      if (!response.ok) throw new Error(payload.error || "We could not update visibility");
+      await refresh();
+    } catch (error) { setVisibilityError(error instanceof Error ? error.message : "We could not update visibility"); }
+    finally { setSavingVisibility(false); }
+  };
 
   useEffect(() => {
     if (profile?.visible && profile.visibility === "link") {
@@ -86,6 +117,12 @@ export default function PublicProfile() {
                     <Link href="/profile" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Manage</Link>
                   </div>
                 </div>
+                <div className="mt-4 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Profile visibility">
+                  {(["public", "link", "private"] as const).map(value => (
+                    <button key={value} type="button" role="radio" aria-checked={profile.visibility === value} disabled={savingVisibility} onClick={() => { void saveVisibility(value); }} className={`min-h-11 rounded-xl border px-2 text-sm ${profile.visibility === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "link" ? "Link only" : value === "public" ? "Public" : "Private"}</button>
+                  ))}
+                </div>
+                {visibilityError ? <p role="alert" className="mt-3 text-sm font-semibold text-[var(--destructive)]">{visibilityError}</p> : null}
               </section>
             ) : null}
             <section className="flex flex-col gap-5 sm:flex-row sm:items-center">
@@ -101,6 +138,12 @@ export default function PublicProfile() {
             </section>
             {profile.bio ? <p className="mt-5 max-w-2xl leading-7">{profile.bio}</p> : null}
             {profile.skills ? <p className="mt-3 text-sm text-[var(--muted-foreground)]">{profile.skills}</p> : null}
+            {profile.openTo && profile.openTo.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-xs font-bold uppercase tracking-[.14em] text-[var(--muted-foreground)]">Open to</p>
+                <ul className="mt-2 flex flex-wrap gap-2">{profile.openTo.map(role => <li key={role} className="rounded-full border border-[var(--border)] px-3 py-1.5 text-sm font-medium">{role}</li>)}</ul>
+              </div>
+            ) : null}
 
             <section className="mt-10" aria-label="Work">
               <div className="mb-4 flex items-end justify-between gap-3">

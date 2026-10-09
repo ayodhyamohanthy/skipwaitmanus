@@ -215,6 +215,11 @@ input, textarea { caret-color: var(--primary); }
 .status-approved,.status-intro_made,.status-interview,.status-offer{border-color:var(--success);color:var(--success);}
 .status-declined,.status-withdrawn{color:var(--destructive);}
 .status-closed{color:var(--muted-foreground);}
+/* kit work-showcase thumbnails: the single allowed tint blend (DESIGN.md), primary/secondary wash with ink icon */
+.work-thumb{position:relative;display:grid;place-items:center;height:120px;background:linear-gradient(135deg,color-mix(in oklch,var(--primary) 14%,transparent),color-mix(in oklch,var(--secondary) 65%,transparent));color:var(--primary);}
+.work-thumb>svg{width:34px;height:34px;}
+.work-thumb .pinned-pill{position:absolute;top:12px;left:12px;display:inline-flex;align-items:center;gap:4px;background:var(--foreground);color:var(--background);border-radius:999px;padding:5px 10px;font-size:10px;font-weight:700;}
+.work-thumb .pinned-pill svg{width:11px;height:11px;}
 .role-list{display:grid;gap:10px;margin-top:24px;}
 .role-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--background);}
 .role-row strong{display:block;font-size:14px;}
@@ -225,6 +230,8 @@ input, textarea { caret-color: var(--primary); }
 .launch-header-actions .launch-signin{background:transparent;color:var(--foreground);border-color:transparent;box-shadow:none;padding-inline:14px;font-weight:500;}
 .launch-header-actions .launch-signin:hover{color:var(--primary);}
 .launch-header-actions a.brand-button:not(.launch-signin){background:var(--background);color:var(--foreground);border:1.5px solid var(--foreground);}
+/* Desktop: the door sits in normal flow under the copy so it is always shown whole, at any width */
+@media(min-width:769px){.launch-hero{height:auto;min-height:0;max-height:none;overflow:hidden;display:flex;flex-direction:column;}.launch-hero-copy{order:1;width:100%;}.launch-hero-image{order:2;position:relative;inset:auto;transform:none;display:block;width:min(100%,1280px);height:auto;margin:calc(40px - .29 * min(100vw,1280px)) auto 0;object-fit:initial;-webkit-mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);}}
 .launch-faq-item>button{display:flex;align-items:center;justify-content:space-between;}
 .referrer-band-grid .brand-button{background:var(--background);color:var(--foreground);}
 @media(max-width:768px){.launch-header-actions .launch-signin{display:inline-flex;}}

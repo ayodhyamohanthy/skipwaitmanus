@@ -71,9 +71,10 @@ export function countExpiringSoon(requests: readonly ReferralRequest[], nowMs: n
   }).length;
 }
 
-export type CreditMeter = {
+export type SlotMeter = {
   planLabel: string;
-  used: number;
+  /** Slots still open this month: the monthly credits the server has not reserved. */
+  open: number;
   allowance: number;
   packCredits: number;
   renewsOn: string | null;
@@ -82,14 +83,17 @@ export type CreditMeter = {
 };
 
 /**
- * The server has no open-ask cap; each ask reserves one credit from the
- * monthly allowance (then the purchased balance), and withdrawn or expired
- * asks return it. The kit's slot meter is therefore the monthly credit meter,
- * and "full" means no credit is left to send another ask.
+ * The kit "OPEN SLOTS · x/N" meter on the live wallet. Every ask reserves one
+ * credit (monthly allowance first, then the purchased balance), and only a
+ * withdrawn or expired ask returns it, so the open slots this month are the
+ * monthly credits remaining out of the plan's allowance. Counting pending
+ * asks instead would overstate them after an answered ask (its credit stays
+ * spent) and understate them for asks carried over from last month. "Full"
+ * means no credit of any kind is left to send another ask.
  */
-export function creditMeter(credits: CreditSummary): CreditMeter {
+export function slotMeter(credits: CreditSummary): SlotMeter {
   const allowance = Math.max(0, credits.monthlyAllowance);
-  const used = Math.min(allowance, Math.max(0, allowance - credits.monthlyCreditsRemaining));
+  const open = Math.min(allowance, Math.max(0, credits.monthlyCreditsRemaining));
   const plan = credits.plan;
   const paid = isPaidSubscriptionPlan(plan);
   const planLabel = paid ? SUBSCRIPTION_PLANS[plan].label : plan === "free" ? "Free" : plan;
@@ -97,7 +101,7 @@ export function creditMeter(credits: CreditSummary): CreditMeter {
   const renewDate = paid && credits.subscriptionCurrentTermEnd ? new Date(credits.subscriptionCurrentTermEnd) : null;
   return {
     planLabel,
-    used,
+    open,
     allowance,
     packCredits: Math.max(0, credits.purchasedCreditsRemaining),
     renewsOn: renewDate && !Number.isNaN(renewDate.getTime()) ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(renewDate) : null,
@@ -106,10 +110,10 @@ export function creditMeter(credits: CreditSummary): CreditMeter {
   };
 }
 
-/** Kit "All 3 slots are in use…" nudge, restated in the live credit model. */
-export function creditsFullCopy(meter: CreditMeter, hasWithdrawableAsk: boolean): string {
-  const lead = `All ${meter.allowance} credits this month are in use.`;
-  const more = meter.nextPlan ? `get more credits with ${meter.nextPlan.label} (${meter.nextPlan.monthlyAllowance})` : "add one-time credits";
-  if (hasWithdrawableAsk) return `${lead} Wait for an unclaimed ask to expire, withdraw one, or ${more}.`;
-  return `${lead} ${more.charAt(0).toUpperCase()}${more.slice(1)}.`;
+/** Kit "All 3 slots are in use. …" nudge; only options the server really offers are named. */
+export function slotsFullCopy(meter: SlotMeter, hasWithdrawableAsk: boolean): { lead: string; next: string } {
+  const lead = `All ${meter.allowance} slots are in use.`;
+  const more = meter.nextPlan ? `get more slots with ${meter.nextPlan.label} (${meter.nextPlan.monthlyAllowance})` : "add one-time credits";
+  if (hasWithdrawableAsk) return { lead, next: `Wait for an unclaimed ask to expire, withdraw one, or ${more}.` };
+  return { lead, next: `${more.charAt(0).toUpperCase()}${more.slice(1)}.` };
 }

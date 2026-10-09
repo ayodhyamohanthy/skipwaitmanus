@@ -54,6 +54,7 @@ export const profiles = mysqlTable("profiles", {
   currentTitle: varchar("currentTitle", { length: 160 }),
   resumeUrl: varchar("resumeUrl", { length: 1024 }),
   skills: text("skills"),
+  openTo: text("openTo"),
   experience: text("experience"),
   expertise: text("expertise"),
   referralCapacity: int("referralCapacity").default(3),
@@ -64,6 +65,7 @@ export const profiles = mysqlTable("profiles", {
   handle: varchar("handle", { length: 40 }),
   profileVisibility: mysqlEnum("profileVisibility", ["public", "link", "private"]).default("private").notNull(),
   preferAreas: text("preferAreas"),
+  preferLevels: text("preferLevels"),
   referrerVisibility: mysqlEnum("referrerVisibility", ["anon", "named"]).default("anon").notNull(),
   notifyNewAsk: boolean("notifyNewAsk").default(true).notNull(),
   notifyDigest: boolean("notifyDigest").default(false).notNull(),
@@ -107,6 +109,73 @@ export const companySuggestions = mysqlTable("companySuggestions", {
   status: mysqlEnum("status", ["open", "under_review", "approved", "dismissed"]).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("company_suggestions_submitter_idx").on(table.submitterUserId), index("company_suggestions_status_idx").on(table.status)]);
+
+export const seekerAlerts = mysqlTable("seekerAlerts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyDomain: varchar("companyDomain", { length: 255 }).notNull(),
+  paused: boolean("paused").default(false).notNull(),
+  notifiedAt: timestamp("notifiedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("seeker_alerts_user_domain_unique").on(table.userId, table.companyDomain), index("seeker_alerts_user_idx").on(table.userId), index("seeker_alerts_domain_idx").on(table.companyDomain)]);
+
+export const assistantConnections = mysqlTable("assistantConnections", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: mysqlEnum("provider", ["chatgpt", "claude", "custom"]).notNull(),
+  appName: varchar("appName", { length: 160 }).notNull(),
+  scopes: text("scopes").notNull(), // JSON array of granted scopes
+  status: mysqlEnum("status", ["connected", "declined", "expired", "revoked"]).default("connected").notNull(),
+  connectedAt: timestamp("connectedAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  revokedAt: timestamp("revokedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("assistant_connections_user_idx").on(table.userId), index("assistant_connections_status_idx").on(table.status)]);
+
+export const assistantTokens = mysqlTable("assistantTokens", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  tokenHash: varchar("tokenHash", { length: 128 }).notNull(), // sha256 hex
+  prefix: varchar("prefix", { length: 16 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  lastUsedAt: timestamp("lastUsedAt"),
+  revokedAt: timestamp("revokedAt"),
+}, table => [uniqueIndex("assistant_tokens_user_name_unique").on(table.userId, table.name), index("assistant_tokens_user_idx").on(table.userId)]);
+
+export const developerApps = mysqlTable("developerApps", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  kind: mysqlEnum("kind", ["web_app", "agent_mcp", "server_integration"]).notNull(),
+  description: text("description").notNull(),
+  website: varchar("website", { length: 512 }),
+  redirectUrls: text("redirectUrls").notNull(), // JSON array
+  scopes: text("scopes").notNull(), // JSON array
+  status: mysqlEnum("status", ["test", "in_review", "live", "rejected", "suspended"]).default("test").notNull(),
+  rejectReasons: text("rejectReasons"), // JSON array
+  webhookUrl: varchar("webhookUrl", { length: 512 }),
+  clientId: varchar("clientId", { length: 64 }).notNull().unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("developer_apps_user_idx").on(table.userId), index("developer_apps_status_idx").on(table.status)]);
+
+export const assistantApprovals = mysqlTable("assistantApprovals", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  connectionId: int("connectionId").references(() => assistantConnections.id, { onDelete: "set null" }),
+  kind: mysqlEnum("kind", ["ask_send", "credit_spend"]).notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "declined", "expired"]).default("pending").notNull(),
+  provider: varchar("provider", { length: 80 }).notNull(),
+  companyDomain: varchar("companyDomain", { length: 255 }),
+  role: varchar("role", { length: 180 }),
+  note: text("note"),
+  creditCount: int("creditCount"),
+  slotCount: int("slotCount"),
+  expiresAt: timestamp("expiresAt").notNull(),
+  decidedAt: timestamp("decidedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("assistant_approvals_user_idx").on(table.userId), index("assistant_approvals_status_idx").on(table.status), index("assistant_approvals_expiry_idx").on(table.expiresAt)]);
 
 export const jobs = mysqlTable("jobs", {
   id: int("id").autoincrement().primaryKey(),

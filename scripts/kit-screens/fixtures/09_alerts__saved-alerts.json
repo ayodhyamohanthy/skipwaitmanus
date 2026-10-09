@@ -55,6 +55,52 @@
           }
         ]
       }
+    },
+    {
+      "method": "GET",
+      "path": "/api/seeker-alerts",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "alerts": [
+          {
+            "id": 31,
+            "companyDomain": "merkle.com",
+            "paused": false,
+            "notifiedAt": null,
+            "createdAt": "2026-10-07T09:15:00.000Z"
+          },
+          {
+            "id": 30,
+            "companyDomain": "skipwait.me",
+            "paused": false,
+            "notifiedAt": null,
+            "createdAt": "2026-10-05T12:40:00.000Z"
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "free",
+          "monthlyAllowance": 3,
+          "monthlyCreditsRemaining": 1,
+          "purchasedCreditsRemaining": 0,
+          "promoCreditsRemaining": 0,
+          "promoExpiresAt": null,
+          "promoStatus": null,
+          "promoOfferActive": false,
+          "totalAvailable": 1,
+          "cycleKey": "2026-10",
+          "subscriptionStatus": null,
+          "subscriptionCurrentTermEnd": null
+        }
+      }
     }
   ],
   "actions": [
@@ -65,7 +111,10 @@
       "click": "[role=tab]:has-text('Saved alerts')"
     },
     {
-      "waitFor": "text=Get told when a door opens."
+      "waitFor": "text=merkle.com"
+    },
+    {
+      "waitFor": "text=Free accounts keep 3 alerts"
     }
   ]
 }

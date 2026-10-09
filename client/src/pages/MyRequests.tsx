@@ -1,7 +1,7 @@
 // Seeker Requests (kit v4 /requests, app/src/routes/requests.tsx) on live data:
-// asks from /api/company-referrals/mine, the credit meter from
-// /api/credits/summary, and withdraw with its confirm dialog, retry and credit
-// restore. No preview states, sample asks or invented counts ship here.
+// asks from /api/company-referrals/mine, the open-slot meter and slots-full
+// nudge from /api/credits/summary, and withdraw with its confirm dialog, retry
+// and slot restore. No preview states, sample asks or invented counts ship here.
 import { ArrowRight, LockKeyhole, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,7 +17,7 @@ import { WITHDRAW_ERROR, fetchMyRequests, fetchSeekerCredits, withdrawMyRequest,
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { usePersistFn } from "@/hooks/usePersistFn";
 
-const HEADING = { eyebrow: "MY ASKS", title: "Requests", text: "Track every ask in one place. Withdrawn or expired asks return their credit." } as const;
+const HEADING = { eyebrow: "MY ASKS", title: "Requests", text: "Track every ask in one place. Withdrawn or expired asks free a slot." } as const;
 const NEW_ASK = <Button asChild><Link href="/explore"><Plus />New ask</Link></Button>;
 const TABS = [{ value: "active", label: "Active" }, { value: "closed", label: "Closed" }] as const;
 type Tab = (typeof TABS)[number]["value"];

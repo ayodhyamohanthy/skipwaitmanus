@@ -99,6 +99,22 @@ describe("My Company Inbox pending states", () => {
     await waitFor(() => expect(document.querySelector('[data-skipwait-screen="company-inbox"]')).toBeTruthy());
   });
 
+  it("shows the ask countdown on the request detail", async () => {
+    const now = Date.now();
+    const day = 24 * 60 * 60 * 1000;
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const item = { ...inboxItem, id: 9, createdAt: iso(now - 5 * day + 60_000), updatedAt: iso(now - 5 * day + 60_000) };
+    stubFetch((url) => {
+      if (url.includes("/preview")) return previewPayload;
+      if (url.includes("/inbox?scope=new")) return { requests: [item] };
+      if (url.includes("/inbox")) return { requests: [] };
+      if (url.includes("/credits/summary")) return credits;
+      return {};
+    });
+    render(<MyCompanyInbox />);
+    expect(await screen.findByText(/Expires in 2 days/)).toBeTruthy();
+  });
+
   it("tells the Referrer honestly when the queue is taking longer than 15 seconds", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     let release: (() => void) | undefined;

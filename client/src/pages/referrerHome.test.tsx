@@ -58,6 +58,44 @@ describe("ReferrerHome", () => {
     expect(await screen.findByText("You've hit your capacity.")).toBeTruthy();
   });
 
+  it("counts asks expiring within 24h and labels row deadlines from real timestamps", async () => {
+    const now = Date.now();
+    const day = 86400000;
+    const iso = (ms: number) => new Date(ms).toISOString();
+    const urgent = { id: 51, companyDomain: "wipro.com", status: "pending", savedAt: null, createdAt: iso(now - 6.5 * day), updatedAt: iso(now - 6.5 * day), isClaimedByYou: false, unreadMessageCount: 0 };
+    const later = { id: 52, companyDomain: "wipro.com", status: "pending", savedAt: null, createdAt: iso(now - 2 * day), updatedAt: iso(now - 2 * day), isClaimedByYou: false, unreadMessageCount: 0, expiresAt: iso(now + 5 * day) };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/profile/me")) return ok({ profile: { workEmailVerifiedAt: "2026-08-01T00:00:00Z", referralCapacity: 3 } });
+      if (String(url).endsWith("/referrer-impact/me")) return ok({ summary: { reviewed: 2, approved: 1, introductions: 1, interviews: 0, offers: 0 } });
+      if (String(url).includes("scope=new")) return ok({ requests: [urgent, later] });
+      if (String(url).includes("scope=completed")) return ok({ requests: [] });
+      return ok({});
+    }));
+    render(<ReferrerHome />);
+    expect(await screen.findByText("Expiring within 24h")).toBeTruthy();
+    expect(screen.getByText("Expiring within 24h").parentElement?.textContent).toContain("1");
+    expect(await screen.findByText("wipro.com · 5 days left")).toBeTruthy();
+    const urgentRow = await screen.findByText("wipro.com · 1 day left");
+    expect(urgentRow.className).toContain("text-[#b91c1c]");
+  });
+
+  it("shows private record metrics without ranking generosity", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/profile/me")) return ok({ profile: { workEmailVerifiedAt: "2026-08-01T00:00:00Z", referralCapacity: 3 } });
+      if (String(url).endsWith("/referrer-impact/me")) return ok({ summary: { reviewed: 4, approved: 3, introductions: 2, interviews: 1, offers: 0, repliedWithin3DaysPct: 100 } });
+      if (String(url).includes("scope=new")) return ok({ requests: [] });
+      if (String(url).includes("scope=completed")) return ok({ requests: [] });
+      return ok({});
+    }));
+    render(<ReferrerHome />);
+    expect(await screen.findByText("Your record · Private")).toBeTruthy();
+    expect(screen.getByText("People helped")).toBeTruthy();
+    expect(screen.getByText("100%")).toBeTruthy();
+    expect(screen.queryByText("Thank-yous")).toBeNull();
+  });
+
   it("shows the verify gate without fabricating referrer state", async () => {
     stubHome({ verified: false });
     render(<ReferrerHome />);

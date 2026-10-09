@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { countExpiringSoon, countInConversation, creditMeter, creditsFullCopy, requestNote, requestPillStatus } from "./requestModel";
+import { countExpiringSoon, countInConversation, requestNote, requestPillStatus, slotMeter, slotsFullCopy } from "./requestModel";
 import { parseCreditSummary, type CreditSummary, type ReferralRequest } from "./requestsApi";
 
 const now = Date.parse("2026-10-08T04:30:00.000Z");
@@ -35,15 +35,21 @@ describe("requests view model", () => {
     expect(countExpiringSoon(list, now)).toBe(1);
   });
 
-  it("draws the meter from the monthly wallet and names the next real plan", () => {
-    expect(creditMeter(wallet({ monthlyCreditsRemaining: 1, totalAvailable: 1 }))).toMatchObject({ planLabel: "Free", used: 2, allowance: 3, full: false, nextPlan: { label: "Pro", monthlyAllowance: 10 } });
-    const full = creditMeter(wallet({ monthlyCreditsRemaining: 0, totalAvailable: 0 }));
-    expect(full.full).toBe(true);
-    expect(creditsFullCopy(full, true)).toBe("All 3 credits this month are in use. Wait for an unclaimed ask to expire, withdraw one, or get more credits with Pro (10).");
-    const max = creditMeter(wallet({ plan: "max", monthlyAllowance: 30, monthlyCreditsRemaining: 0, totalAvailable: 0, subscriptionCurrentTermEnd: "2026-11-01T00:00:00.000Z" }));
+  it("meters open slots from the monthly wallet and names the next real plan", () => {
+    expect(slotMeter(wallet({ monthlyCreditsRemaining: 1, totalAvailable: 1 }))).toMatchObject({ planLabel: "Free", open: 1, allowance: 3, full: false, nextPlan: { label: "Pro", monthlyAllowance: 10 } });
+    const full = slotMeter(wallet({ monthlyCreditsRemaining: 0, totalAvailable: 0 }));
+    expect(full).toMatchObject({ open: 0, full: true });
+    expect(slotsFullCopy(full, true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an unclaimed ask to expire, withdraw one, or get more slots with Pro (10)." });
+    const max = slotMeter(wallet({ plan: "max", monthlyAllowance: 30, monthlyCreditsRemaining: 0, totalAvailable: 0, subscriptionCurrentTermEnd: "2026-11-01T00:00:00.000Z" }));
     expect(max.nextPlan).toBeNull();
     expect(max.renewsOn).not.toBeNull();
-    expect(creditsFullCopy(max, false)).toBe("All 30 credits this month are in use. Add one-time credits.");
+    expect(slotsFullCopy(max, false)).toEqual({ lead: "All 30 slots are in use.", next: "Add one-time credits." });
+  });
+
+  it("keeps the meter inside the allowance and only calls it full when no credit of any kind is left", () => {
+    expect(slotMeter(wallet({ monthlyCreditsRemaining: 5, totalAvailable: 5 })).open).toBe(3);
+    expect(slotMeter(wallet({ monthlyCreditsRemaining: -1, totalAvailable: 0 })).open).toBe(0);
+    expect(slotMeter(wallet({ monthlyCreditsRemaining: 0, purchasedCreditsRemaining: 2, totalAvailable: 2 }))).toMatchObject({ open: 0, packCredits: 2, full: false });
   });
 
   it("rejects a malformed credit summary instead of drawing a fake meter", () => {

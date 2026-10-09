@@ -52,24 +52,28 @@ describe("My Requests kit v4 states", () => {
     expect(document.querySelector('[data-skipwait-loading="true"]')).toBeTruthy();
   });
 
-  it("shows the credits-full nudge from the live wallet, with withdraw as a real option", async () => {
+  it("shows the slots-full nudge from the live wallet, with withdraw as a real option", async () => {
     stub([openAsk(42)], credits(0));
     renderPage();
-    expect(await screen.findByText("All 3 credits this month are in use. Wait for an unclaimed ask to expire, withdraw one, or get more credits with Pro (10).")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "See plans" }).getAttribute("href")).toBe("/plans?role=job_seeker");
-    expect(screen.getByRole("progressbar", { name: "Monthly credits used" }).getAttribute("aria-valuenow")).toBe("3");
+    const lead = await screen.findByText("All 3 slots are in use.");
+    expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an unclaimed ask to expire, withdraw one, or get more slots with Pro (10).");
+    expect(screen.getByRole("link", { name: "See plans" }).getAttribute("href")).toBe("/plans");
+    expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("0");
+    expect(screen.getByLabelText("Open slots: 0 of 3").textContent).toContain("OPEN SLOTS · FREE0/3");
   });
 
   it("does not suggest withdrawing when no ask can be withdrawn", async () => {
     stub([declined], credits(0));
     renderPage();
-    expect(await screen.findByText("All 3 credits this month are in use. Get more credits with Pro (10).")).toBeTruthy();
+    const lead = await screen.findByText("All 3 slots are in use.");
+    expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Get more slots with Pro (10).");
   });
 
   it("hides the nudge while credits remain and counts pack credits honestly", async () => {
     stub([openAsk(42)], credits(0, { purchasedCreditsRemaining: 2, totalAvailable: 2 }));
     renderPage();
     expect(await screen.findByText("+2 one-time credits")).toBeTruthy();
+    expect(screen.getByLabelText("Open slots: 0 of 3")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "See plans" })).toBeNull();
   });
 
@@ -104,7 +108,7 @@ describe("My Requests kit v4 states", () => {
       ? { ok: true, status: 200, json: async () => credits(2) }
       : { ok: true, status: 200, json: async () => ({ requests: [openAsk(42)] }) });
     fireEvent.click(screen.getByRole("button", { name: "Reload credits" }));
-    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Monthly credits used" }).getAttribute("aria-valuenow")).toBe("1"));
+    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("2"));
   });
 
   it("explains a dropped connection instead of showing zero asks", async () => {

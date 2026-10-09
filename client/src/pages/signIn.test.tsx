@@ -40,8 +40,9 @@ describe("SignIn", () => {
     // The password is typed on WorkOS's own screen, never on this page.
     expect(screen.queryByLabelText(/^Password/)).toBeNull();
     expect(document.querySelector("input[type=password]")).toBeNull();
-    expect(screen.getByText(/enter your password on the next, secure screen/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Forgot password?" }).getAttribute("href")).toBe("/forgot-password");
+    expect(screen.getByText(/finish signing in on the next, secure screen/)).toBeTruthy();
+    // No password credential exists (WorkOS AuthKit owns sign-in), so no reset path is offered.
+    expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
     fireEvent.change(email, { target: { value: " Asha@Wipro.com " } });
     fireEvent.click(screen.getByRole("button", { name: /Sign in/ }));
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?login_hint=asha%40wipro.com");

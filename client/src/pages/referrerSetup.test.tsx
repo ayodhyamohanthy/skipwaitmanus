@@ -40,6 +40,7 @@ describe("ReferrerSetup", () => {
         const body = JSON.parse(String(init.body));
         expect(body).toMatchObject({ referralCapacity: 5, referrerVisibility: "named" });
         expect(body.preferAreas).toEqual(["Design", "Product"]);
+        expect(body.preferLevels).toEqual(["Mid-level", "Senior"]);
         return ok({ preferences: body });
       }
       if (String(url).endsWith("/referrer-preferences")) return ok({ preferences: { preferAreas: [], referralCapacity: 3, referrerVisibility: "anon", notifyNewAsk: true } });
@@ -50,6 +51,8 @@ describe("ReferrerSetup", () => {
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Design" }));
     fireEvent.click(screen.getByRole("button", { name: "Product" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mid-level" }));
+    fireEvent.click(screen.getByRole("button", { name: "Senior" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     const slider = screen.getByLabelText("Monthly capacity") as HTMLInputElement;
     fireEvent.change(slider, { target: { value: "5" } });

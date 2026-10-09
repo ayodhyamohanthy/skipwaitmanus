@@ -1,4 +1,4 @@
-import { ArrowRight, Eye, EyeOff, Globe, Pin, PinOff, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Eye, EyeOff, FileText, Globe, Pin, PinOff, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
@@ -21,6 +21,7 @@ export default function Work() {
   const [source, setSource] = useState("");
   const [url, setUrl] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [view, setView] = useState<"mine" | "referrer">("mine");
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -100,6 +101,12 @@ export default function Work() {
 
       {pinned.length > 0 ? <p className="mb-4 text-xs font-semibold text-[var(--muted-foreground)]" aria-live="polite">{pinned.length} pinned</p> : null}
 
+      <div className="mb-4 flex rounded-full bg-[var(--muted)] p-1 text-sm" role="tablist" aria-label="Work view">
+        {(["mine", "referrer"] as const).map(value => (
+          <button key={value} type="button" role="tab" aria-selected={view === value} onClick={() => setView(value)} className={`min-h-11 flex-1 rounded-full px-4 ${view === value ? "bg-[var(--background)] font-semibold shadow-sm" : "text-[var(--muted-foreground)]"}`}>{value === "mine" ? "My view" : "What a referrer sees"}</button>
+        ))}
+      </div>
+
       {adding ? (
         <section aria-label="Add work" className="mb-6 rounded-3xl border border-[var(--border)] p-5 sm:p-7">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -127,23 +134,32 @@ export default function Work() {
           <p className="font-medium">Add one piece you&apos;re proud of.</p>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Link a case study, project, article, or code.</p>
         </section>
+      ) : !loading && view === "referrer" && items.every(item => !item.visibleOnProfile) ? (
+        <section className="rounded-3xl border border-dashed border-[var(--border)] p-10 text-center">
+          <p className="font-medium">Referrers see nothing yet.</p>
+          <p className="mt-1 text-sm text-[var(--muted-foreground)]">Mark pieces visible on profile to preview them here.</p>
+        </section>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map(item => (
+          {(view === "mine" ? items : items.filter(item => item.visibleOnProfile)).map(item => (
             <li key={item.id}>
-              <article className={`rounded-3xl border p-5 ${item.pinned ? "border-2 border-[var(--foreground)] shadow-[var(--shadow-offset)]" : "border-[var(--border)]"}`}>
+              <article className={`overflow-hidden rounded-3xl border ${item.pinned ? "border-2 border-[var(--foreground)] shadow-[var(--shadow-offset)]" : "border-[var(--border)]"}`}>
+                <div className="work-thumb"><FileText aria-hidden="true" />{item.pinned ? <span className="pinned-pill"><Pin aria-hidden="true" />Pinned</span> : null}</div>
+                <div className="p-5">
                 <div className="mb-6 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
                   <span className="flex items-center gap-1"><Globe className="size-3.5" />{item.source || "Link"}</span>
-                  {item.pinned ? <span className="flex items-center gap-1 font-semibold text-[var(--foreground)]"><Pin className="size-3.5" />Pinned</span> : null}
                 </div>
                 <span className="eyebrow">{(KIND_LABELS[item.kind] ?? item.kind).toUpperCase()}</span>
                 <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
                 {item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="text-link mt-2 text-sm">Open link <ArrowRight className="size-3" /></a> : null}
                 <p className="mt-3 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">{item.visibleOnProfile ? <><Eye className="size-3.5" />Visible on profile</> : <><EyeOff className="size-3.5" />Shown only in requests</>}</p>
+                {view === "mine" ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
                   <button type="button" disabled={busyId === item.id} aria-pressed={item.pinned} onClick={() => { void patch(item.id, { pinned: !item.pinned }); }} className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-semibold">{item.pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}{item.pinned ? "Unpin" : "Pin"}</button>
                   <label className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold">Profile visible<input type="checkbox" checked={item.visibleOnProfile} disabled={busyId === item.id} onChange={event => { void patch(item.id, { visibleOnProfile: event.target.checked }); }} className="size-4 accent-[var(--primary)]" /></label>
                   <button type="button" disabled={busyId === item.id} aria-label={`Delete ${item.title}`} onClick={() => { void remove(item.id); }} className="ml-auto grid min-h-11 min-w-11 place-items-center text-[var(--destructive)]"><Trash2 className="size-4" /></button>
+                </div>
+                ) : null}
                 </div>
               </article>
             </li>

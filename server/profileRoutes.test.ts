@@ -24,8 +24,9 @@ function buildApp() {
     updateReferrerPreferences: async (_userId, input) => {
       if (input.referralCapacity !== undefined && (Number(input.referralCapacity) < 1 || Number(input.referralCapacity) > 15)) throw new Error("Capacity is 1 to 15 asks");
       if (input.preferAreas !== undefined && !Array.isArray(input.preferAreas)) throw new Error("Choose job areas from the list");
+      if (input.preferLevels !== undefined && !Array.isArray(input.preferLevels)) throw new Error("Choose levels from the list");
       if (input.referrerVisibility !== undefined && input.referrerVisibility !== "anon" && input.referrerVisibility !== "named") throw new Error("Choose anonymous or named visibility");
-      return { referralCapacity: Number(input.referralCapacity ?? 3), preferAreas: Array.isArray(input.preferAreas) ? input.preferAreas as string[] : ["Design"], referrerVisibility: (input.referrerVisibility as string) ?? "anon", notifyNewAsk: Boolean(input.notifyNewAsk ?? true), notifyDigest: Boolean(input.notifyDigest ?? false), paused: Boolean(input.paused ?? false) };
+      return { referralCapacity: Number(input.referralCapacity ?? 3), preferAreas: Array.isArray(input.preferAreas) ? input.preferAreas as string[] : ["Design"], preferLevels: Array.isArray(input.preferLevels) ? input.preferLevels as string[] : [], referrerVisibility: (input.referrerVisibility as string) ?? "anon", notifyNewAsk: Boolean(input.notifyNewAsk ?? true), notifyDigest: Boolean(input.notifyDigest ?? false), paused: Boolean(input.paused ?? false) };
     },
     getMyProfile: async userId => ({ displayName: `User ${userId}`, profile: profiles.get(userId) ?? null, workItems: items.filter(item => item.userId === userId) }),
     updateMyProfile: async (userId, input) => {
@@ -37,8 +38,9 @@ function buildApp() {
       if (typeof input.handle === "string" && normalize(input.handle) === undefined) throw new Error("Handles use 3-40 lowercase letters, numbers, or dashes, and cannot be a reserved word");
       if (typeof input.handle === "string" && [...profiles.values()].some(p => p.handle === normalize(input.handle as string) && p.userId !== userId)) throw new Error("That handle is already taken");
       if (input.profileVisibility !== undefined && !["public", "link", "private"].includes(String(input.profileVisibility))) throw new Error("Choose public, link-only, or private visibility");
+      if (input.openTo !== undefined && !Array.isArray(input.openTo)) throw new Error("List the roles you are open to as an array");
       const current = profiles.get(userId) ?? { userId, headline: null, handle: null, profileVisibility: "private" };
-      profiles.set(userId, { ...current, headline: typeof input.headline === "string" ? input.headline : current.headline, handle: input.handle === undefined ? current.handle : (typeof input.handle === "string" ? normalize(input.handle) as string : null), profileVisibility: typeof input.profileVisibility === "string" ? input.profileVisibility : current.profileVisibility });
+      profiles.set(userId, { ...current, headline: typeof input.headline === "string" ? input.headline : current.headline, handle: input.handle === undefined ? current.handle : (typeof input.handle === "string" ? normalize(input.handle) as string : null), profileVisibility: typeof input.profileVisibility === "string" ? input.profileVisibility : current.profileVisibility, openTo: input.openTo === undefined ? (current as { openTo?: unknown }).openTo ?? null : JSON.stringify((input.openTo as unknown[]).filter((role): role is string => typeof role === "string").map(role => role.trim()).filter(role => role.length > 0 && role.length <= 60).slice(0, 5)) });
       return { displayName: `User ${userId}`, profile: profiles.get(userId) ?? null, workItems: [] };
     },
     listMyWorkItems: async userId => items.filter(item => item.userId === userId),
@@ -91,6 +93,10 @@ describe("profile and work showcase routes", () => {
     expect((await request(app).put("/api/profile/me").set("x-test-user", "22").send({ handle: "asha-r" })).status).toBe(400);
     expect((await request(app).put("/api/profile/me").set("x-test-user", "22").send({ handle: "ASH A" })).status).toBe(400);
     expect((await request(app).put("/api/profile/me").set("x-test-user", "22").send({ profileVisibility: "everyone" })).status).toBe(400);
+    expect((await request(app).put("/api/profile/me").set("x-test-user", "22").send({ openTo: "Designer" })).status).toBe(400);
+    const roles = await request(app).put("/api/profile/me").set("x-test-user", "22").send({ openTo: ["Product Designer", "UX Lead"] });
+    expect(roles.status).toBe(200);
+    expect(JSON.parse(roles.body.profile.openTo)).toEqual(["Product Designer", "UX Lead"]);
   });
 
   it("creates, edits, and deletes own work with ownership enforcement", async () => {
@@ -122,6 +128,7 @@ describe("profile and work showcase routes", () => {
     expect(current.body.preferences).toMatchObject({ referralCapacity: 3, paused: false });
     expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ referralCapacity: 99 })).status).toBe(400);
     expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ preferAreas: "Design" })).status).toBe(400);
+    expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ preferLevels: "Senior" })).status).toBe(400);
     expect((await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ referrerVisibility: "everyone" })).status).toBe(400);
     const saved = await request(app).put("/api/referrer-preferences").set("x-test-user", "11").send({ referralCapacity: 5, preferAreas: ["Design", "Product"], referrerVisibility: "named", paused: true });
     expect(saved.status).toBe(200);

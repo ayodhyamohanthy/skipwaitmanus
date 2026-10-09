@@ -19,6 +19,18 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
 
 describe("Report flow", () => {
+  it("returns to the conversation when filed from one", async () => {
+    const actual = window.location;
+    Object.defineProperty(window, "location", { configurable: true, value: new URL("https://skipwait.me/report?request=42") });
+    try {
+      vi.stubGlobal("fetch", vi.fn(async () => ok({})));
+      render(<Report />);
+      expect(screen.getByRole("button", { name: "Back to conversation" })).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "location", { configurable: true, value: actual });
+    }
+  });
+
   it("files with reason, details, and urgency, returning the real reference", async () => {
     const fetchMock = vi.fn(async () => ok({ report: { id: 48, reference: "R-1048", urgent: true } }));
     vi.stubGlobal("fetch", fetchMock);

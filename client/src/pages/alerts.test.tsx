@@ -20,7 +20,9 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/alerts", go],
 }));
 
-const now = Date.now();
+// Fixed local midday: "12 minutes ago" must be today whatever time CI runs (a run just after
+// midnight UTC used to push these onto yesterday and break the Today group).
+const now = new Date(2026, 9, 9, 12, 0, 0).getTime();
 const ITEMS = [
   { id: 1, category: "referral", title: "Your ask was accepted", body: "A verified referrer at Wipro accepted", readAt: null, createdAt: new Date(now - 12 * 60000).toISOString() },
   { id: 2, category: "message", title: "New message", body: "Happy to help", readAt: null, createdAt: new Date(now - 60 * 60000).toISOString() },
@@ -36,8 +38,8 @@ function renderAlerts() {
   return render(<QueryClientProvider client={client}><Alerts /></QueryClientProvider>);
 }
 
-beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; go.mockReset(); });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; go.mockReset(); vi.useFakeTimers({ toFake: ["Date"], now }); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("Alerts center", () => {
   it("groups real notifications into Today and Earlier with the unread count on the Notifications tab", async () => {
@@ -150,20 +152,23 @@ describe("Alerts center", () => {
     expect(screen.queryByText("No notifications yet.")).toBeNull();
   });
 
-  it("renders Saved alerts as an honest unavailable state, never a local-only list", async () => {
-    const fetchMock = vi.fn(async (_url: string) => list());
+  it("shows an honest empty Saved alerts tab from the live watch list, never sample companies", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url) === "/api/seeker-alerts") return ok({ alerts: [] });
+      if (String(url).startsWith("/api/credits/summary")) return ok({ summary: { plan: "free" } });
+      return list();
+    });
     vi.stubGlobal("fetch", fetchMock);
     renderAlerts();
     await screen.findByText("Your ask was accepted");
     fireEvent.click(screen.getByRole("tab", { name: "Saved alerts" }));
     expect(screen.getByRole("tab", { name: "Saved alerts" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("heading", { name: "Get told when a door opens." })).toBeTruthy();
-    expect(screen.getByText(/Saved company alerts aren't available yet\./)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
-    for (const fake of [/New alert/, /Save alert/, /Free: 3 alerts/, /Merkle/, /Instant · push and email/]) expect(screen.queryByText(fake)).toBeNull();
-    expect(screen.queryByRole("button", { name: /Pause alert|Delete alert/ })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "Get told when a door opens." })).toBeTruthy();
+    expect(await screen.findByText("Free accounts keep 3 alerts (0 used).")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "New alert" })).toBeTruthy();
+    for (const fake of [/Merkle/, /Instant · push and email/, /Momentum and Land/, /Saved company alerts aren't available yet/]) expect(screen.queryByText(fake)).toBeNull();
     expect(screen.queryByRole("button", { name: "Mark all read" })).toBeNull();
-    expect(fetchMock.mock.calls.every(([url]) => String(url) === "/api/notifications")).toBe(true);
+    expect(fetchMock).toHaveBeenCalledWith("/api/seeker-alerts", expect.objectContaining({ credentials: "include" }));
   });
 
   it("gates signed-out visitors without fetching private updates", () => {
@@ -174,5 +179,35 @@ describe("Alerts center", () => {
     expect(screen.getByText("Alerts need you signed in.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("manages saved company alerts without inventing matches", async () => {
+    const alerts = [{ id: 1, companyDomain: "acme.com", paused: false, notifiedAt: null, createdAt: new Date(now).toISOString() }];
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).includes("/seeker-alerts") && init?.method === "POST") {
+        const body = JSON.parse(String(init.body));
+        return { ok: true, json: async () => ({ alert: { id: 2, companyDomain: body.companyDomain, paused: false, notifiedAt: null, createdAt: new Date().toISOString() } }) };
+      }
+      if (String(url).includes("/seeker-alerts/1") && init?.method === "PATCH") return { ok: true, json: async () => ({ alert: { ...alerts[0], paused: true } }) };
+      if (String(url).includes("/seeker-alerts/1") && init?.method === "DELETE") return { ok: true, json: async () => ({}) };
+      if (String(url).includes("/seeker-alerts")) return { ok: true, json: async () => ({ alerts }) };
+      if (String(url).includes("/credits/summary")) return { ok: true, json: async () => ({ summary: { plan: "free" } }) };
+      return { ok: true, json: async () => ({ notifications: [] }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderAlerts();
+    fireEvent.click(await screen.findByRole("tab", { name: "Saved alerts" }));
+    expect(await screen.findByText("acme.com")).toBeTruthy();
+    expect(await screen.findByText(/Free accounts keep 3 alerts/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "New alert" }));
+    fireEvent.change(screen.getByPlaceholderText("acme.com"), { target: { value: "Globex" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save alert" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/seeker-alerts", expect.objectContaining({ method: "POST" })));
+    expect(await screen.findByText("Globex")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Pause alert for acme.com" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Resume alert for acme.com" })).toBeTruthy());
+    expect(screen.getByText("Paused")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Delete alert for acme.com" }));
+    await waitFor(() => expect(screen.queryByText("acme.com")).toBeNull());
   });
 });

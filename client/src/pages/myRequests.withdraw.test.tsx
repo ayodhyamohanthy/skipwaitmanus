@@ -38,9 +38,9 @@ describe("My Requests withdraw flow", () => {
     renderPage();
     await waitFor(() => expect(screen.getByRole("button", { name: "Withdraw" })).toBeTruthy());
     expect(screen.getByText(/Ref-1012/)).toBeTruthy();
-    // The kit slot meter is the live monthly credit meter: 1 of 3 used.
-    expect(screen.getByText("CREDITS USED · FREE")).toBeTruthy();
-    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Monthly credits used" }).getAttribute("aria-valuenow")).toBe("1"));
+    // The kit slot meter is the live monthly wallet: 2 of 3 slots still open.
+    expect(screen.getByText("OPEN SLOTS · FREE")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("2"));
   });
 
   it("hides Withdraw once a verified employee has claimed the request", async () => {
@@ -69,7 +69,8 @@ describe("My Requests withdraw flow", () => {
     expect(await screen.findByText("No open asks.")).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "Closed" }));
     expect(await screen.findByText("Withdrawn")).toBeTruthy();
-    expect(screen.getByRole("progressbar", { name: "Monthly credits used" }).getAttribute("aria-valuenow")).toBe("0");
+    expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("3");
+    expect(screen.getByLabelText("Open slots: 3 of 3")).toBeTruthy();
   });
 
   it("keeps the request and offers Try again when the withdraw fails", async () => {

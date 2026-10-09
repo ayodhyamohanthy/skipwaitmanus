@@ -43,8 +43,7 @@ export default function SignIn() {
         : <form className="auth-form" onSubmit={continueWithEmail}>
           <label htmlFor="email">Email address</label>
           <div className="auth-input"><Mail /><input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} /></div>
-          <p className="text-xs leading-relaxed text-muted-foreground">You’ll enter your password on the next, secure screen.</p>
-          <div className="auth-form-meta"><Button type="button" variant="link" asChild><Link href="/forgot-password">Forgot password?</Link></Button></div>
+          <p className="text-xs leading-relaxed text-muted-foreground">You’ll finish signing in on the next, secure screen.</p>
           <Button type="submit">Sign in <ArrowRight /></Button>
           <Button type="button" variant="ghost" onClick={() => setEmailMode(false)}>Use another method</Button>
         </form>}

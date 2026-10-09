@@ -36,4 +36,11 @@ describe("public profile visibility", () => {
     expect(view.workItems).toHaveLength(2);
     expect(Object.keys(view)).not.toContain("email");
   });
+
+  it("parses open-to roles defensively for public viewers", () => {
+    const withOpenTo = (openTo: unknown) => ({ ...(base as object), profileVisibility: "public", openTo }) as never;
+    expect((shapePublicProfile(owner, withOpenTo('["Product Designer", "UX Lead"]'), items, undefined) as { openTo: string[] }).openTo).toEqual(["Product Designer", "UX Lead"]);
+    expect((shapePublicProfile(owner, withOpenTo("not-json"), items, undefined) as { openTo: string[] }).openTo).toEqual([]);
+    expect((shapePublicProfile(owner, withOpenTo(null), items, undefined) as { openTo: string[] }).openTo).toEqual([]);
+  });
 });

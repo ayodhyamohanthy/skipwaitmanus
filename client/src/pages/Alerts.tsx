@@ -6,7 +6,7 @@ import { SignInButton, useAuth, useUser } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
 import { NotificationGroups } from "@/components/alerts/NotificationGroups";
-import { SavedAlertsUnavailable } from "@/components/alerts/SavedAlertsUnavailable";
+import { SavedAlerts } from "@/components/alerts/SavedAlerts";
 import { notificationListSchema, orderNotifications, type NotificationItem } from "@/components/alerts/notifications";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
@@ -160,7 +160,7 @@ export default function Alerts() {
           <NotificationGroups items={shown} onOpen={item => { void openNotification(item); }} />
           <p className="mt-4 text-center text-sm text-muted-foreground"><Link href="/settings" className="text-link">Choose what notifies you</Link></p>
         </div>
-      ) : <div role="tabpanel" aria-label="Saved alerts"><SavedAlertsUnavailable /></div>}
+      ) : <div role="tabpanel" aria-label="Saved alerts"><SavedAlerts userId={userId} getToken={fetchToken} /></div>}
     </main>
   );
 }
