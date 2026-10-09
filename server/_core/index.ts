@@ -161,7 +161,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Assistant access (kit screens 22/23/24/26): connections, API
   // tokens, assistant approvals and the developer app console.
   registerAssistantRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
-  // Read-only MCP endpoint for connected assistants (bearer-token auth, skipwait.me/mcp).
+  // Read-only MCP endpoint for connected assistants (bearer-token auth, skipwait.me/api/mcp).
   registerMcpRoutes(app, {
     verifyBearer: db.verifyAssistantBearer,
     hasAccess: db.hasAssistantAccess,

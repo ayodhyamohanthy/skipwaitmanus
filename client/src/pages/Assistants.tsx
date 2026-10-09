@@ -242,7 +242,7 @@ export default function Assistants() {
               <section className="mt-4 rounded-3xl border border-[var(--border)] bg-[var(--muted)] p-5">
                 <h2 className="font-semibold">How to connect</h2>
                 <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm">
-                  <li>In ChatGPT or Claude, open Connectors and add <code className="rounded bg-[var(--background)] px-1">skipwait.me/mcp</code></li>
+                  <li>In ChatGPT or Claude, open Connectors and add <code className="rounded bg-[var(--background)] px-1">skipwait.me/api/mcp</code></li>
                   <li>Sign in and approve what it can do</li>
                   <li>Ask: “Find companies open to referrals for product designers”</li>
                 </ol>
