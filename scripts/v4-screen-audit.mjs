@@ -41,13 +41,22 @@ function pngSize(file) {
   return { width: header.readUInt32BE(16), height: header.readUInt32BE(20) };
 }
 
-/** The base state of each screen: `<nn>_<slug>__default.png`. */
-function defaultCaptures(dir) {
+/**
+ * EVERY capture, keyed `screen__state`.
+ *
+ * An earlier version read only `__default`, which treated 211 designed captures
+ * as 42 screens. The other 169 are real designs -- multi-step flows
+ * (step1/step2/step3), error and edge states (offline, slow-connection,
+ * payment-failed, something-went-wrong), empty states (empty, slots-full) and
+ * role variants (referrer-view, seeker-view). Auditing one state per screen
+ * answers "is the screen there"; it cannot answer "is the screen finished".
+ */
+function allCaptures(dir) {
   const out = new Map();
   if (!existsSync(dir)) return out;
   for (const file of readdirSync(dir)) {
-    const match = /^(\d+)_(.+?)__default\.png$/.exec(file);
-    if (match) out.set(match[2], path.join(dir, file));
+    const match = /^(\d+)_(.+?)__(.+)\.png$/.exec(file);
+    if (match) out.set(`${match[2]}__${match[3]}`, path.join(dir, file));
   }
   return out;
 }
@@ -94,7 +103,7 @@ async function measure(browser, base, route, capture, outDir, slug, platform) {
   const dpr = capture.width / 2 <= 480 ? 2 : 1;
 
   let best = null;
-  for (const vh of [862, 800, 900, 1000]) {
+  for (const vh of [862]) {
     const page = await browser.newPage({ viewport: { width: viewportWidth, height: vh }, deviceScaleFactor: dpr });
     await page.goto(base + route, { waitUntil: "networkidle", timeout: 45000 }).catch(() => {});
     await page.waitForTimeout(900);
@@ -150,15 +159,15 @@ const { base, server } = await ensureServer();
 const outDir = "/tmp/v4-audit";
 await import("node:fs").then(fs => fs.mkdirSync(outDir, { recursive: true }));
 
-const web = defaultCaptures(path.join(root, "screens", "web"));
-const mobile = defaultCaptures(path.join(root, "screens", "mobile"));
-const slugs = [...web.keys()].sort().filter(slug => !only || only.includes(slug));
+const web = allCaptures(path.join(root, "screens", "web"));
+const mobile = allCaptures(path.join(root, "screens", "mobile"));
+const slugs = [...web.keys()].sort().filter(slug => !only || only.some(o => slug.startsWith(o)));
 
 const browser = await chromium.launch();
 const rows = [];
 
 for (const slug of slugs) {
-  const route = DESIGNED_ROUTES[slug];
+  const route = DESIGNED_ROUTES[slug.split("__")[0]];
   const row = { slug, route: route ?? null, web: null, mobile: null };
 
   if (!route) {
