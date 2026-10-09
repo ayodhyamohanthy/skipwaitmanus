@@ -836,3 +836,24 @@ export const documentBlobs = mysqlTable("documentBlobs", {
   sizeBytes: int("sizeBytes").notNull().default(0),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+// OAuth for connected assistants (authorization code + PKCE S256, public clients).
+export const oauthClients = mysqlTable("oauthClients", {
+  id: int("id").autoincrement().primaryKey(),
+  clientId: varchar("clientId", { length: 64 }).notNull().unique(),
+  clientName: varchar("clientName", { length: 160 }).notNull(),
+  redirectUris: text("redirectUris").notNull(), // JSON array
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
+  id: int("id").autoincrement().primaryKey(),
+  codeHash: varchar("codeHash", { length: 64 }).notNull().unique(),
+  clientId: varchar("clientId", { length: 64 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  redirectUri: varchar("redirectUri", { length: 512 }).notNull(),
+  codeChallenge: varchar("codeChallenge", { length: 64 }).notNull(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
