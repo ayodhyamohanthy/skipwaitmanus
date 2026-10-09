@@ -491,6 +491,9 @@ export async function createAssistantToken(userId: number, input: { name?: unkno
   const name = validateAppName(input.name);
   if (!name) throw new Error("Give the token a name, like “Notion tracker”");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  // Nothing verifies these tokens yet (the MCP endpoint is not live), so issuing one would hand a
+  // user a credential that does nothing. Off until the endpoint ships; then set ASSISTANT_TOKENS_LIVE=1.
+  if (process.env.ASSISTANT_TOKENS_LIVE !== "1") throw new Error("API tokens are not available yet. They turn on when assistants can connect.");
   assertAssistantAccess(await getAssistantAccessPlan(userId));
   const plaintext = `sw_${randomBytes(24).toString("base64url")}`;
   const tokenHash = createHash("sha256").update(plaintext).digest("hex");
