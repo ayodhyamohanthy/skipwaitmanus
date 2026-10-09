@@ -58,7 +58,7 @@ export default function Admin() {
   const loadReports = useCallback(async () => {
     setReportsError("");
     try {
-      const response = await fetch("/api/admin/reports", { credentials: "include" });
+      const response = await fetch("/api/admin/safety-reports", { credentials: "include" });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error : "We could not load the safety queue");
       setReports(Array.isArray(payload.reports) ? payload.reports : []);

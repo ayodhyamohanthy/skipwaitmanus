@@ -57,7 +57,7 @@ describe("Admin — kit v4 /admin console", () => {
     await waitFor(() => expect(screen.getByText("R-2048")).toBeTruthy());
     expect(screen.getByText("Asked for or offered money")).toBeTruthy();
     expect(screen.getByText("Unsafe")).toBeTruthy();
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/admin/reports");
+    expect(fetchMock.mock.calls[0][0]).toBe("/api/admin/safety-reports");
   });
 
   it("keeps the queue honest on failure and offers a retry", async () => {
