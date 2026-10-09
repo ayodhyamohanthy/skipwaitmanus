@@ -120,7 +120,7 @@ export default function Emails() {
           <div className="p-8">
             <p className="wordmark text-xl">SkipWait<span className="brand-dot">.</span></p>
             {(template.body ?? [template.trigger]).map(line => <p key={line} className="mt-4 leading-relaxed">{line}</p>)}
-            {template.body ? <p className="mt-4 leading-relaxed text-muted-foreground">Fired when: {template.trigger}</p> : null}
+            {template.body ? <p className="mt-4 leading-relaxed text-muted-foreground">Fired when: {template.trigger.replace(/^Sent when /, "")}</p> : null}
             <p className="mt-4 leading-relaxed text-muted-foreground">Sent by: {template.channel}</p>
             {template.code ? <p role="img" aria-label="Six-digit code" className="mt-6 rounded-2xl bg-muted py-5 text-center text-3xl font-semibold tracking-[0.3em]">••• •••</p> : null}
             {template.cta ? <span className="mt-6 inline-block rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground">{template.cta}</span> : null}
