@@ -24,6 +24,8 @@ describe("ReferrerImpact dashboard", () => {
     expect(screen.getByText("Sign in with your work email to see your referral impact")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Secure sign in" })).toBeTruthy();
     expect(document.querySelector('[data-skipwait-screen="referrer-impact-sign-in"]')).toBeTruthy();
+    // One interactive control: the kit Button is not nested inside another button.
+    expect(document.querySelector("button button")).toBeNull();
   });
 
   it("routes signed-in members without a verified work email to the work-email setup", async () => {
@@ -43,8 +45,14 @@ describe("ReferrerImpact dashboard", () => {
       return { ok: true, json: async () => ({}) };
     });
     render(<ReferrerImpact />);
-    expect(await screen.findByText("Your impact will show here once you accept your first referral")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open my inbox" }).getAttribute("href")).toBe("/inbox");
+    // Kit v4 impact-zero: honest zeros from the real summary, never invented numbers.
+    expect(await screen.findByText("No invented scoreboards.")).toBeTruthy();
+    expect(screen.getByText("YOUR IMPACT STARTS AT ZERO")).toBeTruthy();
+    const stats = screen.getByLabelText("Your private impact");
+    expect(Array.from(stats.querySelectorAll("strong")).map(node => node.textContent)).toEqual(["0", "0", "0"]);
+    expect(stats.textContent).toContain("referrals accepted");
+    expect(screen.queryByText("Recent referrals")).toBeNull();
+    expect(screen.getByRole("link", { name: "Open request queue" }).getAttribute("href")).toBe("/queue");
   });
 
   it("renders the real stat numbers and recent accepted referrals once data exists", async () => {

@@ -3,6 +3,7 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Referrer, { ReferralCoverageInviteBanner } from "./Referrer";
+import { REFERRER_OTP_LANDING_KEY } from "@/components/referrer/ReferrerSignInDialog";
 
 const authState = vi.hoisted(() => {
   const emailAddress = {
@@ -83,24 +84,38 @@ describe("Referrer work-email OTP verification", () => {
     expect(authState.createEmailAddress).not.toHaveBeenCalled();
   });
 
-  it("opens directly to one compact company-email OTP action before secure employee sign-in", async () => {
+  it("opens one compact company-email OTP action from the kit referrer workspace before secure employee sign-in", async () => {
     authState.isSignedIn = false;
     render(<Referrer />);
-    expect(screen.getByText("Become a verified referrer")).toBeTruthy();
-    expect(screen.getByText("Two quick steps: sign in, then verify your work email.")).toBeTruthy();
+    // Kit v4: signed-out visitors land on the workspace overview; "Set up as a referrer" opens the work-email step.
+    expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("referrer-workspace");
+    expect(screen.getByRole("tab", { name: "Overview" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByLabelText("Company email")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Set up as a referrer/ }));
+    const dialog = screen.getByRole("dialog", { name: "Verify work email." });
+    expect(dialog.getAttribute("aria-modal")).toBe("true");
     expect(screen.getByLabelText("Company email")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Send sign-in code" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
-    expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("h-dvh");
-    expect(document.querySelector('[data-skipwait-screen="referrer-sign-in"]')?.className).toContain("overflow-hidden");
+    expect(screen.getAllByRole("button", { name: "Send sign-in code" })).toHaveLength(1);
     expect(document.querySelector("[data-skipwait-logo-mark='true']")).toBeNull();
     expect(screen.queryByText("skipwait.me")).toBeNull();
     expect(screen.queryByText(/no password, social sign-in, or personal email access/i)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Close setup" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens the work-email step directly for ?setup=work-email links", () => {
+    authState.isSignedIn = false;
+    window.history.pushState({}, "", "/referrer?setup=work-email");
+    render(<Referrer />);
+    expect(screen.getByRole("dialog", { name: "Verify work email." })).toBeTruthy();
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    window.history.pushState({}, "", "/");
   });
 
   it("rejects a personal email before initiating private Referrer authentication", async () => {
     authState.isSignedIn = false;
     render(<Referrer />);
+    fireEvent.click(screen.getByRole("button", { name: /Set up as a referrer/ }));
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: false, status: 400, json: async () => ({ error: "Personal email providers cannot access private referral requests. Use your company address." }) })));
     fireEvent.change(screen.getByLabelText("Company email"), { target: { value: "person@gmail.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Send sign-in code" }));
@@ -115,7 +130,6 @@ describe("Referrer work-email OTP verification", () => {
     await waitFor(() => expect(document.querySelector('[data-skipwait-empty-preview="referrer"]')).toBeTruthy());
     expect(screen.getByRole("link", { name: "Share on WhatsApp" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Share by email" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Back" })).toBeTruthy();
     expect(screen.queryByText(/Here is how a request will arrive/i)).toBeNull();
     expect(screen.queryByText(/Example only/i)).toBeNull();
   });
@@ -178,12 +192,29 @@ describe("Referrer compat OTP session (no legacy sessionStorage enrollment key)"
       return { ok: true, json: async () => ({}) };
     });
     vi.stubGlobal("fetch", fetchMock);
+    // ReferrerOtpSignIn reloads after verification; the dialog left this one-shot landing marker.
+    sessionStorage.setItem(REFERRER_OTP_LANDING_KEY, "1");
     render(<Referrer />);
     expect(await screen.findByRole("link", { name: "https://careers.acme.com/jobs/physics" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Continue with work email" })).toBeNull();
     expect(fetchMock.mock.calls.some(call => String(call[0]).endsWith("/verify-work-email"))).toBe(false);
     // The redirect effect calls wouter's go("/inbox"), which pushStates the URL.
     await waitFor(() => expect(window.location.pathname).toBe("/inbox"));
+    expect(sessionStorage.getItem(REFERRER_OTP_LANDING_KEY)).toBeNull();
+  });
+
+  it("keeps later signed-in visits on the workspace overview with the company inbox listed", async () => {
+    authState.sessionEmail = "employee@acme.com";
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      const url = String(input);
+      if (url.endsWith("/api/company-referrals/inbox")) return { ok: true, json: async () => ({ requests: [{ id: 12, targetRoleUrl: "https://careers.acme.com/jobs/physics", companyDomain: "acme.com", createdAt: "2026-01-01T00:00:00.000Z", attachmentCount: 2 }] }) };
+      return { ok: true, json: async () => ({}) };
+    }));
+    render(<Referrer />);
+    expect(await screen.findByRole("link", { name: "https://careers.acme.com/jobs/physics" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Private requests at your company" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Review candidate" })).toBeTruthy();
+    expect(window.location.pathname).toBe("/");
   });
 
   it("surfaces the inbox error verbatim for the compat session without the enrollment card and without signing out", async () => {
