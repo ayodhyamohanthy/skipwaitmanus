@@ -1,0 +1,81 @@
+{
+  "signedIn": {
+    "id": 21,
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "summary": {
+          "plan": "free",
+          "monthlyAllowance": 3,
+          "monthlyCreditsRemaining": 2,
+          "purchasedCreditsRemaining": 0,
+          "promoCreditsRemaining": 0,
+          "promoExpiresAt": null,
+          "promoStatus": null,
+          "promoOfferActive": false,
+          "totalAvailable": 2,
+          "cycleKey": "2026-10",
+          "subscriptionStatus": null,
+          "subscriptionCurrentTermEnd": null
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/billing/receipts",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "receipts": [
+          {
+            "id": 3,
+            "provider": "chargebee",
+            "amount": 500,
+            "currency": "USD",
+            "tokenCount": 5,
+            "status": "credited",
+            "providerInvoiceId": "inv_2026_1006",
+            "createdAt": "2026-10-06T04:30:00.000Z"
+          },
+          {
+            "id": 2,
+            "provider": "chargebee",
+            "amount": 200,
+            "currency": "USD",
+            "tokenCount": 2,
+            "status": "credited",
+            "providerInvoiceId": "inv_2026_0906",
+            "createdAt": "2026-09-06T04:30:00.000Z"
+          },
+          {
+            "id": 1,
+            "provider": "chargebee",
+            "amount": 2500,
+            "currency": "USD",
+            "tokenCount": 25,
+            "status": "refunded",
+            "providerInvoiceId": "inv_2026_0821",
+            "createdAt": "2026-08-21T09:10:00.000Z"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -3,7 +3,6 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import Premium from "./Premium";
-import Plans from "./Plans";
 
 const auth = vi.hoisted(() => ({ isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token"), openSignIn: vi.fn() }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => auth }));
@@ -13,7 +12,8 @@ beforeEach(() => { auth.isLoaded = true; auth.isSignedIn = true; auth.openSignIn
 describe("Premium payment return recovery", () => {
   afterEach(() => { cleanup(); window.sessionStorage.clear(); vi.unstubAllGlobals(); });
 
-  it.each([{ name: "Premium", Page: Premium }, { name: "Plans", Page: Plans }])("waits for cookie auth before allowing checkout on $name", async ({ Page }) => {
+  // Plans keeps the same two guarantees in plans.paymentRecovery.test.tsx (kit v4 card + dialog markup).
+  it.each([{ name: "Premium", Page: Premium }])("waits for cookie auth before allowing checkout on $name", async ({ Page }) => {
     auth.isLoaded = false;
     auth.isSignedIn = false;
     window.history.pushState({}, "", Page === Premium ? "/premium?role=referrer" : "/plans?role=referrer");
@@ -36,7 +36,7 @@ describe("Premium payment return recovery", () => {
     expect(auth.openSignIn).not.toHaveBeenCalled();
   });
 
-  it.each([{ name: "Premium", Page: Premium }, { name: "Plans", Page: Plans }])("preserves role and selected purchase without auto-checkout on $name", async ({ Page }) => {
+  it.each([{ name: "Premium", Page: Premium }])("preserves role and selected purchase without auto-checkout on $name", async ({ Page }) => {
     auth.isSignedIn = false;
     window.history.pushState({}, "", Page === Premium ? "/premium?role=referrer&currency=USD&source=credits" : "/plans?role=referrer&currency=USD&source=credits");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) });
