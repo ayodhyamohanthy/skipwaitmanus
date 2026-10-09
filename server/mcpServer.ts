@@ -1,8 +1,10 @@
 /**
- * Read-only MCP server (Streamable HTTP, stateless, JSON responses) for connected assistants.
+ * MCP server (Streamable HTTP, stateless, JSON responses) for connected assistants.
  *
  * Hard limits, enforced here and not only in copy:
- * - Every tool is read-only. There is no tool that sends, accepts, passes, refers, spends or buys.
+ * - Every tool reads, except propose_ask, which only creates a PENDING approval. Nothing is sent and no
+ *   credit moves until the owner approves it in the app. There is no tool that sends, accepts, passes,
+ *   refers, spends or buys, and a tool never chooses a referrer.
  * - A tool only ever reads the token owner's own data, or the public jobs catalog.
  * - Responses are whitelisted field by field. Nothing about referrers (names, emails, ids) or
  *   other people leaves this file.
@@ -15,6 +17,8 @@ export type McpDeps = {
   searchJobs: (input: { query?: string; company?: string }) => Promise<Array<Record<string, unknown>>>;
   listRequests: (userId: number) => Promise<Array<Record<string, unknown>>>;
   listAlerts: (userId: number) => Promise<Array<Record<string, unknown>>>;
+  listResumes: (userId: number) => Promise<Array<Record<string, unknown>>>;
+  proposeAsk: (userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown }) => Promise<{ id: number; status: "pending"; creditCost: number; expiresAt: string }>;
 };
 
 type RpcId = string | number | null;
@@ -40,6 +44,18 @@ export const MCP_TOOLS = [
     description: "List the signed-in member's own company-opening alerts. Read-only.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false },
     annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  },
+  {
+    name: "list_my_resumes",
+    description: "List the signed-in member's own uploaded resume documents (ids and file names only) that can be attached to an ask. Read-only.",
+    inputSchema: { type: "object", properties: {}, additionalProperties: false },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  },
+  {
+    name: "propose_ask",
+    description: "Propose a referral ask for the member. This does NOT send anything and spends nothing: it creates a pending approval the member must approve in SkipWait, where the exact credit cost is shown. The member's approval is the only thing that sends it. You do not choose a referrer.",
+    inputSchema: { type: "object", properties: { targetRoleUrl: { type: "string", description: "Public link to the job posting" }, attachmentIds: { type: "array", items: { type: "number" }, description: "Ids from list_my_resumes (1 to 5)" }, message: { type: "string", description: "Optional note to the referrer, up to 600 characters" } }, required: ["targetRoleUrl", "attachmentIds"], additionalProperties: false },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
   },
 ] as const;
 
@@ -68,6 +84,10 @@ export const shapeAlert = (row: Record<string, unknown>) => ({
   companyDomain: str(row.companyDomain, 255), paused: row.paused === true, notified: Boolean(row.notifiedAt), createdAt: iso(row.createdAt),
 });
 
+export const shapeResume = (row: Record<string, unknown>) => ({
+  id: typeof row.id === "number" ? row.id : null, fileName: str(row.fileName, 200), uploadedAt: iso(row.createdAt),
+});
+
 const textResult = (value: unknown) => ({ content: [{ type: "text", text: JSON.stringify(value) }], isError: false });
 const toolError = (message: string) => ({ content: [{ type: "text", text: message }], isError: true });
 
@@ -87,7 +107,19 @@ export async function callMcpTool(name: unknown, args: unknown, ctx: McpContext,
     const rows = await deps.listAlerts(ctx.userId);
     return textResult({ alerts: rows.slice(0, MAX_RESULTS).map(shapeAlert), truncated: rows.length > MAX_RESULTS });
   }
-  return toolError("Unknown tool. This server only offers read-only tools.");
+  if (name === "list_my_resumes") {
+    const rows = await deps.listResumes(ctx.userId);
+    return textResult({ resumes: rows.slice(0, MAX_RESULTS).map(shapeResume) });
+  }
+  if (name === "propose_ask") {
+    try {
+      const created = await deps.proposeAsk(ctx.userId, { targetRoleUrl: input.targetRoleUrl, attachmentIds: input.attachmentIds, message: input.message });
+      return textResult({ approvalId: created.id, status: created.status, creditCostIfApproved: created.creditCost, expiresAt: created.expiresAt, nextStep: "Nothing has been sent and no credit has been spent. Tell the member to open SkipWait > Approve and approve it there." });
+    } catch (error) {
+      return toolError(error instanceof Error ? error.message.slice(0, 200) : "We could not create that proposal.");
+    }
+  }
+  return toolError("Unknown tool.");
 }
 
 const rpcError = (id: RpcId, code: number, message: string): RpcResponse => ({ jsonrpc: "2.0", id, error: { code, message } });
@@ -101,7 +133,7 @@ export async function handleMcpMessage(message: unknown, ctx: McpContext, deps: 
   if (!hasId) return null; // notifications (e.g. notifications/initialized) get no response
   const rpcId = id as RpcId;
   if (method === "initialize") {
-    return { jsonrpc: "2.0", id: rpcId, result: { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: { tools: {} }, serverInfo: { name: "skipwait", version: "1.0.0" }, instructions: "Read-only access to your SkipWait account. Sending an ask or spending credits is not available here." } };
+    return { jsonrpc: "2.0", id: rpcId, result: { protocolVersion: MCP_PROTOCOL_VERSION, capabilities: { tools: {} }, serverInfo: { name: "skipwait", version: "1.0.0" }, instructions: "Read your SkipWait requests and alerts and search roles. propose_ask only creates a pending approval: the member approves it in SkipWait, where the exact credit cost is shown, and nothing is sent or spent before that." } };
   }
   if (method === "ping") return { jsonrpc: "2.0", id: rpcId, result: {} };
   if (method === "tools/list") return { jsonrpc: "2.0", id: rpcId, result: { tools: MCP_TOOLS } };
