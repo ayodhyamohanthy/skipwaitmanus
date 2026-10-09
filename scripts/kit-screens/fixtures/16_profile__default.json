@@ -1,0 +1,11 @@
+{
+  "signedIn": { "id": 21, "name": "Asha R.", "email": "asha.r@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "exact", "status": 200, "body": { "notifications": [] } },
+    { "method": "GET", "path": "/api/profile/me", "match": "exact", "status": 200, "body": {
+      "displayName": "Asha R.",
+      "profile": { "headline": null, "currentTitle": null, "location": null, "bio": null, "skills": null, "openTo": null, "company": null, "workEmailDomain": null, "workEmailVerifiedAt": null, "handle": "asha", "profileVisibility": "private" },
+      "workItems": []
+    } }
+  ]
+}

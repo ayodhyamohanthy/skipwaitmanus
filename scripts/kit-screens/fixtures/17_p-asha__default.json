@@ -1,0 +1,18 @@
+{
+  "signedIn": { "id": 21, "name": "Asha R.", "email": "asha.r@example.com", "role": "user" },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "match": "exact", "status": 200, "body": { "notifications": [] } },
+    { "method": "GET", "path": "/api/p/asha", "match": "exact", "status": 200, "body": { "profile": {
+      "visible": true, "visibility": "link", "isOwner": true, "displayName": "Asha R.",
+      "headline": "Senior Product Designer · enterprise workflows", "currentTitle": null,
+      "location": "Bengaluru · open to remote", "bio": null, "skills": null,
+      "openTo": ["Product Designer", "UX Lead", "Design Systems"], "company": null, "verifiedWork": null, "handle": "asha",
+      "workItems": [
+        { "id": 1, "title": "Enterprise approvals redesign", "kind": "case_study", "source": "Behance", "url": null, "pinned": true, "visibleOnProfile": true },
+        { "id": 2, "title": "Design system for a logistics dashboard", "kind": "project", "source": "Website", "url": null, "pinned": true, "visibleOnProfile": true },
+        { "id": 3, "title": "Accessible form patterns", "kind": "article", "source": "Medium", "url": null, "pinned": false, "visibleOnProfile": false },
+        { "id": 4, "title": "Prototype kit", "kind": "code", "source": "GitHub", "url": null, "pinned": false, "visibleOnProfile": false }
+      ]
+    } } }
+  ]
+}
