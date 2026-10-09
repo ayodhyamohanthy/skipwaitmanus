@@ -11,6 +11,7 @@ import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, send
 import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
 import { getAskExpiresAtMs, isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -59,6 +60,13 @@ export type PrivateReferralRouteDeps = {
   fulfillCompanyCoverageInvitation?: (joinerUserId: number, input: { inviteCode: string; workEmailDomain: string }) => Promise<{ rewarded: boolean; tokenCount?: number }>;
   listCompanyReferralInbox: (userId: number) => Promise<unknown[]>;
   listCompanyReferralInboxByState?: (userId: number, state: "new" | "saved" | "completed") => Promise<unknown[]>;
+  /**
+   * Batched block check for referral lists and thread guards. Returns the
+   * subset of request ids blocked with the viewer (either direction).
+   * Fail-open by contract: a check failure must never hide unblocked threads
+   * (e.g. before migration 0075_user_blocks is applied in an environment).
+   */
+  getBlockedReferralRequestIds?: (userId: number, requestIds: number[]) => Promise<Set<number>>;
   getUnclaimedCompanyReferralPreview?: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   listJobSeekerCompanyReferrals?: (userId: number) => Promise<unknown[]>;
   listMyPaymentReceipts?: (userId: number, role?: "job_seeker" | "referrer") => Promise<unknown[]>;
@@ -139,6 +147,26 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   const notifyInApp = (userId: number | undefined, title: string, body: string) => { if (!userId) return; void deps.createNotification?.(userId, "status", title, body).catch(() => undefined); };
   const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
+  // Block enforcement is fail-open: if the check itself fails (e.g. the
+  // userBlocks table is absent in an environment), threads stay visible
+  // rather than vanishing. Denials are neutral 404s so blocks are not enumerable.
+  const getBlockedIds = deps.getBlockedReferralRequestIds ?? defaultBlockedRequestIds;
+  const blockedRequestIds = async (userId: number, rows: unknown[]): Promise<Set<number>> => {
+    try {
+      const ids = rows
+        .map(row => (typeof row === "object" && row !== null ? Number((row as Record<string, unknown>).id) : NaN))
+        .filter(id => Number.isInteger(id) && id > 0);
+      return await getBlockedIds(userId, ids);
+    } catch { return new Set<number>(); }
+  };
+  const isRequestBlocked = async (userId: number, requestId: number): Promise<boolean> => {
+    try { return (await getBlockedIds(userId, [requestId])).has(requestId); }
+    catch { return false; }
+  };
+  const blockedThreadDeny = (actorUserId: number | undefined, resourceId: number, res: ExpressResponse) => {
+    record({ actorUserId, action: "company_referral.blocked_denied", outcome: "denied", resourceType: "referral_request", resourceId });
+    return res.status(404).json({ error: "This private request is not available" });
+  };
   const privateDocumentMimeTypes = ["application/pdf", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "image/png", "image/jpeg"];
   const parseRawPrivateDocument = express.raw({ type: privateDocumentMimeTypes, limit: "10mb" });
   const parseLegacyDocumentJson = express.json({ limit: "14mb" });
@@ -793,7 +821,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         const expiresAt = getAskExpiresAtMs(createdAt);
         return expiresAt === null ? null : new Date(expiresAt).toISOString();
       };
-      const requests = (listed as Array<Record<string, unknown>>).map(row => ({ ...row, expiresAt: toExpiresAt(row.createdAt) }));
+      const blockedMine = await blockedRequestIds(identity.account.id, listed);
+      const requests = (listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map(row => ({ ...row, expiresAt: toExpiresAt(row.createdAt) }));
       record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length, expiredCount: expiredRequestIds.length } });
       res.json({ requests, expiredRequestIds });
     } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
@@ -805,8 +834,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const requestedScope = typeof req.query.scope === "string" ? req.query.scope : "new";
       const scope = requestedScope === "saved" || requestedScope === "completed" ? requestedScope : "new";
       const requests = deps.listCompanyReferralInboxByState ? await deps.listCompanyReferralInboxByState(identity.account.id, scope) : await deps.listCompanyReferralInbox(identity.account.id);
-      record({ actorUserId: identity.account.id, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: requests.length, scope } });
-      res.json({ requests, scope });
+      const blockedInbox = await blockedRequestIds(identity.account.id, requests);
+      const visible = requests.filter(row => typeof row !== "object" || row === null || !blockedInbox.has(Number((row as Record<string, unknown>).id)));
+      record({ actorUserId: identity.account.id, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: visible.length, scope } });
+      res.json({ requests: visible, scope });
     } catch { res.status(500).json({ error: "We could not load private company requests" }); }
   });
   app.post("/api/company-referrals/availability/open", async (req, res) => {
@@ -842,6 +873,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const saved = req.body?.saved !== false;
       if (!identity) return res.status(401).json({ error: "Sign in to save a private request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       if (!deps.saveCompanyReferralRequest) return res.status(501).json({ error: "Saving requests is not available yet" });
       const result = await deps.saveCompanyReferralRequest(identity.account.id, requestId, saved);
       record({ actorUserId: identity.account.id, action: saved ? "company_referral.saved" : "company_referral.unsaved", outcome: "success", resourceType: "referral_request", resourceId: requestId });
@@ -870,6 +902,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const message = typeof req.body?.message === "string" ? req.body.message.slice(0, 3000) : undefined;
       if (!identity) return res.status(401).json({ error: "Sign in to review a private request" });
       if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined")) return res.status(400).json({ error: "Choose approve or decline for this referral request" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       if (!deps.reviewReferralRequest) return res.status(501).json({ error: "Reviewing requests is not available yet" });
       const result = await deps.reviewReferralRequest(identity.account.id, { requestId, decision, message });
       record({ actorUserId: identity.account.id, action: `company_referral.${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId });
@@ -881,6 +914,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); const decision = req.body?.decision; const declineReason = req.body?.declineReason;
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to review this private request" });
       if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason))) return res.status(400).json({ error: "Choose accept or a concise decline reason" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       if (!deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "One-click review is unavailable right now" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined });
       record({ actorUserId: identity.account.id, action: `company_referral.one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });
@@ -914,6 +948,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       actorUserId = identity.account.id;
       const status = req.body?.status;
       if (!Number.isInteger(requestId) || requestId <= 0 || !isReferralProgressUpdateStatus(status)) return res.status(400).json({ error: "Choose a real referral progress milestone" });
+      if (await isRequestBlocked(actorUserId, requestId)) return blockedThreadDeny(actorUserId, requestId, res);
       if (!deps.updateReferralProgress) return res.status(503).json({ error: "Referral progress updates are unavailable right now" });
       const result = await deps.updateReferralProgress(actorUserId, { requestId, status });
       record({ actorUserId, action: "company_referral.progress_updated", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { status: result.status } });
@@ -934,6 +969,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       actorUserId = identity.account.id;
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (!deps.listReferralConversation) return res.status(503).json({ error: "Private conversations are not available yet" });
+      if (await isRequestBlocked(actorUserId, requestId)) {
+        record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "denied", resourceType: "referral_conversation", resourceId: requestId });
+        return res.status(404).json({ error: "This private conversation isn't available" });
+      }
       const messages = await deps.listReferralConversation(actorUserId, requestId);
       const progress = await deps.getApprovedReferralProgressStatus?.(actorUserId, requestId);
       record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "success", resourceType: "referral_conversation", resourceId: requestId, metadata: { messageCount: messages.length } });
@@ -958,6 +997,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (!body) return res.status(400).json({ error: "Write a message before sending" });
       if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
+      if (await isRequestBlocked(actorUserId, requestId)) {
+        record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "denied", resourceType: "referral_conversation", resourceId: requestId });
+        return res.status(404).json({ error: "This private conversation isn't available" });
+      }
       if (!deps.sendReferralConversationMessage) return res.status(503).json({ error: "Private conversations are not available yet" });
       const message = await deps.sendReferralConversationMessage(actorUserId, requestId, body);
       record({ actorUserId, action: "company_referral.conversation_message_sent", outcome: "success", resourceType: "referral_conversation", resourceId: requestId, metadata: { bodyLength: body.length } });
@@ -974,6 +1017,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to review this request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
       if (!deps.getUnclaimedCompanyReferralPreview) return res.status(501).json({ error: "Candidate preview is not available yet" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const request = await deps.getUnclaimedCompanyReferralPreview(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not available to your verified company account" });
       const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, availability: "after_claim" as const }));
@@ -988,6 +1032,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const requestId = Number(req.params.requestId);
       if (!identity) return res.status(401).json({ error: "Sign in to view this request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const request = await deps.getClaimedCompanyReferralDetail(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not assigned to your verified employee account" });
       const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, url: `/api/documents/${attachment.id}` }));
@@ -1002,6 +1047,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId);
       if (!identity) return res.status(401).json({ error: "Sign in to claim a referral request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId);
       record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain });
       if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request.`);
