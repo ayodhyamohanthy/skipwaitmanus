@@ -96,6 +96,7 @@ export function SeekerPanel({ request, go, onWithdraw, onProgress }: SeekerProps
       <div>
         <h2>This request is closed.</h2>
         <p>Your private history stays protected. Thank your referrer with a message when you&apos;re ready.</p>
+        <button type="button" className="brand-button mt-4 w-full" onClick={() => go("/landed")}>Open the landed journey <ArrowRight /></button>
       </div>
     );
   }

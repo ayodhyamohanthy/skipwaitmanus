@@ -99,7 +99,7 @@ export default function Work() {
         <button type="button" onClick={() => { setAdding(current => !current); setError(""); }} className="brand-button"><Plus />{adding ? "Close" : "Add work"}</button>
       </div>
 
-      {pinned.length > 0 ? <p className="mb-4 text-xs font-semibold text-[var(--muted-foreground)]" aria-live="polite">{pinned.length} pinned</p> : null}
+      <p className="mb-4 text-xs font-semibold text-[var(--muted-foreground)]" aria-live="polite">Pinned {pinned.length} of 3{pinned.length >= 3 ? " — unpin one to pin another" : ""}</p>
 
       <div className="mb-4 flex rounded-full bg-[var(--muted)] p-1 text-sm" role="tablist" aria-label="Work view">
         {(["mine", "referrer"] as const).map(value => (
@@ -155,7 +155,7 @@ export default function Work() {
                 <p className="mt-3 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">{item.visibleOnProfile ? <><Eye className="size-3.5" />Visible on profile</> : <><EyeOff className="size-3.5" />Shown only in requests</>}</p>
                 {view === "mine" ? (
                 <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
-                  <button type="button" disabled={busyId === item.id} aria-pressed={item.pinned} onClick={() => { void patch(item.id, { pinned: !item.pinned }); }} className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-semibold">{item.pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}{item.pinned ? "Unpin" : "Pin"}</button>
+                  <button type="button" disabled={busyId === item.id || (!item.pinned && pinned.length >= 3)} title={!item.pinned && pinned.length >= 3 ? "Pin limit reached — unpin one first" : undefined} aria-pressed={item.pinned} onClick={() => { void patch(item.id, { pinned: !item.pinned }); }} className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-semibold disabled:opacity-50">{item.pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}{item.pinned ? "Unpin" : "Pin"}</button>
                   <label className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold">Profile visible<input type="checkbox" checked={item.visibleOnProfile} disabled={busyId === item.id} onChange={event => { void patch(item.id, { visibleOnProfile: event.target.checked }); }} className="size-4 accent-[var(--primary)]" /></label>
                   <button type="button" disabled={busyId === item.id} aria-label={`Delete ${item.title}`} onClick={() => { void remove(item.id); }} className="ml-auto grid min-h-11 min-w-11 place-items-center text-[var(--destructive)]"><Trash2 className="size-4" /></button>
                 </div>

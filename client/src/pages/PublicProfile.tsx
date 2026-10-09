@@ -137,6 +137,11 @@ export default function PublicProfile() {
               </div>
             </section>
             {profile.bio ? <p className="mt-5 max-w-2xl leading-7">{profile.bio}</p> : null}
+            {!profile.isOwner && profile.verifiedWork?.domain ? (
+              <div className="mt-5">
+                <Link href="/explore" className="brand-button">Ask for a referral <ArrowRight /></Link>
+              </div>
+            ) : null}
             {profile.skills ? <p className="mt-3 text-sm text-[var(--muted-foreground)]">{profile.skills}</p> : null}
             {profile.openTo && profile.openTo.length > 0 ? (
               <div className="mt-4">

@@ -159,6 +159,7 @@ export default function ReferrerSetup() {
               <h1 className="mt-4 text-3xl font-semibold">You&apos;re open for asks.</h1>
               <p className="mt-2 text-[var(--muted-foreground)]">{areas.join(", ") || "No areas yet"} · {levels.join(", ") || "All levels"} · {capacity}/month · {visibility === "anon" ? "anonymous" : "named"}</p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Link href="/profile" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Get my public profile link</Link>
                 <Link href="/profile" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Edit profile</Link>
                 <Link href="/referrer-home" className="brand-button">Go to referrer home <ArrowRight /></Link>
               </div>

@@ -1,10 +1,11 @@
 import { AlertTriangle, ArrowRight, Check, Circle, FileText, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link, useLocation } from "wouter";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
+import { getLaunchCompany } from "@/lib/companies";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 
 const NOTE_LIMIT = 600;
@@ -34,6 +35,43 @@ export default function Ask() {
   const [error, setError] = useState("");
   const [sent, setSent] = useState<{ requestId: number; companyDomain: string; waitingForCoverage: boolean } | null>(null);
   const [openAsks, setOpenAsks] = useState<number | null>(null);
+  const [companyHint, setCompanyHint] = useState("");
+  const [workItems, setWorkItems] = useState<Array<{ id: number; title: string; url: string | null }>>([]);
+  const [selectedWorkIds, setSelectedWorkIds] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    try {
+      const companyParam = new URLSearchParams(window.location.search).get("company")?.trim();
+      if (!companyParam) return;
+      if (/^https?:\/\//i.test(companyParam)) {
+        setUrl(current => current ? current : companyParam);
+        return;
+      }
+      const company = getLaunchCompany(companyParam.toLowerCase());
+      if (company) setCompanyHint(`${company.name} · ${company.domain}`);
+    } catch { /* company prefill is best-effort */ }
+  }, []);
+
+  useEffect(() => {
+    if (!isSignedIn) return;
+    let active = true;
+    void (async () => {
+      try {
+        const token = await fetchToken();
+        const response = await fetch("/api/work-items", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        const payload = await readApiJson<{ items?: Array<{ id?: unknown; title?: unknown; url?: unknown }> }>(response, "We could not load your work");
+        if (!response.ok || !active || !Array.isArray(payload.items)) return;
+        const loaded: Array<{ id: number; title: string; url: string | null }> = [];
+        for (const item of payload.items) {
+          if (typeof item.id === "number" && typeof item.title === "string" && item.title.trim()) {
+            loaded.push({ id: item.id, title: item.title.trim(), url: typeof item.url === "string" && item.url ? item.url : null });
+          }
+        }
+        setWorkItems(loaded);
+      } catch { /* attach picker stays hidden when work cannot load */ }
+    })();
+    return () => { active = false; };
+  }, [fetchToken, isSignedIn]);
 
   const words = note.trim() ? note.trim().split(/\s+/).length : 0;
   const officialUrl = isValidTargetRoleUrl(url || undefined);
@@ -54,6 +92,14 @@ export default function Ask() {
     const payload = await readApiJson<{ error?: string } & Record<string, unknown>>(response, "We could not complete this ask action");
     if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "We could not complete this ask action");
     return payload;
+  };
+
+  const toggleWork = (id: number) => {
+    setSelectedWorkIds(current => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
   };
 
   const pickResume = (files: FileList | null) => {
@@ -97,7 +143,13 @@ export default function Ask() {
     try {
       const doc = await ensureResume();
       const params = new URLSearchParams(window.location.search);
-      const body: Record<string, unknown> = { targetRoleUrl: url.trim(), attachmentIds: [doc.id], candidateMessage: note.trim() };
+      let candidateMessage = note.trim();
+      const selectedWork = workItems.filter(item => selectedWorkIds.has(item.id));
+      if (selectedWork.length > 0) {
+        const lines = selectedWork.map(item => `- ${item.title}${item.url ? ` (${item.url})` : ""}`);
+        candidateMessage = `${candidateMessage}\n\nAttached work:\n${lines.join("\n")}`.slice(0, 2000);
+      }
+      const body: Record<string, unknown> = { targetRoleUrl: url.trim(), attachmentIds: [doc.id], candidateMessage };
       if (compensation.trim()) body.compensation = compensation.trim().slice(0, 80);
       const fastTrackCode = params.get("fast")?.trim();
       if (fastTrackCode) body.fastTrackCode = fastTrackCode;
@@ -140,7 +192,7 @@ export default function Ask() {
         <p className="mt-2 text-[var(--muted-foreground)]">{sent.waitingForCoverage ? "No verified referrers there yet — we'll route it privately the moment coverage opens." : "Verified referrers there will see it. Your slot frees when it's answered, passed, or withdrawn."}</p>
         {openAsks !== null ? <p className="mt-4 text-sm">Open asks: <strong>{openAsks}</strong></p> : null}
         <div className="mt-8 flex flex-wrap justify-center gap-3">
-          <button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={() => { setSent(null); setUrl(""); setNote(""); setCompensation(""); setResume(null); setResumeFile(null); }}>Write another</button>
+          <button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={() => { setSent(null); setUrl(""); setNote(""); setCompensation(""); setResume(null); setResumeFile(null); setSelectedWorkIds(new Set()); }}>Write another</button>
           <Link href={`/conversation/${sent.requestId}`} className="brand-button">Track this ask <ArrowRight /></Link>
         </div>
       </main>
@@ -156,6 +208,7 @@ export default function Ask() {
             <input value={url} onChange={event => setUrl(event.target.value)} placeholder="https://careers.company.com/…" inputMode="url" className={`mt-2 h-12 w-full rounded-full border bg-[var(--background)] px-5 text-base ${url && !officialUrl ? "border-[var(--destructive)]" : "border-[var(--input)]"}`} />
           </label>
           {url && !officialUrl ? <p className="mt-2 flex gap-2 text-sm text-[var(--destructive)]"><AlertTriangle className="size-4 shrink-0" />That doesn&apos;t look like a job posting link.</p> : null}
+          {companyHint ? <p className="mt-2 text-sm text-[var(--muted-foreground)]">Asking about {companyHint} — paste a role link from their careers site.</p> : null}
           <label className="mt-5 block text-sm font-medium">Compensation (optional)
             <input value={compensation} onChange={event => setCompensation(event.target.value)} placeholder="e.g. ₹18–22 LPA" maxLength={80} className="mt-2 h-12 w-full rounded-full border border-[var(--input)] bg-[var(--background)] px-5 text-base" />
           </label>
@@ -178,6 +231,22 @@ export default function Ask() {
             )}
             <p className="mt-2 text-xs text-[var(--muted-foreground)]">Shared with a referrer only after they accept.</p>
           </div>
+          {workItems.length > 0 ? (
+            <div className="mt-6">
+              <span className="text-sm font-medium">Attach work (optional)</span>
+              <ul className="mt-2 space-y-2">
+                {workItems.map(item => (
+                  <li key={item.id}>
+                    <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-2xl border border-[var(--input)] px-4 py-2 text-sm">
+                      <input type="checkbox" checked={selectedWorkIds.has(item.id)} onChange={() => toggleWork(item.id)} className="size-4 accent-[var(--primary)]" />
+                      <span className="truncate">{item.title}</span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-xs text-[var(--muted-foreground)]">Selected titles are added to your note.</p>
+            </div>
+          ) : null}
           {error ? <p role="alert" className="mt-4 text-sm font-semibold text-[var(--destructive)]">{error}</p> : null}
         </section>
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">

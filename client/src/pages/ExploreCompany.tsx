@@ -84,7 +84,7 @@ export default function ExploreCompany() {
           <p>{company.blurb}</p>
           <div className="company-meta"><span><BriefcaseBusiness />{company.industry}</span><span><MapPin />{company.location}</span></div>
         </div>
-        <Link href="/ask" className="brand-button">Ask for a referral <ArrowRight /></Link>
+        <Link href={`/ask?company=${encodeURIComponent(company.slug)}`} className="brand-button">Ask for a referral <ArrowRight /></Link>
       </section>
 
       <section className="company-detail-grid">

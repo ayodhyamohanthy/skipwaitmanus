@@ -1,4 +1,4 @@
-import { ArrowLeft, Check, Copy, Mail, Share2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Copy, Mail, Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
@@ -12,6 +12,7 @@ export default function Invite() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [mode, setMode] = useState<"colleagues" | "company">("colleagues");
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const link = inviteCode ? `${origin}/verify?invite=${encodeURIComponent(inviteCode)}` : "";
 
@@ -66,6 +67,18 @@ export default function Invite() {
       <Link href="/referrer-home" className="back-link"><ArrowLeft />Back to referrer home</Link>
       <div className="mb-6"><span className="eyebrow">Referrer network</span><h1 className="mt-2 text-4xl font-semibold">Invite a trusted colleague<span className="brand-dot">.</span></h1><p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Share a neutral invitation. They choose whether to verify a work email and help — nothing is posted publicly and nobody is spammed.</p></div>
 
+      <div className="mb-4 flex rounded-full bg-[var(--muted)] p-1 text-sm" role="tablist" aria-label="Invite options">
+        <button type="button" role="tab" aria-selected={mode === "colleagues"} onClick={() => setMode("colleagues")} className={`min-h-11 flex-1 rounded-full px-4 ${mode === "colleagues" ? "bg-[var(--background)] font-semibold shadow-sm" : "text-[var(--muted-foreground)]"}`}>Invite colleagues</button>
+        <button type="button" role="tab" aria-selected={mode === "company"} onClick={() => setMode("company")} className={`min-h-11 flex-1 rounded-full px-4 ${mode === "company" ? "bg-[var(--background)] font-semibold shadow-sm" : "text-[var(--muted-foreground)]"}`}>Request a company</button>
+      </div>
+
+      {mode === "company" ? (
+        <section className="rounded-3xl border-2 border-[var(--foreground)] p-6 shadow-[var(--shadow-offset)] sm:p-8" aria-label="Request a company">
+          <h2 className="text-xl font-semibold">Know someone inside a company not listed?</h2>
+          <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Suggest it. We&apos;ll review the company and open it for verified referrers — no spam, no public posting.</p>
+          <Link href="/suggest-company" className="brand-button mt-4">Suggest a company <ArrowRight /></Link>
+        </section>
+      ) : (
       <section className="rounded-3xl border-2 border-[var(--foreground)] p-6 shadow-[var(--shadow-offset)] sm:p-8" aria-label="Personal invite link">
         {loading ? <p className="text-sm text-[var(--muted-foreground)]">Creating your personal link…</p> : null}
         {error ? <p role="alert" className="text-sm font-semibold text-[var(--destructive)]">{error}</p> : null}
@@ -83,6 +96,7 @@ export default function Invite() {
           </>
         ) : null}
       </section>
+      )}
     </main>
   );
 }
