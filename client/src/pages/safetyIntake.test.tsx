@@ -98,7 +98,7 @@ describe("SuggestCompany flow", () => {
     fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "http://zerodha.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
     expect(await screen.findByText(/Zerodha is in review/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Invite someone" }).getAttribute("href")).toBe("/invite");
+    expect(screen.getByRole("link", { name: "Invite someone" }).getAttribute("href")).toBe("/invite?mode=invite");
     expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ companyName: "Zerodha", website: "http://zerodha.com", role: "seeker" });
   });
 

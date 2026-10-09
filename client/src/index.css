@@ -216,7 +216,7 @@ input, textarea { caret-color: var(--primary); }
 .status-declined,.status-withdrawn{color:var(--destructive);}
 .status-closed{color:var(--muted-foreground);}
 /* kit work-showcase thumbnails: the single allowed tint blend (DESIGN.md), primary/secondary wash with ink icon */
-.work-thumb{position:relative;display:grid;place-items:center;height:120px;background:linear-gradient(135deg,color-mix(in oklch,var(--primary) 14%,transparent),color-mix(in oklch,var(--secondary) 65%,transparent));color:var(--primary);}
+.work-thumb{position:relative;display:grid;place-items:center;background:linear-gradient(135deg,color-mix(in oklch,var(--primary) 14%,transparent),color-mix(in oklch,var(--secondary) 65%,transparent));color:var(--primary);}
 .work-thumb>svg{width:34px;height:34px;}
 .work-thumb .pinned-pill{position:absolute;top:12px;left:12px;display:inline-flex;align-items:center;gap:4px;background:var(--foreground);color:var(--background);border-radius:999px;padding:5px 10px;font-size:10px;font-weight:700;}
 .work-thumb .pinned-pill svg{width:11px;height:11px;}
@@ -249,3 +249,5 @@ input, textarea { caret-color: var(--primary); }
 @supports (-webkit-touch-callout:none){@media(max-width:768px){input:not([type=checkbox]):not([type=radio]),select,textarea{font-size:16px!important;}}}
 /* Signed-in phones keep the account menu + bell that the kit's signed-out preview hides at <=430px. */
 @media(max-width:430px){.app-topbar:has([data-skipwait-notification-bell]) .topbar-actions{display:flex;}}
+/* The kit PNGs keep the shell footer link on one line on phones; our Instrument Sans build is a hair wider than the kit's, so do not let it wrap. */
+@media(max-width:768px){.app-footer a{max-width:none;white-space:nowrap;}}

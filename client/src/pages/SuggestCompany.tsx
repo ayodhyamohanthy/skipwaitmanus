@@ -70,7 +70,7 @@ export default function SuggestCompany() {
         <Panel tone="muted" className="mt-6 text-left">
           <strong>Speed it up</strong>
           <p className="mt-1 text-sm text-muted-foreground">{role === "employee" ? "Verify your work email — unlisted domains go to a person for review." : "Know someone there? Invite them to be the first referrer."}</p>
-          <Button asChild className="mt-3">{role === "employee" ? <Link href="/verify">Verify work email</Link> : <Link href="/invite">Invite someone</Link>}</Button>
+          <Button asChild className="mt-3">{role === "employee" ? <Link href="/verify">Verify work email</Link> : <Link href="/invite?mode=invite">Invite someone</Link>}</Button>
         </Panel>
         <p className="mt-4 text-xs text-muted-foreground">You can suggest up to 3 companies a day.</p>
       </main>
