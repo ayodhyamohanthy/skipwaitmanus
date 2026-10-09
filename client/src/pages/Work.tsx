@@ -127,15 +127,11 @@ export default function Work() {
         <Button variant="ghost" role="tab" aria-selected={view === "referrer"} className={view === "referrer" ? "selected" : ""} onClick={() => setView("referrer")}><Users />What a referrer sees</Button>
       </div>
 
-<<<<<<< HEAD
-      <p className="mb-4 text-xs font-semibold text-[var(--muted-foreground)]" aria-live="polite">Pinned {pinned.length} of 3{pinned.length >= 3 ? " — unpin one to pin another" : ""}</p>
-=======
       <section className="profile-card-preview">
         <div className="avatar-ph" aria-hidden="true">{name.trim().charAt(0).toUpperCase() || "Y"}</div>
         <div className="min-w-0"><strong>{name}</strong><small>{owner?.headline ? `${owner.headline} · ` : ""}{owner?.handle ? <>skipwait.me/p/<em>{owner.handle}</em></> : <Link href="/profile" className="text-link">Set your profile link</Link>}</small></div>
         <span className="pin-meter" aria-live="polite"><Pin />{pinned} pinned</span>
       </section>
->>>>>>> 57d8bbdec3818a6d6bb1dff1e38f9b552b201c81
 
       {error && !adding ? <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-destructive"><p>{error}</p>{loadFailed ? <Button variant="outline" size="sm" onClick={() => { void load(); }}>Try again</Button> : null}</div> : null}
 
@@ -147,37 +143,9 @@ export default function Work() {
           {items.length === 0 ? <><h2>Add one piece you&apos;re proud of.</h2><p>Link a case study, project, article, or code.</p></> : <><h2>Nothing visible here yet</h2><p>Mark pieces visible on profile to preview them here.</p></>}
         </div>
       ) : (
-<<<<<<< HEAD
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {(view === "mine" ? items : items.filter(item => item.visibleOnProfile)).map(item => (
-            <li key={item.id}>
-              <article className={`overflow-hidden rounded-3xl border ${item.pinned ? "border-2 border-[var(--foreground)] shadow-[var(--shadow-offset)]" : "border-[var(--border)]"}`}>
-                <div className="work-thumb"><FileText aria-hidden="true" />{item.pinned ? <span className="pinned-pill"><Pin aria-hidden="true" />Pinned</span> : null}</div>
-                <div className="p-5">
-                <div className="mb-6 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-                  <span className="flex items-center gap-1"><Globe className="size-3.5" />{item.source || "Link"}</span>
-                </div>
-                <span className="eyebrow">{(KIND_LABELS[item.kind] ?? item.kind).toUpperCase()}</span>
-                <h3 className="mt-1 text-lg font-semibold">{item.title}</h3>
-                {item.url ? <a href={item.url} target="_blank" rel="noreferrer" className="text-link mt-2 text-sm">Open link <ArrowRight className="size-3" /></a> : null}
-                <p className="mt-3 flex items-center gap-1 text-xs text-[var(--muted-foreground)]">{item.visibleOnProfile ? <><Eye className="size-3.5" />Visible on profile</> : <><EyeOff className="size-3.5" />Shown only in requests</>}</p>
-                {view === "mine" ? (
-                <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--border)] pt-3">
-                  <button type="button" disabled={busyId === item.id || (!item.pinned && pinned.length >= 3)} title={!item.pinned && pinned.length >= 3 ? "Pin limit reached — unpin one first" : undefined} aria-pressed={item.pinned} onClick={() => { void patch(item.id, { pinned: !item.pinned }); }} className="inline-flex min-h-11 items-center gap-1 px-2 text-xs font-semibold disabled:opacity-50">{item.pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}{item.pinned ? "Unpin" : "Pin"}</button>
-                  <label className="inline-flex min-h-11 items-center gap-1 text-xs font-semibold">Profile visible<input type="checkbox" checked={item.visibleOnProfile} disabled={busyId === item.id} onChange={event => { void patch(item.id, { visibleOnProfile: event.target.checked }); }} className="size-4 accent-[var(--primary)]" /></label>
-                  <button type="button" disabled={busyId === item.id} aria-label={`Delete ${item.title}`} onClick={() => { void remove(item.id); }} className="ml-auto grid min-h-11 min-w-11 place-items-center text-[var(--destructive)]"><Trash2 className="size-4" /></button>
-                </div>
-                ) : null}
-                </div>
-              </article>
-            </li>
-          ))}
-        </ul>
-=======
         <section className="work-grid">
           {shown.map(item => <WorkCard key={item.id} item={item} manage={view === "mine"} busy={busyId === item.id} onPatch={body => { void patch(item.id, body); }} onRemove={() => { void remove(item.id); }} />)}
         </section>
->>>>>>> 57d8bbdec3818a6d6bb1dff1e38f9b552b201c81
       )}
 
       {adding ? <AddWorkSheet busy={busyId !== null} error={error} onClose={closeSheet} onSubmit={input => { void add(input); }} /> : null}

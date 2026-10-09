@@ -132,7 +132,7 @@ describe("Work showcase", () => {
     expect(await screen.findByText("Launch")).toBeTruthy();
     const launchCard = screen.getByText("Launch").closest("article") as HTMLElement;
     fireEvent.click(within(launchCard).getByRole("button", { name: "Pin" }));
-    expect(await screen.findByText("Pinned 1 of 3")).toBeTruthy();
+    expect(await screen.findByText("1 pinned")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Delete Launch" }));
     await waitFor(() => expect(screen.queryByText("Launch")).toBeNull());
   });
