@@ -46,11 +46,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
   it("Terms restate credit and privacy behaviour and never promise a hiring outcome", () => {
     const { container } = render(<Terms />);
     expect(document.querySelector('[data-skipwait-screen="terms"]')).toBeTruthy();
-    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Plain terms");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("Terms");
     expect(screen.getByText(/We do not promise an interview, an offer, or any hiring outcome/)).toBeTruthy();
     expect(screen.getByText(/3 free referral credits each month/)).toBeTruthy();
-    expect(screen.getByText("Short version")).toBeTruthy();
-    expect(screen.getByText(/Referrals are always free/)).toBeTruthy();
+    expect(screen.getByText("The short version")).toBeTruthy();
+    expect(screen.getByText(/Asking for and giving referrals is free. Always./)).toBeTruthy();
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
     expect(policyLinks(container)).toEqual(["/terms", "/guidelines", "/privacy", "/refunds", "/cancellations", "/shipping", "/pricing", "/about", "/contact", "/support"]);
     expect(screen.getByRole("link", { name: "Back" }).getAttribute("href")).toBe("/");
