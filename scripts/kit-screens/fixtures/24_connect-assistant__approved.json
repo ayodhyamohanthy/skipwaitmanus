@@ -1,0 +1,46 @@
+{
+  "signedIn": {
+    "id": 7,
+    "name": "Asha Rao",
+    "email": "asha@gmail.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/assistants/access",
+      "status": 200,
+      "body": {
+        "plan": "max",
+        "hasAccess": true
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/oauth/client",
+      "status": 200,
+      "body": {
+        "clientName": "ChatGPT"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/oauth/authorize",
+      "status": 200,
+      "body": {
+        "redirectTo": "#connected"
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Connect ChatGPT to SkipWait"
+    },
+    {
+      "click": "button:has-text('Approve')"
+    },
+    {
+      "waitFor": "text=ChatGPT is connected"
+    }
+  ]
+}
