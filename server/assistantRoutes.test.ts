@@ -13,7 +13,18 @@ function setup(deps: Partial<AssistantRouteDeps>) {
   return app;
 }
 
-const authed = (app: express.Express) => request(app).set("x-test-user", "seeker");
+// supertest 7: request(app) returns method factories; the
+// header goes on the Test each method returns.
+const authed = (app: express.Express) => {
+  const base = request(app);
+  return {
+    get: (url: string) => base.get(url).set("x-test-user", "seeker"),
+    post: (url: string) => base.post(url).set("x-test-user", "seeker"),
+    patch: (url: string) => base.patch(url).set("x-test-user", "seeker"),
+    put: (url: string) => base.put(url).set("x-test-user", "seeker"),
+    delete: (url: string) => base.delete(url).set("x-test-user", "seeker"),
+  };
+};
 
 describe("assistant access routes", () => {
   it("requires sign-in for every operation", async () => {

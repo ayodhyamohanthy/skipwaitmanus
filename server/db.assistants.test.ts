@@ -228,8 +228,8 @@ describe("assistant approvals", () => {
   it("expires stale pending approvals on read and refuses late decisions", async () => {
     const stale = await createAssistantApproval(7, { kind: "credit_spend", provider: "ChatGPT", creditCount: 3 });
     tables.approvals = tables.approvals.map(row => row.id === stale!.id ? { ...row, expiresAt: new Date(Date.now() - 1000) } : row);
-    await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/expired/);
     await expect(editAssistantApproval(7, stale!.id, { note: "x".repeat(10) })).rejects.toThrow(/expired/);
+    await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/expired/);
     const listed = await listAssistantApprovals(7);
     expect(listed[0].status).toBe("expired");
     await expect(decideAssistantApproval(7, stale!.id, "approved")).rejects.toThrow(/already handled/);

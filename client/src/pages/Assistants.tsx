@@ -188,23 +188,25 @@ export default function Assistants() {
       <h1 className="mt-2 text-4xl font-semibold">Connected assistants<span className="brand-dot">.</span></h1>
       <p className="mt-2 max-w-xl text-[var(--muted-foreground)]">Use SkipWait from ChatGPT, Claude and your own tools. You stay in control of every ask and every credit.</p>
 
-      {!onMax ? (
+      {loading ? <div className="mt-6"><LoadingSkeleton title="Loading assistant settings…" caption="Checking your connections, tokens and activity." /></div> : null}
+      {error ? <p role="alert" className="mt-4 rounded-xl border border-[var(--destructive)]/30 bg-[var(--destructive)]/10 p-4 text-sm">{error} <button type="button" className="font-bold underline" onClick={() => { void load(); }}>Try again</button></p> : null}
+
+      {!loading && !error && !onMax ? (
         <section className="mt-6 rounded-3xl border border-[var(--border)] bg-[var(--muted)] p-8 text-center">
           <Bot className="mx-auto mb-3 size-8" />
           <h2 className="text-lg font-semibold">Assistants and API tokens come with Max</h2>
           <p className="mt-1 text-sm text-[var(--muted-foreground)]">Max members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.</p>
           <Link href="/plans" className="brand-button mt-4 inline-block">Upgrade to Max</Link>
         </section>
-      ) : (
+      ) : null}
+
+      {!loading && !error && onMax ? (
         <>
           <div className="mt-6 flex gap-2" role="tablist" aria-label="Assistant settings">
             {(["assistants", "tokens", "activity"] as const).map(value => (
               <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={`min-h-11 rounded-full border px-4 text-sm ${tab === value ? "border-[var(--primary)] bg-[var(--primary)]/5 font-semibold" : "border-[var(--border)]"}`}>{value === "assistants" ? "Assistants" : value === "tokens" ? "API tokens" : "Activity"}</button>
             ))}
           </div>
-
-          {loading ? <div className="mt-6"><LoadingSkeleton title="Loading assistant settings…" caption="Checking your connections, tokens and activity." /></div> : null}
-          {error ? <p role="alert" className="mt-4 rounded-xl border border-[var(--destructive)]/30 bg-[var(--destructive)]/10 p-4 text-sm">{error} <button type="button" className="font-bold underline" onClick={() => { void load(); }}>Try again</button></p> : null}
 
           {!loading && !error && tab === "assistants" ? (
             <section className="mt-4" aria-label="Connected assistants">
@@ -305,7 +307,7 @@ export default function Assistants() {
         </>
       )}
 
-      {onMax && connections.length > 0 ? (
+      {!loading && !error && onMax && connections.length > 0 ? (
         <p className="mt-6 flex items-center gap-1 text-xs text-[var(--muted-foreground)]"><BadgeCheck className="size-3.5" />Every send and every credit spend asks you first.</p>
       ) : null}
     </main>
