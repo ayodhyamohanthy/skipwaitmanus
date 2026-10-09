@@ -84,7 +84,7 @@ export async function getBlockedRequestIds(userId: number, requestIds: number[])
   const blocked = new Set<number>();
   const db = await getDb();
   if (!db) return blocked;
-  const ids = [...new Set(requestIds.filter(id => Number.isInteger(id) && id > 0))].slice(0, 200);
+  const ids = Array.from(new Set(requestIds.filter(id => Number.isInteger(id) && id > 0))).slice(0, 200);
   if (ids.length === 0) return blocked;
   const [rows, blocks] = await Promise.all([
     db.select({ requestId: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(inArray(referralRequests.id, ids)),
