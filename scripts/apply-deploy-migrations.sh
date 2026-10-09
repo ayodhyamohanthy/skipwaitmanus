@@ -4,6 +4,8 @@
 # sha256 in schemaDeployMigrations. Any failure exits non-zero so the deploy
 # job (which needs this one) never starts. Files must be idempotent.
 set -euo pipefail
+# macOS self-hosted runners have shasum, not GNU sha256sum; same digest either way.
+sha256_portable(){ if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 dir="${DEPLOY_MIGRATIONS_DIR:-drizzle/deploy}"
 bash scripts/lint-deploy-migrations.sh "$dir"
 : "${DB_HOST:?DB_HOST repository variable is missing}"
@@ -26,7 +28,7 @@ applied=0
 shopt -s nullglob
 for file in $(printf '%s\n' "$dir"/*.sql | sort); do
   name=$(basename "$file")
-  sum=$(sha256sum "$file" | cut -d' ' -f1)
+  sum=$(sha256_portable "$file" | cut -d' ' -f1)
   recorded=$("${mysql_cmd[@]}" -e "SELECT sha256 FROM schemaDeployMigrations WHERE filename='${name//\'/}'")
   if [ -n "$recorded" ]; then
     if [ "$recorded" != "$sum" ]; then

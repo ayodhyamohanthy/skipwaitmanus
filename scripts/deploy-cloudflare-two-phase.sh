@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
+# macOS self-hosted runners have shasum, not GNU sha256sum; same digest either way.
+sha256_portable(){ if command -v sha256sum >/dev/null 2>&1; then sha256sum "$@"; else shasum -a 256 "$@"; fi; }
 : "${EXPECTED_SHA:?}" "${CLOUDFLARE_API_TOKEN:?}" "${CLOUDFLARE_ACCOUNT_ID:?}"
 READY_URL=https://skipwait.me/api/health/ready
 . "$(dirname "$0")/poll-cloudflare-readiness.sh"
 head=$(git rev-parse HEAD);[[ "$head" == "$EXPECTED_SHA" ]]||{ echo '::error::Checked-out HEAD differs from expected SHA';exit 3;}
 [[ "$(node -e 'let s=require("fs").readFileSync("wrangler.jsonc","utf8");let m=s.match(/"API_RELEASE":\s*"([^"]+)"/);process.stdout.write(m?.[1]||"")')" == "$EXPECTED_SHA" ]]||{ echo '::error::Stamped API_RELEASE mismatch';exit 3;}
-context_hash=$(git ls-files -s Dockerfile .dockerignore package.json pnpm-lock.yaml patches server shared src/worker.ts wrangler.jsonc|sha256sum|cut -d' ' -f1)
+context_hash=$(git ls-files -s Dockerfile .dockerignore package.json pnpm-lock.yaml patches server shared src/worker.ts wrangler.jsonc|sha256_portable|cut -d' ' -f1)
 deploy(){
   local phase="$1" log="/tmp/wrangler-deploy-$1.log" status
   set +e
