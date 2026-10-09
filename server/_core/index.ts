@@ -59,6 +59,7 @@ import { workEmailOtpService } from "../workEmailOtp";
 import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { registerPasswordResetRoutes } from "../passwordResetRoutes";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
@@ -142,6 +143,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
   // Referrer OTP-first login is a public surface, always registered.
   registerReferrerOtpLoginRoutes(app);
+  registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
   else registerDevAuthRoutes(app);
   app.use(materialErrorAlertMiddleware);

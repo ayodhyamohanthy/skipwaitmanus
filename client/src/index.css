@@ -162,11 +162,10 @@
   --success: oklch(0.45 0.12 155);
 }
 
-* { border-color: var(--color-border); }
 html { scroll-behavior: smooth; background: var(--color-background); }
 body { margin: 0; min-width: 320px; background: var(--color-background); color: var(--color-foreground); font-family: var(--font-ui); letter-spacing: 0; overscroll-behavior-y: contain; }
 h1, h2, h3, p { letter-spacing: 0; }
-h1, h2 { font-family: var(--font-ui); font-weight: 600; text-wrap: balance; }
+h1, h2 { font-family: var(--font-ui); font-weight: 600; }
 /* Tabular numerals for counts, meters, and proof strips. */
 .tnum { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
 button, a, input, textarea, select { -webkit-tap-highlight-color: transparent; }
@@ -207,7 +206,7 @@ input, textarea { caret-color: var(--primary); }
 .brand-button:disabled{box-shadow:none;}
 .display{font-family:var(--font-ui);font-weight:600;letter-spacing:0;}
 .app-dialog p[role="alert"]{color:var(--destructive);font-weight:600;}
-.app-dialog label{display:flex;align-items:flex-start;gap:10px;font-size:14px;margin-top:12px;}
+.app-dialog label:has(> input[type="checkbox"]),.app-dialog label:has(> input[type="radio"]){display:flex;align-items:flex-start;gap:10px;font-size:14px;margin-top:12px;}
 .app-dialog input[type="checkbox"],.app-dialog input[type="radio"]{width:18px;height:18px;margin-top:2px;accent-color:var(--primary);flex-shrink:0;}
 .app-dialog footer{margin-top:20px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
 .app-dialog footer button{min-height:46px;padding:0 18px;border-radius:14px;font-size:14px;font-weight:600;}
@@ -216,32 +215,16 @@ input, textarea { caret-color: var(--primary); }
 .status-approved,.status-intro_made,.status-interview,.status-offer{border-color:var(--success);color:var(--success);}
 .status-declined,.status-withdrawn{color:var(--destructive);}
 .status-closed{color:var(--muted-foreground);}
-.search-field svg{color:var(--muted-foreground);flex-shrink:0;}
 .role-list{display:grid;gap:10px;margin-top:24px;}
 .role-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--background);}
 .role-row strong{display:block;font-size:14px;}
 .role-row small{font-size:12px;color:var(--muted-foreground);}
-/* Explore phone tuning against the kit PNGs (#152). */
-@media(max-width:768px){
-.page-heading{display:block;}
-.topbar-actions>a[aria-label="Alerts"]{display:none;}
-.page-heading p{font-size:14px;}
-.search-field input{font-size:14px;}
-.search-field svg,.filter-control svg{width:18px;height:18px;}
-.global-pill{margin-top:44px;}
-.mobile-brand svg{width:20px;height:20px;}
-.page-heading p{margin-bottom:0;}
-.filter-row{flex-wrap:nowrap;}
-.filter-control{flex:1 1 0;min-width:0;}
-.filter-control select{flex:1;min-width:0;max-width:none;}
-}
 .global-pill,.availability{text-transform:uppercase;}
 
 /* Landing header and hero: match kit v4 (ghost Sign in, outline Explore, fixed desktop hero height) */
 .launch-header-actions .launch-signin{background:transparent;color:var(--foreground);border-color:transparent;box-shadow:none;padding-inline:14px;font-weight:500;}
 .launch-header-actions .launch-signin:hover{color:var(--primary);}
 .launch-header-actions a.brand-button:not(.launch-signin){background:var(--background);color:var(--foreground);border:1.5px solid var(--foreground);}
-@media(min-width:769px){.launch-hero{height:740px;max-height:none;}}
 .launch-faq-item>button{display:flex;align-items:center;justify-content:space-between;}
 .referrer-band-grid .brand-button{background:var(--background);color:var(--foreground);}
 @media(max-width:768px){.launch-header-actions .launch-signin{display:inline-flex;}}

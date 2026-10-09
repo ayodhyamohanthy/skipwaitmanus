@@ -105,6 +105,17 @@ describe("role-aware WorkOS sign-in entries", () => {
     expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up" }));
     restore();
   });
+
+  it("forwards a valid typed email as the AuthKit login hint and drops anything else", { timeout: 20000 }, async () => {
+    const { app, restore } = await buildApp({ ...baseEnv });
+    await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "  Asha@Example.com " });
+    expect((authUrl.mock.calls.at(-1)?.[0] as { loginHint?: string }).loginHint).toBe("asha@example.com");
+    for (const bad of ["not-an-email", `${"a".repeat(320)}@example.com`, "a b@example.com"]) {
+      await request(app).get("/api/auth/workos/sign-in").query({ login_hint: bad });
+      expect((authUrl.mock.calls.at(-1)?.[0] as { loginHint?: string }).loginHint).toBeUndefined();
+    }
+    restore();
+  });
 });
 
 describe("state-bound authentication return", () => {
