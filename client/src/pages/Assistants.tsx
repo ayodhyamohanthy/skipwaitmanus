@@ -305,7 +305,7 @@ export default function Assistants() {
             </section>
           ) : null}
         </>
-      )}
+      ) : null}
 
       {!loading && !error && onMax && connections.length > 0 ? (
         <p className="mt-6 flex items-center gap-1 text-xs text-[var(--muted-foreground)]"><BadgeCheck className="size-3.5" />Every send and every credit spend asks you first.</p>
