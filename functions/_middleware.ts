@@ -86,6 +86,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/suggest-company",
   "/support",
   "/terms",
+  "/thread/:requestId",
   "/verify",
   "/wall",
   "/work",
