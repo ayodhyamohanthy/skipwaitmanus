@@ -22,15 +22,31 @@ const JOBS = [
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("Explore directory", () => {
-  it("renders the kit directory with availability pills and door links", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ jobs: JOBS }) })));
+  const stubCoverage = (coverage: Array<{ companyDomain: string; referrerCount: number }>) =>
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ coverage }) })));
+
+  it("renders the kit directory with live availability pills and door links", async () => {
+    stubCoverage([
+      { companyDomain: "skipwait.me", referrerCount: 2 },
+      { companyDomain: "wipro.com", referrerCount: 1 },
+    ]);
     render(<Explore />);
     expect(await screen.findByText("5 companies to explore")).toBeTruthy();
-    expect(screen.getAllByText("People open to referrals")).toHaveLength(5);
+    expect(await screen.findByText("2 people open to referrals")).toBeTruthy();
+    expect(screen.getByText("1 person open to referrals")).toBeTruthy();
+    expect(screen.getAllByText("No referrers yet")).toHaveLength(3);
     const doors = screen.getAllByRole("link", { name: /View open door/ });
     expect(doors).toHaveLength(5);
     expect(doors[0].getAttribute("href")).toBe("/explore/skipwait");
     expect(screen.queryByText(/open roles/)).toBeNull();
+  });
+
+  it("stays honest when coverage is empty or unreachable, never inventing referrers", async () => {
+    stubCoverage([]);
+    render(<Explore />);
+    expect(await screen.findByText("No referrers yet — open the first door")).toBeTruthy();
+    expect(screen.getAllByText("No referrers yet")).toHaveLength(5);
+    expect(screen.queryByText(/people open to referrals/)).toBeNull();
   });
 
   it("filters by search text without fabricating results", async () => {

@@ -1099,6 +1099,38 @@ export async function getVerifiedWorkEmailAccess(userId: number) {
   return { workEmailDomain: profile.workEmailDomain };
 }
 
+/**
+ * Kit v4 /explore company cards: one privacy-safe aggregate — distinct
+ * verified referrers with spare capacity per company domain. Verified means a
+ * current work-email domain on the profile; capacity means referralCapacity
+ * strictly above the referrer's active (non-terminal) referral load.
+ * Anonymous by construction: the query counts, never lists, people.
+ */
+export async function getExploreCoverage(): Promise<Array<{ companyDomain: string; referrerCount: number }>> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  // Timestamps in JS (Azure clock skew rule): active = created in the last
+  // 90 days and not in a seeker-visible terminal state.
+  const activeCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+  const load = await db.select({ referrerId: referralRequests.referrerId }).from(referralRequests)
+    .where(and(isNotNull(referralRequests.referrerId), gt(referralRequests.createdAt, activeCutoff), or(eq(referralRequests.status, "pending"), eq(referralRequests.status, "approved"))));
+  const activeByReferrer = new Map<number, number>();
+  for (const row of load) activeByReferrer.set(row.referrerId!, (activeByReferrer.get(row.referrerId!) ?? 0) + 1);
+  const referrers = await db.select({ userId: profiles.userId, workEmailDomain: profiles.workEmailDomain, referralCapacity: profiles.referralCapacity }).from(profiles)
+    .where(and(isNotNull(profiles.workEmailDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const availableByDomain = new Map<string, Set<number>>();
+  for (const row of referrers) {
+    const domain = row.workEmailDomain?.trim().toLowerCase();
+    if (!domain) continue;
+    const capacity = row.referralCapacity ?? 3;
+    if ((activeByReferrer.get(row.userId) ?? 0) >= capacity) continue;
+    const bucket = availableByDomain.get(domain) ?? new Set<number>();
+    bucket.add(row.userId);
+    availableByDomain.set(domain, bucket);
+  }
+  return Array.from(availableByDomain, ([companyDomain, referrers]) => ({ companyDomain, referrerCount: referrers.size }))
+    .sort((left, right) => right.referrerCount - left.referrerCount || left.companyDomain.localeCompare(right.companyDomain));
+}
+
 export type PrivateReferrerImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number; repliedWithin3DaysPct: number | null };
 
 export async function getPrivateReferrerImpactSummary(userId: number): Promise<PrivateReferrerImpactSummary> {

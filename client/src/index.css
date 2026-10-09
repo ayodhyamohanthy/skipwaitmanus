@@ -240,7 +240,7 @@ input, textarea { caret-color: var(--primary); }
 .directory-heading h2{font-size:25px;margin-top:8px;font-weight:600;}
 .directory-note{font-size:11px;color:var(--muted-foreground);}
 .availability{display:inline-flex;align-items:center;gap:7px;font:9px var(--font-label);color:var(--foreground);}
-.availability>span{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px color-mix(in oklch,var(--success) 15%,transparent);}
+.availability>span,.availability>i{width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 0 4px color-mix(in oklch,var(--success) 15%,transparent);}
 .company-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:30px;}
 .company-card{min-height:330px;border:1px solid var(--border);border-radius:8px;padding:22px;display:flex;flex-direction:column;gap:21px;transition:transform .18s,border-color .18s,box-shadow .18s;background:var(--background);color:var(--foreground);text-decoration:none;}
 .company-card:hover{transform:translateY(-3px);border-color:var(--foreground);box-shadow:var(--shadow-offset);}
