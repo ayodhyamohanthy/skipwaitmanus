@@ -23,7 +23,7 @@ export default function Explore() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">Five open doors · More to come</span>
-          <h1>Where do you<br />want to go<span className="brand-dot">?</span></h1>
+          <h1>Where would you<br />love to work next<span className="brand-dot">?</span></h1>
           <p>Start with a company. We&apos;ll help you make a thoughtful ask.</p>
         </div>
         <span className="global-pill"><Globe2 />Global by design</span>
