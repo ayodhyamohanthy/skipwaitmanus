@@ -2,7 +2,7 @@
 // Every number the screen draws comes from these two live endpoints:
 //   GET  /api/company-referrals/mine      -> the seeker's asks
 //   GET  /api/credits/summary?role=job_seeker -> the monthly credit wallet
-//   POST /api/company-referrals/:id/withdraw  -> withdraw + refunded summary
+// (Withdraw lives in the thread: client/src/lib/threadApi.ts.)
 // Payloads are parsed here so a malformed response reads as an error, never as
 // a fabricated count.
 import { z } from "zod";
@@ -11,7 +11,6 @@ import { readApiJson } from "@/lib/apiResponse";
 
 export const LOAD_ERROR = "We could not load your referral requests";
 export const CREDITS_ERROR = "We could not load your referral credits";
-export const WITHDRAW_ERROR = "We could not withdraw this request";
 export const NETWORK_ERROR = "We couldn’t reach SkipWait. Check your connection and try again.";
 
 const referralRequestSchema = z.object({
@@ -55,10 +54,10 @@ export function parseCreditSummary(payload: unknown): CreditSummary | null {
 
 type TokenSource = () => Promise<string | null | undefined>;
 
-async function authedFetch(url: string, getToken: TokenSource, init: RequestInit = {}): Promise<Response> {
+async function authedFetch(url: string, getToken: TokenSource): Promise<Response> {
   const token = await getToken();
   try {
-    return await fetch(url, { ...init, credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    return await fetch(url, { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
   } catch {
     throw new Error(NETWORK_ERROR);
   }
@@ -84,13 +83,4 @@ export async function fetchSeekerCredits(getToken: TokenSource): Promise<CreditS
   const summary = parseCreditSummary(payload.summary);
   if (!summary) throw new Error(CREDITS_ERROR);
   return summary;
-}
-
-export type WithdrawResult = { creditSummary: CreditSummary | null };
-
-export async function withdrawMyRequest(requestId: number, getToken: TokenSource): Promise<WithdrawResult> {
-  const response = await authedFetch(`/api/company-referrals/${requestId}/withdraw`, getToken, { method: "POST" });
-  const payload = await readApiJson<Record<string, unknown>>(response, "Withdraw didn't go through");
-  if (!response.ok) throw new Error(serverMessage(payload, "Withdraw didn't go through"));
-  return { creditSummary: parseCreditSummary(payload.creditSummary) };
 }

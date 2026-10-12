@@ -79,10 +79,10 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
           </div>
         </div>
 
-        {stage === "Requested" && seeker ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4 shrink-0" />{seekerWaitingCopy(request)}</p> : null}
-        {stage === "Requested" && !seeker && !passed ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4 shrink-0" />No reply needed to pass — but a quick answer helps.</p> : null}
+        {stage === "Requested" && seeker ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" />{seekerWaitingCopy(request)}</p> : null}
+        {stage === "Requested" && !seeker && !passed ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" />No reply needed to pass — but a quick answer helps.</p> : null}
         {passed ? <Notice tone="muted" title="You passed privately." text="The request stays active for other verified employees. Your identity was never revealed." /> : null}
-        {stage === "Declined" ? <Notice tone="muted" title="This referrer passed." text={request.referrerMessage ?? `It's not a judgment of you. Your slot is open again — try another verified referrer at ${company}.`} /> : null}
+        {stage === "Declined" ? <Notice tone="muted" title="This referrer passed." text={`It's not a judgment of you. Your slot is open again — try another verified referrer at ${company}.`} /> : null}
         {stage === "Expired" ? <Notice tone="muted" title="This request expired." text="Nobody could take it within 7 days. Your slot is free — refresh your note and ask again." /> : null}
         {stage === "Withdrawn" ? <Notice tone="muted" title="You withdrew this request." text="Your credit was returned to your balance." /> : null}
 

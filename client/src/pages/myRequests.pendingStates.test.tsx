@@ -27,7 +27,7 @@ describe("My Requests pending states", () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "No asks yet." })).toBeTruthy();
     expect(screen.getByText("Pick a company, find a verified referrer, and write one great ask.")).toBeTruthy();
-    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
+    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeNull();
     expect(screen.getByRole("link", { name: "Explore companies" })).toBeTruthy();
   });
 
@@ -50,11 +50,11 @@ describe("My Requests pending states", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [expiring, urgent, fresh, pendingRequest] }) })));
     renderPage();
     const tomorrowNote = await screen.findByText("acme.com · Expires tomorrow");
-    expect(tomorrowNote.textContent).toContain("Ref-1021");
+    // Kit v4 rows carry no support reference.
+    expect(tomorrowNote.closest("li")?.textContent).not.toContain("Ref-");
     expect(screen.getByText("EXPIRING SOON").parentElement?.textContent).toContain("2");
     const urgentNote = await screen.findByText("acme.com · Expires today");
     expect(urgentNote.className).toContain("text-destructive");
-    expect(urgentNote.textContent).toContain("Ref-1022");
     expect(screen.getByText(/acme\.com · Expires in 5 days/).className).toContain("text-muted-foreground");
   });
 

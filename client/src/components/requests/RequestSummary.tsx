@@ -35,7 +35,6 @@ function SlotBar({ meter }: { meter: SlotMeter }) {
 
 export function RequestSummary({ credits, creditsFailed, inConversation, expiringSoon, hasWithdrawableAsk, onRetryCredits }: RequestSummaryProps) {
   const meter = credits ? slotMeter(credits) : null;
-  const extras = meter ? [meter.packCredits > 0 ? `+${meter.packCredits} one-time credit${meter.packCredits === 1 ? "" : "s"}` : null, meter.renewsOn ? `Renews ${meter.renewsOn}` : null].filter((part): part is string => Boolean(part)) : [];
   const full = meter?.full ? slotsFullCopy(meter, hasWithdrawableAsk) : null;
   return (
     <>
@@ -46,7 +45,6 @@ export function RequestSummary({ credits, creditsFailed, inConversation, expirin
               <span className="eyebrow">{`OPEN SLOTS · ${meter.planLabel.toUpperCase()}`}</span>
               <p className="mt-1 text-3xl font-semibold">{meter.open}<span className="text-lg text-muted-foreground">/{meter.allowance}</span></p>
               <SlotBar meter={meter} />
-              {extras.length ? <small className="mt-2 block text-muted-foreground">{extras.join(" · ")}</small> : null}
             </div>
           ) : (
             <>

@@ -81,6 +81,8 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
   if (stage === "Hired") {
     return <p className="mt-2 text-sm text-muted-foreground"><Link href="/landed" className="text-link">Open the landed journey <ArrowRight className="size-3.5" /></Link></p>;
   }
+  // Kit: progress milestones open once the referrer has submitted (Referred onward).
+  if (stage === "Accepted") return <p className="mt-2 text-sm text-muted-foreground">{COORDINATE}</p>;
   const next = SEEKER_MILESTONES.filter(milestone => stageIndex(milestone.stage) > idx);
   return (
     <>
@@ -91,7 +93,6 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
         ))}
       </div>
       {action.error ? <p role="alert" className="mt-3 text-sm text-destructive">{action.error}</p> : null}
-      {stage === "Accepted" ? <p className="mt-4 text-sm text-muted-foreground">{COORDINATE}</p> : null}
     </>
   );
 }

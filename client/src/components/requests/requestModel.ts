@@ -10,7 +10,6 @@ export type RequestPillStatus = "Requested" | "Accepted" | "Referred" | "Intervi
 
 const CLOSED_STATUSES: readonly ReferralStatus[] = ["declined", "closed", "withdrawn"];
 
-export const displayRef = (id: number) => `Ref-${1000 + id}`;
 export const isClosedRequest = (request: ReferralRequest) => CLOSED_STATUSES.includes(request.status);
 export const canWithdrawRequest = (request: ReferralRequest) => request.status === "pending" && !request.referrerId;
 
@@ -38,7 +37,7 @@ function compactDate(value: string) {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
 }
 
-/** The row's second line after the company and reference: the next real step or fact. */
+/** The row's second line after the company name: the next real step or fact. */
 export function requestNote(request: ReferralRequest, nowMs: number): string {
   if (request.status === "pending") {
     if (request.referrerId) return request.queueStatus === "available_for_review" ? "Available for review" : getJobSeekerReferralState(request).label;

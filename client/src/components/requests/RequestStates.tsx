@@ -5,7 +5,6 @@ import { LoaderCircle, Send } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
-import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 
 export function RequestsLoading({ slow }: { slow: boolean }) {
   return (
@@ -51,21 +50,18 @@ export function RequestsEmpty({ tab, firstTime }: EmptyProps) {
   const active = tab === "active";
   const heading = !active ? "Nothing closed yet." : firstTime ? "No asks yet." : "No open asks.";
   return (
-    <>
-      <Panel tone="muted" className="mt-4 text-center">
-        <section aria-label={firstTime ? "No referral requests" : undefined}>
-          <Send className="mx-auto mb-3 size-8" aria-hidden="true" />
-          <h2 className="text-lg font-semibold">{heading}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Pick a company, find a verified referrer, and write one great ask.</p>
-          {active ? (
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button variant="outline" asChild><Link href="/onboarding">Finish setup</Link></Button>
-              <Button asChild><Link href="/explore">Explore companies</Link></Button>
-            </div>
-          ) : null}
-        </section>
-      </Panel>
-      {active && firstTime ? <div className="flex justify-center"><ZeroActivityShareCard audience="job_seeker" /></div> : null}
-    </>
+    <Panel tone="muted" className="mt-4 text-center">
+      <section aria-label={firstTime ? "No referral requests" : undefined}>
+        <Send className="mx-auto mb-3 size-8" aria-hidden="true" />
+        <h2 className="text-lg font-semibold">{heading}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Pick a company, find a verified referrer, and write one great ask.</p>
+        {active ? (
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button variant="outline" asChild><Link href="/onboarding">Finish setup</Link></Button>
+            <Button asChild><Link href="/explore">Explore companies</Link></Button>
+          </div>
+        ) : null}
+      </section>
+    </Panel>
   );
 }

@@ -1,7 +1,6 @@
-import { ArrowRight, Inbox as InboxIcon, Search } from "lucide-react";
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
 import { useAuth, useUser } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
 import { Heading } from "@/components/kit/preview-kit";
@@ -34,7 +33,6 @@ export default function UnifiedInbox() {
 
   const threads = useMemo(() => buildInboxThreads(asking.data ?? [], referring.data ? [...referring.data.fresh, ...referring.data.completed] : []), [asking.data, referring.data]);
   const visible = useMemo(() => filterInboxThreads(threads, side, query), [threads, side, query]);
-  const queueCount = hasVerifiedWorkEmail ? referring.data?.fresh.length ?? 0 : 0;
 
   if (!isLoaded) {
     return <main data-skipwait-screen="inbox" className="page-content"><Heading {...HEADING} /><p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your conversations…</p></main>;
@@ -60,17 +58,9 @@ export default function UnifiedInbox() {
     <main data-skipwait-screen="inbox" className="page-content">
       <Heading {...HEADING} />
 
-      {queueCount > 0 ? (
-        <Link href="/queue" className="mt-5 flex min-h-20 items-center gap-3 rounded-3xl border border-border bg-primary/5 p-4 hover:bg-muted">
-          <InboxIcon className="size-5 shrink-0" aria-hidden="true" />
-          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">Review queue · {queueCount} new {queueCount === 1 ? "ask" : "asks"} waiting</span><span className="block text-sm text-muted-foreground">Decide as a referrer — your identity stays hidden.</span></span>
-          <ArrowRight className="size-4 shrink-0" aria-hidden="true" />
-        </Link>
-      ) : null}
-
       <div className="mb-4 mt-5 flex flex-wrap items-center gap-2">
         <div className="flex rounded-full bg-muted p-1 text-sm" role="tablist" aria-label="Inbox side">
-          {SIDES.map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={side === value} onClick={() => setSide(value)} className={`min-h-11 rounded-full px-4 ${side === value ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{label}</button>)}
+          {SIDES.map(([value, label]) => <button key={value} type="button" role="tab" aria-selected={side === value} onClick={() => setSide(value)} className={`min-h-9 rounded-full px-4 ${side === value ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{label}</button>)}
         </div>
         <label className="relative min-w-0 flex-1"><Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" /><span className="sr-only">Search conversations</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search" className="h-11 w-full rounded-full border border-input bg-background pl-9 pr-4" /></label>
       </div>

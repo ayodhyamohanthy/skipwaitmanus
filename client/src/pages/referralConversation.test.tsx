@@ -133,14 +133,22 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(screen.getByText("Thank you — what should I prepare next?")).toBeTruthy());
   });
 
-  it("lets the seeker record the next factual progress milestone", async () => {
+  it("gives the accepted seeker only the coordinate note; progress opens once referred (kit v4)", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [seekerApproved] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText(/Use messages to coordinate/)).toBeTruthy();
+    expect(screen.queryByText("Update your progress")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Interviewing" })).toBeNull();
+  });
+
+  it("lets the referred seeker record the next factual progress milestone", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith("/progress")) {
         expect(init?.method).toBe("POST");
         expect(JSON.parse(String(init?.body))).toEqual({ status: "interview" });
         return ok({ progress: { status: "interview", changed: true } });
       }
-      if (url.endsWith("/mine")) return ok({ requests: [seekerApproved] });
+      if (url.endsWith("/mine")) return ok({ requests: [{ ...seekerApproved, status: "intro_made" }] });
       return ok({ messages: [] });
     });
     stubFetch(fetchMock);
@@ -148,6 +156,14 @@ describe("ReferralConversation thread", () => {
     expect(await screen.findByText("Update your progress")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Interviewing" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("shows the seeker the kit's kind pass note, never the raw decline text", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "declined", referrerMessage: "I do not think this role is the right fit for my referral." }] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("This referrer passed.")).toBeTruthy();
+    expect(screen.getByText("It's not a judgment of you. Your slot is open again — try another verified referrer at acme.com.")).toBeTruthy();
+    expect(screen.queryByText(/right fit for my referral/)).toBeNull();
   });
 
   it("marks the referral submitted through the referrer's Mark as referred", async () => {

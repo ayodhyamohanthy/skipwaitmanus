@@ -69,23 +69,27 @@ describe("My Requests kit v4 states", () => {
     expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Get more slots with Pro (10).");
   });
 
-  it("hides the nudge while credits remain and counts pack credits honestly", async () => {
+  it("hides the nudge while pack credits remain, with no extra line under the meter (kit v4)", async () => {
     stub([openAsk(42)], credits(0, { purchasedCreditsRemaining: 2, totalAvailable: 2 }));
     renderPage();
-    expect(await screen.findByText("+2 one-time credits")).toBeTruthy();
-    expect(screen.getByLabelText("Open slots: 0 of 3")).toBeTruthy();
+    const meter = await screen.findByLabelText("Open slots: 0 of 3");
+    expect(meter.textContent).toBe("OPEN SLOTS · FREE0/3");
+    expect(screen.queryByText(/one-time credit/)).toBeNull();
     expect(screen.queryByRole("link", { name: "See plans" })).toBeNull();
   });
 
-  it("lists declined and expired asks under Closed with the referrer's reason", async () => {
+  it("lists declined and expired asks under Closed with the company name and the referrer's reason", async () => {
     stub([openAsk(42), declined, expired], credits(1));
     renderPage();
     await screen.findByLabelText("acme.com request, Requested");
-    expect(screen.queryByLabelText("skipwait.me request, Declined")).toBeNull();
+    expect(screen.queryByLabelText("SkipWait request, Declined")).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "Closed" }));
-    const row = await screen.findByLabelText("skipwait.me request, Declined");
+    const row = await screen.findByLabelText("SkipWait request, Declined");
     expect(row.getAttribute("href")).toBe("/conversation/45");
-    expect(row.closest("li")?.textContent).toContain("skipwait.me · Not my team");
+    // Launch companies show their name and kit initials, not the raw domain.
+    expect(row.textContent).toContain("SkipWait · Not my team");
+    expect(row.querySelector(".company-mark")?.textContent).toBe("SW");
+    expect(row.textContent).not.toContain("Ref-");
     expect(screen.getByLabelText("acme.com request, Expired")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
   });

@@ -103,11 +103,13 @@ describe("UnifiedInbox", () => {
     expect(screen.queryByText(/Review queue/)).toBeNull();
   });
 
-  it("links verified referrers with new asks to the review queue", async () => {
+  it("opens a verified referrer's new ask from its list row, with no separate review-queue card (kit v4)", async () => {
     stubAll([], REFERRING_NEW, REFERRING_DONE);
     renderInbox();
-    const queue = await screen.findByRole("link", { name: /Review queue · 1 new ask waiting/ });
-    expect(queue.getAttribute("href")).toBe("/queue");
+    const hidden = await screen.findByText("Seeker · identity hidden");
+    expect(hidden.closest("a")?.getAttribute("href")).toBe("/conversation/21?from=inbox");
+    expect(screen.queryByText(/Review queue/)).toBeNull();
+    expect(screen.queryByRole("link", { name: /new asks? waiting/ })).toBeNull();
   });
 
   it("never asks the referrer inbox for a personal-email account", async () => {
