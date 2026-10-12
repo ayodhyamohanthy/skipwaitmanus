@@ -11,12 +11,11 @@ const WATCH = { id: 7, companyDomain: "merkle.com", paused: false, notifiedAt: n
 const getToken = vi.fn(async () => "test-token");
 
 type Handler = (url: string, init?: RequestInit) => Reply | undefined;
-function serve(handler: Handler, { alerts = [WATCH] as unknown[], plan = "free" as string | null } = {}) {
+function serve(handler: Handler, { alerts = [WATCH] as unknown[] } = {}) {
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const custom = handler(String(url), init);
     if (custom) return custom;
     if (String(url) === "/api/seeker-alerts" && !init?.method) return reply(200, { alerts });
-    if (String(url).startsWith("/api/credits/summary")) return plan ? reply(200, { summary: { plan } }) : reply(500, { error: "We could not load your referral credits" });
     return reply(404, { error: "not mocked" });
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -40,7 +39,7 @@ describe("Saved alerts tab", () => {
     expect(screen.getByText("Notified — door open")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Resume alert for tata-consultancy.com" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Pause alert for merkle.com" })).toBeTruthy();
-    expect(await screen.findByText("Free accounts keep 3 alerts (3 used).")).toBeTruthy();
+    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
   });
 
   it("surfaces the server's Free cap message and keeps the typed domain", async () => {
@@ -59,27 +58,38 @@ describe("Saved alerts tab", () => {
     expect(screen.getByRole("button", { name: "New alert" })).toBeTruthy();
   });
 
-  it("words the cap from the live plan, falling back to Free like the server", async () => {
-    serve(() => undefined, { plan: "pro" });
+  it("states the plan caps with the kit footnote and leaves enforcement to the server", async () => {
+    const fetchMock = serve(() => undefined);
     renderSaved();
-    expect(await screen.findByText("Your plan allows unlimited alerts.")).toBeTruthy();
-    cleanup();
-    serve(() => undefined, { plan: null });
+    await screen.findByText("merkle.com");
+    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
+    expect(screen.queryByText(/used\)/)).toBeNull();
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(["/api/seeker-alerts"]);
+  });
+
+  it("draws kit size-9 icon buttons that keep a 44px tap target", async () => {
+    serve(() => undefined);
     renderSaved();
-    expect(await screen.findByText("Free accounts keep 3 alerts (1 used).")).toBeTruthy();
+    for (const name of ["Pause alert for merkle.com", "Delete alert for merkle.com"]) {
+      const classes = (await screen.findByRole("button", { name })).className.split(" ");
+      expect(classes).toEqual(expect.arrayContaining(["size-9", "relative", "before:absolute", "before:-inset-1"]));
+      expect(classes).not.toContain("size-11");
+    }
   });
 
   it("shows loading, then an honest empty state with no sample companies", async () => {
     let release: (value: Reply) => void = () => undefined;
     const pending = new Promise<Reply>(resolve => { release = resolve; });
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url) === "/api/seeker-alerts" ? pending : reply(200, { summary: { plan: "free" } }))));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => (String(url) === "/api/seeker-alerts" ? pending : reply(404, { error: "not mocked" }))));
     renderSaved();
     expect(await screen.findByText("Loading your saved alerts…")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New alert" })).toBeNull();
+    expect(screen.queryByText(/Free: 3 alerts/)).toBeNull();
     release(reply(200, { alerts: [] }));
     expect(await screen.findByRole("heading", { name: "Get told when a door opens." })).toBeTruthy();
     expect(screen.queryByText("Loading your saved alerts…")).toBeNull();
-    expect(screen.queryByText(/Merkle|Momentum/)).toBeNull();
+    expect(screen.queryByText(/Merkle|merkle/)).toBeNull();
+    expect(screen.getByText("Free: 3 alerts · Momentum and Land: unlimited")).toBeTruthy();
   });
 
   it("surfaces a load error and recovers on Try again", async () => {

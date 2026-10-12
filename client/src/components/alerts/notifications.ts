@@ -44,7 +44,19 @@ export function isToday(value: string, now: Date = new Date()): boolean {
   return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
 }
 
-/** Unread first, then newest first. */
+/**
+ * Kit feed order: newest first, read or not. The kit has no unread-first rule;
+ * the Unread filter is how a seeker narrows to unread rows. Ties keep the
+ * server's order, and an unparseable timestamp sorts last.
+ */
 export function orderNotifications(items: readonly NotificationItem[]): NotificationItem[] {
-  return [...items].sort((a, b) => Number(Boolean(a.readAt)) - Number(Boolean(b.readAt)) || new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const stamp = (item: NotificationItem) => {
+    const time = new Date(item.createdAt).getTime();
+    return Number.isNaN(time) ? Number.NEGATIVE_INFINITY : time;
+  };
+  return [...items].sort((a, b) => {
+    const left = stamp(a);
+    const right = stamp(b);
+    return left === right ? 0 : right > left ? 1 : -1;
+  });
 }

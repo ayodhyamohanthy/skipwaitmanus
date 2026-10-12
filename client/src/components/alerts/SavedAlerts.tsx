@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FREE_ALERT_LIMIT, type SeekerAlert } from "@shared/alerts";
 import { Button } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
-import { ALERT_REMOVE_ERROR, ALERT_SAVE_ERROR, ALERT_UPDATE_ERROR, createSeekerAlert, deleteSeekerAlert, fetchSeekerAlerts, fetchSeekerPlan, setSeekerAlertPaused, type TokenSource } from "./seekerAlertsApi";
+import { ALERT_REMOVE_ERROR, ALERT_SAVE_ERROR, ALERT_UPDATE_ERROR, createSeekerAlert, deleteSeekerAlert, fetchSeekerAlerts, setSeekerAlertPaused, type TokenSource } from "./seekerAlertsApi";
 
 /** Kit company mark from the watched domain: "merkle.com" -> "M", "tata-consultancy.com" -> "TC". */
 export function domainInitials(domain: string): string {
@@ -19,18 +19,22 @@ function alertStatus(alert: SeekerAlert): string {
 
 const messageOf = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
 
+// Kit footnote, verbatim. Any paid plan is unlimited on the server (shared/alerts.ts canAddAlert).
+const CAP_NOTE = `Free: ${FREE_ALERT_LIMIT} alerts · Momentum and Land: unlimited`;
+// Kit size-9 icon button with a 44px tap target from a transparent ::before.
+const ICON_BUTTON = "relative size-9 before:absolute before:-inset-1";
+
 /**
  * Kit Saved alerts tab (app/src/routes/alerts.tsx) on the real watch backend
  * (/api/seeker-alerts). A watch is a company domain; the first verified
  * referrer who enrolls there notifies every unpaused watcher once. Rows only
  * change after the server confirms; the Free cap is enforced server-side and
- * its message is shown as-is.
+ * its message is shown as-is, under the kit's static plan footnote.
  */
 export function SavedAlerts({ userId, getToken }: { userId: string | null; getToken: TokenSource }) {
   const queryClient = useQueryClient();
   const listKey = ["alerts", "saved", userId ?? "session"] as const;
   const alerts = useQuery({ queryKey: listKey, retry: false, queryFn: () => fetchSeekerAlerts(getToken) });
-  const plan = useQuery({ queryKey: ["alerts", "plan", userId ?? "session"], retry: false, queryFn: () => fetchSeekerPlan(getToken) });
   const [adding, setAdding] = useState(false);
   const [domain, setDomain] = useState("");
   const [saving, setSaving] = useState(false);
@@ -78,8 +82,6 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
   const cancel = () => { setAdding(false); setDomain(""); setFormError(""); };
   const loading = alerts.isFetching && !alerts.data;
   const loadError = alerts.isError && !alerts.isFetching ? alerts.error.message : "";
-  // Same wording and fallback as the backend's cap: no readable paid plan counts as Free.
-  const capNote = !alerts.data || plan.isPending ? "" : (plan.data ?? "free") === "free" ? `Free accounts keep ${FREE_ALERT_LIMIT} alerts (${alerts.data.length} used).` : "Your plan allows unlimited alerts.";
 
   return (
     <div className="mt-4 space-y-3" data-skipwait-saved-alerts="live">
@@ -108,8 +110,8 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
                 <Panel className="flex items-center gap-3 p-4!">
                   <span className="company-mark" aria-hidden="true">{domainInitials(alert.companyDomain)}</span>
                   <span className="min-w-0 flex-1"><strong className="block truncate">{alert.companyDomain}</strong><small className="text-muted-foreground">{alertStatus(alert)}</small></span>
-                  <Button variant="ghost" size="icon" className="size-11 md:size-9" disabled={busy} aria-label={alert.paused ? `Resume alert for ${alert.companyDomain}` : `Pause alert for ${alert.companyDomain}`} onClick={() => { void togglePaused(alert); }}>{alert.paused ? <BellOff /> : <Bell />}</Button>
-                  <Button variant="ghost" size="icon" className="size-11 md:size-9" disabled={busy} aria-label={`Delete alert for ${alert.companyDomain}`} onClick={() => { void remove(alert); }}><Trash2 /></Button>
+                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={alert.paused ? `Resume alert for ${alert.companyDomain}` : `Pause alert for ${alert.companyDomain}`} onClick={() => { void togglePaused(alert); }}>{alert.paused ? <BellOff /> : <Bell />}</Button>
+                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={`Delete alert for ${alert.companyDomain}`} onClick={() => { void remove(alert); }}><Trash2 /></Button>
                 </Panel>
               </li>
             );
@@ -132,7 +134,7 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
         </Panel>
       ) : null}
       {alerts.data && !adding ? <Button variant="outline" className="w-full" onClick={() => setAdding(true)}><Plus />New alert</Button> : null}
-      {capNote ? <p className="text-center text-xs text-muted-foreground">{capNote}</p> : null}
+      {alerts.data ? <p className="text-center text-xs text-muted-foreground">{CAP_NOTE}</p> : null}
     </div>
   );
 }

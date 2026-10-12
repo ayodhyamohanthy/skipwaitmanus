@@ -17,6 +17,8 @@ const LOAD_ERROR = "We could not load your alerts";
 const NETWORK_ERROR = "We could not reach SkipWait. Check your connection and try again.";
 const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "proton.me"];
 const HEADING = { eyebrow: "STAY IN THE LOOP", title: "Alerts", text: "Only things that need you. No marketing, no “you might like”." } as const;
+// Kit visual height, 44px tap target: a transparent ::before stretched past the control's edges.
+const HIT_AREA_Y = "relative before:absolute before:inset-x-0";
 
 export default function Alerts() {
   const [, go] = useLocation();
@@ -96,6 +98,7 @@ export default function Alerts() {
   const ordered = useMemo(() => orderNotifications(notifications.data ?? []), [notifications.data]);
   const shown = filter === "All" ? ordered : ordered.filter(item => !item.readAt);
   const unread = ordered.filter(item => !item.readAt).length;
+  const markAllIdle = !unread || openingId !== null;
   const loading = isSignedIn && notifications.isFetching && !notifications.data;
   const loadError = notifications.isError && !notifications.isFetching ? notifications.error.message : "";
 
@@ -134,10 +137,11 @@ export default function Alerts() {
           <div className="my-4 flex items-center justify-between gap-2">
             <div className="flex rounded-full bg-muted p-1 text-sm" role="group" aria-label="Show">
               {FILTERS.map(value => (
-                <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`min-h-11 rounded-full px-4 md:min-h-9 ${filter === value ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{value}</button>
+                <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={`${HIT_AREA_Y} min-h-9 rounded-full px-4 before:-inset-y-1 ${filter === value ? "bg-background font-semibold shadow-sm" : "text-muted-foreground"}`}>{value}</button>
               ))}
             </div>
-            <Button variant="ghost" size="sm" className="min-h-11 md:min-h-8" disabled={!unread || openingId !== null} onClick={() => { void markAllRead(); }}><CheckCheck />Mark all read</Button>
+            {/* aria-disabled, not the native attribute: the kit draws an idle ghost here, and the global :disabled fill would paint a grey pill. */}
+            <Button variant="ghost" size="sm" className={`${HIT_AREA_Y} before:-inset-y-1.5 aria-disabled:cursor-not-allowed aria-disabled:hover:bg-transparent`} aria-disabled={markAllIdle || undefined} onClick={() => { if (!markAllIdle) void markAllRead(); }}><CheckCheck />Mark all read</Button>
           </div>
 
           {actionNotice ? <p role="status" className="mb-4 text-sm text-muted-foreground">{actionNotice}</p> : null}
@@ -152,7 +156,7 @@ export default function Alerts() {
             <Panel tone="muted" className="text-center">
               <BellOff className="mx-auto mb-3 size-8" />
               <h2 className="text-lg font-semibold">{filter === "Unread" && ordered.length > 0 ? "You're all caught up." : "No notifications yet."}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">When a referrer replies or a new one opens at a company you&apos;re waiting on, it lands here.</p>
+              <p className="mt-1 text-sm text-muted-foreground">When a referrer replies or a new one opens at your alert companies, it lands here.</p>
               <Button asChild className="mt-4"><Link href="/explore">Explore companies</Link></Button>
             </Panel>
           ) : null}
