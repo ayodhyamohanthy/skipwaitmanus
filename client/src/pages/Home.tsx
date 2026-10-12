@@ -1,9 +1,8 @@
-import { ArrowRight, ArrowUpRight, Check, Menu, Minus, Plus, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, HeartHandshake, LockKeyhole, Menu, Minus, Plus, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { z } from "zod";
-import { SignInButton, useAuth } from "@/_core/auth";
-import { Button, buttonVariants } from "@/components/kit/button";
+import { useAuth } from "@/_core/auth";
+import { Button } from "@/components/kit/button";
 import { applySeo, faqJsonLd } from "@/lib/seo";
 import { LAUNCH_COMPANIES } from "@/lib/companies";
 import { VisualJourney } from "@/components/VisualJourney";
@@ -16,23 +15,10 @@ const QUESTIONS = [
   ["Does a referral guarantee an interview?", "No. A referral is an introduction, not a promise. Employers independently decide who to interview and hire."],
 ];
 
-/** Public aggregate from GET /api/referral-impact (server/privateReferralRoutes.ts). */
-const ReferralImpactSchema = z.object({ acceptedReferrals: z.number().nonnegative() });
-
 export default function Home() {
   const { isSignedIn } = useAuth();
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState<number | null>(0);
-  const [acceptedReferrals, setAcceptedReferrals] = useState<number | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    void fetch("/api/referral-impact").then(response => response.json()).then(payload => {
-      const parsed = ReferralImpactSchema.safeParse(payload);
-      if (active && parsed.success && parsed.data.acceptedReferrals > 0) setAcceptedReferrals(Math.floor(parsed.data.acceptedReferrals));
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, []);
   useEffect(() => {
     applySeo({ title: "Free job referrals. A warmer way in", description: "SkipWait connects job seekers with people inside the companies they want to join. Free referrals, private connections, and honest expectations.", path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
   }, []);
@@ -48,7 +34,7 @@ export default function Home() {
           {isSignedIn ? <Link className="launch-mobile-signin" href="/requests" onClick={() => setMenu(false)}>Open app <ArrowRight size={14} /></Link> : <Link className="launch-mobile-signin" href="/sign-in" onClick={() => setMenu(false)}>Sign in <ArrowRight size={14} /></Link>}
         </nav>
         <div className="launch-header-actions">
-          {isSignedIn ? <Button asChild variant="ghost" className="launch-signin"><Link href="/requests">Open app</Link></Button> : <SignInButton className={buttonVariants({ variant: "ghost", className: "launch-signin" })}>Sign in</SignInButton>}
+          {isSignedIn ? <Button asChild variant="ghost" className="launch-signin"><Link href="/requests">Open app</Link></Button> : <Button asChild variant="ghost" className="launch-signin"><Link href="/sign-in">Sign in</Link></Button>}
           <Button asChild variant="outline"><Link href="/explore">Explore <ArrowUpRight /></Link></Button>
           <Button className="launch-menu" variant="ghost" size="icon" aria-label={menu ? "Close navigation" : "Open navigation"} onClick={() => setMenu(!menu)}>{menu ? <X /> : <Menu />}</Button>
         </div>
@@ -66,6 +52,7 @@ export default function Home() {
           </div>
           <span className="hero-side-note">YOUR NEXT CHAPTER STARTS WITH A CONNECTION.</span>
         </section>
+        <section className="launch-trust-strip" aria-label="Our commitments"><span><HeartHandshake />No referral fees.</span><span><LockKeyhole />Private by default.</span><span><ShieldCheck />No job guarantees.</span></section>
         <section className="launch-section launch-companies">
           <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told SkipWait they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
           <div className="launch-company-row">
@@ -117,8 +104,6 @@ export default function Home() {
           <h2>What’s on the other side?</h2>
           <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
           <p>Referrals are free. Always.</p>
-          {/* Real aggregate from /api/referral-impact; hidden at zero or when unavailable. */}
-          {acceptedReferrals ? <p>{acceptedReferrals} referral requests accepted on skipwait.me · participants stay private.</p> : null}
         </section>
       </main>
       <footer className="launch-footer">
@@ -130,7 +115,6 @@ export default function Home() {
           <Link href="/guidelines">Guidelines</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
-          <Link href="/safety">Safety</Link>
           <Link href="/for-companies">For companies <ArrowUpRight size={14} /></Link>
         </span>
       </footer>

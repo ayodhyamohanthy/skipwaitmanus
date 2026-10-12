@@ -37,6 +37,15 @@ describe("landing kit composition", () => {
     expect(document.body.textContent).not.toMatch(/candidates placed|hires|success stories|testimonials/i);
   });
 
+  it("restores the kit trust strip directly under the hero", () => {
+    render(<Home />);
+    const strip = screen.getByRole("region", { name: "Our commitments" });
+    expect(strip.className).toBe("launch-trust-strip");
+    expect(strip.previousElementSibling?.className).toBe("launch-hero");
+    expect(Array.from(strip.querySelectorAll("span")).map(item => item.textContent)).toEqual(["No referral fees.", "Private by default.", "No job guarantees."]);
+    expect(strip.querySelectorAll("svg")).toHaveLength(3);
+  });
+
   it("lists the five launch companies with links to their doors", () => {
     render(<Home />);
     const section = screen.getByText("Start somewhere real.").closest("section") as HTMLElement;
