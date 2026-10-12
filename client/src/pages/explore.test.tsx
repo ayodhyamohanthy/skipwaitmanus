@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
@@ -23,21 +22,6 @@ vi.mock("wouter", () => ({
   useLocation: () => [`/explore/${routeState.slug}`, go],
   useRoute: () => [true, { slug: routeState.slug }],
 }));
-
-const JOBS = [
-  { id: 1, title: "Product Designer", company: "Wipro", location: "Bengaluru", seniority: "Mid-level", workMode: "Hybrid", targetRoleUrl: "https://careers.wipro.com/jobs/1" },
-  { id: 2, title: "Data Analyst", company: "wipro.com", location: "Remote", seniority: "Early career", workMode: "Remote", targetRoleUrl: "javascript:alert(1)" },
-  { id: 3, title: "Staff Engineer", company: "TCS", location: "Pune", seniority: "Senior", workMode: "Onsite", targetRoleUrl: null },
-];
-
-type MockResponse = { ok: boolean; status?: number; json: () => Promise<unknown> };
-const ok = (body: unknown): MockResponse => ({ ok: true, status: 200, json: async () => body });
-const fail = (status: number): MockResponse => ({ ok: false, status, json: async () => ({ error: "We could not load the job list right now" }) });
-
-function renderWithQuery(node: React.ReactElement) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>);
-}
 
 beforeEach(() => {
   routeState.slug = "wipro";
@@ -82,9 +66,16 @@ describe("Explore directory", () => {
     expect(screen.getByText("No matching doors yet")).toBeTruthy();
     expect(screen.getByText("Try a wider search.")).toBeTruthy();
     expect(screen.queryAllByRole("link", { name: /View open door/ })).toHaveLength(0);
-    expect(screen.getByRole("link", { name: /Request a company/ }).getAttribute("href")).toBe("/suggest-company");
+    expect(screen.getByRole("link", { name: /Request a company/ }).getAttribute("href")).toBe("/invite");
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getByText("5 companies to explore")).toBeTruthy();
+  });
+
+  it("titles the page with the kit head built from the launch set", () => {
+    render(<Explore />);
+    expect(document.title).toBe("Explore companies · skipwait.me");
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Find people open to referral requests at SkipWait, Wipro, Go Neutrinos, TCS, and Merkle.");
+    expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore");
   });
 
   it("links the employee band to the live referrer page", () => {
@@ -94,91 +85,39 @@ describe("Explore directory", () => {
 });
 
 describe("Explore company detail", () => {
-  it("states plainly when a company door is not open", () => {
+  it("renders the app 404 for a company that is not on SkipWait", () => {
     routeState.slug = "no-such-company";
-    vi.stubGlobal("fetch", vi.fn());
-    renderWithQuery(<ExploreCompany />);
-    expect(screen.getByText("This door isn't open yet.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /All companies/ }).getAttribute("href")).toBe("/explore");
+    render(<ExploreCompany />);
+    expect(screen.getByRole("heading", { name: "This door doesn't lead anywhere." })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
+    expect(screen.queryByRole("button", { name: /Ask for a referral/ })).toBeNull();
   });
 
-  it("lists only this company's real roles and saves them through the saved-roles endpoint", async () => {
-    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url === "/api/saved-roles") return ok({ saved: [] });
-      if (/\/api\/saved-roles\/\d+$/.test(url)) return ok({ saved: init?.method === "PUT" });
-      return ok({ jobs: JOBS });
-    });
+  it("renders the kit door with no roles block and no network reads", () => {
+    const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByText("Product Designer")).toBeTruthy();
-    expect(screen.getByText("Data Analyst")).toBeTruthy();
-    expect(screen.queryByText("Staff Engineer")).toBeNull();
-    expect(screen.getByText(/PEOPLE OPEN TO REFERRAL REQUESTS · 2 OPEN ROLES LISTED/)).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "2 open roles" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open Product Designer posting" }).getAttribute("href")).toBe("https://careers.wipro.com/jobs/1");
-    expect(screen.queryByRole("link", { name: "Open Data Analyst posting" })).toBeNull();
-
-    fireEvent.click(await screen.findByRole("button", { name: "Save Product Designer" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/saved-roles/1", expect.objectContaining({ method: "PUT" })));
-    fireEvent.click(await screen.findByRole("button", { name: "Unsave Product Designer" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/saved-roles/1", expect.objectContaining({ method: "DELETE" })));
-    expect(await screen.findByRole("button", { name: "Save Product Designer" })).toBeTruthy();
-  });
-
-  it("keeps a role unsaved and says so when saving fails", async () => {
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url === "/api/saved-roles") return ok({ saved: [] });
-      if (/\/api\/saved-roles\/\d+$/.test(url)) return fail(503);
-      return ok({ jobs: JOBS });
-    }));
-    renderWithQuery(<ExploreCompany />);
-    fireEvent.click(await screen.findByRole("button", { name: "Save Product Designer" }));
-    expect(await screen.findByRole("alert")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Save Product Designer" }).getAttribute("aria-pressed")).toBe("false");
-  });
-
-  it("hides save toggles from signed-out visitors and never reads saved roles", async () => {
-    authState.isSignedIn = false;
-    const fetchMock = vi.fn(async (_url: string) => ok({ jobs: JOBS }));
-    vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByText("Product Designer")).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /Save Product Designer/ })).toBeNull();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("saved-roles"))).toBe(false);
-  });
-
-  it("stays honest when a company has no listed roles", async () => {
-    const fetchMock = vi.fn(async (url: string) => (url === "/api/saved-roles" ? ok({ saved: [] }) : ok({ jobs: [] })));
-    vi.stubGlobal("fetch", fetchMock);
-    renderWithQuery(<ExploreCompany />);
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/jobs?query=Wipro"), expect.anything()));
-    await waitFor(() => expect(screen.queryByLabelText("Open roles at Wipro")).toBeNull());
-    expect(screen.queryByText(/OPEN ROLES? LISTED/)).toBeNull();
-    expect(screen.getByText("PEOPLE OPEN TO REFERRAL REQUESTS")).toBeTruthy();
+    render(<ExploreCompany />);
+    expect(screen.getByText("PEOPLE OPEN TO REFERRAL REQUESTS", { exact: false }).textContent?.trim()).toBe("PEOPLE OPEN TO REFERRAL REQUESTS");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Wipro.");
     expect(screen.getByText(/Find a role on the company’s own careers site/)).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Ask for a referral/ })).toBeTruthy();
+    expect(screen.queryByText(/open roles?|ROLES? LISTED/i)).toBeNull();
+    expect(screen.getByRole("link", { name: /All companies/ }).getAttribute("href")).toBe("/explore");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("states a roles failure and recovers on retry", async () => {
-    let calls = 0;
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (url === "/api/saved-roles") return ok({ saved: [] });
-      calls += 1;
-      return calls <= 2 ? fail(500) : ok({ jobs: JOBS });
-    }));
-    renderWithQuery(<ExploreCompany />);
-    expect(await screen.findByText(/We could not load listed roles right now\./, undefined, { timeout: 4000 })).toBeTruthy();
-    expect(screen.queryByText(/OPEN ROLES? LISTED/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
-    expect(await screen.findByText("Product Designer")).toBeTruthy();
+  it("titles the door with the kit head for that company", () => {
+    render(<ExploreCompany />);
+    expect(document.title).toBe("Referrals at Wipro · skipwait.me");
+    expect(document.head.querySelector('meta[name="description"]')?.getAttribute("content")).toBe("Request a free, private introduction to someone at Wipro.");
+    expect(document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]')?.href).toBe("https://skipwait.me/explore/wipro");
   });
 });
 
 describe("Explore company request dialog", () => {
-  beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async (url: string) => (url === "/api/saved-roles" ? ok({ saved: [] }) : ok({ jobs: [] })))); });
+  beforeEach(() => { vi.stubGlobal("fetch", vi.fn()); });
 
   it("walks the kit steps and hands the draft to the real ask composer without sending", async () => {
-    renderWithQuery(<ExploreCompany />);
+    render(<ExploreCompany />);
     fireEvent.click(screen.getByRole("button", { name: /Ask for a referral/ }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("REQUEST TO WIPRO")).toBeTruthy();
@@ -210,22 +149,50 @@ describe("Explore company request dialog", () => {
     expect(go).toHaveBeenCalledWith("/ask");
     const saved = JSON.parse(sessionStorage.getItem(ASK_PREFILL_KEY) ?? "null");
     expect(saved).toMatchObject({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Shipped a design system used by 40 teams." });
-    const fetchMock = vi.mocked(fetch);
-    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
-  it("does not call a draft without a fit note ready", async () => {
-    renderWithQuery(<ExploreCompany />);
+  it("holds Your fit until there is a note, so Review is always complete", async () => {
+    render(<ExploreCompany />);
     fireEvent.click(screen.getByRole("button", { name: /Ask for a referral/ }));
     const dialog = await screen.findByRole("dialog");
     fireEvent.change(within(dialog).getByLabelText("Job posting link"), { target: { value: "https://careers.wipro.com/jobs/1" } });
-    for (let step = 0; step < 3; step += 1) fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
-    expect(within(dialog).getByText("Draft")).toBeTruthy();
-    expect(within(dialog).queryByText("Ready")).toBeNull();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Close request" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
+    const fit = within(dialog).getByLabelText("Why are you a strong fit?");
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    fireEvent.change(fit, { target: { value: "   " } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
+    expect(within(dialog).getByRole("heading", { name: "Your fit" })).toBeTruthy();
+    expect(within(dialog).getByRole("alert").textContent).toBe("Add a short note on why you’re a strong fit.");
+    expect(fit.getAttribute("aria-invalid")).toBe("true");
+    fireEvent.change(fit, { target: { value: "Led checkout redesign." } });
+    expect(within(dialog).queryByRole("alert")).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
+    expect(within(dialog).getByRole("heading", { name: "Review" })).toBeTruthy();
+    expect(within(dialog).getByText("Job link + fit note + privacy choices")).toBeTruthy();
+    expect(within(dialog).queryByText("Draft")).toBeNull();
     expect(go).not.toHaveBeenCalled();
     expect(sessionStorage.getItem(ASK_PREFILL_KEY)).toBeNull();
+  });
+
+  it("starts every new ask empty at Role", async () => {
+    render(<ExploreCompany />);
+    fireEvent.click(screen.getByRole("button", { name: /Ask for a referral/ }));
+    let dialog = await screen.findByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Job posting link"), { target: { value: "https://careers.wipro.com/jobs/1" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
+    fireEvent.change(within(dialog).getByLabelText("Why are you a strong fit?"), { target: { value: "Led checkout redesign." } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close request" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    fireEvent.click(screen.getByRole("button", { name: /Ask for a referral/ }));
+    dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Role" })).toBeTruthy();
+    expect((within(dialog).getByLabelText("Job posting link") as HTMLInputElement).value).toBe("");
+    fireEvent.change(within(dialog).getByLabelText("Job posting link"), { target: { value: "https://careers.wipro.com/jobs/2" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: /Continue/ }));
+    expect((within(dialog).getByLabelText("Why are you a strong fit?") as HTMLTextAreaElement).value).toBe("");
   });
 });

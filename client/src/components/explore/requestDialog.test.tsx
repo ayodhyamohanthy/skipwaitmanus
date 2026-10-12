@@ -35,6 +35,7 @@ describe("RequestDialog login handoff", () => {
       try {
         fireEvent.change(screen.getByLabelText("Job posting link"), { target: { value: "https://careers.acme.com/jobs/design-lead" } });
         fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+        fireEvent.change(screen.getByLabelText("Why are you a strong fit?"), { target: { value: "Ran design ops for two product lines." } });
         fireEvent.click(screen.getByRole("button", { name: "Continue" }));
         fireEvent.click(screen.getByRole("button", { name: "Continue" }));
         fireEvent.click(screen.getByRole("button", { name: "Sign in to continue" }));
