@@ -98,13 +98,16 @@ export function PolicySection({ number, title, children }: { number: string; tit
   </section>;
 }
 
-export function PolicyPageShell({ screen, eyebrow, title, intro, updated, status = POLICIES_PUBLISHED ? "published" : "draft", summary, sections, children, footnote }: {
+export function PolicyPageShell({ screen, eyebrow, title, intro, description, updated, status = POLICIES_PUBLISHED ? "published" : "draft", summary, sections, children, footnote }: {
   screen: string;
   /** Accepted for existing callers; the kit legal layout has no icon tile. */
   icon?: LucideIcon;
   eyebrow: string;
   title: string;
-  intro: string;
+  /** Lead paragraph of the reading column. Optional: the kit legal layout has none (Guidelines omits it). */
+  intro?: string;
+  /** Search/share description for a page that is not in the public route registry and has no intro. */
+  description?: string;
   updated: string;
   status?: "draft" | "published";
   /** Bullets for the kit "The short version" card. */
@@ -119,7 +122,7 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, updated, status
   // The title and description a search engine shows are the ones declared for
   // this route, so the <head> a crawler reads and the page it lands on agree.
   const seoTitle = route?.title ?? title;
-  const seoDescription = route?.description ?? intro;
+  const seoDescription = route?.description ?? description ?? intro;
   useEffect(() => {
     // Keeps title, canonical, and share copy correct when a visitor navigates
     // between policy screens inside the single-page app.
@@ -130,7 +133,7 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, updated, status
   // The live intro (including any acceptance clause) leads the reading column,
   // so the kit header stays eyebrow, title and date.
   const body = <>
-    <p className="leading-relaxed text-muted-foreground">{intro}</p>
+    {intro ? <p className="leading-relaxed text-muted-foreground">{intro}</p> : null}
     {children}
     {footnote ? <p className="text-sm text-muted-foreground">{footnote}</p> : null}
     {sections ? <p className="text-sm text-muted-foreground">Questions? Write to <a href={`mailto:${SUPPORT_EMAIL}`} className="font-bold text-foreground">{SUPPORT_EMAIL}</a>.</p> : null}

@@ -4,13 +4,14 @@ import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Heading, Panel, field } from "@/components/kit/preview-kit";
 
-// Kit v4 /help (app/src/routes/help.tsx). Questions follow the kit; answers are
-// adapted wherever the kit copy would misstate live plans, limits or tooling.
+// Kit v4 /help (app/src/routes/help.tsx). Questions follow the kit; answers take
+// the kit text where it is true of the live product and stay adapted wherever
+// the kit copy would misstate live plans, limits or tooling.
 const CATS = [["Asking", MessageSquare], ["Referring", BadgeCheck], ["Plans & credits", CreditCard], ["Account & privacy", UserRound], ["Safety", ShieldCheck]] as const;
 const FAQS: ReadonlyArray<readonly [string, string, string]> = [
   ["Asking", "Is asking for a referral really free?", "Yes. Asking and referring are free forever. Paid plans only add monthly credits on top of the free allowance."],
   ["Asking", "How many asks can I have open?", "Every account gets free referral credits each month plus any packs you buy. An answered, passed, or withdrawn ask frees its slot."],
-  ["Asking", "Why did my ask expire?", "No verified employee claimed it within seven days, so it expired automatically and the reserved credit returned to your balance. Withdraw anytime before then to free the slot early and get the credit back."],
+  ["Asking", "Why did my ask expire?", "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note."],
   ["Asking", "Does a referral guarantee an interview?", "No. Referrers recommend; companies decide. We never promise outcomes."],
   ["Referring", "How do I become a referrer?", "Verify your work email with a one-time code, then review private requests for your company."],
   ["Referring", "My company uses a different email domain.", "Start verification anyway — unlisted domains go to a person for manual review."],
@@ -29,7 +30,7 @@ export default function Help() {
   const [category, setCategory] = useState("All");
   const [open, setOpen] = useState<string | null>(FAQS[0]?.[1] ?? null);
   const list = FAQS.filter(item => (category === "All" || item[0] === category) && (item[1] + item[2]).toLowerCase().includes(query.toLowerCase()));
-  const pill = (active: boolean) => `min-h-11 rounded-full border px-4 text-sm ${active ? "border-primary bg-primary/5 font-semibold" : "border-border"}`;
+  const pill = (active: boolean) => `min-h-10 rounded-full border px-4 text-sm ${active ? "border-primary bg-primary/5 font-semibold" : "border-border"}`;
 
   return (
     <main data-skipwait-screen="help" className="page-content mx-auto max-w-4xl">
@@ -64,7 +65,7 @@ export default function Help() {
           <ul className="mt-2 space-y-1 text-sm">
             <li><Link href="/guidelines" className="text-link">Community guidelines</Link></li>
             <li><Link href="/terms" className="text-link">Terms of service</Link></li>
-            <li><Link href="/privacy" className="text-link">Privacy &amp; trust</Link></li>
+            <li><Link href="/privacy" className="text-link">Privacy policy</Link></li>
             <li><Link href="/safety" className="text-link">Safety</Link></li>
           </ul>
         </Panel>

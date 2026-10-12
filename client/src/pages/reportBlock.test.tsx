@@ -36,7 +36,8 @@ describe("Report block toggle", () => {
       fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
       fireEvent.click(screen.getByRole("button", { name: /Also block this person/ }));
       fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
-      expect(await screen.findByText(/now blocked/)).toBeTruthy();
+      expect(await screen.findByText(/This person is blocked\. Here's what happens next:/)).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Manage blocked people" }).getAttribute("href")).toBe("/settings");
       const blockCall = fetchMock.mock.calls.find(([url]) => String(url).startsWith("/api/blocks")) as unknown as [string, { body?: string }] | undefined;
       expect(JSON.parse(String(blockCall?.[1]?.body))).toEqual({ referralRequestId: 42 });
     } finally {
@@ -58,6 +59,7 @@ describe("Report block toggle", () => {
       fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
       expect(await screen.findByText(/Thanks. We're on it./)).toBeTruthy();
       expect(screen.getByText(/block did not go through/)).toBeTruthy();
+      expect(screen.queryByText(/This person is blocked/)).toBeNull();
     } finally {
       restore();
     }
@@ -69,5 +71,9 @@ describe("Report block toggle", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     expect(screen.queryByRole("button", { name: /Also block this person/ })).toBeNull();
     expect(screen.getByText(/handled by our team/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
+    // Without a conversation the support route the note promises stays on the done step.
+    expect((await screen.findByRole("link", { name: "Contact support" })).getAttribute("href")).toBe("/support");
+    expect(screen.queryByRole("link", { name: "Manage blocked people" })).toBeNull();
   });
 });

@@ -10,7 +10,9 @@ import { readApiJson } from "@/lib/apiResponse";
 
 // Kit v4 /suggest-company (app/src/routes/suggest-company.tsx) on the live
 // POST /api/company-suggestions intake (auth required, 3 a day, open-duplicate
-// check server side).
+// check server side). The duplicate hint is the kit's prefix match against the
+// live company directory (the same list /explore shows), and a website is
+// required before Submit, as in the kit.
 type SuggestRole = "seeker" | "employee";
 const ROLES: ReadonlyArray<readonly [SuggestRole, string]> = [["seeker", "Looking to join"], ["employee", "Working there now"]];
 const SITE_PATTERN = /^(https?:\/\/)?[\w-]+(\.[\w-]+)+/i;
@@ -32,8 +34,9 @@ export default function SuggestCompany() {
   const [error, setError] = useState("");
   const [sentName, setSentName] = useState<string | null>(null);
 
-  const listed = LAUNCH_COMPANIES.find(company => company.name.toLowerCase() === name.trim().toLowerCase());
-  const siteOk = !website.trim() || SITE_PATTERN.test(website.trim());
+  const typed = name.trim().toLowerCase();
+  const listed = typed.length > 1 ? LAUNCH_COMPANIES.find(company => company.name.toLowerCase().startsWith(typed)) : undefined;
+  const siteOk = SITE_PATTERN.test(website.trim());
 
   if (!isSignedIn) {
     return (
@@ -84,7 +87,6 @@ export default function SuggestCompany() {
         <label className="block text-sm font-medium">Company name<input className={field} value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" /></label>
         {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
         <label className="mt-4 block text-sm font-medium">Website<input className={field} value={website} inputMode="url" maxLength={500} onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" /></label>
-        {siteOk ? null : <p className="mt-2 text-sm text-muted-foreground">Enter the company website, like freshworks.com.</p>}
         <fieldset className="mt-4">
           <legend className="text-sm font-medium">You are</legend>
           <div className="mt-2 grid gap-2 sm:grid-cols-2">

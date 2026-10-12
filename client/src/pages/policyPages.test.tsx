@@ -74,14 +74,17 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" }).every(link => link.getAttribute("href") === "mailto:support@skipwait.me")).toBe(true);
   });
 
-  it("Guidelines state the free-referral rules and stay in draft until legal review", () => {
+  it("Guidelines carry the kit free-referral rules, published, with no intro paragraph", () => {
     const { container } = render(<Guidelines />);
     expect(document.querySelector('[data-skipwait-screen="guidelines"]')).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Guidelines." })).toBeTruthy();
-    expect(screen.getByText(/No money, gifts, or favours change hands/)).toBeTruthy();
+    expect(screen.getByText(/No money, gifts, or favours — before or after\. Seekers: if anyone asks for payment, report it\./)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
-    expect(screen.getByText(/Draft · pending legal review/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Report it" }).getAttribute("href")).toBe("/report");
+    expect(screen.getByText("Never pay or charge for a referral.")).toBeTruthy();
+    expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
+    expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toContain("6. What happens if rules are broken");
+    expect(document.body.textContent).not.toMatch(/DRAFT FOR DESIGN|placeholder address/i);
     expect(policyLinks(container)).toContain("/guidelines");
     expect(screen.getByRole("navigation", { name: "On this page" })).toBeTruthy();
   });

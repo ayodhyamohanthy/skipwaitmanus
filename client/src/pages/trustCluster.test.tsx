@@ -20,7 +20,10 @@ describe("Trust cluster", () => {
   it("renders live safety answers with no preview disclaimers", () => {
     render(<Safety />);
     expect(screen.getByText(/Help & safety/)).toBeTruthy();
-    expect(screen.getByText(/Only with a referrer who accepted/)).toBeTruthy();
+    expect(screen.getByText("Resumes stay private until a referrer accepts a request.")).toBeTruthy();
+    expect(screen.getByText(/ownership of an email address on an approved company domain/)).toBeTruthy();
+    // The pay answer points at the live Report flow instead of a preview-only promise.
+    expect(screen.getByRole("link", { name: "Report" }).getAttribute("href")).toBe("/report");
     expect(screen.queryByText(/DESIGN PREVIEW/i)).toBeNull();
     expect(screen.queryByText(/before the platform launches/i)).toBeNull();
     expect(screen.queryByText(/This design preview/i)).toBeNull();
@@ -35,8 +38,8 @@ describe("Trust cluster", () => {
     fireEvent.change(screen.getByPlaceholderText(/Search: credits/), { target: { value: "expire" } });
     expect(screen.queryByText(/No answers for/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Why did my ask expire?" }));
-    // Mirrors shared/referral.ts ASK_TTL_DAYS: unclaimed asks expire after seven days and the credit returns.
-    expect(screen.getByText(/claimed it within seven days/).textContent).toContain("reserved credit returned");
+    // Mirrors shared/referral.ts ASK_TTL_DAYS = 7: unanswered asks close after seven days and the slot returns.
+    expect(screen.getByText(/If no referrer accepts within 7 days/).textContent).toContain("your slot returns");
     expect(screen.queryByText(/usually within 2 days/)).toBeNull();
     fireEvent.change(screen.getByPlaceholderText(/Search: credits/), { target: { value: "zzz-no-such-topic" } });
     expect(screen.getByText(/No answers for/)).toBeTruthy();
@@ -48,6 +51,7 @@ describe("Trust cluster", () => {
     expect(policies.innerHTML).toContain("/safety");
     expect(policies.innerHTML).toContain("/guidelines");
     expect(policies.innerHTML).toContain("/privacy");
+    expect(screen.getByRole("link", { name: "Privacy policy" }).getAttribute("href")).toBe("/privacy");
     expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
   });
 

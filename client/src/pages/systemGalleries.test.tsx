@@ -31,7 +31,8 @@ describe("System galleries", () => {
   it("documents the real transactional templates, never sample mail", () => {
     render(<Emails />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("EMAIL & IN-APP TEMPLATES");
-    expect(screen.getByText(/Thirteen templates, each fired by exactly one real event/)).toBeTruthy();
+    // The kit gallery ends at the card: no explanatory paragraph or link below it.
+    expect(screen.queryByText(/Thirteen templates, each fired by exactly one real event/)).toBeNull();
     const nav = screen.getByRole("navigation", { name: "Templates" });
     expect(nav.querySelectorAll("button")).toHaveLength(13);
     // The first template is selected and previewed as an email, with the code masked.
@@ -44,7 +45,7 @@ describe("System galleries", () => {
     expect(screen.getByText(/The ask stays active for other employees/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "New message" }));
     expect(screen.getByRole("article", { name: "New message" }).textContent).not.toContain("noreply@skipwait.me");
-    expect(screen.getByRole("link", { name: /See in-app updates/ }).getAttribute("href")).toBe("/alerts");
+    expect(screen.queryByRole("link", { name: /See in-app updates/ })).toBeNull();
     // No sample codes, people, companies or preview scaffolding.
     expect(document.body.textContent).not.toMatch(/123456|482 913|Wipro|Design Preview|EXAMPLE/i);
   });

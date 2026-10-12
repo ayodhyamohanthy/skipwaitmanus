@@ -42,7 +42,7 @@ describe("Report flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /I feel unsafe/ }));
     fireEvent.click(screen.getByRole("button", { name: "Submit report" }));
     expect(await screen.findByText(/Thanks. We're on it./)).toBeTruthy();
-    expect(screen.getByText(/reference R-1048/)).toBeTruthy();
+    expect(screen.getByText(/reference #R-1048/)).toBeTruthy();
     expect(screen.getByText(/Within 4 hours/)).toBeTruthy();
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, { body?: string }];
     expect(JSON.parse(String(init.body))).toMatchObject({ reason: "Fake job or scam", details: "Suspicious fee request", urgent: true });
@@ -71,15 +71,19 @@ describe("SuggestCompany flow", () => {
     expect(screen.queryByText(/DESIGN PREVIEW|NOTHING IS SUBMITTED/i)).toBeNull();
     const submit = () => screen.getByRole("button", { name: "Submit for review" });
     expect(submit().hasAttribute("disabled")).toBe(true);
-    fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Wipro" } });
-    expect(screen.getByText(/is already on SkipWait/)).toBeTruthy();
+    // Kit prefix match: a partial name already flags the listed company.
+    fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Wip" } });
+    expect(screen.getByText(/Wipro is already on SkipWait/)).toBeTruthy();
     expect(submit().hasAttribute("disabled")).toBe(true);
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Delta" } });
+    // A website is required before Submit, as in the kit.
+    expect(submit().hasAttribute("disabled")).toBe(true);
+    fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "delta.com" } });
     fireEvent.click(submit());
     expect((await screen.findByRole("alert")).textContent).toContain("up to 3 companies a day");
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Acme Corp" } });
     fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "not a site" } });
-    expect(screen.getByText(/Enter the company website/)).toBeTruthy();
+    expect(screen.queryByText(/Enter the company website/)).toBeNull();
     expect(submit().hasAttribute("disabled")).toBe(true);
     fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "acme.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Working there now/ }));

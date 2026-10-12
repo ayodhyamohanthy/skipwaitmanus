@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
 /**
@@ -122,13 +121,13 @@ export default function Emails() {
             {(template.body ?? [template.trigger]).map(line => <p key={line} className="mt-4 leading-relaxed">{line}</p>)}
             {template.body ? <p className="mt-4 leading-relaxed text-muted-foreground">Fired when: {template.trigger.replace(/^Sent when /, "")}</p> : null}
             <p className="mt-4 leading-relaxed text-muted-foreground">Sent by: {template.channel}</p>
-            {template.code ? <p role="img" aria-label="Six-digit code" className="mt-6 rounded-2xl bg-muted py-5 text-center text-3xl font-semibold tracking-[0.3em]">••• •••</p> : null}
+            {/* Six round placeholder dots in the kit code-block size — never sample digits. */}
+            {template.code ? <p role="img" aria-label="Six-digit code" className="mt-6 flex justify-center rounded-2xl bg-muted py-5 text-3xl"><span className="flex h-9 items-center gap-[0.8em]">{[0, 1].map(group => <span key={group} className="flex gap-[0.3em]">{[0, 1, 2].map(dot => <span key={dot} className="size-[0.3em] rounded-full bg-foreground" />)}</span>)}</span></p> : null}
             {template.cta ? <span className="mt-6 inline-block rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground">{template.cta}</span> : null}
             <hr className="my-8 border-border" />
             <p className="text-xs text-muted-foreground">Referrals on SkipWait are always free. We&apos;ll never ask for money or your password.</p>
           </div>
         </article>
-        <p className="mx-auto max-w-xl text-sm leading-relaxed text-muted-foreground">Thirteen templates, each fired by exactly one real event. Managed server-side and always private — marketing mail never exists. <Link href="/alerts" className="text-link">See in-app updates <ArrowRight /></Link></p>
       </div>
     </div>
   </div>;
