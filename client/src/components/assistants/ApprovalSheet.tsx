@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
-import { creditsLabel, providerLabel, timeAgo, timeLeft, type AssistantApproval } from "./format";
+import { creditsLabel, providerLabel, timeAgo, type AssistantApproval } from "./format";
 
 export function Sheet({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
@@ -15,8 +15,9 @@ export function Sheet({ children, className = "" }: { children: ReactNode; class
   );
 }
 
-function SourceLine({ approval, withExpiry }: { approval: AssistantApproval; withExpiry: boolean }) {
-  return <p className="flex items-center gap-2 text-sm text-muted-foreground"><Bot className="size-4" />{providerLabel(approval.provider)} · {timeAgo(approval.createdAt)}{withExpiry ? ` · ${timeLeft(approval.expiresAt)}` : ""}</p>;
+// Kit source line: who asked and when. The 24-hour expiry rule is stated once, in the page footnote.
+function SourceLine({ approval }: { approval: AssistantApproval }) {
+  return <p className="flex items-center gap-2 text-sm text-muted-foreground"><Bot className="size-4" />{providerLabel(approval.provider)} · {timeAgo(approval.createdAt)}</p>;
 }
 
 function Title({ primary, children }: { primary: boolean; children: ReactNode }) {
@@ -47,7 +48,7 @@ export function ApprovalCard({ approval, balance, primary, handlers }: { approva
     const target = [approval.role, approval.companyDomain].filter((part): part is string => Boolean(part)).join(" at ");
     return (
       <Sheet>
-        <SourceLine approval={approval} withExpiry />
+        <SourceLine approval={approval} />
         <Title primary={primary}>Run this paid tool?</Title>
         <p className="mt-1 text-sm text-muted-foreground">For {target || "your ask"}</p>
         <Panel tone="muted" className="mt-4 flex items-center gap-3"><Coins className="size-6" /><span className="flex-1"><strong className="block">{creditsLabel(cost)}</strong><small className="text-muted-foreground">{balance !== null && after !== null ? `You have ${balance} · ${after} after this` : "The cost shows before anything is spent"}</small></span></Panel>
@@ -63,10 +64,10 @@ export function ApprovalCard({ approval, balance, primary, handlers }: { approva
   if (slotsFull) {
     return (
       <Sheet>
-        <SourceLine approval={approval} withExpiry />
+        <SourceLine approval={approval} />
         <div className="py-2">
           <Title primary={primary}>All your slots are in use</Title>
-          <p className="mt-1 text-sm text-muted-foreground">{provider} saved this ask as a draft for {company}. It can be sent when a request is answered or you withdraw one.</p>
+          <p className="mt-1 text-sm text-muted-foreground">{provider} saved this ask as a draft. It can be sent when a request is answered or you withdraw one.</p>
           {error}
           <div className="mt-5 grid grid-cols-2 gap-2">
             <Button asChild variant="outline"><Link href="/requests">Manage requests</Link></Button>
@@ -81,7 +82,7 @@ export function ApprovalCard({ approval, balance, primary, handlers }: { approva
   const subtitle = [approval.role, slotLine, approval.creditCount ? creditsLabel(approval.creditCount) : null].filter((part): part is string => Boolean(part)).join(" · ");
   return (
     <Sheet>
-      <SourceLine approval={approval} withExpiry />
+      <SourceLine approval={approval} />
       <Title primary={primary}>Send this ask to {company}?</Title>
       <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
       {editing ? (
@@ -109,7 +110,7 @@ export function ApprovalCard({ approval, balance, primary, handlers }: { approva
 export function ApprovalResult({ approval, decision, morePending, onBack }: { approval: AssistantApproval; decision: "approved" | "declined"; morePending: boolean; onBack: () => void }) {
   return (
     <Sheet>
-      <SourceLine approval={approval} withExpiry={false} />
+      <SourceLine approval={approval} />
       {decision === "approved" ? (
         <div className="py-4 text-center">
           <span className="mx-auto grid size-16 place-items-center rounded-full bg-accent"><Check className="size-8 text-primary" /></span>

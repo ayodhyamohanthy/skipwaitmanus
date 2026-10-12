@@ -18,7 +18,7 @@
   ],
   "actions": [
     {
-      "waitFor": "text=Assistants need Max"
+      "waitFor": "text=Assistants need Land"
     }
   ]
 }

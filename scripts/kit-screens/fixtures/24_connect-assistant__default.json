@@ -27,12 +27,6 @@
   "actions": [
     {
       "waitFor": "text=Connect ChatGPT to SkipWait"
-    },
-    {
-      "check": "label:has-text('Send an ask') input"
-    },
-    {
-      "check": "label:has-text('Run paid tools') input"
     }
   ]
 }

@@ -27,7 +27,7 @@ const NEVER = [
   "Buy plans or credits",
 ] as const;
 
-type Stage = "consent" | "approved" | "declined" | "expired" | "unverified" | "not-on-max" | "signed-out";
+type Stage = "consent" | "approved" | "declined" | "expired" | "unverified" | "not-on-land" | "signed-out";
 type OAuthRequest = { clientId: string; redirectUri: string; codeChallenge: string; method: string; state: string };
 
 /** OAuth mode: an assistant sent the member here with a registered client, an exact redirect and a PKCE challenge. */
@@ -50,7 +50,9 @@ export default function ConnectAssistant() {
   const { user } = useUser();
   const fetchToken = usePersistFn(getToken);
   const [stage, setStage] = useState<Stage>("consent");
-  const [checked, setChecked] = useState<string[]>(["read", "draft"]);
+  // Kit default: every "It can" box starts ticked. Send and paid tools still need the member's
+  // approval on each use (server-enforced), and unverified OAuth clients get read and draft only.
+  const [checked, setChecked] = useState<string[]>(() => Array.from(new Set(CAN.map(item => item.key))));
   const [working, setWorking] = useState(false);
   const [error, setError] = useState("");
 
@@ -63,8 +65,9 @@ export default function ConnectAssistant() {
       try {
         const token = await fetchToken();
         const response = await fetch("/api/assistants/access", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        const payload = await readApiJson<{ plan?: string }>(response, "");
-        if (response.ok && payload.plan !== "max") setStage(current => (current === "consent" ? "not-on-max" : current));
+        const payload = await readApiJson<{ hasAccess?: boolean }>(response, "");
+        // The server owns the plan gate; follow its answer rather than naming a plan here.
+        if (response.ok && payload.hasAccess !== true) setStage(current => (current === "consent" ? "not-on-land" : current));
       } catch { /* the consent screen still renders; the plan gate re-checks on approve */ }
     })();
   }, [isSignedIn, fetchToken]);
@@ -106,7 +109,7 @@ export default function ConnectAssistant() {
       });
       const payload = await readApiJson<{ error?: string; redirectTo?: string }>(response, "We could not connect this assistant");
       if (!response.ok || !payload.redirectTo) {
-        if (response.status === 402) { setStage("not-on-max"); return; }
+        if (response.status === 402) { setStage("not-on-land"); return; }
         throw new Error(payload.error || "We could not connect this assistant");
       }
       if (decision === "approve") setStage("approved");
@@ -133,7 +136,7 @@ export default function ConnectAssistant() {
       });
       const payload = await readApiJson<{ error?: string }>(response, "We could not connect this assistant");
       if (!response.ok) {
-        if (response.status === 402) { setStage("not-on-max"); return; }
+        if (response.status === 402) { setStage("not-on-land"); return; }
         throw new Error(payload.error || "We could not connect this assistant");
       }
       setStage("approved");
@@ -157,7 +160,7 @@ export default function ConnectAssistant() {
 
       {stage === "consent" ? (
         <>
-          <div className="flex items-center gap-3"><span className="grid size-14 place-items-center rounded-2xl bg-muted"><Bot className="size-7" /></span><ArrowRight aria-hidden className="size-5 text-muted-foreground" /><span className="grid size-14 place-items-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground">S</span></div>
+          <div className="flex items-center gap-3"><span className="grid size-14 place-items-center rounded-2xl bg-muted"><Bot className="size-7" /></span><ArrowRight aria-hidden className="size-6 translate-y-1 text-muted-foreground" /><span className="grid size-14 place-items-center rounded-2xl bg-primary text-xl font-bold text-primary-foreground">S</span></div>
           <h1 className="mt-5 text-3xl font-semibold">Connect {label} to SkipWait</h1>
           <p className="mt-2 text-muted-foreground">{label} will be able to use SkipWait as <strong className="text-foreground">{email ?? "you"}</strong>. <button type="button" className="text-link" onClick={() => { void signOut({ returnTo: `${window.location.pathname}${window.location.search}` }).catch(() => setError("Sign out could not be completed. Please try again.")); }}>Switch account</button></p>
           {errorLine}
@@ -169,13 +172,17 @@ export default function ConnectAssistant() {
       ) : null}
 
       {stage === "unverified" ? (
-        <Panel className="border-destructive">
-          <ShieldAlert className="size-8 text-destructive" />
-          <h1 className="mt-3 text-2xl font-semibold">{oauth && clientName ? `“${clientName}” isn't verified by SkipWait` : "This app isn't verified by SkipWait"}</h1>
-          <p className="mt-2 text-sm text-muted-foreground">{oauth && clientName ? `It named itself “${clientName}”${callback ? ` and will send you back to ${callback}` : ""}. SkipWait has not checked who runs it.` : "It connected through the open MCP link."} It can only read and draft. Only continue if you started this from an app you trust.</p>
-          {errorLine}
-          <div className="mt-5 grid gap-2 sm:grid-cols-2"><Button variant="outline" onClick={cancel}>Cancel</Button><Button disabled={working} onClick={() => { setChecked(["read", "draft"]); void approve(["read", "draft"]); }}>{working ? "Connecting…" : "Continue, read & draft only"}</Button></div>
-        </Panel>
+        <>
+          <Panel className="border-destructive">
+            <ShieldAlert className="size-8 text-destructive" />
+            <h1 className="mt-3 text-2xl font-semibold">{oauth && clientName ? `“${clientName}” isn't verified by SkipWait` : "This app isn't verified by SkipWait"}</h1>
+            <p className="mt-2 text-sm text-muted-foreground">It connected through the open MCP link. It can only read and draft until it&apos;s verified. Only continue if you trust it.</p>
+            {errorLine}
+            <div className="mt-5 grid gap-2 sm:grid-cols-2"><Button variant="outline" onClick={cancel}>Cancel</Button><Button disabled={working} onClick={() => { setChecked(["read", "draft"]); void approve(["read", "draft"]); }}>{working ? "Connecting…" : "Continue, read & draft only"}</Button></div>
+          </Panel>
+          {/* OAuth clients never reach the consent screen, so its "Callback:" footnote is shown here: the member sees where approval returns them. */}
+          {callback ? <p className="mt-4 flex gap-2 text-xs text-muted-foreground"><Lock className="size-4 shrink-0" /><span>Callback: {callback}</span></p> : null}
+        </>
       ) : null}
 
       {stage === "signed-out" ? (
@@ -187,12 +194,12 @@ export default function ConnectAssistant() {
         </Panel>
       ) : null}
 
-      {stage === "not-on-max" ? (
+      {stage === "not-on-land" ? (
         <Panel className="text-center">
           <ShieldCheck className="mx-auto size-8 text-primary" />
-          <h1 className="mt-3 text-2xl font-semibold">Assistants need Max</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Signing in, connecting and applying through ChatGPT, Claude, bots or your own tools is part of Max.</p>
-          <div className="mt-5 grid gap-2"><Button asChild size="lg"><Link href="/plans">Upgrade to Max</Link></Button><Button variant="ghost" asChild><Link href="/explore">Keep using SkipWait yourself</Link></Button></div>
+          <h1 className="mt-3 text-2xl font-semibold">Assistants need Land</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Signing in, connecting and applying through ChatGPT, Claude, bots or your own tools is part of Land and Concierge.</p>
+          <div className="mt-5 grid gap-2"><Button asChild size="lg"><Link href="/plans">Upgrade to Land</Link></Button><Button variant="ghost" asChild><Link href="/explore">Keep using SkipWait yourself</Link></Button></div>
         </Panel>
       ) : null}
 

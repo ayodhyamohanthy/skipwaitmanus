@@ -16,7 +16,8 @@ export default function Assistants() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
   const [tab, setTab] = useState<Tab>("assistants");
-  const [plan, setPlan] = useState<string | null>(null);
+  // The server decides who may use assistants (the plan gate lives in server/db.ts); the page only follows it.
+  const [hasAccess, setHasAccess] = useState(false);
   const [connections, setConnections] = useState<AssistantConnection[]>([]);
   const [tokens, setTokens] = useState<AssistantToken[]>([]);
   const [activity, setActivity] = useState<AssistantEvent[]>([]);
@@ -43,7 +44,7 @@ export default function Assistants() {
         fetch("/api/assistants/tokens", { credentials: "include", headers: await authHeaders() }),
         fetch("/api/assistants/activity", { credentials: "include", headers: await authHeaders() }),
       ]);
-      const accessPayload = await readApiJson<{ plan?: string; error?: string }>(accessResponse, "We could not load assistant access");
+      const accessPayload = await readApiJson<{ plan?: string; hasAccess?: boolean; error?: string }>(accessResponse, "We could not load assistant access");
       if (!accessResponse.ok) throw new Error(accessPayload.error || "We could not load assistant access");
       const connectionsPayload = await readApiJson<{ connections?: AssistantConnection[]; error?: string }>(connectionsResponse, "We could not load your assistants");
       if (!connectionsResponse.ok) throw new Error(connectionsPayload.error || "We could not load your assistants");
@@ -51,7 +52,7 @@ export default function Assistants() {
       if (!tokensResponse.ok) throw new Error(tokensPayload.error || "We could not load your tokens");
       const activityPayload = await readApiJson<{ activity?: AssistantEvent[]; error?: string }>(activityResponse, "We could not load assistant activity");
       if (!activityResponse.ok) throw new Error(activityPayload.error || "We could not load assistant activity");
-      setPlan(accessPayload.plan ?? null);
+      setHasAccess(accessPayload.hasAccess === true);
       setConnections(Array.isArray(connectionsPayload.connections) ? connectionsPayload.connections.filter(item => item.status === "connected") : []);
       setTokens(Array.isArray(tokensPayload.tokens) ? tokensPayload.tokens : []);
       setActivity(Array.isArray(activityPayload.activity) ? activityPayload.activity : []);
@@ -125,8 +126,6 @@ export default function Assistants() {
     );
   }
 
-  const onMax = plan === "max";
-
   return (
     <main data-skipwait-screen="assistants" className="page-content mx-auto max-w-3xl">
       <Heading {...HEADING} />
@@ -152,10 +151,10 @@ export default function Assistants() {
           {actionError ? <p role="alert" className="mb-4 text-sm font-semibold text-destructive">{actionError}</p> : null}
           {loadError ? <p role="alert" className="mb-4 text-sm font-semibold text-destructive">{loadError} <Button variant="link" className="h-auto p-0" disabled={loading} onClick={() => { void load(); }}>Try again</Button></p> : null}
 
-          {!onMax ? <PlanGate /> : null}
-          {onMax && tab === "assistants" ? <AssistantsPanel connections={connections} workingId={workingId} onDisconnect={connection => { void disconnect(connection); }} /> : null}
-          {onMax && tab === "tokens" ? <TokensPanel tokens={tokens} onceToken={onceToken} creating={creatingToken} workingId={workingId} onCreate={createToken} onRevoke={token => { void revokeToken(token); }} /> : null}
-          {onMax && tab === "activity" ? <ActivityPanel activity={activity} /> : null}
+          {!hasAccess ? <PlanGate /> : null}
+          {hasAccess && tab === "assistants" ? <AssistantsPanel connections={connections} workingId={workingId} onDisconnect={connection => { void disconnect(connection); }} /> : null}
+          {hasAccess && tab === "tokens" ? <TokensPanel tokens={tokens} onceToken={onceToken} creating={creatingToken} workingId={workingId} onCreate={createToken} onRevoke={token => { void revokeToken(token); }} /> : null}
+          {hasAccess && tab === "activity" ? <ActivityPanel activity={activity} /> : null}
         </>
       ) : null}
     </main>
