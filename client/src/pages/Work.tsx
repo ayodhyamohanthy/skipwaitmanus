@@ -1,11 +1,11 @@
 import { Check, Eye, Pin, Plus, Upload, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
-import { Link } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { AddWorkSheet, type NewWorkItem } from "@/components/profile/AddWorkSheet";
+import { ProfileLinkSheet } from "@/components/profile/ProfileLinkSheet";
 import { WorkCard, type WorkPatch } from "@/components/profile/WorkCard";
 import type { WorkItem } from "@/components/profile/workItems";
 
@@ -30,6 +30,10 @@ export default function Work() {
   const [loadFailed, setLoadFailed] = useState(false);
   const [error, setError] = useState("");
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<WorkItem | null>(null);
+  const [linkSheet, setLinkSheet] = useState(false);
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkError, setLinkError] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [view, setView] = useState<"mine" | "referrer">("mine");
 
@@ -66,15 +70,23 @@ export default function Work() {
     return payload;
   };
 
-  const add = async (input: NewWorkItem) => {
+  const save = async (input: NewWorkItem) => {
     if (!input.title) { setError("Give each work item a title."); return; }
-    setError(""); setBusyId(-1);
+    const target = editing;
+    setError(""); setBusyId(target ? target.id : -1);
     try {
-      const payload = await authedJson("/api/work-items", { method: "POST", body: JSON.stringify(input) });
-      const created = payload.item;
-      if (created) setItems(current => [created, ...current]);
-      setAdding(false);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not add this work"); }
+      if (target) {
+        const payload = await authedJson(`/api/work-items/${target.id}`, { method: "PATCH", body: JSON.stringify(input) });
+        const updated = payload.item;
+        if (updated) setItems(current => current.map(item => item.id === target.id ? updated : item));
+        setEditing(null);
+      } else {
+        const payload = await authedJson("/api/work-items", { method: "POST", body: JSON.stringify(input) });
+        const created = payload.item;
+        if (created) setItems(current => [created, ...current]);
+        setAdding(false);
+      }
+    } catch (reason) { setError(reason instanceof Error ? reason.message : target ? "We could not update this work" : "We could not add this work"); }
     finally { setBusyId(null); }
   };
 
@@ -97,11 +109,26 @@ export default function Work() {
         throw new Error(payload.error || "We could not remove this work");
       }
       setItems(current => current.filter(item => item.id !== id));
+      setEditing(null);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not remove this work"); }
     finally { setBusyId(null); }
   };
 
-  const closeSheet = useCallback(() => { setAdding(false); setError(""); }, []);
+  const closeSheet = useCallback(() => { setAdding(false); setEditing(null); setError(""); }, []);
+  const closeLinkSheet = useCallback(() => { setLinkSheet(false); setLinkError(""); }, []);
+
+  const saveHandle = async (handle: string) => {
+    setLinkBusy(true); setLinkError("");
+    try {
+      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(await authHeaders()) }, body: JSON.stringify({ handle }) });
+      const payload = await readApiJson<{ profile?: { handle?: string | null } | null; error?: string }>(response, "We could not save your profile link");
+      if (!response.ok) throw new Error(payload.error || "We could not save your profile link");
+      const saved = payload.profile?.handle ?? handle;
+      setOwner(current => ({ displayName: current?.displayName ?? "", headline: current?.headline ?? null, handle: saved }));
+      setLinkSheet(false);
+    } catch (reason) { setLinkError(reason instanceof Error ? reason.message : "We could not save your profile link"); }
+    finally { setLinkBusy(false); }
+  };
 
   if (!isSignedIn) {
     return (
@@ -129,11 +156,11 @@ export default function Work() {
 
       <section className="profile-card-preview">
         <div className="avatar-ph" aria-hidden="true">{name.trim().charAt(0).toUpperCase() || "Y"}</div>
-        <div className="min-w-0"><strong>{name}</strong><small>{owner?.headline ? `${owner.headline} · ` : ""}{owner?.handle ? <>skipwait.me/p/<em>{owner.handle}</em></> : <Link href="/profile" className="text-link">Set your profile link</Link>}</small></div>
+        <div className="min-w-0"><strong>{name}</strong><small>{owner?.headline ? `${owner.headline} · ` : ""}{owner?.handle ? <button type="button" className="cursor-pointer text-left" title="Change your profile link" onClick={() => setLinkSheet(true)}>skipwait.me/p/<em>{owner.handle}</em></button> : <button type="button" className="text-link" onClick={() => setLinkSheet(true)}>Set your profile link</button>}</small></div>
         <span className="pin-meter" aria-live="polite"><Pin />{pinned} pinned</span>
       </section>
 
-      {error && !adding ? <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-destructive"><p>{error}</p>{loadFailed ? <Button variant="outline" size="sm" onClick={() => { void load(); }}>Try again</Button> : null}</div> : null}
+      {error && !adding && !editing ? <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-destructive"><p>{error}</p>{loadFailed ? <Button variant="outline" size="sm" onClick={() => { void load(); }}>Try again</Button> : null}</div> : null}
 
       {loading ? (
         <div className="workspace-empty slim" role="status"><p>Loading your work…</p></div>
@@ -144,11 +171,12 @@ export default function Work() {
         </div>
       ) : (
         <section className="work-grid">
-          {shown.map(item => <WorkCard key={item.id} item={item} manage={view === "mine"} busy={busyId === item.id} onPatch={body => { void patch(item.id, body); }} onRemove={() => { void remove(item.id); }} />)}
+          {shown.map(item => <WorkCard key={item.id} item={item} manage={view === "mine"} busy={busyId === item.id} onPatch={body => { void patch(item.id, body); }} onEdit={() => { setEditing(item); setError(""); }} />)}
         </section>
       )}
 
-      {adding ? <AddWorkSheet busy={busyId !== null} error={error} onClose={closeSheet} onSubmit={input => { void add(input); }} /> : null}
+      {adding || editing ? <AddWorkSheet key={editing ? editing.id : "new"} busy={busyId !== null} error={error} editing={editing ?? undefined} onClose={closeSheet} onSubmit={input => { void save(input); }} onRemove={editing ? () => { void remove(editing.id); } : undefined} /> : null}
+      {linkSheet ? <ProfileLinkSheet current={owner?.handle ?? null} busy={linkBusy} error={linkError} onClose={closeLinkSheet} onSubmit={handle => { void saveHandle(handle); }} /> : null}
     </main>
   );
 }

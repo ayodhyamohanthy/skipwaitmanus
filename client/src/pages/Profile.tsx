@@ -6,21 +6,12 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { PrivacyControls, type ProfileRole } from "@/components/profile/PrivacyControls";
-import { ProfileForm, type ProfileFormState } from "@/components/profile/ProfileForm";
+import { ProfileForm } from "@/components/profile/ProfileForm";
 import { asProfileVisibility } from "@/components/profile/VisibilityOptions";
 
-type Profile = { headline: string | null; currentTitle: string | null; location: string | null; bio: string | null; skills: string | null; openTo: string | null; company: string | null; workEmailDomain: string | null; workEmailVerifiedAt: string | null; handle: string | null; profileVisibility: string };
-
-const EMPTY_FORM: ProfileFormState = { headline: "", currentTitle: "", location: "", bio: "", skills: "", openToText: "", handle: "", profileVisibility: "private" };
-
-function openToTextFromStored(raw: string | null | undefined): string {
-  if (!raw) return "";
-  try {
-    const parsed: unknown = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.filter((role): role is string => typeof role === "string").join(", ");
-  } catch { /* fall through to plain text */ }
-  return raw;
-}
+// The kit form edits the headline only; the other profile columns are left
+// untouched because PUT /api/profile/me is a partial update.
+type Profile = { headline: string | null; company: string | null; workEmailDomain: string | null; workEmailVerifiedAt: string | null; handle: string | null; profileVisibility: string };
 
 function Heading({ children }: { children?: ReactNode }) {
   return (
@@ -37,13 +28,12 @@ export default function Profile() {
   const [role, setRole] = useState<ProfileRole>("seeker");
   const [displayName, setDisplayName] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [form, setForm] = useState<ProfileFormState>(EMPTY_FORM);
+  const [headline, setHeadline] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
   const [referrerNamed, setReferrerNamed] = useState(false);
 
   const load = async () => {
@@ -57,16 +47,7 @@ export default function Profile() {
       setDisplayName(payload.displayName ?? "");
       const current = payload.profile;
       setProfile(current ?? null);
-      setForm({
-        headline: current?.headline ?? "",
-        currentTitle: current?.currentTitle ?? "",
-        location: current?.location ?? "",
-        bio: current?.bio ?? "",
-        skills: current?.skills ?? "",
-        openToText: openToTextFromStored(current?.openTo ?? null),
-        handle: current?.handle ?? "",
-        profileVisibility: asProfileVisibility(current?.profileVisibility),
-      });
+      setHeadline(current?.headline ?? "");
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load your profile"); setLoadFailed(true); }
     finally { setLoading(false); }
   };
@@ -93,7 +74,7 @@ export default function Profile() {
     setSaving(true); setError(""); setSaved(false);
     try {
       const token = await fetchToken();
-      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ ...form, openTo: form.openToText.split(",").map(role => role.trim()).filter(role => role.length > 0), handle: form.handle.trim() === "" ? null : form.handle }) });
+      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ headline }) });
       const payload = await readApiJson<{ profile?: Profile | null; error?: string }>(response, "We could not save your profile");
       if (!response.ok) throw new Error(payload.error || "We could not save your profile");
       setProfile(payload.profile ?? null);
@@ -112,7 +93,6 @@ export default function Profile() {
   }
 
   const verifiedCompany = profile?.workEmailVerifiedAt ? (profile.company || profile.workEmailDomain) : null;
-  const copyLink = () => { void navigator.clipboard?.writeText(`https://skipwait.me/p/${form.handle.trim().toLowerCase()}`); setCopied(true); setTimeout(() => setCopied(false), 1500); };
   return (
     <main data-skipwait-screen="profile" className="page-content profile-page">
       <Heading>
@@ -140,18 +120,15 @@ export default function Profile() {
           <ProfileForm
             role={role}
             displayName={displayName}
-            form={form}
-            onField={(field, value) => { setForm(current => ({ ...current, [field]: value })); setSaved(false); }}
-            onVisibility={value => { setForm(current => ({ ...current, profileVisibility: value })); setSaved(false); }}
+            headline={headline}
+            onHeadline={value => { setHeadline(value); setSaved(false); }}
             verifiedCompany={verifiedCompany}
             saving={saving}
             saved={saved}
             error={error}
-            copied={copied}
-            onCopy={copyLink}
             onSave={() => { void save(); }}
           />
-          <PrivacyControls role={role} visibility={asProfileVisibility(profile?.profileVisibility)} referrerNamed={referrerNamed} verifiedDomain={verifiedCompany} />
+          <PrivacyControls role={role} visibility={asProfileVisibility(profile?.profileVisibility)} referrerNamed={referrerNamed} />
         </section>
       )}
     </main>

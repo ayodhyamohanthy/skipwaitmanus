@@ -21,22 +21,44 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
 
 describe("Profile page", () => {
-  it("loads, saves, and surfaces handle conflicts honestly", async () => {
-    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+  const me = (overrides: Record<string, unknown> = {}) => ({ displayName: "Asha R.", profile: { headline: "Designer", currentTitle: "Product Designer", location: "Bengaluru", bio: "Bio", skills: "Figma", openTo: '["Product Designer"]', company: null, workEmailDomain: "wipro.com", workEmailVerifiedAt: "2026-01-01", handle: "asha-r", profileVisibility: "link", ...overrides } });
+
+  it("loads, saves the headline only, and surfaces save failures honestly", async () => {
+    const bodies: Array<Record<string, unknown>> = [];
+    let failNext = true;
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).endsWith("/profile/me") && init?.method === "PUT") {
-        const body = JSON.parse(String(init.body));
-        if (body.handle === "taken-handle") return { ok: false, status: 400, json: async () => ({ error: "That handle is already taken" }) };
-        return ok({ displayName: "Asha R.", profile: { headline: "Designer", currentTitle: null, location: null, bio: null, skills: null, company: null, workEmailDomain: "wipro.com", workEmailVerifiedAt: "2026-01-01", handle: "asha-r", profileVisibility: "link" } });
+        bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+        if (failNext) { failNext = false; return { ok: false, status: 400, json: async () => ({ error: "Profile text must be a string" }) }; }
+        return ok(me({ headline: "Staff Designer" }));
       }
-      return ok({ displayName: "Asha R.", profile: { headline: "Designer", currentTitle: null, location: null, bio: null, skills: null, company: null, workEmailDomain: "wipro.com", workEmailVerifiedAt: "2026-01-01", handle: "asha-r", profileVisibility: "link" } });
-    });
-    vi.stubGlobal("fetch", fetchMock);
+      return ok(me());
+    }));
+    render(<Profile />);
+    const headline = await screen.findByDisplayValue("Designer");
+    fireEvent.change(headline, { target: { value: "Staff Designer" } });
+    fireEvent.click(screen.getByRole("button", { name: /Save profile/ }));
+    expect(await screen.findByText("Profile text must be a string")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Save profile/ }));
+    expect(await screen.findByText("Profile saved")).toBeTruthy();
+    // Partial update: public-page columns (handle, open-to, location...) are never resent or cleared.
+    expect(bodies).toEqual([{ headline: "Staff Designer" }, { headline: "Staff Designer" }]);
+  });
+
+  it("renders only the kit fields and the three kit privacy rows", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok(me())));
     render(<Profile />);
     expect(await screen.findByDisplayValue("Designer")).toBeTruthy();
-    expect(screen.getByText("Verified at wipro.com")).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText("yourname"), { target: { value: "taken-handle" } });
-    fireEvent.click(screen.getByRole("button", { name: /Save profile/ }));
-    expect(await screen.findByText("That handle is already taken")).toBeTruthy();
+    expect(screen.getByDisplayValue("Asha R.")).toBeTruthy();
+    expect(screen.getByText("Resume")).toBeTruthy();
+    for (const gone of ["Product Designer", "Bengaluru", "Bio", "Figma", "asha-r"]) expect(screen.queryByDisplayValue(gone)).toBeNull();
+    expect(screen.queryByPlaceholderText("yourname")).toBeNull();
+    expect(screen.queryByText("WHO CAN SEE THIS")).toBeNull();
+    expect(screen.queryByText(/Copy profile link/)).toBeNull();
+    expect(screen.queryByText(/Verified at/)).toBeNull();
+    expect(screen.getByText("Block and report available")).toBeTruthy();
+    expect(screen.getByText("Leave a conversation without losing access to support.")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /View public profile/ }).getAttribute("href")).toBe("/p/asha-r");
   });
 
   it("keeps the profile behind sign-in", () => {
@@ -45,27 +67,10 @@ describe("Profile page", () => {
     expect(screen.getByText(/Profile & privacy/)).toBeTruthy();
   });
 
-  it("saves open-to roles from the comma-separated field", async () => {
-    const bodies: Array<Record<string, unknown>> = [];
-    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/profile/me") && init?.method === "PUT") {
-        bodies.push(JSON.parse(String(init.body)) as Record<string, unknown>);
-        return ok({ displayName: "Asha R.", profile: { headline: "", currentTitle: null, location: null, bio: null, skills: null, openTo: '["Product Designer"]', handle: "asha-r", profileVisibility: "link" } });
-      }
-      return ok({ displayName: "Asha R.", profile: { headline: "", currentTitle: null, location: null, bio: null, skills: null, openTo: null, handle: "asha-r", profileVisibility: "link" } });
-    }));
-    render(<Profile />);
-    const openToInput = await screen.findByPlaceholderText("Product Designer, UX Lead, Design Systems");
-    fireEvent.change(openToInput, { target: { value: "Product Designer, UX Lead" } });
-    fireEvent.click(screen.getByRole("button", { name: /Save profile/ }));
-    await waitFor(() => expect(bodies.length).toBeGreaterThan(0));
-    expect(bodies[bodies.length - 1].openTo).toEqual(["Product Designer", "UX Lead"]);
-  });
-
   it("switches to the referrer profile with the verified company and honest privacy copy", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
       if (String(url).endsWith("/referrer-preferences")) return ok({ preferences: { referrerVisibility: "named" } });
-      return ok({ displayName: "Asha R.", profile: { headline: "Design Lead", currentTitle: null, location: null, bio: null, skills: null, openTo: null, company: null, workEmailDomain: "wipro.com", workEmailVerifiedAt: "2026-01-01", handle: "asha-r", profileVisibility: "private" } });
+      return ok(me({ headline: "Design Lead", profileVisibility: "private" }));
     }));
     render(<Profile />);
     expect(await screen.findByText("Only referrers reviewing your ask see context.")).toBeTruthy();
@@ -73,11 +78,12 @@ describe("Profile page", () => {
     expect(screen.getByRole("option", { name: "wipro.com" })).toBeTruthy();
     expect(screen.queryByText("Resume")).toBeNull();
     expect(await screen.findByText("Seekers see your name, company and function.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Referrer settings" }).getAttribute("href")).toBe("/referrer-setup");
+    expect(screen.queryByText(/Verified through your work email/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Referrer settings" })).toBeNull();
   });
 
   it("never claims a public profile is undiscoverable and ships no preview scaffolding", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ok({ displayName: "Asha R.", profile: { headline: null, currentTitle: null, location: null, bio: null, skills: null, openTo: null, company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: null, profileVisibility: "public" } })));
+    vi.stubGlobal("fetch", vi.fn(async () => ok(me({ headline: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: null, profileVisibility: "public" }))));
     render(<Profile />);
     expect(await screen.findByText("Publicly discoverable")).toBeTruthy();
     expect(screen.queryByText("Not publicly discoverable")).toBeNull();
@@ -92,7 +98,7 @@ describe("Profile page", () => {
     vi.stubGlobal("fetch", vi.fn(async () => {
       calls += 1;
       if (calls === 1) return { ok: false, status: 500, json: async () => ({ error: "We could not load your profile" }) };
-      return ok({ displayName: "Asha R.", profile: { headline: "Designer", currentTitle: null, location: null, bio: null, skills: null, openTo: null, company: null, workEmailDomain: null, workEmailVerifiedAt: null, handle: null, profileVisibility: "private" } });
+      return ok(me({ workEmailVerifiedAt: null, handle: null, profileVisibility: "private" }));
     }));
     render(<Profile />);
     fireEvent.click(await screen.findByRole("button", { name: "Try again" }));
@@ -133,8 +139,64 @@ describe("Work showcase", () => {
     const launchCard = screen.getByText("Launch").closest("article") as HTMLElement;
     fireEvent.click(within(launchCard).getByRole("button", { name: "Pin" }));
     expect(await screen.findByText("1 pinned")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Delete Launch" }));
+    expect(screen.queryByRole("button", { name: "Delete Launch" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Launch" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Edit work" })).getByRole("button", { name: "Remove work" }));
     await waitFor(() => expect(screen.queryByText("Launch")).toBeNull());
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("edits a piece in the kit sheet and links its title out instead of an extra row", async () => {
+    const patches: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "PATCH") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        patches.push(body);
+        return ok({ item: { id: 2, title: body.title, kind: body.kind, source: body.source || null, url: body.url || null, pinned: true, visibleOnProfile: body.visibleOnProfile } });
+      }
+      if (String(url).endsWith("/profile/me")) return ok({ displayName: "Asha R.", profile: { headline: null, handle: null } });
+      return ok({ items: [{ id: 2, title: "CLI tool", kind: "project", source: "GitHub", url: "https://github.com/example/cli", pinned: true, visibleOnProfile: true }] });
+    }));
+    render(<Work />);
+    const title = await screen.findByRole("link", { name: "CLI tool" });
+    expect(title.getAttribute("href")).toBe("https://github.com/example/cli");
+    expect(title.getAttribute("target")).toBe("_blank");
+    expect(title.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(screen.queryByText(/Open link/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Edit CLI tool" }));
+    const sheet = screen.getByRole("dialog", { name: "Edit work" });
+    fireEvent.change(within(sheet).getByDisplayValue("CLI tool"), { target: { value: "CLI toolkit" } });
+    fireEvent.change(within(sheet).getByDisplayValue("GitHub"), { target: { value: "" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(patches).toHaveLength(1));
+    expect(patches[0]).toEqual({ title: "CLI toolkit", kind: "project", source: "", url: "https://github.com/example/cli", visibleOnProfile: true });
+    expect(await screen.findByRole("link", { name: "CLI toolkit" })).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("sets the profile link from the owner card and surfaces a taken handle honestly", async () => {
+    const puts: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/profile/me") && init?.method === "PUT") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        puts.push(body);
+        if (body.handle === "taken-handle") return { ok: false, status: 400, json: async () => ({ error: "That handle is already taken" }) };
+        return ok({ displayName: "Asha R.", profile: { headline: "Designer", handle: body.handle } });
+      }
+      if (String(url).endsWith("/profile/me")) return ok({ displayName: "Asha R.", profile: { headline: "Designer", handle: null } });
+      return ok({ items: [] });
+    }));
+    render(<Work />);
+    fireEvent.click(await screen.findByRole("button", { name: "Set your profile link" }));
+    const sheet = screen.getByRole("dialog", { name: "Profile link" });
+    fireEvent.change(within(sheet).getByPlaceholderText("yourname"), { target: { value: "taken-handle" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Save link" }));
+    expect(await screen.findByText("That handle is already taken")).toBeTruthy();
+    fireEvent.change(within(sheet).getByPlaceholderText("yourname"), { target: { value: "Asha-R" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Save link" }));
+    expect(await screen.findByText("asha-r")).toBeTruthy();
+    expect(puts).toEqual([{ handle: "taken-handle" }, { handle: "asha-r" }]);
+    expect(screen.queryByRole("dialog")).toBeNull();
   });
 
   it("previews the referrer view with only profile-visible pieces and no management controls", async () => {
@@ -244,14 +306,49 @@ describe("PublicProfile page", () => {
     await waitFor(() => expect(visibility.value).toBe("private"));
     await waitFor(() => expect(screen.getByRole("radio", { name: "Private" })).toHaveProperty("ariaChecked", "true"));
   });
-  it("labels owner-only pieces honestly and ships no preview toggles", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "link", isOwner: true, displayName: "Asha R.", headline: null, currentTitle: null, location: null, bio: null, skills: null, openTo: [], verifiedWork: null, handle: "asha-r", workItems: [{ id: 4, title: "Prototype kit", kind: "code", source: "GitHub", url: null, pinned: false, visibleOnProfile: false }] } })));
+  it("labels owner-only pieces honestly and previews the visitor view without preview scaffolding", async () => {
+    const owned = (visibility: string) => ok({ profile: { visible: true, visibility, isOwner: true, displayName: "Asha R.", headline: "Designer", location: null, openTo: [], verifiedWork: null, handle: "asha-r", workItems: [
+      { id: 3, title: "Redesign", kind: "case_study", source: "Behance", url: null, pinned: true, visibleOnProfile: true },
+      { id: 4, title: "Prototype kit", kind: "code", source: "GitHub", url: null, pinned: false, visibleOnProfile: false },
+    ] } });
+    const visibility = { value: "link" };
+    vi.stubGlobal("fetch", vi.fn(async () => owned(visibility.value)));
     render(<PublicProfile />);
     expect(await screen.findByText("Prototype kit")).toBeTruthy();
     expect(screen.getByText("Only visible to you")).toBeTruthy();
     expect(screen.queryByText("Shown only in requests")).toBeNull();
-    expect(screen.queryByText("Visitor")).toBeNull();
     expect(screen.queryByText(/EXAMPLE PROFILE/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Manage profile" })).toBeNull();
     expect(screen.getByRole("button", { name: "Share" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "You" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.click(screen.getByRole("tab", { name: "Visitor" }));
+    expect(screen.queryByText("WHO CAN SEE THIS")).toBeNull();
+    expect(screen.queryByText("Prototype kit")).toBeNull();
+    expect(screen.queryByText("Only visible to you")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Manage work/ })).toBeNull();
+    expect(screen.getByText("Redesign")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "You" }));
+    expect(screen.getByText("WHO CAN SEE THIS")).toBeTruthy();
+  });
+
+  it("shows the owner the private gate when previewing a private page as a visitor", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "private", isOwner: true, displayName: "Asha R.", headline: "Designer", location: null, openTo: [], verifiedWork: null, handle: "asha-r", workItems: [] } })));
+    render(<PublicProfile />);
+    fireEvent.click(await screen.findByRole("tab", { name: "Visitor" }));
+    expect(screen.getByText("This profile is private.")).toBeTruthy();
+    expect(screen.queryByText("Asha R.")).toBeNull();
+  });
+
+  it("renders the headline only, links work titles out, and offers verified referrers an ask", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ profile: { visible: true, visibility: "public", isOwner: false, displayName: "Asha R.", headline: "Design Lead", currentTitle: "Lead", location: null, bio: "Long bio", skills: "Figma", openTo: [], company: "Wipro", verifiedWork: { domain: "wipro.com", verifiedAt: "2026-01-01" }, handle: "asha-r", workItems: [{ id: 5, title: "Case", kind: "case_study", source: null, url: "https://example.com/case", pinned: false, visibleOnProfile: true }] } })));
+    render(<PublicProfile />);
+    expect(await screen.findByText("Design Lead")).toBeTruthy();
+    expect(screen.queryByText(/Lead · Design Lead/)).toBeNull();
+    expect(screen.queryByText("Long bio")).toBeNull();
+    expect(screen.queryByText("Figma")).toBeNull();
+    expect(screen.getByRole("link", { name: "Case" }).getAttribute("href")).toBe("https://example.com/case");
+    expect(screen.queryByText(/Open link/)).toBeNull();
+    expect(screen.getByRole("link", { name: /Ask for a referral at Wipro/ }).getAttribute("href")).toBe("/explore");
+    expect(screen.queryByRole("tab", { name: "Visitor" })).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 // Kit v4 "WHO CAN SEE THIS" option cards (app/src/routes/p.$handle.tsx), wired
 // to the live profiles.profileVisibility enum. Used by the owner panel on
-// /p/:handle and by the /profile form.
+// /p/:handle, the kit home for page visibility.
 import { Globe, Link2, LockKeyhole, type LucideIcon } from "lucide-react";
 
 export type ProfileVisibility = "public" | "link" | "private";
