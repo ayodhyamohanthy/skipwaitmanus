@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Settings from "./Settings";
 
 const authState = vi.hoisted(() => ({ signedIn: false }));
@@ -24,23 +25,50 @@ vi.mock("@/lib/trpc", () => ({
   },
 }));
 
-describe("Settings signed-out gating", () => {
-  afterEach(() => { cleanup(); authState.signedIn = false; trpcSpies.stateUseQuery.mockReset(); vi.unstubAllGlobals(); });
+const renderAt = (search: string) => {
+  window.history.replaceState({}, "", `/settings${search}`);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(<QueryClientProvider client={client}><Settings /></QueryClientProvider>);
+};
 
-  it("never fires the authenticated consent query when logged out, so no AuthKit redirect", () => {
-    trpcSpies.stateUseQuery.mockReturnValue({ data: undefined, isLoading: false });
+describe("Settings signed-out gating", () => {
+  afterEach(() => { cleanup(); authState.signedIn = false; trpcSpies.stateUseQuery.mockReset(); vi.unstubAllGlobals(); window.history.replaceState({}, "", "/"); });
+
+  it("renders the kit page with the Region panel by default, without any account fetch", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
-    render(<Settings />);
-    expect(screen.getByText("Secure sign in")).toBeTruthy();
-    expect(trpcSpies.stateUseQuery).toHaveBeenCalledWith(undefined, expect.objectContaining({ enabled: false }));
-    expect(vi.mocked(fetch)).not.toHaveBeenCalledWith("/api/company-referrals/access", expect.anything());
+    renderAt("");
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Settings.");
+    expect(screen.getByRole("navigation", { name: "Settings sections" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Region" }).getAttribute("aria-current")).toBe("page");
+    expect(screen.getByRole("heading", { name: "Language & region" })).toBeTruthy();
+    expect(screen.queryByText("SKIPWAIT.ME")).toBeNull();
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
   });
 
-  it("loads the consent state when signed in", () => {
+  it("asks guests to sign in on account sections and never fires the authenticated consent query", () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({}) })));
+    renderAt("?section=privacy");
+    expect(screen.getByRole("heading", { name: "Privacy" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Account" }));
+    expect(window.location.search).toBe("?section=account");
+    expect(screen.getByRole("heading", { name: "Account" })).toBeTruthy();
+    expect(trpcSpies.stateUseQuery).not.toHaveBeenCalled();
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+  });
+
+  it("falls back to Region for an unknown section", () => {
+    renderAt("?section=billing");
+    expect(screen.getByRole("heading", { name: "Language & region" })).toBeTruthy();
+  });
+
+  it("loads the consent state on the Privacy section when signed in", () => {
     authState.signedIn = true;
-    trpcSpies.stateUseQuery.mockReturnValue({ data: { consented: false }, isLoading: false });
-    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [] }) })));
-    render(<Settings />);
-    expect(trpcSpies.stateUseQuery).toHaveBeenCalledWith(undefined, expect.objectContaining({ enabled: true }));
+    trpcSpies.stateUseQuery.mockReturnValue({ data: { active: false }, isLoading: false });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ blocks: [] }) })));
+    renderAt("?section=privacy");
+    expect(trpcSpies.stateUseQuery).toHaveBeenCalledWith(undefined, expect.objectContaining({ retry: false }));
+    expect(screen.getByRole("heading", { name: "Talent discovery consent" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Manage assistants" }).getAttribute("href")).toBe("/assistants");
   });
 });

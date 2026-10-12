@@ -1,107 +1,55 @@
-import { useEffect, useState } from "react";
+// Kit v4 Settings > Privacy "Blocked people" Panel on the real blocks backend
+// (server/blocksRoutes.ts). Blocking is self-serve from the Report flow; this
+// Panel lists your blocks and removes one only after the server confirms.
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Ban } from "lucide-react";
 import { useAuth } from "@/_core/auth";
-import { Ban, LoaderCircle, Undo2 } from "lucide-react";
+import { Button } from "@/components/kit/button";
+import { Panel } from "@/components/kit/preview-kit";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { readApiJson } from "@/lib/apiResponse";
+import { ErrorNotice, Loading } from "./settingsUi";
+import { BLOCKS_ERROR, UNBLOCK_ERROR, fetchBlocks, settingsKeys, unblock, type BlockRow } from "./settingsApi";
 
-type BlockRow = { id: number; blockedUserId: number; reason: string | null; createdAt: string };
-
-function formatDate(value: string): string {
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(date);
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
 }
 
+/** "Member · blocked 2 Oct · spam": the kit row line, from what the server knows. */
+export function blockLabel(block: BlockRow): string {
+  const date = formatDate(block.createdAt);
+  return ["Member", date ? `blocked ${date}` : "blocked", block.reason || ""].filter(Boolean).join(" · ");
+}
+
+const messageOf = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
+
 export default function BlockedPeople() {
-  const { isSignedIn, getToken } = useAuth();
+  const { getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
-  const [blocks, setBlocks] = useState<BlockRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [unblocking, setUnblocking] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const blocks = useQuery({ queryKey: settingsKeys.blocks, retry: false, queryFn: () => fetchBlocks(fetchToken) });
+  const remove = useMutation({
+    mutationFn: async (id: number) => { await unblock(id, fetchToken); return id; },
+    onSuccess: id => queryClient.setQueryData<BlockRow[]>(settingsKeys.blocks, current => current?.filter(block => block.id !== id)),
+  });
 
-  const load = async () => {
-    if (!isSignedIn) return;
-    setLoading(true);
-    setError("");
-    try {
-      const token = await fetchToken();
-      const response = await fetch("/api/blocks/mine", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      const payload = await readApiJson<{ blocks?: BlockRow[] }>(response, "We could not load your blocked list");
-      if (!response.ok) throw new Error("We could not load your blocked list");
-      setBlocks(Array.isArray(payload.blocks) ? payload.blocks : []);
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "We could not load your blocked list");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn]);
-
-  const unblock = async (id: number) => {
-    setUnblocking(id);
-    setError("");
-    try {
-      const token = await fetchToken();
-      const response = await fetch(`/api/blocks/${id}`, { method: "DELETE", credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-      if (!response.ok) throw new Error("We could not remove this block");
-      setBlocks(current => current.filter(block => block.id !== id));
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "We could not remove this block");
-    } finally {
-      setUnblocking(null);
-    }
-  };
-
-  return (
-    <section aria-label="Blocked people" className="mt-5 rounded-2xl border border-[#e5e5e5] bg-white p-7 sm:p-9">
-      <h2 className="font-display mt-3 text-2xl font-semibold tracking-[-.04em]">Blocked people</h2>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-[#505050]">
-        Blocked members can&apos;t message you or appear in your requests and inbox — in both directions. They aren&apos;t told you blocked them.
-      </p>
-      {loading ? (
-        <p className="mt-5 flex items-center gap-2 text-sm text-[#505050]">
-          <LoaderCircle className="h-4 w-4 animate-spin" />Loading your blocked list…
-        </p>
-      ) : error ? (
-        <div role="alert" className="mt-5 rounded-xl border border-[#b45309]/30 bg-[#b45309]/10 p-4 text-sm text-[#B45309]">
-          <p>{error}</p>
-          <button type="button" onClick={() => void load()} className="mt-3 inline-flex min-h-11 items-center rounded-lg border border-[#b45309]/30 bg-white px-4 py-2 text-xs font-bold">
-            Try again
-          </button>
-        </div>
-      ) : blocks.length === 0 ? (
-        <p className="mt-5 flex items-center gap-2 text-sm text-[#505050]">
-          <Ban className="size-4" />Nobody blocked. Your conversations stay open.
-        </p>
-      ) : (
-        <ul className="mt-5 space-y-2">
-          {blocks.map(block => (
-            <li key={block.id} className="flex items-center gap-3 rounded-xl border border-[#e5e5e5] p-4">
-              <span className="min-w-0 flex-1">
-                <strong className="block text-sm">Blocked member</strong>
-                <small className="text-[#505050]">
-                  {block.createdAt ? `Blocked ${formatDate(block.createdAt)}` : "Blocked"}
-                  {block.reason ? ` · ${block.reason}` : ""}
-                </small>
-              </span>
-              <button
-                type="button"
-                disabled={unblocking === block.id}
-                onClick={() => void unblock(block.id)}
-                className="inline-flex min-h-11 items-center gap-1 rounded-lg border border-[#e5e5e5] bg-white px-4 py-2 text-xs font-bold"
-              >
-                <Undo2 className="size-4" />
-                {unblocking === block.id ? "Unblocking…" : "Unblock"}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
+  return <Panel>
+    <Ban className="mb-2 size-5" aria-hidden="true" />
+    <h2 className="text-lg font-semibold">Blocked people</h2>
+    {remove.isError ? <ErrorNotice message={messageOf(remove.error, UNBLOCK_ERROR)} /> : null}
+    {blocks.isPending ? <Loading>Loading your blocked list…</Loading>
+      : blocks.isError ? <ErrorNotice message={messageOf(blocks.error, BLOCKS_ERROR)} onRetry={() => void blocks.refetch()} />
+      : blocks.data.length === 0 ? <p className="mt-2 text-sm text-muted-foreground">You haven't blocked anyone.</p>
+      : <ul className="mt-3 divide-y divide-border">
+        {blocks.data.map(block => {
+          const busy = remove.isPending && remove.variables === block.id;
+          return <li key={block.id} className="flex min-h-12 items-center justify-between gap-3">
+            <span className="min-w-0 text-sm">{blockLabel(block)}</span>
+            <Button variant="ghost" size="sm" className="min-h-11" disabled={busy} onClick={() => remove.mutate(block.id)}>{busy ? "Unblocking…" : "Unblock"}</Button>
+          </li>;
+        })}
+      </ul>}
+  </Panel>;
 }

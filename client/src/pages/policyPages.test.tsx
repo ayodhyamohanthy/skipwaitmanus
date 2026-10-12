@@ -133,12 +133,15 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
   });
 
-  it("Settings and NotFound link to the disclosures so they are reachable before account commitment", () => {
+  it("Settings and NotFound keep the kit bodies; the shell's More menu (Help & safety) carries the disclosures", () => {
+    // Owner decision (Oct 9 2026): the kit screens win, so neither body repeats
+    // a legal row or a support line. Both render inside the app shell, whose
+    // More menu opens Help & safety with Terms, Privacy and Support.
     render(<Settings />);
-    const legalNav = screen.getByRole("navigation", { name: "Legal and support" });
-    expect(Array.from(legalNav.querySelectorAll("a")).map(a => a.getAttribute("href"))).toEqual(["/terms", "/refunds", "/support"]);
+    expect(screen.queryByRole("navigation", { name: "Legal and support" })).toBeNull();
     cleanup();
     render(<NotFound />);
-    expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
+    expect(screen.queryByRole("link", { name: "Contact support" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "More" }).length).toBeGreaterThan(0);
   });
 });

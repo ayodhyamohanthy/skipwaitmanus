@@ -1,0 +1,78 @@
+// Kit v4 Settings > Account: work-email status and the account-deletion review
+// request. Signed-in device sessions and the 14-day deletion grace need
+// servers that do not exist yet, so those kit Panels are left out.
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { BriefcaseBusiness, Mail, Trash2 } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { Button } from "@/components/kit/button";
+import { Panel } from "@/components/kit/preview-kit";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DoneNotice, ErrorNotice, Loading } from "./settingsUi";
+import { ACCESS_ERROR, ERASURE_ERROR, PRIVACY_REQUESTS_ERROR, fetchPrivacyRequests, hasVerifiedWorkEmail, requestErasure, settingsKeys, type TokenSource } from "./settingsApi";
+import { useCompanyAccess } from "./settingsQueries";
+
+const messageOf = (reason: unknown, fallback: string) => (reason instanceof Error && reason.message ? reason.message : fallback);
+
+function WorkEmailPanel({ getToken }: { getToken: TokenSource }) {
+  const [, setLocation] = useLocation();
+  const access = useCompanyAccess(getToken);
+  return <Panel>
+    <Mail className="mb-2 size-5" aria-hidden="true" />
+    <h2 className="text-lg font-semibold">Work email</h2>
+    <p className="mt-1 text-sm text-muted-foreground">A verified company email unlocks private Job Referrer access. It is never shown to Job Seekers.</p>
+    {access.isPending ? <Loading>Checking your work-email access…</Loading>
+      : access.isError ? <ErrorNotice message={messageOf(access.error, ACCESS_ERROR)} onRetry={() => void access.refetch()} />
+      : hasVerifiedWorkEmail(access.data) ? <div className="mt-4">
+        <p className="text-sm"><strong className="block">Work email verified</strong><small className="block text-muted-foreground">{access.data.workEmailDomain} · your account can receive private company referral requests.</small></p>
+        <Button className="mt-4" onClick={() => setLocation("/referrer")}><BriefcaseBusiness />Switch to Job Referrer mode</Button>
+      </div>
+      : <div className="mt-4">
+        <p className="text-sm"><strong className="block">No verified work email yet</strong><small className="block text-muted-foreground">Use a company email and confirm the one-time code to unlock Job Referrer mode.</small></p>
+        <Button asChild className="mt-4"><Link href="/verify">Add work email</Link></Button>
+      </div>}
+  </Panel>;
+}
+
+function DeleteAccountPanel({ getToken }: { getToken: TokenSource }) {
+  const queryClient = useQueryClient();
+  const requests = useQuery({ queryKey: settingsKeys.privacyRequests, retry: false, queryFn: () => fetchPrivacyRequests(getToken) });
+  const [notice, setNotice] = useState("");
+  const erasure = useMutation({
+    mutationFn: () => requestErasure(getToken),
+    onMutate: () => setNotice(""),
+    onSuccess: async reply => {
+      setNotice(reply.alreadyRequested ? "Your deletion request is already awaiting review." : "Your account deletion request is now awaiting review.");
+      await queryClient.invalidateQueries({ queryKey: settingsKeys.privacyRequests });
+    },
+  });
+  return <Panel className="border-destructive/40">
+    <Trash2 className="mb-2 size-5 text-destructive" aria-hidden="true" />
+    <h2 className="text-lg font-semibold">Delete account</h2>
+    <p className="mt-1 text-sm text-muted-foreground">Ask for your account to be deleted. We review deletion requests rather than silently removing records that may need payment reconciliation or security handling.</p>
+    {erasure.isError ? <ErrorNotice message={messageOf(erasure.error, ERASURE_ERROR)} /> : null}
+    {notice ? <DoneNotice>{notice}</DoneNotice> : null}
+    <AlertDialog>
+      <AlertDialogTrigger asChild><Button variant="outline" className="mt-4 text-destructive">Request account deletion</Button></AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Request account deletion review?</AlertDialogTitle>
+          <AlertDialogDescription>This creates a review request. It does not immediately delete your account, resume, payments, or security records.</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep my account</AlertDialogCancel>
+          <AlertDialogAction disabled={erasure.isPending} onClick={() => erasure.mutate()} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">{erasure.isPending ? "Requesting…" : "Request review"}</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    {requests.isPending ? <Loading>Checking privacy requests…</Loading>
+      : requests.isError ? <p className="mt-3 text-sm text-muted-foreground">{messageOf(requests.error, PRIVACY_REQUESTS_ERROR)}.</p>
+      : requests.data.length ? <ul className="mt-4 divide-y divide-border border-t border-border" aria-label="Your requests">
+        {requests.data.slice(0, 3).map(request => <li key={request.id} className="py-3 text-sm"><strong className="font-semibold">Deletion request</strong> · {request.status.replace("_", " ")}{request.resolution ? ` · ${request.resolution}` : ""}</li>)}
+      </ul> : null}
+  </Panel>;
+}
+
+export function AccountPanels({ getToken }: { getToken: TokenSource }) {
+  return <><WorkEmailPanel getToken={getToken} /><DeleteAccountPanel getToken={getToken} /></>;
+}

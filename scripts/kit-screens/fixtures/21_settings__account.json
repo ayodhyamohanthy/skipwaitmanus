@@ -1,0 +1,40 @@
+{
+  "signedIn": {
+    "id": 1,
+    "name": "Asha Rao",
+    "email": "asha@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/privacy/requests",
+      "status": 200,
+      "body": {
+        "requests": [
+          {
+            "id": 3,
+            "kind": "erasure",
+            "status": "in_review",
+            "resolution": null,
+            "createdAt": "2026-10-01T09:00:00.000Z"
+          }
+        ]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "text=Delete account"
+    }
+  ]
+}
