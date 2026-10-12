@@ -58,8 +58,11 @@ describe("System galleries", () => {
     expect(screen.getByRole("link", { name: "Connect an assistant" }).getAttribute("href")).toBe("/connect-assistant");
     expect(screen.getByRole("link", { name: "Build an app" }).getAttribute("href")).toBe("/developer-console");
     expect(screen.getByRole("link", { name: "Connected assistants" }).getAttribute("href")).toBe("/assistants");
-    // No preview scaffolding, no endpoints or deliveries that do not exist, live plan names only.
+    // Kit plan wording (owner decision, Oct 9 2026): assistants come with Land and Concierge.
+    expect(screen.getByText(/You approve every send\. For Land and Concierge members\./)).toBeTruthy();
+    expect(screen.getByText(/Users on Land and Concierge get full send and tool access through apps\./)).toBeTruthy();
+    // No preview scaffolding, no endpoints or deliveries that do not exist.
     expect(screen.queryByText(/Design Preview/i)).toBeNull();
-    expect(document.body.textContent).not.toMatch(/api\/v1|sw_live_|REST API|Webhooks|Land|Concierge|Sent with/);
+    expect(document.body.textContent).not.toMatch(/api\/v1|sw_live_|REST API|Webhooks|Sent with|\bMax\b/);
   });
 });
