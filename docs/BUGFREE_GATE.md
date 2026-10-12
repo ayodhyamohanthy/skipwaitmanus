@@ -35,7 +35,7 @@ Current overall gate state, how each item is tested, and its latest result follo
 | 2.1 | Referral pages render for signed-out visitors | 6 h crawl audit: all reachable pages, zero console/page errors, zero >=400 responses, external links head-checked. | GREEN (36 pages, 0 issues; latest 1:36 AM IST Oct 13) |
 | 2.2 | Signed-in referral request creation | **UNVERIFIED - cannot test live.** War mode: no synthetic production writes, and real referral requests are never opened or created. Closes with a disposable second account or a founder-authorized test window. | UNVERIFIED |
 | 2.3 | Cross-user denial (user B cannot see user A's data) | **UNVERIFIED.** Needs a second QA account (`qa-sweep-2`); parent confirmed none exists and none will be created without the founder. Mail routing also TBD. | UNVERIFIED |
-| 2.4 | Resume upload | **RED - known issue, fix in progress.** Retest is explicitly blocked until the build side names the redesigned fix SHA; then it is retested on that SHA. | RED (awaiting fix SHA) |
+| 2.4 | Resume upload | Signed-in retest (authorized Oct 13, current SHA): select file on /ask stages client-side, then 'Draft from my resume' runs the chunked pipeline - POST /api/documents/uploads 201 (session), chunks 200, complete 201 with clean JSON (no SQL leak); stored doc verified by GET /api/documents/6 (200, application/pdf, exact 21,257 bytes) and privacy export. Sep 17 double defect (finalize 500 + raw SQL leak) is fixed. | GREEN (4:20 AM IST Oct 13, API `cb3d20f`, web `76b137b5`) |
 
 ## 3. Approval flow
 
@@ -90,13 +90,12 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 
 ## How to read the daily state
 
-- **Today the gate is RED**: item 2.4 (resume upload) is a known issue awaiting its fix SHA.
+- **Today every live-testable item is GREEN.** Resume upload (2.4), the last RED item, passed its retest on the current SHA on Oct 13.
 - Everything else that can run unattended is GREEN.
 - 6 coverage gaps are open (1.4, 2.2, 2.3, 3.1, 3.2-live, 4.12). Each lists exactly what
   would close it; most close with a second QA account or a founder-authorized live test.
-- When the resume-upload fix SHA lands and its retest passes, the gate goes GREEN on every
-  item that is live-testable, and that is the day distribution can start (subject to the
-  founder's call on the remaining UNVERIFIED gaps).
+- With 2.4 GREEN, the gate is GREEN on every item that can run unattended. Whether
+  distribution starts now is the founder's call on the 6 remaining UNVERIFIED gaps below.
 
 Any battery failure flips the named item to RED and is reported immediately with surface, SHA,
 evidence, and repro. A pass restores GREEN at the next run. Gate history lives in the QA
