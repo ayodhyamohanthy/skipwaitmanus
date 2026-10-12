@@ -71,7 +71,9 @@ describe("ReferrerSetup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mid-level" }));
     fireEvent.click(screen.getByRole("button", { name: "Senior" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    expect(screen.getByText("asks per month · about 15 minutes")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Monthly capacity"), { target: { value: "5" } });
+    expect(screen.getByText("asks per month · about 25 minutes")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("radio", { name: /Named on company pages/ }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
@@ -79,6 +81,8 @@ describe("ReferrerSetup", () => {
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("You're open for asks.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Go to referrer home/ }).getAttribute("href")).toBe("/referrer-home");
+    // No handle yet: the profile opens on the handle field instead of a dead /p/ link.
+    expect(screen.getByRole("link", { name: "Share my profile" }).getAttribute("href")).toBe("/profile?focus=handle");
     expect(fetchMock).toHaveBeenCalledWith("/api/referrer-preferences", expect.objectContaining({ method: "PUT" }));
   });
 
@@ -94,6 +98,20 @@ describe("ReferrerSetup", () => {
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("Setup saved. New asks are paused.")).toBeTruthy();
     expect(screen.queryByText("You're open for asks.")).toBeNull();
+  });
+
+  it("shares the real public profile handle on the ready step", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/profile/me")) return ok({ profile: { handle: "meera-iyer" } });
+      if (init?.method === "PUT") return ok({ preferences: { ...PREFS, ...JSON.parse(String(init.body)) } });
+      return ok({ preferences: { ...PREFS, preferAreas: ["Design"] } });
+    }));
+    renderSetup();
+    expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
+    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
+    expect((await screen.findByRole("link", { name: "Share my profile" })).getAttribute("href")).toBe("/p/meera-iyer");
   });
 
   it("keeps the steps and shows the server's reason when saving fails", async () => {

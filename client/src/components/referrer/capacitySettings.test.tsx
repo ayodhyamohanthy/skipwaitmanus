@@ -4,6 +4,12 @@
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+const { go } = vi.hoisted(() => ({ go: vi.fn() }));
+vi.mock("wouter", () => ({
+  Link: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
+  useLocation: () => ["/referrer", go],
+}));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { CapacitySettingsPanel } from "./CapacitySettingsPanel";
 import { orderAreas } from "./capacitySettingsData";
@@ -44,8 +50,9 @@ describe("Referrer setup & capacity", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     renderPanel();
-    expect(await screen.findByText("acme.com")).toBeTruthy();
-    expect(screen.getByText("Verified work email")).toBeTruthy();
+    const company = await screen.findByRole("combobox", { name: "Company" }) as HTMLSelectElement;
+    expect(company.value).toBe("acme.com");
+    expect(Array.from(company.options, option => option.textContent)).toEqual(["acme.com", "Verify another company"]);
     const select = screen.getByRole("combobox", { name: "Work function" }) as HTMLSelectElement;
     expect(select.value).toBe("Design");
     fireEvent.change(select, { target: { value: "Data" } });
@@ -82,8 +89,13 @@ describe("Referrer setup & capacity", () => {
     expect(await screen.findByText("We couldn’t load your settings")).toBeTruthy();
     fail = false;
     fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
-    expect(await screen.findByText("No verified work email yet")).toBeTruthy();
+    expect(await screen.findByText(/No verified work email yet/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Verify work email" }).getAttribute("href")).toBe("/verify");
+    const company = screen.getByRole("combobox", { name: "Company" }) as HTMLSelectElement;
+    expect(company.value).toBe("");
+    expect(company.options[0]?.textContent).toBe("Select your company");
+    fireEvent.change(company, { target: { value: "verify-another" } });
+    expect(go).toHaveBeenCalledWith("/verify");
   });
 
   it("keeps every saved area and moves the chosen function to the front", () => {

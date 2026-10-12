@@ -52,7 +52,7 @@ describe("ReferrerImpact dashboard", () => {
     expect(Array.from(stats.querySelectorAll("strong")).map(node => node.textContent)).toEqual(["0", "0", "0"]);
     expect(stats.textContent).toContain("referrals accepted");
     expect(screen.queryByText("Recent referrals")).toBeNull();
-    expect(screen.getByRole("link", { name: "Open request queue" }).getAttribute("href")).toBe("/queue");
+    expect(screen.getByRole("link", { name: "See how a request looks" }).getAttribute("href")).toBe("/queue");
   });
 
   it("renders the real stat numbers and recent accepted referrals once data exists", async () => {

@@ -14,9 +14,12 @@ const STEPS = ["Areas", "Capacity", "Visibility", "Notifications", "Ready"] as c
 const chip = (on: boolean) => `min-h-11 rounded-full border px-4 text-sm ${on ? "border-primary bg-primary text-primary-foreground" : "border-border"}`;
 const toggle = (list: string[], value: string) => (list.includes(value) ? list.filter(item => item !== value) : [...list, value]);
 
-type Props = { initial: ReferrerPreferences; companyName: string; fetchToken: TokenSource; onSaved: () => void };
+type Props = { initial: ReferrerPreferences; companyName: string; profileHandle: string | null; fetchToken: TokenSource; onSaved: () => void };
 
-export function SetupWizard({ initial, companyName, fetchToken, onSaved }: Props) {
+/** The kit's stated time estimate: about five minutes per ask, never under one. */
+export const minutesForCapacity = (capacity: number) => Math.max(1, Math.round(capacity * 5));
+
+export function SetupWizard({ initial, companyName, profileHandle, fetchToken, onSaved }: Props) {
   const [step, setStep] = useState(0);
   const [areas, setAreas] = useState<string[]>(initial.preferAreas);
   const [levels, setLevels] = useState<string[]>(initial.preferLevels);
@@ -40,7 +43,7 @@ export function SetupWizard({ initial, companyName, fetchToken, onSaved }: Props
       </section> : null}
 
       {step === 1 ? <section><Gauge className="mb-3 text-primary" /><h1 className="text-3xl font-semibold">How many asks a month?</h1><p className="mt-2 text-muted-foreground">Be realistic — you can change or pause anytime.</p>
-        <p className="mt-8 text-center text-6xl font-semibold" aria-live="polite">{capacity}</p><p className="text-center text-sm text-muted-foreground">asks per month</p>
+        <p className="mt-8 text-center text-6xl font-semibold" aria-live="polite">{capacity}</p><p className="text-center text-sm text-muted-foreground">asks per month · about {minutesForCapacity(capacity)} minutes</p>
         <input type="range" min={1} max={15} value={capacity} onChange={event => setCapacity(Number(event.target.value))} className="mt-6 w-full" aria-label="Monthly capacity" />
         <p className="mt-4 rounded-xl bg-muted p-3 text-sm">Most new referrers start with 3. Paused referrers stop getting new review emails.</p>
       </section> : null}
@@ -56,7 +59,7 @@ export function SetupWizard({ initial, companyName, fetchToken, onSaved }: Props
 
       {step === 4 ? <section className="text-center"><Check className="mx-auto size-12 text-primary" /><h1 className="mt-4 text-3xl font-semibold">{paused ? "Setup saved. New asks are paused." : "You're open for asks."}</h1>
         <p className="mt-2 text-muted-foreground">{areas.join(", ") || "No areas yet"} · {levels.join(", ") || "All levels"} · {capacity}/month · {visibility === "anon" ? "anonymous" : "named"}</p>
-        <div className="mt-8 flex flex-wrap justify-center gap-3"><Button variant="outline" asChild><Link href="/profile">Edit profile</Link></Button><Button asChild><Link href="/referrer-home">Go to referrer home <ArrowRight /></Link></Button></div>
+        <div className="mt-8 flex flex-wrap justify-center gap-3"><Button variant="outline" asChild><Link href={profileHandle ? `/p/${encodeURIComponent(profileHandle)}` : "/profile?focus=handle"}>Share my profile</Link></Button><Button asChild><Link href="/referrer-home">Go to referrer home <ArrowRight /></Link></Button></div>
       </section> : null}
 
       {save.isError ? <p role="alert" className="mt-4 text-sm font-semibold text-destructive">{save.error.message || "We could not save your setup"}</p> : null}

@@ -123,6 +123,14 @@ export async function fetchReferrerHome(getToken: TokenSource): Promise<Referrer
   };
 }
 
+const handleSchema = z.object({ profile: z.object({ handle: z.string().nullish() }).nullish() });
+
+/** The public profile handle (/p/:handle), or null when unset or unavailable. */
+export async function fetchProfileHandle(getToken: TokenSource): Promise<string | null> {
+  const handle = (await getOptional("/api/profile/me", getToken, handleSchema))?.profile?.handle?.trim();
+  return handle ? handle : null;
+}
+
 /** "wipro.com" -> { name: "Wipro", mark: "W" }; the raw domain otherwise. */
 export function companyIdentity(domain: string): { name: string; mark: string } {
   const launch = getLaunchCompany(companySlugForJobCompany(domain) ?? "");

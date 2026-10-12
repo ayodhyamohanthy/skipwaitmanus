@@ -54,7 +54,8 @@ describe("ReferrerHome", () => {
     expect(screen.queryByText(/Asha/)).toBeNull();
     expect(screen.queryByText(/THANK-YOU WALL/)).toBeNull();
     expect(screen.queryByText(/DESIGN PREVIEW|EXAMPLE ASKS/)).toBeNull();
-    expect((await screen.findByRole("link", { name: /Private ask · Ref-1031/ })).getAttribute("href")).toBe("/conversation/31?from=inbox");
+    expect((await screen.findByRole("link", { name: /Private ask · Ref-1031/ })).getAttribute("href")).toBe("/queue?request=31");
+    expect(screen.getByRole("link", { name: "Become a referrer" }).getAttribute("href")).toBe("/verify");
     expect(screen.getAllByText("Wipro · 1 file attached")).toHaveLength(2);
   });
 
@@ -62,7 +63,7 @@ describe("ReferrerHome", () => {
     stubHome({ capacity: 1, completed: [{ id: 40, companyDomain: "wipro.com", status: "approved", isClaimedByYou: true, unreadMessageCount: 0, createdAt: "2026-09-01T08:00:00Z" }] });
     renderWithQuery(<ReferrerHome />);
     expect(await screen.findByText("You've hit your capacity.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Adjust capacity" }).getAttribute("href")).toBe("/referrer-setup");
+    expect(screen.getByRole("link", { name: "Adjust capacity" }).getAttribute("href")).toBe("/referrer?view=setup");
     expect(screen.getByRole("progressbar", { name: "Capacity used" }).getAttribute("aria-valuenow")).toBe("1");
   });
 
@@ -196,8 +197,24 @@ describe("Invite colleagues and request companies", () => {
     fireEvent.click(screen.getByRole("button", { name: "Copy invitation link" }));
     expect(await screen.findByText("Copied")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Email invite/ }).getAttribute("href")).toMatch(/^mailto:/);
-    expect(screen.getByRole("button", { name: /Share/ })).toBeTruthy();
+    // Kit row: the link, its icon and one primary "Email invite"; no extra Share button or paragraph.
+    expect(screen.queryByRole("button", { name: /^Share$/ })).toBeNull();
+    expect(screen.queryByText(/One link per person/)).toBeNull();
     expect(screen.queryByText(/DESIGN PREVIEW/)).toBeNull();
+  });
+
+  it("folds the native share sheet into the link icon where the device has one", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { value: share, configurable: true });
+    try {
+      search.value = "mode=invite";
+      vi.stubGlobal("fetch", vi.fn(async () => ok({ invite: { inviteCode: "r11-abcdef01" } })));
+      renderWithQuery(<Invite />);
+      fireEvent.click(await screen.findByRole("button", { name: "Share invitation link" }));
+      await waitFor(() => expect(share).toHaveBeenCalledWith(expect.objectContaining({ url: expect.stringContaining("/verify?invite=r11-abcdef01") })));
+    } finally {
+      Reflect.deleteProperty(navigator, "share");
+    }
   });
 
   it("opens straight on the invite link from referrer home and leads back there", async () => {

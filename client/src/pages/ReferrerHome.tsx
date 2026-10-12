@@ -39,7 +39,7 @@ export default function ReferrerHome() {
     <div className="flex flex-wrap items-center gap-2">
       {view.verified ? <span className="flex items-center gap-1 text-sm"><BadgeCheck className="size-4 text-primary" />Verified · {company?.name ?? "work email"}</span> : null}
       <Button variant="outline" size="sm" asChild><Link href="/queue">Queue &amp; settings</Link></Button>
-      {view.verified ? null : <Button variant="ghost" size="sm" asChild><Link href="/verify">Become a referrer</Link></Button>}
+      <Button variant="ghost" size="sm" asChild><Link href="/verify">Become a referrer</Link></Button>
     </div>
   ) : undefined;
 

@@ -1,10 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useAuth, useUser } from "@/_core/auth";
-import { ClipboardCheck } from "lucide-react";
-import { Button } from "@/components/kit/button";
 import { coverageInviteSessionKey } from "@/components/WorkEmailSignIn";
-import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
 import { ReferrerWorkspace } from "@/components/referrer/ReferrerWorkspace";
 import { ReferrerOverview } from "@/components/referrer/ReferrerOverview";
@@ -17,15 +14,14 @@ import { isCompanyEmail } from "@/lib/workEmail";
 
 export { ReferralCoverageInviteBanner } from "@/components/referrer/CoverageInviteBanner";
 
-type CompanyInboxItem = { id: number; targetRoleUrl: string; companyDomain: string; createdAt: string; attachmentCount: number };
-type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; request?: ClaimedCompanyRequest; requests?: CompanyInboxItem[] };
+type CompanyResponse = { error?: string; reward?: { rewarded?: boolean }; request?: ClaimedCompanyRequest };
 
 const alertClass = "rounded-[8px] border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive";
 
 export default function Referrer() {
   const [, go] = useLocation();
   const params = new URLSearchParams(useSearch());
-  const { isLoaded, isSignedIn, getToken, signOut } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const { user } = useUser();
   const inviteCompany = params.get("company")?.trim().toLowerCase() || "";
   const inviteCode = params.get("invite")?.trim() || "";
@@ -51,11 +47,9 @@ export default function Referrer() {
   const [deciding, setDeciding] = useState(false);
   const [message, setMessage] = useState("");
   const [activeDocument, setActiveDocument] = useState(0);
-  const [inbox, setInbox] = useState<CompanyInboxItem[]>([]);
   const [inboxReady, setInboxReady] = useState(false);
   const [claimedRequest, setClaimedRequest] = useState<ClaimedCompanyRequest | null>(null);
   const [inboxError, setInboxError] = useState("");
-  const [claimingId, setClaimingId] = useState<number | null>(null);
   const [workEmailError, setWorkEmailError] = useState("");
   const [coverageRewardMessage, setCoverageRewardMessage] = useState("");
   const [employeeEnrollmentReady, setEmployeeEnrollmentReady] = useState(false);
@@ -108,14 +102,14 @@ export default function Referrer() {
   }, [isSignedIn, employeeSignInEmail, sessionEmailIsCompany]);
 
   useEffect(() => {
-    // The setup tab reads its own settings; the overview and a claimed review need the inbox.
+    // The setup tab reads its own settings. The overview checks inbox access
+    // only to gate the post-sign-in landing; the request list lives in /queue.
     if (!isSignedIn || claimedRequest || !employeeEnrollmentReady || (view === "setup" && !hasClaimedRequestId)) return;
     let active = true;
     const path = hasClaimedRequestId ? `/api/company-referrals/${claimedRequestId}` : "/api/company-referrals/inbox";
     void companyFetch(path).then(payload => {
       if (!active) return;
       if (hasClaimedRequestId) { setClaimedRequest(payload.request || null); setActiveDocument(0); }
-      else setInbox(payload.requests || []);
     }).catch((error: unknown) => {
       if (!active) return;
       if (hasClaimedRequestId) setInboxError("This private request is not available to your verified employee account.");
@@ -147,10 +141,6 @@ export default function Referrer() {
     } catch (error) { setInboxError(error instanceof Error ? error.message : "We could not record this referral decision"); }
     finally { setDeciding(false); }
   };
-  const switchToWorkEmail = async () => { setWorkEmailError(""); try { await signOut?.(); } catch { setWorkEmailError("We could not switch accounts. Try signing out from the account menu, then use your company email."); } };
-  const claim = async (requestId: number) => { setClaimingId(requestId); setInboxError(""); try { await companyFetch(`/api/company-referrals/${requestId}/claim`, { method: "POST" }); go(`/referrer?request=${requestId}`); } catch (error) { setInboxError(error instanceof Error ? error.message : "This request is no longer available"); } finally { setClaimingId(null); } };
-  const setUp = () => { if (isSignedIn) go("/referrer-setup"); else setSignInOpen(true); };
-
   if (decision) return <DecisionRecorded decision={decision} request={claimedRequest} onMessage={requestId => go(`/conversation/${requestId}?from=inbox`)} />;
 
   if (isSignedIn && hasClaimedRequestId) {
@@ -166,54 +156,18 @@ export default function Referrer() {
     );
   }
 
-  const signedInStatus = isSignedIn && view === "overview" ? (
-    <div className="mt-7 grid grid-cols-[minmax(0,1fr)] gap-4">
-      {!inboxReady ? <LoadingSkeleton title="Loading your private company requests…" caption="Checking requests waiting at your company." /> : null}
-      {coverageRewardMessage ? <p role="status" className="rounded-[8px] border border-[var(--success)]/30 bg-[var(--success)]/10 p-3 text-sm font-medium text-[var(--success)]">{coverageRewardMessage}</p> : null}
-      {showWorkEmailEnrollment ? (
-        <section className="rounded-[8px] border border-border p-6">
-          <h2 className="text-lg font-semibold">Use your company email account.</h2>
-          <p className="mt-1.5 max-w-2xl text-[13px] leading-[1.7] text-muted-foreground">Private Referrer access is a separate passwordless company-email sign-in. We never add that email to a personal account or send a code to another address.</p>
-          <Button type="button" variant="outline" className="mt-4" onClick={() => { void switchToWorkEmail(); }}>Continue with work email</Button>
-        </section>
-      ) : null}
-      {workEmailError && !showWorkEmailEnrollment ? <p role="alert" className={alertClass}>{workEmailError}</p> : null}
-      {inboxError ? <p role="alert" className={alertClass}>{inboxError}</p> : null}
-      {inboxReady && !inboxError && !showWorkEmailEnrollment && inbox.length === 0 ? (
-        <section data-skipwait-empty-preview="referrer" aria-label="No private requests at your company yet" className="grid gap-1 pt-2 sm:grid-cols-[auto_1fr] sm:gap-6">
-          <span className="empty-icon !mb-4"><ClipboardCheck /></span>
-          <div className="min-w-0">
-            <h2 className="text-lg font-semibold">No private requests at your company yet.</h2>
-            <p className="mt-1.5 text-[13px] leading-[1.7] text-muted-foreground">New requests for your company appear in your request queue. Sharing SkipWait is always voluntary.</p>
-            <ZeroActivityShareCard audience="referrer" />
-          </div>
-        </section>
-      ) : null}
-      {inbox.length ? (
-        <section aria-label="Private requests at your company" className="min-w-0 pt-2">
-          <h2 className="text-lg font-semibold">Private requests at your company.</h2>
-          <p className="mt-1.5 text-[13px] leading-[1.7] text-muted-foreground">Reviewing and responding are always free. Your identity stays hidden until you choose to help.</p>
-          <div className="mt-5 grid grid-cols-[minmax(0,1fr)] gap-3">
-            {inbox.map(request => (
-              <article key={request.id} className="rounded-[7px] border border-border p-4">
-                <p className="eyebrow">{request.companyDomain} · {request.attachmentCount} document{request.attachmentCount === 1 ? "" : "s"}</p>
-                <a href={request.targetRoleUrl} target="_blank" rel="noreferrer" className="mt-2 block truncate text-sm font-semibold">{request.targetRoleUrl}</a>
-                <p className="mt-2 text-[13px] text-muted-foreground">Review the candidate’s note and resume before deciding whether you can help.</p>
-                <Button type="button" variant="outline" className="mt-4" onClick={() => { void claim(request.id); }} disabled={claimingId === request.id}>{claimingId === request.id ? "Opening review…" : "Review candidate"}</Button>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-    </div>
-  ) : null;
+  // The overview stays the kit sections. Enrollment and inbox-access problems
+  // surface as one compact alert; a personal-email session that is simply not
+  // verified yet gets no alert (the setup dialog's verify step covers it).
+  const overviewAlert = isSignedIn && view === "overview" ? workEmailError || (showWorkEmailEnrollment ? "" : inboxError) : "";
 
   return (
-    <ReferrerWorkspace view={view} screen={isSignedIn ? `referrer-${view}` : "referrer-sign-in"} onSetUp={setUp}>
+    <ReferrerWorkspace view={view} screen={isSignedIn ? `referrer-${view}` : "referrer-sign-in"} isSignedIn={Boolean(isSignedIn)} onSignIn={() => setSignInOpen(true)} verifyOnOpen={params.get("setup") === "work-email" && view === "overview"}>
       {view === "setup"
         ? <CapacitySettingsPanel isSignedIn={isSignedIn} getToken={getToken} onSignIn={() => setSignInOpen(true)} />
         : <ReferrerOverview onPreviewAsks={() => go("/queue")} />}
-      {signedInStatus}
+      {coverageRewardMessage && view === "overview" ? <p role="status" className="mt-7 rounded-[8px] border border-[var(--success)]/30 bg-[var(--success)]/10 p-3 text-sm font-medium text-[var(--success)]">{coverageRewardMessage}</p> : null}
+      {overviewAlert ? <p role="alert" className={`mt-7 ${alertClass}`}>{overviewAlert}</p> : null}
       {signInOpen && !isSignedIn && isLoaded !== false ? <ReferrerSignInDialog inviteCompany={inviteCompany || undefined} inviteCode={inviteCode || undefined} onClose={() => { setSignInOpen(false); setSignInDismissed(true); }} /> : null}
     </ReferrerWorkspace>
   );

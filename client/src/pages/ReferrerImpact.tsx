@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { ArrowRight, CheckCircle2, HeartHandshake, LoaderCircle, RefreshCw, ShieldCheck, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/kit/button";
-import { ReferrerWorkspace, referrerSetUpHref } from "@/components/referrer/ReferrerWorkspace";
+import { REFERRER_SIGN_IN_HREF, ReferrerWorkspace } from "@/components/referrer/ReferrerWorkspace";
 import { readApiJson } from "@/lib/apiResponse";
 
 type ReferrerImpactSummary = { acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
@@ -58,7 +58,7 @@ export default function ReferrerImpact() {
   };
   useEffect(() => { void loadCompanyAccess(); }, [isSignedIn]);
   useEffect(() => { if (isSignedIn && hasVerifiedWorkEmail) void loadSummary(); }, [isSignedIn, hasVerifiedWorkEmail]);
-  const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} onSetUp={() => go(referrerSetUpHref(Boolean(isSignedIn)))}>{content}</ReferrerWorkspace>;
+  const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} isSignedIn={Boolean(isSignedIn)} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
   const loadingState = <ImpactState icon={LoaderCircle} eyebrow="PRIVATE BY DEFAULT" title="Loading your private impact…" busy />;
 
   if (!isLoaded) return frame("referrer-impact-loading", loadingState);
@@ -84,7 +84,7 @@ export default function ReferrerImpact() {
 
   if (summary.acceptedReferrals === 0) return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="YOUR IMPACT STARTS AT ZERO" title="No invented scoreboards." text="When real introductions happen, this space can reflect actions you control: thoughtful replies, introductions made, and people helped. It will never rank generosity.">
     <div aria-label="Your private impact"><Stat value={summary.acceptedReferrals} label="referrals accepted" /><Stat value={summary.pendingRequests} label="pending decisions" /><Stat value={summary.unreadMessages} label="unread messages" /></div>
-    <Button asChild><Link href="/queue">Open request queue <ArrowRight /></Link></Button>
+    <Button asChild><Link href="/queue">See how a request looks <ArrowRight /></Link></Button>
   </ImpactState>);
 
   return frame("referrer-impact", <ImpactState icon={HeartHandshake} eyebrow="ONLY YOU CAN SEE THIS" title="Your private impact at a glance." text="Acceptances, pending decisions, and private messages from the requests you covered.">

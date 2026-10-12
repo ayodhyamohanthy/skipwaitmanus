@@ -4,7 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MyCompanyInbox from "./MyCompanyInbox";
 
-const { go, authState } = vi.hoisted(() => ({ go: vi.fn(), authState: { signedIn: false } }));
+const { go, authState, search } = vi.hoisted(() => ({ go: vi.fn(), authState: { signedIn: false }, search: { value: "" } }));
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: authState.signedIn, getToken: vi.fn().mockResolvedValue("test-token") }),
@@ -12,13 +12,14 @@ vi.mock("@/_core/auth", () => ({
 }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
-  useLocation: () => ["/inbox", go],
+  useLocation: () => ["/queue", go],
+  useSearch: () => search.value,
 }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
 
-beforeEach(() => { authState.signedIn = false; });
+beforeEach(() => { authState.signedIn = false; search.value = ""; });
 afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); });
 
 describe("My Company Inbox employee access", () => {
@@ -43,17 +44,55 @@ describe("My Company Inbox employee access", () => {
     expect(screen.queryByText("No new requests.")).toBeNull();
   });
 
-  it("shows the server-filtered New request count and keeps it visible across inbox tabs", async () => {
+  it("lists routed new requests, then saved ones, as kit cards without scope tabs or a pager", async () => {
     authState.signedIn = true;
-    const newRequests = [
-      { id: 1, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/one", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false },
-      { id: 2, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/two", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false },
-    ];
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=saved") ? [] : newRequests }) })));
+    const row = (id: number, savedAt: string | null = null) => ({ id, companyDomain: "acme.com", status: "pending", targetRoleUrl: `https://careers.acme.com/jobs/${id}`, attachmentCount: 1, savedAt, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false });
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=saved") ? [row(3, "2026-01-02"), row(1)] : url.includes("scope=new") ? [row(1), row(2)] : [] }) })));
     render(<MyCompanyInbox />);
-    await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
-    fireEvent.click(screen.getByRole("tab", { name: "Saved" }));
-    await waitFor(() => expect(screen.getByLabelText("2 new private requests")).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(3));
+    expect(screen.getAllByRole("article").map(card => card.getAttribute("aria-label"))).toEqual(["Private request Ref-1001", "Private request Ref-1002", "Private request Ref-1003"]);
+    expect(screen.queryByRole("tablist", { name: "Company inbox views" })).toBeNull();
+    expect(screen.queryByLabelText("Request navigation")).toBeNull();
+    // Kit card: "Requested" pill, Pass privately + Open request, no raw role URL or detail paragraph.
+    expect(screen.getAllByText("Requested")).toHaveLength(3);
+    expect(document.querySelector(".status-requested")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Pass privately" })).toHaveLength(3);
+    expect(screen.queryByText("https://careers.acme.com/jobs/1")).toBeNull();
+    expect(screen.queryByText(/Review the candidate’s note/)).toBeNull();
+    expect(screen.queryByRole("button", { name: /Save for later/ })).toBeNull();
+  });
+
+  it("passes privately with one confirmed reason, then moves on to the next request", async () => {
+    authState.signedIn = true;
+    let decided = false;
+    const row = (id: number) => ({ id, companyDomain: "acme.com", status: "pending", targetRoleUrl: null, attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false });
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("one-click-review")) { decided = true; return { ok: true, json: async () => ({ status: "declined", declineReason: "timing" }) }; }
+      return { ok: true, json: async () => ({ requests: url.includes("scope=new") ? (decided ? [row(8)] : [row(7), row(8)]) : [] }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MyCompanyInbox />);
+    const [first] = await screen.findAllByRole("button", { name: "Pass privately" });
+    fireEvent.click(first);
+    const group = screen.getByRole("group", { name: "Pass privately" });
+    expect(screen.queryByRole("button", { name: "Confirm pass" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Not now" }));
+    expect(group.textContent).toContain("Pass as “Not now”?");
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("one-click-review"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm pass" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing" }) })));
+    expect(await screen.findByText(/Passed privately/)).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByRole("article").map(card => card.getAttribute("aria-label"))).toEqual(["Private request Ref-1008"]));
+  });
+
+  it("opens the request named in ?request= straight into its preview", async () => {
+    authState.signedIn = true;
+    search.value = "request=7";
+    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/7/preview") ? { request: { id: 7, candidateName: null, candidateMessage: "Happy to share more.", companyDomain: "acme.com", targetRoleUrl: null, attachments: [] } } : { requests: [] } }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<MyCompanyInbox />);
+    expect(await screen.findByText("Happy to share more.")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/preview", expect.anything());
   });
 
   it("shows the matching candidate note, role link, and resume before direct acceptance or a concise one-click decline", async () => {
@@ -75,14 +114,23 @@ describe("My Company Inbox employee access", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved" }) })));
   });
 
-  it("shows a genuine unread conversation cue only for the Referrer's accepted request", async () => {
+  it("keeps decided requests out of the queue and hands an acceptance straight to the conversation", async () => {
     authState.signedIn = true;
-    const completedRequest = { id: 11, companyDomain: "acme.com", status: "approved", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, unreadMessageCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-02", isClaimedByYou: true };
-    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=completed") ? [completedRequest] : [] }) })));
+    let accepted = false;
+    const inboxRequest = { id: 11, companyDomain: "acme.com", status: "pending", targetRoleUrl: null, attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-02", isClaimedByYou: false };
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/preview")) return { ok: true, json: async () => ({ request: { id: 11, candidateName: "Avery", candidateMessage: "Note", companyDomain: "acme.com", targetRoleUrl: null, attachments: [{ id: 1, fileName: "cv.pdf", mimeType: "text/plain", fileSize: 1, url: "/api/files/1" }] } }) };
+      if (url.includes("one-click-review")) { accepted = true; return { ok: true, json: async () => ({ status: "approved" }) }; }
+      return { ok: true, json: async () => ({ requests: url.includes("scope=new") && !accepted ? [inboxRequest] : [] }) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
     render(<MyCompanyInbox />);
-    await waitFor(() => expect(screen.getByRole("tab", { name: "Done" })).toBeTruthy());
-    fireEvent.click(screen.getByRole("tab", { name: "Done" }));
-    await waitFor(() => expect(screen.getByText("The Job Seeker sent 1 new private message.")).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Open conversation · 1 new" })).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Accept & submit referral" }));
+    expect(await screen.findByText("Referral accepted. You can now message the Job Seeker privately.")).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("scope=completed"))).toBe(false);
+    expect(screen.queryByRole("tab", { name: "Done" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Open conversation" }));
+    expect(go).toHaveBeenCalledWith("/conversation/11?from=inbox");
   });
 });

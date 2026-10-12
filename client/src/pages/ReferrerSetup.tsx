@@ -6,14 +6,15 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
 import { SetupWizard } from "@/components/referrer-home/SetupWizard";
-import { companyIdentity, fetchCompanyAccess, fetchReferrerPreferences, type CompanyAccess, type ReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
+import { companyIdentity, fetchCompanyAccess, fetchProfileHandle, fetchReferrerPreferences, type CompanyAccess, type ReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
 
-type SetupData = { access: CompanyAccess; preferences: ReferrerPreferences | null };
+type SetupData = { access: CompanyAccess; preferences: ReferrerPreferences | null; handle: string | null };
 
 async function fetchSetup(getToken: TokenSource): Promise<SetupData> {
   const access = await fetchCompanyAccess(getToken);
-  if (!access.verified) return { access, preferences: null };
-  return { access, preferences: await fetchReferrerPreferences(getToken) };
+  if (!access.verified) return { access, preferences: null, handle: null };
+  const [preferences, handle] = await Promise.all([fetchReferrerPreferences(getToken), fetchProfileHandle(getToken)]);
+  return { access, preferences, handle };
 }
 
 export default function ReferrerSetup() {
@@ -52,6 +53,7 @@ export default function ReferrerSetup() {
         <SetupWizard
           initial={data.preferences}
           companyName={data.access.domain ? companyIdentity(data.access.domain).name : "your company"}
+          profileHandle={data.handle}
           fetchToken={fetchToken}
           onSaved={() => { void queryClient.invalidateQueries({ queryKey: ["referrer-home"] }); void queryClient.invalidateQueries({ queryKey: ["referrer-setup"] }); }}
         />

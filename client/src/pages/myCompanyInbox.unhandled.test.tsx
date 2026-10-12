@@ -10,7 +10,8 @@ vi.mock("@/_core/auth", () => ({
 }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
-  useLocation: () => ["/inbox", vi.fn()],
+  useLocation: () => ["/queue", vi.fn()],
+  useSearch: () => "",
 }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div> }));

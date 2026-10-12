@@ -40,6 +40,21 @@
     },
     {
       "method": "GET",
+      "path": "/api/profile/me",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "displayName": "Meera Iyer",
+        "profile": {
+          "handle": null,
+          "workEmailVerifiedAt": "2026-09-20T06:00:00.000Z",
+          "referralCapacity": 3
+        },
+        "workItems": []
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/notifications",
       "match": "exact",
       "status": 200,

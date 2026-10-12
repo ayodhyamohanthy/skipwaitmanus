@@ -1,4 +1,9 @@
 {
   "signedIn": false,
-  "routes": []
+  "routes": [],
+  "actions": [
+    { "waitFor": "[aria-label='Close setup']" },
+    { "click": "[aria-label='Close setup']" },
+    { "wait": 200 }
+  ]
 }
