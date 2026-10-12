@@ -54,6 +54,10 @@ describe("AdminReview console", () => {
     expect(screen.queryByText(/tcs\.com/)).toBeNull();
     expect(screen.getByRole("tab", { name: /All 3/ })).toBeTruthy();
     expect(screen.queryByText("R-2048")).toBeNull();
+    // Kit refs: the real id zero-padded to 3 digits.
+    expect(screen.getByText(/^R-048 · /)).toBeTruthy();
+    expect(screen.getByText(/^V-031 · /)).toBeTruthy();
+    expect(screen.getByText(/^C-005 · /)).toBeTruthy();
     expect(screen.queryByText(/Freshworks/)).toBeNull();
     expect(screen.queryByText(/EXAMPLE CASES/)).toBeNull();
   });

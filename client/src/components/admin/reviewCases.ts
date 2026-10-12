@@ -47,6 +47,9 @@ const COMPANY_DECISIONS: CaseDecision[] = [
   { value: "dismissed", label: "Dismiss", detail: "Not listed, submitter notified", danger: true, dismiss: true },
 ];
 
+/** Case reference: kind prefix plus the real id, zero-padded to 3 digits (R-048, V-311, C-2048). */
+export const caseRef = (prefix: "R" | "V" | "C", id: number) => `${prefix}-${String(id).padStart(3, "0")}`;
+
 const openDecisions = (decisions: CaseDecision[], status: string) => decisions.filter(decision => !(decision.value === "under_review" && status === "under_review"));
 
 function websiteHost(website: string | null) {
@@ -59,7 +62,7 @@ export function reportCase(report: SafetyReport): ReviewCase {
   const terminal = TERMINAL_CASE_STATUSES.has(report.status);
   const links = [report.referralRequestId ? `Request #${report.referralRequestId}` : null, report.reportedUserId ? `Account #${report.reportedUserId}` : null].filter((part): part is string => Boolean(part));
   return {
-    key: `report:${report.id}`, kind: "report", id: report.id, ref: `R-${1000 + report.id}`, title: report.reason, sub: links.join(" · ") || "Member report",
+    key: `report:${report.id}`, kind: "report", id: report.id, ref: caseRef("R", report.id), title: report.reason, sub: links.join(" · ") || "Member report",
     urgent: report.urgent, status: report.status, terminal, createdAt: report.createdAt, updatedAt: report.updatedAt ?? null,
     evidence: [report.details ?? "No written details — reason only.", report.referralRequestId ? `Linked referral request #${report.referralRequestId}` : null, report.reportedUserId ? `Reported account #${report.reportedUserId}` : null].filter((line): line is string => Boolean(line)),
     decisions: openDecisions(REPORT_DECISIONS, report.status),
@@ -73,7 +76,7 @@ export function enrollmentCase(item: Enrollment): ReviewCase {
   const terminal = TERMINAL_CASE_STATUSES.has(item.status);
   const otp = item.meta?.otpTime ? new Date(item.meta.otpTime).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : null;
   return {
-    key: `verification:${item.id}`, kind: "verification", id: item.id, ref: `V-${1000 + item.id}`, title: `Work-email enrollment @${item.companyDomain}`, sub: item.meta?.referrerName ? `${item.meta.referrerName} · claims ${item.companyDomain}` : `Referrer claims ${item.companyDomain}`,
+    key: `verification:${item.id}`, kind: "verification", id: item.id, ref: caseRef("V", item.id), title: `Work-email enrollment @${item.companyDomain}`, sub: item.meta?.referrerName ? `${item.meta.referrerName} · claims ${item.companyDomain}` : `Referrer claims ${item.companyDomain}`,
     urgent: false, status: item.status, terminal, createdAt: item.createdAt, updatedAt: item.updatedAt ?? null,
     evidence: [otp ? `One-time code confirmed ${otp}` : "One-time code confirmation time not recorded", item.meta?.referrerEmail ? `Work email: ${item.meta.referrerEmail}` : null, `Company domain: ${item.companyDomain}`].filter((line): line is string => Boolean(line)),
     decisions: VERIFICATION_DECISIONS,
@@ -86,7 +89,7 @@ export function companyCase(item: CompanySuggestion): ReviewCase {
   const age = caseAge(item.createdAt);
   const host = websiteHost(item.website);
   return {
-    key: `company:${item.id}`, kind: "company", id: item.id, ref: `C-${1000 + item.id}`, title: `New company: ${item.companyName}`, sub: [`Submitted by a ${item.role}`, host].filter((part): part is string => Boolean(part)).join(" · "),
+    key: `company:${item.id}`, kind: "company", id: item.id, ref: caseRef("C", item.id), title: `New company: ${item.companyName}`, sub: [`Submitted by a ${item.role}`, host].filter((part): part is string => Boolean(part)).join(" · "),
     urgent: false, status: item.status, terminal: TERMINAL_CASE_STATUSES.has(item.status), createdAt: item.createdAt, updatedAt: null,
     evidence: [host ? `Website: ${host}` : "No website given", `Suggested name: ${item.companyName}`],
     decisions: openDecisions(COMPANY_DECISIONS, item.status),

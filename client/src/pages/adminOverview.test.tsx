@@ -53,21 +53,36 @@ describe("AdminOverview", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("renders live funnel aggregates, queue counts and tool links, never fabricated people", async () => {
+  it("renders live funnel aggregates and queue counts in the kit layout, never fabricated people", async () => {
     stub();
     renderPage();
     expect(await screen.findByText("Operate for trust, not vanity.")).toBeTruthy();
-    expect(await screen.findByText("Requests created")).toBeTruthy();
-    expect(screen.getByText("12")).toBeTruthy();
-    expect(screen.getByText("acme.com")).toBeTruthy();
+    const funnel = await screen.findByRole("list", { name: "Referral funnel, all time" });
+    expect(within(funnel).getAllByRole("listitem").map(item => item.getAttribute("aria-label"))).toEqual(["Requests created: 12", "Requests claimed: 5", "Decisions recorded: 4", "Waiting for coverage: 3"]);
+    // Kit chart: one-line stage labels, no value labels drawn over the bars.
+    expect(within(funnel).getByText("Created")).toBeTruthy();
+    expect(within(funnel).queryByText("12")).toBeNull();
+    expect(screen.getByRole("link", { name: /Flow health/ }).getAttribute("href")).toBe("/admin/flow-health");
     const snapshot = screen.getByLabelText("Operations snapshot");
     expect(await within(snapshot).findByText("Referrer enrollments awaiting review")).toBeTruthy();
     expect(within(snapshot).getByText("1 urgent")).toBeTruthy();
     expect(within(snapshot).getByText("No fabricated count")).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Approval queue/ }).getAttribute("href")).toBe("/admin/approvals");
-    expect(screen.getByRole("link", { name: /Safety review/ }).getAttribute("href")).toBe("/admin-review");
+    expect(screen.getByText("Employer subscriptions")).toBeTruthy();
+    expect(screen.getByText("Promoted employer profiles")).toBeTruthy();
+    expect(screen.getByText("Referrals remain free")).toBeTruthy();
+    // The kit overview ends after the chart: no coverage-gap or tools panels.
+    expect(screen.queryByLabelText("Coverage gaps")).toBeNull();
+    expect(screen.queryByLabelText("Operations tools")).toBeNull();
+    expect(screen.queryByText("acme.com")).toBeNull();
     expect(screen.queryByText(/DESIGN PREVIEW|ILLUSTRATIVE|NO LIVE DATA/)).toBeNull();
     expect(screen.queryByText(/Avery|Rahul/)).toBeNull();
+  });
+
+  it("keeps the admin tools reachable through the users directory", async () => {
+    stub();
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: /Users/ }));
+    expect(screen.getByRole("link", { name: "Open users directory" }).getAttribute("href")).toBe("/admin/users");
   });
 
   it("opens the company directory from the priority queue and filters it", async () => {
@@ -98,7 +113,6 @@ describe("AdminOverview", () => {
     renderPage();
     await screen.findByRole("alert", {}, { timeout: 4000 });
     expect(screen.queryByLabelText("Live funnel")).toBeNull();
-    expect(screen.queryByLabelText("Coverage gaps")).toBeNull();
   });
 
   it("shows the server-enforced admin gate without operations data", async () => {
