@@ -73,7 +73,7 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
 | 5.1 | Cart, /plans modal, Chargebee /details at desktop width | Exercised by every signed-in suite run at the default desktop viewport (1280-class). | GREEN (every 2 h) |
-| 5.2 | Same screens at 390 px phone width | **PARTIAL.** Viewport checks run only on parent-named targets (standing rule since Oct 3, to keep every-redeploy runs lean). Landing, /pricing, invite banner, and share-card preview were verified at 390/768/desktop when those shipped. Kit v4 checkout screens have no standing 390 px leg. | PARTIAL |
+| 5.2 | Same screens at 390 px phone width | Standing suite leg since Oct 13 (every 2 h): cart, /plans modal, and Chargebee /details checked at 390 px - no horizontal scroll, no clipped content, readable text, reachable primary buttons. Earlier one-off checks (landing, /pricing, invite banner, share-card) verified at 390/768/desktop when those shipped. | STANDING - first standing run 4:51 AM IST Oct 13 |
 | 5.3 | Viewport meta tag present in served HTML | Curl battery on web deploys. | GREEN |
 
 ## 6. Cross-cutting
@@ -92,7 +92,7 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 
 - **Today the gate is RED**: item 2.4 (resume upload) is a known issue awaiting its fix SHA.
 - Everything else that can run unattended is GREEN.
-- 7 coverage gaps are open (1.4, 2.2, 2.3, 3.1, 3.2-live, 4.12, 5.2). Each lists exactly what
+- 6 coverage gaps are open (1.4, 2.2, 2.3, 3.1, 3.2-live, 4.12). Each lists exactly what
   would close it; most close with a second QA account or a founder-authorized live test.
 - When the resume-upload fix SHA lands and its retest passes, the gate goes GREEN on every
   item that is live-testable, and that is the day distribution can start (subject to the
