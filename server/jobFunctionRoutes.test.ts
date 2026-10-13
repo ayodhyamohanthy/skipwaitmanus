@@ -55,11 +55,12 @@ describe("ask creation takes an optional job function", () => {
     expect(response.body.jobFunction).toBe("Product");
   });
 
-  it("lets the server infer when the function is absent or null", async () => {
+  it("lets the server infer when the function is absent or null, from the link as submitted", async () => {
     const { app, createCompanyReferralRequest } = setup();
     expect((await send(app, {})).status).toBe(201);
-    expect((await send(app, { jobFunction: null })).status).toBe(201);
+    expect((await send(app, { jobFunction: null, targetRoleUrl: " https://www.linkedin.com/jobs/view/senior-product-designer-at-wipro-3912345 " })).status).toBe(201);
     for (const call of createCompanyReferralRequest.mock.calls) expect(call[1]).not.toHaveProperty("jobFunction");
+    expect(createCompanyReferralRequest.mock.calls[1]?.[1]).toMatchObject({ targetRoleUrl: "https://linkedin.com/jobs/view/3912345", submittedTargetRoleUrl: "https://www.linkedin.com/jobs/view/senior-product-designer-at-wipro-3912345" });
   });
 
   it.each(["design", "Astrology", 5, ["Design"], ""])("rejects %j before anything is reserved", async jobFunction => {
@@ -113,6 +114,10 @@ describe("the private jobs row behind an ask", () => {
     expect(companyAskJobRow({ ...base, jobFunction: "Product" })).toMatchObject({ company: "wipro.com", jobFunction: "Product", jobFunctionSource: "seeker" });
     expect(companyAskJobRow(base)).toMatchObject({ jobFunction: "Design", jobFunctionSource: "inferred" });
     expect(companyAskJobRow({ ...base, targetRoleUrl: "https://careers.wipro.com/jobs/123" })).toMatchObject({ jobFunction: null, jobFunctionSource: "inferred" });
+    // A normalized LinkedIn link keeps only the job id; the guess reads the link as submitted.
+    const linkedIn = { ...base, targetRoleUrl: "https://linkedin.com/jobs/view/3912345" };
+    expect(companyAskJobRow(linkedIn)).toMatchObject({ targetRoleUrl: "https://linkedin.com/jobs/view/3912345", jobFunction: null });
+    expect(companyAskJobRow({ ...linkedIn, roleLinkUrl: "https://www.linkedin.com/jobs/view/senior-product-designer-at-wipro-3912345" })).toMatchObject({ targetRoleUrl: "https://linkedin.com/jobs/view/3912345", jobFunction: "Design", jobFunctionSource: "inferred" });
   });
 
   it("keeps the idempotency fingerprint of an ask without a chosen function unchanged", () => {

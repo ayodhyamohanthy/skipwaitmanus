@@ -1484,14 +1484,16 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction };
+export type CreateCompanyReferralInput = { targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
- * link ("inferred", possibly null); a guess never blocks the ask.
+ * link ("inferred", possibly null); a guess never blocks the ask. The guess
+ * reads the link as submitted (`roleLinkUrl`) because normalization drops the
+ * role words from some links (LinkedIn keeps only the job id).
  */
-export function companyAskJobRow(input: { companyDomain: string; targetRoleUrl: string; compensation: string | null; jobFunction?: JobFunction; publishedAt: Date }) {
-  const decided = resolveAskJobFunction({ explicit: input.jobFunction, targetRoleUrl: input.targetRoleUrl });
+export function companyAskJobRow(input: { companyDomain: string; targetRoleUrl: string; roleLinkUrl?: string; compensation: string | null; jobFunction?: JobFunction; publishedAt: Date }) {
+  const decided = resolveAskJobFunction({ explicit: input.jobFunction, targetRoleUrl: input.roleLinkUrl ?? input.targetRoleUrl });
   return { title: "Role from shared job link", company: input.companyDomain, location: "Not specified", compensation: input.compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", jobFunction: decided.jobFunction, jobFunctionSource: decided.source, publishedAt: input.publishedAt };
 }
 export class ReferralIdempotencyConflictError extends Error { constructor() { super("This submission key was already used for a different referral request"); this.name="ReferralIdempotencyConflictError"; } }
@@ -1527,7 +1529,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const wallet=lockedWallet;
     const normalized=normalizedWalletState(wallet);const effective={...wallet,...normalized.patch};if(effective.monthlyCreditsRemaining+effective.balance<1)throw new Error("You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.");
     const source=effective.monthlyCreditsRemaining>0?"monthly_allowance":"purchased_balance";const patch={...normalized.patch,monthlyCreditsRemaining:source==="monthly_allowance"?effective.monthlyCreditsRemaining-1:effective.monthlyCreditsRemaining,balance:source==="purchased_balance"?effective.balance-1:effective.balance};
-    const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
+    const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
     const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint});const requestId=Number(requestResult[0].insertId);
     await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id,wallet.id));
     const debit=await tx.insert(tokenTransactions).values({userId,role:"job_seeker",tokenCount:-1,kind:"direct_request",source,sourceCycleKey:effective.monthlyCycleKey,referenceType:"referral_request",referenceId:String(requestId),idempotencyKey:input.idempotencyKey,balanceAfter:patch.balance,monthlyCreditsAfter:patch.monthlyCreditsRemaining});const debitId=Number(debit[0].insertId);await tx.update(referralRequests).set({debitTransactionId:debitId}).where(eq(referralRequests.id,requestId));
