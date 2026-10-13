@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Signal } from "lucide-react";
+import { RefreshCw, Signal, WifiOff } from "lucide-react";
+import { StatusBanner } from "@/components/app-states/SystemStates";
 
 export const SW_UPDATE_EVENT = "skipwait:sw-update";
 
@@ -42,9 +43,19 @@ export function SlowConnectionNotice() {
     return () => c.removeEventListener?.("change", update);
   }, []);
   if (!slow || (typeof navigator !== "undefined" && !navigator.onLine)) return null;
-  return (
-    <div role="status" aria-live="polite" className="fixed inset-x-0 top-0 z-40 flex items-center justify-center gap-2 bg-[var(--muted)] px-4 py-2 text-xs font-medium text-[var(--foreground)]">
-      <Signal className="h-4 w-4 shrink-0" aria-hidden="true" />Slow connection. Pages may take a moment to load.
-    </div>
-  );
+  return <StatusBanner icon={<Signal className="size-4 shrink-0" aria-hidden="true" />}>Slow connection. Pages may take a moment to load.</StatusBanner>;
+}
+
+/** Kit "Offline" banner. Hidden on /offline, which carries the same banner itself. */
+export function OfflineNotice() {
+  const [online, setOnline] = useState(() => typeof navigator === "undefined" || navigator.onLine);
+  useEffect(() => {
+    const restore = () => setOnline(true);
+    const lose = () => setOnline(false);
+    window.addEventListener("online", restore);
+    window.addEventListener("offline", lose);
+    return () => { window.removeEventListener("online", restore); window.removeEventListener("offline", lose); };
+  }, []);
+  if (online || (typeof window !== "undefined" && window.location.pathname === "/offline")) return null;
+  return <StatusBanner icon={<WifiOff className="size-4 shrink-0" aria-hidden="true" />}>You&apos;re offline. Showing saved info.</StatusBanner>;
 }
