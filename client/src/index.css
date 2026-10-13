@@ -221,6 +221,8 @@ input, textarea { caret-color: var(--primary); }
 .launch-header-actions .launch-signin{background:transparent;color:var(--foreground);border-color:transparent;box-shadow:none;padding-inline:14px;font-weight:500;}
 .launch-header-actions .launch-signin:hover{color:var(--primary);}
 .launch-header-actions a.brand-button:not(.launch-signin){background:var(--background);color:var(--foreground);border:1.5px solid var(--foreground);}
+/* Desktop: the door sits in normal flow under the copy so it never overlaps the headline, subtext, CTA or assurances (matches the kit PNG), at any width and height */
+@media(min-width:769px){.launch-hero{height:auto;min-height:0;max-height:none;overflow:hidden;display:flex;flex-direction:column;}.launch-hero-copy{order:1;width:100%;}.launch-hero-image{order:2;position:relative;inset:auto;transform:none;display:block;width:min(100%,1280px);height:auto;margin:calc(40px - .29 * min(100vw,1280px)) auto 0;object-fit:initial;-webkit-mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);mask-image:linear-gradient(to right,transparent,#000 14%,#000 86%,transparent);}}
 .launch-faq-item>button{display:flex;align-items:center;justify-content:space-between;}
 .referrer-band-grid .brand-button{background:var(--background);color:var(--foreground);}
 @media(max-width:768px){.launch-header-actions .launch-signin{display:inline-flex;}}
