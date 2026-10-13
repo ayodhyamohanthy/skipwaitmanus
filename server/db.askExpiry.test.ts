@@ -3,6 +3,7 @@ import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { notifications, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { expireStalePendingReferralRequest, reconcileExpiredPendingReferrals } from "./db";
+import { createAskExpirySweep } from "./askExpirySweep";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
@@ -189,6 +190,29 @@ describe("ask expiry", () => {
     // No debit row and no wallet change possible is fine (nothing reserved),
     // but a missing wallet with a real debit must throw like a withdraw.
     expect(result.expiredRequestIds).toEqual([503]);
+  });
+
+  it("refuses to expire or refund another seeker's ask (cross-user)", async () => {
+    tables.txns = [debitRow("monthly_allowance", "2026-10")];
+    tables.requests = [requestRow(new Date(NOW.getTime() - 9 * DAY))];
+    await expect(expireStalePendingReferralRequest(8, 501, NOW.getTime())).rejects.toThrow(/not in your account/);
+    expect(tables.requests[0].status).toBe("pending");
+    expect(tables.txns.some(t => t.kind === "expiry_refund")).toBe(false);
+    expect(tables.notes.length).toBe(0);
+  });
+
+  it("scheduled sweep expires each stale ask as its own seeker, and a mismatched pair changes nothing", async () => {
+    tables.txns = [debitRow("monthly_allowance", "2026-10")];
+    tables.requests = [requestRow(new Date(NOW.getTime() - 9 * DAY))];
+    const context = { nowMs: NOW.getTime(), windowKey: "2026-10-08T12:00Z" };
+    const forged = await createAskExpirySweep({ listStale: async () => [{ id: 501, jobSeekerId: 8 }], expire: expireStalePendingReferralRequest })(context);
+    expect(forged).toMatchObject({ processed: 0, failed: 1 });
+    expect(tables.requests[0].status).toBe("pending");
+    const real = await createAskExpirySweep({ listStale: async () => [{ id: 501, jobSeekerId: 7 }], expire: expireStalePendingReferralRequest })(context);
+    expect(real).toEqual({ processed: 1, failed: 0 });
+    expect(tables.requests[0].status).toBe("closed");
+    expect(tables.txns.filter(t => t.kind === "expiry_refund").length).toBe(1);
+    expect(tables.notes.filter(n => n.userId === 7).length).toBe(1);
   });
 
   it("throws like a withdraw when a debit exists but the wallet is gone", async () => {

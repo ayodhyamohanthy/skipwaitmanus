@@ -41,6 +41,7 @@ import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
 import { registerPrivateReferralRoutes } from "../privateReferralRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
+import { registerScheduledJobsRoutes } from "../scheduledJobsRoutes";
 import { registerEmployerRoutes } from "../employerRoutes";
 import { registerDmRoutes } from "../dmRoutes";
 import { registerFollowRoutes } from "../followRoutes";
@@ -159,6 +160,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  registerScheduledJobsRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity }); // Worker cron tick + admin job status
   // B2B monetization surface: employer accounts, unlock credits, anonymized
   // talent discovery, sponsored roles, and contextual partner modules.
   registerEmployerRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, isEmployer: db.isEmployer, ensureEmployerAccount: db.ensureEmployerAccount, getEmployerAccount: db.getEmployerAccount, listAnonymizedSeekerProfiles: db.listAnonymizedSeekerProfiles, resolveEmployerTalentRef: db.resolveEmployerTalentRef, spendEmployerUnlockCredit: db.spendEmployerUnlockCredit, getUnlockedProfile: db.getUnlockedProfile, requestEmployerTalentIntro: db.requestEmployerTalentIntro, createNotification: db.createNotification, sponsorCompanyOpportunity: db.sponsorCompanyOpportunity, endCompanyOpportunitySponsorship: db.endCompanyOpportunitySponsorship, listSponsoredCompanyOpportunities: db.listSponsoredCompanyOpportunities, listEmployerOpportunities: db.listEmployerOpportunities, listPartnerModules: db.listPartnerModules, recordPartnerImpression: db.recordPartnerImpression, recordPartnerClick: db.recordPartnerClick, createPartnerModule: db.createPartnerModule, updatePartnerModule: db.updatePartnerModule, listAllPartnerModules: db.listAllPartnerModules, listEmployerSpendHistory: db.listEmployerSpendHistory, prepareUnlockCreditCheckout: db.prepareUnlockCreditCheckout, bindUnlockCreditProviderOrder: db.bindUnlockCreditProviderOrder, markUnlockCheckoutRequiresReview: db.markUnlockCheckoutRequiresReview, findRazorpayOrdersByReceipt, createRazorpayUnlockOrder: razorpayConfigured() ? razorpayOrderInPaise : undefined });
