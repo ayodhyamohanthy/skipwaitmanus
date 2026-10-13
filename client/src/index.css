@@ -173,9 +173,10 @@ button, a { touch-action: manipulation; }
 button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-/* Disabled language: one solid state everywhere — no faded ghosts. */
-button:disabled { opacity: 1 !important; background-color: #e0e0e0 !important; color: #505050 !important; }
-button:disabled svg { color: #505050 !important; }
+/* Disabled language for legacy buttons: one solid grey state. Kit .brand-button
+   controls keep the kit look (Button's disabled:opacity-50), per the kit v4 PNGs. */
+button:disabled:not(.brand-button) { opacity: 1 !important; background-color: #e0e0e0 !important; color: #505050 !important; }
+button:disabled:not(.brand-button) svg { color: #505050 !important; }
 
 ::selection { background: #fffc52; color: #000000; }
 input, textarea { caret-color: var(--primary); }
@@ -206,7 +207,7 @@ input, textarea { caret-color: var(--primary); }
 .display{font-family:var(--font-ui);font-weight:600;letter-spacing:0;}
 .app-dialog p[role="alert"]{color:var(--destructive);font-weight:600;}
 .app-dialog label:has(> input[type="checkbox"]),.app-dialog label:has(> input[type="radio"]){display:flex;align-items:flex-start;gap:10px;font-size:14px;margin-top:12px;}
-.app-dialog input[type="checkbox"],.app-dialog input[type="radio"]{width:18px;height:18px;margin-top:2px;accent-color:var(--primary);flex-shrink:0;}
+.app-dialog input[type="checkbox"],.app-dialog input[type="radio"]{width:16px;height:16px;margin-top:4px;accent-color:var(--primary);flex-shrink:0;}
 .app-dialog footer{margin-top:20px;display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
 .app-dialog footer button{min-height:46px;padding:0 18px;border-radius:14px;font-size:14px;font-weight:600;}
 .app-dialog footer button:last-child{background:var(--primary);color:var(--primary-foreground);}
@@ -214,15 +215,6 @@ input, textarea { caret-color: var(--primary); }
 .status-approved,.status-intro_made,.status-interview,.status-offer{border-color:var(--success);color:var(--success);}
 .status-declined,.status-withdrawn{color:var(--destructive);}
 .status-closed{color:var(--muted-foreground);}
-/* kit work-showcase thumbnails: the single allowed tint blend (DESIGN.md), primary/secondary wash with ink icon */
-.work-thumb{position:relative;display:grid;place-items:center;background:linear-gradient(135deg,color-mix(in oklch,var(--primary) 14%,transparent),color-mix(in oklch,var(--secondary) 65%,transparent));color:var(--primary);}
-.work-thumb>svg{width:34px;height:34px;}
-.work-thumb .pinned-pill{position:absolute;top:12px;left:12px;display:inline-flex;align-items:center;gap:4px;background:var(--foreground);color:var(--background);border-radius:999px;padding:5px 10px;font-size:10px;font-weight:700;}
-.work-thumb .pinned-pill svg{width:11px;height:11px;}
-.role-list{display:grid;gap:10px;margin-top:24px;}
-.role-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--background);}
-.role-row strong{display:block;font-size:14px;}
-.role-row small{font-size:12px;color:var(--muted-foreground);}
 .global-pill,.availability{text-transform:uppercase;}
 
 /* Landing header and hero: match kit v4 (ghost Sign in, outline Explore, fixed desktop hero height) */
