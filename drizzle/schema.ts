@@ -136,6 +136,25 @@ export const companyDomains = mysqlTable("companyDomains", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("company_domains_domain_unique").on(table.domain), index("company_domains_company_idx").on(table.companyId)]);
 
+// Scheduled job runs (0078). Contract: shared/scheduledJobs.ts. One row per job
+// per window: the unique (jobName, windowKey) key is the single-flight lock and
+// the row is the idempotent run record. The app writes every timestamp from
+// the JS clock and compares leaseExpiresAt only with a JS time (invariant 5).
+export const jobRuns = mysqlTable("jobRuns", {
+  id: int("id").autoincrement().primaryKey(),
+  jobName: varchar("jobName", { length: 64 }).notNull(),
+  windowKey: varchar("windowKey", { length: 32 }).notNull(),
+  status: mysqlEnum("status", ["running", "succeeded", "failed"]).default("running").notNull(),
+  attempt: int("attempt").default(1).notNull(),
+  leaseOwner: varchar("leaseOwner", { length: 64 }).notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  leaseExpiresAt: timestamp("leaseExpiresAt").notNull(),
+  finishedAt: timestamp("finishedAt"),
+  processedCount: int("processedCount").default(0).notNull(),
+  failedCount: int("failedCount").default(0).notNull(),
+  error: varchar("error", { length: 500 }),
+}, table => [uniqueIndex("job_runs_job_window_unique").on(table.jobName, table.windowKey), index("job_runs_job_started_idx").on(table.jobName, table.startedAt)]);
+
 export const seekerAlerts = mysqlTable("seekerAlerts", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
