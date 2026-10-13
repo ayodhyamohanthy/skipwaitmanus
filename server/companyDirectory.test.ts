@@ -3,7 +3,7 @@ import { companyDirectoryResponseSchema } from "../shared/companies";
 import { attachCompanyIdentities, createCompanyDirectory, isOpenReferrer } from "./companyDirectory";
 import { planDomainChanges, CompanyInputError } from "./companyDirectoryAdmin";
 import { seedCompanySource, type CompanyDirectorySource, type CompanyDomainRecord, type CompanyRecord, type ReferrerCandidate } from "./companyDirectorySource";
-import { LAUNCH_COMPANY_SEED } from "./companyDirectorySeed";
+import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 
 const VERIFIED_AT = new Date("2026-09-01T00:00:00.000Z");
 const UPDATED_AT = new Date("2026-10-01T00:00:00.000Z");

@@ -4,7 +4,7 @@
 -- companies exactly as the retired client constant listed them (owner to
 -- confirm the domains and the descriptor copy). Availability is derived on
 -- read from verified referrers and is never stored here. No existing table
--- changes. The seed rows mirror server/companyDirectorySeed.ts
+-- changes. The seed rows mirror shared/companyDirectorySeed.ts
 -- (server/companyDirectoryContract.test.ts keeps them identical).
 SET NAMES utf8mb4;
 

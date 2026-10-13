@@ -14,7 +14,7 @@ import {
   publicCompanySchema,
   type PublicCompany,
 } from "../shared/companies";
-import { LAUNCH_COMPANY_SEED, type CompanySeed } from "./companyDirectorySeed";
+import { LAUNCH_COMPANY_SEED, type CompanySeed } from "../shared/companyDirectorySeed";
 
 const migration = readFileSync(join(__dirname, "..", "drizzle", "deploy", "0076_company_directory.sql"), "utf8");
 const sqlText = (value: string) => `'${value.replace(/'/g, "''")}'`;

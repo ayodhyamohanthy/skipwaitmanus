@@ -3,6 +3,11 @@
 // copy, in kit order). drizzle/deploy/0076_company_directory.sql inserts the
 // same rows; server/companyDirectoryContract.test.ts keeps the two identical.
 //
+// Readers: the migration contract test, the database-less dev directory
+// (server/companyDirectorySource.ts), the build-time crawler snapshot, and the
+// landing page's static "open doors at launch" row (the landing makes no data
+// fetch by contract). Every live surface reads GET /api/companies instead.
+//
 // OWNER ACTION: confirm these domains (notably goneutrinos.com) and that the
 // descriptors are approved live copy. Availability is never seeded: it is
 // derived from verified referrers on every read.

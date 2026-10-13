@@ -7,7 +7,7 @@ import { and, asc, count, eq, inArray, isNotNull } from "drizzle-orm";
 import { canonicalPeople, companies, companyDomains, profiles, referralAvailabilitySlots, users } from "../drizzle/schema";
 import type { CompanyStatus } from "../shared/companies";
 import { ENV } from "./_core/env";
-import { LAUNCH_COMPANY_SEED } from "./companyDirectorySeed";
+import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 import { getDb } from "./db";
 
 export class CompanyDirectoryUnavailableError extends Error {
