@@ -219,11 +219,16 @@ export const jobs = mysqlTable("jobs", {
   description: text("description").notNull(),
   targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }),
   compatibilityHint: varchar("compatibilityHint", { length: 255 }),
+  // Job function taxonomy (0077): a JOB_FUNCTIONS value from shared/jobFunctions.ts
+  // (read through parseJobFunction), and how it was decided. Both NULL on rows
+  // nothing has examined yet; a NULL jobFunction with a source means "unknown".
+  jobFunction: varchar("jobFunction", { length: 32 }),
+  jobFunctionSource: mysqlEnum("jobFunctionSource", ["seeker", "inferred", "backfill"]),
   referrerId: int("referrerId").references(() => users.id, { onDelete: "set null" }),
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location)]);
+}, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location), index("jobs_company_function_idx").on(table.company, table.jobFunction)]);
 
 export const companyOpportunities = mysqlTable("companyOpportunities", {
   id: int("id").autoincrement().primaryKey(),

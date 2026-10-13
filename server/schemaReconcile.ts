@@ -80,6 +80,9 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "tokenTransactions", column: "balanceAfter", definition: "INT NULL" },
   { table: "tokenTransactions", column: "monthlyCreditsAfter", definition: "INT NULL" },
   { table: "companyCoverageInvitations", column: "referralRequestId", definition: "INT NULL" },
+  // Job function taxonomy (0077).
+  { table: "jobs", column: "jobFunction", definition: "VARCHAR(32) NULL" },
+  { table: "jobs", column: "jobFunctionSource", definition: "ENUM('seeker','inferred','backfill') NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -123,6 +126,7 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "companies", name: "companies_status_sort_idx", columns: "`status`,`sortOrder`", nonUnique: true },
   { table: "companyDomains", name: "company_domains_domain_unique", columns: "`domain`" },
   { table: "companyDomains", name: "company_domains_company_idx", columns: "`companyId`", nonUnique: true },
+  { table: "jobs", name: "jobs_company_function_idx", columns: "`company`,`jobFunction`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
