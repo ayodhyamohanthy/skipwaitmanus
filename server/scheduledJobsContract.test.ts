@@ -57,6 +57,7 @@ describe("jobs tick protocol", () => {
     expect(isInternalApiPath(JOBS_TICK_PATH)).toBe(true);
     expect(isInternalApiPath("/api/internal")).toBe(true);
     expect(isInternalApiPath("/api/internal/anything")).toBe(true);
+    expect(isInternalApiPath("/api/Internal/Jobs/Tick")).toBe(true);
     expect(isInternalApiPath("/api/internalize")).toBe(false);
     expect(isInternalApiPath("/api/admin/jobs")).toBe(false);
   });

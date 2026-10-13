@@ -32,9 +32,18 @@ export async function deriveJobsTickToken(secret: string, minute: number): Promi
   return Array.from(signature, byte => byte.toString(16).padStart(2, "0")).join("");
 }
 
-/** True for any path under /api/internal/, which the public route never forwards. */
+/** The scheduled() handler's tick: POST with a token for the minute it is sent in. */
+export async function buildJobsTickRequest(secret: string, nowMs: number, origin = "https://skipwait.me"): Promise<Request> {
+  return new Request(`${origin}${JOBS_TICK_PATH}`, { method: "POST", headers: { [JOBS_TICK_HEADER]: await deriveJobsTickToken(secret, unixMinute(nowMs)) } });
+}
+
+/**
+ * True for any path under /api/internal/, which the public route never
+ * forwards. Case-insensitive because Express routing is.
+ */
 export function isInternalApiPath(pathname: string): boolean {
-  return pathname === INTERNAL_PATH_PREFIX.slice(0, -1) || pathname.startsWith(INTERNAL_PATH_PREFIX);
+  const path = pathname.toLowerCase();
+  return path === INTERNAL_PATH_PREFIX.slice(0, -1) || path.startsWith(INTERNAL_PATH_PREFIX);
 }
 
 /** A public request never carries the tick header into the container. */

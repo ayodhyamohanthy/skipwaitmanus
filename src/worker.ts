@@ -45,12 +45,19 @@ export class SkipwaitApi extends Container {
   }
 }
 
-import { fetchContainerWithStoppedRecovery } from "./containerRecovery";
+import { fetchContainerReplayingIdempotent, fetchContainerWithStoppedRecovery } from "./containerRecovery";
+import { buildJobsTickRequest, isInternalApiPath, withoutJobsTickHeader } from "../shared/jobsTick";
+
+type WorkerEnv = Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string };
+
+function releaseOf(env: WorkerEnv): string {
+  return typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
+}
 
 export default {
   async fetch(
     request: Request,
-    env: Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string },
+    env: WorkerEnv,
     ctx: ExecutionContext
   ): Promise<Response> {
     // The API Worker is reachable only on the canonical zone route. Never trust
@@ -60,9 +67,30 @@ export default {
     if (url.protocol !== "https:" || url.hostname !== "skipwait.me" || !url.pathname.startsWith("/api/")) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
+    // Internal routes (the scheduled-jobs tick) are reachable only from
+    // scheduled() below, never through the public route.
+    if (isInternalApiPath(url.pathname)) {
+      return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
+    }
     // Single-instance API: all requests to one container for session affinity.
-    const release = typeof env.API_RELEASE === "string" && /^[a-f0-9]{40}$/.test(env.API_RELEASE) ? env.API_RELEASE.slice(0, 12) : "legacy";
+    const release = releaseOf(env);
     const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`);
-    return fetchContainerWithStoppedRecovery(container, request);
+    // A public request can never present the cron's tick token to the container.
+    return fetchContainerWithStoppedRecovery(container, withoutJobsTickHeader(request));
+  },
+
+  // Cron trigger (wrangler.jsonc triggers.crons): POST the scheduled-jobs tick
+  // to the same container, signed with HMAC(JWT_SECRET, minute) per
+  // shared/jobsTick.ts. The container runs each due job once per window, so a
+  // replay after a stopped-instance start is safe. A non-2xx answer throws so
+  // the cron invocation is marked failed in Workers observability.
+  async scheduled(controller: ScheduledController, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {
+    const secret = typeof env.JWT_SECRET === "string" ? env.JWT_SECRET : "";
+    if (!secret) throw new Error("Scheduled jobs tick skipped: JWT_SECRET is not set on the Worker");
+    const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${releaseOf(env)}`);
+    const response = await fetchContainerReplayingIdempotent(container, () => buildJobsTickRequest(secret, Date.now()));
+    const body = await response.text();
+    if (!response.ok) throw new Error(`Scheduled jobs tick (${controller.cron}) failed with HTTP ${response.status}`);
+    console.log(`[jobs] tick ${controller.cron} ${body.slice(0, 1000)}`);
   },
 };
