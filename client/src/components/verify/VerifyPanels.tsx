@@ -1,7 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, BadgeCheck, Check } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
+import { fetchProfileHandle, fetchReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
 import type { LaunchCompany } from "@/lib/companies";
 
 const STEP_LABELS = ["Company", "Work email", "Code", "Verified"] as const;
@@ -61,7 +63,19 @@ export function VerifyAside({ company }: { company: LaunchCompany }) {
   );
 }
 
-export function VerifiedPanel({ company }: { company: LaunchCompany }) {
+/** Where "View my profile" goes: the public page when a handle exists, else the handle field. */
+export function profileHref(handle: string | null | undefined): string {
+  return handle ? `/p/${encodeURIComponent(handle)}` : "/profile?focus=handle";
+}
+
+/**
+ * Kit verified panel. The badge line names the referrer's primary function
+ * (first saved job area) only when one is saved; neither read blocks the panel.
+ */
+export function VerifiedPanel({ company, getToken }: { company: LaunchCompany; getToken: TokenSource }) {
+  const preferences = useQuery({ queryKey: ["verify", "referrer-preferences"], queryFn: () => fetchReferrerPreferences(getToken), retry: false, staleTime: 60_000 });
+  const handle = useQuery({ queryKey: ["verify", "profile-handle"], queryFn: () => fetchProfileHandle(getToken), retry: false, staleTime: 60_000 });
+  const primaryFunction = preferences.data?.preferAreas[0];
   return (
     <div className="text-center">
       <span className="mx-auto mb-4 grid size-20 place-items-center rounded-full bg-accent"><BadgeCheck className="size-10 text-primary" /></span>
@@ -71,12 +85,12 @@ export function VerifiedPanel({ company }: { company: LaunchCompany }) {
         <span className="eyebrow">WHAT SEEKERS SEE</span>
         <div className="mt-3 flex items-center gap-3">
           <span className="company-mark">{company.initials}</span>
-          <span><strong className="flex items-center gap-1">Someone at {company.name} <BadgeCheck className="size-4 text-primary" /></strong><small className="text-muted-foreground">Verified via work email</small></span>
+          <span><strong className="flex items-center gap-1">Someone at {company.name} <BadgeCheck className="size-4 text-primary" /></strong><small className="text-muted-foreground">Verified via work email{primaryFunction ? ` · ${primaryFunction}` : ""}</small></span>
         </div>
       </div>
       <p className="mt-4 text-sm text-muted-foreground">Your badge stays on your account. Verify again here if your work email changes.</p>
       <div className="mt-8 flex flex-wrap justify-center gap-3">
-        <Button variant="outline" asChild><Link href="/profile">View my profile</Link></Button>
+        <Button variant="outline" asChild><Link href={profileHref(handle.data)}>View my profile</Link></Button>
         <Button asChild><Link href="/referrer-setup">Set up referring <ArrowRight /></Link></Button>
       </div>
     </div>

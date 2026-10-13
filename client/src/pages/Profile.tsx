@@ -1,5 +1,5 @@
 import { ArrowRight, ShieldCheck, UserRound } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -7,6 +7,7 @@ import { readApiJson } from "@/lib/apiResponse";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { PrivacyControls, type ProfileRole } from "@/components/profile/PrivacyControls";
 import { ProfileForm } from "@/components/profile/ProfileForm";
+import { ProfileLinkSheet } from "@/components/profile/ProfileLinkSheet";
 import { asProfileVisibility } from "@/components/profile/VisibilityOptions";
 
 // The kit form edits the headline only; the other profile columns are left
@@ -35,6 +36,13 @@ export default function Profile() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
   const [referrerNamed, setReferrerNamed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  // /profile?focus=handle (Verify, referrer setup) asks for the profile handle.
+  // The kit /profile has no handle field, so the handle sheet opens with its
+  // input focused once the current handle is known.
+  const [linkSheet, setLinkSheet] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("focus") === "handle");
+  const [linkBusy, setLinkBusy] = useState(false);
+  const [linkError, setLinkError] = useState("");
 
   const load = async () => {
     if (!isSignedIn) return;
@@ -48,6 +56,7 @@ export default function Profile() {
       const current = payload.profile;
       setProfile(current ?? null);
       setHeadline(current?.headline ?? "");
+      setLoaded(true);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load your profile"); setLoadFailed(true); }
     finally { setLoading(false); }
   };
@@ -81,6 +90,20 @@ export default function Profile() {
       setSaved(true);
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not save your profile"); }
     finally { setSaving(false); }
+  };
+
+  const closeLinkSheet = useCallback(() => { setLinkSheet(false); setLinkError(""); }, []);
+  const saveHandle = async (handle: string) => {
+    setLinkBusy(true); setLinkError("");
+    try {
+      const token = await fetchToken();
+      const response = await fetch("/api/profile/me", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ handle }) });
+      const payload = await readApiJson<{ profile?: Profile | null; error?: string }>(response, "We could not save your profile link");
+      if (!response.ok) throw new Error(payload.error || "We could not save your profile link");
+      if (payload.profile) setProfile(payload.profile);
+      setLinkSheet(false);
+    } catch (reason) { setLinkError(reason instanceof Error ? reason.message : "We could not save your profile link"); }
+    finally { setLinkBusy(false); }
   };
 
   if (!isSignedIn) {
@@ -131,6 +154,7 @@ export default function Profile() {
           <PrivacyControls role={role} visibility={asProfileVisibility(profile?.profileVisibility)} referrerNamed={referrerNamed} />
         </section>
       )}
+      {linkSheet && loaded ? <ProfileLinkSheet current={profile?.handle ?? null} busy={linkBusy} error={linkError} onClose={closeLinkSheet} onSubmit={handle => { void saveHandle(handle); }} /> : null}
     </main>
   );
 }

@@ -190,7 +190,7 @@ export default function Verify() {
         </div>
       ) : null}
 
-      {step === "done" ? <VerifiedPanel company={selected} /> : null}
+      {step === "done" ? <VerifiedPanel company={selected} getToken={fetchToken} /> : null}
     </VerifyLayout>
   );
 }

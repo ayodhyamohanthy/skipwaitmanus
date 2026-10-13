@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Verify from "./Verify";
 
@@ -19,8 +20,10 @@ const reply = (status: number, body: unknown): Reply => ({ status, body });
 const ok = (body: unknown) => reply(200, body);
 const asResponse = ({ status, body }: Reply) => ({ ok: status < 400, status, url: "http://localhost/api", json: async () => body });
 
+const renderVerify = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Verify /></QueryClientProvider>);
+
 /** Routes each endpoint to a queue of replies (last reply repeats) and records request bodies. */
-function stubApi(routes: { send?: Reply[]; check?: Reply[]; enroll?: Reply[] }) {
+function stubApi(routes: { send?: Reply[]; check?: Reply[]; enroll?: Reply[]; preferences?: Reply[]; profile?: Reply[] }) {
   const calls: { path: string; body: Record<string, string> }[] = [];
   const next = (queue: Reply[] | undefined) => (queue && queue.length > 1 ? queue.shift() : queue?.[0]) ?? ok({});
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
@@ -29,13 +32,16 @@ function stubApi(routes: { send?: Reply[]; check?: Reply[]; enroll?: Reply[] }) 
     if (path === "/api/work-email/otp/send") return asResponse(next(routes.send));
     if (path === "/api/work-email/otp/verify") return asResponse(next(routes.check));
     if (path === "/api/company-referrals/verify-work-email") return asResponse(next(routes.enroll));
+    // The verified panel's reads: no saved function and no handle unless a test says so.
+    if (path === "/api/referrer-preferences") return asResponse(next(routes.preferences ?? [ok({ preferences: {} })]));
+    if (path === "/api/profile/me") return asResponse(next(routes.profile ?? [ok({ profile: { handle: null } })]));
     throw new Error(`unexpected ${path}`);
   }));
   return calls;
 }
 
 async function reachCodeStep(email = "name@wipro.com") {
-  render(<Verify />);
+  renderVerify();
   fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
   fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: email } });
   fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
@@ -49,14 +55,14 @@ function enterCode(digits: string) {
 describe("Verify work email", () => {
   it("shows a kit loading state while sign-in resolves", () => {
     authState.isLoaded = false;
-    render(<Verify />);
+    renderVerify();
     expect(screen.getByRole("status").textContent).toContain("Checking your sign-in");
     expect(screen.queryByText("Where do you work?")).toBeNull();
   });
 
   it("keeps verification behind sign-in and never shows a demo code", () => {
     authState.isSignedIn = false;
-    render(<Verify />);
+    renderVerify();
     expect(screen.getByText(/Prove you're inside/)).toBeTruthy();
     expect(screen.getByText("Sign in to verify")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Sign in/ })).toBeTruthy();
@@ -65,14 +71,14 @@ describe("Verify work email", () => {
   });
 
   it("never ships preview scaffolding or invented storage claims", () => {
-    render(<Verify />);
+    renderVerify();
     for (const scaffold of [/DESIGN PREVIEW/i, /Try states/i, /Preview code/i, /one-way fingerprint/i, /next re-check/i]) expect(screen.queryByText(scaffold)).toBeNull();
     expect(screen.getAllByRole("radio")).toHaveLength(5);
   });
 
   it("walks company to email with domain validation, no fake states", async () => {
     stubApi({ send: [ok({ sent: true })] });
-    render(<Verify />);
+    renderVerify();
     expect(screen.getByText("Where do you work?")).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: /TCS/ }));
     fireEvent.click(screen.getByRole("radio", { name: /Wipro/ }));
@@ -96,11 +102,45 @@ describe("Verify work email", () => {
     enterCode("123456");
     fireEvent.click(screen.getByRole("button", { name: /Verify/ }));
     expect(await screen.findByText("You're verified at Wipro.")).toBeTruthy();
-    expect(calls.map(call => call.path)).toEqual(["/api/work-email/otp/send", "/api/work-email/otp/verify", "/api/company-referrals/verify-work-email"]);
+    expect(calls.map(call => call.path).slice(0, 3)).toEqual(["/api/work-email/otp/send", "/api/work-email/otp/verify", "/api/company-referrals/verify-work-email"]);
     expect(calls[2]?.body).toEqual({ email: "name@wipro.com", receipt: "receipt-1" });
     expect(screen.getByText("Someone at Wipro")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Set up referring/ }).getAttribute("href")).toBe("/referrer-setup");
-    expect(screen.getByRole("link", { name: /View my profile/ }).getAttribute("href")).toBe("/profile");
+    // No handle yet: the profile link lands on the handle field. No saved function: no suffix.
+    await waitFor(() => expect(calls.some(call => call.path === "/api/profile/me")).toBe(true));
+    expect(screen.getByRole("link", { name: /View my profile/ }).getAttribute("href")).toBe("/profile?focus=handle");
+    expect(screen.getByText("Verified via work email")).toBeTruthy();
+  });
+
+  it("names the saved primary function and links the public profile when a handle exists", async () => {
+    stubApi({
+      send: [ok({ sent: true })],
+      check: [ok({ verified: true, receipt: "receipt-3" })],
+      enroll: [ok({ verified: true, workEmailDomain: "wipro.com" })],
+      preferences: [ok({ preferences: { preferAreas: ["Design", "Product"], referralCapacity: 3 } })],
+      profile: [ok({ profile: { handle: "asha-r" } })],
+    });
+    await reachCodeStep();
+    enterCode("123456");
+    fireEvent.click(screen.getByRole("button", { name: /Verify/ }));
+    expect(await screen.findByText("Verified via work email · Design")).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("link", { name: /View my profile/ }).getAttribute("href")).toBe("/p/asha-r"));
+  });
+
+  it("keeps the plain badge line and the handle fallback when the profile reads fail", async () => {
+    stubApi({
+      send: [ok({ sent: true })],
+      check: [ok({ verified: true, receipt: "receipt-4" })],
+      enroll: [ok({ verified: true, workEmailDomain: "wipro.com" })],
+      preferences: [reply(500, { error: "down" })],
+      profile: [reply(500, { error: "down" })],
+    });
+    await reachCodeStep();
+    enterCode("123456");
+    fireEvent.click(screen.getByRole("button", { name: /Verify/ }));
+    expect(await screen.findByText("You're verified at Wipro.")).toBeTruthy();
+    expect(screen.getByText("Verified via work email")).toBeTruthy();
+    expect(screen.getByRole("link", { name: /View my profile/ }).getAttribute("href")).toBe("/profile?focus=handle");
   });
 
   it("does not claim verification when enrollment fails, and retries with the same receipt", async () => {
@@ -139,7 +179,7 @@ describe("Verify work email", () => {
 
   it("surfaces server rate limits honestly on send", async () => {
     stubApi({ send: [reply(429, { error: "Too many code requests. Wait before trying again.", retryAfterSeconds: 600 })] });
-    render(<Verify />);
+    renderVerify();
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
@@ -149,7 +189,7 @@ describe("Verify work email", () => {
 
   it("explains a network failure instead of a raw fetch error", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
-    render(<Verify />);
+    renderVerify();
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
@@ -159,7 +199,7 @@ describe("Verify work email", () => {
   it("offers a resend after the server's one-minute window and shows a resend failure on the code step", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const calls = stubApi({ send: [ok({ sent: true }), reply(429, { error: "Too many code requests. Wait before trying again." })] });
-    render(<Verify />);
+    renderVerify();
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));

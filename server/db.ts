@@ -773,7 +773,8 @@ export async function deleteWorkItem(userId: number, itemId: number) {
 
 // Pure visibility decision for /api/p/:handle. A missing or "private" value
 // hides everything from anyone but the owner; items are listed only when the
-// owner marked them visible.
+// owner marked them visible. Only what the kit public profile renders is sent:
+// currentTitle, bio and skills stay off this payload (data minimisation).
 function parseProfileOpenTo(raw: unknown): string[] {
   try {
     const parsed: unknown = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -798,10 +799,7 @@ export function shapePublicProfile(
     isOwner,
     displayName: owner.name,
     headline: profile.headline,
-    currentTitle: profile.currentTitle,
     location: profile.location,
-    bio: profile.bio,
-    skills: profile.skills,
     openTo: parseProfileOpenTo((profile as { openTo?: unknown }).openTo),
     company: profile.company,
     verifiedWork: profile.workEmailVerifiedAt ? { domain: profile.workEmailDomain, verifiedAt: profile.workEmailVerifiedAt } : null,

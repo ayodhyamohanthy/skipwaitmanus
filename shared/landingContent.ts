@@ -37,6 +37,7 @@ export const LANDING_COMMITMENTS: readonly LandingStep[] = [
 ];
 
 export const LANDING_EXPLORE: readonly LandingLink[] = [
+  { href: "/explore", label: "Explore companies", summary: "Start with a company. We’ll help you make a thoughtful ask." },
   { href: "/jobs", label: "Browse roles", summary: "Published roles worth a referral." },
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },

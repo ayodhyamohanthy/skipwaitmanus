@@ -24,6 +24,7 @@ import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "../shared/subscripti
 import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
+import { LAUNCH_COMPANIES } from "../client/src/lib/companies";
 import { breadcrumbsHtml, escapeHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
 
 /** Route is declared here; its title and description come from @shared/publicRoutes. */
@@ -95,11 +96,17 @@ export function publicSnapshots(): PublicSnapshot[] {
   return [
     {
       route: "/jobs",
-      markup: `<main data-skipwait-snapshot="jobs"><h1>Browse roles worth a referral.</h1><p>Search published roles, save the ones you like, and request a private referral from a verified employee at the company. Referrers stay anonymous.</p><p><a href="/jobs">Open the role search</a> · <a href="/start">Request a referral for a role link you already have</a> · <a href="/wall">See openings employees published themselves</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="jobs"><h1>Browse roles worth a referral.</h1><p>Search published roles, save the ones you like, and request a private referral from a verified employee at the company. Referrers stay anonymous.</p><p><a href="/jobs">Open the role search</a> · <a href="/start">Request a referral for a role link you already have</a> · <a href="/wall">See openings employees published themselves</a> · <a href="/explore">Explore companies</a></p></main>`,
+    },
+    {
+      // Kit /explore copy and the static launch set (names and approved
+      // descriptors only): no count, no role, no person, no address.
+      route: "/explore",
+      markup: `<main data-skipwait-snapshot="explore"><h1>Where would you love to work next?</h1><p>Start with a company. We’ll help you make a thoughtful ask.</p><ul>${LAUNCH_COMPANIES.map(company => `<li><a href="/explore/${company.slug}">${escapeHtml(company.name)}</a> — ${escapeHtml(company.blurb)}</li>`).join("")}</ul><h2>Work at one of these companies?</h2><p>Open another door. You control every request you accept. <a href="/referrer">I can refer</a></p><p><a href="/jobs">Browse roles worth a referral</a> · <a href="/start">Request a referral for a role link you already have</a></p></main>`,
     },
     {
       route: "/wall",
-      markup: `<main data-skipwait-snapshot="wall"><h1>Internal openings shared by verified employees.</h1><p>Employees who verified a company email can publish a hiring signal for their own company: hiring now, or a walk-in event. Each opening shows the company domain, the role, and any shared details — never an employee name, a candidate name, or a resume.</p><p><a href="/wall">Open the Opportunity Wall</a> · <a href="/referrer">Verify a work email to publish one</a> · <a href="/jobs">Browse roles posted through a normal job board</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="wall"><h1>Internal openings shared by verified employees.</h1><p>Employees who verified a company email can publish a hiring signal for their own company: hiring now, or a walk-in event. Each opening shows the company domain, the role, and any shared details — never an employee name, a candidate name, or a resume.</p><p><a href="/wall">Open the Opportunity Wall</a> · <a href="/referrer">Verify a work email to publish one</a> · <a href="/jobs">Browse roles posted through a normal job board</a> · <a href="/explore">Explore companies</a></p></main>`,
     },
     {
       route: "/premium",
@@ -111,7 +118,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/referrer",
-      markup: `<main data-skipwait-snapshot="referrer"><h1>Verify a work email to review private referrals.</h1><p>Employees verify a company email with a one-time code, then see private referral requests for their own company only. Review the role, the resume, and the candidate’s note together, and choose whether to help. Reviewing and accepting are always free, and your identity stays hidden from the Job Seeker unless you accept.</p><p><a href="/referrer">Verify a work email</a> · <a href="/wall">See openings shared by verified employees</a> · <a href="/support">Support</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="referrer"><h1>Verify a work email to review private referrals.</h1><p>Employees verify a company email with a one-time code, then see private referral requests for their own company only. Review the role, the resume, and the candidate’s note together, and choose whether to help. Reviewing and accepting are always free, and your identity stays hidden from the Job Seeker unless you accept.</p><p><a href="/referrer">Verify a work email</a> · <a href="/wall">See openings shared by verified employees</a> · <a href="/explore">See the companies you can refer into</a> · <a href="/support">Support</a></p></main>`,
     },
     {
       route: "/employer",

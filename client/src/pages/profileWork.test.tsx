@@ -61,6 +61,52 @@ describe("Profile page", () => {
     expect(screen.getByRole("link", { name: /View public profile/ }).getAttribute("href")).toBe("/p/asha-r");
   });
 
+  it("opens the profile handle field focused for /profile?focus=handle and saves only the handle", async () => {
+    const puts: Array<Record<string, unknown>> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/profile/me") && init?.method === "PUT") {
+        const body = JSON.parse(String(init.body)) as Record<string, unknown>;
+        puts.push(body);
+        if (body.handle === "taken-handle") return { ok: false, status: 400, json: async () => ({ error: "That handle is already taken" }) };
+        return ok(me({ handle: body.handle }));
+      }
+      return ok(me({ handle: null }));
+    }));
+    window.history.replaceState(null, "", "/profile?focus=handle");
+    try {
+      render(<Profile />);
+      const sheet = await screen.findByRole("dialog", { name: "Profile link" });
+      const input = within(sheet).getByPlaceholderText("yourname");
+      expect(document.activeElement).toBe(input);
+      expect(within(sheet).getByRole("heading", { name: "Choose your profile link" })).toBeTruthy();
+      fireEvent.change(input, { target: { value: "taken-handle" } });
+      fireEvent.click(within(sheet).getByRole("button", { name: "Save link" }));
+      expect(await within(sheet).findByText("That handle is already taken")).toBeTruthy();
+      fireEvent.change(input, { target: { value: "Asha-R" } });
+      fireEvent.click(within(sheet).getByRole("button", { name: "Save link" }));
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(puts).toEqual([{ handle: "taken-handle" }, { handle: "asha-r" }]);
+      expect(screen.getByRole("link", { name: /View public profile/ }).getAttribute("href")).toBe("/p/asha-r");
+    } finally { window.history.replaceState(null, "", "/"); }
+  });
+
+  it("prefills the current handle and waits for it before opening the sheet", async () => {
+    let release: () => void = () => undefined;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.stubGlobal("fetch", vi.fn(async () => { await gate; return ok(me()); }));
+    window.history.replaceState(null, "", "/profile?focus=handle");
+    try {
+      render(<Profile />);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      release();
+      const sheet = await screen.findByRole("dialog", { name: "Profile link" });
+      expect(within(sheet).getByDisplayValue("asha-r")).toBeTruthy();
+      expect(within(sheet).getByRole("heading", { name: "Change your profile link" })).toBeTruthy();
+      fireEvent.click(within(sheet).getByRole("button", { name: "Close" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+    } finally { window.history.replaceState(null, "", "/"); }
+  });
+
   it("keeps the profile behind sign-in", () => {
     authState.isSignedIn = false;
     render(<Profile />);

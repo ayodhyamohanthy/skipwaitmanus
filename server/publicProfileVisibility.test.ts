@@ -37,6 +37,15 @@ describe("public profile visibility", () => {
     expect(Object.keys(view)).not.toContain("email");
   });
 
+  it("sends only what the kit public profile shows: no current title, bio or skills", () => {
+    const full = { ...(base as object), profileVisibility: "public", currentTitle: "Staff Designer", bio: "Private bio", skills: "Figma, Research", location: "Bengaluru" } as never;
+    for (const viewer of [undefined, 99, 5]) {
+      const view = shapePublicProfile(owner, full, items, viewer) as Record<string, unknown>;
+      for (const field of ["currentTitle", "bio", "skills"]) expect(view, `${field} for viewer ${viewer}`).not.toHaveProperty(field);
+      expect(view).toMatchObject({ headline: "Designer", location: "Bengaluru", handle: "asha-r" });
+    }
+  });
+
   it("parses open-to roles defensively for public viewers", () => {
     const withOpenTo = (openTo: unknown) => ({ ...(base as object), profileVisibility: "public", openTo }) as never;
     expect((shapePublicProfile(owner, withOpenTo('["Product Designer", "UX Lead"]'), items, undefined) as { openTo: string[] }).openTo).toEqual(["Product Designer", "UX Lead"]);

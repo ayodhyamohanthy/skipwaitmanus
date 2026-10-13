@@ -68,7 +68,7 @@ function buildApp() {
       const owner = [...profiles.values()].find(p => p.handle === handle);
       if (!owner) return undefined;
       if (owner.profileVisibility === "private" && viewerUserId !== owner.userId) return { visible: false as const, visibility: owner.profileVisibility };
-      return { visible: true as const, visibility: owner.profileVisibility, isOwner: viewerUserId === owner.userId, displayName: `User ${owner.userId}`, headline: owner.headline, currentTitle: null, location: null, bio: null, skills: null, company: null, verifiedWork: null, handle: owner.handle, workItems: items.filter(item => item.userId === owner.userId && (viewerUserId === owner.userId || item.visibleOnProfile)) };
+      return { visible: true as const, visibility: owner.profileVisibility, isOwner: viewerUserId === owner.userId, displayName: `User ${owner.userId}`, headline: owner.headline, location: null, company: null, verifiedWork: null, handle: owner.handle, workItems: items.filter(item => item.userId === owner.userId && (viewerUserId === owner.userId || item.visibleOnProfile)) };
     },
   };
   registerProfileRoutes(app, deps);
