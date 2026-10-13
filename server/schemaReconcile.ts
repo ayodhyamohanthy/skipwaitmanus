@@ -29,6 +29,8 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "assistantApprovals", createSql: `CREATE TABLE IF NOT EXISTS \`assistantApprovals\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`connectionId\` int NULL, \`kind\` ENUM('ask_send','credit_spend') NOT NULL, \`status\` ENUM('pending','approved','declined','expired') NOT NULL DEFAULT 'pending', \`provider\` varchar(80) NOT NULL, \`companyDomain\` varchar(255) NULL, \`role\` varchar(180) NULL, \`note\` text NULL, \`creditCount\` int NULL, \`slotCount\` int NULL, \`expiresAt\` timestamp NOT NULL, \`decidedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`assistantApprovals_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`assistant_approvals_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`assistant_approvals_connection_fk\` FOREIGN KEY (\`connectionId\`) REFERENCES \`assistantConnections\` (\`id\`) ON DELETE SET NULL, INDEX \`assistant_approvals_user_idx\`(\`userId\`), INDEX \`assistant_approvals_status_idx\`(\`status\`), INDEX \`assistant_approvals_expiry_idx\`(\`expiresAt\`))` },
   { table: "oauthClients", createSql: `CREATE TABLE IF NOT EXISTS \`oauthClients\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`clientId\` varchar(64) NOT NULL, \`clientName\` varchar(160) NOT NULL, \`redirectUris\` text NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthClients_clientId_unique\`(\`clientId\`))` },
   { table: "oauthAuthCodes", createSql: `CREATE TABLE IF NOT EXISTS \`oauthAuthCodes\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`codeHash\` varchar(64) NOT NULL, \`clientId\` varchar(64) NOT NULL, \`userId\` int NOT NULL, \`redirectUri\` varchar(512) NOT NULL, \`codeChallenge\` varchar(64) NOT NULL, \`expiresAt\` timestamp NOT NULL, \`usedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthAuthCodes_codeHash_unique\`(\`codeHash\`), CONSTRAINT \`oauth_auth_codes_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`oauth_auth_codes_user_idx\`(\`userId\`), INDEX \`oauth_auth_codes_expiry_idx\`(\`expiresAt\`))` },
+  { table: "companies", createSql: `CREATE TABLE IF NOT EXISTS \`companies\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(48) NOT NULL, \`name\` varchar(160) NOT NULL, \`initials\` varchar(4) NOT NULL, \`industry\` varchar(80) NOT NULL, \`location\` varchar(80) NOT NULL, \`functions\` text NOT NULL, \`blurb\` varchar(240) NOT NULL, \`status\` enum('listed','hidden') NOT NULL DEFAULT 'listed', \`sortOrder\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companies_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`companies_slug_unique\`(\`slug\`), INDEX \`companies_status_sort_idx\`(\`status\`,\`sortOrder\`))` },
+  { table: "companyDomains", createSql: `CREATE TABLE IF NOT EXISTS \`companyDomains\` (\`id\` int AUTO_INCREMENT NOT NULL, \`companyId\` int NOT NULL, \`domain\` varchar(255) NOT NULL, \`isPrimary\` boolean NOT NULL DEFAULT false, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companyDomains_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`companyDomains_companyId_companies_id_fk\` FOREIGN KEY (\`companyId\`) REFERENCES \`companies\`(\`id\`) ON DELETE CASCADE ON UPDATE RESTRICT, UNIQUE INDEX \`company_domains_domain_unique\`(\`domain\`), INDEX \`company_domains_company_idx\`(\`companyId\`))` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -117,6 +119,10 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "oauthAuthCodes", name: "oauthAuthCodes_codeHash_unique", columns: "`codeHash`" },
   { table: "oauthAuthCodes", name: "oauth_auth_codes_user_idx", columns: "`userId`", nonUnique: true },
   { table: "oauthAuthCodes", name: "oauth_auth_codes_expiry_idx", columns: "`expiresAt`", nonUnique: true },
+  { table: "companies", name: "companies_slug_unique", columns: "`slug`" },
+  { table: "companies", name: "companies_status_sort_idx", columns: "`status`,`sortOrder`", nonUnique: true },
+  { table: "companyDomains", name: "company_domains_domain_unique", columns: "`domain`" },
+  { table: "companyDomains", name: "company_domains_company_idx", columns: "`companyId`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -143,6 +149,7 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "developerApps", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantApprovals", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantApprovals", column: "connectionId", referencedTable: "assistantConnections", referencedColumn: "id" },
+  { table: "companyDomains", column: "companyId", referencedTable: "companies", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

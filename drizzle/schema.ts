@@ -110,6 +110,32 @@ export const companySuggestions = mysqlTable("companySuggestions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("company_suggestions_submitter_idx").on(table.submitterUserId), index("company_suggestions_status_idx").on(table.status)]);
 
+// Server-owned company directory (0076). Contract: shared/companies.ts.
+// Availability is derived on read from verified referrers, never stored.
+// updatedAt is written by the app from the JS clock (invariant 5).
+export const companies = mysqlTable("companies", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 48 }).notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  initials: varchar("initials", { length: 4 }).notNull(),
+  industry: varchar("industry", { length: 80 }).notNull(),
+  location: varchar("location", { length: 80 }).notNull(),
+  functions: text("functions").notNull(), // JSON array of function labels
+  blurb: varchar("blurb", { length: 240 }).notNull(),
+  status: mysqlEnum("status", ["listed", "hidden"]).default("listed").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("companies_slug_unique").on(table.slug), index("companies_status_sort_idx").on(table.status, table.sortOrder)]);
+
+export const companyDomains = mysqlTable("companyDomains", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  domain: varchar("domain", { length: 255 }).notNull(), // lowercase
+  isPrimary: boolean("isPrimary").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("company_domains_domain_unique").on(table.domain), index("company_domains_company_idx").on(table.companyId)]);
+
 export const seekerAlerts = mysqlTable("seekerAlerts", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
