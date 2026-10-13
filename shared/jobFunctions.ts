@@ -36,11 +36,12 @@ export type JobFunctionSource = (typeof JOB_FUNCTION_SOURCES)[number];
 export const askJobFunctionInputSchema = jobFunctionSchema.nullish();
 
 /** Referrer preference lists on PUT /api/referrer-preferences: listed values only, each once. */
-const uniqueList = <T extends string>(schema: z.ZodType<T>, max: number, noun: string) =>
-  z.array(schema, { error: `Choose ${noun} from the list` }).max(max, `Choose up to ${max} ${noun}`)
+const uniqueList = <const T extends readonly [string, ...string[]]>(options: T, noun: string) =>
+  z.array(z.enum(options, { error: `Choose ${noun} from the list` }), { error: `Choose ${noun} from the list` })
+    .max(options.length, `Choose up to ${options.length} ${noun}`)
     .refine(list => new Set(list).size === list.length, `List each of your ${noun} once`);
-export const referrerAreasInputSchema = uniqueList(referrerAreaSchema, REFERRER_AREAS.length, "job areas");
-export const referrerLevelsInputSchema = uniqueList(jobLevelSchema, JOB_LEVELS.length, "levels");
+export const referrerAreasInputSchema = uniqueList(REFERRER_AREAS, "job areas");
+export const referrerLevelsInputSchema = uniqueList(JOB_LEVELS, "levels");
 
 /** Lenient read of a stored or received value: a listed function, otherwise null. */
 export function parseJobFunction(raw: string | null | undefined): JobFunction | null {

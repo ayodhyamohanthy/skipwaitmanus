@@ -1,5 +1,6 @@
 import express, { type Express, type Request } from "express";
 import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
+import { referrerAreasInputSchema, referrerLevelsInputSchema } from "../shared/jobFunctions";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type Identity = { account: Account };
@@ -90,6 +91,12 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to change your referrer settings" });
       const body = (req.body ?? {}) as Record<string, unknown>;
+      // Job areas and levels are validated against the shared taxonomy: listed values, each once.
+      for (const [field, schema] of [["preferAreas", referrerAreasInputSchema], ["preferLevels", referrerLevelsInputSchema]] as const) {
+        if (body[field] === undefined) continue;
+        const checked = schema.safeParse(body[field]);
+        if (!checked.success) return res.status(400).json({ error: checked.error.issues[0]?.message ?? "Choose from the list" });
+      }
       const save = deps.updateReferrerPreferences ?? updateReferrerPreferences;
       const preferences = await save(identity.account.id, {
         referralCapacity: body.referralCapacity,
