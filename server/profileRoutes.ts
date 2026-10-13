@@ -54,7 +54,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
         bio: body.bio as string | undefined,
         skills: body.skills as string | undefined,
         openTo: body.openTo as unknown,
-        handle: (body.handle as string | null | undefined) ?? undefined,
+        handle: body.handle === null ? null : typeof body.handle === "string" ? body.handle : undefined,
         profileVisibility: body.profileVisibility as string | undefined,
       });
       record({ actorUserId: identity.account.id, action: "profile.updated", outcome: "success", resourceType: "profile" });
