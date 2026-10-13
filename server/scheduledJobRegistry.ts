@@ -11,7 +11,7 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
   {
     name: "ask-expiry-sweep",
     description: `Closes asks no verified employee claimed within ${ASK_TTL_DAYS} days and returns the seeker's credit`,
-    windowMs: 15 * MINUTE,
+    windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createAskExpirySweep(),
   },

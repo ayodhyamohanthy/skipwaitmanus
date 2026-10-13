@@ -16,7 +16,7 @@ export const INTERNAL_PATH_PREFIX = "/api/internal/";
 export const JOBS_TICK_HEADER = "x-skipwait-jobs-tick";
 export const JOBS_TICK_MESSAGE_PREFIX = "jobs-tick:";
 /** The one cron schedule wrangler.jsonc declares; server/scheduledJobsWorker.test.ts keeps them equal. */
-export const JOBS_CRON = "*/15 * * * *";
+export const JOBS_CRON = "0 * * * *";
 export const JOBS_TICK_TOKEN_PATTERN = /^[0-9a-f]{64}$/;
 
 export function unixMinute(ms: number): number {

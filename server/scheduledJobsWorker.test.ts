@@ -20,7 +20,9 @@ describe("Worker cron trigger configuration", () => {
   });
 
   it("gives every job a window that is a whole number of cron periods", () => {
-    const period = Number(/^\*\/(\d+) \* \* \* \*$/.exec(JOBS_CRON)?.[1]) * 60_000;
+    // "*/N * * * *" fires every N minutes; "0 * * * *" fires hourly.
+    const every = /^\*\/(\d+) \* \* \* \*$/.exec(JOBS_CRON)?.[1];
+    const period = (every ? Number(every) : JOBS_CRON === "0 * * * *" ? 60 : Number.NaN) * 60_000;
     expect(period).toBeGreaterThan(0);
     for (const job of SCHEDULED_JOBS) expect(job.windowMs % period).toBe(0);
   });
@@ -87,7 +89,7 @@ describe("Worker tick request reaches the container route end to end", () => {
     registerScheduledJobsRoutes(app, { resolveIdentity: async () => undefined, tickSecret: () => SECRET, now: () => NOW - 300, store, capture: vi.fn(), jobs: [{ ...SCHEDULED_JOBS[0], run }] });
     const response = await request(app).post(new URL(tick.url).pathname).set(JOBS_TICK_HEADER, presented ?? "");
     expect(response.status).toBe(200);
-    expect(response.body.results[0]).toMatchObject({ job: "ask-expiry-sweep", windowKey: "2026-10-14T10:15Z", outcome: "ran" });
+    expect(response.body.results[0]).toMatchObject({ job: "ask-expiry-sweep", windowKey: "2026-10-14T10:00Z", outcome: "ran" });
     expect(run).toHaveBeenCalledTimes(1);
   });
 });
