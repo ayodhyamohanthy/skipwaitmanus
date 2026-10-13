@@ -2,6 +2,7 @@
 // verified company (GET /api/company-referrals/access) and the live referrer
 // preferences (GET/PUT /api/referrer-preferences), validating both with Zod.
 import { z } from "zod";
+import { companyIdentityFieldsSchema } from "@shared/companies";
 import { readApiJson } from "@/lib/apiResponse";
 
 export type TokenSource = () => Promise<string | null | undefined>;
@@ -12,7 +13,7 @@ export const CAPACITY_MIN = 1;
 export const CAPACITY_MAX = 15;
 export const capacitySettingsKey = ["referrer-workspace", "capacity-settings"] as const;
 
-const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish() });
+const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish(), ...companyIdentityFieldsSchema.shape });
 const preferencesSchema = z.object({
   preferences: z.object({
     // The profile form (tRPC) accepts 0-20; this control's real range is the PUT contract's 1-15.
@@ -22,7 +23,8 @@ const preferencesSchema = z.object({
   }),
 });
 
-export type CapacitySettings = { companyDomain: string | null; capacity: number; areas: string[]; paused: boolean };
+/** companyName is the server company directory name for companyDomain (null outside the directory). */
+export type CapacitySettings = { companyDomain: string | null; companyName: string | null; capacity: number; areas: string[]; paused: boolean };
 export type CapacitySettingsInput = { referralCapacity: number; preferAreas: string[]; paused: boolean };
 
 const knownFunction = (value: string) => (WORK_FUNCTIONS as readonly string[]).includes(value);
@@ -51,6 +53,7 @@ export async function fetchCapacitySettings(getToken: TokenSource): Promise<Capa
   const preferences = parsePreferences(preferencesPayload);
   return {
     companyDomain: access.data.verifiedCompanyAccess && access.data.workEmailDomain ? access.data.workEmailDomain : null,
+    companyName: access.data.verifiedCompanyAccess && access.data.workEmailDomain ? access.data.companyName ?? null : null,
     capacity: preferences.referralCapacity,
     areas: preferences.preferAreas.filter(knownFunction),
     paused: preferences.paused,
@@ -63,7 +66,7 @@ export function orderAreas(primary: string, saved: readonly string[]): string[] 
   return [primary, ...saved.filter(area => area !== primary && knownFunction(area))];
 }
 
-export async function saveCapacitySettings(getToken: TokenSource, input: CapacitySettingsInput): Promise<Omit<CapacitySettings, "companyDomain">> {
+export async function saveCapacitySettings(getToken: TokenSource, input: CapacitySettingsInput): Promise<Omit<CapacitySettings, "companyDomain" | "companyName">> {
   const payload = await authedJson("/api/referrer-preferences", getToken, "We could not save your referrer settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

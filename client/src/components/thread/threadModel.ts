@@ -1,5 +1,5 @@
 import { askDaysLeft, isPostApprovalReferralStatus } from "@shared/referral";
-import { companySlugForJobCompany, getLaunchCompany } from "@/lib/companies";
+import { companyIdentityOf, type CompanyIdentitySource } from "@shared/companies";
 import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
 
 /** Kit v4 thread stages, in order. */
@@ -40,20 +40,18 @@ export function canMessage(role: ThreadRole, request: Pick<ThreadRequest, "statu
   return isAccepted(request);
 }
 
-/** Display name for launch companies ("wipro.com" → "Wipro"); the raw domain otherwise. */
-export function companyName(domain: string): string {
-  const slug = companySlugForJobCompany(domain);
-  return (slug ? getLaunchCompany(slug)?.name : undefined) ?? domain;
+/** The company directory's display name, resolved by the server ("wipro.com" -> "Wipro"); the raw domain otherwise. */
+export function companyName(request: CompanyIdentitySource): string {
+  return companyIdentityOf(request).name;
 }
 
-export function companyInitials(domain: string): string {
-  const slug = companySlugForJobCompany(domain);
-  return (slug ? getLaunchCompany(slug)?.initials : undefined) ?? (domain.charAt(0) || "?").toUpperCase();
+export function companyInitials(request: CompanyIdentitySource): string {
+  return companyIdentityOf(request).mark;
 }
 
 /** Seeker waiting line for a pending ask, with the real expiry when it applies. */
-export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "referrerId" | "createdAt">, nowMs: number = Date.now()): string {
-  const company = companyName(request.companyDomain);
+export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "companyName" | "companyInitials" | "referrerId" | "createdAt">, nowMs: number = Date.now()): string {
+  const company = companyName(request);
   if (request.referrerId !== null) return `A verified ${company} employee is reviewing your request. We'll notify you the moment it's accepted.`;
   const days = askDaysLeft({ createdAt: request.createdAt }, nowMs);
   if (days === null || days < 0) return `Waiting for a verified ${company} referrer.`;

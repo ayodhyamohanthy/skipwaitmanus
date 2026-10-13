@@ -1,11 +1,19 @@
 import { ArrowRight, Building2, CheckCircle2, CircleDollarSign, Eye, type LucideIcon, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import type { AdminCompany } from "@shared/companies";
 import { AdminHeading, type AdminView } from "./AdminShell";
 import type { FlowHealth } from "./adminApi";
 
 export type LiveMetric = { value: number | null; loading: boolean; failed: boolean; detail: string };
+
+/** Company coverage: listed companies with an open door right now (a verified, available referrer). */
+export function companyCoverageMetric(companies: readonly AdminCompany[] | undefined, loading: boolean, failed: boolean): LiveMetric {
+  const listed = companies?.filter(company => company.status === "listed");
+  const open = listed?.filter(company => company.openToReferrals).length ?? null;
+  const detail = !listed || listed.length === 0 ? "No companies listed yet" : open === listed.length ? "Confirmed launch companies" : `${open ?? 0} of ${listed.length} listed companies open`;
+  return { value: open, loading, failed, detail };
+}
 
 const TASKS = [
   ["Review company submissions", "Validate domains and prevent duplicates", "companies"],
@@ -40,8 +48,7 @@ function FunnelChart({ health }: { health: FlowHealth }) {
   </div>;
 }
 
-export function OverviewView({ onView, verificationQueue, openReports, health, healthLoading, healthFailed }: { onView: (view: AdminView) => void; verificationQueue: LiveMetric; openReports: LiveMetric; health: FlowHealth | undefined; healthLoading: boolean; healthFailed: boolean }) {
-  const companyCoverage: LiveMetric = { value: LAUNCH_COMPANIES.length, loading: false, failed: false, detail: "Confirmed launch companies" };
+export function OverviewView({ onView, verificationQueue, openReports, companyCoverage, health, healthLoading, healthFailed }: { onView: (view: AdminView) => void; verificationQueue: LiveMetric; openReports: LiveMetric; companyCoverage: LiveMetric; health: FlowHealth | undefined; healthLoading: boolean; healthFailed: boolean }) {
   const marketplaceUsers: LiveMetric = { value: null, loading: false, failed: false, detail: "No fabricated count" };
   return <>
     <AdminHeading eyebrow="MARKETPLACE CONTROL ROOM" title="Operate for trust, not vanity." body="Prioritize safety, healthy supply, and useful introductions. Never optimize for referral volume alone." />

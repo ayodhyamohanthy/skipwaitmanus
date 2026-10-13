@@ -8,7 +8,6 @@ import { ArrowRight, Check, Pause } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
-import { companyIdentity } from "@/components/referrer-home/referrerData";
 import { CAPACITY_MAX, CAPACITY_MIN, WORK_FUNCTIONS, capacitySettingsKey, fetchCapacitySettings, orderAreas, saveCapacitySettings, type CapacitySettings, type TokenSource } from "./capacitySettingsData";
 
 export function CapacitySettingsPanel({ isSignedIn, getToken, onSignIn }: { isSignedIn: boolean; getToken: TokenSource; onSignIn: () => void }) {
@@ -71,7 +70,7 @@ function CapacityForm({ initial, getToken }: { initial: CapacitySettings; getTok
         {/* Options are only companies verified by work email; anything else goes through /verify. */}
         <select value={initial.companyDomain ?? ""} onChange={event => { if (event.target.value === VERIFY_ANOTHER) go("/verify"); }}>
           {initial.companyDomain
-            ? <option value={initial.companyDomain}>{companyIdentity(initial.companyDomain).name}</option>
+            ? <option value={initial.companyDomain}>{initial.companyName ?? initial.companyDomain}</option>
             : <option value="" disabled>Select your company</option>}
           <option value={VERIFY_ANOTHER}>{initial.companyDomain ? "Verify another company" : "Verify your company"}</option>
         </select>

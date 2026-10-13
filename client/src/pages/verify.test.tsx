@@ -3,6 +3,8 @@ import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { CompanyDirectoryResponse } from "@shared/companies";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import Verify from "./Verify";
 
 const { authState } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true, getToken: vi.fn().mockResolvedValue("test-token") } }));
@@ -20,14 +22,19 @@ const reply = (status: number, body: unknown): Reply => ({ status, body });
 const ok = (body: unknown) => reply(200, body);
 const asResponse = ({ status, body }: Reply) => ({ ok: status < 400, status, url: "http://localhost/api", json: async () => body });
 
+// GET /api/companies: the verifiable companies and their email domains.
+const directoryWith = (domains: Record<string, string[]> = {}): CompanyDirectoryResponse => ({ companies: LAUNCH_COMPANY_SEED.map(seed => ({ slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: domains[seed.slug] ?? [...seed.domains], openToReferrals: true })), openCount: LAUNCH_COMPANY_SEED.length });
+const DIRECTORY = directoryWith();
+
 const renderVerify = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><Verify /></QueryClientProvider>);
 
 /** Routes each endpoint to a queue of replies (last reply repeats) and records request bodies. */
-function stubApi(routes: { send?: Reply[]; check?: Reply[]; enroll?: Reply[]; preferences?: Reply[]; profile?: Reply[] }) {
+function stubApi(routes: { send?: Reply[]; check?: Reply[]; enroll?: Reply[]; preferences?: Reply[]; profile?: Reply[]; directory?: Reply[] }) {
   const calls: { path: string; body: Record<string, string> }[] = [];
   const next = (queue: Reply[] | undefined) => (queue && queue.length > 1 ? queue.shift() : queue?.[0]) ?? ok({});
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
     const path = String(url);
+    if (path === "/api/companies") return asResponse(next(routes.directory ?? [ok(DIRECTORY)]));
     calls.push({ path, body: JSON.parse(String(init?.body ?? "{}")) });
     if (path === "/api/work-email/otp/send") return asResponse(next(routes.send));
     if (path === "/api/work-email/otp/verify") return asResponse(next(routes.check));
@@ -42,6 +49,7 @@ function stubApi(routes: { send?: Reply[]; check?: Reply[]; enroll?: Reply[]; pr
 
 async function reachCodeStep(email = "name@wipro.com") {
   renderVerify();
+  await screen.findAllByRole("radio");
   fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
   fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: email } });
   fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
@@ -70,17 +78,55 @@ describe("Verify work email", () => {
     expect(screen.queryByText(/123456/)).toBeNull();
   });
 
-  it("never ships preview scaffolding or invented storage claims", () => {
+  it("never ships preview scaffolding or invented storage claims", async () => {
+    stubApi({});
     renderVerify();
+    expect(await screen.findAllByRole("radio")).toHaveLength(5);
     for (const scaffold of [/DESIGN PREVIEW/i, /Try states/i, /Preview code/i, /one-way fingerprint/i, /next re-check/i]) expect(screen.queryByText(scaffold)).toBeNull();
-    expect(screen.getAllByRole("radio")).toHaveLength(5);
+  });
+
+  it("loads the companies from the directory, holding Continue until one is chosen", async () => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>(resolve => { release = resolve; });
+    vi.stubGlobal("fetch", vi.fn(async () => { await gate; return asResponse(ok(DIRECTORY)); }));
+    renderVerify();
+    expect(screen.getByLabelText("Loading companies").getAttribute("aria-busy")).toBe("true");
+    expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(true);
+    release?.();
+    const radios = await screen.findAllByRole("radio");
+    expect(radios.map(radio => radio.textContent)).toEqual(["SWSkipWait@skipwait.me", "WWipro@wipro.com", "GNGo Neutrinos@goneutrinos.com", "TTCS@tcs.com", "MMerkle@merkle.com"]);
+    expect(screen.getByRole("radio", { name: /Wipro/ }).getAttribute("aria-checked")).toBe("true");
+    expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("shows a directory failure with Try again instead of an empty company list", async () => {
+    stubApi({ directory: [reply(503, { error: "The company directory is unavailable right now" }), reply(503, { error: "The company directory is unavailable right now" }), ok(DIRECTORY)] });
+    renderVerify();
+    const alert = await screen.findByRole("alert", {}, { timeout: 4000 });
+    expect(alert.textContent).toContain("The company directory is unavailable right now");
+    expect((screen.getByRole("button", { name: /Continue/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /Try again/ }));
+    expect(await screen.findAllByRole("radio")).toHaveLength(5);
+  });
+
+  it("accepts any verified domain of the chosen company and names the primary one", async () => {
+    stubApi({ send: [ok({ sent: true })], directory: [ok(directoryWith({ wipro: ["wipro.com", "wipro.co.in"] }))] });
+    renderVerify();
+    await screen.findAllByRole("radio");
+    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.in" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
+    expect(await screen.findByText("This doesn't match Wipro. Wipro emails end in @wipro.com.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.co.in" } });
+    fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
+    expect(await screen.findByText("Enter the code")).toBeTruthy();
   });
 
   it("walks company to email with domain validation, no fake states", async () => {
     stubApi({ send: [ok({ sent: true })] });
     renderVerify();
     expect(screen.getByText("Where do you work?")).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: /TCS/ }));
+    fireEvent.click(await screen.findByRole("radio", { name: /TCS/ }));
     fireEvent.click(screen.getByRole("radio", { name: /Wipro/ }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     expect(screen.getByText("Your Wipro email")).toBeTruthy();
@@ -180,6 +226,7 @@ describe("Verify work email", () => {
   it("surfaces server rate limits honestly on send", async () => {
     stubApi({ send: [reply(429, { error: "Too many code requests. Wait before trying again.", retryAfterSeconds: 600 })] });
     renderVerify();
+    await screen.findAllByRole("radio");
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
@@ -188,8 +235,9 @@ describe("Verify work email", () => {
   });
 
   it("explains a network failure instead of a raw fetch error", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => { if (url === "/api/companies") return asResponse(ok(DIRECTORY)); throw new TypeError("Failed to fetch"); }));
     renderVerify();
+    await screen.findAllByRole("radio");
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
@@ -200,6 +248,7 @@ describe("Verify work email", () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
     const calls = stubApi({ send: [ok({ sent: true }), reply(429, { error: "Too many code requests. Wait before trying again." })] });
     renderVerify();
+    await act(async () => { await vi.advanceTimersByTimeAsync(100); });
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));

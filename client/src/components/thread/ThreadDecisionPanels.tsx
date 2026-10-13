@@ -113,7 +113,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
   const [reasonLabel, setReasonLabel] = useState<string>(PASS_REASONS[0].label);
   const action = useAction();
   const stage = stageOf(request);
-  const company = companyName(request.companyDomain);
+  const company = companyName(request);
   const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setModal(next); };
   const close = () => { setModal(null); action.reset(); };
   const submit = (run: () => Promise<void>, fallback: string) => { void action.run(run, fallback).then(ok => { if (ok) setModal(null); }); };

@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { EMPLOYER_PLANS, employerPlanPriceLabel } from "@/components/employer/employerPlans";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import { useCompanyDirectory } from "@/lib/companyDirectory";
 
 // Cards 2-4 keep claims the product backs today; the kit's insight, ATS and
 // campaign cards land with the employer-insights wave.
@@ -26,6 +26,7 @@ export function demoRequestMailto({ email, company, teamSize }: { email: string;
 }
 
 export default function ForCompanies() {
+  const directory = useCompanyDirectory();
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
   const [teamSize, setTeamSize] = useState(TEAM_SIZES[0]);
@@ -56,7 +57,11 @@ export default function ForCompanies() {
         </section>
         <section className="launch-section" aria-label="Launch companies">
           <span className="eyebrow">PEOPLE OPEN TO REFERRALS AT LAUNCH</span>
-          <div className="co-logos">{LAUNCH_COMPANIES.map(item => <span key={item.slug}><Building2 />{item.name}</span>)}</div>
+          {directory.data
+            ? <div className="co-logos">{directory.data.companies.map(item => <span key={item.slug}><Building2 />{item.name}</span>)}</div>
+            : directory.isError
+              ? <p role="alert" className="mt-3.5 text-sm text-muted-foreground">We couldn’t load the launch companies. <button type="button" className="text-link" onClick={() => { void directory.refetch(); }}>Try again</button></p>
+              : <div className="co-logos" aria-busy="true" aria-label="Loading launch companies">{[0, 1, 2, 3, 4].map(index => <span key={index} className="h-[50px] w-28 animate-pulse bg-muted motion-reduce:animate-none" />)}</div>}
         </section>
         <section className="launch-section">
           <h2>What you get</h2>

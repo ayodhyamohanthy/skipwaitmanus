@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render as rtlRender, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import ForCompanies, { demoRequestMailto } from "./ForCompanies";
 import { EMPLOYER_PLANS, employerPlanPriceLabel } from "@/components/employer/employerPlans";
 
@@ -10,13 +12,20 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/for-companies"],
 }));
 
+// Launch chips read the server directory (GET /api/companies).
+const directory = { companies: LAUNCH_COMPANY_SEED.map(seed => ({ slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], openToReferrals: true })), openCount: LAUNCH_COMPANY_SEED.length };
+const render = (ui: React.ReactElement) => rtlRender(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>);
+
+beforeEach(() => { vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200, url: "", json: async () => directory }))); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("ForCompanies sales page", () => {
-  it("renders the kit header, launch companies and fair band without preview scaffolding", () => {
+  it("renders the kit header, launch companies and fair band without preview scaffolding", async () => {
     render(<ForCompanies />);
     expect(screen.getByText(/Your best hires already/)).toBeTruthy();
-    expect(screen.getByText("Wipro")).toBeTruthy();
+    expect(await screen.findByText("Wipro")).toBeTruthy();
+    const chips = screen.getByText("PEOPLE OPEN TO REFERRALS AT LAUNCH").closest("section") as HTMLElement;
+    expect(Array.from(chips.querySelectorAll(".co-logos span")).map(node => node.textContent)).toEqual(["SkipWait", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
     const nav = screen.getByRole("navigation", { name: "Company navigation" });
     expect(within(nav).getByRole("link", { name: "Plans" }).getAttribute("href")).toBe("/plans");
     expect(within(nav).getByRole("link", { name: "Book a demo" }).getAttribute("href")).toBe("#demo");
@@ -38,6 +47,13 @@ describe("ForCompanies sales page", () => {
     // No price on the page that the catalog does not define.
     const prices = Array.from(document.querySelectorAll(".plan-price strong")).map(node => node.textContent);
     expect(prices).toEqual(EMPLOYER_PLANS.map(plan => employerPlanPriceLabel(plan.price)));
+  });
+
+  it("keeps the page usable when the launch companies cannot load", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+    render(<ForCompanies />);
+    expect((await screen.findByRole("alert", {}, { timeout: 5000 })).textContent).toContain("We couldn’t load the launch companies.");
+    expect(screen.getByRole("link", { name: "See pricing" })).toBeTruthy();
   });
 
   it("opens a prefilled email for a demo request instead of submitting silently", () => {

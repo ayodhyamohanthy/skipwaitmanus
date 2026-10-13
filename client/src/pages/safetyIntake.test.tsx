@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import Report from "./Report";
 import SuggestCompany from "./SuggestCompany";
 
@@ -56,6 +58,11 @@ describe("Report flow", () => {
   });
 });
 
+// The duplicate hint reads the server directory (GET /api/companies).
+const DIRECTORY = { companies: LAUNCH_COMPANY_SEED.map(seed => ({ slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], openToReferrals: true })), openCount: LAUNCH_COMPANY_SEED.length };
+const renderSuggest = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><SuggestCompany /></QueryClientProvider>);
+const postsOf = (fetchMock: { mock: { calls: unknown[][] } }) => fetchMock.mock.calls.filter(call => (call[1] as RequestInit | undefined)?.method === "POST");
+
 describe("SuggestCompany flow", () => {
   it("flags listed companies and submits new ones with role and limit errors", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
@@ -64,16 +71,17 @@ describe("SuggestCompany flow", () => {
         if (body.companyName === "Delta") return { ok: false, status: 400, json: async () => ({ error: "You can suggest up to 3 companies a day" }) };
         return ok({ suggestion: { id: 5, companyName: body.companyName } });
       }
-      return ok({});
+      return url === "/api/companies" ? ok(DIRECTORY) : ok({});
     });
     vi.stubGlobal("fetch", fetchMock);
-    render(<SuggestCompany />);
+    renderSuggest();
     expect(screen.queryByText(/DESIGN PREVIEW|NOTHING IS SUBMITTED/i)).toBeNull();
     const submit = () => screen.getByRole("button", { name: "Submit for review" });
     expect(submit().hasAttribute("disabled")).toBe(true);
     // Kit prefix match: a partial name already flags the listed company.
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Wip" } });
-    expect(screen.getByText(/Wipro is already on SkipWait/)).toBeTruthy();
+    expect(await screen.findByText(/Wipro is already on SkipWait/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Open it" }).getAttribute("href")).toBe("/explore/wipro");
     expect(submit().hasAttribute("disabled")).toBe(true);
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Delta" } });
     // A website is required before Submit, as in the kit.
@@ -95,22 +103,24 @@ describe("SuggestCompany flow", () => {
   });
 
   it("keeps a website the visitor typed with a scheme and offers an invite to seekers", async () => {
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => ok({ suggestion: { id: 6, companyName: JSON.parse(String(init?.body)).companyName } }));
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : ok({ suggestion: { id: 6, companyName: JSON.parse(String(init?.body)).companyName } })));
     vi.stubGlobal("fetch", fetchMock);
-    render(<SuggestCompany />);
+    renderSuggest();
     fireEvent.change(screen.getByPlaceholderText("e.g. Freshworks"), { target: { value: "Zerodha" } });
     fireEvent.change(screen.getByPlaceholderText("freshworks.com"), { target: { value: "http://zerodha.com" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit for review" }));
     expect(await screen.findByText(/Zerodha is in review/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Invite someone" }).getAttribute("href")).toBe("/invite?mode=invite");
-    expect(JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body))).toEqual({ companyName: "Zerodha", website: "http://zerodha.com", role: "seeker" });
+    expect(JSON.parse(String((postsOf(fetchMock)[0]?.[1] as RequestInit | undefined)?.body))).toEqual({ companyName: "Zerodha", website: "http://zerodha.com", role: "seeker" });
   });
 
   it("asks signed-out visitors to sign in instead of showing the form", () => {
     authState.isSignedIn = false;
-    vi.stubGlobal("fetch", vi.fn(async () => ok({})));
-    render(<SuggestCompany />);
+    const fetchMock = vi.fn(async () => ok({}));
+    vi.stubGlobal("fetch", fetchMock);
+    renderSuggest();
     expect(screen.getByRole("button", { name: /Sign in/ })).toBeTruthy();
     expect(screen.queryByPlaceholderText("e.g. Freshworks")).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

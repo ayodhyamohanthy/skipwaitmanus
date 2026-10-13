@@ -18,9 +18,10 @@ function renderPage() {
 
 const day = 24 * 60 * 60 * 1000;
 const iso = (ms: number) => new Date(ms).toISOString();
-const base = { targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", queueStatus: null, referrerMessage: null, unreadMessageCount: 0, attachmentCount: 1 };
+// /mine rows carry the server directory identity: null outside it, "SkipWait"/"SW" for skipwait.me.
+const base = { targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", companyName: null, companyInitials: null, queueStatus: null, referrerMessage: null, unreadMessageCount: 0, attachmentCount: 1 };
 const openAsk = (id: number) => ({ ...base, id, title: "Product Designer", status: "pending", referrerId: null, createdAt: iso(Date.now() - day), updatedAt: iso(Date.now() - day) });
-const declined = { ...base, id: 45, title: "Designer", companyDomain: "skipwait.me", status: "declined", referrerId: 503, referrerMessage: "Not my team", createdAt: iso(Date.now() - 9 * day), updatedAt: iso(Date.now() - 8 * day) };
+const declined = { ...base, id: 45, title: "Designer", companyDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW", status: "declined", referrerId: 503, referrerMessage: "Not my team", createdAt: iso(Date.now() - 9 * day), updatedAt: iso(Date.now() - 8 * day) };
 const expired = { ...base, id: 46, title: "Analyst", status: "closed", referrerId: null, createdAt: iso(Date.now() - 12 * day), updatedAt: iso(Date.now() - 5 * day) };
 const credits = (remaining: number, extra: Record<string, unknown> = {}) => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: remaining, purchasedCreditsRemaining: 0, totalAvailable: remaining, cycleKey: "2026-10", subscriptionStatus: null, subscriptionCurrentTermEnd: null, ...extra } });
 

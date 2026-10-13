@@ -3,14 +3,13 @@ import React, { useState } from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RequestDialog } from "./RequestDialog";
-import type { LaunchCompany } from "@/lib/companies";
 
 const { authState, go } = vi.hoisted(() => ({ authState: { isSignedIn: false }, go: vi.fn() }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.isSignedIn }) }));
 vi.mock("wouter", () => ({ useLocation: () => ["/explore/acme", go] }));
 
-const company = { slug: "acme", name: "Acme", initials: "A" } as LaunchCompany;
+const company = { slug: "acme", name: "Acme", initials: "A" };
 
 beforeEach(() => {
   authState.isSignedIn = false;

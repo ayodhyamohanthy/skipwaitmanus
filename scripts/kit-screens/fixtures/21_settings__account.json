@@ -12,7 +12,9 @@
       "status": 200,
       "body": {
         "verifiedCompanyAccess": false,
-        "workEmailDomain": null
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
       }
     },
     {

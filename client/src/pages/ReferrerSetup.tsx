@@ -52,7 +52,7 @@ export default function ReferrerSetup() {
       ) : (
         <SetupWizard
           initial={data.preferences}
-          companyName={data.access.domain ? companyIdentity(data.access.domain).name : "your company"}
+          companyName={data.access.domain ? companyIdentity(data.access).name : "your company"}
           profileHandle={data.handle}
           fetchToken={fetchToken}
           onSaved={() => { void queryClient.invalidateQueries({ queryKey: ["referrer-home"] }); void queryClient.invalidateQueries({ queryKey: ["referrer-setup"] }); }}

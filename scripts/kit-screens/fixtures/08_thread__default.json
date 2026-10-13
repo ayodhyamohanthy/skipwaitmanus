@@ -35,7 +35,9 @@
               "fileSize": 182344,
               "availability": "after_claim"
             }
-          ]
+          ],
+          "companyName": "Wipro",
+          "companyInitials": "W"
         }
       }
     },

@@ -6,6 +6,7 @@
 // Payloads are parsed here so a malformed response reads as an error, never as
 // a fabricated count.
 import { z } from "zod";
+import { companyIdentityFieldsSchema } from "@shared/companies";
 import { referralStatuses } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -18,6 +19,7 @@ const referralRequestSchema = z.object({
   title: z.string().nullish(),
   targetRoleUrl: z.string().nullish().transform(value => value ?? null),
   companyDomain: z.string(),
+  ...companyIdentityFieldsSchema.shape,
   compensation: z.string().nullish(),
   status: z.enum(referralStatuses),
   referrerId: z.number().int().nullish().transform(value => value ?? null),

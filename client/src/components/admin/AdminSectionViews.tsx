@@ -1,21 +1,37 @@
-import { AlertTriangle, ArrowRight, Check, CheckCircle2, Clock3, Eye, Search, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
+import { AlertTriangle, ArrowRight, Check, CheckCircle2, Clock3, Eye, EyeOff, Search, ShieldAlert, ShieldCheck, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import type { AdminCompany } from "@shared/companies";
+import { numberWord } from "@/lib/companyDirectory";
 import { AdminHeading } from "./AdminShell";
 import type { LiveMetric } from "./AdminOverviewView";
 
-export function CompaniesView() {
+function visibleCopy(listed: number): string {
+  const word = numberWord(listed);
+  return `${word.charAt(0).toUpperCase()}${word.slice(1)} confirmed ${listed === 1 ? "company is" : "companies are"} visible.`;
+}
+
+function CompanyStatus({ company }: { company: AdminCompany }) {
+  if (company.status === "hidden") return <span className="status-pill"><EyeOff />Hidden</span>;
+  return company.openToReferrals ? <span className="status-pill"><Check />Open door</span> : <span className="status-pill"><Clock3 />Joining</span>;
+}
+
+/** Admin directory from GET /api/admin/companies: status from the server, search on the loaded rows. */
+export function CompaniesView({ companies, loading, failed }: { companies: readonly AdminCompany[] | undefined; loading: boolean; failed: boolean }) {
   const [query, setQuery] = useState("");
   const needle = query.trim().toLowerCase();
-  const companies = LAUNCH_COMPANIES.filter(company => !needle || `${company.name} ${company.domain}`.toLowerCase().includes(needle));
+  const rows = (companies ?? []).filter(company => !needle || `${company.name} ${company.domains.join(" ")}`.toLowerCase().includes(needle));
+  const listed = companies?.filter(company => company.status === "listed").length;
+  const body = loading ? "Loading the company directory…" : failed || listed === undefined ? "We could not load the company directory." : `${visibleCopy(listed)} New submissions require domain and duplicate review.`;
   return <>
-    <AdminHeading eyebrow="COMPANY OPERATIONS" title="Launch directory." body="Five confirmed companies are visible. New submissions require domain and duplicate review." />
+    <AdminHeading eyebrow="COMPANY OPERATIONS" title="Launch directory." body={body} />
     <div className="admin-toolbar"><label><Search /><input aria-label="Search companies" placeholder="Search company or domain" value={query} maxLength={100} onChange={event => setQuery(event.target.value)} /></label><Button asChild><Link href="/admin-review?tab=companies">Submissions</Link></Button></div>
     <section className="admin-table" aria-label="Companies"><header><span>Company</span><span>Coverage</span><span>Status</span><span>Action</span></header>
-      {companies.length ? companies.map(company => <div key={company.slug}><span className="table-primary"><i className="company-mark">{company.initials}</i><span><strong>{company.name}</strong><small>{company.industry}</small></span></span><span>{company.location}</span><span className="status-pill"><Check />Open door</span><Button variant="ghost" asChild><Link href={`/explore/${company.slug}`} aria-label={`Review ${company.name}`}>Review <ArrowRight /></Link></Button></div>)
-        : <div><span>No launch company matches that search.</span></div>}
+      {loading ? <div aria-busy="true"><span>Loading companies…</span></div>
+        : failed ? <div role="alert"><span>We could not load companies.</span></div>
+        : rows.length ? rows.map(company => <div key={company.slug}><span className="table-primary"><i className="company-mark">{company.initials}</i><span><strong>{company.name}</strong><small>{company.industry}</small></span></span><span>{company.location}</span><CompanyStatus company={company} />{company.status === "listed" ? <Button variant="ghost" asChild><Link href={`/explore/${company.slug}`} aria-label={`Review ${company.name}`}>Review <ArrowRight /></Link></Button> : <span />}</div>)
+        : <div><span>{companies?.length ? "No launch company matches that search." : "No companies in the directory yet."}</span></div>}
     </section>
   </>;
 }

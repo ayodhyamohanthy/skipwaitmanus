@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ReferrerHome from "./ReferrerHome";
 import Invite from "./Invite";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { deriveReferrerHome, greetingFor, type ReferrerHomeData } from "@/components/referrer-home/referrerData";
 
 const { authState, go, search } = vi.hoisted(() => ({ authState: { isSignedIn: true, userId: "11", getToken: vi.fn().mockResolvedValue("test-token") }, go: vi.fn(), search: { value: "" } }));
@@ -23,15 +24,18 @@ const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json }
 const fail = (status: number, json: unknown) => ({ ok: false, status, json: async () => json });
 const renderWithQuery = (ui: React.ReactElement) => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>{ui}</QueryClientProvider>);
 const DAY = 86400000;
+const DIRECTORY = { companies: LAUNCH_COMPANY_SEED.map(seed => ({ slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], openToReferrals: true })), openCount: LAUNCH_COMPANY_SEED.length };
+const suggestionPosts = (fetchMock: { mock: { calls: unknown[][] } }) => fetchMock.mock.calls.filter(call => call[0] === "/api/company-suggestions");
 const iso = (ms: number) => new Date(ms).toISOString();
-const ask = (id: number, createdMs: number, extra: Record<string, unknown> = {}) => ({ id, companyDomain: "wipro.com", status: "pending", savedAt: null, createdAt: iso(createdMs), updatedAt: iso(createdMs), isClaimedByYou: false, unreadMessageCount: 0, attachmentCount: 1, ...extra });
+// Server contract: rows and the access check carry the company directory's name and initials.
+const ask = (id: number, createdMs: number, extra: Record<string, unknown> = {}) => ({ id, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "pending", savedAt: null, createdAt: iso(createdMs), updatedAt: iso(createdMs), isClaimedByYou: false, unreadMessageCount: 0, attachmentCount: 1, ...extra });
 
 type HomeStub = { verified?: boolean; capacity?: number; paused?: boolean; verifiedAt?: string; reviewed?: number; replied?: number | null; fresh?: unknown[]; completed?: unknown[] };
 function stubHome(options: HomeStub = {}) {
   const now = Date.now();
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const path = String(url);
-    if (path.endsWith("/access")) return ok({ verifiedCompanyAccess: options.verified ?? true, workEmailDomain: options.verified === false ? null : "wipro.com" });
+    if (path.endsWith("/access")) return ok(options.verified === false ? { verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null } : { verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
     if (path.endsWith("/referrer-preferences") && init?.method === "PUT") return ok({ preferences: { referralCapacity: options.capacity ?? 3, paused: JSON.parse(String(init.body)).paused } });
     if (path.endsWith("/referrer-preferences")) return ok({ preferences: { referralCapacity: options.capacity ?? 3, preferAreas: ["Design"], referrerVisibility: "anon", notifyNewAsk: true, paused: options.paused ?? false } });
     if (path.endsWith("/profile/me")) return ok({ profile: { workEmailVerifiedAt: options.verifiedAt ?? iso(now - 20 * DAY), referralCapacity: options.capacity ?? 3 } });
@@ -126,7 +130,7 @@ describe("ReferrerHome", () => {
   it("keeps the paused state and says so when the pause change fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).endsWith("/referrer-preferences") && init?.method === "PUT") return fail(500, { error: "We could not save your referrer settings" });
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (String(url).endsWith("/referrer-preferences")) return ok({ preferences: { referralCapacity: 3, paused: true } });
       return ok({ requests: [], summary: { reviewed: 1, approved: 0, introductions: 0, interviews: 0, offers: 0 } });
     }));
@@ -139,7 +143,7 @@ describe("ReferrerHome", () => {
   it("shows a retryable error instead of the verify gate when loading fails", async () => {
     let failing = true;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (String(url).includes("/inbox") && failing) throw new TypeError("Failed to fetch");
       if (String(url).endsWith("/referrer-preferences")) return ok({ preferences: { referralCapacity: 3 } });
       return ok({ requests: [] });
@@ -173,7 +177,7 @@ describe("referrer home derivation", () => {
   it("counts only pending asks and active claimed load", () => {
     const now = Date.parse("2026-10-08T04:30:00Z");
     const data: ReferrerHomeData = {
-      access: { verified: true, domain: "wipro.com" },
+      access: { verified: true, domain: "wipro.com", companyName: "Wipro", companyInitials: "W" },
       preferences: { referralCapacity: 3, preferAreas: [], preferLevels: [], referrerVisibility: "anon", notifyNewAsk: true, paused: false },
       verifiedAt: "2026-09-20T06:00:00.000Z", profileCapacity: 3, impact: null,
       fresh: [{ id: 1, companyDomain: "wipro.com", status: "pending", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: false, unreadMessageCount: 0 }, { id: 2, companyDomain: "wipro.com", status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
@@ -234,13 +238,13 @@ describe("Invite colleagues and request companies", () => {
   });
 
   it("files a real seeker-demand company request without creating a referral request", async () => {
-    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => ok({ suggestion: { id: 7, companyName: "Acme Labs" } }));
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : ok({ suggestion: { id: 7, companyName: "Acme Labs" } })));
     vi.stubGlobal("fetch", fetchMock);
     renderWithQuery(<Invite />);
     expect(screen.getByText("Tell us where you want to work.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
     expect(await screen.findByText("Name the company you want to see.")).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(suggestionPosts(fetchMock)).toHaveLength(0);
     fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Acme Labs" } });
     fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
     expect(await screen.findByText("That’s the growth loop.")).toBeTruthy();
@@ -249,14 +253,27 @@ describe("Invite colleagues and request companies", () => {
   });
 
   it("points a listed company to its door instead of filing a request", async () => {
-    const fetchMock = vi.fn();
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? ok(DIRECTORY) : fail(500, {})));
     vi.stubGlobal("fetch", fetchMock);
     renderWithQuery(<Invite />);
+    await waitFor(() => expect(document.querySelectorAll("#launch-companies option")).toHaveLength(5));
+    expect(Array.from(document.querySelectorAll("#launch-companies option")).map(option => option.getAttribute("value"))).toEqual(["SkipWait", "Wipro", "Go Neutrinos", "TCS", "Merkle"]);
     fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "wipro" } });
     expect(screen.getByText(/Wipro already has a door on SkipWait/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open it" }).getAttribute("href")).toBe("/explore/wipro");
     fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(suggestionPosts(fetchMock)).toHaveLength(0);
+  });
+
+  it("still files a request when the company list cannot load", async () => {
+    const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => (url === "/api/companies" ? fail(503, { error: "The company directory is unavailable right now" }) : ok({ suggestion: { id: 8, companyName: "Wipro" } })));
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithQuery(<Invite />);
+    expect(await screen.findByText(/couldn’t load the companies already on SkipWait/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Company name"), { target: { value: "Wipro" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send company request" }));
+    expect(await screen.findByText("That’s the growth loop.")).toBeTruthy();
+    expect(suggestionPosts(fetchMock)).toHaveLength(1);
   });
 
   it("shows the server's reason when a company request is refused", async () => {

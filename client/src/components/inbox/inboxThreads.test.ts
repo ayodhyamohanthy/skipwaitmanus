@@ -3,18 +3,20 @@ import { referralStatuses } from "@shared/referral";
 import { askingListSchema, askingThread, buildInboxThreads, companyIdentity, filterInboxThreads, kitStatusFor, referringListSchema, referringThread, timeAgo, type AskingRow, type ReferringRow } from "./inboxThreads";
 
 const NOW = Date.parse("2026-10-08T04:30:00.000Z");
-const asking = (patch: Partial<AskingRow> = {}): AskingRow => ({ id: 1, title: "Data Analyst", companyDomain: "merkle.com", status: "pending", referrerId: null, queueStatus: null, referrerMessage: null, unreadMessageCount: 0, updatedAt: "2026-10-06T04:30:00.000Z", ...patch });
-const referring = (patch: Partial<ReferringRow> = {}): ReferringRow => ({ id: 2, companyDomain: "wipro.com", status: "pending", unreadMessageCount: 0, updatedAt: "2026-10-08T03:30:00.000Z", ...patch });
+// Rows carry the server company directory's name and initials (GET /mine, /inbox).
+const asking = (patch: Partial<AskingRow> = {}): AskingRow => ({ id: 1, title: "Data Analyst", companyDomain: "merkle.com", companyName: "Merkle", companyInitials: "M", status: "pending", referrerId: null, queueStatus: null, referrerMessage: null, unreadMessageCount: 0, updatedAt: "2026-10-06T04:30:00.000Z", ...patch });
+const referring = (patch: Partial<ReferringRow> = {}): ReferringRow => ({ id: 2, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "pending", unreadMessageCount: 0, updatedAt: "2026-10-08T03:30:00.000Z", ...patch });
 
 describe("inbox thread derivation", () => {
   it("maps every live referral status onto the kit status vocabulary", () => {
     expect(referralStatuses.map(kitStatusFor)).toEqual(["Requested", "Accepted", "Declined", "Referred", "Interviewing", "Offer", "Closed", "Withdrawn"]);
   });
 
-  it("names launch companies and falls back to the raw domain", () => {
-    expect(companyIdentity("wipro.com")).toEqual({ name: "Wipro", mark: "W" });
-    expect(companyIdentity("goneutrinos.com")).toEqual({ name: "Go Neutrinos", mark: "GN" });
-    expect(companyIdentity("acme.io")).toEqual({ name: "acme.io", mark: "A" });
+  it("names companies from the server directory fields and falls back to the raw domain", () => {
+    expect(companyIdentity({ companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" })).toEqual({ name: "Wipro", mark: "W" });
+    expect(companyIdentity({ companyDomain: "goneutrinos.com", companyName: "Go Neutrinos", companyInitials: "GN" })).toEqual({ name: "Go Neutrinos", mark: "GN" });
+    expect(companyIdentity({ companyDomain: "acme.io", companyName: null, companyInitials: null })).toEqual({ name: "acme.io", mark: "A" });
+    expect(referringThread(referring({ companyDomain: "acme.io", companyName: null, companyInitials: null }))).toMatchObject({ companyName: "acme.io", mark: "A", role: "acme.io" });
   });
 
   it("keeps the referrer anonymous before accept and never invents a referrer name after", () => {
@@ -64,6 +66,8 @@ describe("inbox thread derivation", () => {
   it("validates list payloads at the boundary", () => {
     expect(askingListSchema.safeParse({ requests: [{ ...asking(), referrerId: undefined, unreadMessageCount: undefined }] }).success).toBe(true);
     expect(askingListSchema.safeParse({ requests: [{ ...asking(), status: "hired" }] }).success).toBe(false);
+    expect(askingListSchema.safeParse({ requests: [{ ...asking(), companyName: undefined, companyInitials: undefined }] }).success).toBe(true);
+    expect(askingListSchema.safeParse({ requests: [{ ...asking(), companyInitials: "TOOLONG" }] }).success).toBe(false);
     expect(referringListSchema.safeParse({ requests: [{ id: 0, companyDomain: "wipro.com", status: "pending", updatedAt: "x" }] }).success).toBe(false);
     expect(referringListSchema.safeParse({}).success).toBe(false);
   });

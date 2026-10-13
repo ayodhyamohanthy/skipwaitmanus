@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel, field } from "@/components/kit/preview-kit";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import { findListedCompanyByName, useCompanyDirectory } from "@/lib/companyDirectory";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -27,6 +27,8 @@ function normalizeCompanyWebsite(input: string): string | undefined {
 export default function SuggestCompany() {
   const { isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
+  // Duplicate hint source; signed-out visitors never see the form, so never fetch it.
+  const directory = useCompanyDirectory({ enabled: Boolean(isSignedIn) });
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
   const [role, setRole] = useState<SuggestRole>("seeker");
@@ -34,8 +36,7 @@ export default function SuggestCompany() {
   const [error, setError] = useState("");
   const [sentName, setSentName] = useState<string | null>(null);
 
-  const typed = name.trim().toLowerCase();
-  const listed = typed.length > 1 ? LAUNCH_COMPANIES.find(company => company.name.toLowerCase().startsWith(typed)) : undefined;
+  const listed = findListedCompanyByName(directory.data?.companies ?? [], name, "prefix");
   const siteOk = SITE_PATTERN.test(website.trim());
 
   if (!isSignedIn) {
@@ -86,6 +87,7 @@ export default function SuggestCompany() {
       <Panel>
         <label className="block text-sm font-medium">Company name<input className={field} value={name} maxLength={160} onChange={event => { setName(event.target.value); setError(""); }} placeholder="e.g. Freshworks" /></label>
         {listed ? <p className="mt-2 flex items-center gap-2 text-sm"><AlertTriangle className="size-4" />{listed.name} is already on SkipWait. <Link href={`/explore/${listed.slug}`} className="text-link">Open it</Link></p> : null}
+        {directory.isError && name.trim().length > 1 ? <p className="mt-2 text-sm text-muted-foreground">We couldn’t check the current company list. Reviewers still catch duplicates.</p> : null}
         <label className="mt-4 block text-sm font-medium">Website<input className={field} value={website} inputMode="url" maxLength={500} onChange={event => { setWebsite(event.target.value); setError(""); }} placeholder="freshworks.com" /></label>
         <fieldset className="mt-4">
           <legend className="text-sm font-medium">You are</legend>

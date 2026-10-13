@@ -47,7 +47,9 @@
             "attachmentCount": 1,
             "queueStatus": null,
             "unreadMessageCount": 0,
-            "expiresAt": "2026-10-14T17:00:00.000Z"
+            "expiresAt": "2026-10-14T17:00:00.000Z",
+            "companyName": "Wipro",
+            "companyInitials": "W"
           }
         ],
         "expiredRequestIds": []

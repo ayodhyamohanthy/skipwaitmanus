@@ -46,6 +46,15 @@ describe("ReferralConversation thread", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("names the company from the server directory fields on the thread", async () => {
+    stubFetch(() => ok({ requests: [{ ...seekerPending, companyDomain: "goneutrinos.com", companyName: "Go Neutrinos", companyInitials: "GN" }] }));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Product Designer")).toBeTruthy();
+    expect(screen.getByText(/Waiting for a verified Go Neutrinos referrer/)).toBeTruthy();
+    expect(document.querySelector("header .company-mark")?.textContent).toBe("GN");
+    expect(screen.queryByText(/goneutrinos\.com/)).toBeNull();
+  });
+
   it("shows the seeker their ask with waiting state and a working withdraw", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });

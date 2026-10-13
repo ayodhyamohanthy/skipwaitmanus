@@ -15,7 +15,7 @@ type RequestRowProps = {
 
 export function RequestRow({ request, nowMs }: RequestRowProps) {
   const pill = requestPillStatus(request);
-  const company = companyIdentity(request.companyDomain);
+  const company = companyIdentity(request);
   const urgent = isUrgentExpiry(request, nowMs);
   return (
     <li>

@@ -29,7 +29,9 @@
             "inboxState": "new",
             "isClaimedByYou": false,
             "isQueueOpenAllocation": false,
-            "unreadMessageCount": 0
+            "unreadMessageCount": 0,
+            "companyName": "Wipro",
+            "companyInitials": "W"
           }
         ]
       }

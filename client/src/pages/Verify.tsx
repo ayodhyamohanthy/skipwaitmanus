@@ -6,7 +6,7 @@ import { Button, buttonVariants } from "@/components/kit/button";
 import { VerifiedPanel, VerifyLayout, VerifyProgress } from "@/components/verify/VerifyPanels";
 import { VerifyRequestError, checkWorkEmailCode, enrollWorkEmail, sendWorkEmailCode } from "@/components/verify/verifyApi";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { LAUNCH_COMPANIES, getLaunchCompany } from "@/lib/companies";
+import { useCompanyDirectory } from "@/lib/companyDirectory";
 
 const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "proton.me"];
 const MAX_ATTEMPTS = 5;
@@ -39,7 +39,11 @@ export default function Verify() {
   // can be retried without spending a new code.
   const [receipt, setReceipt] = useState("");
   const inputs = useRef<(HTMLInputElement | null)[]>([]);
-  const selected = getLaunchCompany(company) ?? LAUNCH_COMPANIES[1];
+  // The verifiable companies and their email domains come from the server directory.
+  const directory = useCompanyDirectory();
+  const companies = directory.data?.companies ?? [];
+  const selected = companies.find(item => item.slug === company) ?? companies.find(item => item.slug === DEFAULT_COMPANY) ?? companies[0];
+  const primaryDomain = selected?.domains[0] ?? "";
   const locked = attempts >= MAX_ATTEMPTS;
   const entered = code.join("");
 
@@ -54,9 +58,10 @@ export default function Verify() {
   const sendCode = async (from: "email" | "code") => {
     const showError = from === "email" ? setEmailError : setCodeError;
     const domain = email.split("@")[1]?.trim().toLowerCase() ?? "";
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) { setEmailError(`Enter a full email address, like you@${selected.domain}`); return; }
+    if (!selected) { setStep("company"); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email.trim())) { setEmailError(`Enter a full email address, like you@${primaryDomain}`); return; }
     if (PERSONAL_DOMAINS.includes(domain)) { setEmailError(`Personal inboxes can't prove where you work. Use your ${selected.name} email.`); return; }
-    if (domain !== selected.domain) { setEmailError(`This doesn't match ${selected.name}. ${selected.name} emails end in @${selected.domain}.`); return; }
+    if (!selected.domains.includes(domain)) { setEmailError(`This doesn't match ${selected.name}. ${selected.name} emails end in @${primaryDomain}.`); return; }
     if (sending) return;
     showError(""); setSending(true);
     try {
@@ -137,25 +142,32 @@ export default function Verify() {
       {step === "company" ? (
         <div>
           <Building2 className="mb-3 text-primary" /><h2 className="text-2xl font-semibold">Where do you work?</h2><p className="mt-1 text-muted-foreground">Pick the company you&apos;ll refer into.</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Company">
-            {LAUNCH_COMPANIES.map(item => (
-              <button key={item.slug} type="button" role="radio" aria-checked={company === item.slug} onClick={() => setCompany(item.slug)} className={`flex min-h-14 items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${company === item.slug ? "border-primary bg-primary/5" : "border-border hover:border-foreground/40"}`}>
-                <span className="company-mark">{item.initials}</span>
-                <span className="min-w-0 flex-1"><strong className="block">{item.name}</strong><small className="text-muted-foreground">@{item.domain}</small></span>
-                {company === item.slug ? <Check className="text-primary" /> : null}
-              </button>
-            ))}
-          </div>
+          {directory.data ? (companies.length ? (
+            <div className="mt-6 grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Company">
+              {companies.map(item => (
+                <button key={item.slug} type="button" role="radio" aria-checked={selected?.slug === item.slug} onClick={() => setCompany(item.slug)} className={`flex min-h-14 items-center gap-3 rounded-2xl border p-3 text-left transition-colors ${selected?.slug === item.slug ? "border-primary bg-primary/5" : "border-border hover:border-foreground/40"}`}>
+                  <span className="company-mark">{item.initials}</span>
+                  <span className="min-w-0 flex-1"><strong className="block">{item.name}</strong><small className="text-muted-foreground">@{item.domains[0]}</small></span>
+                  {selected?.slug === item.slug ? <Check className="text-primary" /> : null}
+                </button>
+              ))}
+            </div>
+          ) : <p className="mt-6 rounded-2xl bg-muted p-4 text-sm">No companies are open for verification yet.</p>)
+            : directory.isError ? (
+              <p role="alert" className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl border border-destructive p-4 text-sm"><AlertTriangle className="size-4 shrink-0 text-destructive" /><span className="flex-1">{directory.error.message}</span><Button variant="outline" size="sm" disabled={directory.isFetching} onClick={() => { void directory.refetch(); }}><RefreshCw />Try again</Button></p>
+            ) : (
+              <div className="mt-6 grid gap-3 sm:grid-cols-2" aria-busy="true" aria-label="Loading companies">{[0, 1, 2, 3].map(index => <span key={index} className="block min-h-14 animate-pulse rounded-2xl bg-muted motion-reduce:animate-none" />)}</div>
+            )}
           <p className="mt-4 text-sm text-muted-foreground">Company not listed? <Link href="/suggest-company" className="text-link">Suggest it</Link> — we add companies after review.</p>
-          <div className="mt-8 flex justify-end"><Button onClick={() => setStep("email")}>Continue <ArrowRight /></Button></div>
+          <div className="mt-8 flex justify-end"><Button disabled={!selected} onClick={() => setStep("email")}>Continue <ArrowRight /></Button></div>
         </div>
       ) : null}
 
       {step === "email" ? (
         <div>
-          <Mail className="mb-3 text-primary" /><h2 className="text-2xl font-semibold">Your {selected.name} email</h2><p className="mt-1 text-muted-foreground">We&apos;ll send a 6-digit code. It expires in 10 minutes.</p>
+          <Mail className="mb-3 text-primary" /><h2 className="text-2xl font-semibold">Your {selected?.name ?? "work"} email</h2><p className="mt-1 text-muted-foreground">We&apos;ll send a 6-digit code. It expires in 10 minutes.</p>
           <label className="mt-6 block text-sm font-medium">Work email
-            <input type="email" inputMode="email" autoComplete="email" value={email} onChange={event => { setEmail(event.target.value); setEmailError(""); }} onKeyDown={event => { if (event.key === "Enter") void sendCode("email"); }} placeholder={`you@${selected.domain}`} aria-invalid={Boolean(emailError)} aria-describedby="email-msg" className={`mt-2 h-12 w-full rounded-xl border bg-background px-4 text-base ${emailError ? "border-destructive" : "border-input"}`} />
+            <input type="email" inputMode="email" autoComplete="email" value={email} onChange={event => { setEmail(event.target.value); setEmailError(""); }} onKeyDown={event => { if (event.key === "Enter") void sendCode("email"); }} placeholder={`you@${primaryDomain || "company.com"}`} aria-invalid={Boolean(emailError)} aria-describedby="email-msg" className={`mt-2 h-12 w-full rounded-xl border bg-background px-4 text-base ${emailError ? "border-destructive" : "border-input"}`} />
           </label>
           <p id="email-msg" role={emailError ? "alert" : undefined} className={`mt-2 flex items-start gap-2 text-sm ${emailError ? "text-destructive" : "text-muted-foreground"}`}>
             {emailError ? <><AlertTriangle className="mt-0.5 size-4 shrink-0" />{emailError}</> : <><LockKeyhole className="mt-0.5 size-4 shrink-0" />Used only to verify. Never shown, never used for marketing.</>}
@@ -190,7 +202,7 @@ export default function Verify() {
         </div>
       ) : null}
 
-      {step === "done" ? <VerifiedPanel company={selected} getToken={fetchToken} /> : null}
+      {step === "done" && selected ? <VerifiedPanel company={selected} getToken={fetchToken} /> : null}
     </VerifyLayout>
   );
 }

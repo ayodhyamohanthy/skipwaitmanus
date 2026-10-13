@@ -10,7 +10,7 @@ import { ArrowRight, BadgeCheck, BriefcaseBusiness, Check, ChevronDown, LoaderCi
 import { useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { Button } from "@/components/kit/button";
-import { companyIdentity, saveReferrerPreferences } from "@/components/referrer-home/referrerData";
+import { saveReferrerPreferences } from "@/components/referrer-home/referrerData";
 import { WORK_FUNCTIONS, capacitySettingsKey, fetchCapacitySettings, orderAreas } from "./capacitySettingsData";
 
 const LAST_STEP = 2;
@@ -70,7 +70,7 @@ export function ReferrerSetupDialog({ initialStep = 0, onClose }: { initialStep?
             {settings.isPending ? (
               <span role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" />Checking your work email…</span>
             ) : domain ? (
-              <div className="profile-preview" role="status"><BadgeCheck className="size-5 shrink-0 text-primary" /><span><strong>Verified · {companyIdentity(domain).name}</strong><small>Work email confirmed for {domain}</small></span></div>
+              <div className="profile-preview" role="status"><BadgeCheck className="size-5 shrink-0 text-primary" /><span><strong>Verified · {settings.data?.companyName ?? domain}</strong><small>Work email confirmed for {domain}</small></span></div>
             ) : (
               <Button asChild variant="outline"><Link href="/verify">Verify with a one-time code <ArrowRight /></Link></Button>
             )}

@@ -4,12 +4,19 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FREE_ALERT_LIMIT, type SeekerAlert } from "@shared/alerts";
 import { Button } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
+import { findCompanyByDomain, useCompanyDirectory, type PublicCompany } from "@/lib/companyDirectory";
 import { ALERT_REMOVE_ERROR, ALERT_SAVE_ERROR, ALERT_UPDATE_ERROR, createSeekerAlert, deleteSeekerAlert, fetchSeekerAlerts, setSeekerAlertPaused, type TokenSource } from "./seekerAlertsApi";
 
 /** Kit company mark from the watched domain: "merkle.com" -> "M", "tata-consultancy.com" -> "TC". */
 export function domainInitials(domain: string): string {
   const label = domain.split(".")[0] ?? "";
   return label.split(/[-_]/).filter(Boolean).slice(0, 2).map(part => part.charAt(0)).join("").toUpperCase() || "?";
+}
+
+/** Directory name and initials for a watched domain ("skipwait.me" -> SkipWait, SW); the domain itself otherwise. */
+export function alertIdentity(companyDomain: string, companies: readonly PublicCompany[]): { name: string; mark: string } {
+  const listed = findCompanyByDomain(companies, companyDomain);
+  return listed ? { name: listed.name, mark: listed.initials } : { name: companyDomain, mark: domainInitials(companyDomain) };
 }
 
 function alertStatus(alert: SeekerAlert): string {
@@ -35,6 +42,9 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
   const queryClient = useQueryClient();
   const listKey = ["alerts", "saved", userId ?? "session"] as const;
   const alerts = useQuery({ queryKey: listKey, retry: false, queryFn: () => fetchSeekerAlerts(getToken) });
+  // Names are display-only: while the public directory loads, or if it fails, a row keeps its watched domain.
+  const directory = useCompanyDirectory({ enabled: Boolean(alerts.data?.length) });
+  const directoryCompanies = directory.data?.companies ?? [];
   const [adding, setAdding] = useState(false);
   const [domain, setDomain] = useState("");
   const [saving, setSaving] = useState(false);
@@ -105,13 +115,14 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
         <ul className="space-y-3" aria-label="Watched companies">
           {alerts.data.map(alert => {
             const busy = busyIds.includes(alert.id);
+            const company = alertIdentity(alert.companyDomain, directoryCompanies);
             return (
               <li key={alert.id}>
                 <Panel className="flex items-center gap-3 p-4!">
-                  <span className="company-mark" aria-hidden="true">{domainInitials(alert.companyDomain)}</span>
-                  <span className="min-w-0 flex-1"><strong className="block truncate">{alert.companyDomain}</strong><small className="text-muted-foreground">{alertStatus(alert)}</small></span>
-                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={alert.paused ? `Resume alert for ${alert.companyDomain}` : `Pause alert for ${alert.companyDomain}`} onClick={() => { void togglePaused(alert); }}>{alert.paused ? <BellOff /> : <Bell />}</Button>
-                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={`Delete alert for ${alert.companyDomain}`} onClick={() => { void remove(alert); }}><Trash2 /></Button>
+                  <span className="company-mark" aria-hidden="true">{company.mark}</span>
+                  <span className="min-w-0 flex-1"><strong className="block truncate">{company.name}</strong><small className="text-muted-foreground">{alertStatus(alert)}</small></span>
+                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={alert.paused ? `Resume alert for ${company.name}` : `Pause alert for ${company.name}`} onClick={() => { void togglePaused(alert); }}>{alert.paused ? <BellOff /> : <Bell />}</Button>
+                  <Button variant="ghost" size="icon" className={ICON_BUTTON} disabled={busy} aria-label={`Delete alert for ${company.name}`} onClick={() => { void remove(alert); }}><Trash2 /></Button>
                 </Panel>
               </li>
             );

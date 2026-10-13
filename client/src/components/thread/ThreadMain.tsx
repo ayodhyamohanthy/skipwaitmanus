@@ -32,7 +32,7 @@ function askerLabel(role: ThreadRole, request: ThreadRequest, seeker: Props["see
 export function ThreadMain({ request, role, seekerIdentity, passed, messages, draft, setDraft, sending, sendError, onSend }: Props) {
   const stage = stageOf(request);
   const idx = stageIndex(stage);
-  const company = companyName(request.companyDomain);
+  const company = companyName(request);
   const accepted = isAccepted(request);
   const hidden = role === "referrer-pending";
   const seeker = role === "seeker";
@@ -41,7 +41,7 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
   return (
     <section className="min-w-0 rounded-3xl border border-border bg-card">
       <header className="flex flex-wrap items-start gap-3 border-b border-border p-5">
-        <span className="company-mark">{companyInitials(request.companyDomain)}</span>
+        <span className="company-mark">{companyInitials(request)}</span>
         <div className="min-w-0 flex-1">
           <span className="eyebrow">{company}</span>
           <h1 className="text-2xl font-semibold">{request.title ?? "Referral request"}</h1>

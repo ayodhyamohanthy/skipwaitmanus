@@ -24,7 +24,7 @@ import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "../shared/subscripti
 import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
-import { LAUNCH_COMPANIES } from "../client/src/lib/companies";
+import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 import { breadcrumbsHtml, escapeHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
 
 /** Route is declared here; its title and description come from @shared/publicRoutes. */
@@ -99,10 +99,12 @@ export function publicSnapshots(): PublicSnapshot[] {
       markup: `<main data-skipwait-snapshot="jobs"><h1>Browse roles worth a referral.</h1><p>Search published roles, save the ones you like, and request a private referral from a verified employee at the company. Referrers stay anonymous.</p><p><a href="/jobs">Open the role search</a> · <a href="/start">Request a referral for a role link you already have</a> · <a href="/wall">See openings employees published themselves</a> · <a href="/explore">Explore companies</a></p></main>`,
     },
     {
-      // Kit /explore copy and the static launch set (names and approved
-      // descriptors only): no count, no role, no person, no address.
+      // Kit /explore copy and the company directory's deterministic launch
+      // seed (names and approved descriptors only, the rows migration 0076
+      // inserts): no count, no availability, no role, no person, no address.
+      // The live page then renders the server directory.
       route: "/explore",
-      markup: `<main data-skipwait-snapshot="explore"><h1>Where would you love to work next?</h1><p>Start with a company. We’ll help you make a thoughtful ask.</p><ul>${LAUNCH_COMPANIES.map(company => `<li><a href="/explore/${company.slug}">${escapeHtml(company.name)}</a> — ${escapeHtml(company.blurb)}</li>`).join("")}</ul><h2>Work at one of these companies?</h2><p>Open another door. You control every request you accept. <a href="/referrer">I can refer</a></p><p><a href="/jobs">Browse roles worth a referral</a> · <a href="/start">Request a referral for a role link you already have</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="explore"><h1>Where would you love to work next?</h1><p>Start with a company. We’ll help you make a thoughtful ask.</p><ul>${LAUNCH_COMPANY_SEED.map(company => `<li><a href="/explore/${company.slug}">${escapeHtml(company.name)}</a> — ${escapeHtml(company.blurb)}</li>`).join("")}</ul><h2>Work at one of these companies?</h2><p>Open another door. You control every request you accept. <a href="/referrer">I can refer</a></p><p><a href="/jobs">Browse roles worth a referral</a> · <a href="/start">Request a referral for a role link you already have</a></p></main>`,
     },
     {
       route: "/wall",

@@ -95,7 +95,7 @@ export default function ReferralConversation() {
   const seekerName = user?.fullName ?? null;
   const headline = profile.data?.headline ?? profile.data?.currentTitle ?? null;
   // The seeker is never told who the referrer is; a referrer who accepted sees their own name here.
-  const referrerLabel = request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request.companyDomain)}` : "";
+  const referrerLabel = request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "";
 
   return (
     <main data-skipwait-screen="referral-conversation" className="page-content">

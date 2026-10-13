@@ -4,8 +4,8 @@
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
 import { z } from "zod";
 import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
+import { companyIdentityFieldsSchema, companyIdentityOf, type CompanyIdentity } from "@shared/companies";
 import { readApiJson } from "@/lib/apiResponse";
-import { companySlugForJobCompany, getLaunchCompany } from "@/lib/companies";
 
 export type TokenSource = () => Promise<string | null | undefined>;
 
@@ -19,7 +19,7 @@ export const JOB_LEVELS = ["Intern", "Early career", "Mid-level", "Senior", "Lea
 const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof value === "string" ? value : value.toISOString()));
 const count = z.number().int().nonnegative();
 
-const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish() });
+const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish(), ...companyIdentityFieldsSchema.shape });
 const profileSchema = z.object({ profile: z.object({ workEmailVerifiedAt: timestamp.nullish(), referralCapacity: z.number().int().nullish() }).nullish() });
 const impactSchema = z.object({ summary: z.object({ reviewed: count, approved: count, introductions: count, interviews: count, offers: count, repliedWithin3DaysPct: z.number().min(0).max(100).nullish() }) });
 const inboxRowSchema = z.object({
@@ -45,7 +45,8 @@ export const referrerPreferencesSchema = z.object({
 });
 const preferencesPayloadSchema = z.object({ preferences: referrerPreferencesSchema });
 
-export type CompanyAccess = { verified: boolean; domain: string };
+/** Verified work-email access; companyName/companyInitials come from the server company directory. */
+export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null };
 export type ReferrerPreferences = z.infer<typeof referrerPreferencesSchema>;
 export type ReferrerPreferencesPatch = Partial<Omit<ReferrerPreferences, "preferAreas" | "preferLevels">> & { preferAreas?: string[]; preferLevels?: string[] };
 export type ReferrerImpact = z.infer<typeof impactSchema>["summary"];
@@ -91,7 +92,7 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
 
 export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
   const access = await getJson("/api/company-referrals/access", getToken, accessSchema, "We could not check your work-email verification.");
-  return { verified: Boolean(access.verifiedCompanyAccess), domain: access.workEmailDomain ?? "" };
+  return { verified: Boolean(access.verifiedCompanyAccess), domain: access.workEmailDomain ?? "", companyName: access.companyName ?? null, companyInitials: access.companyInitials ?? null };
 }
 
 export async function fetchReferrerPreferences(getToken: TokenSource): Promise<ReferrerPreferences> {
@@ -131,11 +132,9 @@ export async function fetchProfileHandle(getToken: TokenSource): Promise<string 
   return handle ? handle : null;
 }
 
-/** "wipro.com" -> { name: "Wipro", mark: "W" }; the raw domain otherwise. */
-export function companyIdentity(domain: string): { name: string; mark: string } {
-  const launch = getLaunchCompany(companySlugForJobCompany(domain) ?? "");
-  if (launch) return { name: launch.name, mark: launch.initials };
-  return { name: domain, mark: (domain.charAt(0) || "?").toUpperCase() };
+/** The verified company's directory name and initials ("Wipro", "W"); the raw domain otherwise. */
+export function companyIdentity(access: Pick<CompanyAccess, "domain" | "companyName" | "companyInitials">): CompanyIdentity {
+  return companyIdentityOf({ companyDomain: access.domain, companyName: access.companyName, companyInitials: access.companyInitials });
 }
 
 /** Greeting for the viewer's local hour, so the heading never says evening at breakfast. */
@@ -188,7 +187,7 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
   const daysSince = Number.isNaN(verifiedMs) ? null : Math.floor((nowMs - verifiedMs) / DAY_MS);
   return {
     verified,
-    company: data.access.domain ? companyIdentity(data.access.domain) : null,
+    company: data.access.domain ? companyIdentity(data.access) : null,
     waiting,
     expiringSoon,
     capacity,

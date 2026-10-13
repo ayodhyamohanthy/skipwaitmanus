@@ -13,7 +13,9 @@
       "status": 200,
       "body": {
         "verifiedCompanyAccess": true,
-        "workEmailDomain": "wipro.com"
+        "workEmailDomain": "wipro.com",
+        "companyName": "Wipro",
+        "companyInitials": "W"
       }
     },
     {
@@ -62,7 +64,9 @@
             "isClaimedByYou": true,
             "isQueueOpenAllocation": false,
             "unreadMessageCount": 0,
-            "expiresAt": "2026-09-27T06:00:00.000Z"
+            "expiresAt": "2026-09-27T06:00:00.000Z",
+            "companyName": "Wipro",
+            "companyInitials": "W"
           }
         ],
         "scope": "new"

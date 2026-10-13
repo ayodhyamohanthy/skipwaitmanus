@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { fetchProfileHandle, fetchReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
-import type { LaunchCompany } from "@/lib/companies";
+import type { PublicCompany } from "@/lib/companyDirectory";
+
+/** What the verify frame needs to name the company; absent while the directory loads. */
+type VerifyCompany = Pick<PublicCompany, "name" | "initials">;
 
 const STEP_LABELS = ["Company", "Work email", "Code", "Verified"] as const;
 
@@ -34,7 +37,7 @@ export function VerifyProgress({ stepIndex }: { stepIndex: number }) {
 }
 
 /** Page frame shared by every state: heading, the step card, and the kit aside. */
-export function VerifyLayout({ screen, company, busy, children }: { screen: string; company: LaunchCompany; busy?: boolean; children: ReactNode }) {
+export function VerifyLayout({ screen, company, busy, children }: { screen: string; company: VerifyCompany | undefined; busy?: boolean; children: ReactNode }) {
   return (
     <main data-skipwait-screen={screen} className="page-content" aria-busy={busy || undefined}>
       <VerifyHeading />
@@ -46,10 +49,11 @@ export function VerifyLayout({ screen, company, busy, children }: { screen: stri
   );
 }
 
-export function VerifyAside({ company }: { company: LaunchCompany }) {
+export function VerifyAside({ company }: { company: VerifyCompany | undefined }) {
+  const name = company?.name ?? "your company";
   return (
     <aside className="space-y-4">
-      <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {company.name} today. It doesn&apos;t prove your role or that {company.name} endorses SkipWait.</p></div>
+      <div className="rounded-3xl bg-muted p-5"><span className="eyebrow">WHY A CODE?</span><p className="mt-2 text-sm">It proves you can receive email at {name} today. It doesn&apos;t prove your role or that {name} endorses SkipWait.</p></div>
       <div className="rounded-3xl border border-border p-5 text-sm">
         <span className="eyebrow">WE STORE</span>
         <ul className="mt-2 space-y-2">
@@ -72,7 +76,7 @@ export function profileHref(handle: string | null | undefined): string {
  * Kit verified panel. The badge line names the referrer's primary function
  * (first saved job area) only when one is saved; neither read blocks the panel.
  */
-export function VerifiedPanel({ company, getToken }: { company: LaunchCompany; getToken: TokenSource }) {
+export function VerifiedPanel({ company, getToken }: { company: VerifyCompany; getToken: TokenSource }) {
   const preferences = useQuery({ queryKey: ["verify", "referrer-preferences"], queryFn: () => fetchReferrerPreferences(getToken), retry: false, staleTime: 60_000 });
   const handle = useQuery({ queryKey: ["verify", "profile-handle"], queryFn: () => fetchProfileHandle(getToken), retry: false, staleTime: 60_000 });
   const primaryFunction = preferences.data?.preferAreas[0];

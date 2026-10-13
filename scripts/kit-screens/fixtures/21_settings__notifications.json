@@ -12,7 +12,9 @@
       "status": 200,
       "body": {
         "verifiedCompanyAccess": true,
-        "workEmailDomain": "acme.com"
+        "workEmailDomain": "acme.com",
+        "companyName": null,
+        "companyInitials": null
       }
     },
     {

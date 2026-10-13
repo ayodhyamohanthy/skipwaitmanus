@@ -19,10 +19,10 @@ vi.mock("wouter", () => ({
 }));
 
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
-const ASKING = [{ id: 11, title: "Product Designer", companyDomain: "wipro.com", status: "approved", referrerId: 9, queueStatus: null, referrerMessage: null, unreadMessageCount: 2, updatedAt: ago(3600000) }];
+const ASKING = [{ id: 11, title: "Product Designer", companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "approved", referrerId: 9, queueStatus: null, referrerMessage: null, unreadMessageCount: 2, updatedAt: ago(3600000) }];
 // candidateName is not part of the real inbox payload; it is here to prove the list never renders seeker identity.
-const REFERRING_NEW = [{ id: 21, companyDomain: "wipro.com", status: "pending", unreadMessageCount: 0, updatedAt: ago(7200000), candidateName: "Rahul Kumar" }];
-const REFERRING_DONE = [{ id: 22, companyDomain: "wipro.com", status: "approved", unreadMessageCount: 0, updatedAt: ago(9000000) }];
+const REFERRING_NEW = [{ id: 21, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "pending", unreadMessageCount: 0, updatedAt: ago(7200000), candidateName: "Rahul Kumar" }];
+const REFERRING_DONE = [{ id: 22, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", status: "approved", unreadMessageCount: 0, updatedAt: ago(9000000) }];
 
 const WORK_USER = { id: "41", emailAddresses: [{ emailAddress: "r@wipro.com", verification: { status: "verified" } }] };
 const PERSONAL_USER = { id: "42", emailAddresses: [{ emailAddress: "r@gmail.com", verification: { status: "verified" } }] };

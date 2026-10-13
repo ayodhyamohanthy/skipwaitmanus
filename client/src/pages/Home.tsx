@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { Button } from "@/components/kit/button";
 import { applySeo, faqJsonLd } from "@/lib/seo";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
 import CookieConsent from "@/components/CookieConsent";
 
@@ -56,7 +56,7 @@ export default function Home() {
         <section className="launch-section launch-companies">
           <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told SkipWait they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
           <div className="launch-company-row">
-            {LAUNCH_COMPANIES.map(company => <Link key={company.slug} href={`/explore/${company.slug}`}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ArrowUpRight /></Link>)}
+            {LAUNCH_COMPANY_SEED.map(company => <Link key={company.slug} href={`/explore/${company.slug}`}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ArrowUpRight /></Link>)}
           </div>
           <Link className="text-link" href="/explore">Explore all open doors <ArrowRight /></Link>
         </section>

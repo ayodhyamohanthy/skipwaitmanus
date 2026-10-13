@@ -6,13 +6,13 @@ import { useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
 import { Button } from "@/components/kit/button";
 import { ASK_NOTE_LIMIT, saveAskPrefill } from "@/lib/askPrefill";
-import type { LaunchCompany } from "@/lib/companies";
+import type { PublicCompany } from "@/lib/companyDirectory";
 
 const STEPS = ["Role", "Your fit", "Privacy", "Review"] as const;
 const LAST_STEP = STEPS.length - 1;
 const NOTE_REQUIRED = "Add a short note on why you’re a strong fit.";
 
-type RequestDialogProps = { company: LaunchCompany; open: boolean; step: number; onStepChange: (step: number) => void; onOpenChange: (open: boolean) => void };
+type RequestDialogProps = { company: Pick<PublicCompany, "slug" | "name" | "initials">; open: boolean; step: number; onStepChange: (step: number) => void; onOpenChange: (open: boolean) => void };
 
 /**
  * Kit v4 request dialog (app/src/routes/explore.$slug.tsx). It never sends

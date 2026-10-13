@@ -3,6 +3,7 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import AdminOverview from "./AdminOverview";
 
 const { authState, getToken } = vi.hoisted(() => ({ authState: { isSignedIn: true }, getToken: vi.fn().mockResolvedValue("test-token") }));
@@ -27,8 +28,17 @@ const REPORTS = { reports: [
   { id: 2, reason: "Something else", details: null, referralRequestId: null, reportedUserId: null, urgent: false, status: "resolved", createdAt: "2026-10-01T03:00:00Z" },
 ] };
 
-function stub(overrides: Partial<Record<"health" | "queue" | "reports", Reply>> = {}) {
+// GET /api/admin/companies: the seeded directory, every company open.
+const adminCompany = (index: number, patch: Record<string, unknown> = {}) => {
+  const seed = LAUNCH_COMPANY_SEED[index];
+  if (!seed) throw new Error("no seed");
+  return { id: index + 1, slug: seed.slug, name: seed.name, initials: seed.initials, industry: seed.industry, location: seed.location, functions: [...seed.functions], blurb: seed.blurb, domains: [...seed.domains], primaryDomain: seed.domains[0], openToReferrals: true, status: "listed", sortOrder: seed.sortOrder, updatedAt: "2026-10-13T00:00:00.000Z", ...patch };
+};
+const COMPANIES = { companies: LAUNCH_COMPANY_SEED.map((_seed, index) => adminCompany(index)) };
+
+function stub(overrides: Partial<Record<"health" | "queue" | "reports" | "companies", Reply>> = {}) {
   const fetchMock = vi.fn(async (url: string) => {
+    if (url.includes("/api/admin/companies")) return overrides.companies ?? reply(COMPANIES);
     if (url.includes("flow-health")) return overrides.health ?? reply(HEALTH);
     if (url.includes("approval-queue")) return overrides.queue ?? reply(QUEUE);
     if (url.includes("safety-reports")) return overrides.reports ?? reply(REPORTS);
@@ -67,6 +77,8 @@ describe("AdminOverview", () => {
     expect(await within(snapshot).findByText("Referrer enrollments awaiting review")).toBeTruthy();
     expect(within(snapshot).getByText("1 urgent")).toBeTruthy();
     expect(within(snapshot).getByText("No fabricated count")).toBeTruthy();
+    expect(await within(snapshot).findByText("Confirmed launch companies")).toBeTruthy();
+    expect(within(snapshot).getByText("Company coverage").parentElement?.querySelector("strong")?.textContent).toBe("5");
     expect(screen.getByText("Employer subscriptions")).toBeTruthy();
     expect(screen.getByText("Promoted employer profiles")).toBeTruthy();
     expect(screen.getByText("Referrals remain free")).toBeTruthy();
@@ -90,11 +102,27 @@ describe("AdminOverview", () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /Review company submissions/ }));
     expect(screen.getByText("Launch directory.")).toBeTruthy();
+    expect(await screen.findByText("Five confirmed companies are visible. New submissions require domain and duplicate review.")).toBeTruthy();
+    expect(screen.getAllByText("Open door")).toHaveLength(5);
     expect(screen.getByRole("link", { name: "Submissions" }).getAttribute("href")).toBe("/admin-review?tab=companies");
     expect(screen.getByRole("link", { name: "Review Wipro" }).getAttribute("href")).toBe("/explore/wipro");
     fireEvent.change(screen.getByLabelText("Search companies"), { target: { value: "merkle" } });
     expect(screen.queryByText("Wipro")).toBeNull();
     expect(screen.getByText("Merkle")).toBeTruthy();
+  });
+
+  it("shows directory status and live coverage: joining until a referrer is open, hidden without a public link", async () => {
+    stub({ companies: reply({ companies: [adminCompany(0), adminCompany(1, { openToReferrals: false }), adminCompany(2, { status: "hidden", openToReferrals: false })] }) });
+    renderPage();
+    const snapshot = await screen.findByLabelText("Operations snapshot");
+    expect(await within(snapshot).findByText("1 of 2 listed companies open")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: /Review company submissions/ }));
+    expect(screen.getByText("Two confirmed companies are visible. New submissions require domain and duplicate review.")).toBeTruthy();
+    const table = screen.getByLabelText("Companies");
+    expect(within(table).getByText("Open door")).toBeTruthy();
+    expect(within(table).getByText("Joining")).toBeTruthy();
+    expect(within(table).getByText("Hidden")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Review Go Neutrinos" })).toBeNull();
   });
 
   it("routes the verification and safety sections to the matching review queue tab", async () => {
@@ -116,7 +144,7 @@ describe("AdminOverview", () => {
   });
 
   it("shows the server-enforced admin gate without operations data", async () => {
-    stub({ health: reply({ error: "Administrator access is required" }, 403), queue: reply({ error: "Administrator access is required" }, 403), reports: reply({ error: "Administrator access is required" }, 403) });
+    stub({ health: reply({ error: "Administrator access is required" }, 403), queue: reply({ error: "Administrator access is required" }, 403), reports: reply({ error: "Administrator access is required" }, 403), companies: reply({ error: "Administrator access is required" }, 403) });
     renderPage();
     expect(await screen.findByText("Administrator access is required.")).toBeTruthy();
     expect(screen.queryByText("Operate for trust, not vanity.")).toBeNull();

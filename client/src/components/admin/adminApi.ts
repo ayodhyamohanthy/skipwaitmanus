@@ -101,4 +101,5 @@ export const adminKeys = {
   enrollments: ["admin", "approval-queue", "referrer_enrollment"] as const,
   reports: ["admin", "safety-reports"] as const,
   suggestions: ["admin", "company-suggestions"] as const,
+  companies: ["admin", "companies"] as const,
 };

@@ -23,7 +23,7 @@ const PREFS = { preferAreas: [], preferLevels: [], referralCapacity: 3, referrer
 
 function stubSetup(preferences: Record<string, unknown> = PREFS) {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+    if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
     if (String(url).endsWith("/referrer-preferences")) return ok({ preferences });
     return ok({});
   }));
@@ -52,7 +52,7 @@ describe("ReferrerSetup", () => {
 
   it("walks areas to ready and persists real preferences", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (String(url).endsWith("/referrer-preferences") && init?.method === "PUT") {
         const body = JSON.parse(String(init.body));
         expect(body).toMatchObject({ referralCapacity: 5, referrerVisibility: "named", notifyNewAsk: false });
@@ -88,7 +88,7 @@ describe("ReferrerSetup", () => {
 
   it("does not claim you are open for asks while new asks are paused", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (init?.method === "PUT") return ok({ preferences: { ...PREFS, ...JSON.parse(String(init.body)), paused: true } });
       return ok({ preferences: { ...PREFS, preferAreas: ["Design"], paused: true } });
     }));
@@ -102,7 +102,7 @@ describe("ReferrerSetup", () => {
 
   it("shares the real public profile handle on the ready step", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (String(url).endsWith("/profile/me")) return ok({ profile: { handle: "meera-iyer" } });
       if (init?.method === "PUT") return ok({ preferences: { ...PREFS, ...JSON.parse(String(init.body)) } });
       return ok({ preferences: { ...PREFS, preferAreas: ["Design"] } });
@@ -116,7 +116,7 @@ describe("ReferrerSetup", () => {
 
   it("keeps the steps and shows the server's reason when saving fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (init?.method === "PUT") return fail(400, { error: "Capacity is 1 to 15 asks" });
       return ok({ preferences: { ...PREFS, preferAreas: ["Design"] } });
     }));
@@ -138,7 +138,7 @@ describe("ReferrerSetup", () => {
   it("shows a retryable error, not the verify gate, when settings cannot load", async () => {
     let failing = true;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (failing) throw new TypeError("Failed to fetch");
       return ok({ preferences: PREFS });
     }));

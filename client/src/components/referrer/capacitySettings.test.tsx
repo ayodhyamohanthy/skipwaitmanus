@@ -64,6 +64,19 @@ describe("Referrer setup & capacity", () => {
     expect(JSON.parse(String(put?.[1]?.body))).toEqual({ preferAreas: ["Data", "Design"], referralCapacity: 5, paused: true });
   });
 
+  it("names a directory company from the server instead of its raw domain", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (input: string): Promise<Reply> => {
+      const url = String(input);
+      if (url === "/api/company-referrals/access") return ok({ verifiedCompanyAccess: true, workEmailDomain: "goneutrinos.com", companyName: "Go Neutrinos", companyInitials: "GN" });
+      if (url === "/api/referrer-preferences") return ok(preferences({ preferAreas: ["Design"] }));
+      return ok({});
+    }));
+    renderPanel();
+    const company = await screen.findByRole("combobox", { name: "Company" }) as HTMLSelectElement;
+    expect(company.value).toBe("goneutrinos.com");
+    expect(Array.from(company.options, option => option.textContent)).toEqual(["Go Neutrinos", "Verify another company"]);
+  });
+
   it("surfaces a save failure without claiming the settings were saved", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit): Promise<Reply> => {
       const url = String(input);
