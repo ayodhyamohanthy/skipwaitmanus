@@ -33,7 +33,7 @@ Current overall gate state, how each item is tested, and its latest result follo
 | # | Item | How it is tested | Current state |
 |---|------|------------------|---------------|
 | 2.1 | Referral pages render for signed-out visitors | 6 h crawl audit: all reachable pages, zero console/page errors, zero >=400 responses, external links head-checked. | GREEN (36 pages, 0 issues; latest 1:36 AM IST Oct 13) |
-| 2.2 | Signed-in referral request creation | **UNVERIFIED - cannot test live.** War mode: no synthetic production writes, and real referral requests are never opened or created. Closes with a disposable second account or a founder-authorized test window. | UNVERIFIED |
+| 2.2 | Signed-in referral request creation | **UNVERIFIED - cannot test live.** War mode: no synthetic production writes, and real referral requests are never opened or created. Closes with a disposable second account or a founder-authorized test window. Code-read note (build agent, `client/src/pages/Ask.tsx`, folded in Oct 13): staged file uploads at Send or Draft (`ensureResume`); no silent drop; resume required to send. Send runs `ensureResume()` first, uploads the staged file through the chunk API, and passes the document id into `attachmentIds`; upload failure blocks the send with the upload error. Not live-tested (needs a real ask). | UNVERIFIED |
 | 2.3 | Cross-user denial (user B cannot see user A's data) | **UNVERIFIED.** Needs a second QA account (`qa-sweep-2`); parent confirmed none exists and none will be created without the founder. Mail routing also TBD. | UNVERIFIED |
 | 2.4 | Resume upload | Signed-in retest (authorized Oct 13, current SHA): select file on /ask stages client-side, then 'Draft from my resume' runs the chunked pipeline - POST /api/documents/uploads 201 (session), chunks 200, complete 201 with clean JSON (no SQL leak); stored doc verified by GET /api/documents/6 (200, application/pdf, exact 21,257 bytes) and privacy export. Sep 17 double defect (finalize 500 + raw SQL leak) is fixed. | GREEN (4:20 AM IST Oct 13, API `cb3d20f`, web `76b137b5`) |
 
@@ -85,6 +85,11 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 | 6.3 | Zero signed-out console/page/network errors | 6 h crawl audit, 36 pages. | GREEN |
 | 6.4 | Readiness + schema reconcile healthy | Deploy watch: `/api/health/ready` 200, `schemaReconcileState: ready` on every check. | GREEN |
 | 6.5 | Payment/auth source untouched by unrelated deploys | md5 diff of 17 payment/auth/schema files vs the previous SHA on every API deploy; any change is read in full before acceptance. | GREEN (every deploy) |
+
+## 7. Known limitations
+
+- No DELETE profile route (product decision, not built); profile rows persist with null content after clear.
+- QA fixture residual state: qa-sweep-1's profile row exists all-null/private. Its handle (qa-sweep-1) was stuck because PUT could not clear it; the fa92ee4 fix (explicit null now clears) deployed Oct 14 ~1:06 AM IST, was live-verified (set -> clear with explicit null -> GET confirms null), and the handle is now cleared. Signed-out /p/qa-sweep-1 404s exactly as before the fixture existed.
 
 ---
 
