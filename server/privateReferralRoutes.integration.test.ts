@@ -116,7 +116,8 @@ describe("private referral HTTP routes", () => {
     });
 
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-a")).body).toMatchObject({ scope: "new", requests: [unclaimedRequest] });
-    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([unclaimedRequest]);
+    // Rows gain the directory's display identity (null outside the directory).
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([{ ...unclaimedRequest, companyName: null, companyInitials: null }]);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "outsider")).body.requests).toEqual([]);
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([]);
@@ -221,8 +222,8 @@ describe("private referral HTTP routes", () => {
     });
     const listed = await request(app).get("/api/opportunities");
     expect(listed.status).toBe(200); expect(listed.body.opportunities[0]).not.toHaveProperty("ownerId");
-    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "employee")).body).toEqual({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" });
-    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "personal")).body).toEqual({ verifiedCompanyAccess: false, workEmailDomain: null });
+    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "employee")).body).toEqual({ verifiedCompanyAccess: true, workEmailDomain: "acme.com", companyName: null, companyInitials: null });
+    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "personal")).body).toEqual({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
     expect((await request(app).post("/api/opportunities").send({ kind: "hiring_now", roleTitle: "Product Designer" })).status).toBe(401);
     const personalEmailVerification = await request(app).post("/api/company-referrals/verify-work-email").set("x-test-user", "personal").send({ email: "person@gmail.com" });
     expect(personalEmailVerification.status).toBe(400); expect(personalEmailVerification.body.error).toMatch(/personal email domain/i);

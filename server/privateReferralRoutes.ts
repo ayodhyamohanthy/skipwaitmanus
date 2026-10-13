@@ -4,7 +4,7 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
-import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, notifySeekerAlertsForCompany, revokeReferralShareCard } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
@@ -12,6 +12,7 @@ import { sendSlotOpenedAlertEmail } from "./slotOpenedAlertEmail";
 import sharp from "sharp";
 import { getAskExpiresAtMs, isReferralProgressUpdateStatus, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
+import { attachCompanyIdentities, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -75,6 +76,8 @@ export type PrivateReferralRouteDeps = {
   setSeekerAlertPaused?: (userId: number, alertId: number, paused: boolean) => Promise<unknown>;
   deleteSeekerAlert?: (userId: number, alertId: number) => Promise<{ deleted: boolean; id: number }>;
   notifySeekerAlertsForCompany?: (companyDomain: string) => Promise<{ notified: number }>;
+  /** Directory name/initials for row company domains (server/companyDirectory.ts). */
+  resolveCompanyIdentities?: CompanyIdentityLookup;
   reconcileExpiredPendingReferrals?: (userId: number, nowMs?: number) => Promise<{ expiredRequestIds: number[] }>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
   withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
@@ -145,6 +148,16 @@ export type PrivateReferralRouteDeps = {
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
   app.use("/api/admin", (req, res, next) => { if (req.method === "GET") res.set("Cache-Control", "private, no-store"); next(); });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  // Additive companyName/companyInitials from the company directory on every
+  // row that carries a companyDomain; non-object rows pass through untouched.
+  const lookupCompanies = deps.resolveCompanyIdentities ?? resolveCompanyIdentities;
+  const isRecordRow = (row: unknown): row is Record<string, unknown> => typeof row === "object" && row !== null;
+  const withCompanyIdentities = async (rows: readonly unknown[]) => {
+    const objects = rows.filter(isRecordRow);
+    const enriched = await attachCompanyIdentities(objects, row => row.companyDomain, lookupCompanies);
+    const byRow = new Map<unknown, unknown>(objects.map((row, index) => [row, enriched[index]]));
+    return rows.map(row => byRow.get(row) ?? row);
+  };
   const notifyInApp = (userId: number | undefined, title: string, body: string) => { if (!userId) return; void deps.createNotification?.(userId, "status", title, body).catch(() => undefined); };
   const notifyEmail = (userId: number | undefined, subject: string, html: string) => { void (async () => { if (!userId) return; const email = await deps.getUserEmailById?.(userId); if (!email) return; await deps.sendEmail?.({ to: email, subject, html }); })().catch(() => undefined); };
   // Block enforcement is fail-open: if the check itself fails (e.g. the
@@ -496,7 +509,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         if (!completed) return res.status(403).json({ error: "Enter the one-time code sent to this work email before continuing" });
         record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: completed.workEmailDomain, metadata: { verification: "server_otp_receipt", replayed: completed.replayed } });
         if (completed.reward.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: completed.workEmailDomain, metadata: { tokenCount: completed.reward.tokenCount ?? 0 } });
-        try { await (deps.notifySeekerAlertsForCompany ?? notifySeekerAlertsForCompany)(completed.workEmailDomain); } catch { /* alerts never break enrollment */ }
+        try { await (deps.notifySeekerAlertsForCompany ?? notifySeekerAlertsForCompanyDomain)(completed.workEmailDomain); } catch { /* alerts never break enrollment */ }
         return res.json({ verified: true, workEmailDomain: completed.workEmailDomain, reward: completed.reward });
       }
       const profile = await deps.saveVerifiedWorkEmail(identity.account.id, verifiedEmail.emailAddress);
@@ -504,7 +517,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const reward = inviteCode && profile?.workEmailDomain && deps.fulfillCompanyCoverageInvitation ? await deps.fulfillCompanyCoverageInvitation(identity.account.id, { inviteCode, workEmailDomain: profile.workEmailDomain }) : { rewarded: false };
       record({ actorUserId: identity.account.id, action: "work_email.enrolled", outcome: "success", resourceType: "profile", companyDomain: profile?.workEmailDomain ?? undefined, metadata: { verification: "email_code" } });
       if (reward.rewarded) record({ actorUserId: identity.account.id, action: "company_coverage.rewarded", outcome: "success", resourceType: "coverage_invitation", companyDomain: profile?.workEmailDomain ?? undefined, metadata: { tokenCount: reward.tokenCount ?? 0 } });
-      if (profile?.workEmailDomain) { try { await (deps.notifySeekerAlertsForCompany ?? notifySeekerAlertsForCompany)(profile.workEmailDomain); } catch { /* alerts never break enrollment */ } }
+      if (profile?.workEmailDomain) { try { await (deps.notifySeekerAlertsForCompany ?? notifySeekerAlertsForCompanyDomain)(profile.workEmailDomain); } catch { /* alerts never break enrollment */ } }
       res.json({ verified: true, workEmailDomain: profile?.workEmailDomain, reward });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not verify your work email";
@@ -639,7 +652,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
       const access = await deps.getVerifiedWorkEmailAccess?.(identity.account.id);
       res.set("Cache-Control", "private, no-store");
-      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null });
+      const [named] = access ? await attachCompanyIdentities([access], row => row.workEmailDomain, lookupCompanies) : [];
+      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null });
     } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
   });
   app.get("/api/referrer-impact/me", async (req, res) => {
@@ -822,7 +836,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         return expiresAt === null ? null : new Date(expiresAt).toISOString();
       };
       const blockedMine = await blockedRequestIds(identity.account.id, listed);
-      const requests = (listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map(row => ({ ...row, expiresAt: toExpiresAt(row.createdAt) }));
+      const requests = await attachCompanyIdentities((listed as Array<Record<string, unknown>>).filter(row => !blockedMine.has(Number(row.id))).map((row): Record<string, unknown> => ({ ...row, expiresAt: toExpiresAt(row.createdAt) })), row => row.companyDomain, lookupCompanies);
       record({ actorUserId: identity.account.id, action: "company_referral.seeker_home_viewed", outcome: "success", resourceType: "request_home", metadata: { requestCount: requests.length, expiredCount: expiredRequestIds.length } });
       res.json({ requests, expiredRequestIds });
     } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
@@ -837,7 +851,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const blockedInbox = await blockedRequestIds(identity.account.id, requests);
       const visible = requests.filter(row => typeof row !== "object" || row === null || !blockedInbox.has(Number((row as Record<string, unknown>).id)));
       record({ actorUserId: identity.account.id, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: visible.length, scope } });
-      res.json({ requests: visible, scope });
+      res.json({ requests: await withCompanyIdentities(visible), scope });
     } catch { res.status(500).json({ error: "We could not load private company requests" }); }
   });
   app.post("/api/company-referrals/availability/open", async (req, res) => {
@@ -1021,9 +1035,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const request = await deps.getUnclaimedCompanyReferralPreview(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not available to your verified company account" });
       const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, availability: "after_claim" as const }));
+      const [named] = await attachCompanyIdentities([request], row => row.companyDomain, lookupCompanies);
       record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only" } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ request: { ...request, attachments } });
+      res.json({ request: { ...request, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
     } catch { res.status(500).json({ error: "We could not load this private candidate preview" }); }
   });
   app.get("/api/company-referrals/:requestId", async (req, res) => {
@@ -1036,8 +1051,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const request = await deps.getClaimedCompanyReferralDetail(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not assigned to your verified employee account" });
       const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, url: `/api/documents/${attachment.id}` }));
+      const [named] = await attachCompanyIdentities([request], row => row.companyDomain, lookupCompanies);
       record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length } });
-      res.json({ request: { ...request, attachments } });
+      res.json({ request: { ...request, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
     } catch {
       res.status(500).json({ error: "We could not load this private referral request" });
     }

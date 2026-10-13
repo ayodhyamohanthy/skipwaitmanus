@@ -23,11 +23,18 @@ function rowsFor(table: Table): Array<Record<string, unknown>> {
 
 function matches(condition: SQLQuery, row: Record<string, unknown>): boolean {
   const query = dialect.sqlToQuery(condition);
-  const tokens = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s*(=|is null|is not null)/gi)];
+  const tokens = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s*(=|is null|is not null|in \(([?, ]+)\))/gi)];
   let i = 0;
   for (const token of tokens) {
     const col = token[1];
     const op = token[2].toLowerCase();
+    if (op.startsWith("in (")) {
+      const size = (token[3].match(/\?/g) ?? []).length;
+      const allowed = query.params.slice(i, i + size);
+      i += size;
+      if (!allowed.includes(row[col])) return false;
+      continue;
+    }
     if (op === "is null") {
       if (row[col] !== null && row[col] !== undefined) return false;
       continue;
@@ -157,5 +164,17 @@ describe("seeker alerts", () => {
     expect(String(tables.notes[0].title)).toContain("acme.com");
     expect(await notifySeekerAlertsForCompany("acme.com", NOW)).toEqual({ notified: 0 });
     expect(await notifySeekerAlertsForCompany("not-a-domain!!", NOW)).toEqual({ notified: 0 });
+  });
+
+  it("with a directory company, notifies watchers of every company domain and names the company", async () => {
+    tables.alerts = [
+      { id: 1, userId: 7, companyDomain: "wipro.com", paused: false, notifiedAt: null, createdAt: NOW },
+      { id: 2, userId: 8, companyDomain: "wipro.co.in", paused: false, notifiedAt: null, createdAt: NOW },
+      { id: 3, userId: 9, companyDomain: "tcs.com", paused: false, notifiedAt: null, createdAt: NOW },
+    ];
+    expect(await notifySeekerAlertsForCompany("wipro.co.in", NOW, { name: "Wipro", domains: ["wipro.com", "wipro.co.in"] })).toEqual({ notified: 2 });
+    expect(tables.notes.map(note => note.userId).sort()).toEqual([7, 8]);
+    expect(tables.notes.every(note => String(note.title) === "Someone inside Wipro can refer")).toBe(true);
+    expect(tables.alerts.find(alert => alert.id === 3)?.notifiedAt).toBeNull();
   });
 });

@@ -406,17 +406,24 @@ export async function deleteSeekerAlert(userId: number, alertId: number) {
   return { deleted: true as const, id: alertId };
 }
 
-export async function notifySeekerAlertsForCompany(companyDomain: string, now: Date = new Date()) {
+/**
+ * `company` (from the company directory, server/companyDirectory.ts) widens
+ * the watch to every domain of the company that owns `companyDomain` and
+ * names it in the copy; without it only that domain's watchers are notified.
+ */
+export async function notifySeekerAlertsForCompany(companyDomain: string, now: Date = new Date(), company?: { name: string; domains: readonly string[] }) {
   const domain = normalizeAlertDomain(companyDomain);
   const db = await getDb(); if (!db || !domain) return { notified: 0 };
-  const watchers = await db.select({ id: seekerAlerts.id, userId: seekerAlerts.userId }).from(seekerAlerts).where(and(eq(seekerAlerts.companyDomain, domain), eq(seekerAlerts.paused, false), isNull(seekerAlerts.notifiedAt)));
+  const watched = Array.from(new Set([domain, ...(company?.domains ?? []).map(normalizeAlertDomain).filter((value): value is string => Boolean(value))]));
+  const label = company?.name.trim() || domain;
+  const watchers = await db.select({ id: seekerAlerts.id, userId: seekerAlerts.userId }).from(seekerAlerts).where(and(watched.length === 1 ? eq(seekerAlerts.companyDomain, domain) : inArray(seekerAlerts.companyDomain, watched), eq(seekerAlerts.paused, false), isNull(seekerAlerts.notifiedAt)));
   let notified = 0;
   for (const watcher of watchers) {
     try {
       // Claim the alert first: concurrent runs race here, exactly one wins.
       const stamped = await db.update(seekerAlerts).set({ notifiedAt: now }).where(and(eq(seekerAlerts.id, watcher.id), isNull(seekerAlerts.notifiedAt)));
       if (Number(stamped[0]?.affectedRows) !== 1) continue;
-      await db.insert(notifications).values({ userId: watcher.userId, category: "status", title: `Someone inside ${domain} can refer`, body: `A verified employee at ${domain} is now open to referral requests. Send your ask while the door is open.`, eventKey: `alert-coverage:${watcher.id}` }).onDuplicateKeyUpdate({ set: { eventKey: `alert-coverage:${watcher.id}` } });
+      await db.insert(notifications).values({ userId: watcher.userId, category: "status", title: `Someone inside ${label} can refer`, body: `A verified employee at ${label} is now open to referral requests. Send your ask while the door is open.`, eventKey: `alert-coverage:${watcher.id}` }).onDuplicateKeyUpdate({ set: { eventKey: `alert-coverage:${watcher.id}` } });
       notified += 1;
     } catch { /* fail open per watcher: a missed alert never breaks verification */ }
   }

@@ -155,6 +155,7 @@ every endpoint here; record the active boundary and its source of truth.
 | Work-email OTP/referrer enrollment | `server/_core/otpLogin.ts`, `server/workEmailOtp.ts`, `server/privateReferralRoutes.ts`; receipt-backed OTP state, atomic verified-email enrollment |
 | Health and release identity (`/api/health*`) | `server/healthRoutes.ts`, `src/worker.ts`; live -> validating/failed -> ready, exact baked SHA |
 | Job-link preview (`/api/job-link/preview`) | `server/jobLinkPreviewRoutes.ts`, `server/employerRouting.ts`; validated public URL -> fresh/stale/error preview |
+| Company directory (`/api/companies*`, `/api/admin/companies*`) | `server/companyDirectoryRoutes.ts`, `server/companyDirectory.ts`, `shared/companies.ts`; server-owned `companies` + `companyDomains` (0076), availability derived on read and exposed as a boolean only, admin-gated writes, row names via `companyIdentityOf` |
 | Referral, document, notification and admin REST | `server/privateReferralRoutes.ts`, `server/db.ts`; transactional state machines, idempotency and durable outboxes |
 | Employer talent, intro, partner and sponsorship REST | `server/employerRoutes.ts`, `server/db.ts`; consent/version gates, durable request state, no partial notification commits |
 | DMs and follows | `server/dmRoutes.ts`, `server/followRoutes.ts`; authenticated ownership, immutable idempotency for sends |
