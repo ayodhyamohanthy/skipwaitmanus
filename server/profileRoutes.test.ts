@@ -86,6 +86,15 @@ describe("profile and work showcase routes", () => {
     expect(saved.body.profile).not.toHaveProperty("admin");
   });
 
+  it("clears a handle on an explicit null and leaves it alone when the field is absent", async () => {
+    const app = buildApp();
+    const kept = await request(app).put("/api/profile/me").set("x-test-user", "11").send({ headline: "Lead designer" });
+    expect(kept.body.profile).toMatchObject({ headline: "Lead designer", handle: "asha-r" });
+    const cleared = await request(app).put("/api/profile/me").set("x-test-user", "11").send({ handle: null });
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.profile.handle).toBeNull();
+  });
+
   it("rejects bad handles, reserved words, taken handles, and bad visibility", async () => {
     const app = buildApp();
     expect((await request(app).put("/api/profile/me").set("x-test-user", "22").send({ handle: "AB" })).status).toBe(400);
