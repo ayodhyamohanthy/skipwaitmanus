@@ -38,8 +38,9 @@ export function assembleCompanies(records: readonly CompanyRecord[], domains: re
     let functions: unknown;
     try { functions = JSON.parse(record.functions); } catch { functions = null; }
     const parsedFunctions = companyFunctionsSchema.safeParse(functions);
-    if (!parsedFunctions.success || own.length === 0) continue;
-    const candidate = adminCompanySchema.safeParse({ id: record.id, slug: record.slug, name: record.name, initials: record.initials, industry: record.industry, location: record.location, functions: parsedFunctions.data, blurb: record.blurb, domains: own.map(row => normalize(row.domain)), primaryDomain: normalize(own[0]!.domain), openToReferrals: openCompanyIds.has(record.id), status: record.status, sortOrder: record.sortOrder, updatedAt: record.updatedAt.toISOString() });
+    const primary = own[0];
+    if (!parsedFunctions.success || !primary) continue;
+    const candidate = adminCompanySchema.safeParse({ id: record.id, slug: record.slug, name: record.name, initials: record.initials, industry: record.industry, location: record.location, functions: parsedFunctions.data, blurb: record.blurb, domains: own.map(row => normalize(row.domain)), primaryDomain: normalize(primary.domain), openToReferrals: openCompanyIds.has(record.id), status: record.status, sortOrder: record.sortOrder, updatedAt: record.updatedAt.toISOString() });
     if (candidate.success) assembled.push(candidate.data);
   }
   return assembled.sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name));
