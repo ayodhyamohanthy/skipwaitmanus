@@ -13,7 +13,7 @@ const FAQS: ReadonlyArray<readonly [string, string, string]> = [
   ["Asking", "How many asks can I have open?", "Every account gets free referral credits each month plus any packs you buy. An answered, passed, or withdrawn ask frees its slot."],
   ["Asking", "Why did my ask expire?", "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note."],
   ["Asking", "Does a referral guarantee an interview?", "No. Referrers recommend; companies decide. We never promise outcomes."],
-  ["Referring", "How do I become a referrer?", "Verify your work email with a one-time code, then review private requests for your company."],
+  ["Referring", "How do I become a referrer?", "Verify your work email with a one-time code, then choose your job areas and monthly capacity."],
   ["Referring", "My company uses a different email domain.", "Start verification anyway — unlisted domains go to a person for manual review."],
   ["Referring", "Will seekers see my name?", "Only after you accept their ask. Passing is private."],
   ["Plans & credits", "Do credits expire?", "Purchased credits never expire. Monthly plan allowances refresh each billing cycle."],

@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { ArrowRight, Check, Clock3, EyeOff, type LucideIcon } from "lucide-react";
 import { StatusPill } from "@/components/kit/status-pill";
+import { companyIdentityOf } from "@shared/companies";
+import { functionEyebrow, type JobFunction } from "@shared/jobFunctions";
 import { companyInitial } from "./ClaimedReview";
 
 export const displayRef = (id: number) => `Ref-${1000 + id}`;
@@ -33,9 +35,9 @@ export function QueuePanel({ icon: Icon, title, text, label, children }: { icon:
   );
 }
 
-export type QueueCardRequest = { id: number; companyDomain: string; targetRoleUrl: string | null; compensation?: string | null; attachmentCount: number };
+export type QueueCardRequest = { id: number; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; targetRoleUrl: string | null; compensation?: string | null; attachmentCount: number };
 
-/** One routed request in the kit queue card. The role link and the seeker's note stay inside the opened request. */
+/** One routed request in the kit queue card ("PRODUCT · WIPRO"). The role link and the seeker's note stay inside the opened request. */
 export function QueueRequestCard({ request, badge, expiry, expiryUrgent, footer }: {
   request: QueueCardRequest;
   badge: string;
@@ -47,7 +49,7 @@ export function QueueRequestCard({ request, badge, expiry, expiryUrgent, footer 
     <article aria-label={`Private request ${displayRef(request.id)}`} className="queue-card min-w-0">
       <header>
         <span className="company-mark" aria-hidden="true">{companyInitial(request.companyDomain)}</span>
-        <div className="min-w-0"><span className="eyebrow block truncate">{request.companyDomain} · {displayRef(request.id)}</span><h2>Private request</h2></div>
+        <div className="min-w-0"><span className="eyebrow block truncate">{functionEyebrow(request.jobFunction, companyIdentityOf(request).name)}</span><h2>Private request</h2></div>
         <StatusPill status={badge} />
       </header>
       <div className="identity-locked"><EyeOff /><span><strong>Your identity stays hidden</strong><small>Shared only if you accept the request</small></span></div>

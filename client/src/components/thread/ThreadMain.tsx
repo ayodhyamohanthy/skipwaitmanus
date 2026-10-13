@@ -1,6 +1,7 @@
 import { Clock3, ExternalLink, EyeOff, FileText, Send, UserRound } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { StatusPill } from "@/components/kit/status-pill";
+import { functionEyebrow } from "@shared/jobFunctions";
 import type { ThreadMessage, ThreadRequest, ThreadRole } from "@/lib/threadApi";
 import { canMessage, companyInitials, companyName, isAccepted, seekerWaitingCopy, STAGES, stageIndex, stageOf } from "./threadModel";
 
@@ -43,7 +44,7 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
       <header className="flex flex-wrap items-start gap-3 border-b border-border p-5">
         <span className="company-mark">{companyInitials(request)}</span>
         <div className="min-w-0 flex-1">
-          <span className="eyebrow">{company}</span>
+          <span className="eyebrow">{functionEyebrow(request.jobFunction, company)}</span>
           <h1 className="text-2xl font-semibold">{request.title ?? "Referral request"}</h1>
           {request.targetRoleUrl ? <a href={request.targetRoleUrl} target="_blank" rel="noreferrer" className="text-link mt-1 inline-flex items-center gap-1 text-sm">Official job posting <ExternalLink className="size-3.5" /></a> : null}
         </div>

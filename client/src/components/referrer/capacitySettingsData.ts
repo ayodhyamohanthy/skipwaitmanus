@@ -3,12 +3,13 @@
 // preferences (GET/PUT /api/referrer-preferences), validating both with Zod.
 import { z } from "zod";
 import { companyIdentityFieldsSchema } from "@shared/companies";
+import { REFERRER_AREAS } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
 export type TokenSource = () => Promise<string | null | undefined>;
 
-/** Mirrors PREFER_AREA_OPTIONS in server/db.ts (the server filters unknown values). */
-export const WORK_FUNCTIONS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"] as const;
+/** The shared referrer job areas (shared/jobFunctions.ts); PUT /api/referrer-preferences rejects anything else. */
+export const WORK_FUNCTIONS = REFERRER_AREAS;
 export const CAPACITY_MIN = 1;
 export const CAPACITY_MAX = 15;
 export const capacitySettingsKey = ["referrer-workspace", "capacity-settings"] as const;

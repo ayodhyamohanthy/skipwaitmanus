@@ -1,7 +1,9 @@
 import { AlertTriangle, ArrowRight, FileText, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
+import { inferAskJobFunction } from "@shared/jobFunctionClassifier";
+import type { JobFunction } from "@shared/jobFunctions";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
@@ -10,6 +12,7 @@ import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { AskStrength, askChecks, countWords } from "@/components/ask/AskStrength";
 import { AskSent, type SentAsk } from "@/components/ask/AskSent";
+import { AskFunctionEyebrow } from "@/components/ask/AskFunctionEyebrow";
 import { askErrorMessage, confirmedDomainFor, countOpenAsks, parseSentAsk } from "@/components/ask/askApi";
 
 const NOTE_LIMIT = 600;
@@ -23,8 +26,8 @@ function askIdempotencyKey() {
   return created;
 }
 
-function AskHeading({ text }: { text: string }) {
-  return <div className="page-heading"><div><span className="eyebrow">NEW ASK</span><h1>Write a great ask<span className="brand-dot">.</span></h1><p>{text}</p></div></div>;
+function AskHeading({ text, eyebrow }: { text: string; eyebrow?: ReactNode }) {
+  return <div className="page-heading"><div>{eyebrow ?? <span className="eyebrow">NEW ASK</span>}<h1>Write a great ask<span className="brand-dot">.</span></h1><p>{text}</p></div></div>;
 }
 
 function confirmedCompanyDomain(targetRoleUrl: string): string | undefined {
@@ -41,6 +44,8 @@ export default function Ask() {
   const [url, setUrl] = useState(prefill?.targetRoleUrl ?? "");
   const [note, setNote] = useState(prefill?.note.slice(0, NOTE_LIMIT) ?? "");
   const [compensation, setCompensation] = useState("");
+  // Only an explicit pick is sent; otherwise the server stores the same guess shown here.
+  const [pickedFunction, setPickedFunction] = useState<JobFunction | null>(null);
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resume, setResume] = useState<ResumeDoc | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -55,6 +60,7 @@ export default function Ask() {
   const officialUrl = isValidTargetRoleUrl(url || undefined);
   const checks = askChecks({ officialUrl, note, hasResume: Boolean(resume || resumeFile) });
   const attachedName = resume?.fileName ?? resumeFile?.name ?? null;
+  const shownFunction = pickedFunction ?? (officialUrl ? inferAskJobFunction({ targetRoleUrl: url.trim() }) : null);
 
   const authed = async (path: string, init?: RequestInit) => {
     const token = await fetchToken();
@@ -110,6 +116,7 @@ export default function Ask() {
       const targetRoleUrl = url.trim();
       const body: Record<string, string | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
       if (compensation.trim()) body.compensation = compensation.trim().slice(0, 80);
+      if (pickedFunction) body.jobFunction = pickedFunction;
       const fastTrackCode = params.get("fast")?.trim();
       if (fastTrackCode) body.fastTrackCode = fastTrackCode;
       const confirmedDomain = confirmedCompanyDomain(targetRoleUrl);
@@ -148,13 +155,13 @@ export default function Ask() {
   }
 
   if (sent) {
-    return <AskSent sent={sent} openAsks={openAsks} onWriteAnother={() => { setSent(null); setOpenAsks(null); setUrl(""); setNote(""); setCompensation(""); removeResume(); setComposeError(""); setSendError(""); }} />;
+    return <AskSent sent={sent} openAsks={openAsks} onWriteAnother={() => { setSent(null); setOpenAsks(null); setUrl(""); setNote(""); setCompensation(""); setPickedFunction(null); removeResume(); setComposeError(""); setSendError(""); }} />;
   }
 
   const busy = drafting || uploading;
   return (
     <main data-skipwait-screen="ask" className="page-content">
-      <AskHeading text="Referrers decide in under a minute. Make that minute easy." />
+      <AskHeading text="Referrers decide in under a minute. Make that minute easy." eyebrow={<AskFunctionEyebrow value={shownFunction} onPick={setPickedFunction} />} />
       <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Panel>
           <label className="block text-sm font-medium">Official job link<input className={field} value={url} onChange={event => setUrl(event.target.value)} placeholder="https://careers.company.com/…" inputMode="url" aria-invalid={Boolean(url && !officialUrl)} /></label>

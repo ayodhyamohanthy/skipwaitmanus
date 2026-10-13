@@ -5,6 +5,7 @@
 import { z } from "zod";
 import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
 import { companyIdentityFieldsSchema, companyIdentityOf, type CompanyIdentity } from "@shared/companies";
+import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
 export type TokenSource = () => Promise<string | null | undefined>;
@@ -13,8 +14,6 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 /** Client-side re-verification nudge: warn 14 days before 90 days since the last verified work email. */
 export const REVERIFY_DAYS = 90;
 export const REVERIFY_WARNING_DAYS = 14;
-export const JOB_AREAS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"] as const;
-export const JOB_LEVELS = ["Intern", "Early career", "Mid-level", "Senior", "Lead+"] as const;
 
 const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof value === "string" ? value : value.toISOString()));
 const count = z.number().int().nonnegative();
@@ -25,6 +24,7 @@ const impactSchema = z.object({ summary: z.object({ reviewed: count, approved: c
 const inboxRowSchema = z.object({
   id: z.number().int().positive(),
   companyDomain: z.string().min(1),
+  jobFunction: jobFunctionFieldSchema,
   status: z.enum(referralStatuses),
   createdAt: timestamp,
   isClaimedByYou: z.boolean().optional().transform(value => value ?? false),
@@ -37,7 +37,7 @@ const inboxSchema = z.object({ requests: z.array(inboxRowSchema) });
 const optionList = <T extends string>(options: readonly T[]) => z.array(z.string()).optional().transform(values => (values ?? []).filter((value): value is T => (options as readonly string[]).includes(value)));
 export const referrerPreferencesSchema = z.object({
   referralCapacity: z.number().int().min(1).max(15).optional().transform(value => value ?? 3),
-  preferAreas: optionList(JOB_AREAS),
+  preferAreas: optionList(REFERRER_AREAS),
   preferLevels: optionList(JOB_LEVELS),
   referrerVisibility: z.string().optional().transform((value): "anon" | "named" => (value === "named" ? "named" : "anon")),
   notifyNewAsk: z.boolean().optional().transform(value => value ?? true),

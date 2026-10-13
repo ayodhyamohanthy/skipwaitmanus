@@ -13,10 +13,11 @@ import { QueueGuidance, QueuePanel, QueueRequestCard } from "@/components/referr
 import { PassPrivatelyPanel } from "@/components/referrer/PassPrivatelyPanel";
 import { CandidatePreviewCard, type CandidatePreview, type DeclineReason } from "@/components/referrer/CandidatePreviewCard";
 import { askDaysLeft, formatAskExpiry, type ReferralStatus } from "@shared/referral";
+import { parseJobFunction, type JobFunction } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 
-type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number };
+type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number };
 type InboxPayload = { requests?: CompanyInboxItem[] };
 type PrivateImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
 const personalEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);
@@ -64,9 +65,11 @@ export default function MyCompanyInbox() {
         companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=new"),
         companyFetch<InboxPayload>("/api/company-referrals/inbox?scope=saved"),
       ]);
-      const freshRows = fresh.requests || [];
+      // The function is read leniently: an unknown value shows the company alone.
+      const withFunction = (row: CompanyInboxItem): CompanyInboxItem => ({ ...row, jobFunction: parseJobFunction(row.jobFunction) });
+      const freshRows = (fresh.requests || []).map(withFunction);
       const seen = new Set(freshRows.map(row => row.id));
-      setRequests([...freshRows, ...(saved.requests || []).filter(row => !seen.has(row.id))]);
+      setRequests([...freshRows, ...(saved.requests || []).filter(row => !seen.has(row.id)).map(withFunction)]);
       try { const impactPayload = await impactPromise; setImpact(impactPayload.summary || null); } catch { setImpact(null); }
     } catch (reason) { setLoadFailed(true); setError(reason instanceof Error ? reason.message : "We could not load your private company inbox"); }
     finally { setLoading(false); }

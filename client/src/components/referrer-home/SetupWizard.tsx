@@ -8,7 +8,8 @@ import { useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Toggle } from "@/components/kit/preview-kit";
-import { JOB_AREAS, JOB_LEVELS, saveReferrerPreferences, type ReferrerPreferences, type TokenSource } from "./referrerData";
+import { JOB_LEVELS, REFERRER_AREAS } from "@shared/jobFunctions";
+import { saveReferrerPreferences, type ReferrerPreferences, type TokenSource } from "./referrerData";
 
 const STEPS = ["Areas", "Capacity", "Visibility", "Notifications", "Ready"] as const;
 const chip = (on: boolean) => `min-h-11 rounded-full border px-4 text-sm ${on ? "border-primary bg-primary text-primary-foreground" : "border-border"}`;
@@ -38,7 +39,7 @@ export function SetupWizard({ initial, companyName, profileHandle, fetchToken, o
       <ol className="mb-8 grid grid-cols-5 gap-1.5" aria-label="Setup progress">{STEPS.map((label, i) => <li key={label}><span className={`block h-1.5 rounded-full ${i <= step ? "bg-primary" : "bg-muted"}`} /><span className="mt-1.5 hidden text-xs text-muted-foreground sm:block">{label}</span></li>)}</ol>
 
       {step === 0 ? <section><Layers className="mb-3 text-primary" /><h1 className="text-3xl font-semibold">Which roles can you judge?</h1><p className="mt-2 text-muted-foreground">Pick the areas you can assess. Stored for when role matching ships.</p>
-        <h2 className="mt-6 text-sm font-semibold">Job areas</h2><div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Job areas">{JOB_AREAS.map(area => <button key={area} type="button" aria-pressed={areas.includes(area)} onClick={() => setAreas(current => toggle(current, area))} className={chip(areas.includes(area))}>{area}</button>)}</div>
+        <h2 className="mt-6 text-sm font-semibold">Job areas</h2><div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Job areas">{REFERRER_AREAS.map(area => <button key={area} type="button" aria-pressed={areas.includes(area)} onClick={() => setAreas(current => toggle(current, area))} className={chip(areas.includes(area))}>{area}</button>)}</div>
         <h2 className="mt-6 text-sm font-semibold">Levels</h2><div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Levels">{JOB_LEVELS.map(level => <button key={level} type="button" aria-pressed={levels.includes(level)} onClick={() => setLevels(current => toggle(current, level))} className={chip(levels.includes(level))}>{level}</button>)}</div>
       </section> : null}
 

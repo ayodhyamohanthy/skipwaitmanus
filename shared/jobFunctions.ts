@@ -64,10 +64,16 @@ export function withParsedJobFunction<T extends object>(row: T): T & { jobFuncti
   return { ...row, jobFunction: parseJobFunction(typeof raw === "string" ? raw : null) };
 }
 
+/** The function as a label on a request, or null: "Other" names no team, so it is never shown. */
+export function displayJobFunction(jobFunction: JobFunction | null | undefined): Exclude<JobFunction, "Other"> | null {
+  return jobFunction && jobFunction !== "Other" ? jobFunction : null;
+}
+
 /**
  * Eyebrow text for a request: "Design · Wipro" (the eyebrow style uppercases
  * it). "Other" and unknown functions show the company alone.
  */
 export function functionEyebrow(jobFunction: JobFunction | null | undefined, company: string): string {
-  return jobFunction && jobFunction !== "Other" ? `${jobFunction} · ${company}` : company;
+  const label = displayJobFunction(jobFunction);
+  return label ? `${label} · ${company}` : company;
 }

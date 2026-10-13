@@ -44,6 +44,15 @@ describe("My Company Inbox employee access", () => {
     expect(screen.queryByText("No new requests.")).toBeNull();
   });
 
+  it("heads each card with the ask's function and the company name (kit 'PRODUCT · WIPRO')", async () => {
+    authState.signedIn = true;
+    const row = (id: number, jobFunction: string | null) => ({ id, companyDomain: "wipro.com", companyName: "Wipro", companyInitials: "W", jobFunction, status: "pending", targetRoleUrl: null, attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false });
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: url.includes("scope=new") ? [row(1, "Product"), row(2, null), row(3, "Astrology")] : [] }) })));
+    render(<MyCompanyInbox />);
+    await waitFor(() => expect(screen.getAllByRole("article")).toHaveLength(3));
+    expect(screen.getAllByRole("article").map(card => card.querySelector(".eyebrow")?.textContent)).toEqual(["Product · Wipro", "Wipro", "Wipro"]);
+  });
+
   it("lists routed new requests, then saved ones, as kit cards without scope tabs or a pager", async () => {
     authState.signedIn = true;
     const row = (id: number, savedAt: string | null = null) => ({ id, companyDomain: "acme.com", status: "pending", targetRoleUrl: `https://careers.acme.com/jobs/${id}`, attachmentCount: 1, savedAt, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false });

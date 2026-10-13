@@ -9,6 +9,7 @@ import {
   JOB_LEVELS,
   REFERRER_AREAS,
   askJobFunctionInputSchema,
+  displayJobFunction,
   functionEyebrow,
   jobFunctionFieldSchema,
   jobFunctionSchema,
@@ -71,6 +72,9 @@ describe("job function taxonomy contract", () => {
     expect(functionEyebrow(null, "Wipro")).toBe("Wipro");
     expect(functionEyebrow(undefined, "acme.io")).toBe("acme.io");
     expect(functionEyebrow("Other", "Wipro")).toBe("Wipro");
+    expect(displayJobFunction("Data")).toBe("Data");
+    expect(displayJobFunction("Other")).toBeNull();
+    expect(displayJobFunction(null)).toBeNull();
   });
 });
 

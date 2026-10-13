@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { companyIdentityFieldsSchema } from "@shared/companies";
+import { jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { isPostApprovalReferralStatus, referralStatuses, type ReferralStatus } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -32,6 +33,7 @@ const seekerRowSchema = z.object({
   targetRoleUrl: z.string().nullish(),
   companyDomain: z.string(),
   ...companyIdentityFieldsSchema.shape,
+  jobFunction: jobFunctionFieldSchema,
   status: statusSchema,
   referrerId: z.number().int().nullish(),
   referrerMessage: z.string().nullish(),
@@ -48,6 +50,7 @@ const previewSchema = z.object({
     targetRoleUrl: z.string().nullish(),
     companyDomain: z.string(),
     ...companyIdentityFieldsSchema.shape,
+    jobFunction: jobFunctionFieldSchema,
     candidateMessage: z.string().nullish(),
     attachments: z.array(attachmentSchema).nullish(),
   }),
@@ -62,6 +65,7 @@ const detailSchema = z.object({
     targetRoleUrl: z.string().nullish(),
     companyDomain: z.string(),
     ...companyIdentityFieldsSchema.shape,
+    jobFunction: jobFunctionFieldSchema,
     candidateName: z.string().nullish(),
     referrerId: z.number().int().nullish(),
     status: statusSchema,
@@ -85,6 +89,8 @@ export type ThreadRequest = {
   /** Company directory display name and initials; null outside the directory. */
   companyName: string | null;
   companyInitials: string | null;
+  /** The ask's job function (shared taxonomy); null when unknown. */
+  jobFunction: JobFunction | null;
   status: ReferralStatus;
   referrerId: number | null;
   referrerMessage: string | null;
@@ -129,7 +135,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       role: "seeker",
       request: {
         id: own.id, title: own.title ?? null, pitch: own.pitch ?? null, candidateName: null, targetRoleUrl: own.targetRoleUrl ?? null,
-        companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerMessage: own.referrerMessage ?? null,
+        companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerMessage: own.referrerMessage ?? null,
         createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0,
       },
     };
@@ -147,7 +153,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       // until the referrer accepts.
       request: {
         id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: null, targetRoleUrl: request.targetRoleUrl ?? null,
-        companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, status: "pending", referrerId: null, referrerMessage: null, createdAt: null,
+        companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: "pending", referrerId: null, referrerMessage: null, createdAt: null,
         attachments: [], attachmentCount: attachments.length,
       },
     };
@@ -160,7 +166,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
     role: accepted ? "referrer-claimed" : "referrer-pending",
     request: {
       id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: accepted ? request.candidateName ?? null : null,
-      targetRoleUrl: request.targetRoleUrl ?? null, companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, status: request.status, referrerId: request.referrerId ?? null,
+      targetRoleUrl: request.targetRoleUrl ?? null, companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: request.status, referrerId: request.referrerId ?? null,
       referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: attachments.length,
     },
   };

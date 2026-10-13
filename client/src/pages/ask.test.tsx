@@ -147,6 +147,44 @@ describe("Ask composer", () => {
     expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
   });
 
+  it("shows the job link's function in the eyebrow and lets the server infer it when the seeker does not pick", async () => {
+    stubCrypto();
+    const fetchMock = vi.fn();
+    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com", jobFunction: "Design" });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Ask />);
+    const picker = () => screen.getByLabelText("Job function") as HTMLSelectElement;
+    expect(picker().value).toBe("");
+    expect(picker().selectedOptions[0]?.textContent).toBe("Choose a function");
+    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
+    expect(picker().value).toBe("Design");
+    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
+    await screen.findByText("Ask sent to wipro.com.");
+    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
+    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).not.toHaveProperty("jobFunction");
+  });
+
+  it("sends the function the seeker picked, and forgets it for the next ask", async () => {
+    stubCrypto();
+    const fetchMock = vi.fn();
+    stubUploadThen(fetchMock, { requestId: 10, companyDomain: "wipro.com", jobFunction: "Product" });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Ask />);
+    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
+    fireEvent.change(screen.getByLabelText("Job function"), { target: { value: "Product" } });
+    expect((screen.getByLabelText("Job function") as HTMLSelectElement).value).toBe("Product");
+    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
+    fireEvent.change(document.querySelector('input[type="file"]') as HTMLInputElement, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
+    await screen.findByText("Ask sent to wipro.com.");
+    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
+    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ jobFunction: "Product" });
+    fireEvent.click(screen.getByRole("button", { name: "Write another" }));
+    expect((screen.getByLabelText("Job function") as HTMLSelectElement).value).toBe("");
+  });
+
   it("tells the seeker honestly when the company has no verified referrers yet", async () => {
     stubCrypto();
     const fetchMock = vi.fn();

@@ -63,6 +63,14 @@ describe("ReferrerHome", () => {
     expect(screen.getAllByText("Wipro · 1 file attached")).toHaveLength(2);
   });
 
+  it("leads a waiting row with the ask's job function when it has one", async () => {
+    const now = Date.now();
+    stubHome({ fresh: [ask(31, now - 2 * DAY, { jobFunction: "Design" }), ask(32, now - 2 * DAY, { jobFunction: "Astrology" })] });
+    renderWithQuery(<ReferrerHome />);
+    expect(await screen.findByText("Design · 1 file attached")).toBeTruthy();
+    expect(screen.getByText("Wipro · 1 file attached")).toBeTruthy();
+  });
+
   it("flags at-capacity from real review load and links to adjust it", async () => {
     stubHome({ capacity: 1, completed: [{ id: 40, companyDomain: "wipro.com", status: "approved", isClaimedByYou: true, unreadMessageCount: 0, createdAt: "2026-09-01T08:00:00Z" }] });
     renderWithQuery(<ReferrerHome />);
@@ -180,8 +188,8 @@ describe("referrer home derivation", () => {
       access: { verified: true, domain: "wipro.com", companyName: "Wipro", companyInitials: "W" },
       preferences: { referralCapacity: 3, preferAreas: [], preferLevels: [], referrerVisibility: "anon", notifyNewAsk: true, paused: false },
       verifiedAt: "2026-09-20T06:00:00.000Z", profileCapacity: 3, impact: null,
-      fresh: [{ id: 1, companyDomain: "wipro.com", status: "pending", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: false, unreadMessageCount: 0 }, { id: 2, companyDomain: "wipro.com", status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
-      completed: [{ id: 2, companyDomain: "wipro.com", status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }, { id: 3, companyDomain: "wipro.com", status: "declined", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
+      fresh: [{ id: 1, companyDomain: "wipro.com", jobFunction: null, status: "pending", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: false, unreadMessageCount: 0 }, { id: 2, companyDomain: "wipro.com", jobFunction: null, status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
+      completed: [{ id: 2, companyDomain: "wipro.com", jobFunction: null, status: "approved", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }, { id: 3, companyDomain: "wipro.com", jobFunction: null, status: "declined", createdAt: "2026-10-01T16:30:00.000Z", isClaimedByYou: true, unreadMessageCount: 0 }],
     };
     const view = deriveReferrerHome(data, now);
     expect(view.waiting.map(row => row.id)).toEqual([1]);

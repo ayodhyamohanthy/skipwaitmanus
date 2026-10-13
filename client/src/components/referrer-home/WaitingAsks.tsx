@@ -1,13 +1,15 @@
 // "Waiting for you" column of /referrer-home (kit v4 referrer-home.tsx).
-// Rows come from the live company inbox; the kit's role title, job function
-// and ask strength are not in that payload, so rows show the private
-// reference, company and attachment count instead of invented detail. A row
+// Rows come from the live company inbox. The second line leads with the ask's
+// job function as in the kit ("Design · …"), or the company when it has none;
+// the role title and ask strength are not in that payload yet, so rows show
+// the private reference and attachment count instead of invented detail. A row
 // opens that request in the queue (/queue?request=:id), where an unclaimed ask
 // can be previewed; the conversation only exists after acceptance.
 import { ArrowRight, Inbox } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
+import { displayJobFunction } from "@shared/jobFunctions";
 import { askCountdown, type ReferrerHomeView } from "./referrerData";
 
 export function WaitingAsks({ view, nowMs }: { view: ReferrerHomeView; nowMs: number }) {
@@ -33,7 +35,7 @@ export function WaitingAsks({ view, nowMs }: { view: ReferrerHomeView; nowMs: nu
               <li key={item.id}>
                 <Link href={`/queue?request=${item.id}`} aria-label={`Private ask · Ref-${1000 + item.id}`} className="flex min-h-16 items-center gap-3 rounded-3xl border border-border p-4 hover:border-foreground/40">
                   <span className="company-mark">{company?.mark ?? (item.companyDomain.charAt(0) || "?").toUpperCase()}</span>
-                  <span className="min-w-0 flex-1"><strong className="block">Private ask · Ref-{1000 + item.id}</strong><small className="text-muted-foreground">{name}{files > 0 ? ` · ${files} ${files === 1 ? "file" : "files"} attached` : ""}</small></span>
+                  <span className="min-w-0 flex-1"><strong className="block">Private ask · Ref-{1000 + item.id}</strong><small className="text-muted-foreground">{displayJobFunction(item.jobFunction) ?? name}{files > 0 ? ` · ${files} ${files === 1 ? "file" : "files"} attached` : ""}</small></span>
                   {countdown ? <span className={`shrink-0 text-xs ${countdown.urgent ? "font-semibold text-destructive" : "text-muted-foreground"}`}>{countdown.label}</span> : null}
                   <ArrowRight className="size-4 shrink-0" />
                 </Link>

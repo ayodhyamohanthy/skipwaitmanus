@@ -55,6 +55,25 @@ describe("ReferralConversation thread", () => {
     expect(screen.queryByText(/goneutrinos\.com/)).toBeNull();
   });
 
+  it("leads the eyebrow with the ask's job function, for the seeker and the reviewing referrer", async () => {
+    stubFetch(() => ok({ requests: [{ ...seekerPending, companyName: "Wipro", companyInitials: "W", jobFunction: "Design" }] }));
+    render(<ReferralConversation />);
+    await screen.findByText("Product Designer");
+    expect(document.querySelector("header .eyebrow")?.textContent).toBe("Design · Wipro");
+    cleanup();
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [] }) : url.endsWith("/601/preview") ? ok({ request: { ...referrerPreview, companyName: "Wipro", companyInitials: "W", jobFunction: "Data" } }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    await screen.findByText("Product Designer");
+    expect(document.querySelector("header .eyebrow")?.textContent).toBe("Data · Wipro");
+  });
+
+  it("shows the company alone when the ask has no known function", async () => {
+    stubFetch(() => ok({ requests: [{ ...seekerPending, companyName: "Wipro", companyInitials: "W", jobFunction: "Astrology" }] }));
+    render(<ReferralConversation />);
+    await screen.findByText("Product Designer");
+    expect(document.querySelector("header .eyebrow")?.textContent).toBe("Wipro");
+  });
+
   it("shows the seeker their ask with waiting state and a working withdraw", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
