@@ -7,6 +7,7 @@ This is the shared, living plan for implementing every kit v4 screen (`screens/w
 ## 0. North star and decision protocol (binding, owner Oct 14 2026)
 - **Goal:** the go-to, preferred global site for job referrals, getting people referred faster.
 - **Protocol for every change:** audit → data/principle-backed proposal (metric moved, evidence with sources, expected effect, cost, risk, how it will be measured) → owner approval → code → measure after release. No new change is coded without the owner's approval; P0 incidents and already-approved queue tasks are the only exceptions.
+- **Decision register:** every owner decision is recorded in `docs/DECISIONS.md` (evidence, supersedes/affects, sync status); proposals must check it for conflicts with older decisions and include data, analytics, behavioural psychology (seeker and referrer mental models) and proven patterns; after approval the whole project is synced to it.
 - **The queue below is itself subject to this protocol:** a goal-aligned audit may propose re-ordering, adding or dropping tasks; the owner approves before the order changes.
 
 ## 1. Owner decisions (binding)

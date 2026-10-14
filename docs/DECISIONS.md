@@ -1,0 +1,36 @@
+# SkipWait decision register (single source of truth)
+
+Every owner decision lives here. Any doc, code, copy, test or config that disagrees with an **active** entry is wrong and must be fixed (or the doc marked "Superseded by D-xxx"). Read this with `AGENTS.md` section 0 and `docs/KIT_V4_BUILD_PLAN.md`.
+
+## How decisions are made (binding, owner Oct 14 2026)
+1. **Audit first.** Inspect the project area and the evidence before proposing anything.
+2. **Propose with evidence.** Each proposal states: the problem; data (production metrics/analytics, with the query or source), research (cited URL, publisher, year), behavioural psychology (the seeker's and the referrer's mental model at that step and the principle used), proven patterns from comparable products; the metric it moves and the expected effect; cost, risk and alternatives; and how it will be measured after release.
+3. **Impact check.** List every older decision (by ID) and every doc, code area, copy, test and config the proposal touches or contradicts. Never silently override an older decision — the owner chooses which wins.
+4. **Owner approves manually.** Ask targeted questions whenever intent, scope or a trade-off is unclear. No new change, redesign, pricing or process change is coded before explicit approval. Exceptions: P0 incidents (fix, then report) and tasks already approved in the queue.
+5. **Record, then sync the whole project.** Add the entry here first (docs first), then update every impacted doc/code/copy/test in the same change set or as queued tasks. An entry is `synced` only when nothing in the repo contradicts it.
+6. **Measure.** After release, record before/after numbers against the metric named in the entry.
+
+Ethics guardrail for every psychology-based proposal: no dark patterns, false urgency, fabricated proof or scarcity, guilt-tripping, or pressure on referrers; referring always stays voluntary; real numbers only.
+
+## Active decisions
+| ID | Date | Decision | Evidence / source | Supersedes · affects | Sync |
+|---|---|---|---|---|---|
+| D-001 | 2026-10-09 | Implement every kit v4 PNG (`screens/web` 105, `screens/mobile` 106) fullstack "as it is"; PNGs win over earlier founder calls in `docs/KIT_V4_COVERAGE.md`, except founder edits on `main` after Oct 9; never ship preview chips/sample data; Terms/Privacy keep live legal text in kit layout; Guidelines takes kit text. | Owner instruction | Supersedes founder calls in `docs/KIT_V4_COVERAGE.md` (no password auth, Pro/Max-only pricing, trust strip removed, Region tab, example pricing) | sweep pending |
+| D-002 | 2026-10-09 | Build WorkOS password sign-in with forgot/reset. | Owner instruction | Supersedes "no password auth" founder call | sweep pending |
+| D-003 | 2026-10-09 | Ship each verified group straight to `main` (auto-deploys) after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3. | Owner instruction | Affects `COLLABORATION.md` PR flow | sweep pending |
+| D-004 | 2026-10 | Chargebee is the only plan/subscription holder; Razorpay (INR) and PayPal (USD) are gateways behind Chargebee hosted checkout; direct Razorpay/PayPal checkout routes stay disabled (503). | Owner instruction ("razorpay, paypal, chargebee") | Affects `PAYMENT_PROVIDER_READINESS.md`, `PRICING.md`, payment routes | sweep pending |
+| D-005 | 2026-10-14 | Pricing model: 30/90-day passes paid once with opt-in auto-extend (yearly only for Keep warm); prices, Free plan, 14-day reverse trial and packs exactly as in `docs/KIT_V4_BUILD_PLAN.md` §1 and `docs/PRICING_RECOMMENDATION.md`; India INR + global USD first; existing Pro/Max subscribers keep what they pay for. | `docs/PRICING_RECOMMENDATION.md`, `docs/research/pricing-*.md` | Supersedes D-001's kit monthly/yearly pricing and earlier Pro/Max pricing in `PRICING.md`, `UPGRADE_NUDGES.md`, `GROWTH_AND_MONETIZATION_AUDIT.md` | sweep pending |
+| D-006 | 2026-10-14 | Fairness: never sell referrals, priority, visibility or seeker→referrer payments; max 2 open asks per company on every plan; referrers never see a seeker's plan. | Pricing research + product doctrine (`research/referral-product-doctrine.md`) | Affects any upsell/nudge copy | sweep pending |
+| D-007 | 2026-10-14 | Tax: Indian sole proprietorship, Udyam MSME, not GST-registered — no GST charged, INR labelled "India price", `indiaGstRegistered` switch off until a GSTIN exists. | Owner facts | Affects pricing copy, invoices, Chargebee tax | sweep pending |
+| D-008 | 2026-10-14 | Docs first: update agent docs (this file, `AGENTS.md`, `docs/KIT_V4_BUILD_PLAN.md`) on `main` before any code change. | Owner instruction (multi-platform continuity) | Affects every workflow | synced |
+| D-009 | 2026-10-14 | One priority queue (`docs/KIT_V4_BUILD_PLAN.md` §3b) for every AI model; P0 first, finish in-progress, then lowest unblocked task. | Owner instruction | Queue order itself is subject to D-010 | synced |
+| D-010 | 2026-10-14 | North star: be the go-to, preferred **global** site for job referrals, getting people referred **faster**. Every decision follows the process above (audit → evidence incl. data, analytics, psychology, patterns → impact check → owner approval → code → measure). | Owner instruction | Re-evaluates the queue order (D-009) and all older decisions for goal fit | in progress (goal-alignment audit Oct 14) |
+
+Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
+
+## Open owner questions (nothing is built until answered here)
+referrer tips (seeker→referrer money) · machine translation of 6 languages vs preferences-only · human expert-review staffing · employer referral campaigns · faded vs solid-grey disabled buttons · PayPal reference transactions for USD auto-extend · CA advice on SAC/export once GST-registered · NY/CA counsel for Concierge.
+
+## Superseded
+- `docs/KIT_V4_COVERAGE.md` founder calls → D-001, D-002, D-005.
+- Pro/Max-only paid plans (`PRICING.md`, older nudges) → D-005 (existing subscribers honoured).
