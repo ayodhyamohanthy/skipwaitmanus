@@ -262,4 +262,22 @@ describe("Verify work email", () => {
     expect(screen.getByText("Enter the code")).toBeTruthy();
     expect(calls.filter(call => call.path === "/api/work-email/otp/send")).toHaveLength(2);
   });
+
+  it("distributes a pasted 6-digit code across all boxes, even into a filled box", async () => {
+    stubApi({ directory: [ok(DIRECTORY)], send: [ok({ sent: true })] });
+    await reachCodeStep();
+    const boxes = () => [1, 2, 3, 4, 5, 6].map(n => (screen.getByLabelText(`Digit ${n}`) as HTMLInputElement).value);
+    fireEvent.change(screen.getByLabelText("Digit 1"), { target: { value: "0" } });
+    fireEvent.paste(screen.getByLabelText("Digit 1"), { clipboardData: { getData: () => "401867" } });
+    expect(boxes()).toEqual(["4", "0", "1", "8", "6", "7"]);
+    fireEvent.paste(screen.getByLabelText("Digit 3"), { clipboardData: { getData: () => " 123 456 " } });
+    expect(boxes()).toEqual(["1", "2", "3", "4", "5", "6"]);
+  });
+  it("keeps the newly typed digit when typing over a filled box", async () => {
+    stubApi({ directory: [ok(DIRECTORY)], send: [ok({ sent: true })] });
+    await reachCodeStep();
+    fireEvent.change(screen.getByLabelText("Digit 2"), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText("Digit 2"), { target: { value: "59" } });
+    expect((screen.getByLabelText("Digit 2") as HTMLInputElement).value).toBe("9");
+  });
 });
