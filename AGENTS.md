@@ -26,6 +26,19 @@ You are an expert senior software engineer acting as an autonomous implementatio
 - **Failures surface at once.** A payment-path failure is reported immediately with the failing leg and the evidence; do not retry around it first.
 - **Decision compass (founder, verbatim):** "You do whats recommended write with intelligence and user experience. At the end the users should be priority we should make decisions which make people pay for our product, give word of mouth, give positive feedback. Dont do anything pisses off the users." In practice: put the user first, optimise for conversion and word of mouth, and never surprise or anger a user. When two options both work, pick the one a user would thank you for.
 - **Payments instance of this rule:** `docs/PAYMENTS_TEST_RUNBOOK.md` (two Chargebee sites, provider matrix, failure rule, recovery table). Read it before touching any payment, refund or credit code.
+- **Animation guidelines (founder, Oct 15 2026, verbatim):**
+
+  Duration Guidelines:
+  - Micro-interactions: 100-150ms
+  - Standard UI (tooltips, dropdowns): 150-250ms
+  - Modals, drawers: 200-300ms
+  - Page transitions: 300-400ms
+  Rule: UI animations should stay under 300ms.
+
+  The Frequency Principle - determine how often users will see the animation:
+  - 100+ times/day: no animation (or drastically reduced)
+  - Occasional use: standard animation
+  - Rare/first-time: can add delight
 
 ## 1. Operator protocol (human rules and hygiene)
 - **Context hygiene:** Start a fresh work thread for every distinct sub-task or feature. Close completed context before starting unrelated work.
