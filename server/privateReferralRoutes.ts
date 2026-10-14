@@ -14,6 +14,7 @@ import { getAskExpiresAtMs, isReferralProgressUpdateStatus, type ReferralProgres
 import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDirectoryEntry, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
+import type { ReferrerAccessResponse } from "../shared/referrerAccess";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -684,7 +685,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const access = await deps.getVerifiedWorkEmailAccess?.(identity.account.id);
       res.set("Cache-Control", "private, no-store");
       const [named] = access ? await attachCompanyIdentities([access], row => row.workEmailDomain, lookupCompanies) : [];
-      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null });
+      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null } satisfies ReferrerAccessResponse);
     } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
   });
   app.get("/api/referrer-impact/me", async (req, res) => {
