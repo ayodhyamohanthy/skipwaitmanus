@@ -1,8 +1,8 @@
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -35,6 +35,10 @@ import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegr
 import { resolvePlanEntitlements, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
+import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, grantWelcomeCreditsTx, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
+import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
+import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
+import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
@@ -1966,6 +1970,12 @@ export async function getCreditLedgerAudit(limit = 200) {
     const purchased=rows.filter(row=>row.source==="purchased_balance"||(["purchase","admin_adjustment","company_coverage_reward","personal_referral_reward","invite_reward_granted"].includes(row.kind)&&!row.source)).reduce((sum,row)=>sum+row.tokenCount,0);
     if(purchased!==wallet.balance)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"purchased_balance",expected:purchased,actual:wallet.balance,delta:wallet.balance-purchased,lastTransactionId:rows[0]?.id??null,referenceId:rows[0]?.referenceId??null});
     if(wallet.balance<0||wallet.monthlyCreditsRemaining<0)integrity.push({type:"negative_bucket",userId:wallet.userId,role:wallet.role,balance:wallet.balance,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining});
+    // Kit ledger: the cycle bucket reconciles against its own cycle's rows once that cycle was opened by a plan_grant row
+    // (a cycle that began before the ledger has no opening row), and every grant against the rows that name it.
+    const cycleRows=rows.filter(row=>row.source===BUCKET_SOURCES.cycle&&row.sourceCycleKey===wallet.monthlyCycleKey);
+    if(cycleRows.filter(row=>row.kind==="plan_grant").length===1){const expected=cycleRows.reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==wallet.monthlyCreditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"cycle",cycleKey:wallet.monthlyCycleKey,expected,actual:wallet.monthlyCreditsRemaining,delta:wallet.monthlyCreditsRemaining-expected});}
+    const grants=await readGrantsTx(db,wallet.userId,wallet.role,false);
+    for(const grant of grants){const expected=rows.filter(row=>row.creditGrantId===grant.id).reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==grant.creditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:`grant:${grant.source}`,grantId:grant.id,expected,actual:grant.creditsRemaining,delta:grant.creditsRemaining-expected});if(grant.creditsRemaining<0)integrity.push({type:"negative_grant",userId:wallet.userId,role:wallet.role,grantId:grant.id});}
   }
   const orphanRequests=await db.select({id:referralRequests.id,userId:referralRequests.jobSeekerId}).from(referralRequests).where(and(isNotNull(referralRequests.idempotencyKey),isNull(referralRequests.debitTransactionId))).limit(200);for(const row of orphanRequests)integrity.push({type:"request_without_debit",...row});
   const orphanDebits=await db.select({id:tokenTransactions.id,referenceId:tokenTransactions.referenceId,userId:tokenTransactions.userId}).from(tokenTransactions).leftJoin(referralRequests,eq(sql`CAST(${referralRequests.id} AS CHAR)`,tokenTransactions.referenceId)).where(and(eq(tokenTransactions.kind,"direct_request"),isNotNull(tokenTransactions.referenceId),isNull(referralRequests.id))).limit(200);for(const row of orphanDebits)integrity.push({type:"debit_without_request",...row});
@@ -2334,6 +2344,8 @@ export type CreditSummary = {
   cycleKey: string;
   subscriptionStatus: string | null;
   subscriptionCurrentTermEnd: Date | null;
+  /** Kit ledger block (shared/creditLedger.ts): on GET /api/credits/summary and spends; embedded summaries omit it. */
+  ledger?: CreditsLedger;
 };
 export const MAX_ADMIN_TOKEN_ADJUSTMENT = 1000;
 export const COMPANY_COVERAGE_REWARD_TOKENS = 1;
@@ -2342,7 +2354,7 @@ export const PERSONAL_REFERRAL_REWARD_TOKENS = 1;
 async function addCoverageRewardCredit(tx: any, userId: number, role: WalletRole) {
   const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
   if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + COMPANY_COVERAGE_REWARD_TOKENS }).where(eq(tokenBalances.id, wallet[0].id));
-  else await tx.insert(tokenBalances).values({ userId, role, balance: COMPANY_COVERAGE_REWARD_TOKENS, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+  else await tx.insert(tokenBalances).values({ userId, role, balance: COMPANY_COVERAGE_REWARD_TOKENS, ...freshWalletCycle(role) });
 }
 
 export async function fulfillCompanyCoverageInvitation(joinerUserId: number, input: { inviteCode: string; workEmailDomain: string }) {
@@ -2375,7 +2387,7 @@ export async function fulfillCompanyCoverageInvitation(joinerUserId: number, inp
 async function addPersonalReferralRewardCredit(tx: any, userId: number) {
   const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1);
   if (wallet[0]) await tx.update(tokenBalances).set({ balance: wallet[0].balance + PERSONAL_REFERRAL_REWARD_TOKENS }).where(eq(tokenBalances.id, wallet[0].id));
-  else await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: PERSONAL_REFERRAL_REWARD_TOKENS, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+  else await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: PERSONAL_REFERRAL_REWARD_TOKENS, ...freshWalletCycle("job_seeker") });
 }
 
 export async function getOrCreatePersonalReferralInvite(userId: number) {
@@ -2530,24 +2542,6 @@ async function promoStateForTx(tx: any, userId: number, role: WalletRole, now: D
   }
 }
 
-async function readPromoState(userId: number, role: WalletRole, now: Date): Promise<PromoState> {
-  const db = await getDb();
-  if (!db) return { remaining: 0, expiresAt: null, status: null };
-  try {
-    const rows = await db.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, role))).limit(1);
-    const grant = rows[0];
-    const status = promoStatusOf(grant, now);
-    if (grant && grant.status === "active" && status === "expired") {
-      await db.update(promoCreditGrants).set({ status: "expired" }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
-    }
-    if (status !== "active" || !grant) return { remaining: 0, expiresAt: null, status };
-    return { remaining: grant.creditsRemaining, expiresAt: grant.expiresAt, status };
-  } catch (error) {
-    if (isSchemaMissingError(error)) return { remaining: 0, expiresAt: null, status: null };
-    throw error;
-  }
-}
-
 /** Promo grants are opt-in: only PROMO_GRANTS_ENABLED="true" turns the grant hooks on. */
 export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_ENABLED === "true"; }
 
@@ -2623,7 +2617,7 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
     // wallet side effect so concurrent requests for the same case cannot both
     // credit; a duplicate-key failure rolls the whole transaction back.
     const adjustment = await tx.insert(adminTokenAdjustments).values({ recipientUserId: input.recipientUserId, adminUserId, role: input.role, tokenCount: input.tokenCount, caseReference, reason });
-    await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: input.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${input.tokenCount}` } });
+    await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: input.tokenCount, ...freshWalletCycle(input.role) }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${input.tokenCount}` } });
     const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update");
     if (!wallet[0]) throw new Error("Recovery wallet update failed");
     await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment", source: "admin_recovery", referenceType: "admin_token_adjustment", referenceId: String(Number(adjustment[0].insertId)), idempotencyKey: `admin-adjustment-${Number(adjustment[0].insertId)}`, balanceAfter: wallet[0].balance });
@@ -2635,8 +2629,18 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
 export async function ensureTokenWallet(userId: number, role: WalletRole) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  const now = new Date();
   const existing = await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
   if (existing[0]) {
+    if (role === "job_seeker") {
+      // Kit ledger: cycle boundaries move credits (carryover, expiry) with ledger rows, so they run under the wallet lock.
+      if (!seekerCycleDue(existing[0], now)) return existing[0];
+      return db.transaction(async tx => {
+        const locked = (await tx.select().from(tokenBalances).where(eq(tokenBalances.id, existing[0].id)).limit(1).for("update"))[0];
+        if (!locked) throw new Error("Your credit wallet is unavailable");
+        return (await reconcileSeekerWalletTx(tx, locked, now)).wallet;
+      });
+    }
     const normalized = normalizedWalletState(existing[0]);
     if (normalized.changed) {
       await db.update(tokenBalances).set(normalized.patch).where(eq(tokenBalances.id, existing[0].id));
@@ -2644,13 +2648,99 @@ export async function ensureTokenWallet(userId: number, role: WalletRole) {
     }
     return existing[0];
   }
-  await db.insert(tokenBalances).values({ userId, role, balance: 0, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+  await db.insert(tokenBalances).values({ userId, role, balance: 0, ...freshWalletCycle(role, now) });
   return (await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
 }
 
-export async function getTokenWallet(userId: number, role: WalletRole) {
-  const wallet = await ensureTokenWallet(userId, role);
-  return creditSummaryFromWallet(wallet, await readPromoState(userId, role, new Date()));
+type WalletRow = typeof tokenBalances.$inferSelect;
+
+/** Brings a locked wallet up to now: the kit ledger for seekers, the pre-kit monthly reset for referrers. */
+async function reconcileWalletTx(tx: LedgerTx, locked: WalletRow, now: Date): Promise<{ wallet: WalletRow; grants: GrantRow[] }> {
+  if (locked.role === "job_seeker") {
+    const { wallet, grants } = await reconcileSeekerWalletTx(tx, locked, now);
+    return { wallet, grants };
+  }
+  const normalized = normalizedWalletState(locked, now);
+  if (!normalized.changed) return { wallet: locked, grants: [] };
+  const updated = await tx.update(tokenBalances).set(normalized.patch).where(eq(tokenBalances.id, locked.id));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new CreditSpendConflictError();
+  return { wallet: { ...locked, ...normalized.patch }, grants: [] };
+}
+
+function promoHolding(grant: typeof promoCreditGrants.$inferSelect | undefined): PromoHolding | null {
+  return grant ? { grantId: grant.id, credits: grant.creditsRemaining, expiresAt: grant.expiresAt, tokenCount: grant.tokenCount } : null;
+}
+
+/** The full summary for a locked, reconciled wallet: the legacy fields plus the kit ledger block. */
+async function creditSummaryTx(tx: LedgerTx, input: { wallet: WalletRow; grants: GrantRow[]; promo: { grant?: typeof promoCreditGrants.$inferSelect; status: PromoState["status"] }; now: Date }): Promise<CreditSummary> {
+  const holding = promoHolding(input.promo.grant);
+  // Promo credits count toward the balance only while grants are on (the pre-kit totalAvailable rule).
+  const ledger = await creditsLedgerTx(tx, { wallet: input.wallet, grants: input.grants, promo: promoGrantsEnabled() ? holding : null, now: input.now });
+  const legacy = creditSummaryFromWallet(input.wallet, holding ? { remaining: holding.credits, expiresAt: holding.expiresAt, status: input.promo.status } : { remaining: 0, expiresAt: null, status: input.promo.status });
+  return { ...legacy, totalAvailable: ledger.balance, ledger };
+}
+
+/** GET /api/credits/summary: reconciles the caller's own wallet, then reports every bucket. */
+export async function getTokenWallet(userId: number, role: WalletRole): Promise<CreditSummary> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const created = await ensureTokenWallet(userId, role);
+  return db.transaction(async tx => {
+    const locked = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update"))[0] ?? created;
+    const now = new Date();
+    const { wallet, grants } = await reconcileWalletTx(tx, locked, now);
+    const promo = await promoStateForTx(tx, userId, role, now);
+    return creditSummaryTx(tx, { wallet, grants, promo, now });
+  });
+}
+
+/** GET /api/credits/ledger: the caller's own ledger rows, newest first. Pending invite rewards are not credits yet. */
+export async function listCreditLedger(userId: number, role: WalletRole, limit: number): Promise<CreditLedgerEntry[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ id: tokenTransactions.id, kind: tokenTransactions.kind, tokenCount: tokenTransactions.tokenCount, source: tokenTransactions.source, referenceType: tokenTransactions.referenceType, referenceId: tokenTransactions.referenceId, createdAt: tokenTransactions.createdAt }).from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.role, role), notInArray(tokenTransactions.kind, [...HIDDEN_LEDGER_KINDS]))).orderBy(desc(tokenTransactions.id)).limit(Math.max(1, Math.min(limit, 100)));
+  return rows.map(row => creditLedgerEntrySchema.parse({
+      id: row.id,
+      kind: row.kind,
+      credits: row.tokenCount,
+      bucket: bucketOfLedgerRow(row.kind, row.source ?? null),
+      reference: row.referenceType && row.referenceId ? { type: row.referenceType.slice(0, 40), id: row.referenceId.slice(0, 80) } : null,
+      createdAt: row.createdAt.toISOString(),
+    }));
+}
+
+/**
+ * Scheduled-job entry: brings one job-seeker wallet up to `now` under its row
+ * lock (cycle grants for yearly terms, lapsed-plan and grant expiry). Idempotent:
+ * a second call in the same cycle finds nothing due.
+ */
+export async function reconcileSeekerCredits(userId: number, now: Date): Promise<{ changed: boolean }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const locked = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
+    if (!locked) return { changed: false };
+    const { changed } = await reconcileSeekerWalletTx(tx, locked, now);
+    return { changed };
+  });
+}
+
+/**
+ * The one-time welcome credits (PRICING.md: 3 after completing a profile), once
+ * per canonical person. Internal: the owner defines "profile complete" before a
+ * route calls it.
+ */
+export async function grantWelcomeCredits(userId: number, now: Date = new Date()): Promise<{ granted: boolean }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await ensureTokenWallet(userId, "job_seeker");
+  return db.transaction(async tx => {
+    const locked = (await tx.select({ id: tokenBalances.id }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
+    if (!locked) throw new Error("Your credit wallet is unavailable");
+    const account = (await tx.select({ canonicalPersonId: users.canonicalPersonId }).from(users).where(eq(users.id, userId)).limit(1))[0];
+    const result = await grantWelcomeCreditsTx(tx, { userId, canonicalPersonId: account?.canonicalPersonId ?? null, now });
+    return { granted: result.granted };
+  });
 }
 
 export async function getUserSubscription(userId: number, role: WalletRole) {
@@ -2689,37 +2779,35 @@ async function grantPendingActionRewardsTx(tx: any, userId: number, role: Wallet
   return {granted:total};
 }
 
+/** Pre-kit single-credit spend (no caller key): one credit, soonest-expiring bucket first. */
 export async function spendToken(userId: number, role: WalletRole) {
+  const key = `spend-${randomUUID()}`;
+  const { summary } = await spendCredits(userId, role, { credits: 1, idempotencyKey: key, referenceType: "credit_spend", referenceId: key });
+  return summary;
+}
+
+/**
+ * Spends credits for one finished unit of work, idempotently by `idempotencyKey`:
+ * the soonest-expiring bucket first (shared/creditLedger.ts orderBuckets), the
+ * whole spend or nothing, one ledger row per bucket drawn. A replayed key
+ * returns the current summary without spending again.
+ */
+export async function spendCredits(userId: number, role: WalletRole, input: { credits: number; idempotencyKey: string; referenceType: string; referenceId: string }): Promise<{ replayed: boolean; summary: CreditSummary }> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   await ensureTokenWallet(userId, role);
   return db.transaction(async tx => {
-    // Serialization point: lock the wallet row before reading promo or balance
-    // state so concurrent spends queue on the lock instead of double-spending.
-    // (Same wallet-first ordering as createCompanyReferralRequest.)
-    const current = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update");
-    if (!current[0]) throw new Error("No referral credit available");
-    const normalized = normalizedWalletState(current[0]);
-    const effective = { ...current[0], ...normalized.patch };
+    // Serialization point: the wallet row lock comes before any grant or promo row.
+    const current = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1).for("update"))[0];
+    if (!current) throw new InsufficientCreditsError(input.credits, 0);
     const now = new Date();
+    const replayed = await spendAlreadyRecordedTx(tx, userId, role, input.idempotencyKey);
+    const reconciled = await reconcileWalletTx(tx, current, now);
     const promo = await promoStateForTx(tx, userId, role, now);
-    const grant = promo.grant;
-    if (grant && grant.creditsRemaining > 0) {
-      const next = grant.creditsRemaining - 1;
-      const claimed = await tx.update(promoCreditGrants).set(next === 0 ? { creditsRemaining: 0, status: "exhausted", consumedAt: now } : { creditsRemaining: next }).where(and(eq(promoCreditGrants.id, grant.id), eq(promoCreditGrants.status, "active")));
-      if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new Error("That credit was just used. Try again.");
-      await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "promo_spend", source: "promo_grant", referenceType: "promo_credit_grant", referenceId: String(grant.id), idempotencyKey: `promo-spend-${grant.id}-${grant.tokenCount - next}` });
-      return creditSummaryFromWallet({ ...effective, ...normalized.patch }, { remaining: next, expiresAt: grant.expiresAt, status: "active" });
-    }
-    if (effective.monthlyCreditsRemaining + effective.balance < 1) throw new Error("You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.");
-    const usesMonthlyCredit = effective.monthlyCreditsRemaining > 0;
-    const nextMonthlyCredits = usesMonthlyCredit ? effective.monthlyCreditsRemaining - 1 : effective.monthlyCreditsRemaining;
-    const nextBalance = usesMonthlyCredit ? effective.balance : effective.balance - 1;
-    const patch = { ...normalized.patch, monthlyCreditsRemaining: nextMonthlyCredits, balance: nextBalance };
-    const debited = await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, current[0].id));
-    if (Number(debited[0]?.affectedRows ?? 0) !== 1) throw new Error("That credit was just used. Try again.");
-    await tx.insert(tokenTransactions).values({ userId, role, tokenCount: -1, kind: "direct_request" });
-    return creditSummaryFromWallet({ ...effective, ...patch }, { remaining: 0, expiresAt: null, status: promo.status });
+    if (replayed) return { replayed: true, summary: await creditSummaryTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo, now }) };
+    const spent = await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoHolding(promo.grant), credits: input.credits, meta: { idempotencyKey: input.idempotencyKey, referenceType: input.referenceType, referenceId: input.referenceId }, now });
+    const promoAfter = promo.grant && spent.promoRemaining !== null ? { grant: { ...promo.grant, creditsRemaining: spent.promoRemaining }, status: spent.promoRemaining > 0 ? promo.status : "exhausted" as const } : promo;
+    return { replayed: false, summary: await creditSummaryTx(tx, { wallet: spent.wallet, grants: spent.grants, promo: promoAfter, now }) };
   });
 }
 
@@ -2792,7 +2880,7 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     }
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() });
+    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, ...freshWalletCycle(intent[0].role) });
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase" });
     // First bank-verified payment earns the promo grant. Idempotent by the
     // unique (userId, role) grant row: renewals and replays no-op inside the
@@ -2831,7 +2919,7 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
     const claimed = await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? resolvedAt : null, lastCheckedAt: resolvedAt }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
     if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment was already resolved");
     if (decision === "credited") {
-      await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey() }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${row.tokenCount}` } });
+      await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, ...freshWalletCycle(row.role) }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${row.tokenCount}` } });
       const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
       if (!wallet[0]) throw new Error("Payment credit wallet update failed");
       await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-credit-${paymentId}`, balanceAfter: wallet[0].balance });
@@ -2932,12 +3020,25 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     const allowance = SUBSCRIPTION_PLANS[expectedPlan].monthlyAllowance;
     const retainsAccess = input.status === "active" || input.status === "non_renewing";
     const startsNewTerm = !currentSubscription?.subscriptionCurrentTermStart || (input.currentTermStart && currentSubscription.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
-    const patch = retainsAccess
+    const userId = wallet?.userId ?? intent!.userId;
+    const role = wallet?.role ?? intent!.role;
+    const now = new Date();
+    // Credit ledger: a webhook-confirmed new term opens a plan cycle (plan_grant row) after the
+    // previous cycle's leftover is carried or expired; an update inside the term keeps the cycle.
+    const cycle: CyclePatch | undefined = retainsAccess
+      ? startsNewTerm
+        ? wallet
+          ? await rollCycleTx(tx, { wallet, next: termOpeningCycle(input.currentTermStart, input.currentTermEnd, now), plan: expectedPlan, subscriptionId: input.subscriptionId, now })
+          : await openCycleTx(tx, { userId, role, next: termOpeningCycle(input.currentTermStart, input.currentTermEnd, now), plan: expectedPlan, subscriptionId: input.subscriptionId })
+        : { monthlyAllowance: allowance, monthlyCreditsRemaining: currentSubscription?.monthlyCreditsRemaining ?? allowance, monthlyCycleKey: currentSubscription?.monthlyCycleKey ?? termOpeningCycle(input.currentTermStart, input.currentTermEnd, now).key }
+      // The seeker's paid term ended on this subscription: its plan credits end with it (kit billing).
+      : role === "job_seeker" && wallet && sameSubscription && wallet.plan !== "free"
+        ? await rollCycleTx(tx, { wallet, next: { startsAt: now, key: currentMonthlyCycleKey(now) }, plan: "free", subscriptionId: null, now })
+        : undefined;
+    const patch = retainsAccess && cycle
       ? {
           plan: expectedPlan,
-          monthlyAllowance: allowance,
-          monthlyCreditsRemaining: startsNewTerm ? allowance : (currentSubscription?.monthlyCreditsRemaining ?? allowance),
-          monthlyCycleKey: input.currentTermStart ? currentMonthlyCycleKey(input.currentTermStart) : currentMonthlyCycleKey(),
+          ...cycle,
           subscriptionId: input.subscriptionId,
           subscriptionStatus: input.status,
           subscriptionCurrency: input.currency ?? currentSubscription?.subscriptionCurrency ?? null,
@@ -2947,9 +3048,11 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
         }
       : {
           plan: "free" as const,
-          monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
-          monthlyCreditsRemaining: Math.min(wallet?.monthlyCreditsRemaining ?? FREE_MONTHLY_ALLOWANCE, FREE_MONTHLY_ALLOWANCE),
-          monthlyCycleKey: currentMonthlyCycleKey(),
+          ...(cycle ?? {
+            monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
+            monthlyCreditsRemaining: Math.min(wallet?.monthlyCreditsRemaining ?? FREE_MONTHLY_ALLOWANCE, FREE_MONTHLY_ALLOWANCE),
+            monthlyCycleKey: currentMonthlyCycleKey(),
+          }),
           subscriptionId: input.subscriptionId,
           subscriptionStatus: input.status,
           subscriptionCurrency: input.currency ?? currentSubscription?.subscriptionCurrency ?? null,
@@ -2957,8 +3060,6 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
           subscriptionCurrentTermEnd: input.currentTermEnd ?? currentSubscription?.subscriptionCurrentTermEnd ?? null,
           subscriptionResourceVersion: input.resourceVersion ?? currentSubscription?.subscriptionResourceVersion ?? null,
         };
-    const userId = wallet?.userId ?? intent!.userId;
-    const role = wallet?.role ?? intent!.role;
     if (wallet) await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet.id));
     else await tx.insert(tokenBalances).values({ userId, role, balance: 0, ...patch });
     if (intent) await tx.update(subscriptionCheckoutIntents).set({ status: retainsAccess ? "activated" : "cancelled" }).where(and(eq(subscriptionCheckoutIntents.id, intent.id), eq(subscriptionCheckoutIntents.status, "pending")));
@@ -3078,7 +3179,7 @@ function giftWalletPatch(input: { plan: PaidSubscriptionPlan; status: string; cu
         subscriptionCurrentTermEnd: input.currentTermEnd ?? current?.subscriptionCurrentTermEnd ?? null,
         subscriptionResourceVersion: input.resourceVersion ?? current?.subscriptionResourceVersion ?? null,
       };
-  return { patch, retainsAccess };
+  return { patch, retainsAccess, startsNewTerm: Boolean(startsNewTerm) };
 }
 
 export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
@@ -3152,14 +3253,18 @@ async function fulfillGiftTx(tx: any, row: typeof giftSubscriptionFulfillments.$
     await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", subscriptionId: input.subscriptionId, failureReason: "subscription_conflict" }).where(eq(giftSubscriptionFulfillments.id, row.id));
     return { status: "conflict" as const, reason: "subscription_conflict" };
   }
-  const { patch, retainsAccess } = giftWalletPatch({ plan: input.plan, status: input.status, currency: input.currency, currentTermStart: input.currentTermStart, currentTermEnd: input.currentTermEnd, resourceVersion: input.resourceVersion, subscriptionId: input.subscriptionId, current: wallet });
+  const { patch, retainsAccess, startsNewTerm } = giftWalletPatch({ plan: input.plan, status: input.status, currency: input.currency, currentTermStart: input.currentTermStart, currentTermEnd: input.currentTermEnd, resourceVersion: input.resourceVersion, subscriptionId: input.subscriptionId, current: wallet });
   if (!retainsAccess) {
     await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "expired", subscriptionId: input.subscriptionId, failureReason: "subscription_cancelled" }).where(eq(giftSubscriptionFulfillments.id, row.id));
     return { status: "expired" as const, reason: "subscription_cancelled" };
   }
-  if (wallet) await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet.id));
-  else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: 0, ...patch });
   const now = new Date();
+  // Credit ledger: the gifted term opens a plan cycle with a plan_grant row, exactly like a paid activation.
+  const next = termOpeningCycle(input.currentTermStart, input.currentTermEnd, now);
+  const cycle = startsNewTerm ? (wallet ? await rollCycleTx(tx, { wallet, next, plan: input.plan, subscriptionId: input.subscriptionId, now }) : await openCycleTx(tx, { userId: input.recipientUserId, role: input.role, next, plan: input.plan, subscriptionId: input.subscriptionId })) : undefined;
+  const walletPatch = cycle ? { ...patch, ...cycle } : patch;
+  if (wallet) await tx.update(tokenBalances).set(walletPatch).where(eq(tokenBalances.id, wallet.id));
+  else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: 0, ...walletPatch });
   await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "credited", recipientUserId: input.recipientUserId, subscriptionId: input.subscriptionId, failureReason: null, creditedAt: now }).where(eq(giftSubscriptionFulfillments.id, row.id));
   return { status: "credited" as const, plan: input.plan, userId: input.recipientUserId, role: input.role };
 }

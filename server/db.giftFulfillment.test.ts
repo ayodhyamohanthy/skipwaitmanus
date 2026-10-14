@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { canonicalPeople, giftSubscriptionFulfillments, tokenBalances, users, verifiedLoginAliases } from "../drizzle/schema";
+import { canonicalPeople, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, users, verifiedLoginAliases } from "../drizzle/schema";
 import {
   claimGiftSubscription,
   fulfillGiftSubscription,
@@ -23,6 +23,7 @@ let wallets: Array<Record<string, unknown>>;
 let people: Array<Record<string, unknown>>;
 let aliasRows: Array<Record<string, unknown>>;
 let accountRows: Array<Record<string, unknown>>;
+let ledgerRows: Array<Record<string, unknown>>;
 
 function tableFor(table: unknown): Array<Record<string, unknown>> {
   if (table === giftSubscriptionFulfillments) return gifts;
@@ -30,6 +31,7 @@ function tableFor(table: unknown): Array<Record<string, unknown>> {
   if (table === canonicalPeople) return people;
   if (table === verifiedLoginAliases) return aliasRows;
   if (table === users) return accountRows;
+  if (table === tokenTransactions) return ledgerRows;
   throw new Error("Unexpected table");
 }
 
@@ -82,7 +84,7 @@ const account = (id: number, personId: number, suspended = false) => ({ id, open
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  gifts = []; wallets = [];
+  gifts = []; wallets = []; ledgerRows = [];
   people = [person(1, "james@user.com")];
   aliasRows = [alias(1, 1, 7, "james@user.com")];
   accountRows = [account(7, 1)];
@@ -109,9 +111,12 @@ describe("gift subscription fulfillment", () => {
     expect(credited.status).toBe("credited");
     expect(wallets).toHaveLength(1);
     expect(wallets[0]).toMatchObject({ userId: 7, role: "job_seeker", plan: "pro", subscriptionId: "sub_gift_1", monthlyAllowance: 10, monthlyCreditsRemaining: 10 });
+    // The gifted term's credits are a ledger grant like a paid activation's (shared/creditLedger.ts).
+    expect(ledgerRows).toEqual([expect.objectContaining({ userId: 7, role: "job_seeker", kind: "plan_grant", tokenCount: 10, source: "monthly_allowance", sourceCycleKey: "2026-10" })]);
     const replay = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker" });
     expect(replay.status).toBe("duplicate");
     expect(wallets).toHaveLength(1);
+    expect(ledgerRows).toHaveLength(1);
   });
 
   it("leaves the gift pending when nobody owns the receiver email", async () => {
