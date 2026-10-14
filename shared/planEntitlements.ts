@@ -138,9 +138,18 @@ function fromLegacy(plan: PaidSubscriptionPlan): PlanEntitlements {
   };
 }
 
+/**
+ * What a plan id includes, without the billing check: the credit ledger reads
+ * the rules of the plan that granted a cycle's credits after that plan's term
+ * has ended. Unknown ids read as Free.
+ */
+export function planEntitlementsFor(plan: string): PlanEntitlements {
+  if (plan === "pro" || plan === "max") return fromLegacy(plan);
+  const catalog = CATALOG_PLANS.find(candidate => candidate.id === plan);
+  return fromCatalog(catalog ?? FREE_PLAN);
+}
+
 export function resolvePlanEntitlements(wallet: EntitlementWallet | null | undefined, now: Date = new Date()): PlanEntitlements {
   if (!wallet || !isPaidPlanActive(wallet, now)) return fromCatalog(FREE_PLAN);
-  if (wallet.plan === "pro" || wallet.plan === "max") return fromLegacy(wallet.plan);
-  const catalog = CATALOG_PLANS.find(candidate => candidate.id === wallet.plan);
-  return fromCatalog(catalog ?? FREE_PLAN);
+  return planEntitlementsFor(wallet.plan);
 }

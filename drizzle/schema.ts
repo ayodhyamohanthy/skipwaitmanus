@@ -620,7 +620,8 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund"]).notNull(),
+  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0079 added the kit ledger kinds.
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund", "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend"]).notNull(),
   source: varchar("source", { length: 40 }),
   sourceCycleKey: varchar("sourceCycleKey", { length: 16 }),
   referenceType: varchar("referenceType", { length: 40 }),
@@ -633,8 +634,10 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   qualifiedAt: timestamp("qualifiedAt"),
   balanceAfter: int("balanceAfter"),
   monthlyCreditsAfter: int("monthlyCreditsAfter"),
+  /** The planCreditGrants row this row grants, spends, carries into or expires (0079). */
+  creditGrantId: int("creditGrantId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("token_transactions_user_idx").on(table.userId), uniqueIndex("token_transactions_debit_reference_unique").on(table.userId, table.role, table.kind, table.referenceType, table.referenceId), uniqueIndex("token_transactions_idempotency_kind_unique").on(table.userId, table.role, table.idempotencyKey, table.kind), uniqueIndex("token_transactions_reversal_unique").on(table.reversesTransactionId)]);
+}, table => [index("token_transactions_user_idx").on(table.userId), index("token_transactions_credit_grant_idx").on(table.creditGrantId), index("token_transactions_cycle_idx").on(table.userId, table.role, table.sourceCycleKey), uniqueIndex("token_transactions_debit_reference_unique").on(table.userId, table.role, table.kind, table.referenceType, table.referenceId), uniqueIndex("token_transactions_idempotency_kind_unique").on(table.userId, table.role, table.idempotencyKey, table.kind), uniqueIndex("token_transactions_reversal_unique").on(table.reversesTransactionId)]);
 
 export const companyCoverageInvitations = mysqlTable("companyCoverageInvitations", {
   id: int("id").autoincrement().primaryKey(),
@@ -701,6 +704,30 @@ export const promoCreditGrants = mysqlTable("promoCreditGrants", {
   revokedReason: varchar("revokedReason", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("promo_grant_user_role_unique").on(table.userId, table.role), index("promo_grant_user_status_idx").on(table.userId, table.role, table.status)]);
+
+// Kit credit ledger (0079, shared/creditLedger.ts): the dated and one-time
+// credit buckets. "carryover" holds what a plan cycle left unspent, bound to the
+// subscription that granted it (expiresAt NULL = while subscribed, Land);
+// "welcome" is the one-time 3 credits per person. grantKey is the idempotency
+// claim: one carryover per subscription cycle, one welcome per canonical person.
+// Every change to creditsRemaining has a tokenTransactions row with creditGrantId.
+export const planCreditGrants = mysqlTable("planCreditGrants", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  source: mysqlEnum("source", ["carryover", "welcome"]).notNull(),
+  grantKey: varchar("grantKey", { length: 64 }).notNull(),
+  planId: varchar("planId", { length: 32 }),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  cycleKey: varchar("cycleKey", { length: 16 }),
+  tokenCount: int("tokenCount").notNull(),
+  creditsRemaining: int("creditsRemaining").notNull(),
+  status: mysqlEnum("status", ["active", "exhausted", "expired", "revoked"]).default("active").notNull(),
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("plan_credit_grants_grant_key_unique").on(table.grantKey), index("plan_credit_grants_user_status_idx").on(table.userId, table.role, table.status), index("plan_credit_grants_status_expiry_idx").on(table.status, table.expiresAt)]);
 
 export const giftSubscriptionFulfillments = mysqlTable("giftSubscriptionFulfillments", {
   id: int("id").autoincrement().primaryKey(),

@@ -32,6 +32,8 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "companies", createSql: `CREATE TABLE IF NOT EXISTS \`companies\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(48) NOT NULL, \`name\` varchar(160) NOT NULL, \`initials\` varchar(4) NOT NULL, \`industry\` varchar(80) NOT NULL, \`location\` varchar(80) NOT NULL, \`functions\` text NOT NULL, \`blurb\` varchar(240) NOT NULL, \`status\` enum('listed','hidden') NOT NULL DEFAULT 'listed', \`sortOrder\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companies_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`companies_slug_unique\`(\`slug\`), INDEX \`companies_status_sort_idx\`(\`status\`,\`sortOrder\`))` },
   { table: "companyDomains", createSql: `CREATE TABLE IF NOT EXISTS \`companyDomains\` (\`id\` int AUTO_INCREMENT NOT NULL, \`companyId\` int NOT NULL, \`domain\` varchar(255) NOT NULL, \`isPrimary\` boolean NOT NULL DEFAULT false, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companyDomains_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`companyDomains_companyId_companies_id_fk\` FOREIGN KEY (\`companyId\`) REFERENCES \`companies\`(\`id\`) ON DELETE CASCADE ON UPDATE RESTRICT, UNIQUE INDEX \`company_domains_domain_unique\`(\`domain\`), INDEX \`company_domains_company_idx\`(\`companyId\`))` },
   { table: "jobRuns", createSql: `CREATE TABLE IF NOT EXISTS \`jobRuns\` (\`id\` int AUTO_INCREMENT NOT NULL, \`jobName\` varchar(64) NOT NULL, \`windowKey\` varchar(32) NOT NULL, \`status\` enum('running','succeeded','failed') NOT NULL DEFAULT 'running', \`attempt\` int NOT NULL DEFAULT 1, \`leaseOwner\` varchar(64) NOT NULL, \`startedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`leaseExpiresAt\` timestamp NOT NULL, \`finishedAt\` timestamp NULL, \`processedCount\` int NOT NULL DEFAULT 0, \`failedCount\` int NOT NULL DEFAULT 0, \`error\` varchar(500) NULL, CONSTRAINT \`jobRuns_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`job_runs_job_window_unique\`(\`jobName\`,\`windowKey\`), INDEX \`job_runs_job_started_idx\`(\`jobName\`,\`startedAt\`))` },
+  // Kit credit ledger (0079): carried-over and welcome credit grants.
+  { table: "planCreditGrants", createSql: `CREATE TABLE IF NOT EXISTS \`planCreditGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`source\` enum('carryover','welcome') NOT NULL, \`grantKey\` varchar(64) NOT NULL, \`planId\` varchar(32) NULL, \`subscriptionId\` varchar(80) NULL, \`cycleKey\` varchar(16) NULL, \`tokenCount\` int NOT NULL, \`creditsRemaining\` int NOT NULL, \`status\` enum('active','exhausted','expired','revoked') NOT NULL DEFAULT 'active', \`grantedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`expiresAt\` timestamp NULL, \`closedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`planCreditGrants_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`plan_credit_grants_grant_key_unique\`(\`grantKey\`), INDEX \`plan_credit_grants_user_status_idx\`(\`userId\`,\`role\`,\`status\`), INDEX \`plan_credit_grants_status_expiry_idx\`(\`status\`,\`expiresAt\`), CONSTRAINT \`plan_credit_grants_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -84,6 +86,8 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   // Job function taxonomy (0077).
   { table: "jobs", column: "jobFunction", definition: "VARCHAR(32) NULL" },
   { table: "jobs", column: "jobFunctionSource", definition: "ENUM('seeker','inferred','backfill') NULL" },
+  // Kit credit ledger (0079). The kind ENUM widening is applied by the migration only.
+  { table: "tokenTransactions", column: "creditGrantId", definition: "INT NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -131,6 +135,12 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   // Scheduled job runs (0078): the unique key is the single-flight lock.
   { table: "jobRuns", name: "job_runs_job_window_unique", columns: "`jobName`,`windowKey`" },
   { table: "jobRuns", name: "job_runs_job_started_idx", columns: "`jobName`,`startedAt`", nonUnique: true },
+  // Kit credit ledger (0079): the grant key is the idempotency claim.
+  { table: "planCreditGrants", name: "plan_credit_grants_grant_key_unique", columns: "`grantKey`" },
+  { table: "planCreditGrants", name: "plan_credit_grants_user_status_idx", columns: "`userId`,`role`,`status`", nonUnique: true },
+  { table: "planCreditGrants", name: "plan_credit_grants_status_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
+  { table: "tokenTransactions", name: "token_transactions_credit_grant_idx", columns: "`creditGrantId`", nonUnique: true },
+  { table: "tokenTransactions", name: "token_transactions_cycle_idx", columns: "`userId`,`role`,`sourceCycleKey`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -158,6 +168,7 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "assistantApprovals", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantApprovals", column: "connectionId", referencedTable: "assistantConnections", referencedColumn: "id" },
   { table: "companyDomains", column: "companyId", referencedTable: "companies", referencedColumn: "id" },
+  { table: "planCreditGrants", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
