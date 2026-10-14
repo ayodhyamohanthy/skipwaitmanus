@@ -6,7 +6,9 @@
 3. **Regions:** **India (INR) + one global USD price first.** Regional tiers T2–T4 and EUR/GBP come later, after the first prices are proven (and EU/UK VAT registration or a merchant of record).
 4. **Free plan:** 3 open asks, 3 welcome credits + 2 credits every month (no carryover), a free ask quality check, and a one-time 14-day Momentum reverse trial after the first ask (15 open asks, 5 trial credits), never asking for a card.
 
-Still open (section 8): GST/entity question for a CA, per-tool AI cost, human reviewer staffing (human sessions and Concierge stay unpurchasable until staffed), PayPal recurring confirmation, NY/CA counsel review before selling Concierge there, students/campus pricing.
+5. **Tax status (owner, Oct 14 2026):** SkipWait is an Indian **sole proprietorship with Udyam (MSME) registration, NOT GST-registered yet.** So: charge **no GST** on any sale (INR or USD); show INR prices as **"India price"** with no "incl. GST" wording; invoices carry no tax lines or GSTIN. Build this behind ONE server-side setting (e.g. `indiaGstRegistered: false` in the catalog contract) that switches labels, Chargebee tax handling and invoice details to GST mode the day a GSTIN exists. GST registration becomes mandatory once aggregate service turnover (including USD/export sales) nears ₹20 lakh a year — add an admin-visible trailing-12-month turnover figure vs that threshold. Sole proprietorship => no DPIIT Startup India benefits.
+
+Still open (section 8): CA confirmation of SAC code and the 'intermediary' question for foreign sales once GST-registered, per-tool AI cost, human reviewer staffing (human sessions and Concierge stay unpurchasable until staffed), PayPal recurring confirmation, NY/CA counsel review before selling Concierge there, students/campus pricing.
 
 ---
 
