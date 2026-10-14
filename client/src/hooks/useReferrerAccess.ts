@@ -1,5 +1,5 @@
 // One verified-referrer gate for every referrer surface (/queue, /inbox,
-// /referrer/impact). It reads the server's verdict from
+// /referrer/impact, /alerts routing). It reads the server's verdict from
 // GET /api/company-referrals/access and judges it with the shared predicate
 // (shared/referrerAccess.ts). It never looks at the sign-in account's email
 // addresses: a Google SSO session that verified a work email by one-time code
