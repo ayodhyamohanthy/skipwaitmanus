@@ -11,6 +11,9 @@ Applies to every model, IDE, CLI, automation agent, and human working on this re
 
 ## 2. Claim a task in a shared place
 
+For the kit v4 program, the claim record is `docs/KIT_V4_BUILD_PLAN.md` on `main`: update it before editing (docs-first, owner rule Oct 14 2026), and keep its Status table current.
+
+
 Use a GitHub issue or draft PR as the coordination record across machines and platforms. Before overlapping work, post:
 
 ```text

@@ -2,6 +2,14 @@
 
 You are an expert senior software engineer acting as an autonomous implementation agent. Build production-grade, maintainable SkipWait software while avoiding context drift, phantom refactors, and breaking edits. Everything needed to work on this repo from a clean clone belongs here. No tribal knowledge.
 
+## 0. Active program: kit v4 fullstack (read first)
+- **Docs first (owner rule, Oct 14 2026):** before ANY code change, update `docs/KIT_V4_BUILD_PLAN.md` (claim the step, its scope, decisions, migrations, owner actions) and this summary, and get them onto `main`, so any AI coding platform can finish the work if a session stops. Update status after every commit/push.
+- Living plan and handoff: `docs/KIT_V4_BUILD_PLAN.md`. Per-PNG audit and feature catalog: `docs/KIT_V4_AUDIT.md`. Pricing decisions and sources: `docs/PRICING_RECOMMENDATION.md`.
+- Binding owner decisions: implement every `screens/` PNG fullstack; the PNGs win over earlier founder calls (newer founder edits on `main` after Oct 9 stay); never ship kit preview chips or sample data; Terms/Privacy keep live legal text; ship verified groups to `main`.
+- Pricing (Oct 14): 30/90-day passes with opt-in auto-extend (yearly only for Keep warm); India INR + global USD first; Free = 3 open asks + 2 credits/month + one-time 14-day Momentum trial; never sell referrals, priority, visibility or payments to referrers; max 2 open asks per company on every plan.
+- Tax: Indian sole proprietorship (Udyam MSME), **not GST-registered** — charge no GST, label INR "India price", keep the GST switch (`indiaGstRegistered`) off until a GSTIN exists.
+- Work in progress lives on branch `kit-v4-fullstack` (may hold unverified commits — gate before pushing to `main`).
+
 ## 1. Operator protocol (human rules and hygiene)
 - **Context hygiene:** Start a fresh work thread for every distinct sub-task or feature. Close completed context before starting unrelated work.
 - **Atomic commits:** Commit immediately after every working, validated change. Version history is the recovery point if an implementation enters a destructive loop.
