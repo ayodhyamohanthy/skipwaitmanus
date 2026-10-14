@@ -203,4 +203,8 @@ Facts needed from the owner: current MRR, the number of paying Pro/Max users, mo
 - **Q2 plan shape → "Keep the current queue"** (D-013): Track B re-ordering not adopted; items stay proposals.
 - **Q3 money → "M3 sell passes as approved"** (D-014).
 - **Q4 founder time → "Yes, ~10 hours a week"** (D-015): Claude prepares the sprint kit.
-- Still open: Aug-plan root cause, baseline data run, landing "open doors" row, uncovered asks reserving credits.
+- **Root cause** of 0 external referrers since Aug: "outreach never really started" (D-015).
+- **Referrer link → "Fix now, before outreach"** (D-017).
+- **Launch row → "Yes, they committed — keep it"** (D-016).
+- **Baseline data → "Add an admin page"** (D-018).
+- Still open: uncovered asks reserving credits (B1.5).
