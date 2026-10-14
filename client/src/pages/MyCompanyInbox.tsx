@@ -15,12 +15,13 @@ import { CandidatePreviewCard, type CandidatePreview, type DeclineReason } from 
 import { askDaysLeft, formatAskExpiry, type ReferralStatus } from "@shared/referral";
 import { parseJobFunction, type JobFunction } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
+import { isCorporateEmailDomain } from "@shared/const";
+import { fetchCompanyAccess } from "@/components/referrer-home/referrerData";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 
 type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number };
 type InboxPayload = { requests?: CompanyInboxItem[] };
 type PrivateImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
-const personalEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);
 
 /** Kit v4 request queue: routed new requests first, then any saved earlier. Decided requests live in /inbox and Impact. */
 export default function MyCompanyInbox() {
@@ -43,7 +44,18 @@ export default function MyCompanyInbox() {
   const [pendingDecline, setPendingDecline] = useState<DeclineReason | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const { showSkeleton, isSlow } = useSlowLoad(loading);
-  const hasVerifiedWorkEmail = Boolean(user?.emailAddresses.some(address => { const domain = address.emailAddress.trim().toLowerCase().split("@")[1]; return address.verification?.status === "verified" && domain && !personalEmailDomains.has(domain); }));
+  const sessionHasWorkEmail = Boolean(user?.emailAddresses.some(address => { const domain = address.emailAddress.trim().toLowerCase().split("@")[1]; return address.verification?.status === "verified" && domain && isCorporateEmailDomain(domain); }));
+  // Enrollment by one-time code verifies a company address on the server profile without
+  // adding it to the sign-in account, so the server decides when the session shows none.
+  const [serverVerified, setServerVerified] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!isSignedIn || sessionHasWorkEmail) return;
+    let live = true;
+    fetchCompanyAccess(getToken).then(access => { if (live) setServerVerified(access.verified); }).catch(() => { if (live) setServerVerified(false); });
+    return () => { live = false; };
+  }, [isSignedIn, sessionHasWorkEmail]);
+  const hasVerifiedWorkEmail = sessionHasWorkEmail || serverVerified === true;
+  const checkingAccess = Boolean(isSignedIn) && !sessionHasWorkEmail && serverVerified === null;
 
   const companyFetch = async <T extends object>(path: string, init?: RequestInit): Promise<T & { error?: string }> => {
     const token = await getToken();
@@ -94,6 +106,7 @@ export default function MyCompanyInbox() {
   const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="queue" screen={screen} isSignedIn={Boolean(isSignedIn)} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
 
   if (!isSignedIn) return frame("company-inbox-sign-in", <section className="queue-layout"><QueuePanel icon={LockKeyhole} title="Give referrals with control." text="Use a company email to see only matching private requests. Your identity stays hidden."><Button type="button" className="mt-6" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Use company email <ArrowRight /></Button></QueuePanel><QueueGuidance /></section>);
+  if (checkingAccess) return frame("company-inbox-checking", <section className="queue-layout" aria-busy="true"><QueuePanel icon={LockKeyhole} title="Checking your verification." text="One moment.">{null}</QueuePanel></section>);
   if (!hasVerifiedWorkEmail) return frame("company-inbox-setup", <section className="queue-layout"><QueuePanel icon={LockKeyhole} title="Verify your work email." text="A one-time code confirms your company corridor. Your name and work email never appear to Job Seekers."><Button type="button" className="mt-6" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Add work email <ArrowRight /></Button></QueuePanel><QueueGuidance /></section>);
 
   if (preview) return frame("company-candidate-preview", <section className="queue-layout">

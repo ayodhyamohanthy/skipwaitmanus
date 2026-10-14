@@ -122,6 +122,23 @@ describe("Ask composer", () => {
     expect(screen.getByText("Strong")).toBeTruthy();
   });
 
+  it("settles to the sent state even when the open-asks lookup never resolves", async () => {
+    stubCrypto();
+    const fetchMock = vi.fn();
+    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com" });
+    const base = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation((url: string, init?: unknown) => String(url).endsWith("/mine") ? new Promise(() => undefined) : base(url, init));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Ask />);
+    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
+    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
+    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
+    await waitFor(() => expect(screen.getByText("Ask sent to wipro.com.")).toBeTruthy());
+    expect(screen.queryByText("Sending...")).toBeNull();
+  });
+
   it("sends with an idempotency key and links the created thread", async () => {
     stubCrypto();
     const fetchMock = vi.fn();
