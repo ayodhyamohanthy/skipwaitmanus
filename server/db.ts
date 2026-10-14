@@ -595,10 +595,13 @@ export async function editAssistantApproval(userId: number, approvalId: number, 
 export const ASSISTANT_ASK_CREDIT_COST = 1;
 const MAX_PENDING_ASSISTANT_ASKS = 5;
 
+/** Keeps the saved profile resume out of ask drafts and draft cleanup: it belongs to /onboarding, not to one ask. */
+const notProfileResume = (userId: number) => sql`${referralAttachments.id} NOT IN (SELECT ${profiles.defaultResumeAttachmentId} FROM ${profiles} WHERE ${profiles.userId} = ${userId} AND ${profiles.defaultResumeAttachmentId} IS NOT NULL)`;
+
 /** The member's own resume documents that are not attached to a request yet. Ids and names only. */
 export async function listMyUnattachedResumes(userId: number) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, createdAt: referralAttachments.createdAt }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId))).orderBy(desc(referralAttachments.createdAt)).limit(25);
+  return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, createdAt: referralAttachments.createdAt }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId), notProfileResume(userId))).orderBy(desc(referralAttachments.createdAt)).limit(25);
 }
 
 /**
@@ -1042,8 +1045,8 @@ export async function completeResumeUploadSession(ownerId: number, sessionId: st
 export async function clearUnattachedResumeUploads(ownerId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const attachments = await tx.select({ id: referralAttachments.id, fileKey: referralAttachments.fileKey }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
-    if (attachments.length) await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
+    const attachments = await tx.select({ id: referralAttachments.id, fileKey: referralAttachments.fileKey }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId), notProfileResume(ownerId)));
+    if (attachments.length) await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId), notProfileResume(ownerId)));
     await tx.delete(resumeUploadSessions).where(eq(resumeUploadSessions.ownerId, ownerId));
     return { cleared: attachments.length, fileKeys: attachments.map(item => item.fileKey) };
   });

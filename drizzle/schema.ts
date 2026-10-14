@@ -70,6 +70,15 @@ export const profiles = mysqlTable("profiles", {
   notifyNewAsk: boolean("notifyNewAsk").default(true).notNull(),
   notifyDigest: boolean("notifyDigest").default(false).notNull(),
   paused: boolean("paused").default(false).notNull(),
+  // Seeker setup answers (queue task 8). Roles live in openTo.
+  experienceLevel: varchar("experienceLevel", { length: 40 }),
+  seekerGoal: varchar("seekerGoal", { length: 60 }),
+  searchCity: varchar("searchCity", { length: 120 }),
+  searchCountries: varchar("searchCountries", { length: 240 }),
+  searchRemote: boolean("searchRemote"),
+  workAuthorization: varchar("workAuthorization", { length: 80 }),
+  workLinkKinds: text("workLinkKinds"),
+  defaultResumeAttachmentId: int("defaultResumeAttachmentId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("profiles_user_id_unique").on(table.userId), uniqueIndex("profiles_handle_unique").on(table.handle)]);
