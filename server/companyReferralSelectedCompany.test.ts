@@ -44,3 +44,22 @@ describe("POST /api/company-referrals companySlug", () => {
     expect(create.mock.calls[0][1]).not.toHaveProperty("selectedCompany");
   });
 });
+
+import { isDriverErrorMessage, GENERIC_SERVER_ERROR } from "./privateReferralRoutes";
+describe("driver error hygiene", () => {
+  it("withholds raw drizzle errors from any route response", async () => {
+    const app = express(); app.use(express.json());
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async () => ({ account: { id: 1, openId: "w" } }),
+      withdrawCompanyReferralRequest: async () => { throw new Error("Failed query: update `referralRequests` set `status` = ? where id = ?\nparams: withdrawn,12"); },
+    } as unknown as PrivateReferralRouteDeps);
+    const response = await request(app).post("/api/company-referrals/12/withdraw");
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe(GENERIC_SERVER_ERROR);
+    expect(JSON.stringify(response.body)).not.toMatch(/referralRequests|params:/);
+  });
+  it("keeps friendly messages", () => {
+    expect(isDriverErrorMessage("This referral request is not in your account")).toBe(false);
+    expect(isDriverErrorMessage("Failed query: select 1\nparams: ")).toBe(true);
+  });
+});

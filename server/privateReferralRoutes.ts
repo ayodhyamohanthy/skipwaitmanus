@@ -147,7 +147,25 @@ export type PrivateReferralRouteDeps = {
   setUserSuspended?: (userId: number, suspended: boolean) => Promise<{ userId: number; suspended: boolean }>;
 };
 
+/** A database driver message (query text and bound params) must never reach a client. */
+export function isDriverErrorMessage(message: unknown): boolean {
+  return typeof message === "string" && /^Failed query:|\bparams:|\bER_[A-Z_]{3,}\b|\bsql(?:State|Message)\b|You have an error in your SQL syntax/i.test(message);
+}
+export const GENERIC_SERVER_ERROR = "Something went wrong on our side. Please try again in a moment.";
+
 export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferralRouteDeps) {
+  app.use("/api", (_req, res, next) => {
+    const sendJson = res.json.bind(res);
+    res.json = (body?: unknown) => {
+      const error = body && typeof body === "object" ? (body as { error?: unknown }).error : undefined;
+      if (isDriverErrorMessage(error)) {
+        console.error("[api] driver error withheld from client:", String(error).slice(0, 600));
+        return sendJson({ ...(body as object), error: GENERIC_SERVER_ERROR });
+      }
+      return sendJson(body);
+    };
+    next();
+  });
   app.use("/api/admin", (req, res, next) => { if (req.method === "GET") res.set("Cache-Control", "private, no-store"); next(); });
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
   // Additive companyName/companyInitials from the company directory on every
