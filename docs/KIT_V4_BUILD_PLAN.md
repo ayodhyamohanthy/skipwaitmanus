@@ -81,7 +81,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | **Tier C — core ask flow (activation)** |||||
 | 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | in progress — SkipWait eng agent — 2026-10-15 — branch task8-search-profile |
 | 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | in progress (slice A: shared/askQuality.ts + ask-company-context, client only; server enforcement on the ask-create path held) - SkipWait eng agent - 2026-10-15 - branch task9-ask-company-context |
-| 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | todo |
+| 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | in progress (client only, advisory/warn-only; no server ask-path change) - SkipWait eng agent - 2026-10-15 - branch task10-role-location-fit |
 | 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | todo |
 | 12 | `credit-metered-tools` + `ask-coach-rewrite` ("Improve my note · 1 credit", no charge on fallback) | 1 | M | todo |
 | 13 | `ask-pinned-work` / `pinned-work-in-asks` + `seeker-work-links` | 8 | M | todo |
