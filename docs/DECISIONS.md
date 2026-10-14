@@ -3,6 +3,7 @@
 Every owner decision lives here. Any doc, code, copy, test or config that disagrees with an **active** entry is wrong and must be fixed (or the doc marked "Superseded by D-xxx"). Read this with `AGENTS.md` section 0 and `docs/KIT_V4_BUILD_PLAN.md`.
 
 ## How decisions are made (binding, owner Oct 14 2026)
+**Every platform and agent (Claude, Codex, Gemini, Copilot, Instinct, Devin, humans):** before merging any change that alters product behaviour, auth, money, data or copy, check it against this register; if it embodies a new decision, add the entry (or ask the owner) in the same PR.
 1. **Audit first.** Inspect the project area and the evidence before proposing anything.
 2. **Propose with evidence.** Each proposal states: the problem; data (production metrics/analytics, with the query or source), research (cited URL, publisher, year), behavioural psychology (the seeker's and the referrer's mental model at that step and the principle used), proven patterns from comparable products; the metric it moves and the expected effect; cost, risk and alternatives; and how it will be measured after release.
 3. **Impact check.** List every older decision (by ID) and every doc, code area, copy, test and config the proposal touches or contradicts. Never silently override an older decision — the owner chooses which wins.
@@ -25,6 +26,7 @@ Ethics guardrail for every psychology-based proposal: no dark patterns, false ur
 | D-008 | 2026-10-14 | Docs first: update agent docs (this file, `AGENTS.md`, `docs/KIT_V4_BUILD_PLAN.md`) on `main` before any code change. | Owner instruction (multi-platform continuity) | Affects every workflow | synced |
 | D-009 | 2026-10-14 | One priority queue (`docs/KIT_V4_BUILD_PLAN.md` §3b) for every AI model; P0 first, finish in-progress, then lowest unblocked task. | Owner instruction | Queue order itself is subject to D-010 | synced |
 | D-010 | 2026-10-14 | North star: be the go-to, preferred **global** site for job referrals, getting people referred **faster**. Every decision follows the process above (audit → evidence incl. data, analytics, psychology, patterns → impact check → owner approval → code → measure). | Owner instruction | Re-evaluates the queue order (D-009) and all older decisions for goal fit | in progress (goal-alignment audit Oct 14) |
+| D-011 | 2026-10-14 | Sign-in offers Google, Microsoft and GitHub (Apple not offered: WorkOS authorize returns 404); work-email verification rejects personal-email provider families and their subdomains (shared `isCorporateEmailDomain`); a company-page ask is bound to the selected company (`companySlug` checked against `companyDomains` before any credit moves). | PR #197 merged by the owner (recorded after the fact by the sync audit) | Founder edit on `main` after Oct 9 — per D-001 it stays over the kit sign-in PNG; affects D-002 (password sign-in page must keep these providers) | synced in code |
 
 Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
 
