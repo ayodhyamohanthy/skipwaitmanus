@@ -104,17 +104,18 @@ type ReferrerProps = {
   returnPath: string;
   onAccept: () => Promise<void>;
   onPass: (reason: string) => Promise<void>;
-  onMarkReferred: () => Promise<void>;
+  onMarkReferred: (referenceId?: string) => Promise<void>;
 };
 
 export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onPass, onMarkReferred }: ReferrerProps) {
   const [modal, setModal] = useState<null | "accept" | "pass" | "referred">(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [reference, setReference] = useState("");
   const [reasonLabel, setReasonLabel] = useState<string>(PASS_REASONS[0].label);
   const action = useAction();
   const stage = stageOf(request);
   const company = companyName(request);
-  const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setModal(next); };
+  const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setReference(""); setModal(next); };
   const close = () => { setModal(null); action.reset(); };
   const submit = (run: () => Promise<void>, fallback: string) => { void action.run(run, fallback).then(ok => { if (ok) setModal(null); }); };
   const reasonValue = PASS_REASONS.find(option => option.label === reasonLabel)?.value ?? PASS_REASONS[0].value;
@@ -183,11 +184,12 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
           {titleId => (
             <>
               <h2 id={titleId} className="text-xl font-semibold">Mark as referred</h2>
-              <p className="mt-2 text-muted-foreground">Tell the seeker you submitted this through your company&apos;s process.</p>
+              <p className="mt-2 text-muted-foreground">Tell the seeker you submitted this through your company&apos;s process. Optional: add your portal&apos;s reference so the seeker can mention it.</p>
+              <label className="mt-4 block text-sm font-medium">Reference ID (optional)<input className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3 text-base" value={reference} maxLength={40} onChange={event => setReference(event.target.value)} placeholder="e.g. TC-4410" autoComplete="off" /></label>
               <ModalError message={action.error} />
               <footer className="mt-6 flex justify-end gap-2">
                 <Button variant="ghost" onClick={close}>Cancel</Button>
-                <Button disabled={action.busy} onClick={() => submit(onMarkReferred, "We could not mark this as referred")}>Confirm <Check /></Button>
+                <Button disabled={action.busy} onClick={() => submit(() => onMarkReferred(reference.trim() || undefined), "We could not mark this as referred")}>Confirm <Check /></Button>
               </footer>
             </>
           )}

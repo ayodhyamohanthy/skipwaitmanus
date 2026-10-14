@@ -186,6 +186,12 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
   });
 
+  it("shows the referred seeker the reference ID the referrer recorded", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "intro_made" }] }) : ok({ messages: [], referenceId: "TC-4410" })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Referred! Reference ID TC-4410")).toBeTruthy();
+  });
+
   it("shows the seeker the kit's kind pass note, never the raw decline text", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "declined", referrerMessage: "I do not think this role is the right fit for my referral." }] }) : ok({ messages: [] })));
     render(<ReferralConversation />);
@@ -210,6 +216,24 @@ describe("ReferralConversation thread", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mark as referred/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Confirm/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("sends the optional portal reference ID with Mark as referred", async () => {
+    const bodies: unknown[] = [];
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/progress")) { bodies.push(JSON.parse(String(init?.body))); return ok({ progress: { status: "intro_made", changed: true } }); }
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "claimed");
+      return ok({ request: { ...referrerPreview, status: "approved", referrerId: 9, candidateName: "Asha R.", attachments: [] } });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Submit through your company.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Mark as referred/ }));
+    expect(await screen.findByText(/Optional: add your portal/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Reference ID/), { target: { value: " TC-4410 " } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm/ }));
+    await waitFor(() => expect(bodies).toEqual([{ status: "intro_made", referenceId: "TC-4410" }]));
   });
   it("shows a retryable error when the network fails, then recovers", async () => {
     let attempts = 0;

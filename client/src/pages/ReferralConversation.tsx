@@ -34,6 +34,7 @@ export default function ReferralConversation() {
   const [role, setRole] = useState<ThreadRole | null>(null);
   const [request, setRequest] = useState<ThreadRequest | null>(null);
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
+  const [referenceId, setReferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [passed, setPassed] = useState(false);
@@ -55,7 +56,8 @@ export default function ReferralConversation() {
       setRole(thread.role); setRequest(next);
       if (!canMessage(thread.role, next)) { setMessages([]); return; }
       try {
-        setMessages((await loadConversation(requestId, fetchToken)).messages);
+        const conversation = await loadConversation(requestId, fetchToken);
+        setMessages(conversation.messages); setReferenceId(conversation.referenceId);
         setMessageError("");
       } catch (reason) { setMessageError(errorText(reason, "We could not load these private messages")); }
     } catch (reason) { setError(errorText(reason, "We could not open this private thread")); }
@@ -151,7 +153,7 @@ export default function ReferralConversation() {
                   // employees and out of this referrer's reach, so there is
                   // nothing further to reload for this account.
                   onPass={async reason => { await decideReview(request.id, "declined", reason, fetchToken); setPassed(true); }}
-                  onMarkReferred={async () => { await recordProgress(request.id, "intro_made", fetchToken); await reload(); }}
+                  onMarkReferred={async reference => { await recordProgress(request.id, "intro_made", fetchToken, reference); await reload(); }}
                 />
               )}
             </div>
@@ -159,6 +161,7 @@ export default function ReferralConversation() {
               <span className="eyebrow">REFERRER</span>
               <p className="mt-2 flex items-center gap-2 font-medium">{referrerLabel}<BadgeCheck className="size-4 text-primary" /></p>
               <p className="text-muted-foreground">Verified via work email</p>
+              {referenceId ? <p className="mt-2 font-medium">Referred! Reference ID {referenceId}</p> : null}
             </div>
             <div className="rounded-3xl border border-border p-5 text-sm text-muted-foreground">
               <ShieldCheck className="mb-2 size-5 text-primary" />Referrals are free. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>
