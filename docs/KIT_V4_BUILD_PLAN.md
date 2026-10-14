@@ -4,6 +4,11 @@ This is the shared, living plan for implementing every kit v4 screen (`screens/w
 
 **Owner rule (Oct 14 2026): update this file (and the short summary in `AGENTS.md`) FIRST — before editing code — and get it onto `main`, so another platform can finish the work if a session stops.** Claim a step in the Status table before starting it; record decisions, commits, migrations and owner actions as you go. Update it again after every push.
 
+## 0. North star and decision protocol (binding, owner Oct 14 2026)
+- **Goal:** the go-to, preferred global site for job referrals, getting people referred faster.
+- **Protocol for every change:** audit → data/principle-backed proposal (metric moved, evidence with sources, expected effect, cost, risk, how it will be measured) → owner approval → code → measure after release. No new change is coded without the owner's approval; P0 incidents and already-approved queue tasks are the only exceptions.
+- **The queue below is itself subject to this protocol:** a goal-aligned audit may propose re-ordering, adding or dropping tasks; the owner approves before the order changes.
+
 ## 1. Owner decisions (binding)
 Oct 9 2026:
 - Implement every screen "as it is", fullstack: if a PNG state needs server data, tables, endpoints or jobs, build them.
