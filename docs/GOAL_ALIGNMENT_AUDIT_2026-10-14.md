@@ -124,7 +124,7 @@ The ending distribution is unmeasured. The query is in §8.
 | # | Item | Why (evidence) | Metric | Size | Conflicts / prerequisites |
 |---|---|---|---|---|---|
 | B1.1 | **Stop the ATS misrouting:** add the vendor hosts to `HOSTED_JOB_PLATFORMS` so their links resolve by employer handle or wait, never route to the vendor; one regression test per vendor | §1.3 | 0 misrouted asks | S | P0 (queue rule 1) |
-| B1.2 | **Refund on decline, as the Terms promise;** remediate past declines-after-claim (owner-run query, then a reviewed refund script) | §1.3; Terms/Refund policy are binding | 0 broken refund promises | S | P0 money; no Terms change |
+| B1.2 | **SUPERSEDED Oct 14 (founder): decline does not refund; fix the Terms copy instead.** Original: Refund on decline, as the Terms promise; remediate past declines-after-claim (owner-run query, then a reviewed refund script) | §1.3; Terms/Refund policy are binding | 0 broken refund promises | S | P0 money; no Terms change |
 | B1.3 | **Messaging matches the privacy notice:** no first message to a referrer before acceptance, on any path | §1.3 | 0 privacy-notice breaches | S | D-005 "Pro/Max keep what they pay for" vs privacy notice: owner picks the transition (§8 Q1) |
 | B1.4 | **Truthful public copy:** remove the static "open doors" row until at least 3 external available referrers exist at a company (k-threshold avoids exposing individual referrers); fix the credits FAQ/JSON-LD; take the acme.com test role out of production via a reviewed data-fix script, with a fixture guard on `/api/jobs` and the sitemap (PR #104); the public counter excludes expiries and is relabelled "asks accepted" (an acceptance is not a referral, Playbook §1.1) | §1.4 | 0 false claims | S | Landing no-fetch contract: prerender the row at deploy |
 | B1.5 | **Uncovered asks reserve neither a credit nor a slot** | cold-start research note (Aug 18; unregistered); avoids charging into an empty market | — | S | Credit rule (register gap) |
@@ -208,3 +208,6 @@ Facts needed from the owner: current MRR, the number of paying Pro/Max users, mo
 - **Launch row → "Yes, they committed — keep it"** (D-016).
 - **Baseline data → "Add an admin page"** (D-018).
 - Still open: uncovered asks reserving credits (B1.5).
+
+
+> Amendment Oct 14 2026 (founder, via D-012): the proposals to refund on decline and to refund past declines (B1.2 and the remediation lines above) are withdrawn. A declined ask stays active for other employees and the credit stays spent.
