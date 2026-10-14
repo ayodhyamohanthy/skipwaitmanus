@@ -27,6 +27,7 @@ describe("product copy guard", () => {
       "employer-action-claimed": 'const copy = "Your referral was submitted to the employer.";',
       "unverified-milestone-stated-as-fact": 'const copy = "An offer was confirmed."; ',
       "outcome-statistics-claim": 'const copy = "A 42% hire rate across all referrals.";',
+      "credit-used-only-on-accept": 'const copy = "Credits never expire and are used only when an employee accepts your request.";',
     };
     expect(Object.keys(fixtures).sort()).toEqual(RULES.map((rule: { id: string }) => rule.id).sort());
     for (const [ruleId, source] of Object.entries(fixtures)) {

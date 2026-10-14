@@ -46,6 +46,12 @@ export const RULES = [
     pattern: /\b(?:\d{1,3}%\s*(?:hire|hiring|offer|interview|success|response|placement)[-\s]*(?:rate|rate:)?|placement rate|offer-to-hire ratio|\d+(?:\.\d+)?x more likely to be (?:hired|interviewed))\b/gi,
     allowWhenNegated: false,
   },
+  {
+    id: "credit-used-only-on-accept",
+    summary: "Saying a credit is used only on acceptance. A credit is reserved at send and returned on withdraw before a claim, decline or expiry (Terms, D-012).",
+    pattern: /\b(?:are|is|gets?) used only when (?:an? )?(?:employee|referrer) accepts\b/gi,
+    allowWhenNegated: false,
+  },
 ];
 
 /**
