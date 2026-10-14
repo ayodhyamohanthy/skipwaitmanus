@@ -20,6 +20,8 @@ Card numbers are NOT stored here. They rotate; always read them from the Razorpa
 - Root documentation (founder's pointer, all Razorpay docs): https://razorpay.com/docs/home
 - Cards: https://razorpay.com/docs/payments/payments/test-card-details
 - UPI: https://razorpay.com/docs/payments/payments/test-upi-details
+- Chargebee side (founder: "if anything is needed on chargebee side you can check this website"): https://www.chargebee.com/docs/
+- Chargebee + Razorpay card/UPI testing: https://www.chargebee.com/docs/payments/2.0/kb/billing/how-to-test-card-upi-payments-via-razorpay-with-chargebee-integration
 - Success UPI handle: `test@razorpay` (confirm in the UPI doc before use)
 
 ## 3. Provider matrix (run on BOTH sites)
