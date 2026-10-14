@@ -11,6 +11,9 @@ const authDiagnostics = new BoundedTtlCache<string,{stage:string;errorName:strin
 import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./devAuth";
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
+import { completeWorkosLogin, resolveWorkosOpenId } from "./workosSession";
+
+export { resolveWorkosOpenId };
 
 /**
  * WorkOS AuthKit authentication for production skipwait.me.
@@ -59,8 +62,6 @@ export function adminCallbackAllowed(input:{email:string;state:string;configured
   if(!expected||input.email.trim().toLowerCase()!==expected)return false;
   return input.state!=="skipwait-admin-bootstrap"||input.bootstrapEnabled===true;
 }
-
-export function resolveWorkosOpenId(workosUserId: string): string { return `workos_${workosUserId}`.slice(0, 64); }
 
 function workosJwks(clientId: string) {
   let cached = workosJwksByClient.get(clientId);
@@ -259,27 +260,16 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         if (state === "skipwait-admin" || state === "skipwait-admin-bootstrap") {
           if (!adminCallbackAllowed({ email:user.email, state, configuredEmail:process.env.SKIPWAIT_ADMIN_EMAIL, bootstrapEnabled:process.env.ENABLE_ADMIN_BOOTSTRAP === "true" })) return res.status(403).send(state === "skipwait-admin-bootstrap" && process.env.ENABLE_ADMIN_BOOTSTRAP !== "true" ? "This administrator bootstrap link has expired. Start a fresh administrator sign-in." : "Administrator sign-in requires the exact configured administrator email.");
         }
-        const openId = resolveWorkosOpenId(user.id);
-        const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
-        // One identity path for every sign-in: the canonical resolver links by
-        // provider subject first and only uses the email when WorkOS attests it
-        // is verified. The session is minted for the canonical account's openId
-        // through the active-account gate, so the cookie resolves to the same
-        // user on every later request.
-        stage = "resolve";
-        let account: Awaited<ReturnType<typeof db.resolveLoginIdentity>>;
-        try {
-          account = await db.resolveLoginIdentity({ provider: "workos", subject: user.id, openId, email: user.email, emailVerified: user.emailVerified === true, name, loginMethod: "workos" });
-        } catch (error) {
-          const blocked = error instanceof Error && (error.message === "IDENTITY_REVIEW_REQUIRED" || error.message === "ACCOUNT_NOT_ACTIVE") ? error.message : null;
-          if (!blocked) throw error;
-          console.warn("[workos-callback]", { stage, code: blocked });
-          return res.status(403).send(blocked === "IDENTITY_REVIEW_REQUIRED" ? "This account needs a quick review before it can sign in. Contact support@skipwait.me." : "This account is not active. Contact support@skipwait.me.");
+        // One identity path for every sign-in (server/_core/workosSession.ts):
+        // the canonical resolver links by provider subject first and only uses
+        // the email when WorkOS attests it is verified. The session is minted
+        // for the canonical account's openId through the active-account gate,
+        // so the cookie resolves to the same user on every later request.
+        const outcome = await completeWorkosLogin(req, res, { user, sealedSession: auth.sealedSession, onStage: next => { stage = next; } });
+        if (outcome.status === "blocked") {
+          console.warn("[workos-callback]", { stage, code: outcome.code });
+          return res.status(403).send(outcome.code === "IDENTITY_REVIEW_REQUIRED" ? "This account needs a quick review before it can sign in. Contact support@skipwait.me." : "This account is not active. Contact support@skipwait.me.");
         }
-        stage = "session";
-        if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-        const token = await sdkCreateSessionToken(account.openId, account.name || name);
-        res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         res.redirect(302, returnTo);
       } catch (error) {
         const errorName = error instanceof Error ? error.name : "unknown";
@@ -308,9 +298,4 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       res.json({ signedOut: true });
     });
   };
-}
-
-async function sdkCreateSessionToken(openId: string, name: string): Promise<string> {
-  const { sdk } = await import("./sdk");
-  return sdk.createSessionToken(openId, { name });
 }
