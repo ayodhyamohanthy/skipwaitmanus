@@ -90,3 +90,11 @@ How a payment becomes credits: checkout creates a `pending:<hostedPageId>` row i
 Not covered: `credit_note_created` is not used (it also fires for non-refund credit notes); subscription refunds do not adjust entitlements; partial revocation of the unspent part of a spent pack is not done (needs a product call). The scheduled reconcile job covers the missed-webhook and stale-pending gaps.
 
 Check the job: admin scheduled-jobs status (`/api/admin/jobs`) shows the last run of `chargebee-pending-reconcile`; a failed window means Chargebee could not be read or a row errored.
+
+## Verified credit semantics for asks (QA, live, request 13, Oct 15 2026)
+Observed behaviour, not a new policy:
+- Closing an ask after `intro_made` does NOT refund the monthly credit. A closed (hired or otherwise) ask keeps its credit consumed.
+- The only credit-return path is withdrawing BEFORE acceptance.
+- Withdrawing AFTER acceptance correctly returns 409. An accepted-then-closed ask consumes the credit for good.
+- A pass by a referrer still spends the credit while the ask stays open for other employees (founder decision).
+Do not change any of this without the founder's explicit say-so via the parent.
