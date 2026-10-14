@@ -53,6 +53,7 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "profiles", column: "preferLevels", definition: "TEXT NULL" },
   { table: "profiles", column: "openTo", definition: "TEXT NULL" },
   { table: "referralTransitionEvents", column: "referenceId", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequestPasses", column: "reasonCode", definition: "VARCHAR(32) NULL" },
   { table: "profiles", column: "experienceLevel", definition: "VARCHAR(40) NULL" },
   { table: "profiles", column: "seekerGoal", definition: "VARCHAR(60) NULL" },
   { table: "profiles", column: "searchCity", definition: "VARCHAR(120) NULL" },

@@ -152,7 +152,7 @@ export default function ReferralConversation() {
                   // A pass leaves the request in the queue for other verified
                   // employees and out of this referrer's reach, so there is
                   // nothing further to reload for this account.
-                  onPass={async reason => { await decideReview(request.id, "declined", reason, fetchToken); setPassed(true); }}
+                  onPass={async (reason, passReason) => { await decideReview(request.id, "declined", reason, fetchToken, passReason); setPassed(true); }}
                   onMarkReferred={async reference => { await recordProgress(request.id, "intro_made", fetchToken, reference); await reload(); }}
                 />
               )}

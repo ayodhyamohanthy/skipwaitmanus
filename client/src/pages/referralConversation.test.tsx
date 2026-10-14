@@ -134,7 +134,7 @@ describe("ReferralConversation thread", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "/api/company-referrals/601/one-click-review",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing" }) }),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing", passReason: "at_capacity" }) }),
     ));
     expect(await screen.findByText("You passed privately.")).toBeTruthy();
   });
