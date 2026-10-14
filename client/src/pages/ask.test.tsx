@@ -69,7 +69,7 @@ describe("Ask composer", () => {
     expect(screen.getByText("The referrer sees your role and note — not your name or resume — until they accept.")).toBeTruthy();
     expect(screen.getByText("Uses 1 credit · referrals are always free")).toBeTruthy();
     const page = document.body.textContent ?? "";
-    for (const preview of ["DESIGN PREVIEW", "Fill example", "Role location", "Location works for you", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
+    for (const preview of ["DESIGN PREVIEW", "Fill example", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
     expect(fetchCalls()).toBe(0);
   });
 
@@ -271,6 +271,21 @@ describe("Ask composer", () => {
     await new Promise(resolve => setTimeout(resolve, 50));
     expect(screen.queryByText(/WIPRO/)).toBeNull();
     expect(screen.getByPlaceholderText(/careers.company/)).toBeTruthy();
+  });
+
+  it("warns, without blocking, when the chosen role location is outside the saved setup", async () => {
+    const setup = { goal: "Actively looking", roles: [], level: "", links: [], city: "Pune, India", countries: "India", remote: true, visa: "Need sponsorship for some countries", resume: null };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/profile/setup" ? { ok: true, status: 200, json: async () => setup } : { ok: false, status: 404, json: async () => ({}) }));
+    render(<Ask />);
+    const select = await screen.findByLabelText(/Role location/);
+    await screen.findByRole("option", { name: "Hybrid · Pune" });
+    fireEvent.change(select, { target: { value: "other" } });
+    fireEvent.change(screen.getByLabelText("Where is the role?"), { target: { value: "Austin, USA" } });
+    expect(await screen.findByText(/may need work authorization/)).toBeTruthy();
+    expect(screen.getByText("Location works for you")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Where is the role?"), { target: { value: "Pune" } });
+    expect(screen.queryByText(/may need work authorization/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(true); // gated by link and note, never by location
   });
 
   it("ignores a malformed hand-over instead of prefilling it", () => {
