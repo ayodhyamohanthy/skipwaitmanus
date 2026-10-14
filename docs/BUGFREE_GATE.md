@@ -38,7 +38,7 @@ Current overall gate state, how each item is tested, and its latest result follo
 | 2.3 | Cross-user denial (user B cannot see user A's data) | Live Oct 14 with both QA accounts: qa-sweep-1 `GET /api/documents/7` (qa-sweep-2's resume) -> **404 "Document not found"** (owner read on B side is 200); qa-sweep-1 `POST /api/company-referrals/12/withdraw` -> **404 "This referral request is not in your account"**; qa-sweep-1 `GET /api/company-referrals/inbox` -> empty (request 12 not leaked); each account's `mine` lists only its own; qa-sweep-2 rendered `/p/qa-sweep-1` -> "This profile is private." | GREEN (6:01 PM IST Oct 14, API `2264a9f0`) |
 | 2.4 | Resume upload | Signed-in retest (authorized Oct 13, current SHA): select file on /ask stages client-side, then 'Draft from my resume' runs the chunked pipeline - POST /api/documents/uploads 201 (session), chunks 200, complete 201 with clean JSON (no SQL leak); stored doc verified by GET /api/documents/6 (200, application/pdf, exact 21,257 bytes) and privacy export. Sep 17 double defect (finalize 500 + raw SQL leak) is fixed. | GREEN (4:20 AM IST Oct 13, API `cb3d20f`, web `76b137b5`) |
 | 2.5 | Company-referral URL must match the selected company (PR #197) | Live Oct 14: request dialog on /explore/skipwait pre-flags a wipro.com link with role=alert "This link is not from SkipWait..." and passes a greenhouse.io link (hosted board). Authenticated `POST /api/company-referrals` with a wipro.com URL + `companySlug: skipwait` -> **400 "This job link is not from SkipWait. Paste a job link from SkipWait's own careers page."** before any credit moves (wallet 3/0 unchanged, no request created); control with a matching skipwait.me URL passes the company check and fails later at attachment ownership, proving the check fired specifically. Unknown slug -> 400. | GREEN (5:59 PM IST Oct 14, API `2264a9f0`) |
-| 2.6 | Withdraw a pending, unclaimed request | **RED.** Live Oct 14: `POST /api/company-referrals/12/withdraw` as the owning account (qa-sweep-2) -> **500**, raw drizzle error leaked to the client ("Failed query: update `referralRequests` ... params: withdrawn,1,12,pending,0"). The optimistic-concurrency guard expects status=pending,revision=0 and matches 0 rows, so withdraw never succeeds; the transaction rolls back (wallet and request state verified unchanged). Two defects: functional (a seeker cannot withdraw their own pending ask) and error hygiene (raw SQL + params in the client response). Reported 6:02 PM IST Oct 14. No admin-side expire route exists either, so QA request 12 stays live in the two @skipwait.me referrer inboxes until a fix ships. | **RED** |
+| 2.6 | Withdraw a pending, unclaimed request | Fixed by PR #198 (`644ce81`, idempotent deploy migration 0079 adds `withdrawn` to the prod status enum; global API error sanitizer swaps driver messages for a generic 500 text). Live retest Oct 14: withdraw of request 12 by the owner -> **200 withdrawn**, creation debit **refunded** (monthly 2 -> 3); double-withdraw idempotent 200 with no second refund; cross-user withdraw still 404 friendly; no SQL in any client response. No admin-side expire route exists (noted, not gated). | GREEN (6:39 PM IST Oct 14, API `644ce81`) |
 
 ## 3. Approval flow
 
@@ -94,20 +94,20 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 
 - No DELETE profile route (product decision, not built); profile rows persist with null content after clear.
 - QA fixture residual state: qa-sweep-1's profile row exists all-null/private. Its handle (qa-sweep-1) was stuck because PUT could not clear it; the fa92ee4 fix (explicit null now clears) deployed Oct 14 ~1:06 AM IST, was live-verified (set -> clear with explicit null -> GET confirms null), and the handle is now cleared. Signed-out /p/qa-sweep-1 404s exactly as before the fixture existed.
-- QA fixture residual state: qa-sweep-2 (ayodhyarammohanthy+qasweep2@gmail.com, created Oct 14 ~5:58 PM IST, founder-authorized) holds request 12 (pending, unclaimed, synthetic - pitch labeled QA) which cannot be withdrawn until 2.6 is fixed; wallet free 2/0 after the happy-path debit; resume attachment 7 retained. Two verified @skipwait.me referrers received the in-app notification + review email for request 12; the founder was told to ignore them.
+- QA fixture residual state: qa-sweep-2 (ayodhyarammohanthy+qasweep2@gmail.com, created Oct 14 ~5:58 PM IST, founder-authorized) holds request 12, now **withdrawn** (credit refunded; wallet back to free 3/0); resume attachment 7 retained. Two verified @skipwait.me referrers received the in-app notification + review email for request 12 before the withdraw; the founder was told to ignore them.
 - Minor observation (not gated): `GET /api/company-referrals/mine` shows the pitch placeholder "No personal note was included..." even when personalPitch was sent - pitch is either masked in the seeker-facing projection or dropped at write.
 
 ---
 
 ## How to read the daily state
 
-- **The gate is RED on one item: 2.6 (withdraw a pending request fails 500 with a SQL leak).**
-  Everything else that can run unattended is GREEN.
+- **Every live-testable item is GREEN.** 2.6 (withdraw) was RED for ~40 min on Oct 14 and is
+  fixed + live-verified on `644ce81`. Everything that can run unattended is GREEN.
 - 4 coverage gaps remain open: 1.4 (site OTP code email), 3.1 (approve/decline on a thread),
   3.2-live (block cycle), 4.12 (real payment completion). 3.1 and 3.2 close with a
   verified-referrer QA account (qa@skipwait.me mailbox decision pending Oct 14); 4.12 closes
   with a founder-approved real test payment.
-- Whether distribution starts with 2.6 RED and these gaps open is the founder's call.
+- Whether distribution starts with the 4 remaining UNVERIFIED gaps open is the founder's call.
 
 Any battery failure flips the named item to RED and is reported immediately with surface, SHA,
 evidence, and repro. A pass restores GREEN at the next run. Gate history lives in the QA
