@@ -18,6 +18,14 @@ You are an expert senior software engineer acting as an autonomous implementatio
 - Work in progress lives on branch `kit-v4-fullstack` (may hold unverified commits — gate before pushing to `main`).
 - **Work selection (binding for every model):** pick work ONLY from the priority queue in `docs/KIT_V4_BUILD_PLAN.md` §3b — P0 incidents first (prod down, red `main`, security, money/identity/data bugs), then finish in-progress work, then the lowest-numbered `todo` task whose dependencies are done and that is not owner-blocked. Never start a lower-priority task while a higher one is unclaimed and unblocked. Claim it in the queue (pushed to `main`) before coding; mark it `done — <commit>` after it is live. Current order (owner, Oct 14 — D-013): P0 fixes from D-012 first, then (A) finish kit pricing and password sign-in → (B) trust/privacy/compliance → (C) core ask flow → (D) referral lifecycle → (E) notifications → (F) settings/app → (G) assistants/developers → (H) employer/admin → (I) work showcase/tools.
 
+## 0a. Standing principles (founder, Oct 14 2026) - read before coding
+- **Payments bar (founder, verbatim):** "We cant mess with customers payments and refunds and delayed transactions or any transactions so make sure we are solidly built every backup plan if something is off."
+- **No half-baked flows (founder, verbatim intent: "all agents will learn to be serious not build half baked flows"):** a flow ships end-to-end with its failure paths handled and its recovery documented, or it does not ship.
+- **Silent failure is a defect.** Every failure path is visible: logged, alerted, and shown to the user in plain words.
+- **Every externally visible mutation is idempotent, reconciled and recoverable.** This covers payments, refunds, emails and credits. Redelivery and retries add nothing twice. A missed or late provider event has a reconcile or replay path. Each failure mode has a written recovery step.
+- **Failures surface at once.** A payment-path failure is reported immediately with the failing leg and the evidence; do not retry around it first.
+- **Payments instance of this rule:** `docs/PAYMENTS_TEST_RUNBOOK.md` (two Chargebee sites, provider matrix, failure rule, recovery table). Read it before touching any payment, refund or credit code.
+
 ## 1. Operator protocol (human rules and hygiene)
 - **Context hygiene:** Start a fresh work thread for every distinct sub-task or feature. Close completed context before starting unrelated work.
 - **Atomic commits:** Commit immediately after every working, validated change. Version history is the recovery point if an implementation enters a destructive loop.
