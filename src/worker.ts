@@ -47,6 +47,7 @@ export class SkipwaitApi extends Container {
 
 import { fetchContainerReplayingIdempotent, fetchContainerWithStoppedRecovery } from "./containerRecovery";
 import { buildJobsTickRequest, isInternalApiPath, withoutJobsTickHeader } from "../shared/jobsTick";
+import { withEdgeClientIp } from "../shared/clientIp";
 
 type WorkerEnv = Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string };
 
@@ -76,7 +77,9 @@ export default {
     const release = releaseOf(env);
     const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`);
     // A public request can never present the cron's tick token to the container.
-    return fetchContainerWithStoppedRecovery(container, withoutJobsTickHeader(request));
+    // Client-supplied X-Forwarded-For is never trusted: the container sees one
+    // forwarding header, set here from Cloudflare's CF-Connecting-IP.
+    return fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(request)));
   },
 
   // Cron trigger (wrangler.jsonc triggers.crons): POST the scheduled-jobs tick
