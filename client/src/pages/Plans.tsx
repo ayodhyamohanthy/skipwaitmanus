@@ -191,7 +191,7 @@ export default function Plans() {
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
-    <div className="page-heading"><div><span className="eyebrow">INDIVIDUAL PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. Upgrade when your search grows. Referrals stay free on every plan, and queue position never changes.</p></div><CreditCta summary={summary} href={creditsHref} /></div>
+    <div className="page-heading"><div><span className="eyebrow">INDIVIDUAL PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. Upgrade when your search grows. Referrals stay free on every plan, and queue position never changes.</p></div><CreditCta summary={summary} currency={route} href={creditsHref} /></div>
     <GiftNotices giftReturn={giftReturn} claimedPlan={claimedPlan} claimable={claimableGifts} claimingId={claimingId} onClaim={giftId => { void claimGift(giftId); }} />
 
     <PlanCards
@@ -204,7 +204,7 @@ export default function Plans() {
       cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
       gift={{ enabled: giftCheckoutEnabled(), opening: giftStatus === "opening", isLoaded, onGift: plan => { void startGiftCheckout(plan); } }}
     />
-    <p className="plan-grid-note">Every account starts on the free tier — asking for referrals and tracking every request cost nothing, ever. Upgrading only adds more requests each month.</p>
+    <p className="plan-grid-note">Every account starts on the free tier — asking for referrals and tracking every request cost nothing, ever. Upgrading adds more open requests at once and monthly credits.</p>
     <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
     {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
     <SentGifts sent={sentGifts} error={giftError} />

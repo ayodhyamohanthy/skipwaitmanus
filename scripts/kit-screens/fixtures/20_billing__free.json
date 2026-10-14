@@ -33,7 +33,49 @@
           "totalAvailable": 2,
           "cycleKey": "2026-10",
           "subscriptionStatus": null,
-          "subscriptionCurrentTermEnd": null
+          "subscriptionCurrentTermEnd": null,
+          "ledger": {
+            "balance": 2,
+            "buckets": {
+              "cycle": 2,
+              "carriedOver": 0,
+              "welcome": 0,
+              "purchased": 0,
+              "promo": 0
+            },
+            "creditsPerMonth": 0,
+            "carryover": 0,
+            "cycle": {
+              "key": "2026-10",
+              "startsAt": "2026-10-01T00:00:00.000Z",
+              "endsAt": "2026-11-01T00:00:00.000Z",
+              "granted": 3,
+              "used": 1
+            },
+            "planCreditsRemaining": 2,
+            "nextExpiry": {
+              "credits": 2,
+              "expiresAt": "2026-11-01T00:00:00.000Z"
+            },
+            "planCreditsExpiringSoon": null,
+            "welcome": {
+              "granted": false,
+              "credits": 0,
+              "remaining": 0
+            }
+          },
+          "slots": {
+            "plan": "free",
+            "planLabel": "Free",
+            "open": 1,
+            "cap": 3,
+            "full": false,
+            "nextPlan": {
+              "id": "momentum",
+              "label": "Momentum",
+              "openRequests": 15
+            }
+          }
         }
       }
     },

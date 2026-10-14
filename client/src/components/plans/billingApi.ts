@@ -3,6 +3,8 @@
 // server/chargebeeRoutes.ts (gifts). Unknown fields are ignored; a payload that
 // does not parse is treated as a failed load, never as an empty account.
 import { z } from "zod";
+import { creditsLedgerSchema } from "@shared/creditLedger";
+import { openAskSlotsSchema } from "@shared/openAskSlots";
 
 export const NETWORK_ERROR = "We couldn’t reach SkipWait. Check your connection and try again.";
 
@@ -16,6 +18,11 @@ export const creditSummarySchema = z.object({
   totalAvailable: z.number(),
   subscriptionStatus: nullableString,
   subscriptionCurrentTermEnd: nullableString,
+  // Kit ledger block (shared/creditLedger.ts): balance by bucket, cycle usage, expiries.
+  // Missing or malformed reads as "not loaded" (null), never as invented numbers.
+  ledger: creditsLedgerSchema.nullish().catch(null).transform(value => value ?? null),
+  // Seeker open-ask slots (shared/openAskSlots.ts); the server omits them when the count fails.
+  slots: openAskSlotsSchema.nullish().catch(null).transform(value => value ?? null),
 });
 export type CreditSummary = z.infer<typeof creditSummarySchema>;
 

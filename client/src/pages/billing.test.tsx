@@ -12,8 +12,11 @@ vi.mock("wouter", () => ({ Link: ({ href, children, ...rest }: { href: string; c
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); authState.isSignedIn = true; });
 
 const ok = (json: unknown) => ({ ok: true, json: async () => json });
-const freeSummary = { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null };
-const proSummary = { plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" };
+// As GET /api/credits/summary sends them: the caller's open-ask slots and the ledger block ride on the summary.
+const slots = (plan: string, cap: number) => ({ plan, planLabel: plan === "free" ? "Free" : "Pro", open: 1, cap, full: false, nextPlan: null });
+const ledger = (creditsPerMonth: number, balance: number) => ({ balance, buckets: { cycle: balance, carriedOver: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth, carryover: creditsPerMonth > 0 ? 1 : 0, cycle: { key: "2026-10", startsAt: null, endsAt: null, granted: creditsPerMonth, used: 0 }, planCreditsRemaining: balance, nextExpiry: null, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 } });
+const freeSummary = { plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, totalAvailable: 3, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots("free", 3), ledger: ledger(0, 3) };
+const proSummary = { plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 7, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots("pro", 10), ledger: ledger(10, 9) };
 
 describe("Billing page", () => {
   it("shows the free plan with an empty receipt ledger, never invented methods", async () => {
@@ -21,7 +24,7 @@ describe("Billing page", () => {
     render(<Billing />);
     expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Manage plan." })).toBeTruthy();
-    expect(screen.getByText("3 referral requests a month · buy credits anytime")).toBeTruthy();
+    expect(screen.getByText("3 open asks · buy credits anytime")).toBeTruthy();
     expect(screen.getByText("No payments yet.")).toBeTruthy();
     expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
     expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
@@ -41,8 +44,9 @@ describe("Billing page", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<Billing />);
-    expect(await screen.findByRole("heading", { name: "Pro · 10 requests/month" })).toBeTruthy();
-    expect(screen.getByText("Renews 6 Nov 2026 · 7 of 10 requests left this cycle")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Pro" })).toBeTruthy();
+    expect(screen.getByText("Renews 6 Nov 2026 · 10 open asks · 10 credits/month")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/requests left|requests\/month|requests a month/);
     expect(screen.getByText("5 credits")).toBeTruthy();
     expect(screen.getByText("$5")).toBeTruthy();
     expect(screen.getByText("₹99")).toBeTruthy();
@@ -82,6 +86,18 @@ describe("Billing page", () => {
     render(<Billing />);
     expect(await screen.findByText("Ends 6 Nov 2026 — you keep everything until then.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Cancel plan" })).toBeNull();
+  });
+
+  it("leaves out open asks and monthly credits the server did not send, never guessing them", async () => {
+    const { slots: _slots, ledger: _ledger, ...bare } = proSummary;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bare })));
+    render(<Billing />);
+    expect(await screen.findByText("Renews 6 Nov 2026")).toBeTruthy();
+    cleanup();
+    const { slots: _freeSlots, ...bareFree } = freeSummary;
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url).includes("/billing/receipts") ? ok({ receipts: [] }) : ok({ summary: bareFree })));
+    render(<Billing />);
+    expect(await screen.findByText("Buy credits anytime")).toBeTruthy();
   });
 
   it("recovers from a network failure with Try again", async () => {
