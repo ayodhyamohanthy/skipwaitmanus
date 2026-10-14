@@ -17,6 +17,7 @@ Card numbers are NOT stored here. They rotate; always read them from the Razorpa
 
 ## 2. Razorpay test references (read numbers from here, do not copy them)
 
+- Root documentation (founder's pointer, all Razorpay docs): https://razorpay.com/docs/home
 - Cards: https://razorpay.com/docs/payments/payments/test-card-details
 - UPI: https://razorpay.com/docs/payments/payments/test-upi-details
 - Success UPI handle: `test@razorpay` (confirm in the UPI doc before use)
