@@ -56,7 +56,7 @@ import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
-import { createPaymentReviewAlerter, createUnmatchedPaymentAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -233,6 +233,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     markPaymentForReview: db.markChargebeePaymentForReview,
     getCreditSummary: db.getTokenWallet,
     alertPaymentReview: createPaymentReviewAlerter(),
+    applyPaymentRefund: db.applyChargebeePaymentRefund,
+    alertPaymentRefund: createPaymentRefundAlerter(),
     alertUnmatchedPayment: createUnmatchedPaymentAlerter(),
     resolveHostedPage: async input => {
       const pending = await db.listPendingChargebeePaymentIntents();

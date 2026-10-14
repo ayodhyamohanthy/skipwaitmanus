@@ -1,5 +1,5 @@
 import type { Express, Request } from "express";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, createGiftSubscriptionCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, retrieveGiftSubscriptionPlan, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, createGiftSubscriptionCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, retrieveGiftSubscriptionPlan, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
@@ -25,6 +25,8 @@ type Deps = {
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
   getCreditSummary?: (userId: number, role: TokenRole) => Promise<unknown>;
   alertPaymentReview?: (input: { paymentId: number; reason: string; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
+  applyPaymentRefund?: (input: { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string }) => Promise<{ status: string; paymentId?: number; reason?: string }>;
+  alertPaymentRefund?: (input: { eventId: string; invoiceId?: string; paymentId?: number; reason: string; refundAmount?: number; currency?: string }) => Promise<unknown>;
   alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
   createGiftCheckout?: typeof createGiftSubscriptionCheckout;
   recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number; plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; amount?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; plan?: PaidSubscriptionPlan | null; currency?: string | null; subscriptionId?: string | null }>;
@@ -374,6 +376,27 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       } catch (error) {
         console.error("[Chargebee] gift event error", error);
         return res.status(500).json({ error: "Gift synchronization retry required" });
+      }
+    }
+
+    // A provider refund is a money-out obligation. A full refund of unspent
+    // credits takes them back; everything else is parked and alerted. Failure
+    // returns 500 so Chargebee retries; the handler is idempotent per refund.
+    const refund = parseRefundEvent(req.body);
+    if (refund && deps.applyPaymentRefund) {
+      handled = true;
+      try {
+        const settled = await deps.applyPaymentRefund(refund);
+        obligations.refund = settled;
+        if (settled.status === "review" || settled.status === "unmatched") {
+          const reason = settled.reason ?? "refund_unmatched";
+          console.error("[Chargebee] refund needs review", { eventId: refund.eventId, invoiceId: refund.invoiceId, reason });
+          record({ action: "billing.refund_needs_review", outcome: "failure", resourceType: "chargebee_invoice", resourceId: refund.invoiceId ?? refund.eventId, metadata: { eventId: refund.eventId, reason, paymentId: settled.paymentId ?? null } });
+          void deps.alertPaymentRefund?.({ eventId: refund.eventId, invoiceId: refund.invoiceId, paymentId: settled.paymentId, reason, refundAmount: refund.refundAmount, currency: refund.currency });
+        }
+      } catch (error) {
+        console.error("[Chargebee] refund handling error", error);
+        return res.status(500).json({ error: "Refund synchronization retry required" });
       }
     }
 

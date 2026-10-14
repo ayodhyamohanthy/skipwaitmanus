@@ -100,6 +100,29 @@ export function parsePaidPaymentEvent(payload: any) {
   return { eventId, invoiceId, hostedPageId, passThruContent, amount, currency } satisfies ParsedPaidPaymentEvent;
 }
 
+export type ParsedRefundEvent = { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string };
+
+/**
+ * A provider refund (event `payment_refunded`). Fields that cannot be read are
+ * left undefined and the handler treats that as "needs a human", never as
+ * "nothing to do": a refund we cannot map must not disappear silently.
+ */
+export function parseRefundEvent(payload: any): ParsedRefundEvent | undefined {
+  if (payload?.event_type !== "payment_refunded") return undefined;
+  const eventId = getChargebeeEventId(payload);
+  if (!eventId) return undefined;
+  const content = payload?.content ?? {};
+  const transaction = content.transaction;
+  const creditNote = content.credit_note;
+  const invoice = content.invoice;
+  const invoiceId = typeof invoice?.id === "string" ? invoice.id : typeof creditNote?.reference_invoice_id === "string" ? creditNote.reference_invoice_id : undefined;
+  const rawAmount = transaction && (transaction.type === undefined || transaction.type === "refund") && transaction.amount !== undefined ? transaction.amount : creditNote?.total;
+  const amount = Number(rawAmount);
+  const rawCurrency = transaction?.currency_code ?? creditNote?.currency_code ?? invoice?.currency_code;
+  const currency = typeof rawCurrency === "string" ? rawCurrency.toUpperCase() : undefined;
+  return { eventId, invoiceId, refundAmount: Number.isInteger(amount) && amount > 0 ? amount : undefined, currency };
+}
+
 function dateFromChargebeeSeconds(value: unknown) {
   const seconds = Number(value);
   return Number.isSafeInteger(seconds) && seconds > 0 ? new Date(seconds * 1000) : undefined;
