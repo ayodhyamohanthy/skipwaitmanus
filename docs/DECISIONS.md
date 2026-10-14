@@ -31,7 +31,9 @@ Ethics guardrail for every psychology-based proposal: no dark patterns, false ur
 Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
 
 ## Open owner questions (nothing is built until answered here)
-referrer tips (seeker→referrer money) · machine translation of 6 languages vs preferences-only · human expert-review staffing · employer referral campaigns · faded vs solid-grey disabled buttons · PayPal reference transactions for USD auto-extend · CA advice on SAC/export once GST-registered · NY/CA counsel for Concierge.
+Goal-alignment proposal (Oct 14, `docs/GOAL_ALIGNMENT_AUDIT_2026-10-14.md`): P0 fixes B1.1–B1.4 and the Pro/Max messaging transition · two-track plan (founder supply sprint + build order) · money option M1/M2/M3 (affects D-005, D-009) · founder outreach commitment and Aug-plan root cause · baseline data run · launch-company commitments · amend AGENTS invariants 3 and 4 · retire the AGENTS.md:35 autonomy clause · D-006 scope for employer placement and talent unlocks · analytics tool · referrer sign-in model · closing PRs #115/#47 after recording Playbook §0.3/§1.1/§4.9 · closing stale PRs #129/#130/#131.
+
+Earlier questions: referrer tips (seeker→referrer money) · machine translation of 6 languages vs preferences-only · human expert-review staffing · employer referral campaigns · faded vs solid-grey disabled buttons · PayPal reference transactions for USD auto-extend · CA advice on SAC/export once GST-registered · NY/CA counsel for Concierge.
 
 ## Superseded
 - `docs/KIT_V4_COVERAGE.md` founder calls → D-001, D-002, D-005.
