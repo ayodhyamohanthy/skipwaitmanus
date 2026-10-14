@@ -75,6 +75,7 @@ const detailSchema = z.object({
 
 const conversationSchema = z.object({
   messages: z.array(z.object({ id: z.number().int(), body: z.string(), createdAt: timestampSchema, isMine: z.boolean() })).nullish(),
+  referenceId: z.string().nullish(),
 });
 
 export type ThreadAttachment = { id: number; fileName: string; url: string | null };
@@ -172,9 +173,9 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
   };
 }
 
-export async function loadConversation(requestId: number, getToken: TokenGetter): Promise<{ messages: ThreadMessage[] }> {
+export async function loadConversation(requestId: number, getToken: TokenGetter): Promise<{ messages: ThreadMessage[]; referenceId: string | null }> {
   const payload = parse(conversationSchema, await authedFetch(`/api/company-referrals/${requestId}/conversation`, getToken));
-  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine })) };
+  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine })), referenceId: payload.referenceId ?? null };
 }
 
 export async function sendConversationMessage(requestId: number, body: string, getToken: TokenGetter) {
@@ -189,8 +190,8 @@ export async function decideReview(requestId: number, decision: "approved" | "de
   });
 }
 
-export async function recordProgress(requestId: number, status: string, getToken: TokenGetter) {
-  return authedFetch(`/api/company-referrals/${requestId}/progress`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+export async function recordProgress(requestId: number, status: string, getToken: TokenGetter, referenceId?: string) {
+  return authedFetch(`/api/company-referrals/${requestId}/progress`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(referenceId ? { status, referenceId } : { status }) });
 }
 
 export async function withdrawThreadRequest(requestId: number, getToken: TokenGetter) {

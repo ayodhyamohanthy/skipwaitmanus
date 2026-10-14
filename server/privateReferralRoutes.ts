@@ -1,3 +1,4 @@
+import { normalizeReferenceId, REFERENCE_ID_ERROR } from "../shared/referenceId";
 import { randomUUID } from "node:crypto";
 import { resolveTrustedClientIp } from "./_core/trustedClientIp";
 import { createDecipheriv } from "node:crypto";
@@ -108,8 +109,8 @@ export type PrivateReferralRouteDeps = {
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
   issueWorkEmailEnrollmentReceipt?: (input: { email: string; userId: number }) => Promise<{ receipt: string; expiresAt: Date }>;
   completeWorkEmailOtpEnrollment?: (input: { receipt: string; email: string; userId: number; inviteCode?: string }) => Promise<{ workEmailDomain: string; reward: { rewarded: boolean; tokenCount?: number }; replayed: boolean }>;
-  updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
-  getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus }>;
+  updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus; referenceId?: string | null }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
+  getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus; referenceId?: string | null }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
   sendReferralConversationMessage?: (userId: number, requestId: number, body: string) => Promise<{ id: number }>;
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
@@ -995,7 +996,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!Number.isInteger(requestId) || requestId <= 0 || !isReferralProgressUpdateStatus(status)) return res.status(400).json({ error: "Choose a real referral progress milestone" });
       if (await isRequestBlocked(actorUserId, requestId)) return blockedThreadDeny(actorUserId, requestId, res);
       if (!deps.updateReferralProgress) return res.status(503).json({ error: "Referral progress updates are unavailable right now" });
-      const result = await deps.updateReferralProgress(actorUserId, { requestId, status });
+      const referenceId = normalizeReferenceId(req.body?.referenceId);
+      if (referenceId === undefined || (referenceId !== null && status !== "intro_made")) return res.status(400).json({ error: REFERENCE_ID_ERROR });
+      const result = await deps.updateReferralProgress(actorUserId, { requestId, status, referenceId });
       record({ actorUserId, action: "company_referral.progress_updated", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { status: result.status } });
       res.json({ progress: result });
     } catch (error) {
@@ -1022,7 +1025,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const progress = await deps.getApprovedReferralProgressStatus?.(actorUserId, requestId);
       record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "success", resourceType: "referral_conversation", resourceId: requestId, metadata: { messageCount: messages.length } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ messages, progressStatus: progress?.status });
+      res.json({ messages, progressStatus: progress?.status, referenceId: progress?.referenceId ?? null });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not open this private conversation";
       record({ actorUserId, action: "company_referral.conversation_viewed", outcome: "denied", resourceType: "referral_conversation", resourceId: Number.isInteger(requestId) ? requestId : undefined });

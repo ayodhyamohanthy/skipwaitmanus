@@ -433,6 +433,8 @@ export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   fromStatus: varchar("fromStatus", { length: 32 }).notNull(),
   resultingStatus: varchar("resultingStatus", { length: 32 }).notNull(),
   resultingRevision: int("resultingRevision").notNull(),
+  // Optional portal reference recorded on mark-as-referred (queue task 16).
+  referenceId: varchar("referenceId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_transition_operation_unique").on(table.referralRequestId, table.operationKey), uniqueIndex("referral_transition_revision_unique").on(table.referralRequestId, table.resultingRevision)]);
 

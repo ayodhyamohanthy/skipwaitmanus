@@ -1979,6 +1979,7 @@ type ReferralTransitionInput = {
   patch?: Partial<typeof referralRequests.$inferInsert>;
   notification?: { userId: number; title: string; body: string };
   beforeCommit?: (tx: any, current: typeof referralRequests.$inferSelect) => Promise<void>;
+  eventReferenceId?: string | null;
 };
 
 async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInput) {
@@ -1996,7 +1997,7 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
     throw new ReferralTransitionConflict("This referral action lost a stale-write race", latest ?? { status: current.status, revision: current.revision });
   }
   if (["declined","withdrawn","closed"].includes(input.toStatus)) await tx.update(referralDocumentAccessGrants).set({revokedAt:new Date(),revokeReason:`terminal:${input.toStatus}`}).where(and(eq(referralDocumentAccessGrants.referralRequestId,input.requestId),isNull(referralDocumentAccessGrants.revokedAt)));
-  await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision });
+  await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision, referenceId: input.eventReferenceId ?? null });
   if (input.notification) await tx.insert(notifications).values({ userId: input.notification.userId, category: "status", title: input.notification.title, body: input.notification.body, eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` }).onDuplicateKeyUpdate({ set: { eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` } });
   return { status: input.toStatus, revision: nextRevision, replayed: false as const };
 }
@@ -2016,7 +2017,7 @@ export function authorizeApprovedReferralConversation(userId: number, request: {
   return { jobSeekerId: request.jobSeekerId, referrerId: request.referrerId, recipientId: userId === request.jobSeekerId ? request.referrerId : request.jobSeekerId };
 }
 
-export async function updateReferralProgress(userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) {
+export async function updateReferralProgress(userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus; referenceId?: string | null }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const existing = (await tx.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
@@ -2026,7 +2027,7 @@ export async function updateReferralProgress(userId: number, input: { requestId:
     const currentIndex = referralProgressUpdateStatuses.indexOf(existing.status as ReferralProgressUpdateStatus);
     const nextIndex = referralProgressUpdateStatuses.indexOf(input.status);
     if (!prior && (existing.status === "closed" || (input.status !== "closed" && (nextIndex < 0 || nextIndex <= currentIndex)))) throw new ReferralTransitionConflict("Choose a later real progress milestone", { status: existing.status, revision: existing.revision });
-    const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "progress", operationKey, toStatus: input.status, allowedFrom: [existing.status], authorize: row => { authorizeApprovedReferralConversation(userId, row); }, notification: { userId: recipientId, title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." } });
+    const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "progress", operationKey, toStatus: input.status, allowedFrom: [existing.status], eventReferenceId: input.status === "intro_made" ? input.referenceId ?? null : null, authorize: row => { authorizeApprovedReferralConversation(userId, row); }, notification: { userId: recipientId, title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." } });
     return { ...result, status: result.status as ReferralProgressUpdateStatus, changed: !result.replayed };
   });
 }
@@ -2038,12 +2039,14 @@ async function getApprovedReferralConversationParticipants(userId: number, reque
   return { db, ...authorizeApprovedReferralConversation(userId, request[0]) };
 }
 
-export async function getApprovedReferralProgressStatus(userId: number, requestId: number): Promise<{ status: ReferralStatus }> {
+export async function getApprovedReferralProgressStatus(userId: number, requestId: number): Promise<{ status: ReferralStatus; referenceId: string | null }> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
   authorizeApprovedReferralConversation(userId, request[0]);
-  return { status: request[0].status as ReferralStatus };
+  // The latest portal reference recorded when the request was marked as referred.
+  const event = (await db.select({ referenceId: referralTransitionEvents.referenceId }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "progress"), eq(referralTransitionEvents.resultingStatus, "intro_made"), isNotNull(referralTransitionEvents.referenceId))).orderBy(desc(referralTransitionEvents.id)).limit(1))[0];
+  return { status: request[0].status as ReferralStatus, referenceId: event?.referenceId ?? null };
 }
 
 export type PrivateReferralShareCard = { shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean };
