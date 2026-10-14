@@ -288,6 +288,24 @@ describe("Ask composer", () => {
     expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(true); // gated by link and note, never by location
   });
 
+  it("continues a saved server draft into an empty composer and never overwrites typing", async () => {
+    const draft = { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "From the door.", updatedAt: "x" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/ask-drafts" ? { ok: true, status: 200, json: async () => ({ draft }) } : { ok: false, status: 404, json: async () => ({}) }));
+    render(<Ask />);
+    await waitFor(() => expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/1"));
+    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe("From the door.");
+  });
+
+  it("leaves a note the seeker already has alone when a draft arrives", async () => {
+    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/7", note: "Mine.", savedAt: Date.now() }));
+    const draft = { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "Old draft.", updatedAt: "x" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/ask-drafts" ? { ok: true, status: 200, json: async () => ({ draft }) } : { ok: false, status: 404, json: async () => ({}) }));
+    render(<Ask />);
+    await new Promise(resolve => setTimeout(resolve, 60));
+    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/7");
+    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe("Mine.");
+  });
+
   it("ignores a malformed hand-over instead of prefilling it", () => {
     vi.stubGlobal("fetch", vi.fn());
     sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ targetRoleUrl: "https://careers.wipro.com/job/1", note: "x", injected: true }));

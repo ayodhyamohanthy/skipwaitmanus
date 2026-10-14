@@ -173,6 +173,17 @@ export const seekerAlerts = mysqlTable("seekerAlerts", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("seeker_alerts_user_domain_unique").on(table.userId, table.companyDomain), index("seeker_alerts_user_idx").on(table.userId), index("seeker_alerts_domain_idx").on(table.companyDomain)]);
 
+// One saved ask draft per user (queue task 11). Never sent; /ask continues it.
+export const askDrafts = mysqlTable("askDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companySlug: varchar("companySlug", { length: 64 }).notNull(),
+  targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }).notNull(),
+  note: varchar("note", { length: 600 }).notNull().default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_drafts_user_unique").on(table.userId)]);
+
 export const assistantConnections = mysqlTable("assistantConnections", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),

@@ -50,6 +50,7 @@ import { registerOAuthRoutes } from "../oauthRoutes";
 import { consumeAuthCode, getOAuthClient, issueAuthCode, registerOAuthClient } from "../oauthStore";
 import { registerMcpRoutes } from "../mcpRoutes";
 import { registerProfileRoutes } from "../profileRoutes";
+import { registerAskDraftRoutes } from "../askDraftRoutes";
 import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerBlocksRoutes } from "../blocksRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
@@ -202,6 +203,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     recordActivity: db.recordOperationalActivity,
   });
   // Seeker/referrer profiles, work showcases, and shareable public profiles.
+  registerAskDraftRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   registerProfileRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, getMyProfile: db.getMyProfile, updateMyProfile: db.updateMyProfile, listMyWorkItems: db.listMyWorkItems, createWorkItem: db.createWorkItem, updateWorkItem: db.updateWorkItem, deleteWorkItem: db.deleteWorkItem, getPublicProfileByHandle: db.getPublicProfileByHandle });
   // Safety reports and company suggestions intake.
   registerSafetyRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity, createSafetyReport: db.createSafetyReport, listMySafetyReports: db.listMySafetyReports, createCompanySuggestion: db.createCompanySuggestion, listMyCompanySuggestions: db.listMyCompanySuggestions, listSafetyReportsAdmin: db.listSafetyReportsAdmin, reviewSafetyReport: db.reviewSafetyReport, listCompanySuggestionsAdmin: db.listCompanySuggestionsAdmin, reviewCompanySuggestion: db.reviewCompanySuggestion, createNotification: (userId, title, body) => db.createNotification(userId, "system", title, body) });

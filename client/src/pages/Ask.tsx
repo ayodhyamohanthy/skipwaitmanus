@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowRight, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
 import { inferAskJobFunction } from "@shared/jobFunctionClassifier";
@@ -10,6 +10,7 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { clearAskPrefill, readAskPrefill } from "@/lib/askPrefill";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
+import { discardAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
 import { useSeekerSetup } from "@/lib/useSeekerSetup";
 import { OTHER_LOCATION, locationFitMessage, parseRoleLocation, roleLocationFit, roleLocationOptions } from "@shared/roleLocationFit";
 import { useAskCompany } from "@/lib/useAskCompany";
@@ -72,7 +73,14 @@ export default function Ask() {
   const chosenLocation = parseRoleLocation(roleLocation, otherPlace);
   const locationFit = roleLocationFit(chosenLocation, setup);
   const locationNote = locationFitMessage(locationFit, chosenLocation);
-  const askCompany = useAskCompany(prefill?.companySlug, url, officialUrl);
+  // A draft saved from a company door continues here, but only into an empty composer.
+  const draft = useAskDraft(isLoaded && isSignedIn, fetchToken);
+  useEffect(() => {
+    if (!draft) return;
+    setUrl(current => current || draft.targetRoleUrl);
+    setNote(current => current || draft.note.slice(0, NOTE_LIMIT));
+  }, [draft]);
+  const askCompany = useAskCompany(prefill?.companySlug ?? (draft && url === draft.targetRoleUrl ? draft.companySlug : undefined), url, officialUrl);
   const shownFunction = pickedFunction ?? (officialUrl ? inferAskJobFunction({ targetRoleUrl: url.trim() }) : null);
 
   const authed = async (path: string, init?: RequestInit) => {
@@ -144,6 +152,7 @@ export default function Ask() {
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       clearAskPrefill();
+      void discardAskDraftRemote(fetchToken);
       // The ask exists now: show the sent screen at once. The open-ask count is
       // informational, so it loads afterwards and can never hold the button on "Sending...".
       setSent(created);
