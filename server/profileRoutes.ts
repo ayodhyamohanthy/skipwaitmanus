@@ -1,5 +1,7 @@
 import express, { type Express, type Request } from "express";
 import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
+import { seekerSetupPatchSchema } from "../shared/seekerSetup";
+import { getSeekerSetup, SeekerSetupResumeError, updateSeekerSetup } from "./seekerSetup";
 import { referrerAreasInputSchema, referrerLevelsInputSchema } from "../shared/jobFunctions";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
@@ -17,6 +19,8 @@ export type ProfileRouteDeps = {
   getPublicProfileByHandle?: typeof getPublicProfileByHandle;
   getReferrerPreferences?: typeof getReferrerPreferences;
   updateReferrerPreferences?: typeof updateReferrerPreferences;
+  getSeekerSetup?: typeof getSeekerSetup;
+  updateSeekerSetup?: typeof updateSeekerSetup;
 };
 
 const itemId = (raw: string) => {
@@ -41,6 +45,33 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json(await myProfile(identity.account.id));
     } catch { res.status(500).json({ error: "We could not load your profile" }); }
+  });
+
+  // Seeker setup answers (/onboarding). Owner-only: the user id always comes from
+  // the session, never from the request.
+  app.get("/api/profile/setup", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your setup" });
+      res.set("Cache-Control", "private, no-store");
+      res.json(await (deps.getSeekerSetup ?? getSeekerSetup)(identity.account.id));
+    } catch { res.status(500).json({ error: "We could not load your setup" }); }
+  });
+
+  app.patch("/api/profile/setup", express.json(), async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to save your setup" });
+      const parsed = seekerSetupPatchSchema.safeParse(req.body ?? {});
+      if (!parsed.success) return res.status(400).json({ error: "Check your setup answers and try again" });
+      const result = await (deps.updateSeekerSetup ?? updateSeekerSetup)(identity.account.id, parsed.data);
+      record({ actorUserId: identity.account.id, action: "profile.setup_updated", outcome: "success", resourceType: "profile" });
+      res.set("Cache-Control", "private, no-store");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof SeekerSetupResumeError) return res.status(400).json({ error: error.message });
+      res.status(500).json({ error: "We could not save your setup" });
+    }
   });
 
   app.put("/api/profile/me", express.json(), async (req, res) => {
