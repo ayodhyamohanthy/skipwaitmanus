@@ -1,6 +1,6 @@
 # Goal-alignment audit and proposal — 2026-10-14 (revision 2, after red-team review)
 
-**Status: PROPOSED — awaiting owner approval.** Nothing below is built until the owner approves it and it is recorded in `docs/DECISIONS.md` (D-010). The owner's answers are recorded in section 9.
+**Status: ANSWERED Oct 14 2026 (see section 9) — only the approved items are built.** Nothing below is built until the owner approves it and it is recorded in `docs/DECISIONS.md` (D-010). The owner's answers are recorded in section 9.
 
 - **North star (D-010):** SkipWait becomes the go-to, preferred **global** site for job referrals, getting people referred **faster**.
 - **Audited at:** `main` 181d2e0; live API a9f01bc on Oct 14 2026.
@@ -198,5 +198,9 @@ Facts needed from the owner: current MRR, the number of paying Pro/Max users, mo
   - Closing the stale #129, #130 and #131.
   - Re-checking #2 and #18.
 
-## 9. Owner answers
-(pending)
+## 9. Owner answers (Oct 14 2026)
+- **Q1 P0 fixes → "Fix all 4 now"** (D-012): routing, refunds incl. past declines, truthful FAQ; block pre-acceptance messages to referrers for everyone; notify Pro/Max subscribers with a pro-rata credit or refund offer.
+- **Q2 plan shape → "Keep the current queue"** (D-013): Track B re-ordering not adopted; items stay proposals.
+- **Q3 money → "M3 sell passes as approved"** (D-014).
+- **Q4 founder time → "Yes, ~10 hours a week"** (D-015): Claude prepares the sprint kit.
+- Still open: Aug-plan root cause, baseline data run, landing "open doors" row, uncovered asks reserving credits.

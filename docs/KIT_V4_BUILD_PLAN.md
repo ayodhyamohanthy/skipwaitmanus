@@ -45,10 +45,10 @@ Pending owner decisions (do not build until decided): referrer tips (seeker→re
 - Money: no real payments ever; mock every provider in tests; amounts only from the server catalog; provider-confirmed state only.
 
 ## 3a. Goal-alignment audit (Oct 14 2026) — proposal awaiting owner approval
-The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNMENT_AUDIT_2026-10-14.md`. **Do not re-order the queue or start its items until the owner's answers are recorded there and in `docs/DECISIONS.md`.** Corrected key facts:
+The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNMENT_AUDIT_2026-10-14.md`. **Owner answers (Oct 14): fix the four P0s now (D-012); keep the queue order (D-013); sell passes as approved (D-014); founder supply sprint (D-015). Other proposal items are not adopted.** Corrected key facts:
 - `/api/companies` shows an *available* referrer only at skipwait.me (SkipWait's own domain) — external available coverage is 0. Verified-but-paused/full referrers need an owner-run query.
 - Server-side ask lifecycle data exists (`referralTransitionEvents`, `/admin/flow-health`) but no baseline has been run; client analytics are not running; rejected-link demand is not logged.
-- **Verified P0 candidates (queue rule 1), awaiting the owner's go-ahead (asked Oct 14):** (1) ATS vendor hosts (Keka, Darwinbox, Zoho Recruit, Taleo, SuccessFactors, Oracle Cloud, myworkdaysite, Freshteam) resolve to the vendor as employer — latent misrouting; (2) Terms/Refund Policy promise a credit back when a referrer declines, the code does not refund; (3) the privacy page says messaging opens only after acceptance, the DM route lets Pro/Max or mutual followers message referrers first; (4) the landing FAQ says credits are "used only when an employee accepts".
+- **P0s approved Oct 14 (D-012) — queue task P0 below:** (1) ATS vendor hosts (Keka, Darwinbox, Zoho Recruit, Taleo, SuccessFactors, Oracle Cloud, myworkdaysite, Freshteam) resolve to the vendor as employer — latent misrouting; (2) Terms/Refund Policy promise a credit back when a referrer declines, the code does not refund; (3) the privacy page says messaging opens only after acceptance, the DM route lets Pro/Max or mutual followers message referrers first; (4) the landing FAQ says credits are "used only when an employee accepts".
 - Security PRs #129/#130/#131 are already on `main` (stale PRs); #2/#18 not yet re-checked.
 
 ## 3b. Priority queue — how every model picks work (binding)
@@ -63,9 +63,11 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 
 | # | Task (audit feature names) | Depends on | Size | Status |
 |---|---|---|---|---|
+| **P0 — approved Oct 14 (D-012), preempts everything** |||||
+| P0 | D-012: ATS vendor hosts never count as the employer; decline refunds the credit + past-decline refund script (dry-run first, owner runs); no seeker↔referrer first message before acceptance (Pro/Max notice + pro-rata offer script, owner approves copy); truthful credits FAQ | — | M | in progress — Claude Code — 2026-10-14 — branch p0-promises (from main) |
 | **Tier A — finish in-flight work** |||||
-| 1 | Wave 3 kit pricing: pricing-model → checkout-passes → plans-billing-ui → catalog-sync (spec 4.1) | — | XL | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: unverified WIP commit e340880 (halted by session limit; migration 0081 is a draft). Resumes after the goal-alignment audit and the owner's priority decision |
-| 2 | Wave 4a password sign-in: `password-auth`, `sign-in-intent-routing` (spec 4.2) | — | L | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: ca6c23e (contracts, limiter, guard) + unverified WIP a0417a0. Resumes after the goal-alignment audit and the owner's priority decision |
+| 1 | Wave 3 kit pricing: pricing-model → checkout-passes → plans-billing-ui → catalog-sync (spec 4.1) | P0 | XL | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: unverified WIP commit e340880 (halted by session limit; migration 0081 is a draft; renumber to 0080–0082). Resumes right after P0 (D-013) |
+| 2 | Wave 4a password sign-in: `password-auth`, `sign-in-intent-routing` (spec 4.2) | P0 | L | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: ca6c23e + unverified WIP a0417a0; main changed `workosAuth.ts` (D-011) — expect a merge. Resumes after P0, alongside task 1 (D-013) |
 | **Tier B — trust, privacy, compliance** |||||
 | 3 | `work-email-hmac-storage`: store only an HMAC of work emails in OTP codes/receipts, purge plaintext, migrate existing rows | — | M | todo |
 | 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | todo |
