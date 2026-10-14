@@ -182,11 +182,11 @@ export async function sendConversationMessage(requestId: number, body: string, g
   await authedFetch(`/api/company-referrals/${requestId}/conversation`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
 }
 
-export async function decideReview(requestId: number, decision: "approved" | "declined", declineReason: string | undefined, getToken: TokenGetter) {
+export async function decideReview(requestId: number, decision: "approved" | "declined", declineReason: string | undefined, getToken: TokenGetter, passReason?: string) {
   return authedFetch(`/api/company-referrals/${requestId}/one-click-review`, getToken, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(declineReason ? { decision, declineReason } : { decision }),
+    body: JSON.stringify(declineReason ? { decision, declineReason, ...(passReason ? { passReason } : {}) } : { decision }),
   });
 }
 
