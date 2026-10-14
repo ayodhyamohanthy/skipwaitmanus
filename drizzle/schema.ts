@@ -605,8 +605,9 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
   monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
   monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
-  // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0080 added the kit plans.
-  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500"]).default("free").notNull(),
+  // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0080 added the kit plans,
+  // 0081 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
+  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   subscriptionCurrency: varchar("subscriptionCurrency", { length: 3 }),
@@ -617,10 +618,11 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   // a switch scheduled for term end, a scheduled or active pause, and the dunning state of a
   // failed renewal. Written only from provider responses and webhook snapshots.
   subscriptionItemPriceId: varchar("subscriptionItemPriceId", { length: 100 }),
-  subscriptionBillingPeriod: mysqlEnum("subscriptionBillingPeriod", ["monthly", "yearly"]),
+  // Order pinned to shared/billingCatalog.ts BILLING_PERIODS; 0081 added the 30- and 90-day passes.
+  subscriptionBillingPeriod: mysqlEnum("subscriptionBillingPeriod", ["monthly", "yearly", "30d", "90d"]),
   subscriptionAmount: int("subscriptionAmount"),
   pendingPlan: varchar("pendingPlan", { length: 32 }),
-  pendingBillingPeriod: mysqlEnum("pendingBillingPeriod", ["monthly", "yearly"]),
+  pendingBillingPeriod: mysqlEnum("pendingBillingPeriod", ["monthly", "yearly", "30d", "90d"]),
   pendingPlanEffectiveAt: timestamp("pendingPlanEffectiveAt"),
   subscriptionPauseAt: timestamp("subscriptionPauseAt"),
   subscriptionResumeAt: timestamp("subscriptionResumeAt"),
@@ -630,6 +632,10 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   paymentNextRetryAt: timestamp("paymentNextRetryAt"),
   paymentFailureReason: varchar("paymentFailureReason", { length: 32 }),
   paymentRetryRequestedAt: timestamp("paymentRetryRequestedAt"),
+  // The one-time 14-day reverse trial (0081, shared/planEntitlements.ts): set once, from the JS
+  // clock, when a Free seeker's ask starts it; the trial credits are a planCreditGrants "trial" row.
+  trialStartedAt: timestamp("trialStartedAt"),
+  trialEndsAt: timestamp("trialEndsAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("token_balances_user_idx").on(table.userId), uniqueIndex("token_balances_user_role_unique").on(table.userId, table.role), uniqueIndex("token_balances_subscription_unique").on(table.subscriptionId)]);
 
@@ -638,8 +644,8 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0079 added the kit ledger kinds.
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund", "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend"]).notNull(),
+  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0079 added the kit ledger kinds, 0081 trial_grant.
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund", "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend", "trial_grant"]).notNull(),
   source: varchar("source", { length: 40 }),
   sourceCycleKey: varchar("sourceCycleKey", { length: 16 }),
   referenceType: varchar("referenceType", { length: 40 }),
@@ -726,14 +732,16 @@ export const promoCreditGrants = mysqlTable("promoCreditGrants", {
 // Kit credit ledger (0079, shared/creditLedger.ts): the dated and one-time
 // credit buckets. "carryover" holds what a plan cycle left unspent, bound to the
 // subscription that granted it (expiresAt NULL = while subscribed, Land);
-// "welcome" is the one-time 3 credits per person. grantKey is the idempotency
-// claim: one carryover per subscription cycle, one welcome per canonical person.
+// "welcome" is the one-time 3 credits per person; "trial" (0081) the reverse
+// trial's 5 credits, ending with the trial. grantKey is the idempotency claim:
+// one carryover per subscription cycle, one welcome and one trial per person.
 // Every change to creditsRemaining has a tokenTransactions row with creditGrantId.
 export const planCreditGrants = mysqlTable("planCreditGrants", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
-  source: mysqlEnum("source", ["carryover", "welcome"]).notNull(),
+  // Order pinned to shared/creditLedger.ts CREDIT_GRANT_SOURCES; 0081 added "trial".
+  source: mysqlEnum("source", ["carryover", "welcome", "trial"]).notNull(),
   grantKey: varchar("grantKey", { length: 64 }).notNull(),
   planId: varchar("planId", { length: 32 }),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
@@ -830,15 +838,15 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
-  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0080 added the kit plans.
-  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500"]).notNull(),
+  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0080 added the kit plans, 0081 the Oct 14 2026 plans.
+  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).notNull(),
   itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   status: mysqlEnum("status", ["pending", "activated", "cancelled"]).default("pending").notNull(),
   // 0080: yearly terms, plan changes of an existing subscription, and the provider's
   // recorded payment failure (shared/billingAccount.ts PAYMENT_FAILURE_REASONS).
-  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly"]).default("monthly").notNull(),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly", "30d", "90d"]).default("monthly").notNull(),
   kind: mysqlEnum("kind", ["new", "change"]).default("new").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   failureReason: varchar("failureReason", { length: 32 }),
@@ -873,7 +881,7 @@ export const billingInvoices = mysqlTable("billingInvoices", {
   kind: mysqlEnum("kind", ["subscription", "credit_pack"]).notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   planId: varchar("planId", { length: 32 }),
-  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly"]),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly", "30d", "90d"]),
   tokenCount: int("tokenCount"),
   amount: int("amount").notNull(),
   amountRefunded: int("amountRefunded").default(0).notNull(),

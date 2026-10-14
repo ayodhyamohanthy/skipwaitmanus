@@ -39,6 +39,7 @@
             "buckets": {
               "cycle": 7,
               "carriedOver": 0,
+              "trial": 0,
               "welcome": 0,
               "purchased": 2,
               "promo": 0

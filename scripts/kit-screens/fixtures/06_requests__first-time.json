@@ -21,9 +21,9 @@
           "cap": 3,
           "full": false,
           "nextPlan": {
-            "id": "momentum",
-            "label": "Momentum",
-            "openRequests": 15
+            "id": "start",
+            "label": "Start",
+            "openRequests": 8
           }
         }
       }

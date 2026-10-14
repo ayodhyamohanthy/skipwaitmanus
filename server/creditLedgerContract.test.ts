@@ -14,13 +14,14 @@ describe("credit ledger schema contract (0079)", () => {
   it("tokenTransactions.kind is the shared ledger kind list, existing values first and in order", () => {
     expect([...tokenTransactions.kind.enumValues]).toEqual([...TOKEN_LEDGER_KINDS]);
     expect(TOKEN_LEDGER_KINDS.slice(0, 11)).toEqual(["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund"]);
-    expect(migration).toContain(`MODIFY \`kind\` ENUM(${quoted(TOKEN_LEDGER_KINDS, "''")}) NOT NULL`);
+    // 0079 shipped the first sixteen kinds; its file is immutable (0081 appends trial_grant).
+    expect(migration).toContain(`MODIFY \`kind\` ENUM(${quoted(TOKEN_LEDGER_KINDS.slice(0, 16), "''")}) NOT NULL`);
   });
 
   it("planCreditGrants source and status match the shared contract and the migration", () => {
     expect([...planCreditGrants.source.enumValues]).toEqual([...CREDIT_GRANT_SOURCES]);
     expect([...planCreditGrants.status.enumValues]).toEqual([...CREDIT_GRANT_STATUSES]);
-    expect(migration).toContain(`\`source\` enum(${quoted(CREDIT_GRANT_SOURCES, "'")}) NOT NULL`);
+    expect(migration).toContain(`\`source\` enum(${quoted(CREDIT_GRANT_SOURCES.slice(0, 2), "'")}) NOT NULL`);
     expect(migration).toContain(`\`status\` enum(${quoted(CREDIT_GRANT_STATUSES, "'")}) NOT NULL DEFAULT 'active'`);
   });
 

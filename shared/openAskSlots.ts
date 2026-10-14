@@ -3,10 +3,11 @@
  * An ask holds a slot while it is pending and unexpired; it frees the slot when
  * it is answered (accepted or passed), withdrawn, or expires unclaimed
  * (shared/referral.ts isAskExpired). The cap is the plan entitlement's
- * openRequests; null means unlimited (Land Concierge).
+ * openRequests (every plan has one; Land Concierge holds 75). On every plan a
+ * seeker also holds at most MAX_OPEN_ASKS_PER_COMPANY open asks at one company.
  */
 import { z } from "zod";
-import { CATALOG_PLANS, CATALOG_PLAN_IDS, planDisplayName, tierRank, type CatalogTier } from "./planCatalog";
+import { CATALOG_PLANS, CATALOG_PLAN_IDS, MAX_OPEN_ASKS_PER_COMPANY, planDisplayName, tierRank, type CatalogTier } from "./planCatalog";
 import { ENTITLED_PLAN_IDS, type PlanEntitlements } from "./planEntitlements";
 
 export const SLOT_CAP_REACHED = "slot_cap_reached" as const;
@@ -14,8 +15,7 @@ export const SLOT_CAP_REACHED = "slot_cap_reached" as const;
 export const nextSlotPlanSchema = z.object({
   id: z.enum(CATALOG_PLAN_IDS),
   label: z.string().min(1),
-  /** null means unlimited. */
-  openRequests: z.number().int().positive().nullable(),
+  openRequests: z.number().int().positive(),
 });
 export type NextSlotPlan = z.infer<typeof nextSlotPlanSchema>;
 
@@ -24,8 +24,7 @@ export const openAskSlotsSchema = z.object({
   planLabel: z.string().min(1),
   /** The caller's own pending, unexpired asks. */
   open: z.number().int().min(0),
-  /** null means unlimited. */
-  cap: z.number().int().positive().nullable(),
+  cap: z.number().int().positive(),
   full: z.boolean(),
   nextPlan: nextSlotPlanSchema.nullable(),
 });
@@ -40,19 +39,20 @@ export const slotCapReachedSchema = z.object({
 export type SlotCapReached = z.infer<typeof slotCapReachedSchema>;
 
 /**
- * UPGRADE_NUDGES "Slot cap reached: See Momentum". The nudge names the first
- * catalog plan from Momentum up whose cap is larger than the caller's, so the
- * number it quotes always comes from the catalog. Changeable owner decision.
+ * UPGRADE_NUDGES "Slot cap reached: See Start" (docs/PRICING_RECOMMENDATION.md
+ * section 5: the cheapest fix first). The nudge names the first self-serve
+ * catalog plan from Start up whose cap is larger than the caller's, so the
+ * number it quotes always comes from the catalog. Concierge is by application,
+ * so no nudge points at it. Changeable owner decision.
  */
-export const SLOT_NUDGE_FLOOR_TIER: CatalogTier = "momentum";
+export const SLOT_NUDGE_FLOOR_TIER: CatalogTier = "start";
 
 export function nextSlotPlan(entitlements: PlanEntitlements): NextSlotPlan | null {
   const cap = entitlements.openRequests;
-  if (cap === null) return null;
   const floor = Math.max(tierRank(SLOT_NUDGE_FLOOR_TIER), tierRank(entitlements.tier));
   for (const plan of CATALOG_PLANS) {
-    if (plan.id === "free" || tierRank(plan.tier) < floor) continue;
-    if (plan.openRequests === null || plan.openRequests > cap) return { id: plan.id, label: planDisplayName(plan), openRequests: plan.openRequests };
+    if (plan.byApplication || tierRank(plan.tier) < floor) continue;
+    if (plan.openRequests > cap) return { id: plan.id, label: planDisplayName(plan), openRequests: plan.openRequests };
   }
   return null;
 }
@@ -65,7 +65,7 @@ export function openAskSlots(entitlements: PlanEntitlements, open: number): Open
     planLabel: entitlements.planLabel,
     open: used,
     cap,
-    full: cap !== null && used >= cap,
+    full: used >= cap,
     nextPlan: nextSlotPlan(entitlements),
   };
 }
@@ -76,15 +76,13 @@ function joinOptions(options: readonly string[]): string {
   return `${options.slice(0, -1).join(", ")}, or ${options[options.length - 1]}`;
 }
 
-const capText = (openRequests: number | null) => (openRequests === null ? "unlimited" : String(openRequests));
-
 /**
  * Kit /requests sentence: "All 3 slots are in use. Wait for an answer, withdraw
  * an ask, or get more slots with Momentum (15)." Only options that exist are named.
  */
 export function slotsFullCopy(slots: OpenAskSlots, canWithdraw: boolean): { lead: string; next: string } {
-  const lead = `All ${slots.cap ?? slots.open} slots are in use.`;
-  const more = slots.nextPlan ? `get more slots with ${slots.nextPlan.label} (${capText(slots.nextPlan.openRequests)})` : null;
+  const lead = `All ${slots.cap} slots are in use.`;
+  const more = slots.nextPlan ? `get more slots with ${slots.nextPlan.label} (${slots.nextPlan.openRequests})` : null;
   const options = ["Wait for an answer", ...(canWithdraw ? ["withdraw an ask"] : []), ...(more ? [more] : [])];
   return { lead, next: `${joinOptions(options)}.` };
 }
@@ -94,8 +92,28 @@ export function slotsFullCopy(slots: OpenAskSlots, canWithdraw: boolean): { lead
  * moments" copy). Paying never changes queue position, and the copy says so.
  */
 export function slotCapNudgeCopy(slots: OpenAskSlots): { title: string; body: string; cta: string | null } {
-  const title = `Your ${slots.cap ?? slots.open} requests are all open`;
+  const title = `Your ${slots.cap} requests are all open`;
   if (!slots.nextPlan) return { title, body: "Wait for an answer to free a slot. Queue position stays equal either way.", cta: null };
-  const room = `${capText(slots.nextPlan.openRequests)} open requests`;
+  const room = `${slots.nextPlan.openRequests} open requests`;
   return { title, body: `Wait for an answer to free a slot, or move to ${slots.nextPlan.label} for ${room}. Queue position stays equal either way.`, cta: `See ${slots.nextPlan.label}` };
+}
+
+// ---- Per-company fairness cap (every plan, docs/PRICING_RECOMMENDATION.md section 4) ----
+
+export const COMPANY_CAP_REACHED = "company_cap_reached" as const;
+
+/** POST /api/company-referrals (and an assistant-approved ask) with 2 asks already open at that company: 409 with this body. */
+export const companyCapReachedSchema = z.strictObject({
+  error: z.string().min(1),
+  code: z.literal(COMPANY_CAP_REACHED),
+  companyDomain: z.string().min(1).max(255),
+  /** The caller's own open asks at that company. */
+  open: z.number().int().min(0),
+  cap: z.literal(MAX_OPEN_ASKS_PER_COMPANY),
+});
+export type CompanyCapReached = z.infer<typeof companyCapReachedSchema>;
+
+/** The same on every plan, and the copy says so: paying never buys more asks at one company. */
+export function companyCapCopy(companyDomain: string): string {
+  return `You already have ${MAX_OPEN_ASKS_PER_COMPANY} open asks at ${companyDomain}. Wait for an answer or withdraw one before asking there again. This limit is the same on every plan.`;
 }

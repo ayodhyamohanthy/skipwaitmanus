@@ -4,7 +4,7 @@
 // the wallet row already locked (see server/creditLedger.ts); dates come from
 // the JS clock the caller passes in.
 import { and, eq } from "drizzle-orm";
-import { planCreditGrants, tokenBalances } from "../drizzle/schema";
+import { planCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { BUCKET_SOURCES } from "../shared/creditLedger";
 import { grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { isPaidPlanActive } from "../shared/planEntitlements";
@@ -46,17 +46,27 @@ async function closeCycleTx(tx: LedgerTx, input: { wallet: WalletRow; subscripti
   }
 }
 
+/** True when this wallet already has a plan_grant row with this key (the Free month was granted on an earlier path). */
+async function planGrantRecordedTx(tx: LedgerTx, userId: number, role: WalletRole, idempotencyKey: string): Promise<boolean> {
+  const rows = await tx.select({ id: tokenTransactions.id }).from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.role, role), eq(tokenTransactions.kind, "plan_grant"), eq(tokenTransactions.idempotencyKey, idempotencyKey))).limit(1);
+  return rows.length > 0;
+}
+
 /**
- * Opens a cycle: grants the plan's credits for it with one plan_grant row. The
- * key (subscription, cycle start) makes a second grant for the same cycle fail
- * on the unique index instead of paying twice.
+ * Opens a cycle: grants the plan's credits for it with one plan_grant row. A
+ * paid cycle is keyed (subscription, cycle start), so a second grant for the
+ * same cycle fails on the unique index instead of paying twice. A Free cycle is
+ * keyed by its calendar month: Free gets its 2 credits once per person per
+ * month, however many times the wallet returns to Free inside that month.
  */
 export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: WalletRole; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null }): Promise<CyclePatch> {
   const { userId, role, next } = input;
-  const allowance = cycleRulesFor(input.plan, role).creditsPerMonth;
+  let allowance = cycleRulesFor(input.plan, role).creditsPerMonth;
   if (allowance > 0) {
-    const cycleId = digest(input.subscriptionId ?? "free", next.startsAt.toISOString());
-    await writeLedgerRow(tx, { userId, role, tokenCount: allowance, kind: "plan_grant", source: BUCKET_SOURCES.cycle, sourceCycleKey: next.key, referenceType: "plan_cycle", referenceId: `${next.key}:${cycleId.slice(0, 24)}`, idempotencyKey: `plan-cycle:${cycleId}`, monthlyCreditsAfter: allowance });
+    const cycleId = input.subscriptionId ? digest(input.subscriptionId, next.startsAt.toISOString()) : digest("free", next.key);
+    const idempotencyKey = `plan-cycle:${cycleId}`;
+    if (!input.subscriptionId && await planGrantRecordedTx(tx, userId, role, idempotencyKey)) allowance = 0;
+    else await writeLedgerRow(tx, { userId, role, tokenCount: allowance, kind: "plan_grant", source: BUCKET_SOURCES.cycle, sourceCycleKey: next.key, referenceType: "plan_cycle", referenceId: `${next.key}:${cycleId.slice(0, 24)}`, idempotencyKey, monthlyCreditsAfter: allowance });
   }
   return { monthlyAllowance: allowance, monthlyCreditsRemaining: allowance, monthlyCycleKey: next.key };
 }
@@ -115,10 +125,11 @@ function paidCycleSteps(wallet: WalletRow, now: Date): number[] {
 }
 
 /**
- * Brings a locked job-seeker wallet up to `now`: opens every monthly cycle a
- * yearly term has reached (catching up missed ones in order), ends the plan's
- * credits once a paid term has lapsed, closes a stale Free calendar cycle
- * (Free grants no monthly credits), and expires grants. Writes the wallet.
+ * Brings a locked job-seeker wallet up to `now`: opens every cycle a 90-day
+ * pass or yearly term has reached (catching up missed ones in order), ends the
+ * plan's credits once a paid term or pass has lapsed, rolls a stale Free
+ * calendar month (its leftover expires, the new month grants Free's 2 credits),
+ * and expires grants (carryover, trial). Writes the wallet.
  */
 export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, now: Date): Promise<{ wallet: WalletRow; grants: GrantRow[]; changed: boolean }> {
   let wallet = locked;

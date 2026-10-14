@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { planPrice, packPrice } from "../shared/billingCatalog";
+import { packPrice, planPrice, sessionPrice } from "../shared/billingCatalog";
 import { ChargebeeApiError } from "./chargebeeApi";
 import { collectInvoicePayment, listPaymentSources, paymentMethodFromSource } from "./chargebeeAccountApi";
 import { availablePriceIds, clearPriceAvailabilityCache, isPriceAvailable, itemPriceMatches } from "./billingAvailability";
@@ -25,10 +25,10 @@ afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe("hosted checkouts send only catalog item prices", () => {
   it("a kit plan checkout names one item price, reuses the billing customer and carries the intent", async () => {
     provider(() => ({ body: { hosted_page: { id: "hp_1", url: "https://fixture-test.chargebee.com/pages/hp_1" } } }));
-    const result = await createPlanCheckout(credentials, { itemPriceId: "skipwait_momentum_yearly-USD", customerId: "cust_1", email: "a@example.com", redirectUrl: "https://skipwait.me/billing", cancelUrl: "https://skipwait.me/plans", checkoutIntentId: "intent_1" });
+    const result = await createPlanCheckout(credentials, { itemPriceId: "skipwait_momentum_90d-USD", customerId: "cust_1", email: "a@example.com", redirectUrl: "https://skipwait.me/billing", cancelUrl: "https://skipwait.me/plans", checkoutIntentId: "intent_1" });
     expect(result).toEqual({ checkoutUrl: "https://fixture-test.chargebee.com/pages/hp_1", hostedPageId: "hp_1" });
     expect(calls[0].url).toBe("https://fixture-test.chargebee.com/api/v2/hosted_pages/checkout_new_for_items");
-    expect(Object.fromEntries(calls[0].form!)).toEqual({ "subscription_items[item_price_id][0]": "skipwait_momentum_yearly-USD", "subscription_items[quantity][0]": "1", "customer[id]": "cust_1", "customer[email]": "a@example.com", redirect_url: "https://skipwait.me/billing", cancel_url: "https://skipwait.me/plans", pass_thru_content: "intent_1" });
+    expect(Object.fromEntries(calls[0].form!)).toEqual({ "subscription_items[item_price_id][0]": "skipwait_momentum_90d-USD", "subscription_items[quantity][0]": "1", "customer[id]": "cust_1", "customer[email]": "a@example.com", redirect_url: "https://skipwait.me/billing", cancel_url: "https://skipwait.me/plans", pass_thru_content: "intent_1" });
   });
 
   it("a pack checkout is one unit of the pack's own item price, never an ad hoc amount", async () => {
@@ -47,9 +47,9 @@ describe("hosted checkouts send only catalog item prices", () => {
     provider(call => call.url.includes("hosted_pages")
       ? { body: { hosted_page: { id: "hp_3", url: "https://fixture-test.chargebee.com/pages/hp_3" } } }
       : { body: { subscription: { id: "sub_1", status: "active", has_scheduled_changes: true, current_term_end: 1_793_000_000 } } });
-    await createChangeCheckout(credentials, { subscriptionId: "sub_1", itemPriceId: "skipwait_land_100_monthly-USD", redirectUrl: "https://skipwait.me/billing", cancelUrl: "https://skipwait.me/billing", checkoutIntentId: "intent_3" });
-    expect(Object.fromEntries(calls[0].form!)).toMatchObject({ "subscription[id]": "sub_1", replace_items_list: "true", "subscription_items[item_price_id][0]": "skipwait_land_100_monthly-USD", pass_thru_content: "intent_3" });
-    const scheduled = await scheduleSubscriptionChange(credentials, { subscriptionId: "sub_1", itemPriceId: "skipwait_start_monthly-USD" });
+    await createChangeCheckout(credentials, { subscriptionId: "sub_1", itemPriceId: "skipwait_land_focus_30d-USD", redirectUrl: "https://skipwait.me/billing", cancelUrl: "https://skipwait.me/billing", checkoutIntentId: "intent_3" });
+    expect(Object.fromEntries(calls[0].form!)).toMatchObject({ "subscription[id]": "sub_1", replace_items_list: "true", "subscription_items[item_price_id][0]": "skipwait_land_focus_30d-USD", pass_thru_content: "intent_3" });
+    const scheduled = await scheduleSubscriptionChange(credentials, { subscriptionId: "sub_1", itemPriceId: "skipwait_start_30d-USD" });
     expect(calls[1].url).toBe("https://fixture-test.chargebee.com/api/v2/subscriptions/sub_1/update_for_items");
     expect(calls[1].form!.get("change_option")).toBe("end_of_term");
     expect(scheduled).toMatchObject({ id: "sub_1", has_scheduled_changes: true, current_term_end: new Date(1_793_000_000_000) });
@@ -71,28 +71,39 @@ describe("hosted checkouts send only catalog item prices", () => {
 });
 
 describe("item price availability", () => {
-  const monthly = planPrice("momentum", "monthly", "USD")!;
-  const yearly = planPrice("momentum", "yearly", "USD")!;
+  const pass30 = planPrice("momentum", "30d", "USD")!;
+  const pass90 = planPrice("momentum", "90d", "USD")!;
+  const yearly = planPrice("keep_warm", "yearly", "INR")!;
+  const legacy = planPrice("pro", "monthly", "USD")!;
   const pack = packPrice("pack_25", "USD")!;
+  const session = sessionPrice("written_review", "INR")!;
 
   it("sells a price only when the site has it active, in the catalog currency, amount and period", () => {
-    const live = { id: monthly.itemPriceId, status: "active", currency_code: "USD", price: 2_000, period: 1, period_unit: "month", item_type: "plan" };
-    expect(itemPriceMatches(live, monthly)).toBe(true);
-    expect(itemPriceMatches({ ...live, status: "archived" }, monthly)).toBe(false);
-    expect(itemPriceMatches({ ...live, price: 1_999 }, monthly)).toBe(false);
-    expect(itemPriceMatches({ ...live, currency_code: "INR" }, monthly)).toBe(false);
-    expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, price: 20_000, period: 1, period_unit: "year" }, yearly)).toBe(true);
-    expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, price: 20_000, period: 1, period_unit: "month" }, yearly)).toBe(false);
+    const live = { id: pass30.itemPriceId, status: "active", currency_code: "USD", price: 2_400, period: 30, period_unit: "day", item_type: "plan" };
+    expect(itemPriceMatches(live, pass30)).toBe(true);
+    expect(itemPriceMatches({ ...live, status: "archived" }, pass30)).toBe(false);
+    expect(itemPriceMatches({ ...live, price: 2_399 }, pass30)).toBe(false);
+    expect(itemPriceMatches({ ...live, currency_code: "INR" }, pass30)).toBe(false);
+    // A 30-day pass is 30 days, never "1 month" (months run 28 to 31 days).
+    expect(itemPriceMatches({ ...live, period: 1, period_unit: "month" }, pass30)).toBe(false);
+    expect(itemPriceMatches({ ...live, id: pass90.itemPriceId, price: 5_900, period: 90, period_unit: "day" }, pass90)).toBe(true);
+    expect(itemPriceMatches({ ...live, id: pass90.itemPriceId, price: 5_900, period: 3, period_unit: "month" }, pass90)).toBe(false);
+    expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "year" }, yearly)).toBe(true);
+    expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 12, period_unit: "month" }, yearly)).toBe(true);
+    expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "month" }, yearly)).toBe(false);
+    expect(itemPriceMatches({ ...live, id: legacy.itemPriceId, price: 700, period: 1, period_unit: "month" }, legacy)).toBe(true);
     expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "charge" }, pack)).toBe(true);
+    expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "plan" }, pack)).toBe(false);
+    expect(itemPriceMatches({ id: session.itemPriceId, status: "active", currency_code: "INR", price: 79_900, item_type: "charge" }, session)).toBe(true);
     expect(itemPriceMatches(null, pack)).toBe(false);
   });
 
   it("caches each answer, shares an in-flight probe and treats a provider error as not available", async () => {
-    const lookup = vi.fn(async (_credentials: unknown, id: string) => (id === monthly.itemPriceId ? { id, status: "active", currency_code: "USD", price: 2_000, period: 1, period_unit: "month" } : null));
-    const ids = await availablePriceIds([monthly, yearly, monthly], { credentials, lookup });
-    expect([...ids]).toEqual([monthly.itemPriceId]);
+    const lookup = vi.fn(async (_credentials: unknown, id: string) => (id === pass30.itemPriceId ? { id, status: "active", currency_code: "USD", price: 2_400, period: 30, period_unit: "day" } : null));
+    const ids = await availablePriceIds([pass30, pass90, pass30], { credentials, lookup });
+    expect([...ids]).toEqual([pass30.itemPriceId]);
     expect(lookup).toHaveBeenCalledTimes(2);
-    expect(await isPriceAvailable(monthly, { credentials, lookup })).toBe(true);
+    expect(await isPriceAvailable(pass30, { credentials, lookup })).toBe(true);
     expect(lookup).toHaveBeenCalledTimes(2);
     const failing = vi.fn(async () => { throw new Error("network"); });
     expect(await isPriceAvailable(pack, { credentials, lookup: failing })).toBe(false);
@@ -101,9 +112,9 @@ describe("item price availability", () => {
 
   it("a missing item price reads as null, other provider failures throw", async () => {
     provider(() => ({ status: 404, body: { api_error_code: "resource_not_found" } }));
-    expect(await retrieveItemPrice(credentials, "skipwait_start_monthly-USD")).toBeNull();
+    expect(await retrieveItemPrice(credentials, "skipwait_start_30d-USD")).toBeNull();
     provider(() => ({ status: 500, body: {} }));
-    await expect(retrieveItemPrice(credentials, "skipwait_start_monthly-USD")).rejects.toBeInstanceOf(ChargebeeApiError);
+    await expect(retrieveItemPrice(credentials, "skipwait_start_30d-USD")).rejects.toBeInstanceOf(ChargebeeApiError);
   });
 });
 

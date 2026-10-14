@@ -102,7 +102,7 @@ describe("open-ask slot cap at ask creation", () => {
     tables.requests = [ask(), ask(), ask()];
     const error = await send().catch((reason: unknown) => reason);
     expect(error).toBeInstanceOf(OpenAskSlotCapError);
-    expect((error as OpenAskSlotCapError).slots).toEqual({ plan: "free", planLabel: "Free", open: 3, cap: 3, full: true, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } });
+    expect((error as OpenAskSlotCapError).slots).toEqual({ plan: "free", planLabel: "Free", open: 3, cap: 3, full: true, nextPlan: { id: "start", label: "Start", openRequests: 8 } });
     expect(sideEffects).toEqual([]);
     // The wallet row lock is taken first: it serializes concurrent creates for this seeker.
     expect(lockedReads[0]).toBe("wallet:update");
@@ -157,6 +157,6 @@ describe("open-ask slot cap at ask creation", () => {
 describe("open-ask slots read model", () => {
   it("reports the caller's open asks against the plan cap", async () => {
     tables.requests = [ask(), ask({ status: "approved", referrerId: 501 }), ask({ createdAt: new Date(Date.now() - 8 * DAY) })];
-    expect(await getOpenAskSlots(SEEKER)).toEqual({ plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } });
+    expect(await getOpenAskSlots(SEEKER)).toEqual({ plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: { id: "start", label: "Start", openRequests: 8 } });
   });
 });

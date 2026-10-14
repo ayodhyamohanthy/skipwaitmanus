@@ -82,15 +82,15 @@ describe("My Requests kit v4 states", () => {
     expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an answer or get more slots with Momentum (15).");
   });
 
-  it("shows a legacy plan's own label and cap, and no bar for an unlimited plan", async () => {
+  it("shows a legacy plan's own label and cap, and Concierge's cap of 75", async () => {
     stub([openAsk(42)], slots(4, { plan: "pro", planLabel: "Pro", cap: 10, full: false }));
     renderPage();
     expect((await screen.findByLabelText("Open slots: 4 of 10 used")).textContent).toBe("OPEN SLOTS · PRO4/10");
     cleanup();
-    stub([openAsk(42)], slots(12, { plan: "land_500", planLabel: "Land Concierge", cap: null, full: false, nextPlan: null }));
+    stub([openAsk(42)], slots(12, { plan: "land_concierge", planLabel: "Land Concierge", cap: 75, full: false, nextPlan: null }));
     renderPage();
-    expect((await screen.findByLabelText("Open slots: 12 used, no cap")).textContent).toBe("OPEN SLOTS · LAND CONCIERGE12 · unlimited");
-    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect((await screen.findByLabelText("Open slots: 12 of 75 used")).textContent).toBe("OPEN SLOTS · LAND CONCIERGE12/75");
+    expect(screen.getByRole("progressbar", { name: "Open slots used" }).getAttribute("aria-valuenow")).toBe("12");
   });
 
   it("says the slots did not load instead of drawing a fake meter, and reloads them", async () => {

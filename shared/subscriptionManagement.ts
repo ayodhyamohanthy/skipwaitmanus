@@ -5,28 +5,33 @@
  * catalog amount (shared/billingCatalog.ts).
  */
 import { z } from "zod";
-import { BILLING_CURRENCIES, BILLING_INTERVALS, LEGACY_PLAN_IDS } from "./billingCatalog";
-import { CATALOG_PACK_IDS, CATALOG_PLAN_IDS } from "./planCatalog";
+import { BILLING_CURRENCIES, BILLING_INTERVALS, LEGACY_PLAN_IDS, planSellsInterval } from "./billingCatalog";
+import { BILLING_REGIONS, currencyForRegion } from "./billingRegion";
+import { CATALOG_PACK_IDS, CATALOG_PLAN_IDS, type CatalogInterval, type CatalogPlanId } from "./planCatalog";
 
 const role = z.enum(["job_seeker", "referrer"]).default("job_seeker");
-const billingCountry = z.enum(["IN", "INTL"]);
+/** The billing address country route; INR is charged only with an Indian billing address (shared/billingRegion.ts). */
+const billingCountry = z.enum(BILLING_REGIONS);
 const isoDate = z.string().datetime({ offset: true });
 
 /** India is billed in rupees, everywhere else in US dollars. */
 export function currencyForCountry(country: z.infer<typeof billingCountry>): (typeof BILLING_CURRENCIES)[number] {
-  return country === "IN" ? "INR" : "USD";
+  return currencyForRegion(country);
 }
 
 const currencyMatchesCountry = (value: { currency: string; billingCountry: "IN" | "INTL" }) => value.currency === currencyForCountry(value.billingCountry);
+const soldForInterval = (value: { planId: CatalogPlanId; interval: CatalogInterval }) => planSellsInterval(value.planId, value.interval);
+const INTERVAL_MESSAGE = "That plan is not sold for this term";
 
-/** POST /api/chargebee/subscription-checkout for a kit plan (new subscription). */
+/** POST /api/chargebee/subscription-checkout for a kit plan: a 30- or 90-day pass, or Keep warm yearly. */
 export const kitPlanCheckoutRequestSchema = z.object({
   planId: z.enum(CATALOG_PLAN_IDS),
   interval: z.enum(BILLING_INTERVALS),
   currency: z.enum(BILLING_CURRENCIES),
   billingCountry,
   role,
-}).refine(currencyMatchesCountry, { message: "That currency is not available for the selected billing route", path: ["currency"] });
+}).refine(currencyMatchesCountry, { message: "That currency is not available for the selected billing route", path: ["currency"] })
+  .refine(soldForInterval, { message: INTERVAL_MESSAGE, path: ["interval"] });
 export type KitPlanCheckoutRequest = z.infer<typeof kitPlanCheckoutRequestSchema>;
 
 /** The pre-kit body (Pro/Max monthly), still accepted for grandfathered sales and the current /plans page. */
@@ -42,7 +47,7 @@ export const checkoutResponseSchema = z.object({ checkoutUrl: z.string().url(), 
 export const NOT_AVAILABLE_CODE = "not_available_yet" as const;
 
 /** POST /api/chargebee/subscription-change: move an active subscription to a kit plan. */
-export const subscriptionChangeRequestSchema = z.object({ planId: z.enum(CATALOG_PLAN_IDS), interval: z.enum(BILLING_INTERVALS), role });
+export const subscriptionChangeRequestSchema = z.object({ planId: z.enum(CATALOG_PLAN_IDS), interval: z.enum(BILLING_INTERVALS), role }).refine(soldForInterval, { message: INTERVAL_MESSAGE, path: ["interval"] });
 export type SubscriptionChangeRequest = z.infer<typeof subscriptionChangeRequestSchema>;
 
 /** An upgrade pays its prorated difference on a hosted checkout now; a switch down waits for term end. */

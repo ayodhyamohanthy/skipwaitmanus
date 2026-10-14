@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { nextSlotPlan, openAskSlots, openAskSlotsSchema, slotCapNudgeCopy, slotCapReachedSchema, slotsFullCopy } from "../shared/openAskSlots";
+import { COMPANY_CAP_REACHED, companyCapCopy, companyCapReachedSchema, nextSlotPlan, openAskSlots, openAskSlotsSchema, slotCapNudgeCopy, slotCapReachedSchema, slotsFullCopy } from "../shared/openAskSlots";
 import { resolvePlanEntitlements, type EntitlementWallet } from "../shared/planEntitlements";
 import { ASK_TTL_MS } from "../shared/referral";
 import { OpenAskSlotCapError, openAskCondition } from "./planGates";
@@ -10,38 +10,49 @@ const paid = (plan: string): EntitlementWallet => ({ plan, subscriptionStatus: "
 const ent = (plan: string) => resolvePlanEntitlements(plan === "free" ? null : paid(plan), NOW);
 
 describe("open-ask slots contract", () => {
-  it("names the next plan with more room, from Momentum up (UPGRADE_NUDGES 'See Momentum')", () => {
-    expect(nextSlotPlan(ent("free"))).toEqual({ id: "momentum", label: "Momentum", openRequests: 15 });
+  it("names the next self-serve plan with more room, from Start up (UPGRADE_NUDGES 'See Start')", () => {
+    expect(nextSlotPlan(ent("free"))).toEqual({ id: "start", label: "Start", openRequests: 8 });
+    expect(nextSlotPlan(ent("keep_warm"))).toEqual({ id: "start", label: "Start", openRequests: 8 });
     expect(nextSlotPlan(ent("start"))).toEqual({ id: "momentum", label: "Momentum", openRequests: 15 });
+    // Legacy Pro holds 10 (above Start's 8), so the next plan with more room is Momentum.
     expect(nextSlotPlan(ent("pro"))).toEqual({ id: "momentum", label: "Momentum", openRequests: 15 });
-    expect(nextSlotPlan(ent("momentum"))).toEqual({ id: "land_100", label: "Land Focus", openRequests: 30 });
+    expect(nextSlotPlan(ent("momentum"))).toEqual({ id: "land_focus", label: "Land Focus", openRequests: 30 });
     // Legacy Max already holds 30, so Land Focus (30) adds nothing; Sprint does.
-    expect(nextSlotPlan(ent("max"))).toEqual({ id: "land_200", label: "Land Sprint", openRequests: 50 });
-    expect(nextSlotPlan(ent("land_100"))).toEqual({ id: "land_200", label: "Land Sprint", openRequests: 50 });
-    expect(nextSlotPlan(ent("land_200"))).toEqual({ id: "land_500", label: "Land Concierge", openRequests: null });
-    expect(nextSlotPlan(ent("land_500"))).toBeNull();
+    expect(nextSlotPlan(ent("max"))).toEqual({ id: "land_sprint", label: "Land Sprint", openRequests: 50 });
+    expect(nextSlotPlan(ent("land_focus"))).toEqual({ id: "land_sprint", label: "Land Sprint", openRequests: 50 });
+    // Concierge is by application: no nudge points at it.
+    expect(nextSlotPlan(ent("land_sprint"))).toBeNull();
+    expect(nextSlotPlan(ent("land_concierge"))).toBeNull();
   });
 
-  it("is full only at or past a finite cap; unlimited is never full", () => {
+  it("is full at or past the cap; every plan has a cap (Concierge 75)", () => {
     expect(openAskSlots(ent("free"), 2)).toMatchObject({ plan: "free", planLabel: "Free", open: 2, cap: 3, full: false });
     expect(openAskSlots(ent("free"), 3).full).toBe(true);
     expect(openAskSlots(ent("free"), 5).full).toBe(true);
-    expect(openAskSlots(ent("land_500"), 900)).toMatchObject({ cap: null, full: false, nextPlan: null });
+    expect(openAskSlots(ent("land_concierge"), 74)).toMatchObject({ cap: 75, full: false, nextPlan: null });
+    expect(openAskSlots(ent("land_concierge"), 75).full).toBe(true);
     expect(openAskSlots(ent("free"), -1).open).toBe(0);
-    for (const plan of ["free", "start", "momentum", "land_100", "land_200", "land_500", "pro", "max"]) expect(openAskSlotsSchema.safeParse(openAskSlots(ent(plan), 1)).success).toBe(true);
+    for (const plan of ["free", "keep_warm", "start", "momentum", "land_focus", "land_sprint", "land_concierge", "pro", "max"]) expect(openAskSlotsSchema.safeParse(openAskSlots(ent(plan), 1)).success).toBe(true);
+    expect(openAskSlotsSchema.safeParse({ ...openAskSlots(ent("free"), 1), cap: null }).success).toBe(false);
   });
 
   it("writes the kit slots-full sentence with catalog numbers, naming only real options", () => {
     const full = openAskSlots(ent("free"), 3);
-    expect(slotsFullCopy(full, true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer, withdraw an ask, or get more slots with Momentum (15)." });
-    expect(slotsFullCopy(full, false)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer or get more slots with Momentum (15)." });
-    expect(slotsFullCopy(openAskSlots(ent("land_200"), 50), true).next).toBe("Wait for an answer, withdraw an ask, or get more slots with Land Concierge (unlimited).");
+    expect(slotsFullCopy(full, true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer, withdraw an ask, or get more slots with Start (8)." });
+    expect(slotsFullCopy(full, false)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer or get more slots with Start (8)." });
+    expect(slotsFullCopy(openAskSlots(ent("land_focus"), 30), true).next).toBe("Wait for an answer, withdraw an ask, or get more slots with Land Sprint (50).");
+    expect(slotsFullCopy(openAskSlots(ent("land_sprint"), 50), true).next).toBe("Wait for an answer or withdraw an ask.");
   });
 
   it("writes the UPGRADE_NUDGES slot-cap moment, saying queue position never changes", () => {
-    expect(slotCapNudgeCopy(openAskSlots(ent("free"), 3))).toEqual({ title: "Your 3 requests are all open", body: "Wait for an answer to free a slot, or move to Momentum for 15 open requests. Queue position stays equal either way.", cta: "See Momentum" });
+    expect(slotCapNudgeCopy(openAskSlots(ent("free"), 3))).toEqual({ title: "Your 3 requests are all open", body: "Wait for an answer to free a slot, or move to Start for 8 open requests. Queue position stays equal either way.", cta: "See Start" });
     expect(slotCapNudgeCopy(openAskSlots(ent("max"), 30)).cta).toBe("See Land Sprint");
-    expect(slotCapNudgeCopy({ ...openAskSlots(ent("land_200"), 50), nextPlan: null })).toEqual({ title: "Your 50 requests are all open", body: "Wait for an answer to free a slot. Queue position stays equal either way.", cta: null });
+    expect(slotCapNudgeCopy(openAskSlots(ent("land_sprint"), 50))).toEqual({ title: "Your 50 requests are all open", body: "Wait for an answer to free a slot. Queue position stays equal either way.", cta: null });
+  });
+
+  it("a running reverse trial meters 15 slots and nudges past Momentum", () => {
+    const trial = resolvePlanEntitlements({ plan: "free", subscriptionStatus: null, subscriptionCurrentTermEnd: null, trialEndsAt: new Date(NOW.getTime() + 864e5) }, NOW);
+    expect(openAskSlots(trial, 4)).toMatchObject({ plan: "free", planLabel: "Momentum trial", cap: 15, full: false, nextPlan: { id: "land_focus", openRequests: 30 } });
   });
 
   it("the 409 body is a strict, typed contract", () => {
@@ -50,6 +61,16 @@ describe("open-ask slots contract", () => {
     expect(slotCapReachedSchema.parse({ error: error.message, code: error.code, slots: error.slots }).slots).toEqual(slots);
     expect(slotCapReachedSchema.safeParse({ error: "x", code: "credits", slots }).success).toBe(false);
     expect(slotCapReachedSchema.safeParse({ error: "x", code: "slot_cap_reached", slots: { ...slots, cap: 0 } }).success).toBe(false);
+  });
+});
+
+describe("per-company cap contract (every plan)", () => {
+  it("the 409 body names the company, the caller's own open count and the shared cap of 2", () => {
+    const body = { error: companyCapCopy("acme.com"), code: COMPANY_CAP_REACHED, companyDomain: "acme.com", open: 2, cap: 2 };
+    expect(companyCapReachedSchema.parse(body)).toEqual(body);
+    expect(companyCapReachedSchema.safeParse({ ...body, cap: 3 }).success).toBe(false);
+    expect(companyCapReachedSchema.safeParse({ ...body, plan: "momentum" }).success).toBe(false);
+    expect(companyCapCopy("acme.com")).toBe("You already have 2 open asks at acme.com. Wait for an answer or withdraw one before asking there again. This limit is the same on every plan.");
   });
 });
 

@@ -55,7 +55,7 @@ describe("GET /api/credits/ledger", () => {
 });
 
 describe("GET /api/credits/summary ledger block", () => {
-  const ledgerFor = (userId: number): CreditsLedger => ({ balance: userId, buckets: { cycle: userId, carriedOver: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth: 10, carryover: 1, cycle: { key: "2026-10", startsAt: "2026-10-06T00:00:00.000Z", endsAt: "2026-11-06T00:00:00.000Z", granted: 10, used: 10 - userId }, planCreditsRemaining: userId, nextExpiry: { credits: userId, expiresAt: "2026-12-06T00:00:00.000Z" }, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 } });
+  const ledgerFor = (userId: number): CreditsLedger => ({ balance: userId, buckets: { cycle: userId, carriedOver: 0, trial: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth: 10, carryover: 1, cycle: { key: "2026-10", startsAt: "2026-10-06T00:00:00.000Z", endsAt: "2026-11-06T00:00:00.000Z", granted: 10, used: 10 - userId }, planCreditsRemaining: userId, nextExpiry: { credits: userId, expiresAt: "2026-12-06T00:00:00.000Z" }, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 } });
   function summaryApp() {
     const app = express();
     const getCreditSummary = vi.fn(async (userId: number, _role: string) => ({ plan: "pro", totalAvailable: userId, ledger: ledgerFor(userId) }));

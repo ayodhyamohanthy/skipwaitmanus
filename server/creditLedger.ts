@@ -14,6 +14,7 @@ import { and, eq } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { notifications, planCreditGrants, promoCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { BUCKET_SOURCES, WELCOME_CREDITS, type CreditsLedger, type LedgerGrant, type PromoBucket } from "../shared/creditLedger";
+import { REVERSE_TRIAL } from "../shared/planCatalog";
 import { allocateSpend, buildCreditsLedger, spendableBuckets, usedInCycle, type SpendAllocation } from "../shared/creditSpend";
 import type { Carryover } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
@@ -55,10 +56,17 @@ export function cycleRulesFor(plan: string, role: WalletRole): CycleRules {
   return { creditsPerMonth: isPaidSubscriptionPlan(plan) ? SUBSCRIPTION_PLANS[plan].monthlyAllowance : FREE_MONTHLY_ALLOWANCE, carryover: 0 };
 }
 
-/** The cycle columns of a wallet created now: seekers on Free hold no plan credits (PRICING.md), referrers keep 3 a month. */
+/**
+ * A new seeker wallet's cycle key: not a month, so the first reconcile opens
+ * the current Free month with its 2 credits and a plan_grant row (no credit
+ * ever appears without its ledger row).
+ */
+export const FRESH_SEEKER_CYCLE_KEY = "new";
+
+/** The cycle columns of a wallet created now: seekers start empty and are reconciled into Free's month at once; referrers keep 3 a month. */
 export function freshWalletCycle(role: WalletRole, now: Date = new Date()): CyclePatch {
-  const allowance = role === "job_seeker" ? 0 : FREE_MONTHLY_ALLOWANCE;
-  return { monthlyAllowance: allowance, monthlyCreditsRemaining: allowance, monthlyCycleKey: currentMonthlyCycleKey(now) };
+  if (role === "job_seeker") return { monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: FRESH_SEEKER_CYCLE_KEY };
+  return { monthlyAllowance: FREE_MONTHLY_ALLOWANCE, monthlyCreditsRemaining: FREE_MONTHLY_ALLOWANCE, monthlyCycleKey: currentMonthlyCycleKey(now) };
 }
 
 export function digest(...parts: Array<string | number>): string {
@@ -138,7 +146,7 @@ export async function spendCreditsTx(tx: LedgerTx, input: { wallet: WalletRow; g
       const claimed = await tx.update(promoCreditGrants).set(remaining === 0 ? { creditsRemaining: 0, status: "exhausted", consumedAt: now } : { creditsRemaining: remaining }).where(and(eq(promoCreditGrants.id, input.promo.grantId), eq(promoCreditGrants.status, "active"), eq(promoCreditGrants.creditsRemaining, current)));
       if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new CreditSpendConflictError();
       promoRemaining = remaining;
-    } else if (allocation.bucket === "carryover" || allocation.bucket === "welcome") {
+    } else if (allocation.bucket === "carryover" || allocation.bucket === "trial" || allocation.bucket === "welcome") {
       const grant = grants.find(candidate => candidate.id === allocation.grantId);
       if (!grant) throw new CreditSpendConflictError();
       const remaining = grant.creditsRemaining - n;
@@ -186,6 +194,25 @@ export async function grantWelcomeCreditsTx(tx: LedgerTx, input: { userId: numbe
   }
   await writeLedgerRow(tx, { userId: input.userId, role: "job_seeker", tokenCount: WELCOME_CREDITS, kind: "welcome_grant", source: BUCKET_SOURCES.welcome, referenceType: "credit_grant", referenceId: String(grantId), idempotencyKey: `welcome:${grantId}`, creditGrantId: grantId });
   await tx.insert(notifications).values({ userId: input.userId, category: "system", title: `${WELCOME_CREDITS} free credits added`, body: `Your profile is complete, so ${WELCOME_CREDITS} free credits are on your balance. They never expire and never change your place in any queue.`, eventKey: `welcome-credits:${grantKey}`.slice(0, 120) });
+  return { granted: true, grantId };
+}
+
+/**
+ * The reverse trial's credits: 5, ending with the trial, once per canonical
+ * person across every alias (or per account for a person-less legacy account).
+ * The grant key is the claim; a second start finds it and grants nothing.
+ */
+export async function grantTrialCreditsTx(tx: LedgerTx, input: { userId: number; canonicalPersonId: number | null; now: Date; endsAt: Date }): Promise<{ granted: boolean; grantId: number | null }> {
+  const grantKey = input.canonicalPersonId ? `trial:person:${input.canonicalPersonId}` : `trial:user:${input.userId}`;
+  let grantId: number;
+  try {
+    const inserted = await tx.insert(planCreditGrants).values({ userId: input.userId, role: "job_seeker", source: "trial", grantKey, planId: REVERSE_TRIAL.plan, tokenCount: REVERSE_TRIAL.credits, creditsRemaining: REVERSE_TRIAL.credits, status: "active", grantedAt: input.now, expiresAt: input.endsAt });
+    grantId = Number(inserted[0].insertId);
+  } catch (error) {
+    if (isDuplicateKey(error)) return { granted: false, grantId: null };
+    throw error;
+  }
+  await writeLedgerRow(tx, { userId: input.userId, role: "job_seeker", tokenCount: REVERSE_TRIAL.credits, kind: "trial_grant", source: BUCKET_SOURCES.trial, referenceType: "credit_grant", referenceId: String(grantId), idempotencyKey: `trial:${grantId}`, creditGrantId: grantId });
   return { granted: true, grantId };
 }
 

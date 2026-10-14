@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EXPIRING_SOON_MS, RENEWAL_GRACE_MS, creditLedgerEntrySchema, creditLedgerQuerySchema, creditsLedgerSchema, spendIdempotencyKeySchema, type LedgerGrant, type LedgerWallet } from "../shared/creditLedger";
-import { addMonthsUtc, grantIsSpendable, grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
+import { addMonthsUtc, grantExpiresAt, grantIsSpendable, grantShouldExpire, paidPlanLapsed, planCreditsExpireAt, planCycleAt, planCycleByIndex, planCycleCount, planCycleIndexOfKey, walletCycleStart } from "../shared/creditCycles";
 import { allocateSpend, buildCreditsLedger, orderBuckets, spendableBuckets, usedInCycle } from "../shared/creditSpend";
 
 const d = (iso: string) => new Date(iso);
@@ -32,6 +32,32 @@ describe("cycle math", () => {
     expect(planCycleAt(start, end, d("2025-12-01T00:00:00Z"))).toMatchObject({ index: 0, key: "2026-01" });
     expect(planCycleIndexOfKey(start, end, "2026-07")).toBe(6);
     expect(planCycleIndexOfKey(start, end, "2027-02")).toBe(-1);
+  });
+
+  it("a 30-day pass is one cycle and a 90-day pass three, however the calendar months fall", () => {
+    const DAY_MS = DAY;
+    for (const startIso of ["2026-01-31T00:00:00Z", "2026-02-01T00:00:00Z", "2026-07-01T00:00:00Z", "2026-10-14T09:30:00Z", "2028-02-29T00:00:00Z", "2026-12-31T23:59:59Z"]) {
+      const start = d(startIso);
+      expect(planCycleCount(start, new Date(start.getTime() + 30 * DAY_MS))).toBe(1);
+      const end90 = new Date(start.getTime() + 90 * DAY_MS);
+      expect(planCycleCount(start, end90)).toBe(3);
+      const cycles = [0, 1, 2].map(index => planCycleByIndex(start, end90, index)!);
+      expect(cycles[2].endsAt).toEqual(end90);
+      expect(new Set(cycles.map(cycle => cycle.key)).size).toBe(3);
+      expect(planCycleByIndex(start, end90, 3)).toBeNull();
+      expect(planCycleAt(start, end90, new Date(end90.getTime() - 1))?.index).toBe(2);
+    }
+    // 31 Jan + 90 days = 1 May: the 1-day stub after 30 April joins the third cycle.
+    const start = d("2026-01-31T00:00:00Z"); const end = d("2026-05-01T00:00:00Z");
+    expect([0, 1, 2].map(index => planCycleByIndex(start, end, index)!.key)).toEqual(["2026-01", "2026-02", "2026-03"]);
+    expect(planCycleAt(start, end, d("2026-04-30T12:00:00Z"))).toMatchObject({ index: 2, endsAt: end });
+    expect(planCycleCount(start, start)).toBe(0);
+  });
+
+  it("calendar terms keep their cycles: a month is one, a year twelve", () => {
+    expect(planCycleCount(d("2026-10-06T00:00:00Z"), d("2026-11-06T00:00:00Z"))).toBe(1);
+    expect(planCycleCount(d("2026-01-31T00:00:00Z"), d("2027-01-31T00:00:00Z"))).toBe(12);
+    expect(planCycleCount(d("2026-02-28T00:00:00Z"), d("2027-02-28T00:00:00Z"))).toBe(12);
   });
 
   it("carryover: Start 1 month, Momentum 3 months, Land while subscribed, Free none", () => {
@@ -120,7 +146,7 @@ describe("ledger summary", () => {
     const summary = buildCreditsLedger({ wallet, rules: { creditsPerMonth: 10, carryover: 1 }, grants: [carry({ expiresAt: d("2026-11-06T00:00:00Z"), creditsRemaining: 3 }), carry({ id: 5, source: "welcome", subscriptionId: null, expiresAt: null, tokenCount: 3, creditsRemaining: 1 })], promo: null, usedThisCycle: 6, now });
     expect(creditsLedgerSchema.parse(summary)).toEqual({
       balance: 6 + 3 + 1 + 5,
-      buckets: { cycle: 6, carriedOver: 3, welcome: 1, purchased: 5, promo: 0 },
+      buckets: { cycle: 6, carriedOver: 3, trial: 0, welcome: 1, purchased: 5, promo: 0 },
       creditsPerMonth: 10,
       carryover: 1,
       cycle: { key: "2026-10", startsAt: "2026-10-06T00:00:00.000Z", endsAt: "2026-11-06T00:00:00.000Z", granted: 10, used: 6 },
@@ -145,6 +171,30 @@ describe("ledger summary", () => {
 
   it("counts a cycle's spends net of refunds and ignores grants and moves", () => {
     expect(usedInCycle([{ kind: "credit_spend", tokenCount: -3 }, { kind: "direct_request", tokenCount: -1 }, { kind: "expiry_refund", tokenCount: 1 }, { kind: "plan_grant", tokenCount: 10 }, { kind: "plan_credit_carryover", tokenCount: -4 }])).toBe(3);
+  });
+});
+
+describe("reverse trial credits", () => {
+  const trial = (patch: Partial<LedgerGrant> = {}): LedgerGrant => ({ id: 9, source: "trial", subscriptionId: null, tokenCount: 5, creditsRemaining: 5, expiresAt: d("2026-10-28T00:00:00Z"), status: "active", ...patch });
+
+  it("are spendable on Free until the trial ends, then expire with a ledger row", () => {
+    const wallet = free({ monthlyCreditsRemaining: 2, monthlyAllowance: 2 });
+    expect(grantIsSpendable(trial(), wallet, d("2026-10-20T00:00:00Z"))).toBe(true);
+    expect(grantExpiresAt(trial(), wallet, d("2026-10-20T00:00:00Z"))).toEqual(d("2026-10-28T00:00:00Z"));
+    expect(grantIsSpendable(trial(), wallet, d("2026-10-28T00:00:00Z"))).toBe(false);
+    expect(grantShouldExpire(trial(), wallet, d("2026-10-28T00:00:00Z"))).toBe(true);
+    expect(grantShouldExpire(trial(), wallet, d("2026-10-27T23:59:59Z"))).toBe(false);
+  });
+
+  it("spend before Free's month credits and the welcome credits (they end sooner) and count in the summary", () => {
+    const now = d("2026-10-20T00:00:00Z");
+    const wallet = free({ monthlyCreditsRemaining: 2, monthlyAllowance: 2, balance: 1 });
+    const grants = [trial({ creditsRemaining: 4 }), carry({ id: 3, source: "welcome", subscriptionId: null, expiresAt: null, tokenCount: 3, creditsRemaining: 3 })];
+    const buckets = spendableBuckets({ wallet, carryover: 0, grants, promo: null, now });
+    expect(buckets.map(bucket => bucket.bucket)).toEqual(["trial", "cycle", "welcome", "purchased"]);
+    expect(allocateSpend(buckets, 5).allocations).toEqual([{ bucket: "trial", credits: 4, grantId: 9 }, { bucket: "cycle", credits: 1, grantId: null }]);
+    const summary = creditsLedgerSchema.parse(buildCreditsLedger({ wallet, rules: { creditsPerMonth: 2, carryover: 0 }, grants, promo: null, usedThisCycle: 1, now }));
+    expect(summary).toMatchObject({ balance: 4 + 2 + 3 + 1, buckets: { cycle: 2, carriedOver: 0, trial: 4, welcome: 3, purchased: 1, promo: 0 }, nextExpiry: { credits: 4, expiresAt: "2026-10-28T00:00:00.000Z" } });
   });
 });
 

@@ -23,7 +23,7 @@
       "body": {
         "summary": {
           "plan": "free",
-          "monthlyAllowance": 3,
+          "monthlyAllowance": 2,
           "monthlyCreditsRemaining": 1,
           "purchasedCreditsRemaining": 0,
           "promoCreditsRemaining": 0,
@@ -39,18 +39,19 @@
             "buckets": {
               "cycle": 1,
               "carriedOver": 0,
+              "trial": 0,
               "welcome": 0,
               "purchased": 0,
               "promo": 0
             },
-            "creditsPerMonth": 0,
+            "creditsPerMonth": 2,
             "carryover": 0,
             "cycle": {
               "key": "2026-10",
               "startsAt": "2026-10-01T00:00:00.000Z",
               "endsAt": "2026-11-01T00:00:00.000Z",
-              "granted": 3,
-              "used": 2
+              "granted": 2,
+              "used": 1
             },
             "planCreditsRemaining": 1,
             "nextExpiry": {
@@ -71,9 +72,9 @@
             "cap": 3,
             "full": false,
             "nextPlan": {
-              "id": "momentum",
-              "label": "Momentum",
-              "openRequests": 15
+              "id": "start",
+              "label": "Start",
+              "openRequests": 8
             }
           }
         }

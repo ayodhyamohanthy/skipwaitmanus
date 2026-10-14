@@ -1,12 +1,13 @@
-// Which catalog prices can be sold right now. A kit plan or pack becomes
-// purchasable only once the owner has created its Chargebee item price, active,
-// in the catalog's currency, at the catalog's amount and billing period. Until
-// then checkout answers "not available yet" instead of opening a broken page.
+// Which catalog prices can be sold right now. A plan term, credit pack or human
+// session becomes purchasable only once the owner has created its Chargebee item
+// price, active, in the catalog's currency, at the catalog's amount and billing
+// period (30 or 90 days for a pass, 1 year for Keep warm). Until then checkout
+// answers "not available yet" instead of opening a broken page.
 //
 // Answers are cached per site and item price in process memory: this is a
 // routing hint, not a money decision (Chargebee itself refuses an unknown item
 // price, and every paid state still comes only from a verified webhook).
-import type { PackPrice, PlanPrice } from "../shared/billingCatalog";
+import type { BillingPeriod, CatalogPrice } from "../shared/billingCatalog";
 import type { ChargebeeCredentials } from "./chargebeeApi";
 import { retrieveItemPrice, type ProviderItemPrice } from "./chargebeeSubscriptionApi";
 
@@ -20,20 +21,34 @@ type Entry = { available: boolean; expiresAt: number };
 const cache = new Map<string, Entry>();
 const inFlight = new Map<string, Promise<boolean>>();
 
+/** The Chargebee billing period an item price must carry: passes in days, legacy monthly in months, Keep warm in years. */
+const EXPECTED_PERIOD: Readonly<Record<BillingPeriod, { unit: "day" | "month" | "year"; count: number }>> = {
+  monthly: { unit: "month", count: 1 },
+  yearly: { unit: "year", count: 1 },
+  "30d": { unit: "day", count: 30 },
+  "90d": { unit: "day", count: 90 },
+};
+
+function periodMatches(price: ProviderItemPrice, interval: BillingPeriod): boolean {
+  const expected = EXPECTED_PERIOD[interval];
+  if (price.period_unit === expected.unit) return price.period === expected.count;
+  // A year configured as 12 months sells the same term.
+  return interval === "yearly" && price.period_unit === "month" && price.period === 12;
+}
+
 /** True when the site's item price sells exactly what the catalog says. */
-export function itemPriceMatches(price: ProviderItemPrice | null, expected: PlanPrice | PackPrice): boolean {
+export function itemPriceMatches(price: ProviderItemPrice | null, expected: CatalogPrice): boolean {
   if (!price || price.id !== expected.itemPriceId) return false;
   if (price.status !== "active" || price.currency_code !== expected.currency || price.price !== expected.amount) return false;
-  if (expected.kind === "pack") return price.item_type === undefined || price.item_type === "charge";
+  if (expected.kind === "pack" || expected.kind === "session") return price.item_type === undefined || price.item_type === "charge";
   if (price.item_type !== undefined && price.item_type !== "plan") return false;
-  const months = price.period_unit === "year" ? (price.period ?? 0) * 12 : price.period_unit === "month" ? price.period ?? 0 : 0;
-  return months === (expected.interval === "yearly" ? 12 : 1);
+  return periodMatches(price, expected.interval);
 }
 
 export type AvailabilityDeps = { credentials: ChargebeeCredentials | null; lookup?: ItemPriceLookup; now?: () => number };
 
 /** One price's availability on the configured site; false when billing is not configured. */
-export async function isPriceAvailable(expected: PlanPrice | PackPrice, deps: AvailabilityDeps): Promise<boolean> {
+export async function isPriceAvailable(expected: CatalogPrice, deps: AvailabilityDeps): Promise<boolean> {
   const { credentials } = deps;
   if (!credentials) return false;
   const now = deps.now ?? Date.now;
@@ -60,7 +75,7 @@ export async function isPriceAvailable(expected: PlanPrice | PackPrice, deps: Av
 }
 
 /** Availability for many prices at once, as the set of item price ids that can be sold. */
-export async function availablePriceIds(prices: ReadonlyArray<PlanPrice | PackPrice>, deps: AvailabilityDeps): Promise<Set<string>> {
+export async function availablePriceIds(prices: readonly CatalogPrice[], deps: AvailabilityDeps): Promise<Set<string>> {
   const answers = await Promise.all(prices.map(async price => [price.itemPriceId, await isPriceAvailable(price, deps)] as const));
   return new Set(answers.filter(([, available]) => available).map(([id]) => id));
 }

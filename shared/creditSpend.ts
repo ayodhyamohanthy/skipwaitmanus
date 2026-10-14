@@ -9,9 +9,9 @@ import { BUCKET_SOURCES, CREDIT_BUCKETS, EXPIRING_SOON_MS, REFUND_KINDS, SPEND_K
 export type SpendableBucket = { bucket: CreditBucket; credits: number; expiresAt: Date | null; grantId: number | null };
 export type SpendAllocation = { bucket: CreditBucket; credits: number; grantId: number | null };
 
-const BUCKET_PRIORITY: Readonly<Record<CreditBucket, number>> = { promo: 0, carryover: 1, cycle: 2, welcome: 3, purchased: 4 };
+const BUCKET_PRIORITY: Readonly<Record<CreditBucket, number>> = { promo: 0, carryover: 1, trial: 2, cycle: 3, welcome: 4, purchased: 5 };
 
-/** Deterministic spend order: soonest expiry first (none = last), then promo, carried, cycle, welcome, purchased, then oldest grant. */
+/** Deterministic spend order: soonest expiry first (none = last), then promo, carried, trial, cycle, welcome, purchased, then oldest grant. */
 export function orderBuckets(buckets: readonly SpendableBucket[]): SpendableBucket[] {
   const at = (bucket: SpendableBucket) => (bucket.expiresAt ? bucket.expiresAt.getTime() : Number.POSITIVE_INFINITY);
   return buckets.filter(bucket => bucket.credits > 0).sort((a, b) => at(a) - at(b) || BUCKET_PRIORITY[a.bucket] - BUCKET_PRIORITY[b.bucket] || (a.grantId ?? 0) - (b.grantId ?? 0));
@@ -86,6 +86,7 @@ export function buildCreditsLedger(input: {
   const spendable = input.grants.filter(grant => grantIsSpendable(grant, wallet, now));
   const sum = (source: CreditGrantSource) => spendable.filter(grant => grant.source === source).reduce((total, grant) => total + grant.creditsRemaining, 0);
   const carriedOver = sum("carryover");
+  const trial = sum("trial");
   const welcome = sum("welcome");
   const cycle = spendableCycleCredits(wallet, now);
   const purchased = Math.max(0, wallet.balance);
@@ -106,8 +107,8 @@ export function buildCreditsLedger(input: {
   const term = wallet.subscriptionCurrentTermStart && wallet.subscriptionCurrentTermEnd && isPaidPlanActive(wallet, now) ? planCycleAt(wallet.subscriptionCurrentTermStart, wallet.subscriptionCurrentTermEnd, now) : null;
   const cycleEnd = term && term.key === wallet.monthlyCycleKey ? term.endsAt : cycleStart ? addMonthsUtc(cycleStart, 1) : null;
   return {
-    balance: cycle + carriedOver + welcome + purchased + promo,
-    buckets: { cycle, carriedOver, welcome, purchased, promo },
+    balance: cycle + carriedOver + trial + welcome + purchased + promo,
+    buckets: { cycle, carriedOver, trial, welcome, purchased, promo },
     creditsPerMonth: rules.creditsPerMonth,
     carryover: rules.carryover,
     cycle: { key: wallet.monthlyCycleKey, startsAt: cycleStart?.toISOString() ?? null, endsAt: cycleEnd?.toISOString() ?? null, granted: Math.max(0, wallet.monthlyAllowance), used: Math.max(0, input.usedThisCycle) },

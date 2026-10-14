@@ -63,8 +63,8 @@ describe("assistant access routes", () => {
     expect(pro.body).toEqual({ plan: "pro", planLabel: "Pro", tier: "start", hasAccess: false });
     expect(pro.headers["cache-control"]).toBe("private, no-store");
     expect(assistantAccessSchema.safeParse(pro.body).success).toBe(true);
-    const paid = setup({ getAssistantAccess: async () => ({ plan: "land_100", planLabel: "Land Focus", tier: "land", hasAccess: true }) });
-    expect((await authed(paid).get("/api/assistants/access")).body).toEqual({ plan: "land_100", planLabel: "Land Focus", tier: "land", hasAccess: true });
+    const paid = setup({ getAssistantAccess: async () => ({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true }) });
+    expect((await authed(paid).get("/api/assistants/access")).body).toEqual({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true });
   });
 
   it("asks the access check about the signed-in caller only", async () => {
@@ -112,8 +112,8 @@ describe("assistant access routes", () => {
     const app = setup({ decideAssistantApproval: async () => { throw new OpenAskSlotCapError(slots); } });
     const response = await authed(app).post("/api/assistants/approvals/1/decision").send({ decision: "approved" });
     expect(response.status).toBe(409);
-    expect(slotCapReachedSchema.parse(response.body)).toMatchObject({ code: "slot_cap_reached", slots: { open: 3, cap: 3, full: true, planLabel: "Free", nextPlan: { label: "Momentum", openRequests: 15 } } });
-    expect(response.body.error).toBe("All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).");
+    expect(slotCapReachedSchema.parse(response.body)).toMatchObject({ code: "slot_cap_reached", slots: { open: 3, cap: 3, full: true, planLabel: "Free", nextPlan: { label: "Start", openRequests: 8 } } });
+    expect(response.body.error).toBe("All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Start (8).");
   });
 
   it("creates tokens and shows the plaintext once", async () => {

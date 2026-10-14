@@ -17,26 +17,45 @@ export function addMonthsUtc(date: Date, months: number): Date {
 
 export type PlanCycle = { index: number; startsAt: Date; endsAt: Date; key: string };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+/**
+ * A trailing cycle shorter than this joins the cycle before it. Cycles step by
+ * calendar month from the term start, so a 30-day pass bought on 31 January
+ * would otherwise open a 2-day second cycle and a 90-day pass a fourth one.
+ * Calendar terms (legacy monthly, Keep warm yearly) never leave a stub.
+ */
+export const MIN_CYCLE_MS = 7 * DAY_MS;
+const MAX_CYCLES = 240;
+
+/** How many credit cycles a term grants: one per calendar month started, a short trailing stub merged (30-day pass 1, 90-day pass 3, year 12). */
+export function planCycleCount(termStart: Date, termEnd: Date): number {
+  if (!(termEnd.getTime() > termStart.getTime())) return 0;
+  let count = 0;
+  while (count < MAX_CYCLES && addMonthsUtc(termStart, count).getTime() < termEnd.getTime()) count += 1;
+  if (count > 1 && termEnd.getTime() - addMonthsUtc(termStart, count - 1).getTime() < MIN_CYCLE_MS) count -= 1;
+  return count;
+}
+
 /** The cycle at `index` inside a term: monthly from the term start, the last one ending with the term. */
 export function planCycleByIndex(termStart: Date, termEnd: Date, index: number): PlanCycle | null {
-  if (!(termEnd.getTime() > termStart.getTime()) || index < 0) return null;
+  const count = planCycleCount(termStart, termEnd);
+  if (index < 0 || index >= count) return null;
   const startsAt = addMonthsUtc(termStart, index);
-  if (startsAt.getTime() >= termEnd.getTime()) return null;
-  const next = addMonthsUtc(termStart, index + 1);
-  return { index, startsAt, endsAt: next.getTime() < termEnd.getTime() ? next : termEnd, key: currentMonthlyCycleKey(startsAt) };
+  const endsAt = index === count - 1 ? termEnd : addMonthsUtc(termStart, index + 1);
+  return { index, startsAt, endsAt, key: currentMonthlyCycleKey(startsAt) };
 }
 
 /**
- * The monthly credit cycle a billing term is in at `now`. A monthly term is one
- * cycle; a yearly term is twelve. Before the term starts it is the first cycle,
- * after it ends the last.
+ * The credit cycle a billing term is in at `now`. A monthly term or 30-day pass
+ * is one cycle, a 90-day pass three, a yearly term twelve. Before the term
+ * starts it is the first cycle, after it ends the last.
  */
 export function planCycleAt(termStart: Date, termEnd: Date, now: Date): PlanCycle | null {
-  if (!(termEnd.getTime() > termStart.getTime())) return null;
+  const count = planCycleCount(termStart, termEnd);
+  if (count === 0) return null;
   let index = Math.max(0, (now.getUTCFullYear() - termStart.getUTCFullYear()) * 12 + now.getUTCMonth() - termStart.getUTCMonth());
   while (index > 0 && addMonthsUtc(termStart, index).getTime() > now.getTime()) index -= 1;
-  while (index > 0 && addMonthsUtc(termStart, index).getTime() >= termEnd.getTime()) index -= 1;
-  return planCycleByIndex(termStart, termEnd, index);
+  return planCycleByIndex(termStart, termEnd, Math.min(index, count - 1));
 }
 
 /** The index of the term's cycle with this key, or -1 when the key is not one of the term's cycles. */
@@ -87,9 +106,9 @@ export function earliest(a: Date | null, b: Date | null): Date | null {
   return a.getTime() <= b.getTime() ? a : b;
 }
 
-/** When a grant stops being spendable, or null when it does not (welcome, Land while renewing). */
+/** When a grant stops being spendable, or null when it does not (welcome, Land while renewing). Trial credits end with the trial. */
 export function grantExpiresAt(grant: LedgerGrant, wallet: LedgerWallet, now: Date): Date | null {
-  if (grant.source === "welcome") return grant.expiresAt;
+  if (grant.source === "welcome" || grant.source === "trial") return grant.expiresAt;
   return earliest(grant.expiresAt, termCutoff(wallet, now));
 }
 

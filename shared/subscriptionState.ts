@@ -7,7 +7,7 @@
  */
 import { z } from "zod";
 import { PAYMENT_FAILURE_REASONS, isPaymentFailureReason } from "./billingAccount";
-import { BILLABLE_PLAN_IDS, BILLING_CURRENCIES, BILLING_INTERVALS, WALLET_PLAN_IDS, adjacentPlans, billingPlanLabel, isBillablePlanId, planPrice, resolvePlanItemPrice, type BillablePlanId } from "./billingCatalog";
+import { BILLABLE_PLAN_IDS, BILLING_CURRENCIES, BILLING_PERIODS, WALLET_PLAN_IDS, adjacentPlans, billingPlanLabel, isBillablePlanId, isBillingPeriod, planPrice, resolvePlanItemPrice, type BillablePlanId } from "./billingCatalog";
 import { CATALOG_PLAN_IDS, type CatalogPlanId } from "./planCatalog";
 import { isPaidPlanActive } from "./planEntitlements";
 
@@ -23,12 +23,12 @@ export const subscriptionStateSchema = z.object({
   planLabel: z.string().min(1),
   state: z.enum(SUBSCRIPTION_STATES),
   legacy: z.boolean(),
-  billingPeriod: z.enum(BILLING_INTERVALS).nullable(),
+  billingPeriod: z.enum(BILLING_PERIODS).nullable(),
   currency: z.enum(BILLING_CURRENCIES).nullable(),
   /** Minor units per billing period (cents or paise). */
   amount: z.number().int().nonnegative().nullable(),
   currentTermEnd: isoDate.nullable(),
-  pendingChange: z.object({ plan: z.enum(BILLABLE_PLAN_IDS), planLabel: z.string().min(1), billingPeriod: z.enum(BILLING_INTERVALS).nullable(), effectiveAt: isoDate.nullable() }).strict().nullable(),
+  pendingChange: z.object({ plan: z.enum(BILLABLE_PLAN_IDS), planLabel: z.string().min(1), billingPeriod: z.enum(BILLING_PERIODS).nullable(), effectiveAt: isoDate.nullable() }).strict().nullable(),
   pause: z.object({ pausesAt: isoDate.nullable(), resumesAt: isoDate.nullable() }).strict().nullable(),
   /** A renewal the provider could not collect. The plan stays until the provider ends it. */
   paymentIssue: z.object({ dueSince: isoDate, invoiceId: z.string().nullable(), amountDue: z.number().int().nonnegative().nullable(), nextRetryAt: isoDate.nullable(), reason: z.enum(PAYMENT_FAILURE_REASONS).nullable() }).strict().nullable(),
@@ -60,7 +60,7 @@ export type SubscriptionWallet = {
 };
 
 const iso = (date: Date | null | undefined) => (date ? date.toISOString() : null);
-const interval = (value: string | null | undefined) => (value === "monthly" || value === "yearly" ? value : null);
+const interval = (value: string | null | undefined) => (isBillingPeriod(value) ? value : null);
 const currencyOf = (value: string | null | undefined) => (value === "USD" || value === "INR" ? value : null);
 
 const NO_ACTIONS = { changePlan: false, cancel: false, pause: false, reactivate: false, retryPayment: false, cancelScheduledChange: false };

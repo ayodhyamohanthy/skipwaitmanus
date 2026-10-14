@@ -45,13 +45,14 @@ describe("requests view model", () => {
     // Asks opened on a richer plan stay open after a downgrade: the meter never overfills.
     expect(slotMeter(slots("free", 5))).toMatchObject({ open: 5, filled: 3, full: true });
     expect(slotMeter(slots("pro", 4))).toEqual({ label: "OPEN SLOTS · PRO", open: 4, cap: 10, filled: 4, full: false });
-    expect(slotMeter(slots("land_200", 7)).label).toBe("OPEN SLOTS · LAND SPRINT");
-    expect(slotMeter(slots("land_500", 80))).toMatchObject({ cap: null, filled: 0, full: false });
+    expect(slotMeter(slots("land_sprint", 7)).label).toBe("OPEN SLOTS · LAND SPRINT");
+    // Concierge holds 75 open asks (no plan is unlimited).
+    expect(slotMeter(slots("land_concierge", 80))).toMatchObject({ cap: 75, filled: 75, full: true });
   });
 
   it("writes the kit slots-full nudge with the next plan and its cap from the catalog", () => {
-    expect(slotsFullCopy(slots("free", 3), true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer, withdraw an ask, or get more slots with Momentum (15)." });
-    expect(slotsFullCopy(slots("free", 3), false)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer or get more slots with Momentum (15)." });
+    expect(slotsFullCopy(slots("free", 3), true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer, withdraw an ask, or get more slots with Start (8)." });
+    expect(slotsFullCopy(slots("free", 3), false)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer or get more slots with Start (8)." });
     expect(slotsFullCopy(slots("max", 30), true).next).toBe("Wait for an answer, withdraw an ask, or get more slots with Land Sprint (50).");
   });
 });

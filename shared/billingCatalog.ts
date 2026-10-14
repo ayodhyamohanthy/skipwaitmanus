@@ -1,26 +1,43 @@
 /**
- * The billing view of the price book: which Chargebee item price means which
- * plan or credit pack, the amount the server charges for it, and how a plan
- * change moves (PRICING.md, shared/planCatalog.ts). Grandfathered Pro/Max keep
- * their monthly prices from shared/subscriptionPlans.ts. Pure; the server and
- * the client read the same answers.
+ * The billing view of the price book (shared/planCatalog.ts): which Chargebee
+ * item price means which plan term, credit pack or human session, the amount
+ * the server charges for it, when a pass may auto-extend, how a plan change
+ * moves, and the public catalog payload. Grandfathered Pro/Max keep their
+ * monthly prices from shared/subscriptionPlans.ts. Pure; the server and the
+ * client read the same answers.
  */
 import { z } from "zod";
-import { CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId } from "./planCatalog";
+import { BILLING_REGIONS, INDIA_PRICE_NOTE, currencyForRegion, type BillingRegion } from "./billingRegion";
+import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, REVERSE_TRIAL, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
 import { planEntitlementsFor } from "./planEntitlements";
+import { WELCOME_CREDITS } from "./creditLedger";
 import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
 
-export const BILLING_INTERVALS = ["monthly", "yearly"] as const satisfies readonly CatalogInterval[];
-export const BILLING_CURRENCIES = ["USD", "INR"] as const satisfies readonly CatalogCurrency[];
+export const BILLING_INTERVALS = CATALOG_INTERVALS;
+export const BILLING_CURRENCIES = CATALOG_CURRENCIES;
+/**
+ * Stored billing periods (tokenBalances.subscriptionBillingPeriod and the intent
+ * and invoice columns): existing values first and in order (a MySQL ENUM stores
+ * the index), then the passes 0081 added. "monthly" is legacy Pro/Max only.
+ */
+export const BILLING_PERIODS = ["monthly", "yearly", "30d", "90d"] as const;
+export type BillingPeriod = (typeof BILLING_PERIODS)[number];
+
 export const LEGACY_PLAN_IDS = ["pro", "max"] as const;
-/** Every plan a subscription can bill: the kit tiers plus grandfathered Pro/Max. */
+/**
+ * Plan ids 0080 stored before the Oct 14 2026 decision renamed the Land levels.
+ * Never sold or written; they stay in the column ENUMs only because removing an
+ * ENUM member is not an additive migration. A wallet holding one reads as Free.
+ */
+export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
+/** Every plan a subscription can bill: the kit plans plus grandfathered Pro/Max. */
 export const BILLABLE_PLAN_IDS = [...CATALOG_PLAN_IDS, ...LEGACY_PLAN_IDS] as const;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
-/** tokenBalances.plan: existing values first and in order (a MySQL ENUM stores the index). */
-export const WALLET_PLAN_IDS = ["free", ...LEGACY_PLAN_IDS, ...CATALOG_PLAN_IDS] as const;
+/** tokenBalances.plan: existing values first and in order (0080, then 0081). */
+export const WALLET_PLAN_IDS = ["free", ...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */
-export const INTENT_PLAN_IDS = [...LEGACY_PLAN_IDS, ...CATALOG_PLAN_IDS] as const;
+export const INTENT_PLAN_IDS = [...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 
 export function isBillablePlanId(value: unknown): value is BillablePlanId {
   return typeof value === "string" && (BILLABLE_PLAN_IDS as readonly string[]).includes(value);
@@ -30,35 +47,56 @@ export function isCatalogPlanId(value: unknown): value is CatalogPlanId {
   return typeof value === "string" && (CATALOG_PLAN_IDS as readonly string[]).includes(value);
 }
 
-export type PlanPrice = { kind: "plan"; plan: BillablePlanId; interval: CatalogInterval; currency: CatalogCurrency; amount: number; itemPriceId: string; legacy: boolean };
-export type PackPrice = { kind: "pack"; packId: CatalogPackId; credits: number; currency: CatalogCurrency; amount: number; itemPriceId: string };
+export function isBillingPeriod(value: unknown): value is BillingPeriod {
+  return typeof value === "string" && (BILLING_PERIODS as readonly string[]).includes(value);
+}
 
-/** The price the server charges for a plan term. Pro/Max are sold monthly only. */
-export function planPrice(plan: BillablePlanId, interval: CatalogInterval, currency: CatalogCurrency): PlanPrice | undefined {
+/** True when the plan is sold for that term (Keep warm yearly only; every other plan 30 or 90 days). */
+export function planSellsInterval(planId: CatalogPlanId, interval: CatalogInterval): boolean {
+  const plan = catalogPlanById(planId);
+  return Boolean(plan && plan.prices[interval]);
+}
+
+export type PlanPrice = { kind: "plan"; plan: BillablePlanId; interval: BillingPeriod; currency: CatalogCurrency; amount: number; itemPriceId: string; legacy: boolean };
+export type PackPrice = { kind: "pack"; packId: CatalogPackId; credits: number; currency: CatalogCurrency; amount: number; itemPriceId: string };
+export type SessionPrice = { kind: "session"; sessionId: HumanSessionId; currency: CatalogCurrency; amount: number; itemPriceId: string };
+export type CatalogPrice = PlanPrice | PackPrice | SessionPrice;
+
+/** The price the server charges for a plan term. Pro/Max are sold monthly only; kit plans for the terms they list. */
+export function planPrice(plan: BillablePlanId, interval: BillingPeriod, currency: CatalogCurrency): PlanPrice | undefined {
   if (plan === "pro" || plan === "max") {
     if (interval !== "monthly") return undefined;
     const price = SUBSCRIPTION_PLANS[plan].prices[currency];
     return { kind: "plan", plan, interval, currency, amount: price.amount, itemPriceId: price.itemPriceId, legacy: true };
   }
-  const catalog = catalogPlanById(plan);
-  if (!catalog || catalog.id === "free") return undefined;
-  return { kind: "plan", plan, interval, currency, amount: catalog.prices[interval][currency], itemPriceId: catalogItemPriceId(plan, interval, currency), legacy: false };
+  if (interval === "monthly") return undefined;
+  const amount = catalogPlanById(plan)?.prices[interval]?.[currency];
+  if (amount === undefined) return undefined;
+  return { kind: "plan", plan, interval, currency, amount, itemPriceId: catalogItemPriceId(plan, interval, currency), legacy: false };
 }
 
 export function packPrice(packId: CatalogPackId, currency: CatalogCurrency): PackPrice | undefined {
   const pack = catalogPackById(packId);
-  if (!pack) return undefined;
-  return { kind: "pack", packId: pack.id, credits: pack.credits, currency, amount: pack.prices[currency], itemPriceId: catalogPackItemPriceId(pack.id, currency) };
+  const amount = pack?.prices[currency];
+  if (!pack || amount === undefined) return undefined;
+  return { kind: "pack", packId: pack.id, credits: pack.credits, currency, amount, itemPriceId: catalogPackItemPriceId(pack.id, currency) };
 }
 
-const ALL_PRICES: ReadonlyArray<PlanPrice | PackPrice> = [
-  ...BILLABLE_PLAN_IDS.flatMap(plan => BILLING_INTERVALS.flatMap(interval => BILLING_CURRENCIES.map(currency => planPrice(plan, interval, currency)))),
+export function sessionPrice(sessionId: HumanSessionId, currency: CatalogCurrency): SessionPrice | undefined {
+  const session = humanSessionById(sessionId);
+  if (!session) return undefined;
+  return { kind: "session", sessionId: session.id, currency, amount: session.prices[currency], itemPriceId: catalogSessionItemPriceId(session.id, currency) };
+}
+
+const ALL_PRICES: readonly CatalogPrice[] = [
+  ...BILLABLE_PLAN_IDS.flatMap(plan => BILLING_PERIODS.flatMap(interval => BILLING_CURRENCIES.map(currency => planPrice(plan, interval, currency)))),
   ...CATALOG_PACK_IDS.flatMap(packId => BILLING_CURRENCIES.map(currency => packPrice(packId, currency))),
+  ...HUMAN_SESSION_IDS.flatMap(sessionId => BILLING_CURRENCIES.map(currency => sessionPrice(sessionId, currency))),
 ].flatMap(price => (price ? [price] : []));
-const ITEM_PRICES: ReadonlyMap<string, PlanPrice | PackPrice> = new Map(ALL_PRICES.map(price => [price.itemPriceId, price] as const));
+const ITEM_PRICES: ReadonlyMap<string, CatalogPrice> = new Map(ALL_PRICES.map(price => [price.itemPriceId, price] as const));
 
 /** What a Chargebee item price id sells, or undefined for an id outside the price book. */
-export function resolveItemPrice(itemPriceId: unknown): PlanPrice | PackPrice | undefined {
+export function resolveItemPrice(itemPriceId: unknown): CatalogPrice | undefined {
   return typeof itemPriceId === "string" ? ITEM_PRICES.get(itemPriceId) : undefined;
 }
 
@@ -67,10 +105,45 @@ export function resolvePlanItemPrice(itemPriceId: unknown): PlanPrice | undefine
   return price?.kind === "plan" ? price : undefined;
 }
 
-/** A paid invoice amount that is exactly one catalog pack (the checkout intent still decides the credits). */
+/** A paid invoice amount that is exactly one catalog pack in that currency (the checkout intent still decides the credits). */
 export function catalogPackForAmount(amount: number, currency: string): PackPrice | undefined {
   return ALL_PRICES.find((price): price is PackPrice => price.kind === "pack" && price.amount === amount && price.currency === currency);
 }
+
+/** Every item price the kit sells, for availability probes: 22 plan terms, 8 packs and 4 sessions. */
+export function sellableItemPrices(): CatalogPrice[] {
+  return ALL_PRICES.filter(price => price.kind !== "plan" || !price.legacy);
+}
+
+// ---- Auto-extend: opt-in renewal only where a renewal needs no extra authentication ----
+
+export const AUTO_EXTEND_METHODS = ["upi_autopay", "card_netbanking_mandate", "usd_recurring"] as const;
+export type AutoExtendMethod = (typeof AUTO_EXTEND_METHODS)[number];
+/** Chargebee's default UPI AutoPay mandate maximum (it can only be lowered). */
+export const UPI_AUTOPAY_MAX_PAISE = 500_000;
+/** RBI limit for card and netbanking e-mandate debits without extra authentication. */
+export const EMANDATE_MAX_PAISE = 1_500_000;
+
+/**
+ * How a pass may renew itself at the same price, or [] for one-time only.
+ * Concierge and Land 90-day passes never auto-renew (reminders and one-tap
+ * re-buy instead). INR follows the mandate limits; USD stays one-time until
+ * PayPal reference transactions or a card route are confirmed (the server's
+ * single capability flag, server/billingCapabilities.ts).
+ */
+export function autoExtendMethods(planId: CatalogPlanId, interval: CatalogInterval, currency: CatalogCurrency, usdRecurringConfirmed: boolean): AutoExtendMethod[] {
+  const plan = catalogPlanById(planId);
+  const amount = plan?.prices[interval]?.[currency];
+  if (!plan || amount === undefined || plan.byApplication) return [];
+  if (plan.tier === "land" && interval === "90d") return [];
+  if (currency === "USD") return usdRecurringConfirmed ? ["usd_recurring"] : [];
+  const methods: AutoExtendMethod[] = [];
+  if (amount <= UPI_AUTOPAY_MAX_PAISE) methods.push("upi_autopay");
+  if (amount <= EMANDATE_MAX_PAISE) methods.push("card_netbanking_mandate");
+  return methods;
+}
+
+// ---- Plan changes ----
 
 /** "Momentum", "Land Sprint", "Pro", "Free". */
 export function billingPlanLabel(plan: string): string {
@@ -83,75 +156,148 @@ function strength(plan: BillablePlanId): number {
   return tierRank(entitlements.tier) * 10 + entitlements.level;
 }
 
+const INTERVAL_RANK: Readonly<Record<BillingPeriod, number>> = { monthly: 0, "30d": 0, "90d": 1, yearly: 2 };
+
 export type PlanChangeDirection = "upgrade" | "downgrade" | "none";
-export type PlanTerm = { plan: BillablePlanId; interval: CatalogInterval; amount: number };
+export type PlanTerm = { plan: BillablePlanId; interval: BillingPeriod; amount: number };
 
 /**
- * How a change of an existing subscription moves. A stronger plan, or monthly to
- * yearly, upgrades now (prorated, paid on a hosted checkout). A weaker plan, or
- * yearly to monthly, switches at term end, so nothing paid for is cut short.
- * Pro/Max to the tier they map to: a higher price upgrades now, otherwise term end.
+ * How a change of an existing subscription moves. A stronger plan, or a longer
+ * term of the same plan, upgrades now (prorated, paid on a hosted checkout). A
+ * weaker plan or a shorter term switches at term end, so nothing paid for is
+ * cut short. Pro/Max to the tier they map to: a higher price upgrades now.
  */
 export function planChangeDirection(from: PlanTerm, to: PlanTerm): PlanChangeDirection {
   if (from.plan === to.plan && from.interval === to.interval) return "none";
   const delta = strength(to.plan) - strength(from.plan);
   if (delta !== 0) return delta > 0 ? "upgrade" : "downgrade";
-  if (from.interval !== to.interval) return to.interval === "yearly" ? "upgrade" : "downgrade";
+  const longer = INTERVAL_RANK[to.interval] - INTERVAL_RANK[from.interval];
+  if (longer !== 0) return longer > 0 ? "upgrade" : "downgrade";
   return to.amount > from.amount ? "upgrade" : "downgrade";
 }
 
-/** The kit ladder the billing actions walk: Start, Momentum, Land Focus, Sprint, Concierge. */
-const LADDER: readonly CatalogPlanId[] = CATALOG_PLANS.map(plan => plan.id).filter(isCatalogPlanId);
+/** The self-serve ladder: Keep warm, Start, Momentum, Land Focus, Land Sprint. Concierge is by application. */
+const LADDER: readonly CatalogPlanId[] = CATALOG_PLANS.filter(plan => !plan.byApplication).map(plan => plan.id);
 
 /** The next plan up and down for the billing action grid; Pro sits at Start, Max at Momentum. */
 export function adjacentPlans(plan: string): { up: CatalogPlanId | null; down: CatalogPlanId | null } {
   if (plan === "pro") return { up: "momentum", down: null };
-  if (plan === "max") return { up: "land_100", down: "start" };
-  const index = LADDER.indexOf(plan as CatalogPlanId);
+  if (plan === "max") return { up: "land_focus", down: "start" };
+  const index = isCatalogPlanId(plan) ? LADDER.indexOf(plan) : -1;
   if (index < 0) return { up: null, down: null };
   return { up: LADDER[index + 1] ?? null, down: LADDER[index - 1] ?? null };
 }
 
-const priceSchema = z.object({ amount: z.number().int().nonnegative(), available: z.boolean() }).strict();
-const priceByCurrencySchema = z.object({ USD: priceSchema, INR: priceSchema }).strict();
+// ---- GET /api/plans/catalog: the caller's region, prices and what can be bought now ----
 
-/** GET /api/plans/catalog: the price book with each price's live availability on the billing site. */
-export const planCatalogResponseSchema = z.object({
-  plans: z.array(z.object({
+const amount = z.number().int().nonnegative();
+const carryoverSchema = z.union([z.literal(0), z.literal(1), z.literal(3), z.literal("subscribed")]);
+const humanTimeSchema = z.strictObject({ writtenReviews: z.number().int().min(0), liveSessions: z.number().int().min(0), hours: z.number().int().min(0) });
+
+export const planCatalogResponseSchema = z.strictObject({
+  region: z.enum(BILLING_REGIONS),
+  currency: z.enum(BILLING_CURRENCIES),
+  /** "India price, incl. GST" for INR; null for USD. */
+  priceNote: z.string().min(1).nullable(),
+  free: z.strictObject({
+    openRequests: z.number().int().positive(),
+    creditsPerMonth: z.number().int().min(0),
+    welcomeCredits: z.number().int().min(0),
+    trial: z.strictObject({ plan: z.enum(CATALOG_PLAN_IDS), planLabel: z.string().min(1), days: z.number().int().positive(), openRequests: z.number().int().positive(), credits: z.number().int().min(0) }),
+  }),
+  plans: z.array(z.strictObject({
     id: z.enum(CATALOG_PLAN_IDS),
-    tier: z.enum(["start", "momentum", "land"]),
+    tier: z.enum(["keep_warm", "start", "momentum", "land"]),
     level: z.number().int().min(1),
     label: z.string().min(1),
     levelLabel: z.string().nullable(),
+    displayName: z.string().min(1),
+    openRequests: z.number().int().positive(),
     creditsPerMonth: z.number().int().nonnegative(),
-    openRequests: z.number().int().positive().nullable(),
-    carryover: z.union([z.literal(0), z.literal(1), z.literal(3), z.literal("subscribed")]),
-    prices: z.object({ monthly: priceByCurrencySchema, yearly: priceByCurrencySchema }).strict(),
-  }).strict()),
-  packs: z.array(z.object({ id: z.enum(CATALOG_PACK_IDS), credits: z.number().int().positive(), prices: priceByCurrencySchema }).strict()),
-}).strict();
+    carryover: carryoverSchema,
+    humanTime: humanTimeSchema,
+    byApplication: z.boolean(),
+    recommended: z.boolean(),
+    terms: z.array(z.strictObject({
+      interval: z.enum(BILLING_INTERVALS),
+      /** 30 or 90 for passes; null for a yearly term. */
+      days: z.number().int().positive().nullable(),
+      amount,
+      /** Sold now: the item price is live at this amount, and the plan is self-serve. */
+      available: z.boolean(),
+      /** Opt-in renewal methods at checkout; empty means paid once only. */
+      autoExtend: z.array(z.enum(AUTO_EXTEND_METHODS)),
+    })).min(1),
+  })),
+  packs: z.array(z.strictObject({ id: z.enum(CATALOG_PACK_IDS), credits: z.number().int().positive(), amount, available: z.boolean(), firstPack: z.boolean(), recommended: z.boolean() })),
+  sessions: z.array(z.strictObject({ id: z.enum(HUMAN_SESSION_IDS), label: z.string().min(1), detail: z.string().min(1), amount, available: z.boolean() })),
+  creditCosts: z.array(z.strictObject({ id: z.enum(CREDIT_TOOL_IDS), label: z.string().min(1), credits: z.number().int().positive() })),
+  fairness: z.strictObject({ maxOpenAsksPerCompany: z.number().int().positive(), planVisibleToReferrers: z.literal(false) }),
+});
 export type PlanCatalogResponse = z.infer<typeof planCatalogResponseSchema>;
 
-/** Builds the catalog payload from the price book and an availability answer per item price id. */
-export function planCatalogResponse(available: (itemPriceId: string) => boolean): PlanCatalogResponse {
-  const price = (amount: number, itemPriceId: string) => ({ amount, available: available(itemPriceId) });
-  return planCatalogResponseSchema.parse({
-    plans: CATALOG_PLANS.flatMap(plan => (plan.id === "free" || plan.tier === "free" ? [] : [{
-      id: plan.id,
-      tier: plan.tier,
-      level: plan.level,
-      label: plan.label,
-      levelLabel: plan.levelLabel,
-      creditsPerMonth: plan.creditsPerMonth,
-      openRequests: plan.openRequests,
-      carryover: plan.carryover,
-      prices: Object.fromEntries(BILLING_INTERVALS.map(interval => [interval, Object.fromEntries(BILLING_CURRENCIES.map(currency => [currency, price(plan.prices[interval][currency], catalogItemPriceId(plan.id, interval, currency))]))])),
-    }])),
-    packs: CREDIT_PACKS.map(pack => ({ id: pack.id, credits: pack.credits, prices: Object.fromEntries(BILLING_CURRENCIES.map(currency => [currency, price(pack.prices[currency], catalogPackItemPriceId(pack.id, currency))])) })),
-  });
+export type CatalogResponseInput = {
+  region: BillingRegion;
+  /** True when the item price is live on the billing site at the catalog amount. */
+  available: (itemPriceId: string) => boolean;
+  usdRecurringConfirmed: boolean;
+  /** An admin has marked human reviewers available; until then sessions are not sold. */
+  sessionsStaffed: boolean;
+};
+
+function planEntry(plan: PaidCatalogPlan, input: CatalogResponseInput, currency: CatalogCurrency) {
+  const id = plan.id;
+  return [{
+    id,
+    tier: plan.tier,
+    level: plan.level,
+    label: plan.label,
+    levelLabel: plan.levelLabel,
+    displayName: planDisplayName(plan),
+    openRequests: plan.openRequests,
+    creditsPerMonth: plan.creditsPerMonth,
+    carryover: plan.carryover,
+    humanTime: { ...plan.humanTime },
+    byApplication: plan.byApplication,
+    recommended: plan.recommended,
+    terms: planIntervals(plan).flatMap(interval => {
+      const price = planPrice(id, interval, currency);
+      if (!price) return [];
+      return [{
+        interval,
+        days: interval === "yearly" ? null : PASS_DAYS[interval],
+        amount: price.amount,
+        available: !plan.byApplication && input.available(price.itemPriceId),
+        autoExtend: autoExtendMethods(id, interval, currency, input.usdRecurringConfirmed),
+      }];
+    }),
+  }];
 }
 
-/** Every item price the kit sells, for availability probes: 20 plan prices and 8 pack prices. */
-export function sellableItemPrices(): Array<PlanPrice | PackPrice> {
-  return ALL_PRICES.filter(price => price.kind === "pack" || !price.legacy);
+/** Builds the catalog payload for one region from the price book and the server's availability answers. */
+export function planCatalogResponse(input: CatalogResponseInput): PlanCatalogResponse {
+  const currency = currencyForRegion(input.region);
+  const trialPlan = catalogPlanById(REVERSE_TRIAL.plan);
+  return planCatalogResponseSchema.parse({
+    region: input.region,
+    currency,
+    priceNote: currency === "INR" ? INDIA_PRICE_NOTE : null,
+    free: {
+      openRequests: FREE_PLAN.openRequests,
+      creditsPerMonth: FREE_PLAN.creditsPerMonth,
+      welcomeCredits: WELCOME_CREDITS,
+      trial: { plan: REVERSE_TRIAL.plan, planLabel: trialPlan ? planDisplayName(trialPlan) : REVERSE_TRIAL.plan, days: REVERSE_TRIAL.days, openRequests: trialPlan?.openRequests ?? FREE_PLAN.openRequests, credits: REVERSE_TRIAL.credits },
+    },
+    plans: CATALOG_PLANS.flatMap(plan => planEntry(plan, input, currency)),
+    packs: CREDIT_PACKS.flatMap(pack => {
+      const price = packPrice(pack.id, currency);
+      return price ? [{ id: pack.id, credits: pack.credits, amount: price.amount, available: input.available(price.itemPriceId), firstPack: pack.firstPack, recommended: pack.recommended }] : [];
+    }),
+    sessions: HUMAN_SESSIONS.flatMap(session => {
+      const price = sessionPrice(session.id, currency);
+      return price ? [{ id: session.id, label: session.label, detail: session.detail, amount: price.amount, available: input.sessionsStaffed && input.available(price.itemPriceId) }] : [];
+    }),
+    creditCosts: CREDIT_TOOLS.map(tool => ({ ...tool })),
+    fairness: { maxOpenAsksPerCompany: MAX_OPEN_ASKS_PER_COMPANY, planVisibleToReferrers: false },
+  });
 }

@@ -465,7 +465,7 @@ function parseJsonArray(raw: string | null): string[] {
  */
 export async function getSeekerEntitlements(userId: number, now: Date = new Date()): Promise<PlanEntitlements> {
   const db = await getDb(); if (!db) return resolvePlanEntitlements(null, now);
-  const wallet = (await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
+  const wallet = (await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd, trialEndsAt: tokenBalances.trialEndsAt }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
   return resolvePlanEntitlements(wallet ?? null, now);
 }
 
@@ -2635,25 +2635,28 @@ export async function ensureTokenWallet(userId: number, role: WalletRole) {
   if (!db) throw new Error("Database unavailable");
   const now = new Date();
   const existing = await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1);
-  if (existing[0]) {
-    if (role === "job_seeker") {
-      // Kit ledger: cycle boundaries move credits (carryover, expiry) with ledger rows, so they run under the wallet lock.
-      if (!seekerCycleDue(existing[0], now)) return existing[0];
-      return db.transaction(async tx => {
-        const locked = (await tx.select().from(tokenBalances).where(eq(tokenBalances.id, existing[0].id)).limit(1).for("update"))[0];
-        if (!locked) throw new Error("Your credit wallet is unavailable");
-        return (await reconcileSeekerWalletTx(tx, locked, now)).wallet;
-      });
-    }
-    const normalized = normalizedWalletState(existing[0]);
-    if (normalized.changed) {
-      await db.update(tokenBalances).set(normalized.patch).where(eq(tokenBalances.id, existing[0].id));
-      return { ...existing[0], ...normalized.patch };
-    }
-    return existing[0];
+  if (!existing[0]) {
+    await db.insert(tokenBalances).values({ userId, role, balance: 0, ...freshWalletCycle(role, now) });
+    const created = (await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
+    // A new seeker wallet opens Free's current month (2 credits, one plan_grant row) at once.
+    if (role !== "job_seeker" || !created) return created;
+    existing.push(created);
   }
-  await db.insert(tokenBalances).values({ userId, role, balance: 0, ...freshWalletCycle(role, now) });
-  return (await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
+  if (role === "job_seeker") {
+    // Kit ledger: cycle boundaries move credits (carryover, expiry, Free's monthly grant) with ledger rows, so they run under the wallet lock.
+    if (!seekerCycleDue(existing[0], now)) return existing[0];
+    return db.transaction(async tx => {
+      const locked = (await tx.select().from(tokenBalances).where(eq(tokenBalances.id, existing[0].id)).limit(1).for("update"))[0];
+      if (!locked) throw new Error("Your credit wallet is unavailable");
+      return (await reconcileSeekerWalletTx(tx, locked, now)).wallet;
+    });
+  }
+  const normalized = normalizedWalletState(existing[0]);
+  if (normalized.changed) {
+    await db.update(tokenBalances).set(normalized.patch).where(eq(tokenBalances.id, existing[0].id));
+    return { ...existing[0], ...normalized.patch };
+  }
+  return existing[0];
 }
 
 type WalletRow = typeof tokenBalances.$inferSelect;
