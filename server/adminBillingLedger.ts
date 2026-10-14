@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import type { Express, Request } from "express";
 
 /**
@@ -8,6 +9,8 @@ import type { Express, Request } from "express";
  * reversals) so QA can reconcile Chargebee transactions against our ledger.
  * userId only; no emails or names. Time-window paging: when any source hits
  * the limit the response says `truncated` and gives `nextSince` to continue.
+ * Access: an admin session, or the read-only BILLING_LEDGER_READ_TOKEN header
+ * (x-billing-ledger-token) which grants this one GET and nothing else.
  * Bounds: `since` is inclusive, `until` is exclusive (ISO timestamps).
  * Unmatched paid invoices and refunds that could not be applied have no
  * paymentFulfillments row (userId is required there), so they appear as
@@ -24,7 +27,20 @@ export type AdminBillingLedgerDeps = {
   resolveIdentity: (req: Request) => Promise<{ account: { id: number; role?: string } } | undefined>;
   loadRows: (window: { since: Date; until: Date; limit: number }) => Promise<LedgerRows | undefined>;
   now?: () => Date;
+  /** Read-only credential for the QA daily check; defaults to BILLING_LEDGER_READ_TOKEN. */
+  readToken?: () => string | undefined;
 };
+
+export const LEDGER_TOKEN_HEADER = "x-billing-ledger-token";
+const MIN_TOKEN_LENGTH = 32;
+
+/** Constant-time compare of sha256 digests, so length and content never leak. */
+export function ledgerTokenMatches(presented: unknown, configured: string | undefined): boolean {
+  if (!configured || configured.length < MIN_TOKEN_LENGTH || typeof presented !== "string" || presented.length === 0) return false;
+  const a = createHash("sha256").update(presented).digest();
+  const b = createHash("sha256").update(configured).digest();
+  return timingSafeEqual(a, b);
+}
 
 function parseDate(value: unknown): Date | undefined | null {
   if (value === undefined) return undefined;
@@ -63,8 +79,13 @@ export function buildLedgerEvents(rows: LedgerRows, limit: number) {
 export function registerAdminBillingLedgerRoutes(app: Express, deps: AdminBillingLedgerDeps): void {
   app.get("/api/admin/billing/ledger", async (req, res) => {
     try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      // The read token opens ONLY this endpoint. Checked first so a valid token
+      // needs no session; an invalid or absent token falls back to the admin gate.
+      const tokenOk = ledgerTokenMatches(req.get(LEDGER_TOKEN_HEADER), (deps.readToken ?? (() => process.env.BILLING_LEDGER_READ_TOKEN))());
+      if (!tokenOk) {
+        const identity = await deps.resolveIdentity(req);
+        if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
+      }
       const now = (deps.now ?? (() => new Date()))();
       const until = parseDate(req.query.until);
       const sinceParam = parseDate(req.query.since);
