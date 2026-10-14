@@ -124,16 +124,17 @@ export default function Ask() {
       const confirmedDomain = confirmedCompanyDomain(targetRoleUrl);
       if (confirmedDomain) body.confirmedCompanyDomain = confirmedDomain;
       const token = await fetchToken();
-      const response = await fetch("/api/company-referrals", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": askIdempotencyKey(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+      const response = await fetch("/api/company-referrals", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": askIdempotencyKey(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
       const payload = await readApiJson<Record<string, unknown>>(response, "We could not send this ask");
       const created = response.ok ? parseSentAsk(payload) : null;
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       clearAskPrefill();
-      let open: number | null = null;
-      try { open = countOpenAsks(await authed("/api/company-referrals/mine")); } catch { /* open-ask count is informational */ }
-      setOpenAsks(open);
+      // The ask exists now: show the sent screen at once. The open-ask count is
+      // informational, so it loads afterwards and can never hold the button on "Sending...".
       setSent(created);
+      void Promise.race([authed("/api/company-referrals/mine"), new Promise<never>((_, reject) => setTimeout(() => reject(new Error("timeout")), 8000))])
+        .then(list => setOpenAsks(countOpenAsks(list))).catch(() => setOpenAsks(null));
     } catch (reason) { setSendError(askErrorMessage(reason, "We could not send this ask")); }
     finally { setSending(false); }
   };
