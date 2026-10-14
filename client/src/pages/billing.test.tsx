@@ -21,7 +21,7 @@ describe("Billing page", () => {
     render(<Billing />);
     expect(await screen.findByRole("heading", { name: "Free" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Manage plan." })).toBeTruthy();
-    expect(screen.getByText("3 referral requests a month · buy credits anytime")).toBeTruthy();
+    expect(screen.getByText("3 referral credits a month · buy credits anytime")).toBeTruthy();
     expect(screen.getByText("No payments yet.")).toBeTruthy();
     expect(screen.getByText(/never sees or stores them/)).toBeTruthy();
     expect(screen.queryByText(/Visa|UPI|PayPal|4242|Make default|Add payment method/)).toBeNull();
@@ -41,8 +41,8 @@ describe("Billing page", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     render(<Billing />);
-    expect(await screen.findByRole("heading", { name: "Pro · 10 requests/month" })).toBeTruthy();
-    expect(screen.getByText("Renews 6 Nov 2026 · 7 of 10 requests left this cycle")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Pro · 10 credits/month" })).toBeTruthy();
+    expect(screen.getByText("Renews 6 Nov 2026 · 7 of 10 credits left this cycle")).toBeTruthy();
     expect(screen.getByText("5 credits")).toBeTruthy();
     expect(screen.getByText("$5")).toBeTruthy();
     expect(screen.getByText("₹99")).toBeTruthy();

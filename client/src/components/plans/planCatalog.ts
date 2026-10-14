@@ -15,9 +15,9 @@ export const PAID_PLANS: readonly PaidSubscriptionPlan[] = ["pro", "max"];
 export const CREDIT_PRICE: Record<SubscriptionCurrency, string> = { USD: "$1", INR: "₹99" };
 
 export function planLabel(plan: string): string {
-  if (plan === "pro" || plan === "max") return SUBSCRIPTION_PLANS[plan].label;
   if (plan === "free") return "Free";
-  return plan;
+  const config = (SUBSCRIPTION_PLANS as Record<string, { label: string } | undefined>)[plan];
+  return config?.label ?? plan;
 }
 
 /** "$7/month" → "$7"; the cadence is rendered separately in the kit card. */

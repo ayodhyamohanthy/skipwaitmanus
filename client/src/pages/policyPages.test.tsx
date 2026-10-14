@@ -117,9 +117,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" })[0].getAttribute("href")).toBe("mailto:support@skipwait.me");
     cleanup();
     render(<Pricing />);
-    expect(screen.getByText(/₹599\/month or \$7\/month/)).toBeTruthy();
-    expect(screen.getByText(/₹1,299\/month or \$15\/month/)).toBeTruthy();
-    expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
+    const body = document.body.textContent ?? "";
+    expect(body).toContain("Start:");
+    expect(body).toContain("$8/month / $19/quarter (USD) or ₹299/month / ₹699/quarter (INR, incl. GST)");
+    expect(body).toContain("$24/month / $59/quarter (USD) or ₹999/month / ₹2,499/quarter (INR, incl. GST)");
+    expect(body).toContain("5/$5 · 25/$22 · 60/$48 · 150/$105");
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {

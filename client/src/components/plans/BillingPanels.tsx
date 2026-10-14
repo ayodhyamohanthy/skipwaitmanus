@@ -14,7 +14,7 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
     return <Panel>
       <span className="eyebrow">CURRENT PLAN</span>
       <h2 className="mt-1 text-2xl font-semibold">Free</h2>
-      <p className="text-sm text-muted-foreground">{summary.monthlyAllowance} referral requests a month · buy credits anytime</p>
+      <p className="text-sm text-muted-foreground">{summary.monthlyAllowance} referral credits a month · buy credits anytime</p>
       <Button asChild className="mt-4"><Link href="/plans">Upgrade</Link></Button>
     </Panel>;
   }
@@ -24,10 +24,10 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
   return <Panel>
     <div className="flex flex-wrap items-start justify-between gap-3"><div>
       <span className="eyebrow">CURRENT PLAN</span>
-      <h2 className="mt-1 text-2xl font-semibold">{planLabel(summary.plan)} · {summary.monthlyAllowance} requests/month</h2>
+      <h2 className="mt-1 text-2xl font-semibold">{planLabel(summary.plan)} · {summary.monthlyAllowance} credits/month</h2>
       <p className="text-sm text-muted-foreground">{cancelling
         ? `${termEnd ? `Ends ${termEnd}` : "Ends at the end of this paid cycle"} — you keep everything until then.`
-        : `${termEnd ? `Renews ${termEnd} · ` : ""}${left} of ${summary.monthlyAllowance} requests left this cycle`}</p>
+        : `${termEnd ? `Renews ${termEnd} · ` : ""}${left} of ${summary.monthlyAllowance} credits left this cycle`}</p>
     </div></div>
     {!cancelling && <div className="mt-5 grid gap-2 sm:grid-cols-3"><Button variant="outline" asChild><Link href="/plans">Compare plans<ArrowRight /></Link></Button><Button variant="ghost" className="sm:col-start-3" onClick={onCancel}>Cancel plan</Button></div>}
   </Panel>;
