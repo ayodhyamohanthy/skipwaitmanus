@@ -1,9 +1,41 @@
 // Server-side plan gates that read the entitlement (shared/planEntitlements.ts):
-// the typed errors routes map to 409 (showcase limits) or 402 (assistants).
-// No db.ts import, so db.ts can use these inside its transactions without an
-// import cycle.
+// the open-ask predicate every slot count uses, and the typed errors routes map
+// to 409 (slot cap, showcase limits) or 402 (assistants). No db.ts import, so
+// db.ts can use these inside its transactions without an import cycle.
+import { and, eq, gt, isNotNull, or, type SQL } from "drizzle-orm";
+import { referralRequests } from "../drizzle/schema";
 import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
+import { SLOT_CAP_REACHED, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
 import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlements";
+import { ASK_TTL_MS } from "../shared/referral";
+
+/**
+ * The caller's open asks: pending and unexpired. Mirrors isAskExpired: only an
+ * unclaimed pending ask expires, at createdAt + ASK_TTL_MS, computed from the JS
+ * clock (never DB NOW()). Always scoped to the one seeker it is called for.
+ */
+export function openAskCondition(userId: number, nowMs: number): SQL {
+  const cutoff = new Date(nowMs - ASK_TTL_MS);
+  const condition = and(
+    eq(referralRequests.jobSeekerId, userId),
+    eq(referralRequests.status, "pending"),
+    or(isNotNull(referralRequests.referrerId), gt(referralRequests.createdAt, cutoff)),
+  );
+  if (!condition) throw new Error("Open-ask condition could not be built");
+  return condition;
+}
+
+/** Thrown before any side effect when a new ask would exceed the plan's open-ask cap. */
+export class OpenAskSlotCapError extends Error {
+  readonly code = SLOT_CAP_REACHED;
+  readonly slots: OpenAskSlots;
+  constructor(slots: OpenAskSlots) {
+    const copy = slotsFullCopy(slots, true);
+    super(`${copy.lead} ${copy.next}`);
+    this.name = "OpenAskSlotCapError";
+    this.slots = slots;
+  }
+}
 
 export type PlanLimitKind = "showcase_pieces" | "showcase_pins";
 

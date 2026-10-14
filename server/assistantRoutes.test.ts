@@ -2,8 +2,10 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerAssistantRoutes, type AssistantRouteDeps } from "./assistantRoutes";
-import { AssistantPlanRequiredError } from "./planGates";
+import { AssistantPlanRequiredError, OpenAskSlotCapError } from "./planGates";
 import { assistantAccessSchema } from "../shared/assistant";
+import { openAskSlots, slotCapReachedSchema } from "../shared/openAskSlots";
+import { resolvePlanEntitlements } from "../shared/planEntitlements";
 
 function setup(deps: Partial<AssistantRouteDeps>) {
   const app = express();
@@ -105,6 +107,14 @@ describe("assistant access routes", () => {
     expect((await authed(tokens).post("/api/assistants/tokens").send({ name: "Tracker" })).status).toBe(402);
   });
 
+  it("returns the typed slot-cap body when an approved ask would pass the plan's open-ask cap", async () => {
+    const slots = openAskSlots(resolvePlanEntitlements(null), 3);
+    const app = setup({ decideAssistantApproval: async () => { throw new OpenAskSlotCapError(slots); } });
+    const response = await authed(app).post("/api/assistants/approvals/1/decision").send({ decision: "approved" });
+    expect(response.status).toBe(409);
+    expect(slotCapReachedSchema.parse(response.body)).toMatchObject({ code: "slot_cap_reached", slots: { open: 3, cap: 3, full: true, planLabel: "Free", nextPlan: { label: "Momentum", openRequests: 15 } } });
+    expect(response.body.error).toBe("All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).");
+  });
 
   it("creates tokens and shows the plaintext once", async () => {
     const createToken = vi.fn(async () => ({ id: 3, name: "Notion tracker", prefix: "sw_AbCd", token: "sw_full-secret-once", createdAt: "2026-10-09T00:00:00.000Z" }));

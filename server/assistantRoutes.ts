@@ -18,7 +18,7 @@ import {
   submitDeveloperAppForReview,
   updateDeveloperAppWebhook,
 } from "./db";
-import { AssistantPlanRequiredError } from "./planGates";
+import { AssistantPlanRequiredError, OpenAskSlotCapError } from "./planGates";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -219,6 +219,8 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
       record({ actorUserId: identity.account.id, action: `assistant.approval_${decision}`, outcome: "success", resourceType: "assistant_approval", resourceId: approvalId, metadata: { kind: req.body?.kind } });
       res.json({ approval: result });
     } catch (error) {
+      // An approved ask runs the same open-ask slot cap as the in-app form; the approval stays pending.
+      if (error instanceof OpenAskSlotCapError) return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
       const { status, message } = classify(error);
       res.status(status).json({ error: message });
     }
