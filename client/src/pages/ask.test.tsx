@@ -122,6 +122,27 @@ describe("Ask composer", () => {
     expect(screen.getByText("Strong")).toBeTruthy();
   });
 
+  it("names the stage while sending: resume upload first, then the ask", async () => {
+    stubCrypto();
+    const fetchMock = vi.fn();
+    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com" });
+    const base = fetchMock.getMockImplementation()!;
+    let releaseSend: () => void = () => undefined;
+    fetchMock.mockImplementation((url: string, init?: unknown) => String(url).endsWith("/api/company-referrals")
+      ? new Promise(resolve => { releaseSend = () => resolve(base(url, init)); })
+      : base(url, init));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Ask />);
+    fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
+    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
+    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
+    expect(await screen.findByRole("button", { name: "Sending your ask…" })).toBeTruthy();
+    releaseSend();
+    await waitFor(() => expect(screen.getByText("Ask sent to wipro.com.")).toBeTruthy());
+  });
+
   it("settles to the sent state even when the open-asks lookup never resolves", async () => {
     stubCrypto();
     const fetchMock = vi.fn();
