@@ -1,5 +1,7 @@
 import express, { type Express, type Request } from "express";
-import { dmRecipientExists, dmThreadExists, hasActivePremiumSubscription, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
+import { DM_PREMIUM_REQUIRED_ERROR, dmSendBlockFor, type ReferrerDmGate } from "../shared/directMessages";
+import { dmRecipientExists, dmThreadExists, getDb, hasActivePremiumSubscription, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
+import { DirectMessageReferrerGateError, loadReferrerDmGate } from "./dmReferrerGate";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -16,10 +18,17 @@ export type DmRouteDeps = {
   dmRecipientExists?: typeof dmRecipientExists;
   hasActivePremiumSubscription?: typeof hasActivePremiumSubscription;
   isMutualFollow?: typeof isMutualFollow;
+  /** D-012(3): when a verified referrer is involved, sending opens only after they accepted a request linking the two. */
+  referrerDmGate?: (senderUserId: number, recipientUserId: number) => Promise<ReferrerDmGate>;
 };
 
 const DM_RATE_LIMIT_PER_HOUR = 30;
-const UPGRADE_ERROR = "Direct messaging is a premium feature. Upgrade to Pro to message referrers directly.";
+
+async function readReferrerDmGate(senderUserId: number, recipientUserId: number): Promise<ReferrerDmGate> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return loadReferrerDmGate(db, senderUserId, recipientUserId);
+}
 
 export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
@@ -30,20 +39,23 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
   const recipientExists = deps.dmRecipientExists ?? dmRecipientExists;
   const hasPremium = deps.hasActivePremiumSubscription ?? hasActivePremiumSubscription;
   const mutualFollow = deps.isMutualFollow ?? isMutualFollow;
+  const referrerGate = deps.referrerDmGate ?? readReferrerDmGate;
 
   app.get("/api/dms/compose/:userId", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to message referrers directly" });
+      if (!identity) return res.status(401).json({ error: "Sign in to send direct messages" });
       const counterpartUserId = Number(req.params.userId);
       if (!Number.isInteger(counterpartUserId) || counterpartUserId <= 0) return res.status(400).json({ error: "Invalid member" });
       if (counterpartUserId === identity.account.id) return res.status(400).json({ error: "You cannot message yourself" });
       if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
+      const gate = await referrerGate(identity.account.id, counterpartUserId);
       const existing = await threadExists(identity.account.id, counterpartUserId);
       const isMutual = await mutualFollow(identity.account.id, counterpartUserId);
-      const allowed = existing || isMutual || (await hasPremium(identity.account.id));
+      // A referrer pair ignores thread, follow and plan: only acceptance opens it.
+      const allowed = gate.kind === "accepted" || (gate.kind === "not_referrer_pair" && (existing || isMutual || (await hasPremium(identity.account.id))));
       res.set("Cache-Control", "private, no-store");
-      res.json({ allowed, upgradeRequired: !allowed, threadExists: existing, mutualFollow: isMutual });
+      res.json({ allowed, upgradeRequired: gate.kind === "not_referrer_pair" && !allowed, threadExists: existing, mutualFollow: isMutual, sendBlock: dmSendBlockFor(gate) });
     } catch { res.status(500).json({ error: "We could not check direct messaging" }); }
   });
 
@@ -64,10 +76,11 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (!identity) return res.status(401).json({ error: "Sign in to open your direct messages" });
       if (!Number.isInteger(counterpartUserId) || counterpartUserId <= 0) return res.status(400).json({ error: "Invalid member" });
       if (counterpartUserId === identity.account.id) return res.status(400).json({ error: "You cannot message yourself" });
+      const gate = await referrerGate(identity.account.id, counterpartUserId);
       const thread = await listThread(identity.account.id, counterpartUserId);
       if (!thread) return res.status(404).json({ error: "No direct messages with this member yet" });
       res.set("Cache-Control", "private, no-store");
-      res.json({ thread });
+      res.json({ thread, sendBlock: dmSendBlockFor(gate) });
     } catch { res.status(500).json({ error: "We could not open this conversation" }); }
   });
 
@@ -86,16 +99,26 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (!body) return res.status(400).json({ error: "Write a message before sending" });
       if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
       if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
+      const gate = await referrerGate(actorUserId, counterpartUserId);
+      const block = dmSendBlockFor(gate);
+      if (block) {
+        record({ actorUserId, action: "dm.sent", outcome: "denied", resourceType: "direct_message", metadata: { reason: block.reason } });
+        return res.status(403).json(block);
+      }
       const existing = await threadExists(actorUserId, counterpartUserId);
-      if (!existing && !(await hasPremium(actorUserId)) && !(await mutualFollow(actorUserId, counterpartUserId))) {
+      if (gate.kind === "not_referrer_pair" && !existing && !(await hasPremium(actorUserId)) && !(await mutualFollow(actorUserId, counterpartUserId))) {
         record({ actorUserId, action: "dm.sent", outcome: "denied", resourceType: "direct_message", metadata: { reason: "premium_required" } });
-        return res.status(402).json({ error: UPGRADE_ERROR, upgrade: true });
+        return res.status(402).json({ error: DM_PREMIUM_REQUIRED_ERROR, upgrade: true });
       }
       if (deps.countRecentMessagesBySender) { const legacyCount=await deps.countRecentMessagesBySender(actorUserId,new Date(Date.now()-3600_000)); if(legacyCount>=DM_RATE_LIMIT_PER_HOUR)return res.status(429).json({error:"You're sending messages too quickly. Try again in a few minutes."}); }
       const message = await send(actorUserId, counterpartUserId, body, idempotencyKey);
       record({ actorUserId, action: "dm.sent", outcome: "success", resourceType: "direct_message", metadata: { bodyLength: body.length, threadStarted: !existing } });
       res.status(message.replayed?200:201).json({ message });
     } catch (error) {
+      if (error instanceof DirectMessageReferrerGateError) {
+        record({ actorUserId, action: "dm.sent", outcome: "denied", resourceType: "direct_message", metadata: { reason: error.block.reason } });
+        return res.status(403).json(error.block);
+      }
       const message = error instanceof Error ? error.message : "We could not send this direct message";
       record({ actorUserId, action: "dm.sent", outcome: "failure", resourceType: "direct_message" });
       const retryAt=typeof error==="object"&&error!==null&&"retryAt" in error?(error as {retryAt:Date}).retryAt:undefined;

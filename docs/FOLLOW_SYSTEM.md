@@ -3,6 +3,8 @@
 Shipped: build `aebe0a6` (2026-09-10). Design reference: X's follow-gated DM state (empty conversation shows credibility signals + paid access path).
 
 ## The rule (as implemented)
+> **Superseded by D-012(3) (Oct 2026) for referrers.** When either person is a verified referrer, a direct message (new thread or reply) can be sent only after that referrer accepted a referral request linking the two; premium, mutual follow and an earlier thread no longer open it, and the send is rejected with `403 { reason: "referrer_acceptance_required" }` (`server/dmReferrerGate.ts`, rechecked inside `sendDirectMessage`). The Pro/Max "message referrers directly" perk has ended. The rule below now applies only between two members who are not verified referrers.
+
 You can start a direct message with a member if ANY of these is true:
 1. **Premium** — you have an active Pro or Max subscription (either wallet), OR
 2. **Mutual follow** — you follow each other (X-style: following is one-way and free; mutual = both directions), OR
