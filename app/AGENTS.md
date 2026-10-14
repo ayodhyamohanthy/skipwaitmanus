@@ -9,6 +9,8 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 
+> **Production work is NOT built in this folder.** `app/` is the kit v4 design reference. For the live SkipWait app, follow the repository root `AGENTS.md` (section 0) and pick work from the priority queue in `docs/KIT_V4_BUILD_PLAN.md`.
+
 ## App architecture
 - Keep the public launch homepage at / without app navigation, and company discovery at /explore; wrap other design screens in the shared sidebar/mobile-tab shell so the public website and app have distinct navigation.
 - Give each major design screen its own TanStack leaf route and metadata so it can be reviewed and shared independently.
