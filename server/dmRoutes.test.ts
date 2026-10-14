@@ -195,6 +195,15 @@ describe("referrer messages open only after acceptance (D-012 item 3)", () => {
     expect(neither.body.error).not.toMatch(/referrer/i);
   });
 
+  it("fails closed when the gate cannot be read, and a missing thread stays a 404 without reading it", async () => {
+    let reads = 0, sends = 0;
+    const app = await served({ referrerDmGate: async () => { reads += 1; throw new Error("Database unavailable"); }, premiumUsers: [SEEKER], sendDirectMessage: async () => { sends += 1; return { id: 1, replayed: false as const }; } });
+    expect((await request(app).get(`/api/dms/threads/${REFERRER}`).set("x-test-user", String(SEEKER))).status).toBe(404);
+    expect(reads).toBe(0);
+    expect((await send(app, SEEKER, REFERRER)).status).toBe(500);
+    expect(sends).toBe(0);
+  });
+
   it("maps a gate refusal raised inside the send transaction to the same 403 and denied row", async () => {
     const activity: Activity[] = [];
     const { DirectMessageReferrerGateError } = await import("./dmReferrerGate");

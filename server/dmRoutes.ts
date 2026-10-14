@@ -76,9 +76,9 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (!identity) return res.status(401).json({ error: "Sign in to open your direct messages" });
       if (!Number.isInteger(counterpartUserId) || counterpartUserId <= 0) return res.status(400).json({ error: "Invalid member" });
       if (counterpartUserId === identity.account.id) return res.status(400).json({ error: "You cannot message yourself" });
-      const gate = await referrerGate(identity.account.id, counterpartUserId);
       const thread = await listThread(identity.account.id, counterpartUserId);
       if (!thread) return res.status(404).json({ error: "No direct messages with this member yet" });
+      const gate = await referrerGate(identity.account.id, counterpartUserId);
       res.set("Cache-Control", "private, no-store");
       res.json({ thread, sendBlock: dmSendBlockFor(gate) });
     } catch { res.status(500).json({ error: "We could not open this conversation" }); }
