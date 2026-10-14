@@ -45,6 +45,10 @@ Run one qty-1 INR credits pack (the smallest one-time purchase) as the unit of t
 7. Credits move only through the in-app flow with the exact cost shown.
 8. Capture evidence for each cell: hosted page URL (site name visible), success redirect, wallet delta, Chargebee transaction, refund id and status.
 
+## 4a. Failure rule (standing, founder Oct 14 2026)
+
+Any payment-path failure triggers an immediate notification to the founder in his iMessage thread, naming the failing leg and attaching the evidence. This is a standing instruction for every payments run, not only one run. Failures covered: checkout page generation, hosted page, webhook delivery, credit landing, provider decline, refund failure. Agents report the failure to the main agent at once with the leg, the evidence (URL, transaction id, response, screenshot) and what was left unrefunded; the main agent owns the message to the founder. Do not wait for the end of the run, and do not retry around the failure first.
+
 ## 5. Webhook flip procedure (test window only)
 
 The app receives billing events at `/api/chargebee/webhook`, authenticated with the webhook credentials of the site that sends them. The `skipwait-test` site must reach production only during the test window.
