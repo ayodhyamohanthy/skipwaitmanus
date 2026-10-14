@@ -36,8 +36,9 @@ describe("plan catalog matches the kit and the recommended numbers", () => {
       expect(p.prices.yearly.USD).toBe(p.prices.monthly.USD * 10);
     }
   });
-  it("credit packs are the recommended table", () => {
-    expect(CREDIT_PACKS.map(p => [p.credits, p.prices.USD / 100, p.prices.INR / 100])).toEqual([[10, 9, 799], [30, 24, 1_999], [100, 69, 5_999], [300, 179, 14_999]]);
+  it("credit packs follow PRICING.md: 5/$5, 25/$22, 60/$48, 150/$105, with INR at the plan table's rate", () => {
+    expect(CREDIT_PACKS.map(p => [p.id, p.credits, p.prices.USD / 100, p.prices.INR / 100])).toEqual([["pack_5", 5, 5, 429], ["pack_25", 25, 22, 1_899], ["pack_60", 60, 48, 4_099], ["pack_150", 150, 105, 8_999]]);
+    expect(CREDIT_PACKS.map(p => catalogPackItemPriceId(p.id, "USD"))).toEqual(["skipwait_pack_5-USD", "skipwait_pack_25-USD", "skipwait_pack_60-USD", "skipwait_pack_150-USD"]);
   });
 });
 

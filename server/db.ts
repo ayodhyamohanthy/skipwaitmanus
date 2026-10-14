@@ -26,6 +26,7 @@ import {
   type DeveloperApp,
 } from "../shared/assistant";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
+import { type WalletPlanId } from "../shared/billingCatalog";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
@@ -2334,7 +2335,7 @@ export async function getAiWorkspaceContext(userId: number) {
 
 export type WalletRole = "job_seeker" | "referrer";
 export type CreditSummary = {
-  plan: SubscriptionPlan;
+  plan: WalletPlanId;
   monthlyAllowance: number;
   monthlyCreditsRemaining: number;
   purchasedCreditsRemaining: number;

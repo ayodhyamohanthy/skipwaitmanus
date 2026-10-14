@@ -34,6 +34,10 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "jobRuns", createSql: `CREATE TABLE IF NOT EXISTS \`jobRuns\` (\`id\` int AUTO_INCREMENT NOT NULL, \`jobName\` varchar(64) NOT NULL, \`windowKey\` varchar(32) NOT NULL, \`status\` enum('running','succeeded','failed') NOT NULL DEFAULT 'running', \`attempt\` int NOT NULL DEFAULT 1, \`leaseOwner\` varchar(64) NOT NULL, \`startedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`leaseExpiresAt\` timestamp NOT NULL, \`finishedAt\` timestamp NULL, \`processedCount\` int NOT NULL DEFAULT 0, \`failedCount\` int NOT NULL DEFAULT 0, \`error\` varchar(500) NULL, CONSTRAINT \`jobRuns_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`job_runs_job_window_unique\`(\`jobName\`,\`windowKey\`), INDEX \`job_runs_job_started_idx\`(\`jobName\`,\`startedAt\`))` },
   // Kit credit ledger (0079): carried-over and welcome credit grants.
   { table: "planCreditGrants", createSql: `CREATE TABLE IF NOT EXISTS \`planCreditGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`source\` enum('carryover','welcome') NOT NULL, \`grantKey\` varchar(64) NOT NULL, \`planId\` varchar(32) NULL, \`subscriptionId\` varchar(80) NULL, \`cycleKey\` varchar(16) NULL, \`tokenCount\` int NOT NULL, \`creditsRemaining\` int NOT NULL, \`status\` enum('active','exhausted','expired','revoked') NOT NULL DEFAULT 'active', \`grantedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`expiresAt\` timestamp NULL, \`closedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`planCreditGrants_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`plan_credit_grants_grant_key_unique\`(\`grantKey\`), INDEX \`plan_credit_grants_user_status_idx\`(\`userId\`,\`role\`,\`status\`), INDEX \`plan_credit_grants_status_expiry_idx\`(\`status\`,\`expiresAt\`), CONSTRAINT \`plan_credit_grants_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  // Subscription management (0080): billing customers, receipts, cancellation feedback.
+  { table: "billingCustomers", createSql: `CREATE TABLE IF NOT EXISTS \`billingCustomers\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`provider\` varchar(32) NOT NULL DEFAULT 'chargebee', \`site\` enum('test','live') NOT NULL, \`providerCustomerId\` varchar(80) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`billingCustomers_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`billing_customers_provider_customer_unique\`(\`provider\`,\`site\`,\`providerCustomerId\`), UNIQUE INDEX \`billing_customers_owner_unique\`(\`userId\`,\`role\`,\`provider\`,\`site\`), CONSTRAINT \`billing_customers_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  { table: "billingInvoices", createSql: `CREATE TABLE IF NOT EXISTS \`billingInvoices\` (\`id\` int AUTO_INCREMENT NOT NULL, \`provider\` varchar(32) NOT NULL DEFAULT 'chargebee', \`site\` enum('test','live') NOT NULL, \`providerInvoiceId\` varchar(80) NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`kind\` enum('subscription','credit_pack') NOT NULL, \`subscriptionId\` varchar(80) NULL, \`planId\` varchar(32) NULL, \`billingPeriod\` enum('monthly','yearly') NULL, \`tokenCount\` int NULL, \`amount\` int NOT NULL, \`amountRefunded\` int NOT NULL DEFAULT 0, \`currency\` varchar(3) NOT NULL, \`status\` enum('paid','refunded','partially_refunded','payment_due','not_paid','voided') NOT NULL, \`paidAt\` timestamp NULL, \`resourceVersion\` bigint NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`billingInvoices_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`billing_invoices_provider_invoice_unique\`(\`provider\`,\`site\`,\`providerInvoiceId\`), INDEX \`billing_invoices_owner_paid_idx\`(\`userId\`,\`role\`,\`paidAt\`), CONSTRAINT \`billing_invoices_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  { table: "subscriptionCancellationFeedback", createSql: `CREATE TABLE IF NOT EXISTS \`subscriptionCancellationFeedback\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`subscriptionId\` varchar(80) NOT NULL, \`reason\` enum('got_job','too_expensive','not_using','missing_feature','other') NOT NULL, \`outcome\` enum('cancelled','paused') NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`subscriptionCancellationFeedback_id\` PRIMARY KEY(\`id\`), INDEX \`subscription_cancellation_feedback_user_idx\`(\`userId\`,\`createdAt\`), CONSTRAINT \`subscription_cancellation_feedback_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
@@ -88,6 +92,27 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "jobs", column: "jobFunctionSource", definition: "ENUM('seeker','inferred','backfill') NULL" },
   // Kit credit ledger (0079). The kind ENUM widening is applied by the migration only.
   { table: "tokenTransactions", column: "creditGrantId", definition: "INT NULL" },
+  // Subscription management (0080). The plan ENUM widenings are applied by the migration only.
+  { table: "tokenBalances", column: "subscriptionItemPriceId", definition: "VARCHAR(100) NULL" },
+  { table: "tokenBalances", column: "subscriptionBillingPeriod", definition: "ENUM('monthly','yearly') NULL" },
+  { table: "tokenBalances", column: "subscriptionAmount", definition: "INT NULL" },
+  { table: "tokenBalances", column: "pendingPlan", definition: "VARCHAR(32) NULL" },
+  { table: "tokenBalances", column: "pendingBillingPeriod", definition: "ENUM('monthly','yearly') NULL" },
+  { table: "tokenBalances", column: "pendingPlanEffectiveAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "subscriptionPauseAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "subscriptionResumeAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "paymentDueSince", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "paymentDueInvoiceId", definition: "VARCHAR(80) NULL" },
+  { table: "tokenBalances", column: "paymentDueAmount", definition: "INT NULL" },
+  { table: "tokenBalances", column: "paymentNextRetryAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "paymentFailureReason", definition: "VARCHAR(32) NULL" },
+  { table: "tokenBalances", column: "paymentRetryRequestedAt", definition: "TIMESTAMP NULL" },
+  { table: "subscriptionCheckoutIntents", column: "billingPeriod", definition: "ENUM('monthly','yearly') NOT NULL DEFAULT 'monthly'" },
+  { table: "subscriptionCheckoutIntents", column: "kind", definition: "ENUM('new','change') NOT NULL DEFAULT 'new'" },
+  { table: "subscriptionCheckoutIntents", column: "subscriptionId", definition: "VARCHAR(80) NULL" },
+  { table: "subscriptionCheckoutIntents", column: "failureReason", definition: "VARCHAR(32) NULL" },
+  { table: "subscriptionCheckoutIntents", column: "failureCode", definition: "VARCHAR(64) NULL" },
+  { table: "subscriptionCheckoutIntents", column: "failedAt", definition: "TIMESTAMP NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -141,6 +166,13 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "planCreditGrants", name: "plan_credit_grants_status_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
   { table: "tokenTransactions", name: "token_transactions_credit_grant_idx", columns: "`creditGrantId`", nonUnique: true },
   { table: "tokenTransactions", name: "token_transactions_cycle_idx", columns: "`userId`,`role`,`sourceCycleKey`", nonUnique: true },
+  // Subscription management (0080).
+  { table: "subscriptionCheckoutIntents", name: "subscription_checkout_subscription_idx", columns: "`subscriptionId`", nonUnique: true },
+  { table: "billingCustomers", name: "billing_customers_provider_customer_unique", columns: "`provider`,`site`,`providerCustomerId`" },
+  { table: "billingCustomers", name: "billing_customers_owner_unique", columns: "`userId`,`role`,`provider`,`site`" },
+  { table: "billingInvoices", name: "billing_invoices_provider_invoice_unique", columns: "`provider`,`site`,`providerInvoiceId`" },
+  { table: "billingInvoices", name: "billing_invoices_owner_paid_idx", columns: "`userId`,`role`,`paidAt`", nonUnique: true },
+  { table: "subscriptionCancellationFeedback", name: "subscription_cancellation_feedback_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -169,6 +201,9 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "assistantApprovals", column: "connectionId", referencedTable: "assistantConnections", referencedColumn: "id" },
   { table: "companyDomains", column: "companyId", referencedTable: "companies", referencedColumn: "id" },
   { table: "planCreditGrants", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "billingCustomers", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "billingInvoices", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "subscriptionCancellationFeedback", column: "userId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

@@ -605,13 +605,31 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
   monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
   monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
-  plan: mysqlEnum("plan", ["free", "pro", "max"]).default("free").notNull(),
+  // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0080 added the kit plans.
+  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500"]).default("free").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   subscriptionCurrency: varchar("subscriptionCurrency", { length: 3 }),
   subscriptionCurrentTermStart: timestamp("subscriptionCurrentTermStart"),
   subscriptionCurrentTermEnd: timestamp("subscriptionCurrentTermEnd"),
   subscriptionResourceVersion: bigint("subscriptionResourceVersion", { mode: "number" }),
+  // Subscription management (0080, shared/subscriptionState.ts): what the subscription bills,
+  // a switch scheduled for term end, a scheduled or active pause, and the dunning state of a
+  // failed renewal. Written only from provider responses and webhook snapshots.
+  subscriptionItemPriceId: varchar("subscriptionItemPriceId", { length: 100 }),
+  subscriptionBillingPeriod: mysqlEnum("subscriptionBillingPeriod", ["monthly", "yearly"]),
+  subscriptionAmount: int("subscriptionAmount"),
+  pendingPlan: varchar("pendingPlan", { length: 32 }),
+  pendingBillingPeriod: mysqlEnum("pendingBillingPeriod", ["monthly", "yearly"]),
+  pendingPlanEffectiveAt: timestamp("pendingPlanEffectiveAt"),
+  subscriptionPauseAt: timestamp("subscriptionPauseAt"),
+  subscriptionResumeAt: timestamp("subscriptionResumeAt"),
+  paymentDueSince: timestamp("paymentDueSince"),
+  paymentDueInvoiceId: varchar("paymentDueInvoiceId", { length: 80 }),
+  paymentDueAmount: int("paymentDueAmount"),
+  paymentNextRetryAt: timestamp("paymentNextRetryAt"),
+  paymentFailureReason: varchar("paymentFailureReason", { length: 32 }),
+  paymentRetryRequestedAt: timestamp("paymentRetryRequestedAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("token_balances_user_idx").on(table.userId), uniqueIndex("token_balances_user_role_unique").on(table.userId, table.role), uniqueIndex("token_balances_subscription_unique").on(table.subscriptionId)]);
 
@@ -812,13 +830,71 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
-  plan: mysqlEnum("plan", ["pro", "max"]).notNull(),
+  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0080 added the kit plans.
+  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500"]).notNull(),
   itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   status: mysqlEnum("status", ["pending", "activated", "cancelled"]).default("pending").notNull(),
+  // 0080: yearly terms, plan changes of an existing subscription, and the provider's
+  // recorded payment failure (shared/billingAccount.ts PAYMENT_FAILURE_REASONS).
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly"]).default("monthly").notNull(),
+  kind: mysqlEnum("kind", ["new", "change"]).default("new").notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  failureReason: varchar("failureReason", { length: 32 }),
+  failureCode: varchar("failureCode", { length: 64 }),
+  failedAt: timestamp("failedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("subscription_checkout_hosted_page_unique").on(table.hostedPageId), uniqueIndex("subscription_checkout_intent_unique").on(table.checkoutIntentId), index("subscription_checkout_user_idx").on(table.userId)]);
+}, table => [uniqueIndex("subscription_checkout_hosted_page_unique").on(table.hostedPageId), uniqueIndex("subscription_checkout_intent_unique").on(table.checkoutIntentId), index("subscription_checkout_user_idx").on(table.userId), index("subscription_checkout_subscription_idx").on(table.subscriptionId)]);
+
+// Subscription management (0080). The Chargebee customer that holds a member's
+// payment methods, per billing site (test and live ids never cross). Bound only
+// from an owned subscription or checkout; one customer never maps to two people.
+export const billingCustomers = mysqlTable("billingCustomers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  provider: varchar("provider", { length: 32 }).default("chargebee").notNull(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  providerCustomerId: varchar("providerCustomerId", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("billing_customers_provider_customer_unique").on(table.provider, table.site, table.providerCustomerId), uniqueIndex("billing_customers_owner_unique").on(table.userId, table.role, table.provider, table.site)]);
+
+// Receipts (0080): every provider invoice of a member's subscription or credit
+// pack, upserted from webhook snapshots in invoice resource_version order.
+export const billingInvoices = mysqlTable("billingInvoices", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 32 }).default("chargebee").notNull(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  providerInvoiceId: varchar("providerInvoiceId", { length: 80 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  kind: mysqlEnum("kind", ["subscription", "credit_pack"]).notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  planId: varchar("planId", { length: 32 }),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly"]),
+  tokenCount: int("tokenCount"),
+  amount: int("amount").notNull(),
+  amountRefunded: int("amountRefunded").default(0).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  status: mysqlEnum("status", ["paid", "refunded", "partially_refunded", "payment_due", "not_paid", "voided"]).notNull(),
+  paidAt: timestamp("paidAt"),
+  resourceVersion: bigint("resourceVersion", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("billing_invoices_provider_invoice_unique").on(table.provider, table.site, table.providerInvoiceId), index("billing_invoices_owner_paid_idx").on(table.userId, table.role, table.paidAt)]);
+
+// Why members leave (0080): one row per confirmed cancel or pause from the kit flow.
+export const subscriptionCancellationFeedback = mysqlTable("subscriptionCancellationFeedback", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }).notNull(),
+  reason: mysqlEnum("reason", ["got_job", "too_expensive", "not_using", "missing_feature", "other"]).notNull(),
+  outcome: mysqlEnum("outcome", ["cancelled", "paused"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("subscription_cancellation_feedback_user_idx").on(table.userId, table.createdAt)]);
 
 export const subscriptionEvents = mysqlTable("subscriptionEvents", {
   id: int("id").autoincrement().primaryKey(),

@@ -5,7 +5,8 @@
  *
  * Pricing per kit screens (19_plans/20_billing), locked Oct 9 2026; INR table ~Rs 86/$.
  * Where PRICING.md and this file disagreed, PRICING.md + the PNGs won (Oct 14 2026):
- * Land Sprint holds 50 open requests, and the Land levels are Focus/Sprint/Concierge.
+ * Land Sprint holds 50 open requests, the Land levels are Focus/Sprint/Concierge,
+ * and the credit packs are 5/$5, 25/$22, 60/$48 and 150/$105.
  * Changeable data.
  */
 export type CatalogTier = "free" | "start" | "momentum" | "land";
@@ -63,15 +64,26 @@ export const CATALOG_PLANS: readonly CatalogPlan[] = [
   plan({ id: "land_500", tier: "land", level: 3, label: "Land", levelLabel: "Concierge", creditsPerMonth: 1_000, openRequests: null, carryover: "subscribed", monthlyUsd: 500, monthlyInr: 42_999 }),
 ];
 
-export type CreditPack = { id: string; credits: number; prices: Record<CatalogCurrency, number> };
+export const CATALOG_PACK_IDS = ["pack_5", "pack_25", "pack_60", "pack_150"] as const;
+export type CatalogPackId = (typeof CATALOG_PACK_IDS)[number];
 
-/** Purchased credits never expire and never affect referral access or queue position. */
+export type CreditPack = { id: CatalogPackId; credits: number; prices: Record<CatalogCurrency, number> };
+
+/**
+ * Purchased credits never expire and never affect referral access or queue position.
+ * PRICING.md packs (Oct 14 2026): 5/$5, 25/$22, 60/$48, 150/$105. INR keeps the
+ * plan table's ~Rs 86/$ with the same per-credit discounts (owner confirms).
+ */
 export const CREDIT_PACKS: readonly CreditPack[] = [
-  { id: "pack_10", credits: 10, prices: { USD: usd(9), INR: inr(799) } },
-  { id: "pack_30", credits: 30, prices: { USD: usd(24), INR: inr(1_999) } },
-  { id: "pack_100", credits: 100, prices: { USD: usd(69), INR: inr(5_999) } },
-  { id: "pack_300", credits: 300, prices: { USD: usd(179), INR: inr(14_999) } },
+  { id: "pack_5", credits: 5, prices: { USD: usd(5), INR: inr(429) } },
+  { id: "pack_25", credits: 25, prices: { USD: usd(22), INR: inr(1_899) } },
+  { id: "pack_60", credits: 60, prices: { USD: usd(48), INR: inr(4_099) } },
+  { id: "pack_150", credits: 150, prices: { USD: usd(105), INR: inr(8_999) } },
 ];
+
+export function catalogPackById(id: unknown): CreditPack | undefined {
+  return CREDIT_PACKS.find(pack => pack.id === id);
+}
 
 /**
  * Grandfathered legacy subscribers. Pro and Max keep their billing and receive
@@ -102,11 +114,12 @@ export function tierAtLeast(tier: CatalogTier, minimum: CatalogTier): boolean {
   return tierRank(tier) >= tierRank(minimum);
 }
 
-/** Chargebee item price id, e.g. skipwait_land_200_yearly-USD. Test catalog only until the switch. */
+/** Chargebee item price id, e.g. skipwait_land_200_yearly-USD. Sold only once the server sees it live on the site (server/billingAvailability.ts). */
 export function catalogItemPriceId(planId: string, interval: CatalogInterval, currency: CatalogCurrency): string {
   return `skipwait_${planId}_${interval}-${currency}`;
 }
 
+/** One-time Chargebee item price for a credit pack, e.g. skipwait_pack_25-USD. */
 export function catalogPackItemPriceId(packId: string, currency: CatalogCurrency): string {
   return `skipwait_${packId}-${currency}`;
 }
