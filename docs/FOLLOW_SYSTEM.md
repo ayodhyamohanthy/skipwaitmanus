@@ -19,7 +19,7 @@ Referral *requests* through fast-track links and the wall remain free for everyo
 - `GET /api/users/:userId/follow-state` — `{ followers, followingCount, isFollowingViewer, isFollowingTarget, isMutual, joinedMonthYear, viewerSignedIn }`.
 - `GET /api/users/:userId/followers` / `/following` — anonymous-safe labels only (`Member` / `Referrer · company.com`); never names/emails.
 - `GET /api/dms/compose/:userId` — now also returns `mutualFollow` so the UI can explain why messaging is free.
-- DM gate: `POST /api/dms/threads/:userId` — premium OR mutual OR existing thread.
+- DM gate: `POST /api/dms/threads/:userId` — premium OR mutual OR existing thread, between two members who are not verified referrers only. With a verified referrer on either side it opens only after that referrer accepted a request linking the two (`403 referrer_acceptance_required` otherwise; superseded by D-012(3), see the note above). The thread view and compose endpoint return the same `sendBlock`.
 
 ## Schema
 `userFollows` (migration `drizzle/0038_user_follows.sql`): followerUserId, followingUserId (both FK → users, cascade), createdAt; unique pair index. Auto-created by the boot-time schema reconciler (also in `server/schemaReconcile.ts` DESIRED_TABLES). Verified live: follow endpoints return 200 on skipwait.me.
