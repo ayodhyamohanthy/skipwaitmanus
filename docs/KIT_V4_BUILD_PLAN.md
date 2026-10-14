@@ -88,7 +88,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | **Tier D — referral lifecycle** |||||
 | 14 | `referrer-identity-reveal` + `identity-gated-preview` (both see names after accept) | — | M | todo |
 | 15 | `pass-reasons` (5 kit reasons, shared with the seeker, never the name) | — | M | todo |
-| 16 | `mark-referred-reference` + `thread-timeline` | — | M | todo |
+| 16 | `mark-referred-reference` + `thread-timeline` | — | M | in progress - SkipWait eng agent - 2026-10-15 - branch task16-referred-reference (migration 0082, no credit path) |
 | 17 | `inbox-list-enrichment` + `referrer-preview-expiry` + `ask-quality-signals` | 9 | M | todo |
 | 18 | `referrer-capacity-routing` (monthly capacity; full → other referrers; area routing) + `named-referrer-visibility` | function taxonomy (done) | L | todo |
 | 19 | `pre-accept-question` (one anonymous question before accepting) | 14 | L | todo |
