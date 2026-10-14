@@ -258,10 +258,10 @@ describe("Ask composer", () => {
   it("shows the company and function from the door the seeker came from, and a matching careers placeholder", async () => {
     const company = { slug: "wipro", name: "Wipro", initials: "W", industry: "IT", location: "Bengaluru", functions: ["Design"], blurb: "b", domains: ["wipro.com"], openToReferrals: true };
     vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/companies/wipro" ? { ok: true, status: 200, json: async () => ({ company }), headers: new Headers({ "content-type": "application/json" }), text: async () => JSON.stringify({ company }) } : { ok: false, status: 404, json: async () => ({}), headers: new Headers(), text: async () => "{}" }));
-    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "", note: "", savedAt: Date.now() }));
+    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://example.com/x", note: "", savedAt: Date.now() }));
     render(<Ask />);
     expect(await screen.findByText(/NEW ASK · WIPRO ·/)).toBeTruthy();
-    expect(screen.getByPlaceholderText("https://careers.wipro.com/…")).toBeTruthy();
+    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).placeholder).toBe("https://careers.wipro.com/…");
   });
 
   it("keeps the plain eyebrow when the company is unknown or the lookup fails", async () => {
