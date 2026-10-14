@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { notifications, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { expireStalePendingReferralRequest, reconcileExpiredPendingReferrals } from "./db";
+import { expireStalePendingReferralRequest, reconcileExpiredPendingReferrals, withdrawCompanyReferralRequest } from "./db";
 import { createAskExpirySweep } from "./askExpirySweep";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -213,6 +213,29 @@ describe("ask expiry", () => {
     expect(tables.requests[0].status).toBe("closed");
     expect(tables.txns.filter(t => t.kind === "expiry_refund").length).toBe(1);
     expect(tables.notes.filter(n => n.userId === 7).length).toBe(1);
+  });
+
+  it("expires a free ask (asks no longer reserve a credit): the slot frees, nothing is refunded", async () => {
+    tables.requests = [requestRow(new Date(NOW.getTime() - 8 * DAY), { debitTransactionId: null })];
+    const before = structuredClone(tables.wallets);
+    const result = await expireStalePendingReferralRequest(7, 501, NOW.getTime());
+    expect(result).toMatchObject({ expired: true, status: "closed" });
+    expect(tables.wallets).toEqual(before);
+    expect(tables.txns).toEqual([]);
+    expect(tables.notes).toEqual([expect.objectContaining({ userId: 7, title: "Your ask expired — slot freed" })]);
+  });
+
+  it("withdraws a free ask without touching credits, and still refuses a reserved debit that went missing", async () => {
+    tables.requests = [requestRow(new Date(NOW.getTime() - 2 * DAY), { debitTransactionId: null })];
+    const before = structuredClone(tables.wallets);
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, status: "withdrawn" });
+    expect(tables.requests[0].status).toBe("withdrawn");
+    expect(tables.wallets).toEqual(before);
+    expect(tables.txns).toEqual([]);
+    tables.requests = [requestRow(new Date(NOW.getTime() - 2 * DAY), { id: 502, debitTransactionId: 99 })];
+    await expect(withdrawCompanyReferralRequest(7, 502)).rejects.toThrow(/debit is unavailable/);
+    expect(tables.requests[0].status).toBe("pending");
+    await expect(withdrawCompanyReferralRequest(8, 502)).rejects.toThrow(/not in your account/);
   });
 
   it("throws like a withdraw when a debit exists but the wallet is gone", async () => {

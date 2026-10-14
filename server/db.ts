@@ -1570,13 +1570,11 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
     const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
     const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));const coverageStatus=companyCoverageStatus(eligible.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    // Asks are free (PRICING.md: referrals are always free). The plan's open-ask cap above is the only
+    // limit; no credit is reserved, so a new ask has no debitTransactionId and nothing to refund.
     const wallet=lockedWallet;
-    const normalized=normalizedWalletState(wallet);const effective={...wallet,...normalized.patch};if(effective.monthlyCreditsRemaining+effective.balance<1)throw new Error("You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.");
-    const source=effective.monthlyCreditsRemaining>0?"monthly_allowance":"purchased_balance";const patch={...normalized.patch,monthlyCreditsRemaining:source==="monthly_allowance"?effective.monthlyCreditsRemaining-1:effective.monthlyCreditsRemaining,balance:source==="purchased_balance"?effective.balance-1:effective.balance};
     const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
     const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint});const requestId=Number(requestResult[0].insertId);
-    await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id,wallet.id));
-    const debit=await tx.insert(tokenTransactions).values({userId,role:"job_seeker",tokenCount:-1,kind:"direct_request",source,sourceCycleKey:effective.monthlyCycleKey,referenceType:"referral_request",referenceId:String(requestId),idempotencyKey:input.idempotencyKey,balanceAfter:patch.balance,monthlyCreditsAfter:patch.monthlyCreditsRemaining});const debitId=Number(debit[0].insertId);await tx.update(referralRequests).set({debitTransactionId:debitId}).where(eq(referralRequests.id,requestId));
     const bound=await tx.update(referralAttachments).set({referralRequestId:requestId}).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId)));if(Number(bound[0]?.affectedRows??0)!==uniqueAttachmentIds.length)throw new Error("One or more resume documents changed during submission");
     // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is complete inside this transaction.
     await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
@@ -1585,7 +1583,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
-    const remaining=creditSummaryFromWallet({...effective,...patch});return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:eligible.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,openAsks+1),fastTrack:Boolean(fastTrackLink),replayed:false as const};
+    const remaining=creditSummaryFromWallet(wallet);return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:eligible.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,openAsks+1),fastTrack:Boolean(fastTrackLink),replayed:false as const};
   });
 }
 
@@ -1779,6 +1777,8 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     const current=(await tx.select({id:referralRequests.id,status:referralRequests.status,referrerId:referralRequests.referrerId,debitTransactionId:referralRequests.debitTransactionId}).from(referralRequests).where(and(eq(referralRequests.id,requestId),eq(referralRequests.jobSeekerId,userId))).limit(1).for("update"))[0];
     if(!current)throw new Error("This referral request is not in your account");if(current.status==="withdrawn"){const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return{withdrawn:true as const,requestId,status:"withdrawn" as const,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};}
     if(current.status!=="pending"||current.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
+    // A free ask (no reserved credit) only frees its slot; an ask that reserved a credit before asks became free refunds it below.
+    if(current.debitTransactionId===null){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return{withdrawn:true as const,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};}
     const debit=current.debitTransactionId?(await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.id,current.debitTransactionId),eq(tokenTransactions.userId,userId),eq(tokenTransactions.kind,"direct_request"))).limit(1).for("update"))[0]:undefined;if(!debit||!debit.source)throw new Error("The original referral credit debit is unavailable; contact support before withdrawing");
     const existing=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId,debit.id)).limit(1))[0];
     const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!wallet)throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
@@ -1808,8 +1808,9 @@ async function refundReferralDebitTx(tx: any, input: { userId: number; requestId
 
 /**
  * Expires one stale ask: unclaimed pending past ASK_TTL_DAYS transitions to
- * "closed" with the reserved credit refunded and a "credit returned"
- * notification, so early seekers are never left hanging on a dead ask.
+ * "closed", freeing its open slot; an ask that reserved a credit before asks
+ * became free gets it refunded with a "credit returned" notification, so early
+ * seekers are never left hanging on a dead ask.
  * Idempotent via the transition operationKey plus the reversal-uniqueness
  * check; concurrency-safe through row locking and revision CAS.
  */
@@ -1830,7 +1831,9 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
       const patch = await refundReferralDebitTx(tx, { userId, requestId, debit, wallet, kind: "expiry_refund" });
       creditSummary = creditSummaryFromWallet({ ...wallet, ...patch });
     } else if (wallet) creditSummary = creditSummaryFromWallet(wallet);
-    const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize: row => { if (row.jobSeekerId !== userId || row.referrerId !== null) throw new Error("This request is already in conversation and cannot expire"); }, notification: { userId, title: "Your ask expired — credit returned", body: "No verified employee claimed it within 7 days. Your reserved credit is back on your balance; send a fresh ask anytime." } });
+    // Only an ask that reserved a credit (before asks became free) has one to return; every expired ask frees its slot.
+    const notification = debit?.source ? { userId, title: "Your ask expired — credit returned", body: "No verified employee claimed it within 7 days. Your reserved credit is back on your balance; send a fresh ask anytime." } : { userId, title: "Your ask expired — slot freed", body: "No verified employee claimed it within 7 days. Its open slot is free again; send a fresh ask anytime." };
+    const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize: row => { if (row.jobSeekerId !== userId || row.referrerId !== null) throw new Error("This request is already in conversation and cannot expire"); }, notification });
     return { expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary };
   });
 }
@@ -1977,7 +1980,7 @@ export async function getCreditLedgerAudit(limit = 200) {
     const grants=await readGrantsTx(db,wallet.userId,wallet.role,false);
     for(const grant of grants){const expected=rows.filter(row=>row.creditGrantId===grant.id).reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==grant.creditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:`grant:${grant.source}`,grantId:grant.id,expected,actual:grant.creditsRemaining,delta:grant.creditsRemaining-expected});if(grant.creditsRemaining<0)integrity.push({type:"negative_grant",userId:wallet.userId,role:wallet.role,grantId:grant.id});}
   }
-  const orphanRequests=await db.select({id:referralRequests.id,userId:referralRequests.jobSeekerId}).from(referralRequests).where(and(isNotNull(referralRequests.idempotencyKey),isNull(referralRequests.debitTransactionId))).limit(200);for(const row of orphanRequests)integrity.push({type:"request_without_debit",...row});
+  // Asks no longer reserve a credit, so an ask without a debit is expected; a debit without its ask is still a fault.
   const orphanDebits=await db.select({id:tokenTransactions.id,referenceId:tokenTransactions.referenceId,userId:tokenTransactions.userId}).from(tokenTransactions).leftJoin(referralRequests,eq(sql`CAST(${referralRequests.id} AS CHAR)`,tokenTransactions.referenceId)).where(and(eq(tokenTransactions.kind,"direct_request"),isNotNull(tokenTransactions.referenceId),isNull(referralRequests.id))).limit(200);for(const row of orphanDebits)integrity.push({type:"debit_without_request",...row});
   return {checkedWallets:wallets.length,mismatches,integrity,readOnly:true};
 }

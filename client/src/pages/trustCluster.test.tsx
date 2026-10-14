@@ -35,6 +35,11 @@ describe("Trust cluster", () => {
     expect(screen.getByText("How can we help")).toBeTruthy();
     expect(screen.queryByText(/Momentum and Land allow more/)).toBeNull();
     expect(screen.queryByText(/preparation tools and more open asks/)).toBeNull();
+    // Live plan model: asks are free and capped per plan (shared/planCatalog.ts), plan credits roll over.
+    fireEvent.click(screen.getByRole("button", { name: "How many asks can I have open?" }));
+    expect(screen.getByText(/^Free: 3 at a time; paid plans allow more\./)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Do credits expire?" }));
+    expect(screen.getByText("Purchased credits never expire. Plan credits roll over based on your plan.")).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText(/Search: credits/), { target: { value: "expire" } });
     expect(screen.queryByText(/No answers for/)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Why did my ask expire?" }));

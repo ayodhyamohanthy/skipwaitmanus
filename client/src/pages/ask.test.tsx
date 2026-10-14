@@ -67,7 +67,7 @@ describe("Ask composer", () => {
     expect(screen.getAllByRole("listitem").map(item => item.querySelector("strong")?.textContent)).toEqual(["Official job link", "30–120 words", "One specific proof of fit", "Resume attached"]);
     expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
     expect(screen.getByText("The referrer sees your role and note — not your name or resume — until they accept.")).toBeTruthy();
-    expect(screen.getByText("Uses 1 credit · referrals are always free")).toBeTruthy();
+    expect(screen.getByText("Uses 1 open slot · referrals are always free")).toBeTruthy();
     const page = document.body.textContent ?? "";
     for (const preview of ["DESIGN PREVIEW", "Fill example", "Role location", "Location works for you", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
     expect(fetchCalls()).toBe(0);
@@ -140,7 +140,7 @@ describe("Ask composer", () => {
     expect(headers["Idempotency-Key"]).toMatch(/^[\x21-\x7E]{16,64}$/);
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [77] });
     expect(screen.getByRole("link", { name: /Track this ask/ }).getAttribute("href")).toBe("/conversation/9");
-    expect(screen.getByText("Verified wipro.com referrers will see it. It expires in 7 days if nobody accepts, and your credit returns.")).toBeTruthy();
+    expect(screen.getByText("Verified wipro.com referrers will see it. It expires in 7 days if nobody accepts, and your slot returns.")).toBeTruthy();
     expect(screen.getByText(/^Open slots:/).textContent).toBe("Open slots: 2 of 3 used");
     // The send response carries the count; no second request is needed.
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/mine"))).toBe(false);

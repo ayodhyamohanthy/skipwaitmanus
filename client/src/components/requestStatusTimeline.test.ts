@@ -34,6 +34,6 @@ describe("buildRequestTimeline (seeker-visible status history)", () => {
     const interview = buildRequestTimeline({ ...base, status: "interview", referrerId: 77 });
     expect(interview.map(entry => entry.label)).toEqual(["Request sent", "Claimed by a verified employee", "Referral accepted", "Interview recorded"]);
     const withdrawn = buildRequestTimeline({ ...base, status: "withdrawn", referrerId: null });
-    expect(withdrawn.map(entry => entry.label)).toEqual(["Request sent", "Withdrawn — credit returned"]);
+    expect(withdrawn.map(entry => entry.label)).toEqual(["Request sent", "Withdrawn — slot freed"]);
   });
 });

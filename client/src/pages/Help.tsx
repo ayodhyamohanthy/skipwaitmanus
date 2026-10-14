@@ -3,20 +3,21 @@ import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Heading, Panel, field } from "@/components/kit/preview-kit";
+import { FREE_PLAN } from "@shared/planCatalog";
 
 // Kit v4 /help (app/src/routes/help.tsx). Questions follow the kit; answers take
 // the kit text where it is true of the live product and stay adapted wherever
 // the kit copy would misstate live plans, limits or tooling.
 const CATS = [["Asking", MessageSquare], ["Referring", BadgeCheck], ["Plans & credits", CreditCard], ["Account & privacy", UserRound], ["Safety", ShieldCheck]] as const;
 const FAQS: ReadonlyArray<readonly [string, string, string]> = [
-  ["Asking", "Is asking for a referral really free?", "Yes. Asking and referring are free forever. Paid plans only add monthly credits on top of the free allowance."],
-  ["Asking", "How many asks can I have open?", "Every account gets free referral credits each month plus any packs you buy. An answered, passed, or withdrawn ask frees its slot."],
+  ["Asking", "Is asking for a referral really free?", "Yes. Asking and referring are free forever. Paid plans only add more open asks at once and monthly credits."],
+  ["Asking", "How many asks can I have open?", `Free: ${FREE_PLAN.openRequests} at a time; paid plans allow more. An answered, withdrawn or expired ask frees its slot.`],
   ["Asking", "Why did my ask expire?", "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note."],
   ["Asking", "Does a referral guarantee an interview?", "No. Referrers recommend; companies decide. We never promise outcomes."],
   ["Referring", "How do I become a referrer?", "Verify your work email with a one-time code, then choose your job areas and monthly capacity."],
   ["Referring", "My company uses a different email domain.", "Start verification anyway — unlisted domains go to a person for manual review."],
   ["Referring", "Will seekers see my name?", "Only after you accept their ask. Passing is private."],
-  ["Plans & credits", "Do credits expire?", "Purchased credits never expire. Monthly plan allowances refresh each billing cycle."],
+  ["Plans & credits", "Do credits expire?", "Purchased credits never expire. Plan credits roll over based on your plan."],
   ["Plans & credits", "Does paying move me up the queue?", "Never. Every ask is shown on equal terms."],
   ["Plans & credits", "How do I cancel?", "Open Plans and manage your subscription there. You keep access until the period ends."],
   ["Account & privacy", "Who can see my resume?", "Only a referrer who accepted your ask."],

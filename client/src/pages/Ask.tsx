@@ -196,7 +196,7 @@ export default function Ask() {
           {slotCap ? <SlotCapNudge slots={slotCap} onWait={() => { dismissNudge("slot_cap", nudgeAccount); setSlotCap(null); }} /> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
           <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? "Sending…" : <>Send ask <ArrowRight /></>}</Button>
-          <p className="text-center text-xs text-muted-foreground">Uses 1 credit · referrals are always free</p>
+          <p className="text-center text-xs text-muted-foreground">Uses 1 open slot · referrals are always free</p>
         </aside>
       </div>
     </main>
