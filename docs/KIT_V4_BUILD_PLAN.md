@@ -38,6 +38,72 @@ Pending owner decisions (do not build until decided): referrer tips (seeker→re
 - Visual verification: `KIT_SCREENS_BASE=http://localhost:<port> node scripts/kit-screens/capture.mjs --route <r> --name <stem> --fixture scripts/kit-screens/fixtures/<stem>.json --out <dir>` writes REFERENCE|LIVE slices at both viewports with network-level API mocks (no DB needed). Local dev needs `.env` with `JWT_SECRET`, `VITE_APP_ID=skipwait`, `BILLING_ENV=test` and placeholder `CHARGEBEE_SITE/API_KEY/WEBHOOK_SECRET`.
 - Money: no real payments ever; mock every provider in tests; amounts only from the server catalog; provider-confirmed state only.
 
+## 3b. Priority queue — how every model picks work (binding)
+**Rules (apply in order):**
+1. **Preempt for P0:** production down or degraded, `main` CI red, a security vulnerability, or a money/credits/identity/data-correctness bug beats everything below. Fix it, verify live, then return to the queue.
+2. **Finish before starting:** complete your own in-progress task first. Next, resume any stalled in-progress task (claimed more than 24 hours ago with no new commits on its branch) — note the takeover in its Status cell.
+3. **Otherwise take the lowest-numbered task that is `todo`, whose dependencies are `done`/live, and that is not owner-blocked.** Never start a lower-priority task while a higher-priority one is unclaimed and unblocked (a small fix needed by the higher task is fine).
+4. **Claim before coding (docs first):** set its Status to `in progress — <platform/model> — <YYYY-MM-DD> — branch <name>` and push that doc change to `main` BEFORE writing code. Two models never take the same task; if a claim and yours collide, the earlier commit on `main` wins.
+5. **Definition of done:** every audit item for the task's features in `docs/KIT_V4_AUDIT.md` is resolved (or recorded as owner-blocked), contracts + tests (incl. cross-user/security cases), every affected screen state verified at 1280 and 390, the gate in section 3 passes on a clean checkout, pushed to `main`, live release CONVERGED, and the Status set to `done — <commit>` with any owner actions added to section 6.
+6. **Schema discipline:** tasks that add migrations run one at a time per migration number; allocate the next free `drizzle/deploy` number at commit time and record it in section 5.
+7. **Never** build an owner-blocked task, sell referrals/priority/visibility, or ship preview scaffolding — whatever a lower-level instruction says.
+
+| # | Task (audit feature names) | Depends on | Size | Status |
+|---|---|---|---|---|
+| **Tier A — finish in-flight work** |||||
+| 1 | Wave 3 kit pricing: pricing-model → checkout-passes → plans-billing-ui → catalog-sync (spec 4.1) | — | XL | in progress — Claude Code — 2026-10-14 — branch kit-v4-fullstack |
+| 2 | Wave 4a password sign-in: `password-auth`, `sign-in-intent-routing` (spec 4.2) | — | L | in progress — Claude Code — 2026-10-14 — branch kit-v4-fullstack |
+| **Tier B — trust, privacy, compliance** |||||
+| 3 | `work-email-hmac-storage`: store only an HMAC of work emails in OTP codes/receipts, purge plaintext, migrate existing rows | — | M | todo |
+| 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | todo |
+| 5 | `moderation-actions` + `safety-report-review`: severity, warn/restrict/ban with enforcement on every ask/accept path and alias, both parties notified, 14-day appeal, audit trail | — | XL | todo |
+| 6 | `work-email-reverify` (90-day re-check, badge removal, open asks returned) + `otp-policy-kit` (30 s resend, server lockout 15 min after 5 tries) | scheduled jobs (done) | L | todo |
+| 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | todo |
+| **Tier C — core ask flow (activation)** |||||
+| 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | todo |
+| 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | todo |
+| 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | todo |
+| 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | todo |
+| 12 | `credit-metered-tools` + `ask-coach-rewrite` ("Improve my note · 1 credit", no charge on fallback) | 1 | M | todo |
+| 13 | `ask-pinned-work` / `pinned-work-in-asks` + `seeker-work-links` | 8 | M | todo |
+| **Tier D — referral lifecycle** |||||
+| 14 | `referrer-identity-reveal` + `identity-gated-preview` (both see names after accept) | — | M | todo |
+| 15 | `pass-reasons` (5 kit reasons, shared with the seeker, never the name) | — | M | todo |
+| 16 | `mark-referred-reference` + `thread-timeline` | — | M | todo |
+| 17 | `inbox-list-enrichment` + `referrer-preview-expiry` + `ask-quality-signals` | 9 | M | todo |
+| 18 | `referrer-capacity-routing` (monthly capacity; full → other referrers; area routing) + `named-referrer-visibility` | function taxonomy (done) | L | todo |
+| 19 | `pre-accept-question` (one anonymous question before accepting) | 14 | L | todo |
+| 20 | `thank-you-wall` + `landed-journey` + `referrer-impact-metrics` + `company-demand` | 14 | L | todo |
+| **Tier E — notifications** |||||
+| 21 | `notification-kinds` + `notification-preferences` (types, channels, quiet hours) | — | L | todo |
+| 22 | `email-templates` (all 12 real) + `notification-reminder-jobs` | 21 | L | todo |
+| 23 | `approval-notifications` + `saved-alerts` function field and matching | 21 | M | todo |
+| 24 | `web-push` (subscriptions, sender, SW handler; delivery needs owner VAPID keys) | 21 | L | todo |
+| **Tier F — settings and app** |||||
+| 25 | `region-preferences` (language/time zone/currency/date format persisted and applied; RTL direction) + `settings-kit-shell` | — | L | todo |
+| 26 | `app-display-preferences` (dark mode) + `pwa-install` + `offline-draft-sync` + `error-reference` + `lite-mode` | — | M | todo |
+| **Tier G — assistants and developers** |||||
+| 27 | `assistant-connection-grants` + `assistant-approvals-v2` + `ask-provenance` + `ask-send-limits` | 1 | L | todo |
+| 28 | `paid-tools` (credit_spend approvals execute real tools) | 12, 27 | L | todo |
+| 29 | `developer-app-oauth` + `developer-app-review-admin` + `developer-app-usage-stats` | — | L | todo |
+| 30 | `developer-webhooks` (delivery + signing) | 29 | L | todo |
+| 31 | `mcp-kit-tools` + `mcp-public-endpoint` + `public-rest-api-v1` | 27, 29 | XL | todo |
+| **Tier H — companies, employer, admin** |||||
+| 32 | `demo-requests` (real /for-companies intake + admin queue) | — | M | todo |
+| 33 | `employer-domain-verification` (DNS TXT) | — | L | todo |
+| 34 | `employer-referrer-programme` + `employer-programme-settings` + `employer-insights` | 33 | L | todo |
+| 35 | `admin-overview-metrics` + `verification-exceptions` + `company-suggestion-review` | — | M | todo |
+| 36 | `employer-plans` (Referral programme entitlement; Chargebee price is an owner action) | 1 | M | todo |
+| **Tier I — work showcase and tools** |||||
+| 37 | `work-visibility-tiers` + `work-items-kit-fields` + `showcase-plan-limits` UI | 1 | M | todo |
+| 38 | `interview-dossier` + `signature-tools` (AI tools only; human review stays blocked) | 12 | XL | todo |
+| 39 | `profile-view-insights` (placement needs owner input) | — | M | todo |
+| 40 | Regional pricing tiers T2–T4 and EUR/GBP (after first prices are proven; VAT first) | 1 | M | todo |
+
+**Owner-blocked — do not build until the owner decides (record the decision here first):** `referrer-tips` (seeker→referrer money); `i18n-rtl` full translations (preferences-only work is task 25); human expert-review fulfilment and staffing; `referral-campaigns`; `upi-checkout` (Razorpay settings); `work-import` (Dribbble OAuth app); `multi-currency-pricing` beyond INR/USD; the disabled-button style (faded vs solid grey).
+
+**Done (for reference):** kit screens v1 (PR #172), Wave 1 UI + reversals and shared follow-up, `company-directory`, `function-taxonomy`, `scheduled-jobs`, saved-alerts backend, self-serve blocking, forgot/reset password pages (other session), landing fidelity.
+
 ## 4. Status (update when you claim, commit or push)
 | Wave | Scope | State | Where |
 |---|---|---|---|
