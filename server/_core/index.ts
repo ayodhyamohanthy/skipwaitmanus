@@ -209,7 +209,10 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
       void tokens;
       const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
       if (!plan) return undefined;
-      return { inrAmount: plan.prices.INR.amount / 100, usdAmount: plan.prices.USD.amount / 100 };
+      const inr = plan.prices.monthly?.INR ?? plan.prices[plan.intervals[0]]?.INR;
+      const usd = plan.prices.monthly?.USD ?? plan.prices[plan.intervals[0]]?.USD;
+      if (!inr || !usd) return undefined;
+      return { inrAmount: inr.amount / 100, usdAmount: usd.amount / 100 };
     },
   });
   registerAdminBillingCatalogRoutes(app, { resolveIdentity });

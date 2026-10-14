@@ -1,8 +1,8 @@
 import type { Express, Request } from "express";
 import { z } from "zod";
-import { CHARGEBEE_TOKEN_PACKS } from "./chargebee";
+import { CHARGEBEE_KIT_CREDIT_PACKS, CHARGEBEE_TOKEN_PACKS } from "./chargebee";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
-import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrency } from "../shared/subscriptionPlans";
+import { KIT_PAID_PLANS, LEGACY_PAID_PLANS, SUBSCRIPTION_PLANS, type SubscriptionCurrency } from "../shared/subscriptionPlans";
 
 /**
  * Admin billing-catalog diagnostic: GET /api/admin/billing/catalog.
@@ -51,15 +51,30 @@ export type AdminBillingCatalogDeps = {
 
 type ExpectedPrice = { id: string; kind: CatalogCheckItem["kind"]; currency: string; amount: number };
 
-function expectedPrices(): ExpectedPrice[] {
+function expectedPrices(mode: "legacy" | "kit" | "all" = "legacy"): ExpectedPrice[] {
   const out: ExpectedPrice[] = [];
   for (const [id, pack] of Object.entries(CHARGEBEE_TOKEN_PACKS)) {
     out.push({ id, kind: "token-pack", currency: pack.currency, amount: pack.amount });
   }
-  for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-    for (const currency of Object.keys(SUBSCRIPTION_PLANS[plan].prices) as SubscriptionCurrency[]) {
-      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-      out.push({ id: price.itemPriceId, kind: "subscription", currency, amount: price.amount });
+  if (mode === "legacy" || mode === "all") {
+    for (const plan of LEGACY_PAID_PLANS) {
+      for (const currency of ["INR", "USD"] as SubscriptionCurrency[]) {
+        const price = SUBSCRIPTION_PLANS[plan].prices.monthly?.[currency];
+        if (price) out.push({ id: price.itemPriceId, kind: "subscription", currency, amount: price.amount });
+      }
+    }
+  }
+  if (mode === "kit" || mode === "all") {
+    for (const [id, pack] of Object.entries(CHARGEBEE_KIT_CREDIT_PACKS)) {
+      out.push({ id, kind: "token-pack", currency: pack.currency, amount: pack.amount });
+    }
+    for (const plan of KIT_PAID_PLANS) {
+      for (const currency of ["INR", "USD"] as SubscriptionCurrency[]) {
+        for (const interval of SUBSCRIPTION_PLANS[plan].intervals) {
+          const entry = SUBSCRIPTION_PLANS[plan].prices[interval]?.[currency];
+          if (entry) out.push({ id: entry.itemPriceId, kind: "subscription", currency, amount: entry.amount });
+        }
+      }
     }
   }
   return out;
@@ -115,8 +130,10 @@ export function registerAdminBillingCatalogRoutes(app: Express, deps: AdminBilli
       }
       const authorization = `Basic ${Buffer.from(`${runtime.apiKey}:`).toString("base64")}`;
       const fetchImpl = deps.fetchImpl ?? fetch;
+      const rawCatalog = typeof req.query.catalog === "string" ? req.query.catalog.trim().toLowerCase() : "legacy";
+      const mode: "legacy" | "kit" | "all" = rawCatalog === "kit" ? "kit" : rawCatalog === "all" ? "all" : "legacy";
       const items = [];
-      for (const expected of expectedPrices()) {
+      for (const expected of expectedPrices(mode)) {
         items.push(await checkPrice(fetchImpl, authorization, runtime.site, expected));
       }
       res.json({ site: runtime.site, environment: runtime.environment, checkedAt: new Date().toISOString(), items, allOk: items.every(item => item.okForCheckout) });

@@ -62,9 +62,11 @@ describe("admin billing catalog diagnostic", () => {
     const byId = new Map<string, { currency: string; amount: number }>();
     for (const [id, pack] of Object.entries(CHARGEBEE_TOKEN_PACKS)) byId.set(id, { currency: pack.currency, amount: pack.amount });
     for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-      for (const currency of Object.keys(SUBSCRIPTION_PLANS[plan].prices) as SubscriptionCurrency[]) {
-        const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-        byId.set(price.itemPriceId, { currency, amount: price.amount });
+      for (const interval of SUBSCRIPTION_PLANS[plan].intervals) {
+        for (const currency of Object.keys(SUBSCRIPTION_PLANS[plan].prices[interval] ?? {}) as SubscriptionCurrency[]) {
+          const price = SUBSCRIPTION_PLANS[plan].prices[interval]?.[currency];
+          if (price) byId.set(price.itemPriceId, { currency, amount: price.amount });
+        }
       }
     }
     const fetchImpl = (async (url: unknown) => {

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { SUBSCRIPTION_PLANS, subscriptionPlanFromItemPrice, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { SUBSCRIPTION_PLANS, subscriptionPlanFromItemPrice, subscriptionPriceForPlan, type PaidSubscriptionPlan, type SubscriptionInterval } from "../shared/subscriptionPlans";
+import { CREDIT_PACKS, catalogPackItemPriceId } from "../shared/planCatalog";
 import { buyerUserIdFromGifter, normalizeGiftEmail } from "../shared/giftSubscriptions";
 
 export type TokenRole = "job_seeker" | "referrer";
@@ -9,9 +10,20 @@ export const CHARGEBEE_TOKEN_PACKS = {
   "skipwait_token_1-USD": { tokenCount: 1, amount: 100, currency: "USD" },
 } as const;
 
+export const CHARGEBEE_KIT_CREDIT_PACKS: Readonly<Record<string, { tokenCount: number; amount: number; currency: "INR" | "USD" }>> = Object.fromEntries(
+  CREDIT_PACKS.flatMap(pack =>
+    (["INR", "USD"] as const)
+      .filter(currency => pack.prices[currency] !== undefined)
+      .map(currency => [
+        catalogPackItemPriceId(pack.id, currency),
+        { tokenCount: pack.credits, amount: pack.prices[currency]!, currency },
+      ]),
+  ),
+);
+
 export const MAX_TOKEN_QUANTITY = 1000;
 
-export type ChargebeeTokenPackId = keyof typeof CHARGEBEE_TOKEN_PACKS;
+export type ChargebeeTokenPackId = keyof typeof CHARGEBEE_TOKEN_PACKS | string;
 
 export type ParsedPaidPaymentEvent = {
   eventId: string;
@@ -59,8 +71,15 @@ export type ChargebeeBillingAddress = {
   country?: string;
 };
 
+export function getTokenPackSpec(value: unknown): { tokenCount: number; amount: number; currency: "INR" | "USD"; isBundle?: boolean } | undefined {
+  if (typeof value !== "string") return undefined;
+  if (value in CHARGEBEE_TOKEN_PACKS) return CHARGEBEE_TOKEN_PACKS[value as keyof typeof CHARGEBEE_TOKEN_PACKS];
+  if (value in CHARGEBEE_KIT_CREDIT_PACKS) return { ...CHARGEBEE_KIT_CREDIT_PACKS[value], isBundle: true };
+  return undefined;
+}
+
 export function isTokenPackId(value: unknown): value is ChargebeeTokenPackId {
-  return typeof value === "string" && value in CHARGEBEE_TOKEN_PACKS;
+  return getTokenPackSpec(value) !== undefined;
 }
 
 export function isTokenQuantity(value: unknown): value is number {
@@ -173,8 +192,8 @@ export function parseGiftEvent(payload: any): ParsedGiftEvent | undefined {
   };
 }
 
-export function buildGiftSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; gifterCustomerId: string; redirectUrl: string; cancelUrl: string }) {
-  const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
+export function buildGiftSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; interval?: SubscriptionInterval; gifterCustomerId: string; redirectUrl: string; cancelUrl: string }) {
+  const price = subscriptionPriceForPlan(input.plan, input.currency, input.interval ?? "monthly");
   const form = new URLSearchParams();
   form.set("subscription_items[item_price_id][0]", price.itemPriceId);
   form.set("subscription_items[quantity][0]", "1");
@@ -184,7 +203,7 @@ export function buildGiftSubscriptionCheckoutForm(input: { plan: PaidSubscriptio
   return form;
 }
 
-export async function createGiftSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; buyerUserId: number; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string }) {
+export async function createGiftSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; interval?: SubscriptionInterval; buyerUserId: number; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string }) {
   const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
   const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
   if (!apiKey) throw new Error("Chargebee API key is not configured");
@@ -270,6 +289,8 @@ export async function resolveChargebeeHostedPageForPayment(input: { invoiceId?: 
 }
 
 export function tokenPackFromAmount(amount: number, currency: string): { tokenCount: number; itemPriceId: ChargebeeTokenPackId } | undefined {
+  const kitMatch = Object.entries(CHARGEBEE_KIT_CREDIT_PACKS).find(([, pack]) => pack.currency === currency && pack.amount === amount);
+  if (kitMatch) return { itemPriceId: kitMatch[0], tokenCount: kitMatch[1].tokenCount };
   const match = Object.entries(CHARGEBEE_TOKEN_PACKS).find(([, pack]) => pack.currency === currency && amount >= pack.amount && amount % pack.amount === 0);
   if (!match) return undefined;
   const tokenCount = amount / match[1].amount;
@@ -278,10 +299,14 @@ export function tokenPackFromAmount(amount: number, currency: string): { tokenCo
 
 export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; quantity?: number; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
   const form = new URLSearchParams();
-  const pack = CHARGEBEE_TOKEN_PACKS[input.itemPriceId];
+  const pack = getTokenPackSpec(input.itemPriceId);
+  if (!pack) throw new Error("Unsupported credit pack");
   const quantity = input.quantity ?? 1;
   if (!isTokenQuantity(quantity)) throw new Error("Invalid credit quantity");
-  if (quantity === 1) {
+  if (pack.isBundle) {
+    form.set("item_prices[item_price_id][0]", input.itemPriceId);
+    form.set("item_prices[quantity][0]", String(quantity));
+  } else if (quantity === 1) {
     // Credit prices are per_unit in Chargebee (switched 2026-09-23). A per_unit
     // line item requires a quantity; omitting it fails the hosted page on load
     // with "line_items[0].quantity cannot be blank".
@@ -312,8 +337,8 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; qu
   return form;
 }
 
-export function buildSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
-  const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
+export function buildSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; interval?: SubscriptionInterval; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
+  const price = subscriptionPriceForPlan(input.plan, input.currency, input.interval ?? "monthly");
   const form = new URLSearchParams();
   form.set("subscription_items[item_price_id][0]", price.itemPriceId);
   form.set("subscription_items[quantity][0]", "1");
@@ -360,7 +385,7 @@ export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTok
   return { checkoutUrl, hostedPageId, checkoutIntentId, customerId: typeof hostedPage?.customer?.id === "string" ? hostedPage.customer.id : undefined };
 }
 
-export async function createChargebeeSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
+export async function createChargebeeSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; interval?: SubscriptionInterval; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
   const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
   const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
   if (!apiKey) throw new Error("Chargebee API key is not configured");

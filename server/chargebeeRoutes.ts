@@ -1,8 +1,9 @@
 import type { Express, Request } from "express";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, createGiftSubscriptionCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, retrieveGiftSubscriptionPlan, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, createChargebeeCheckout, createChargebeeSubscriptionCheckout, createGiftSubscriptionCheckout, getTokenPackSpec, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, retrieveGiftSubscriptionPlan, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
-import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, isSubscriptionInterval, subscriptionPriceForPlan, type PaidSubscriptionPlan, type SubscriptionInterval } from "../shared/subscriptionPlans";
+import { CATALOG_PLANS, CREDIT_PACKS, FREE_PLAN } from "../shared/planCatalog";
 import { giftCheckoutRequestSchema, giftClaimRequestSchema } from "../shared/giftSubscriptions";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
@@ -63,7 +64,8 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const role = roleFromBody(req.body?.role);
       const quantity = req.body?.quantity ?? 1;
       if (!isTokenQuantity(quantity)) return res.status(400).json({ error: "Choose a whole number of tokens between 1 and 1,000" });
-      const pack = CHARGEBEE_TOKEN_PACKS[itemPriceId];
+      const pack = getTokenPackSpec(itemPriceId);
+      if (!pack) return res.status(400).json({ error: "Choose a supported token currency" });
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
       }
@@ -97,10 +99,12 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const plan = req.body?.plan;
       const currency = req.body?.currency;
       const billingCountry = req.body?.billingCountry;
+      const interval = req.body?.interval === "quarterly" || req.body?.interval === "yearly" ? req.body.interval : "monthly";
       const role = roleFromBody(req.body?.role);
-      if (!isPaidSubscriptionPlan(plan)) return res.status(400).json({ error: "Choose Pro or Max" });
+      if (!isPaidSubscriptionPlan(plan)) return res.status(400).json({ error: "Choose a paid plan" });
       if ((currency !== "INR" && currency !== "USD") || (billingCountry !== "IN" && billingCountry !== "INTL")) return res.status(400).json({ error: "Choose a supported billing route" });
       if ((billingCountry === "IN" && currency !== "INR") || (billingCountry === "INTL" && currency !== "USD")) return res.status(400).json({ error: "That currency is not available for the selected billing route" });
+      if (!isSubscriptionInterval(interval) || !SUBSCRIPTION_PLANS[plan].prices[interval]) return res.status(400).json({ error: "That billing period is not available for the selected plan" });
       if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
       const selectedCurrency = currency as "INR" | "USD";
       const origin = `${req.protocol}://${req.get("host")}`;
@@ -108,6 +112,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const checkout = await (deps.createSubscriptionCheckout ?? createChargebeeSubscriptionCheckout)({
         plan,
         currency: selectedCurrency,
+        interval,
         email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined,
         firstName: identity.account.name?.split(" ")[0],
         lastName: identity.account.name?.split(" ").slice(1).join(" "),
@@ -116,9 +121,9 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         redirectUrl: `${origin}/plans?role=${role}&payment=pending`,
         cancelUrl: `${origin}/plans?role=${role}&payment=cancelled`,
       });
-      const price = SUBSCRIPTION_PLANS[plan].prices[selectedCurrency];
+      const price = subscriptionPriceForPlan(plan, selectedCurrency, interval);
       await deps.createSubscriptionIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, plan, itemPriceId: price.itemPriceId, amount: price.amount, currency: selectedCurrency });
-      record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: checkout.hostedPageId, metadata: { role, plan, currency: selectedCurrency, amount: price.amount, billingCountry } });
+      record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: checkout.hostedPageId, metadata: { role, plan, currency: selectedCurrency, interval, amount: price.amount, billingCountry } });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] subscription checkout error", error);
@@ -147,7 +152,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         redirectUrl: `${origin}/plans?gift=done`,
         cancelUrl: `${origin}/plans?gift=cancelled`,
       });
-      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
+      const price = subscriptionPriceForPlan(plan, currency);
       record({ actorUserId: identity.account.id, action: "billing.gift_checkout_started", outcome: "success", resourceType: "gift_checkout", resourceId: checkout.hostedPageId, metadata: { plan, currency, amount: price.amount, billingCountry } });
       return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
     } catch (error) {

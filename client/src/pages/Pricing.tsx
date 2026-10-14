@@ -26,8 +26,8 @@ export default function Pricing() {
     </PolicySection>
     <PolicySection number="03" title="Monthly plans">
       <ul>
-        <li><strong>{pro.label}:</strong> {pro.prices.INR.display} or {pro.prices.USD.display} — {pro.monthlyAllowance} referral credits each month.</li>
-        <li><strong>{max.label}:</strong> {max.prices.INR.display} or {max.prices.USD.display} — {max.monthlyAllowance} referral credits each month.</li>
+        <li><strong>{pro.label}:</strong> {pro.prices.monthly?.INR.display} or {pro.prices.monthly?.USD.display} — {pro.monthlyAllowance} referral credits each month.</li>
+        <li><strong>{max.label}:</strong> {max.prices.monthly?.INR.display} or {max.prices.monthly?.USD.display} — {max.monthlyAllowance} referral credits each month.</li>
         <li>Plans renew monthly until cancelled. Cancel any time; access continues to the end of the paid month. See <Link href="/refunds" className="font-semibold text-black">Refunds &amp; cancellation</Link>.</li>
       </ul>
     </PolicySection>

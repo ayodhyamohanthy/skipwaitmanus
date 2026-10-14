@@ -23,11 +23,11 @@ export function planLabel(plan: string): string {
 /** "$7/month" → "$7"; the cadence is rendered separately in the kit card. */
 export function planAmount(plan: PlanId, currency: SubscriptionCurrency): string {
   if (plan === "free") return currency === "INR" ? "₹0" : "$0";
-  return SUBSCRIPTION_PLANS[plan].prices[currency].display.replace(/\/month$/, "");
+  return (SUBSCRIPTION_PLANS[plan].prices.monthly?.[currency] ?? SUBSCRIPTION_PLANS[plan].prices[SUBSCRIPTION_PLANS[plan].intervals[0]]?.[currency])!.display.replace(/\/month$/, "");
 }
 
 export function planPriceDisplay(plan: PaidSubscriptionPlan, currency: SubscriptionCurrency): string {
-  return SUBSCRIPTION_PLANS[plan].prices[currency].display;
+  return (SUBSCRIPTION_PLANS[plan].prices.monthly?.[currency] ?? SUBSCRIPTION_PLANS[plan].prices[SUBSCRIPTION_PLANS[plan].intervals[0]]?.[currency])!.display;
 }
 
 export function monthlyAllowance(plan: PlanId): number {
@@ -111,6 +111,6 @@ export function planFaqs(): Array<readonly [string, string]> {
     ["Do unused credits expire?", "Credits you buy never expire — even if you cancel. Monthly plan credits reset with your plan cycle and do not carry over."],
     ["Can I cancel?", "Anytime, from Manage plan. Paid access stays through the current cycle, then your account returns to Free."],
     ["Do referrers pay?", "Never to review requests. Referrers are always free."],
-    ["Is pricing local?", `Yes. In India plans are charged in rupees (${pro.label} ${pro.prices.INR.display}, ${max.label} ${max.prices.INR.display}); elsewhere in US dollars (${pro.prices.USD.display}, ${max.prices.USD.display}).`],
+    ["Is pricing local?", `Yes. In India plans are charged in rupees (${pro.label} ${planPriceDisplay("pro", "INR")}, ${max.label} ${planPriceDisplay("max", "INR")}); elsewhere in US dollars (${planPriceDisplay("pro", "USD")}, ${planPriceDisplay("max", "USD")}).`],
   ];
 }
