@@ -72,6 +72,7 @@ import { registerWorkosWebhookRoutes } from "../workosWebhooks";
 import { registerPasswordResetRoutes } from "../passwordResetRoutes";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, startSchemaReconcileRecovery } from "../schemaReconcile";
 import { registerHealthRoutes } from "../healthRoutes";
+import { AssistantPlanRequiredError } from "../planGates";
 
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -188,7 +189,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     resolveIdentity,
     registerClient: registerOAuthClient,
     getClient: getOAuthClient,
-    issueCode: async (userId, input) => { if (!(await db.hasAssistantAccess(userId))) throw new Error("No assistant access"); return issueAuthCode(userId, input); },
+    issueCode: async (userId, input) => { if (!(await db.hasAssistantAccess(userId))) throw new AssistantPlanRequiredError(); return issueAuthCode(userId, input); },
     consumeCode: consumeAuthCode,
     mintToken: (userId, name) => db.createAssistantToken(userId, { name }),
     recordActivity: db.recordOperationalActivity,

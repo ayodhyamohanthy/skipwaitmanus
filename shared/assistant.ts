@@ -1,12 +1,28 @@
 /**
  * Assistant access (kit screens 22 / 23 / 24 / 26).
  * Assistants, API tokens, developer apps and assistant approvals.
- * Kit's top tier "Land" maps to the live `max` plan (kit tier names
- * were not adopted; live pricing is free/pro/max).
+ * Access follows the plan entitlement (shared/planEntitlements.ts): the Land
+ * tier (Focus, Sprint, Concierge) plus grandfathered legacy Max subscribers.
  * Timestamps and expiries are computed in JavaScript, never DB NOW().
  */
+import { z } from "zod";
+import { CATALOG_TIERS, ENTITLED_PLAN_IDS, type PlanEntitlements } from "./planEntitlements";
 
-export const ASSISTANT_MIN_PLAN = "max";
+/** Kit copy (22 / 24): every server refusal of an assistant action without the entitlement. */
+export const ASSISTANT_PLAN_REQUIRED_MESSAGE = "Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools.";
+
+/** GET /api/assistants/access. */
+export const assistantAccessSchema = z.object({
+  plan: z.enum(ENTITLED_PLAN_IDS),
+  planLabel: z.string().min(1),
+  tier: z.enum(CATALOG_TIERS),
+  hasAccess: z.boolean(),
+});
+export type AssistantAccess = z.infer<typeof assistantAccessSchema>;
+
+export function assistantAccessFrom(entitlements: PlanEntitlements): AssistantAccess {
+  return { plan: entitlements.plan, planLabel: entitlements.planLabel, tier: entitlements.tier, hasAccess: entitlements.assistants };
+}
 
 export const ASSISTANT_PROVIDERS = ["chatgpt", "claude", "custom"] as const;
 export type AssistantProvider = (typeof ASSISTANT_PROVIDERS)[number];

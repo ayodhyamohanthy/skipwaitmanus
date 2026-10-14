@@ -3,6 +3,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { registerOAuthRoutes, type OAuthRouteDeps } from "./oauthRoutes";
 import { isAllowedRedirectUri, pkceChallengeFor } from "./oauthStore";
+import { AssistantPlanRequiredError } from "./planGates";
 
 const VERIFIER = "a".repeat(43);
 const CHALLENGE = pkceChallengeFor(VERIFIER);
@@ -93,6 +94,17 @@ describe("authorize + token", () => {
     expect(minted[0].userId).toBe(7);
     const replay = await request(app).post("/api/oauth/token").type("form").send({ grant_type: "authorization_code", code: code2, redirect_uri: REDIRECT, client_id: client.clientId, code_verifier: VERIFIER });
     expect(replay.status).toBe(400);
+  });
+  it("answers 402 with the Land upgrade path, never a code, when the owner has no assistant entitlement", async () => {
+    const { app, activity } = setup({ issueCode: async () => { throw new AssistantPlanRequiredError(); } });
+    const res = await authorize(app, {});
+    expect(res.status).toBe(402);
+    expect(res.body).toEqual({ error: "Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools.", code: "assistant_plan_required", upgradePath: "/plans" });
+    expect(res.body.redirectTo).toBeUndefined();
+    expect(res.headers["cache-control"]).toBe("no-store");
+    expect(activity.map(a => a.action)).not.toContain("assistant.oauth_allowed");
+    // Any other failure stays a 500 with the generic copy.
+    expect((await authorize(setup({ issueCode: async () => { throw new Error("db down"); } }).app, {})).status).toBe(500);
   });
   it("rejects other grants, bad verifiers and a lapsed plan at exchange", async () => {
     const { app } = setup({ mintToken: async () => { throw new Error("plan"); } });

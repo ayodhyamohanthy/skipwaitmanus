@@ -1,6 +1,7 @@
 import express, { type Express, type Request } from "express";
 import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
 import { referrerAreasInputSchema, referrerLevelsInputSchema } from "../shared/jobFunctions";
+import { PlanLimitError } from "./planGates";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type Identity = { account: Account };
@@ -125,6 +126,8 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       record({ actorUserId: identity.account.id, action: "work_item.created", outcome: "success", resourceType: "work_item", resourceId: item.id });
       res.status(201).json({ item });
     } catch (error) {
+      // The plan's showcase limit (shared/planEntitlements.ts): typed so the Work screen can show the cap.
+      if (error instanceof PlanLimitError) return res.status(409).json({ error: error.message, code: error.code, limit: error.limit, cap: error.cap });
       const message = error instanceof Error ? error.message : "We could not add this work";
       res.status(/title|kind|link|up to 20|string/i.test(message) ? 400 : 500).json({ error: message });
     }
@@ -141,6 +144,7 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json({ item });
     } catch (error) {
+      if (error instanceof PlanLimitError) return res.status(409).json({ error: error.message, code: error.code, limit: error.limit, cap: error.cap });
       const message = error instanceof Error ? error.message : "We could not update this work";
       res.status(/not in your account/i.test(message) ? 404 : /title|kind|link|string/i.test(message) ? 400 : 500).json({ error: message });
     }

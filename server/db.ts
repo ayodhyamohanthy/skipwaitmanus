@@ -5,9 +5,9 @@ import * as mysql from "mysql2/promise";
 import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
-import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
+import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
 import {
-  ASSISTANT_MIN_PLAN,
+  assistantAccessFrom,
   DEVELOPER_APP_SCOPES,
   getApprovalExpiresAtMs,
   isApprovalExpired,
@@ -19,6 +19,7 @@ import {
   validateDescription,
   validateRedirectUrls,
   validateUrl,
+  type AssistantAccess,
   type AssistantApproval,
   type AssistantConnection,
   type AssistantToken,
@@ -31,6 +32,8 @@ import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referral
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
+import { resolvePlanEntitlements, type PlanEntitlements } from "../shared/planEntitlements";
+import { AssistantPlanRequiredError, showcaseLimitViolation } from "./planGates";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
@@ -366,8 +369,8 @@ export async function listMyWorkItems(userId: number) {
 /**
  * Saved job alerts. A seeker watches a company; the first verified referrer
  * there notifies each unpaused watcher exactly once (eventKey dedup), then
- * the alert is stamped notifiedAt. Free accounts keep FREE_ALERT_LIMIT
- * alerts; paid plans are unlimited.
+ * the alert is stamped notifiedAt. The cap is the plan entitlement's
+ * savedAlerts: Free keeps 3, paid plans are unlimited.
  */
 export async function listSeekerAlerts(userId: number) {
   const db = await getDb(); if (!db) return [];
@@ -379,10 +382,8 @@ export async function createSeekerAlert(userId: number, input: { companyDomain?:
   if (!domain) throw new Error("Enter a valid company domain, like acme.com");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = await db.select({ id: seekerAlerts.id }).from(seekerAlerts).where(eq(seekerAlerts.userId, userId));
-  if (existing.length >= FREE_ALERT_LIMIT) {
-    const wallet = (await db.select({ plan: tokenBalances.plan }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
-    if (!wallet || wallet.plan === "free") throw new Error(`Free accounts keep ${FREE_ALERT_LIMIT} alerts. Upgrade for unlimited alerts.`);
-  }
+  const { savedAlerts } = await getSeekerEntitlements(userId);
+  if (!canAddAlert({ existingCount: existing.length, cap: savedAlerts })) throw new Error(`Free accounts keep ${savedAlerts} alerts. Upgrade for unlimited alerts.`);
   try {
     const inserted = await db.insert(seekerAlerts).values({ userId, companyDomain: domain });
     const id = Number(inserted[0].insertId);
@@ -452,14 +453,23 @@ function parseJsonArray(raw: string | null): string[] {
   }
 }
 
-export async function getAssistantAccessPlan(userId: number): Promise<string> {
-  const db = await getDb(); if (!db) return "free";
-  const wallet = (await db.select({ plan: tokenBalances.plan }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
-  return wallet?.plan ?? "free";
+/**
+ * The seeker's plan entitlement (shared/planEntitlements.ts) from the job_seeker
+ * wallet. A missing wallet or database reads as Free, so every gate fails closed.
+ */
+export async function getSeekerEntitlements(userId: number, now: Date = new Date()): Promise<PlanEntitlements> {
+  const db = await getDb(); if (!db) return resolvePlanEntitlements(null, now);
+  const wallet = (await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
+  return resolvePlanEntitlements(wallet ?? null, now);
 }
 
-function assertAssistantAccess(plan: string) {
-  if (plan !== ASSISTANT_MIN_PLAN) throw new Error(`Assistants are part of the ${ASSISTANT_MIN_PLAN} plan. Upgrade to connect ChatGPT, Claude or your own tools.`);
+/** GET /api/assistants/access: the Land tier, or a grandfathered legacy Max subscriber. */
+export async function getAssistantAccess(userId: number): Promise<AssistantAccess> {
+  return assistantAccessFrom(await getSeekerEntitlements(userId));
+}
+
+async function assertAssistantAccess(userId: number) {
+  if (!(await getSeekerEntitlements(userId)).assistants) throw new AssistantPlanRequiredError();
 }
 
 export async function listAssistantConnections(userId: number): Promise<AssistantConnection[]> {
@@ -474,7 +484,7 @@ export async function connectAssistant(userId: number, input: { provider?: unkno
   const appName = validateAppName(input.appName) ?? (provider === "chatgpt" ? "ChatGPT" : provider === "claude" ? "Claude" : "Assistant");
   const scopes = normalizeScopes(input.scopes, ["read", "draft", "send", "credits"]) ?? ["read", "draft"];
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  await assertAssistantAccess(userId);
   const current = await db.select({ id: assistantConnections.id, status: assistantConnections.status }).from(assistantConnections).where(and(eq(assistantConnections.userId, userId), eq(assistantConnections.provider, provider)));
   const active = current.filter(row => row.status === "connected");
   if (active.length > 0) throw new Error(`${appName} is already connected`);
@@ -501,7 +511,7 @@ export async function createAssistantToken(userId: number, input: { name?: unkno
   const name = validateAppName(input.name);
   if (!name) throw new Error("Give the token a name, like “Notion tracker”");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  await assertAssistantAccess(userId);
   const plaintext = `sw_${randomBytes(24).toString("base64url")}`;
   const tokenHash = createHash("sha256").update(plaintext).digest("hex");
   const prefix = plaintext.slice(0, 10);
@@ -524,9 +534,9 @@ export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId
   return { userId: row.userId, tokenId: row.id };
 }
 
-/** True when the owner's plan still includes assistants. */
+/** True when the owner's plan still includes assistants (Land, or legacy Max). Fails closed. */
 export async function hasAssistantAccess(userId: number): Promise<boolean> {
-  try { return (await getAssistantAccessPlan(userId)) === ASSISTANT_MIN_PLAN; } catch { return false; }
+  try { return (await getSeekerEntitlements(userId)).assistants; } catch { return false; }
 }
 
 export async function revokeAssistantToken(userId: number, tokenId: number) {
@@ -708,7 +718,7 @@ export async function createDeveloperApp(userId: number, input: {
   if (!scopes) throw new Error("Choose only the listed permissions");
   if (input.agreeToTerms !== true) throw new Error("Agree to the developer terms to register an app");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  assertAssistantAccess(await getAssistantAccessPlan(userId));
+  await assertAssistantAccess(userId);
   const tryInsert = (clientId: string) => db.insert(developerApps).values({ userId, name, kind, description, website, redirectUrls: JSON.stringify(redirectUrls), scopes: JSON.stringify(scopes), clientId });
   let inserted: Awaited<ReturnType<typeof tryInsert>> | undefined;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -752,15 +762,25 @@ export async function submitDeveloperAppForReview(userId: number, appId: number)
   return { id: appId, status: "in_review" as const };
 }
 
+/**
+ * Showcase limits come from the plan entitlement (pieces, pins). The owner's
+ * users row is the per-owner lock, so concurrent adds or pins cannot pass the
+ * cap together. Over-limit pieces kept from a richer plan are never removed.
+ */
 export async function createWorkItem(userId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const patch = validateWorkItemInput(input);
   if (!patch.title) throw new Error("Give each work item a title up to 160 characters");
-  const count = (await db.select({ id: workItems.id }).from(workItems).where(eq(workItems.userId, userId)).limit(21)).length;
-  if (count >= 20) throw new Error("Work showcases hold up to 20 items");
-  const inserted = await db.insert(workItems).values({ userId, ...(patch as { title: string }) });
-  const id = Number(inserted[0].insertId);
-  return (await db.select().from(workItems).where(eq(workItems.id, id)).limit(1))[0];
+  const entitlements = await getSeekerEntitlements(userId);
+  return db.transaction(async tx => {
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1).for("update");
+    const owned = await tx.select({ id: workItems.id, pinned: workItems.pinned }).from(workItems).where(eq(workItems.userId, userId));
+    const violation = showcaseLimitViolation(entitlements, owned, { adding: true, pinning: patch.pinned === true });
+    if (violation) throw violation;
+    const inserted = await tx.insert(workItems).values({ userId, ...(patch as { title: string }) });
+    const id = Number(inserted[0].insertId);
+    return (await tx.select().from(workItems).where(eq(workItems.id, id)).limit(1))[0];
+  });
 }
 
 export async function updateWorkItem(userId: number, itemId: number, input: { title?: unknown; kind?: unknown; source?: unknown; url?: unknown; pinned?: unknown; visibleOnProfile?: unknown }) {
@@ -769,6 +789,17 @@ export async function updateWorkItem(userId: number, itemId: number, input: { ti
   if (!current || current.userId !== userId) throw new Error("This work item is not in your account");
   const patch = validateWorkItemInput(input);
   if (Object.keys(patch).length === 0) return current;
+  if (patch.pinned === true && !current.pinned) {
+    const entitlements = await getSeekerEntitlements(userId);
+    return db.transaction(async tx => {
+      await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1).for("update");
+      const owned = await tx.select({ id: workItems.id, pinned: workItems.pinned }).from(workItems).where(eq(workItems.userId, userId));
+      const violation = showcaseLimitViolation(entitlements, owned.filter(item => item.id !== itemId), { adding: false, pinning: true });
+      if (violation) throw violation;
+      await tx.update(workItems).set({ ...patch, updatedAt: new Date() }).where(and(eq(workItems.id, itemId), eq(workItems.userId, userId)));
+      return (await tx.select().from(workItems).where(eq(workItems.id, itemId)).limit(1))[0];
+    });
+  }
   await db.update(workItems).set({ ...patch, updatedAt: new Date() }).where(eq(workItems.id, itemId));
   return (await db.select().from(workItems).where(eq(workItems.id, itemId)).limit(1))[0];
 }

@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { resolvePlanEntitlements } from "./planEntitlements";
 import {
   APPROVAL_TTL_MS,
-  ASSISTANT_MIN_PLAN,
+  ASSISTANT_PLAN_REQUIRED_MESSAGE,
+  assistantAccessFrom,
   DEVELOPER_APP_REVIEW_SCOPES,
   getApprovalExpiresAtMs,
   isApprovalExpired,
@@ -17,8 +19,15 @@ import {
 } from "./assistant";
 
 describe("assistant access contract", () => {
-  it("maps the kit top tier to the live max plan", () => {
-    expect(ASSISTANT_MIN_PLAN).toBe("max");
+  it("follows the entitlement: Land, or grandfathered legacy Max", () => {
+    const termEnd = new Date("2026-11-01T00:00:00.000Z");
+    const now = new Date("2026-10-14T00:00:00.000Z");
+    const access = (plan: string) => assistantAccessFrom(resolvePlanEntitlements({ plan, subscriptionStatus: "active", subscriptionCurrentTermEnd: termEnd }, now)).hasAccess;
+    expect(access("max")).toBe(true);
+    expect(access("land_100")).toBe(true);
+    expect(access("momentum")).toBe(false);
+    expect(access("pro")).toBe(false);
+    expect(ASSISTANT_PLAN_REQUIRED_MESSAGE).toMatch(/Land and Concierge/);
   });
 
   it("accepts only known providers, kinds and statuses", () => {

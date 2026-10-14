@@ -7,7 +7,7 @@ import {
   decideAssistantApproval,
   disconnectAssistant,
   editAssistantApproval,
-  getAssistantAccessPlan,
+  getAssistantAccess,
   getDeveloperApp,
   listAssistantActivity,
   listAssistantApprovals,
@@ -18,6 +18,7 @@ import {
   submitDeveloperAppForReview,
   updateDeveloperAppWebhook,
 } from "./db";
+import { AssistantPlanRequiredError } from "./planGates";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -42,7 +43,7 @@ export type AssistantRouteDeps = {
   getDeveloperApp?: typeof getDeveloperApp;
   updateDeveloperAppWebhook?: typeof updateDeveloperAppWebhook;
   submitDeveloperAppForReview?: typeof submitDeveloperAppForReview;
-  getAssistantAccessPlan?: typeof getAssistantAccessPlan;
+  getAssistantAccess?: typeof getAssistantAccess;
 };
 
 const parseId = (raw: string | undefined) => {
@@ -53,6 +54,7 @@ const parseId = (raw: string | undefined) => {
 /** Validation and ownership failures map to 4xx; plan-gate failures to 402. */
 function classify(error: unknown): { status: number; message: string } {
   const message = error instanceof Error ? error.message : "We could not complete that";
+  if (error instanceof AssistantPlanRequiredError) return { status: 402, message };
   const status = /not available yet/i.test(message) ? 503
     : /not in your account|not connected|already handled|not in your console|expired/i.test(message) ? 404
     : /Enter|Choose|Agree|Describe|valid|name|permissions|URL|urls|note|kind|spend|cover|submit/i.test(message) ? 400
@@ -79,14 +81,15 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
   const getApp = deps.getDeveloperApp ?? getDeveloperApp;
   const doUpdateWebhook = deps.updateDeveloperAppWebhook ?? updateDeveloperAppWebhook;
   const doSubmitApp = deps.submitDeveloperAppForReview ?? submitDeveloperAppForReview;
-  const accessPlan = deps.getAssistantAccessPlan ?? getAssistantAccessPlan;
+  const access = deps.getAssistantAccess ?? getAssistantAccess;
 
   app.get("/api/assistants/access", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to manage assistants" });
-      const plan = await accessPlan(identity.account.id);
-      res.json({ plan, hasAccess: plan === "max" });
+      // The plan entitlement decides: Land (Focus, Sprint, Concierge) or a grandfathered legacy Max.
+      res.set("Cache-Control", "private, no-store");
+      res.json(await access(identity.account.id));
     } catch { res.status(500).json({ error: "We could not check assistant access" }); }
   });
 

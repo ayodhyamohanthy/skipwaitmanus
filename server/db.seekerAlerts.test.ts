@@ -130,16 +130,27 @@ describe("seeker alerts", () => {
     expect(await listSeekerAlerts(8)).toEqual([]);
   });
 
-  it("caps free accounts at 3, paid unlimited", async () => {
+  it("caps Free at 3 from the plan entitlement; an active paid plan is unlimited", async () => {
     tables.alerts = [
       { id: 1, userId: 7, companyDomain: "a.com", paused: false, notifiedAt: null, createdAt: NOW },
       { id: 2, userId: 7, companyDomain: "b.com", paused: false, notifiedAt: null, createdAt: NOW },
       { id: 3, userId: 7, companyDomain: "c.com", paused: false, notifiedAt: null, createdAt: NOW },
     ];
     await expect(createSeekerAlert(7, { companyDomain: "d.com" })).rejects.toThrow(/3 alerts/);
-    tables.wallets = [walletRow("pro")];
+    // A plan that lapsed reads as Free (the entitlement checks status and term end, not the plan column).
+    tables.wallets = [{ ...walletRow("pro"), subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() - 60_000) }];
+    await expect(createSeekerAlert(7, { companyDomain: "d.com" })).rejects.toThrow(/3 alerts/);
+    tables.wallets = [{ ...walletRow("pro"), subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() + 30 * 86_400_000) }];
     const created = await createSeekerAlert(7, { companyDomain: "d.com" });
     expect(created.companyDomain).toBe("d.com");
+  });
+
+  it("counts only the caller's own alerts and reads only the caller's own plan (cross-user)", async () => {
+    tables.alerts = ["a.com", "b.com", "c.com"].map((companyDomain, index) => ({ id: index + 1, userId: 8, companyDomain, paused: false, notifiedAt: null, createdAt: NOW }));
+    tables.wallets = [walletRow("free"), { ...walletRow("max"), id: 2, userId: 8, subscriptionStatus: "active", subscriptionCurrentTermEnd: new Date(Date.now() + 30 * 86_400_000) }];
+    expect((await createSeekerAlert(7, { companyDomain: "d.com" })).companyDomain).toBe("d.com");
+    tables.alerts.push(...["e.com", "f.com"].map((companyDomain, index) => ({ id: 10 + index, userId: 7, companyDomain, paused: false, notifiedAt: null, createdAt: NOW })));
+    await expect(createSeekerAlert(7, { companyDomain: "g.com" })).rejects.toThrow(/3 alerts/);
   });
 
   it("pauses, resumes, and deletes with ownership enforcement", async () => {

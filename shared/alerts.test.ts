@@ -11,11 +11,10 @@ describe("saved alert contract", () => {
     expect(normalizeAlertDomain("")).toBeNull();
   });
 
-  it("caps free accounts at 3 alerts, paid unlimited", () => {
+  it("caps at the entitlement's savedAlerts: Free 3, null unlimited", () => {
     expect(FREE_ALERT_LIMIT).toBe(3);
-    expect(canAddAlert({ existingCount: 2, plan: "free" })).toBe(true);
-    expect(canAddAlert({ existingCount: 3, plan: "free" })).toBe(false);
-    expect(canAddAlert({ existingCount: 30, plan: "pro" })).toBe(true);
-    expect(canAddAlert({ existingCount: 30, plan: "max" })).toBe(true);
+    expect(canAddAlert({ existingCount: 2, cap: FREE_ALERT_LIMIT })).toBe(true);
+    expect(canAddAlert({ existingCount: 3, cap: FREE_ALERT_LIMIT })).toBe(false);
+    expect(canAddAlert({ existingCount: 30, cap: null })).toBe(true);
   });
 });

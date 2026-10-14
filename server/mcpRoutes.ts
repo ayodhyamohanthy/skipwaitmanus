@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { handleMcpMessage, type McpDeps } from "./mcpServer";
+import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
 
 /** Tokens are `sw_` + 24 random bytes (base64url). Check the shape before any database lookup. */
 export const ASSISTANT_BEARER_RE = /^sw_[A-Za-z0-9_-]{32}$/;
@@ -11,7 +12,7 @@ export type BearerAuth = { userId: number; tokenId: number };
 export type McpRouteDeps = McpDeps & {
   /** Looks up a non-revoked token by its hash and records last use. Returns null for unknown or revoked. */
   verifyBearer: (tokenHash: string) => Promise<BearerAuth | null>;
-  /** False when the token owner no longer has assistant access (plan lapsed). */
+  /** False when the token owner has no assistant entitlement (not on Land or legacy Max, or the plan lapsed). */
   hasAccess: (userId: number) => Promise<boolean>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   /** Calls allowed per token per minute. */
@@ -54,7 +55,7 @@ export function registerMcpRoutes(app: Express, deps: McpRouteDeps) {
       }
       if (!(await deps.hasAccess(auth.userId))) {
         record({ actorUserId: auth.userId, action: "assistant.mcp.denied", outcome: "denied", resourceType: "assistant_token", resourceId: auth.tokenId });
-        return res.status(403).json({ jsonrpc: "2.0", id: null, error: { code: -32002, message: "Assistant access is not part of this account's plan" } });
+        return res.status(403).json({ jsonrpc: "2.0", id: null, error: { code: -32002, message: ASSISTANT_PLAN_REQUIRED_MESSAGE } });
       }
       if (!allowed(auth.tokenId)) {
         res.set("Retry-After", "60");

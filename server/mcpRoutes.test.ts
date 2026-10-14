@@ -48,6 +48,7 @@ describe("MCP authentication", () => {
     const { app, activity } = setup({ hasAccess: async () => false });
     const res = await rpc(app, { jsonrpc: "2.0", id: 1, method: "tools/list" });
     expect(res.status).toBe(403);
+    expect(res.body.error.message).toBe("Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools.");
     expect(activity[0]).toMatchObject({ action: "assistant.mcp.denied", outcome: "denied" });
   });
   it("rate limits per token", async () => {

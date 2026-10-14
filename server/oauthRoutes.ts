@@ -1,6 +1,7 @@
 import express, { type Express, type Request } from "express";
 import { randomBytes } from "node:crypto";
 import type { OAuthClient } from "./oauthStore";
+import { AssistantPlanRequiredError } from "./planGates";
 
 const ISSUER = "https://skipwait.me";
 export const OAUTH_RESOURCE = `${ISSUER}/api/mcp`;
@@ -12,6 +13,7 @@ export type OAuthRouteDeps = {
   resolveIdentity: (req: Request) => Promise<{ account: { id: number } } | undefined>;
   registerClient: (input: { clientName?: unknown; redirectUris?: unknown }) => Promise<OAuthClient>;
   getClient: (clientId: unknown) => Promise<OAuthClient | null>;
+  /** Throws AssistantPlanRequiredError when the owner's plan has no assistant entitlement. */
   issueCode: (userId: number, input: { clientId: string; redirectUri: string; codeChallenge: string }) => Promise<string>;
   consumeCode: (code: string, input: { clientId: string; redirectUri: string; codeVerifier: string }) => Promise<{ userId: number } | null>;
   /** Mints a normal assistant bearer (same table and checks as a pasted token). Throws when the owner has no assistant access. */
@@ -90,7 +92,11 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
       target.searchParams.set("code", code);
       record({ actorUserId: identity.account.id, action: "assistant.oauth_allowed", outcome: "success", resourceType: "oauth_client", resourceId: client.clientId, metadata: { client: client.clientName } });
       res.set("Cache-Control", "no-store").json({ redirectTo: target.toString() });
-    } catch { res.status(500).json({ error: "We could not connect this assistant" }); }
+    } catch (error) {
+      // Not on Land (or legacy Max): 402 so the consent screen shows the plan gate, never a code.
+      if (error instanceof AssistantPlanRequiredError) return res.set("Cache-Control", "no-store").status(402).json({ error: error.message, code: error.code, upgradePath: "/plans" });
+      res.status(500).json({ error: "We could not connect this assistant" });
+    }
   });
 
   app.post("/api/oauth/token", express.urlencoded({ extended: false, limit: "4kb" }), express.json({ limit: "4kb" }), async (req, res) => {
