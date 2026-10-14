@@ -26,7 +26,7 @@ Current overall gate state, how each item is tested, and its latest result follo
 | 1.1 | WorkOS SSO sign-in produces a valid session | Signed-in suite: silent SSO via `/api/auth/workos/sign-in`, then `GET /api/credits/summary` must return 200 with the expected wallet. Every 2 h. | GREEN (latest 5:16-5:31 PM IST Oct 14, API `2264a9f0`) |
 | 1.2 | Sign-in entry redirects correctly | Curl battery on every deploy: `GET /api/auth/workos/sign-in` returns 302. | GREEN (latest Oct 14) |
 | 1.3 | Auth fails closed when prod WorkOS config is incomplete | Code-verified at PR #92 (Sep 24); `workosAuth.ts` and all auth files re-verified byte-identical or reviewed in the source diff on every API deploy since. | GREEN (diff-verified each deploy) |
-| 1.4 | OTP / code-email login path | Partial live evidence Oct 14 8:45 PM IST (API `a9f01bc`): a work-email OTP fired from qa-sweep-2's live session (company SkipWait) to ayodhya@skipwait.me delivered in seconds; the forwarded copy shows From **"SkipWait" <noreply@skipwait.me>** (PR #199 display name live-verified), subject "Your skipwait.me verification code", body verbatim matches `server/workEmailOtp.ts`. Personal-inbox rejection also proven live: a Gmail alias is refused ("Personal inboxes can't prove where you work") by the shared client+server consumer-domain blocklist (`shared/const.ts`). Still open: the full code-entry login cycle (otpLogin) - entering a real code to complete sign-in - needs a QA-owned readable corporate inbox (qa@skipwait.me Zoho decision pending). The qa-sweep-1 account has no readable inbox and policy forbids triggering a code email to it. | PARTIAL |
+| 1.4 | OTP / code-email login path | Full cycle live-verified Oct 14 8:49 PM IST (API `a9f01bc`): work-email OTP fired from qa-sweep-2's session (company SkipWait) to ayodhya@skipwait.me; ZeptoMail delivery in ~11s with From **"SkipWait" <noreply@skipwait.me>** (PR #199 display name), subject "Your skipwait.me verification code", body verbatim per `server/workEmailOtp.ts`; the founder forwarded the code and it was entered in the live code-entry UI - "You're verified at SkipWait." qa-sweep-2 is now a verified SkipWait referrer (referrer-home renders "Verified - SkipWait", 3/3 capacity, queue empty). Personal-inbox rejection also proven live (Gmail alias refused by the shared client+server consumer-domain blocklist). | GREEN (8:49 PM IST Oct 14, API `a9f01bc`) |
 | 1.5 | Social sign-in providers (PR #197) | Live Oct 14: sign-in page shows Continue with Google / Microsoft / GitHub / email at 1280 + 390 (Apple intentionally absent - not enabled in the WorkOS dashboard). `?provider=google|microsoft|github` on `/api/auth/workos/sign-in` 302 to WorkOS with the matching provider; `?provider=apple` falls back to `authkit` without error. | GREEN (5:12 PM IST Oct 14, API `2264a9f0`) |
 
 ## 2. Referral request flow
@@ -103,12 +103,11 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 
 - **Every live-testable item is GREEN.** 2.6 (withdraw) was RED for ~40 min on Oct 14 and is
   fixed + live-verified on `644ce81`. Everything that can run unattended is GREEN.
-- 4 coverage gaps remain open: 1.4 (site OTP code-email login cycle - email delivery, From
-  header, subject, body and personal-inbox rejection now proven live Oct 14 on `a9f01bc`;
-  only the code-entry sign-in cycle remains), 3.1 (approve/decline on a thread),
-  3.2-live (block cycle), 4.12 (real payment completion). 1.4, 3.1 and 3.2 close with a
-  verified-referrer QA account (qa@skipwait.me mailbox decision pending Oct 14); 4.12 closes
-  with a founder-approved real test payment.
+- 3 coverage gaps remain open: 3.1 (approve/decline on a thread), 3.2-live (block cycle),
+  4.12 (real payment completion). 1.4 closed Oct 14 8:49 PM: qa-sweep-2 completed the full
+  work-email OTP cycle and is now a verified SkipWait referrer - which also removes the
+  qa@skipwait.me mailbox dependency for 3.1/3.2 (a verified-referrer QA account now exists).
+  4.12 closes with a founder-approved real test payment.
 - Whether distribution starts with the 4 remaining UNVERIFIED gaps open is the founder's call.
 
 Any battery failure flips the named item to RED and is reported immediately with surface, SHA,
