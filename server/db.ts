@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
@@ -3775,4 +3775,24 @@ export async function applyEmployerUnlockRefund(input:{refundId:string;paymentId
     if(debt){await tx.update(profileUnlocks).set({revokedAt:new Date(),revocationReason:"refunded_employer_credits_review"}).where(and(eq(profileUnlocks.employerUserId,intent.userId),isNull(profileUnlocks.revokedAt)));}
     await tx.insert(operationalActivityLogs).values({actorUserId:intent.userId,action:"employer.unlock_credits_refunded",outcome:"success",resourceType:"employer_unlock_refund",resourceId:input.refundId,metadata:JSON.stringify({paymentId:input.paymentId,refundAmount:input.amount,cumulativeRefunded:cumulative,creditsReversed:delta,creditDebt:debt})});return {status:"applied" as const,creditsReversed:delta,creditDebt:debt};
   });
+}
+
+/**
+ * Read-only rows for the admin billing ledger (GET /api/admin/billing/ledger).
+ * Three bounded SELECTs by time window; no writes, no joins to PII tables.
+ * Each source is fetched with limit+1 so the caller can tell when it was cut.
+ */
+export async function listBillingLedgerRows(window: { since: Date; until: Date; limit: number }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const take = window.limit + 1;
+  const intents = await db.select({ checkoutIntentId: subscriptionCheckoutIntents.checkoutIntentId, hostedPageId: subscriptionCheckoutIntents.hostedPageId, userId: subscriptionCheckoutIntents.userId, role: subscriptionCheckoutIntents.role, plan: subscriptionCheckoutIntents.plan, itemPriceId: subscriptionCheckoutIntents.itemPriceId, amount: subscriptionCheckoutIntents.amount, currency: subscriptionCheckoutIntents.currency, status: subscriptionCheckoutIntents.status, createdAt: subscriptionCheckoutIntents.createdAt })
+    .from(subscriptionCheckoutIntents).where(and(gte(subscriptionCheckoutIntents.createdAt, window.since), lt(subscriptionCheckoutIntents.createdAt, window.until))).orderBy(asc(subscriptionCheckoutIntents.createdAt)).limit(take);
+  const payments = await db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, providerEventId: paymentFulfillments.providerEventId, providerInvoiceId: paymentFulfillments.providerInvoiceId, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, status: paymentFulfillments.status, reconciliationReason: paymentFulfillments.reconciliationReason, lastCheckedAt: paymentFulfillments.lastCheckedAt, creditedAt: paymentFulfillments.creditedAt, createdAt: paymentFulfillments.createdAt })
+    .from(paymentFulfillments).where(and(gte(paymentFulfillments.createdAt, window.since), lt(paymentFulfillments.createdAt, window.until))).orderBy(asc(paymentFulfillments.createdAt)).limit(take);
+  const transactions = await db.select({ id: tokenTransactions.id, userId: tokenTransactions.userId, role: tokenTransactions.role, tokenCount: tokenTransactions.tokenCount, kind: tokenTransactions.kind, source: tokenTransactions.source, referenceType: tokenTransactions.referenceType, referenceId: tokenTransactions.referenceId, idempotencyKey: tokenTransactions.idempotencyKey, reversesTransactionId: tokenTransactions.reversesTransactionId, balanceAfter: tokenTransactions.balanceAfter, createdAt: tokenTransactions.createdAt })
+    .from(tokenTransactions).where(and(gte(tokenTransactions.createdAt, window.since), lt(tokenTransactions.createdAt, window.until))).orderBy(asc(tokenTransactions.createdAt)).limit(take);
+  const parked = await db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt })
+    .from(operationalActivityLogs).where(and(inArray(operationalActivityLogs.action, ["billing.payment_unmatched", "billing.refund_needs_review"]), gte(operationalActivityLogs.createdAt, window.since), lt(operationalActivityLogs.createdAt, window.until))).orderBy(asc(operationalActivityLogs.createdAt)).limit(take);
+  return { intents, payments, transactions, parked };
 }
