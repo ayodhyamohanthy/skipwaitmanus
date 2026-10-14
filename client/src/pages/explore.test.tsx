@@ -41,6 +41,7 @@ function stubDirectory(directory: CompanyDirectoryResponse = ALL_OPEN) {
   const fetchMock = vi.fn(async (input: string) => {
     const path = String(input);
     if (path === "/api/companies") return json(200, directory);
+    if (path === "/api/ask-drafts") return json(200, { draft: { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Shipped a design system used by 40 teams.", updatedAt: "x" } });
     const slug = path.startsWith("/api/companies/") ? decodeURIComponent(path.slice("/api/companies/".length)) : "";
     const found = directory.companies.find(item => item.slug === slug);
     return found ? json(200, { company: found }) : json(404, { error: "This door doesn't lead anywhere" });
@@ -244,11 +245,13 @@ describe("Explore company request dialog", () => {
     expect(within(dialog).getByText("Ready")).toBeTruthy();
 
     fireEvent.click(within(dialog).getByRole("button", { name: /Preview request/ }));
-    expect(go).toHaveBeenCalledWith("/ask");
+    expect(await within(dialog).findByRole("heading", { name: "Your request is ready." })).toBeTruthy();
+    expect(go).not.toHaveBeenCalled();
     const saved = JSON.parse(sessionStorage.getItem(ASK_PREFILL_KEY) ?? "null");
     expect(saved).toMatchObject({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/jobs/1", note: "Shipped a design system used by 40 teams." });
-    // Nothing is sent: the only network read is the door itself.
-    expect(paths(fetchMock)).toEqual(["/api/companies/wipro"]);
+    // Nothing is sent as an ask: the door read plus the draft save, nothing else.
+    expect(paths(fetchMock)).toEqual(["/api/companies/wipro", "/api/ask-drafts"]);
+    fireEvent.click(within(dialog).getByRole("link", { name: /Write a full ask/ }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
