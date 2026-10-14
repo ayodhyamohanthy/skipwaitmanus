@@ -40,11 +40,12 @@ describe("referrer DM gate decision", () => {
   });
 
   it("maps a blocked gate to the same body the 403 and the thread view carry", () => {
-    expect(dmSendBlockFor({ kind: "acceptance_required", senderRole: "member" })).toEqual({ reason: "referrer_acceptance_required", error: DM_REFERRER_ACCEPTANCE_ERROR });
+    expect(dmSendBlockFor({ kind: "acceptance_required", senderRole: "member" })).toEqual({ reason: "referrer_acceptance_required", error: DM_REFERRER_ACCEPTANCE_ERROR, senderRole: "member" });
     expect(dmSendBlockFor({ kind: "acceptance_required", senderRole: "referrer" })?.error).toBe(DM_REFERRER_ACCEPTANCE_SENDER_IS_REFERRER_ERROR);
     expect(dmSendBlockFor({ kind: "accepted" })).toBeNull();
     expect(dmSendBlockFor({ kind: "not_referrer_pair" })).toBeNull();
-    expect(parseDmSendBlock({ reason: "referrer_acceptance_required", error: DM_REFERRER_ACCEPTANCE_ERROR })).not.toBeNull();
+    expect(parseDmSendBlock({ reason: "referrer_acceptance_required", error: DM_REFERRER_ACCEPTANCE_ERROR, senderRole: "member" })).not.toBeNull();
+    expect(parseDmSendBlock({ reason: "referrer_acceptance_required", error: DM_REFERRER_ACCEPTANCE_ERROR, senderRole: "admin" })).toBeNull();
     expect(parseDmSendBlock({ reason: "premium_required", error: "x" })).toBeNull();
     expect(parseDmSendBlock(null)).toBeNull();
   });

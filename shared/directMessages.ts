@@ -35,6 +35,8 @@ export type ReferrerDmGate =
 export const dmSendBlockSchema = z.object({
   reason: z.literal(DM_REFERRER_ACCEPTANCE_REASON),
   error: z.string().min(1).max(300),
+  /** "referrer" when the viewer is the referrer who has not accepted yet, so the UI points at their inbox. */
+  senderRole: z.enum(["referrer", "member"]),
 });
 export type DmSendBlock = z.infer<typeof dmSendBlockSchema>;
 
@@ -44,6 +46,7 @@ export function dmSendBlockFor(gate: ReferrerDmGate): DmSendBlock | null {
   return {
     reason: DM_REFERRER_ACCEPTANCE_REASON,
     error: gate.senderRole === "referrer" ? DM_REFERRER_ACCEPTANCE_SENDER_IS_REFERRER_ERROR : DM_REFERRER_ACCEPTANCE_ERROR,
+    senderRole: gate.senderRole,
   };
 }
 
