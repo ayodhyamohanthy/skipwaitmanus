@@ -66,6 +66,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (!isTokenQuantity(quantity)) return res.status(400).json({ error: "Choose a whole number of tokens between 1 and 1,000" });
       const pack = getTokenPackSpec(itemPriceId);
       if (!pack) return res.status(400).json({ error: "Choose a supported token currency" });
+      if (pack.isBundle && quantity !== 1) return res.status(400).json({ error: "Credit packs are sold one pack at a time" });
       if ((billingCountry === "IN" && pack.currency !== "INR") || (billingCountry === "INTL" && pack.currency !== "USD")) {
         return res.status(400).json({ error: "That currency is not available for the selected billing route" });
       }

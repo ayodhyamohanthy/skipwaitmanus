@@ -56,7 +56,9 @@ describe("Plans kit v4 on live data", () => {
     expect(screen.getByText("You're out of credits")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "I'll wait" }));
     expect(screen.queryByText("Your 3 requests are all in use")).toBeNull();
-    expect(screen.getAllByRole("link", { name: "Add credits" }).every(link => link.getAttribute("href") === "/premium?role=job_seeker")).toBe(true);
+    // The header credit pill "Add credits" opens the pack dialog (pack → pay).
+    fireEvent.click(document.querySelector(".heading-aside .credit-cta") as HTMLButtonElement);
+    expect(screen.getByRole("dialog", { name: "Add credits" })).toBeTruthy();
     cleanup();
 
     stub(free(2));

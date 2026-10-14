@@ -12,7 +12,7 @@ export type Moment = { id: string; trigger: string; title: string; copy: string;
 
 const DAY_MS = 86_400_000;
 
-export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: string, onSeePlan: (plan: PaidSubscriptionPlan) => void): Moment[] {
+export function upgradeMoments(summary: CreditSummary, now: Date, onAddCredits: () => void, onSeePlan: (plan: PaidSubscriptionPlan) => void): Moment[] {
   const moments: Moment[] = [];
   const next = nextPlanUp(summary.plan);
   const paid = hasActivePaidPlan(summary);
@@ -24,7 +24,7 @@ export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: s
       trigger: "All monthly requests in use",
       title: `Your ${summary.monthlyAllowance} requests are all in use`,
       copy: `${paid ? "Your requests reset with your plan cycle" : "Free requests reset on the 1st of each month"}. A withdrawn or expired ask frees its slot${nextPlan ? `, or move to ${nextPlan.label} for ${nextPlan.monthlyAllowance} requests a month` : ""}. Queue position stays equal either way.`,
-      cta: next && nextPlan ? { label: `See ${nextPlan.label}`, onClick: () => onSeePlan(next) } : { label: "Add credits", href: creditsHref },
+      cta: next && nextPlan ? { label: `See ${nextPlan.label}`, onClick: () => onSeePlan(next) } : { label: "Add credits", onClick: onAddCredits },
       alt: "dismiss",
     });
   }
@@ -34,7 +34,7 @@ export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: s
       trigger: "Credit balance reaches 0",
       title: "You're out of credits",
       copy: nextPlan ? `Add a pack once, or get ${nextPlan.monthlyAllowance} requests every month with ${nextPlan.label}.` : "Add a pack once. Credits you buy never expire.",
-      cta: { label: "Add credits", href: creditsHref },
+      cta: { label: "Add credits", onClick: onAddCredits },
       alt: { label: "Compare plans", href: "#compare" },
     });
   }

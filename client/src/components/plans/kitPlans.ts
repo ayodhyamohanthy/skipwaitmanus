@@ -8,6 +8,7 @@ import {
   CREDIT_PACKS,
   FREE_PLAN,
   HUMAN_PRODUCTS,
+  catalogPackItemPriceId,
   catalogPlanById,
   type CatalogPlan,
   type Carryover,
@@ -126,7 +127,7 @@ export function kitPlanItemPriceId(planId: string, currency: SubscriptionCurrenc
   }
 }
 
-export type CreditPackCard = { id: string; credits: number; display: string; firstPack: boolean };
+export type CreditPackCard = { id: string; credits: number; display: string; firstPack: boolean; itemPriceId: string | null };
 
 function money(amountMinor: number, currency: SubscriptionCurrency): string {
   const symbol = currency === "INR" ? "₹" : "$";
@@ -137,7 +138,13 @@ function money(amountMinor: number, currency: SubscriptionCurrency): string {
 export function creditPackCards(currency: SubscriptionCurrency): CreditPackCard[] {
   return CREDIT_PACKS
     .filter(pack => pack.prices[currency] !== undefined)
-    .map(pack => ({ id: pack.id, credits: pack.credits, display: money(pack.prices[currency]!, currency), firstPack: Boolean(pack.firstPack) }));
+    .map(pack => ({
+      id: pack.id,
+      credits: pack.credits,
+      display: money(pack.prices[currency]!, currency),
+      firstPack: Boolean(pack.firstPack),
+      itemPriceId: pack.prices[currency] !== undefined ? catalogPackItemPriceId(pack.id, currency) : null,
+    }));
 }
 
 export type HumanProductCard = { id: string; label: string; display: string };

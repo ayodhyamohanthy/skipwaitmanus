@@ -13,10 +13,11 @@ import { CheckoutDialog } from "@/components/plans/CheckoutDialog";
 import { GiftNotices, SentGifts } from "@/components/plans/GiftNotices";
 import { PlanCards } from "@/components/plans/PlanCards";
 import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansCredits";
+import { CreditsDialog, creditsDialogPacks } from "@/components/plans/CreditsDialog";
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
 import { activePaidPlan } from "@/components/plans/planCatalog";
-import { kitPlanLabel } from "@/components/plans/kitPlans";
+import { creditPackCards, kitPlanLabel, type CreditPackCard } from "@/components/plans/kitPlans";
 
 // Gift checkout stays hidden until the flow is verified end to end on the
 // Chargebee TEST site (#77/#78). Build with VITE_GIFT_CHECKOUT_ENABLED=true to show it.
@@ -47,7 +48,6 @@ export default function Plans() {
   const [summaryKey, setSummaryKey] = useState(0);
   const giftReturn = params.get("gift");
   const routeDetails = paymentRouteDetails(route);
-  const creditsHref = `/premium?role=${role}`;
 
   useEffect(() => {
     applySeo({ title: "Referral plans and credits", description: "Start, Momentum and Land plans add referral credits each month on top of the free allowance. Choose monthly or 90-day. Cancel any time.", path: "/plans" });
@@ -99,6 +99,38 @@ export default function Plans() {
   };
 
   const openCheckout = (plan: PaidSubscriptionPlan, chosenInterval: SubscriptionInterval) => { setCheckoutError(""); setCheckoutPlan(plan); setInterval(chosenInterval); };
+  const [creditPack, setCreditPack] = useState<CreditPackCard | null>(null);
+  const [creditsOpening, setCreditsOpening] = useState(false);
+  const [creditsError, setCreditsError] = useState("");
+
+  const openCredits = (pack?: CreditPackCard) => { setCreditsError(""); setCreditPack(pack ?? creditsDialogPacks(route)[1] ?? creditPackCards(route)[0] ?? null); };
+
+  const startCreditsCheckout = async (pack: CreditPackCard) => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      const destination = new URL(window.location.href);
+      destination.searchParams.set("currency", route);
+      openSignIn({ returnTo: `${destination.pathname}${destination.search}${destination.hash}` });
+      return;
+    }
+    setCreditsError("");
+    setCreditsOpening(true);
+    try {
+      const response = await fetch("/api/chargebee/checkout", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json", ...authHeaders(await getToken()) },
+        body: JSON.stringify({ itemPriceId: pack.itemPriceId, billingCountry: routeDetails.billingCountry, role }),
+      });
+      const payload = await readApiJson<{ checkoutUrl?: string; error?: string }>(response, "Unable to open the credits checkout");
+      if (!response.ok || typeof payload.checkoutUrl !== "string") throw new Error(payload.error || "Unable to open the credits checkout");
+      openChargebeeCheckout(payload.checkoutUrl);
+    } catch (reason) {
+      setCreditsError(failureMessage(reason, "Unable to open the credits checkout"));
+    } finally {
+      setCreditsOpening(false);
+    }
+  };
 
   const startCheckout = async (plan: PaidSubscriptionPlan) => {
     if (!isLoaded) return;
@@ -193,7 +225,7 @@ export default function Plans() {
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
-    <div className="page-heading"><div><span className="eyebrow">INDIVIDUAL PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. Upgrade when your search grows. Referrals stay free on every plan, and queue position never changes.</p></div><CreditCta summary={summary} href={creditsHref} /></div>
+    <div className="page-heading"><div><span className="eyebrow">INDIVIDUAL PLANS · <Link href="/billing" className="underline">Manage plan</Link></span><h1>Choose how much help you need<span className="brand-dot">.</span></h1><p>Everyone starts free — no card needed. Upgrade when your search grows. Referrals stay free on every plan, and queue position never changes.</p></div><CreditCta summary={summary} onAddCredits={() => openCredits()} /></div>
     <GiftNotices giftReturn={giftReturn} claimedPlan={claimedPlan} claimable={claimableGifts} claimingId={claimingId} onClaim={giftId => { void claimGift(giftId); }} />
 
     <PlanCards
@@ -214,12 +246,13 @@ export default function Plans() {
     {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
     <SentGifts sent={sentGifts} error={giftError} />
 
-    <CreditsSection summary={summary} currency={route} creditsHref={creditsHref} />
+    <CreditsSection summary={summary} currency={route} onAddCredits={() => openCredits()} />
     {summary ? <UsagePanel summary={summary} /> : null}
-    {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), creditsHref, plan => openCheckout(plan, interval))} /> : null}
+    {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), () => openCredits(), plan => openCheckout(plan, interval))} /> : null}
     <FairBand />
     <PlansReference currency={route} />
 
     {checkoutPlan ? <CheckoutDialog plan={checkoutPlan} currency={route} interval={interval} signedIn={Boolean(isSignedIn)} opening={status === "opening"} error={checkoutError} onPay={() => { void startCheckout(checkoutPlan); }} onClose={() => setCheckoutPlan(null)} /> : null}
+    {creditPack ? <CreditsDialog currency={route} signedIn={Boolean(isSignedIn)} pack={creditPack} onPackChange={setCreditPack} opening={creditsOpening} error={creditsError} onPay={pack => { void startCreditsCheckout(pack); }} onClose={() => setCreditPack(null)} /> : null}
   </main>;
 }
