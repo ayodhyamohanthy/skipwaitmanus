@@ -44,6 +44,15 @@ Pending owner decisions (do not build until decided): referrer tips (seeker→re
 - Visual verification: `KIT_SCREENS_BASE=http://localhost:<port> node scripts/kit-screens/capture.mjs --route <r> --name <stem> --fixture scripts/kit-screens/fixtures/<stem>.json --out <dir>` writes REFERENCE|LIVE slices at both viewports with network-level API mocks (no DB needed). Local dev needs `.env` with `JWT_SECRET`, `VITE_APP_ID=skipwait`, `BILLING_ENV=test` and placeholder `CHARGEBEE_SITE/API_KEY/WEBHOOK_SECRET`.
 - Money: no real payments ever; mock every provider in tests; amounts only from the server catalog; provider-confirmed state only.
 
+## 3a. Goal-alignment audit (Oct 14 2026, in progress — do not re-order the queue until the owner decides)
+Verified facts so far (production, Oct 14 10:27 UTC; code on `main`):
+- **Supply:** `/api/companies` lists 5 companies; only 1 (skipwait.me itself) has a verified referrer. `/api/referral-impact` reports 10 accepted referrals but counts expired asks as accepted (`getPublicReferralImpact` counts `closed`, which the expiry sweep also writes).
+- **Measurement:** no product analytics run in production (Umami placeholders unreplaced, Clarity unset) — issue #102; first-party funnel PRs #108/#109 unmerged since Sep 23. 51 PRs are open.
+- **Growth issues outside the queue:** #97 share links unfurl as the generic card; #98 `/api/jobs` serves an acme.com test role; #99 coverage is revealed only after the ask is sent; #100 no per-company pages; #101 referrer page gives no reason to help; #103 no real proof on the homepage. #96 (per-route canonical, real 404) is fixed live.
+- **Speed blockers in code:** uncovered employers on ATS boards are rejected; asks to uncovered-but-known companies wait then expire at 7 days; referrers are notified once (in-app; email only if the login email is on the company domain), no reminders or push; `/request` → `/ask` drops the job link and fast-track code; a new resume per ask; the coverage-invite share card is missing from the live confirmation; assigned asks can stick (never expire, can't be passed).
+- **Market:** referrals ≈1% of applications but 40% reach interview vs 3% inbound (Ashby 2025); the referrer side is scarce; employers penalise serial or paid referring (Bloomberg 2025); India is the volume engine.
+Still running: referrer supply/global reach, seeker and referrer psychology (cited, source-checked), whole-project sync sweep. The result is a data-backed proposal to the owner; nothing is built from it before approval.
+
 ## 3b. Priority queue — how every model picks work (binding)
 **Rules (apply in order):**
 1. **Preempt for P0:** production down or degraded, `main` CI red, a security vulnerability, or a money/credits/identity/data-correctness bug beats everything below. Fix it, verify live, then return to the queue.
@@ -57,8 +66,8 @@ Pending owner decisions (do not build until decided): referrer tips (seeker→re
 | # | Task (audit feature names) | Depends on | Size | Status |
 |---|---|---|---|---|
 | **Tier A — finish in-flight work** |||||
-| 1 | Wave 3 kit pricing: pricing-model → checkout-passes → plans-billing-ui → catalog-sync (spec 4.1) | — | XL | in progress — Claude Code — 2026-10-14 — branch kit-v4-fullstack |
-| 2 | Wave 4a password sign-in: `password-auth`, `sign-in-intent-routing` (spec 4.2) | — | L | in progress — Claude Code — 2026-10-14 — branch kit-v4-fullstack |
+| 1 | Wave 3 kit pricing: pricing-model → checkout-passes → plans-billing-ui → catalog-sync (spec 4.1) | — | XL | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: unverified WIP commit e340880 (halted by session limit; migration 0081 is a draft). Resumes after the goal-alignment audit and the owner's priority decision |
+| 2 | Wave 4a password sign-in: `password-auth`, `sign-in-intent-routing` (spec 4.2) | — | L | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: ca6c23e (contracts, limiter, guard) + unverified WIP a0417a0. Resumes after the goal-alignment audit and the owner's priority decision |
 | **Tier B — trust, privacy, compliance** |||||
 | 3 | `work-email-hmac-storage`: store only an HMAC of work emails in OTP codes/receipts, purge plaintext, migrate existing rows | — | M | todo |
 | 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | todo |
