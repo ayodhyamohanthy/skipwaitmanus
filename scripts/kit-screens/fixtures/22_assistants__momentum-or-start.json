@@ -21,7 +21,9 @@
       "match": "exact",
       "status": 200,
       "body": {
-        "plan": "pro",
+        "plan": "momentum",
+        "planLabel": "Momentum",
+        "tier": "momentum",
         "hasAccess": false
       }
     },

@@ -126,6 +126,26 @@ describe("ConnectAssistant", () => {
     expect(screen.getByRole("link", { name: "Keep using SkipWait yourself" }).getAttribute("href")).toBe("/explore");
   });
 
+  it.each(["access answers first", "client answers first"])("shows the Land gate, not the unverified-app screen, to a non-Land member arriving from an assistant (%s)", async order => {
+    search.value = OAUTH_QUERY;
+    let releaseSlow: () => void = () => undefined;
+    const slow = new Promise<void>(resolve => { releaseSlow = resolve; });
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      const isAccess = String(url).includes("/api/assistants/access");
+      const isClient = String(url).startsWith("/api/oauth/client");
+      if ((order === "access answers first" && isClient) || (order === "client answers first" && isAccess)) await slow;
+      if (isAccess) return { ok: true, json: async () => ({ plan: "momentum", planLabel: "Momentum", tier: "momentum", hasAccess: false }) };
+      if (isClient) return { ok: true, json: async () => ({ clientName: "ChatGPT" }) };
+      return { ok: true, json: async () => ({}) };
+    }));
+    render(<ConnectAssistant />);
+    if (order === "client answers first") await screen.findByText("“ChatGPT” isn't verified by SkipWait");
+    releaseSlow();
+    expect(await screen.findByText("Assistants need Land")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Continue, read & draft only" })).toBeNull());
+    expect(screen.queryByText("“ChatGPT” isn't verified by SkipWait")).toBeNull();
+  });
+
   it("asks signed-out visitors to sign in first", () => {
     authState.isSignedIn = false;
     render(<ConnectAssistant />);

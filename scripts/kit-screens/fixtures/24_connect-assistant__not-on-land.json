@@ -11,7 +11,9 @@
       "path": "/api/assistants/access",
       "status": 200,
       "body": {
-        "plan": "pro",
+        "plan": "start",
+        "planLabel": "Start",
+        "tier": "start",
         "hasAccess": false
       }
     }

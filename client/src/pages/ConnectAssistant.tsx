@@ -66,8 +66,10 @@ export default function ConnectAssistant() {
         const token = await fetchToken();
         const response = await fetch("/api/assistants/access", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
         const payload = await readApiJson<{ hasAccess?: boolean }>(response, "");
-        // The server owns the plan gate; follow its answer rather than naming a plan here.
-        if (response.ok && payload.hasAccess !== true) setStage(current => (current === "consent" ? "not-on-land" : current));
+        // The server owns the plan gate; follow its answer rather than naming a plan here. It wins over
+        // the consent and unverified-app screens whichever check answers first, so a member without
+        // Land never reaches an approve button that cannot work.
+        if (response.ok && payload.hasAccess !== true) setStage(current => (current === "consent" || current === "unverified" ? "not-on-land" : current));
       } catch { /* the consent screen still renders; the plan gate re-checks on approve */ }
     })();
   }, [isSignedIn, fetchToken]);

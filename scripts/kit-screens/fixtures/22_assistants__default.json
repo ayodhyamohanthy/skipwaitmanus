@@ -21,7 +21,9 @@
       "match": "exact",
       "status": 200,
       "body": {
-        "plan": "max",
+        "plan": "land_100",
+        "planLabel": "Land Focus",
+        "tier": "land",
         "hasAccess": true
       }
     },
