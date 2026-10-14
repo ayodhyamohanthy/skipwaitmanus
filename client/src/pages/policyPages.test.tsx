@@ -145,3 +145,19 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("button", { name: "More" }).length).toBeGreaterThan(0);
   });
 });
+
+describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () => {
+  it("Terms say a decline does not return the credit", () => {
+    const { container } = render(<Terms />);
+    const text = container.textContent ?? "";
+    expect(text).toContain("If a Referrer declines, the credit stays spent");
+    expect(text).not.toMatch(/returned automatically if you withdraw before a Referrer claims it, or if a Referrer declines/);
+  });
+  it("Refund policy lists withdraw and expiry as returns, and a decline as spent", () => {
+    const { container } = render(<RefundPolicy />);
+    const text = container.textContent ?? "";
+    expect(text).toMatch(/If a Referrer declines, the credit stays spent/);
+    expect(text).not.toMatch(/or if the Referrer declines\./);
+    expect(text).toMatch(/or if it expires without a decision/);
+  });
+});
