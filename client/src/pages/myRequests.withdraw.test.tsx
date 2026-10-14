@@ -26,10 +26,10 @@ afterEach(() => { cleanup(); go.mockClear(); vi.unstubAllGlobals(); });
 
 const pendingRequest = { id: 12, targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", status: "pending", referrerId: null, queueStatus: null, referrerMessage: null, unreadMessageCount: 0, createdAt: "2026-09-01T08:00:00.000Z", updatedAt: "2026-09-01T08:00:00.000Z", attachmentCount: 1 };
 const claimedRequest = { ...pendingRequest, id: 13, status: "pending", referrerId: 77, queueStatus: "available_for_review" };
-const creditSummary = (monthlyCreditsRemaining: number) => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining, purchasedCreditsRemaining: 0, totalAvailable: monthlyCreditsRemaining, cycleKey: "2026-09", subscriptionStatus: null, subscriptionCurrentTermEnd: null } });
+const slots = { plan: "free", planLabel: "Free", open: 1, cap: 3, full: false, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } };
 
 function stubRequestsFetch(requests: unknown[]) {
-  vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => String(url).includes("/api/credits/summary") ? creditSummary(2) : { requests } })));
+  vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests, slots }) })));
 }
 
 // Kit v4: the Requests row is a single link card. Withdraw lives in the thread
@@ -44,9 +44,9 @@ describe("My Requests withdraw entry point", () => {
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(row.textContent).not.toContain("Ref-1012");
-    // The kit slot meter is the live monthly wallet: 2 of 3 slots still open.
+    // The kit slot meter: this one open ask holds 1 of the Free plan's 3 slots.
     expect(screen.getByText("OPEN SLOTS · FREE")).toBeTruthy();
-    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("2"));
+    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Open slots used" }).getAttribute("aria-valuenow")).toBe("1"));
   });
 
   it("shows a claimed ask's review state and still offers no list-level Withdraw", async () => {
@@ -58,7 +58,7 @@ describe("My Requests withdraw entry point", () => {
   });
 
   it("never calls the withdraw endpoint from the list", async () => {
-    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => String(url).includes("/api/credits/summary") ? creditSummary(2) : { requests: [pendingRequest] } }));
+    const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: [pendingRequest], slots }) }));
     vi.stubGlobal("fetch", fetchMock);
     renderPage();
     fireEvent.click(await screen.findByLabelText("acme.com request, Requested"));

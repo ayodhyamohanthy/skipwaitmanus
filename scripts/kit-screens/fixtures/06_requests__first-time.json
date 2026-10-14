@@ -13,7 +13,19 @@
       "status": 200,
       "body": {
         "expiredRequestIds": [],
-        "requests": []
+        "requests": [],
+        "slots": {
+          "plan": "free",
+          "planLabel": "Free",
+          "open": 0,
+          "cap": 3,
+          "full": false,
+          "nextPlan": {
+            "id": "momentum",
+            "label": "Momentum",
+            "openRequests": 15
+          }
+        }
       }
     },
     {

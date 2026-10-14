@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { openAskSlots, type OpenAskSlots } from "@shared/openAskSlots";
+import { resolvePlanEntitlements } from "@shared/planEntitlements";
 import { countExpiringSoon, countInConversation, requestNote, requestPillStatus, slotMeter, slotsFullCopy } from "./requestModel";
-import { parseCreditSummary, type CreditSummary, type ReferralRequest } from "./requestsApi";
+import type { ReferralRequest } from "./requestsApi";
 
 const now = Date.parse("2026-10-08T04:30:00.000Z");
 const day = 24 * 60 * 60 * 1000;
 const ask = (patch: Partial<ReferralRequest>): ReferralRequest => ({ id: 1, title: "Designer", targetRoleUrl: null, companyDomain: "acme.com", compensation: null, status: "pending", referrerId: null, queueStatus: null, referrerMessage: null, unreadMessageCount: 0, createdAt: new Date(now - day).toISOString(), updatedAt: new Date(now - day).toISOString(), attachmentCount: 1, expiresAt: null, ...patch });
-const wallet = (patch: Partial<CreditSummary>): CreditSummary => ({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 0, totalAvailable: 3, cycleKey: "2026-10", subscriptionStatus: null, subscriptionCurrentTermEnd: null, ...patch });
+const termEnd = new Date(now + 20 * day);
+const slots = (plan: string, open: number): OpenAskSlots => openAskSlots(resolvePlanEntitlements(plan === "free" ? null : { plan, subscriptionStatus: "active", subscriptionCurrentTermEnd: termEnd }, new Date(now)), open);
 
 describe("requests view model", () => {
   it("maps every live status onto the kit pill vocabulary", () => {
@@ -35,25 +38,20 @@ describe("requests view model", () => {
     expect(countExpiringSoon(list, now)).toBe(1);
   });
 
-  it("meters open slots from the monthly wallet and names the next real plan", () => {
-    expect(slotMeter(wallet({ monthlyCreditsRemaining: 1, totalAvailable: 1 }))).toMatchObject({ planLabel: "Free", open: 1, allowance: 3, full: false, nextPlan: { label: "Pro", monthlyAllowance: 10 } });
-    const full = slotMeter(wallet({ monthlyCreditsRemaining: 0, totalAvailable: 0 }));
-    expect(full).toMatchObject({ open: 0, full: true });
-    expect(slotsFullCopy(full, true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an unclaimed ask to expire, withdraw one, or get more slots with Pro (10)." });
-    const max = slotMeter(wallet({ plan: "max", monthlyAllowance: 30, monthlyCreditsRemaining: 0, totalAvailable: 0, subscriptionCurrentTermEnd: "2026-11-01T00:00:00.000Z" }));
-    expect(max.nextPlan).toBeNull();
-    expect(max.renewsOn).not.toBeNull();
-    expect(slotsFullCopy(max, false)).toEqual({ lead: "All 30 slots are in use.", next: "Add one-time credits." });
+  it("meters open asks against the plan cap and fills the slots in use (kit OPEN SLOTS · FREE 2/3)", () => {
+    expect(slotMeter(slots("free", 0))).toEqual({ label: "OPEN SLOTS · FREE", open: 0, cap: 3, filled: 0, full: false });
+    expect(slotMeter(slots("free", 2))).toEqual({ label: "OPEN SLOTS · FREE", open: 2, cap: 3, filled: 2, full: false });
+    expect(slotMeter(slots("free", 3))).toMatchObject({ filled: 3, full: true });
+    // Asks opened on a richer plan stay open after a downgrade: the meter never overfills.
+    expect(slotMeter(slots("free", 5))).toMatchObject({ open: 5, filled: 3, full: true });
+    expect(slotMeter(slots("pro", 4))).toEqual({ label: "OPEN SLOTS · PRO", open: 4, cap: 10, filled: 4, full: false });
+    expect(slotMeter(slots("land_200", 7)).label).toBe("OPEN SLOTS · LAND SPRINT");
+    expect(slotMeter(slots("land_500", 80))).toMatchObject({ cap: null, filled: 0, full: false });
   });
 
-  it("keeps the meter inside the allowance and only calls it full when no credit of any kind is left", () => {
-    expect(slotMeter(wallet({ monthlyCreditsRemaining: 5, totalAvailable: 5 })).open).toBe(3);
-    expect(slotMeter(wallet({ monthlyCreditsRemaining: -1, totalAvailable: 0 })).open).toBe(0);
-    expect(slotMeter(wallet({ monthlyCreditsRemaining: 0, purchasedCreditsRemaining: 2, totalAvailable: 2 }))).toMatchObject({ open: 0, packCredits: 2, full: false });
-  });
-
-  it("rejects a malformed credit summary instead of drawing a fake meter", () => {
-    expect(parseCreditSummary({ plan: "free", monthlyAllowance: "3" })).toBeNull();
-    expect(parseCreditSummary(wallet({}))).toMatchObject({ plan: "free", monthlyAllowance: 3 });
+  it("writes the kit slots-full nudge with the next plan and its cap from the catalog", () => {
+    expect(slotsFullCopy(slots("free", 3), true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer, withdraw an ask, or get more slots with Momentum (15)." });
+    expect(slotsFullCopy(slots("free", 3), false)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer or get more slots with Momentum (15)." });
+    expect(slotsFullCopy(slots("max", 30), true).next).toBe("Wait for an answer, withdraw an ask, or get more slots with Land Sprint (50).");
   });
 });

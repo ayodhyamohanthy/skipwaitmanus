@@ -1,8 +1,8 @@
 // Seeker Requests (kit v4 /requests, app/src/routes/requests.tsx) on live data:
-// asks from /api/company-referrals/mine and the open-slot meter and slots-full
-// nudge from /api/credits/summary. Each row opens its thread, where an
-// unclaimed ask can be withdrawn. No preview states, sample asks or invented
-// counts ship here.
+// asks, the open-slot meter and the slots-full nudge all come from
+// /api/company-referrals/mine (open asks against the plan's open-ask cap).
+// Each row opens its thread, where an unclaimed ask can be withdrawn. No
+// preview states, sample asks or invented counts ship here.
 import { ArrowRight, LockKeyhole, Plus } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,11 +14,11 @@ import { RequestRow } from "@/components/requests/RequestRow";
 import { RequestSummary } from "@/components/requests/RequestSummary";
 import { RequestsAlert, RequestsEmpty, RequestsLoading } from "@/components/requests/RequestStates";
 import { canWithdrawRequest, countExpiringSoon, countInConversation, isClosedRequest } from "@/components/requests/requestModel";
-import { fetchMyRequests, fetchSeekerCredits } from "@/components/requests/requestsApi";
+import { fetchMyRequests } from "@/components/requests/requestsApi";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 import { usePersistFn } from "@/hooks/usePersistFn";
 
-const HEADING = { eyebrow: "MY ASKS", title: "Requests", text: "Track every ask in one place. Withdrawn or expired asks free a slot." } as const;
+const HEADING = { eyebrow: "MY ASKS", title: "Requests", text: "Track every ask in one place. Answered or expired asks free a slot." } as const;
 const NEW_ASK = <Button asChild><Link href="/explore"><Plus />New ask</Link></Button>;
 const TABS = [{ value: "active", label: "Active" }, { value: "closed", label: "Closed" }] as const;
 type Tab = (typeof TABS)[number]["value"];
@@ -31,7 +31,6 @@ export default function MyRequests() {
 
   const scope = userId ?? "session";
   const requestsQuery = useQuery({ queryKey: ["requests", "mine", scope], enabled: isSignedIn, retry: false, queryFn: () => fetchMyRequests(fetchToken) });
-  const creditsQuery = useQuery({ queryKey: ["requests", "credits", scope], enabled: isSignedIn, retry: false, queryFn: () => fetchSeekerCredits(fetchToken) });
 
   const loading = isSignedIn && (requestsQuery.isPending || (requestsQuery.isError && requestsQuery.isFetching));
   const { showSkeleton, isSlow } = useSlowLoad(loading);
@@ -56,7 +55,7 @@ export default function MyRequests() {
     );
   }
 
-  const requests = requestsQuery.data ?? [];
+  const requests = requestsQuery.data?.requests ?? [];
   const loadError = requestsQuery.isError && !requestsQuery.isFetching ? requestsQuery.error.message : "";
   const ready = !showSkeleton && !loadError && requestsQuery.isSuccess;
   const nowMs = Date.now();
@@ -70,12 +69,11 @@ export default function MyRequests() {
     body = (
       <>
         <RequestSummary
-          credits={creditsQuery.data ?? null}
-          creditsFailed={creditsQuery.isError && !creditsQuery.isFetching}
+          slots={requestsQuery.data?.slots ?? null}
           inConversation={countInConversation(requests)}
           expiringSoon={countExpiringSoon(requests, nowMs)}
           hasWithdrawableAsk={requests.some(canWithdrawRequest)}
-          onRetryCredits={() => { void creditsQuery.refetch(); }}
+          onRetrySlots={() => { void requestsQuery.refetch(); }}
         />
         <div className="directory-tabs section-tabs mt-6" role="tablist" aria-label="Request groups">
           {TABS.map(item => <Button key={item.value} type="button" variant="ghost" role="tab" aria-selected={tab === item.value} className={tab === item.value ? "selected" : ""} onClick={() => setTab(item.value)}>{item.label}</Button>)}

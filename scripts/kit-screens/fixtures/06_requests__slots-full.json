@@ -119,7 +119,19 @@
             "companyName": "SkipWait",
             "companyInitials": "SW"
           }
-        ]
+        ],
+        "slots": {
+          "plan": "free",
+          "planLabel": "Free",
+          "open": 3,
+          "cap": 3,
+          "full": true,
+          "nextPlan": {
+            "id": "momentum",
+            "label": "Momentum",
+            "openRequests": 15
+          }
+        }
       }
     },
     {

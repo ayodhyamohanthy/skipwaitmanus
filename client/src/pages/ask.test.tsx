@@ -125,7 +125,7 @@ describe("Ask composer", () => {
   it("sends with an idempotency key and links the created thread", async () => {
     stubCrypto();
     const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com" });
+    stubUploadThen(fetchMock, { requestId: 9, companyDomain: "wipro.com", slots: { plan: "free", planLabel: "Free", open: 2, cap: 3, full: false, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } } });
     vi.stubGlobal("fetch", fetchMock);
     render(<Ask />);
     fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });
@@ -141,7 +141,9 @@ describe("Ask composer", () => {
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [77] });
     expect(screen.getByRole("link", { name: /Track this ask/ }).getAttribute("href")).toBe("/conversation/9");
     expect(screen.getByText("Verified wipro.com referrers will see it. It expires in 7 days if nobody accepts, and your credit returns.")).toBeTruthy();
-    expect(screen.getByText("Open asks:").textContent).toBe("Open asks: 0");
+    expect(screen.getByText(/^Open slots:/).textContent).toBe("Open slots: 2 of 3 used");
+    // The send response carries the count; no second request is needed.
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/mine"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Write another" }));
     expect((screen.getByPlaceholderText(/careers.company/) as HTMLInputElement).value).toBe("");
     expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
@@ -312,17 +314,56 @@ describe("Ask composer", () => {
     expect(sessionStorage.getItem("skipwait-ask-idempotency-key")).toBeTruthy();
   });
 
-  it("omits the open-ask count when the list cannot be read", async () => {
+  it("omits the open-slot line when the send response carries no count", async () => {
     stubCrypto();
     const fetchMock = vi.fn();
     stubUploadThen(fetchMock, { requestId: 31, companyDomain: "wipro.com" });
-    const base = fetchMock.getMockImplementation();
-    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/mine")) return { ok: false, status: 500, json: async () => ({ error: "We could not load your referral requests" }) };
-      return base?.(url, init);
-    });
     await composeAndSend(fetchMock);
     await screen.findByText("Ask sent to wipro.com.");
-    expect(screen.queryByText("Open asks:")).toBeNull();
+    expect(screen.queryByText(/Open slots:/)).toBeNull();
+  });
+
+  const capBody = { error: "All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).", code: "slot_cap_reached", slots: { plan: "free", planLabel: "Free", open: 3, cap: 3, full: true, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } } };
+  function stubSlotCap(fetchMock: ReturnType<typeof vi.fn>) {
+    fetchMock.mockImplementation(async (url: string) => {
+      if (String(url).endsWith("/api/company-referrals")) return { ok: false, status: 409, json: async () => capBody };
+      if (String(url).endsWith("/api/documents/uploads")) return ok({ sessionId: "sess-1", chunkBytes: 1024 * 1024 });
+      if (String(url).includes("/chunks")) return ok({});
+      if (String(url).includes("/complete")) return ok({ id: 77, fileName: "resume.pdf" });
+      return ok({});
+    });
+  }
+
+  it("shows the kit slot-cap nudge at the cap, once per session, and remembers I'll wait for 7 days", async () => {
+    stubCrypto();
+    localStorage.clear();
+    const fetchMock = vi.fn();
+    stubSlotCap(fetchMock);
+    await composeAndSend(fetchMock);
+    const nudge = await screen.findByRole("alert");
+    expect(nudge.textContent).toContain("Your 3 requests are all open");
+    expect(nudge.textContent).toContain("Wait for an answer to free a slot, or move to Momentum for 15 open requests. Queue position stays equal either way.");
+    expect(screen.getByRole("link", { name: "See Momentum" }).getAttribute("href")).toBe("/plans");
+    expect(screen.queryByText(/Ask sent to/)).toBeNull();
+    // The same submission key is kept for a retry once a slot frees.
+    expect(sessionStorage.getItem("skipwait-ask-idempotency-key")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "I'll wait" }));
+    expect(screen.queryByText("Your 3 requests are all open")).toBeNull();
+    expect(Number(localStorage.getItem("skipwait-nudge:slot_cap:session"))).toBeGreaterThan(Date.now() + 6 * 24 * 60 * 60 * 1000);
+    // A second refusal this session states the reason plainly, without the upsell.
+    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
+    expect((await screen.findByRole("alert")).textContent).toContain("All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).");
+    expect(screen.queryByRole("link", { name: "See Momentum" })).toBeNull();
+  });
+
+  it("states the slot-cap reason plainly while the nudge is dismissed", async () => {
+    stubCrypto();
+    localStorage.setItem("skipwait-nudge:slot_cap:session", String(Date.now() + 60_000));
+    const fetchMock = vi.fn();
+    stubSlotCap(fetchMock);
+    await composeAndSend(fetchMock);
+    expect((await screen.findByRole("alert")).textContent).toContain("All 3 slots are in use.");
+    expect(screen.queryByText("Your 3 requests are all open")).toBeNull();
+    localStorage.clear();
   });
 });

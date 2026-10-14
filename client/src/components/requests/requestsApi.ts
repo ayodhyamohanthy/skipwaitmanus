@@ -1,17 +1,17 @@
 // Edge contracts and fetchers for the seeker Requests screen (kit v4 /requests).
-// Every number the screen draws comes from these two live endpoints:
-//   GET  /api/company-referrals/mine      -> the seeker's asks
-//   GET  /api/credits/summary?role=job_seeker -> the monthly credit wallet
+// Every number the screen draws comes from one live endpoint:
+//   GET /api/company-referrals/mine -> the seeker's asks and their open-ask
+//   slots (server-counted after the expiry reconcile, shared/openAskSlots.ts)
 // (Withdraw lives in the thread: client/src/lib/threadApi.ts.)
 // Payloads are parsed here so a malformed response reads as an error, never as
 // a fabricated count.
 import { z } from "zod";
 import { companyIdentityFieldsSchema } from "@shared/companies";
+import { openAskSlotsSchema, type OpenAskSlots } from "@shared/openAskSlots";
 import { referralStatuses } from "@shared/referral";
 import { readApiJson } from "@/lib/apiResponse";
 
 export const LOAD_ERROR = "We could not load your referral requests";
-export const CREDITS_ERROR = "We could not load your referral credits";
 export const NETWORK_ERROR = "We couldn’t reach SkipWait. Check your connection and try again.";
 
 const referralRequestSchema = z.object({
@@ -34,25 +34,13 @@ const referralRequestSchema = z.object({
 
 export type ReferralRequest = z.infer<typeof referralRequestSchema>;
 
-const requestListSchema = z.object({ requests: z.array(referralRequestSchema).optional().transform(value => value ?? []) });
-
-const creditSummarySchema = z.object({
-  plan: z.string(),
-  monthlyAllowance: z.number().int().min(0),
-  monthlyCreditsRemaining: z.number().int(),
-  purchasedCreditsRemaining: z.number().int(),
-  totalAvailable: z.number().int(),
-  cycleKey: z.string().nullish().transform(value => value ?? ""),
-  subscriptionStatus: z.string().nullish().transform(value => value ?? null),
-  subscriptionCurrentTermEnd: z.string().nullish().transform(value => value ?? null),
+// A slots payload that is missing or malformed reads as "not loaded", never as a count.
+const requestListSchema = z.object({
+  requests: z.array(referralRequestSchema).optional().transform(value => value ?? []),
+  slots: openAskSlotsSchema.nullish().catch(null).transform(value => value ?? null),
 });
 
-export type CreditSummary = z.infer<typeof creditSummarySchema>;
-
-export function parseCreditSummary(payload: unknown): CreditSummary | null {
-  const parsed = creditSummarySchema.safeParse(payload);
-  return parsed.success ? parsed.data : null;
-}
+export type MyRequestsPayload = { requests: ReferralRequest[]; slots: OpenAskSlots | null };
 
 type TokenSource = () => Promise<string | null | undefined>;
 
@@ -69,20 +57,11 @@ function serverMessage(payload: Record<string, unknown>, fallback: string): stri
   return typeof payload.error === "string" && payload.error ? payload.error : fallback;
 }
 
-export async function fetchMyRequests(getToken: TokenSource): Promise<ReferralRequest[]> {
+export async function fetchMyRequests(getToken: TokenSource): Promise<MyRequestsPayload> {
   const response = await authedFetch("/api/company-referrals/mine", getToken);
   const payload = await readApiJson<Record<string, unknown>>(response, LOAD_ERROR);
   if (!response.ok) throw new Error(serverMessage(payload, LOAD_ERROR));
   const parsed = requestListSchema.safeParse(payload);
   if (!parsed.success) throw new Error(LOAD_ERROR);
-  return parsed.data.requests;
-}
-
-export async function fetchSeekerCredits(getToken: TokenSource): Promise<CreditSummary> {
-  const response = await authedFetch("/api/credits/summary?role=job_seeker", getToken);
-  const payload = await readApiJson<Record<string, unknown>>(response, CREDITS_ERROR);
-  if (!response.ok) throw new Error(serverMessage(payload, CREDITS_ERROR));
-  const summary = parseCreditSummary(payload.summary);
-  if (!summary) throw new Error(CREDITS_ERROR);
-  return summary;
+  return parsed.data;
 }

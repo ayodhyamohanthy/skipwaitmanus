@@ -13,7 +13,10 @@ import { Panel, field } from "@/components/kit/preview-kit";
 import { AskStrength, askChecks, countWords } from "@/components/ask/AskStrength";
 import { AskSent, type SentAsk } from "@/components/ask/AskSent";
 import { AskFunctionEyebrow } from "@/components/ask/AskFunctionEyebrow";
-import { askErrorMessage, confirmedDomainFor, countOpenAsks, parseSentAsk } from "@/components/ask/askApi";
+import { SlotCapNudge } from "@/components/ask/SlotCapNudge";
+import { askErrorMessage, confirmedDomainFor, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import { canShowNudge, dismissNudge, markNudgeShown } from "@/lib/upgradeNudges";
+import type { OpenAskSlots } from "@shared/openAskSlots";
 
 const NOTE_LIMIT = 600;
 const IDEMPOTENCY_KEY = "skipwait-ask-idempotency-key";
@@ -36,7 +39,8 @@ function confirmedCompanyDomain(targetRoleUrl: string): string | undefined {
 }
 
 export default function Ask() {
-  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { isLoaded, isSignedIn, getToken, userId } = useAuth();
+  const nudgeAccount = String(userId ?? "session");
   const fetchToken = usePersistFn(getToken);
   // A company door's request dialog (/explore/:slug) hands its job link and
   // fit note forward; nothing was sent there, so the seeker reviews it here.
@@ -54,7 +58,8 @@ export default function Ask() {
   const [composeError, setComposeError] = useState("");
   const [sendError, setSendError] = useState("");
   const [sent, setSent] = useState<SentAsk | null>(null);
-  const [openAsks, setOpenAsks] = useState<number | null>(null);
+  // The plan's open-ask cap refused the send (server 409): the kit slot-cap nudge.
+  const [slotCap, setSlotCap] = useState<OpenAskSlots | null>(null);
 
   const words = countWords(note);
   const officialUrl = isValidTargetRoleUrl(url || undefined);
@@ -109,7 +114,7 @@ export default function Ask() {
 
   const send = async () => {
     if (!officialUrl || words < 10 || sending) return;
-    setSendError(""); setSending(true);
+    setSendError(""); setSlotCap(null); setSending(true);
     try {
       const doc = await ensureResume();
       const params = new URLSearchParams(window.location.search);
@@ -124,13 +129,13 @@ export default function Ask() {
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": askIdempotencyKey(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
       const payload = await readApiJson<Record<string, unknown>>(response, "We could not send this ask");
+      const capped = parseSlotCapReached(response.status, payload);
+      // At most one nudge per session, none for 7 days after "I'll wait"; the reason always shows.
+      if (capped && canShowNudge("slot_cap", nudgeAccount)) { markNudgeShown("slot_cap", nudgeAccount); setSlotCap(capped.slots); return; }
       const created = response.ok ? parseSentAsk(payload) : null;
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       clearAskPrefill();
-      let open: number | null = null;
-      try { open = countOpenAsks(await authed("/api/company-referrals/mine")); } catch { /* open-ask count is informational */ }
-      setOpenAsks(open);
       setSent(created);
     } catch (reason) { setSendError(askErrorMessage(reason, "We could not send this ask")); }
     finally { setSending(false); }
@@ -155,7 +160,7 @@ export default function Ask() {
   }
 
   if (sent) {
-    return <AskSent sent={sent} openAsks={openAsks} onWriteAnother={() => { setSent(null); setOpenAsks(null); setUrl(""); setNote(""); setCompensation(""); setPickedFunction(null); removeResume(); setComposeError(""); setSendError(""); }} />;
+    return <AskSent sent={sent} onWriteAnother={() => { setSent(null); setUrl(""); setNote(""); setCompensation(""); setPickedFunction(null); removeResume(); setComposeError(""); setSendError(""); }} />;
   }
 
   const busy = drafting || uploading;
@@ -188,6 +193,7 @@ export default function Ask() {
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <AskStrength checks={checks} />
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
+          {slotCap ? <SlotCapNudge slots={slotCap} onWait={() => { dismissNudge("slot_cap", nudgeAccount); setSlotCap(null); }} /> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
           <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? "Sending…" : <>Send ask <ArrowRight /></>}</Button>
           <p className="text-center text-xs text-muted-foreground">Uses 1 credit · referrals are always free</p>

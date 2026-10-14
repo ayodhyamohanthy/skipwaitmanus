@@ -23,12 +23,13 @@ const base = { targetRoleUrl: "https://careers.acme.com/jobs/design", companyDom
 const openAsk = (id: number) => ({ ...base, id, title: "Product Designer", status: "pending", referrerId: null, createdAt: iso(Date.now() - day), updatedAt: iso(Date.now() - day) });
 const declined = { ...base, id: 45, title: "Designer", companyDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW", status: "declined", referrerId: 503, referrerMessage: "Not my team", createdAt: iso(Date.now() - 9 * day), updatedAt: iso(Date.now() - 8 * day) };
 const expired = { ...base, id: 46, title: "Analyst", status: "closed", referrerId: null, createdAt: iso(Date.now() - 12 * day), updatedAt: iso(Date.now() - 5 * day) };
-const credits = (remaining: number, extra: Record<string, unknown> = {}) => ({ summary: { plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: remaining, purchasedCreditsRemaining: 0, totalAvailable: remaining, cycleKey: "2026-10", subscriptionStatus: null, subscriptionCurrentTermEnd: null, ...extra } });
+// The server's open-ask slots payload (shared/openAskSlots.ts): open asks against the plan cap.
+const slots = (open: number, extra: Record<string, unknown> = {}) => ({ plan: "free", planLabel: "Free", open, cap: 3, full: open >= 3, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 }, ...extra });
 
-function stub(requests: unknown[], creditBody: unknown, creditsOk = true) {
+function stub(requests: unknown[], slotBody: unknown) {
   const fetchMock = vi.fn(async (url: string) => String(url).includes("/api/credits/summary")
-    ? { ok: creditsOk, status: creditsOk ? 200 : 500, json: async () => creditBody }
-    : { ok: true, status: 200, json: async () => ({ requests }) });
+    ? { ok: false, status: 500, json: async () => ({ error: "not used by this screen" }) }
+    : { ok: true, status: 200, json: async () => ({ requests, slots: slotBody }) });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
@@ -38,7 +39,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); auth.isLoaded = true; auth.i
 describe("My Requests kit v4 states", () => {
   it("gates signed-out visitors behind a sign-in panel and never loads asks", () => {
     auth.isSignedIn = false;
-    const fetchMock = stub([], credits(3));
+    const fetchMock = stub([], slots(0));
     renderPage();
     expect(screen.getByRole("heading", { name: "See the real status." })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Secure sign in/ })).toBeTruthy();
@@ -47,40 +48,64 @@ describe("My Requests kit v4 states", () => {
 
   it("does not flash the sign-in gate while auth is still resolving", () => {
     auth.isLoaded = false; auth.isSignedIn = false;
-    stub([], credits(3));
+    stub([], slots(0));
     renderPage();
     expect(screen.queryByRole("heading", { name: "See the real status." })).toBeNull();
     expect(document.querySelector('[data-skipwait-loading="true"]')).toBeTruthy();
   });
 
-  it("shows the slots-full nudge from the live wallet, with withdraw as a real option", async () => {
-    stub([openAsk(42)], credits(0));
+  it("meters open asks against the plan cap with the kit heading copy", async () => {
+    const fetchMock = stub([openAsk(42), openAsk(43), declined], slots(2));
+    renderPage();
+    const meter = await screen.findByLabelText("Open slots: 2 of 3 used");
+    expect(meter.textContent).toBe("OPEN SLOTS · FREE2/3");
+    expect(screen.getByRole("progressbar", { name: "Open slots used" }).getAttribute("aria-valuenow")).toBe("2");
+    expect(screen.getByText("Track every ask in one place. Answered or expired asks free a slot.")).toBeTruthy();
+    expect(screen.queryByText(/slots are in use/)).toBeNull();
+    // One source for the list and the meter: the credits wallet is not read here.
+    expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual(["/api/company-referrals/mine"]);
+  });
+
+  it("shows the slots-full nudge with the next plan and its cap, with withdraw as a real option", async () => {
+    stub([openAsk(42), openAsk(43), openAsk(44)], slots(3));
     renderPage();
     const lead = await screen.findByText("All 3 slots are in use.");
-    expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an unclaimed ask to expire, withdraw one, or get more slots with Pro (10).");
+    expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Momentum (15).");
     expect(screen.getByRole("link", { name: "See plans" }).getAttribute("href")).toBe("/plans");
-    expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("0");
-    expect(screen.getByLabelText("Open slots: 0 of 3").textContent).toContain("OPEN SLOTS · FREE0/3");
+    expect(screen.getByLabelText("Open slots: 3 of 3 used").textContent).toBe("OPEN SLOTS · FREE3/3");
   });
 
   it("does not suggest withdrawing when no ask can be withdrawn", async () => {
-    stub([declined], credits(0));
+    stub([{ ...openAsk(42), referrerId: 501 }, { ...openAsk(43), referrerId: 502 }, { ...openAsk(44), referrerId: 503 }], slots(3));
     renderPage();
     const lead = await screen.findByText("All 3 slots are in use.");
-    expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Get more slots with Pro (10).");
+    expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an answer or get more slots with Momentum (15).");
   });
 
-  it("hides the nudge while pack credits remain, with no extra line under the meter (kit v4)", async () => {
-    stub([openAsk(42)], credits(0, { purchasedCreditsRemaining: 2, totalAvailable: 2 }));
+  it("shows a legacy plan's own label and cap, and no bar for an unlimited plan", async () => {
+    stub([openAsk(42)], slots(4, { plan: "pro", planLabel: "Pro", cap: 10, full: false }));
     renderPage();
-    const meter = await screen.findByLabelText("Open slots: 0 of 3");
-    expect(meter.textContent).toBe("OPEN SLOTS · FREE0/3");
-    expect(screen.queryByText(/one-time credit/)).toBeNull();
-    expect(screen.queryByRole("link", { name: "See plans" })).toBeNull();
+    expect((await screen.findByLabelText("Open slots: 4 of 10 used")).textContent).toBe("OPEN SLOTS · PRO4/10");
+    cleanup();
+    stub([openAsk(42)], slots(12, { plan: "land_500", planLabel: "Land Concierge", cap: null, full: false, nextPlan: null }));
+    renderPage();
+    expect((await screen.findByLabelText("Open slots: 12 used, no cap")).textContent).toBe("OPEN SLOTS · LAND CONCIERGE12 · unlimited");
+    expect(screen.queryByRole("progressbar")).toBeNull();
+  });
+
+  it("says the slots did not load instead of drawing a fake meter, and reloads them", async () => {
+    const fetchMock = stub([openAsk(42)], { plan: "free", open: "two" });
+    renderPage();
+    expect(await screen.findByText(/Open slots didn’t load/)).toBeTruthy();
+    expect(screen.getByLabelText("acme.com request, Requested")).toBeTruthy();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    fetchMock.mockImplementation(async () => ({ ok: true, status: 200, json: async () => ({ requests: [openAsk(42)], slots: slots(1) }) }));
+    fireEvent.click(screen.getByRole("button", { name: "Reload" }));
+    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Open slots used" }).getAttribute("aria-valuenow")).toBe("1"));
   });
 
   it("lists declined and expired asks under Closed with the company name and the referrer's reason", async () => {
-    stub([openAsk(42), declined, expired], credits(1));
+    stub([openAsk(42), declined, expired], slots(1));
     renderPage();
     await screen.findByLabelText("acme.com request, Requested");
     expect(screen.queryByLabelText("SkipWait request, Declined")).toBeNull();
@@ -96,24 +121,12 @@ describe("My Requests kit v4 states", () => {
   });
 
   it("shows the closed-tab empty state when nothing has closed", async () => {
-    stub([openAsk(42)], credits(2));
+    stub([openAsk(42)], slots(1));
     renderPage();
     await screen.findByLabelText("acme.com request, Requested");
     fireEvent.click(screen.getByRole("tab", { name: "Closed" }));
     expect(await screen.findByRole("heading", { name: "Nothing closed yet." })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Explore companies" })).toBeNull();
-  });
-
-  it("keeps the list when credits fail and reloads only the credits", async () => {
-    const fetchMock = stub([openAsk(42)], { error: "Credits are unavailable" }, false);
-    renderPage();
-    expect(await screen.findByText(/Credits didn’t load/)).toBeTruthy();
-    expect(screen.getByLabelText("acme.com request, Requested")).toBeTruthy();
-    fetchMock.mockImplementation(async (url: string) => String(url).includes("/api/credits/summary")
-      ? { ok: true, status: 200, json: async () => credits(2) }
-      : { ok: true, status: 200, json: async () => ({ requests: [openAsk(42)] }) });
-    fireEvent.click(screen.getByRole("button", { name: "Reload credits" }));
-    await waitFor(() => expect(screen.getByRole("progressbar", { name: "Open slots this month" }).getAttribute("aria-valuenow")).toBe("2"));
   });
 
   it("explains a dropped connection instead of showing zero asks", async () => {
