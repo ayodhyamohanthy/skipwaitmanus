@@ -105,6 +105,11 @@ describe("referrer projections stay as they are", () => {
     rowsByTable.set(referralRequests, []);
     await getUnclaimedCompanyReferralPreview(REFERRER, 501);
     const preview = selectFrom(referralRequests);
+    // candidateName here is NOT an approved field. It is a known exposure: the
+    // pre-acceptance preview sends the seeker's real name to any verified
+    // referrer at the company (the client drops it, the API does not). It is
+    // pinned only so this unit changes nothing for referrers; removing it waits
+    // on the owner's answer to open question 1 and is a separate unit.
     expect(columnsOf(preview)).toEqual(["candidateMessage", "candidateName", "companyDomain", "id", "jobFunction", "targetRoleUrl", "title"]);
     expect(preview?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
   });

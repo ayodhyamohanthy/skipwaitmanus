@@ -559,7 +559,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!/^[\x21-\x7E]{16,64}$/.test(idempotencyKey)) return res.status(428).json({ error: "A valid Idempotency-Key header is required" });
       if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
       if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
-      // The note may arrive as candidateMessage (the app) or personalPitch; it is never silently replaced by the placeholder.
+      // The note is read from candidateMessage (the app) or personalPitch; any other key is ignored.
       const note = resolveAskNote(req.body);
       if (!note.ok) return res.status(400).json({ error: note.error });
       const personalPitch = note.personalPitch;
