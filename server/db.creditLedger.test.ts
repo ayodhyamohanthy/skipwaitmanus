@@ -1,120 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SQL } from "drizzle-orm";
-import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { notifications, operationalActivityLogs, planCreditGrants, promoCreditGrants, referralRequests, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
 import { creditsLedgerSchema } from "../shared/creditLedger";
 import { InsufficientCreditsError } from "./creditLedger";
 import { applyChargebeeSubscriptionEvent, ensureTokenWallet, getCreditLedgerAudit, getTokenWallet, grantWelcomeCredits, listCreditLedger, reconcileSeekerCredits, spendCredits, spendToken } from "./db";
+import { createLedgerFixture, type Row } from "./ledgerFixtureDb";
 import { listWalletsDueForCreditCycle } from "./planCreditCycleJob";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 
-// An in-memory MySQL stand-in for the ledger paths: it evaluates the drizzle
-// predicates these paths use (=, <>, <, <=, >, IS [NOT] NULL, [NOT] IN, AND),
-// orders and limits, enforces the unique keys the ledger relies on for
-// idempotency, and rolls a failed transaction back.
-type Row = Record<string, unknown>;
-const dialect = new MySqlDialect();
-let db: Record<string, Row[]>;
-
-const TABLES = new Map<unknown, string>([[tokenBalances, "wallets"], [tokenTransactions, "txns"], [planCreditGrants, "grants"], [promoCreditGrants, "promo"], [notifications, "notes"], [users, "users"], [subscriptionEvents, "events"], [subscriptionCheckoutIntents, "intents"], [operationalActivityLogs, "activity"], [referralRequests, "requests"]]);
-const rowsOf = (table: unknown) => { const name = TABLES.get(table); if (!name) throw new Error("Unexpected table"); return db[name]; };
-
-const asValue = (value: unknown) => {
-  if (value instanceof Date) return value.getTime();
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/.test(value)) return Date.parse(`${value.replace(" ", "T")}Z`);
-  return value;
-};
-
-function matches(condition: SQL | undefined, row: Row): boolean {
-  if (!condition) return true;
-  const query = dialect.sqlToQuery(condition);
-  if (/\bor\b/i.test(query.sql)) throw new Error(`OR predicates are not modelled: ${query.sql}`);
-  const tokens = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s*(<>|<=|>=|=|<|>|is not null|is null|not in|in)\s*(\((?:\?(?:,\s*)?)+\))?/gi)];
-  let i = 0;
-  for (const [, column, rawOp, list] of tokens) {
-    const op = rawOp.toLowerCase();
-    const value = asValue(row[column] ?? null);
-    if (op === "is null") { if (value !== null) return false; continue; }
-    if (op === "is not null") { if (value === null) return false; continue; }
-    if (op === "in" || op === "not in") {
-      const size = (list?.match(/\?/g) ?? []).length;
-      const params = query.params.slice(i, i + size).map(asValue); i += size;
-      if (params.includes(value) === (op === "not in")) return false;
-      continue;
-    }
-    const param = asValue(query.params[i++]);
-    if (op === "=" && value !== param) return false;
-    if (op === "<>" && value === param) return false;
-    if ((op === "<" || op === "<=" || op === ">" || op === ">=") && (typeof value !== "number" || typeof param !== "number")) return false;
-    if (op === "<" && !((value as number) < (param as number))) return false;
-    if (op === "<=" && !((value as number) <= (param as number))) return false;
-    if (op === ">" && !((value as number) > (param as number))) return false;
-    if (op === ">=" && !((value as number) >= (param as number))) return false;
-  }
-  return true;
-}
-
-function sorter(orders: SQL[]) {
-  const keys = orders.map(order => { const { sql } = dialect.sqlToQuery(order); const match = /`([^`]+)`\s*(asc|desc)?$/i.exec(sql.trim()); return { column: match?.[1] ?? "id", desc: /desc$/i.test(sql.trim()) }; });
-  return (a: Row, b: Row) => { for (const key of keys) { const x = asValue(a[key.column]) as number; const y = asValue(b[key.column]) as number; if (x !== y) return (x < y ? -1 : 1) * (key.desc ? -1 : 1); } return 0; };
-}
-
-function selection(table: unknown, projection: Row | undefined, where?: SQL) {
-  let orders: SQL[] = [];
-  let limit = Number.POSITIVE_INFINITY;
-  const run = () => {
-    const rows = rowsOf(table).filter(row => matches(where, row)).sort(sorter(orders)).slice(0, limit);
-    const cloned = structuredClone(rows);
-    return projection ? cloned.map(row => Object.fromEntries(Object.entries(projection).map(([key, column]) => [key, row[(column as { name: string }).name] ?? null]))) : cloned;
-  };
-  const chain = {
-    where: (condition: SQL) => selection(table, projection, condition),
-    orderBy: (...next: SQL[]) => { orders = next; return chain; },
-    limit: (n: number) => { limit = n; return chain; },
-    for: async () => run(),
-    then: (resolve: (value: unknown) => unknown, reject?: (reason: unknown) => unknown) => Promise.resolve().then(run).then(resolve, reject),
-  };
-  return chain;
-}
-
-function enforceUnique(name: string, row: Row) {
-  const rows = db[name];
-  const dup = (keys: string[]) => keys.every(key => row[key] !== null && row[key] !== undefined) && rows.some(other => keys.every(key => other[key] === row[key]));
-  const violated = name === "txns" ? dup(["userId", "role", "idempotencyKey", "kind"]) || dup(["userId", "role", "kind", "referenceType", "referenceId"])
-    : name === "grants" ? dup(["grantKey"])
-    : name === "wallets" ? dup(["userId", "role"])
-    : name === "events" ? dup(["provider", "providerEventId"])
-    : name === "notes" ? dup(["eventKey"]) : false;
-  if (violated) throw Object.assign(new Error(`Duplicate entry in ${name}`), { code: "ER_DUP_ENTRY", errno: 1062 });
-}
-
-function api() {
-  return {
-    select: (projection?: Row) => ({ from: (table: unknown) => Object.assign(selection(table, projection), { leftJoin: () => ({ where: () => selection(referralRequests, projection, undefined) }) }) }),
-    insert: (table: unknown) => ({ values: async (input: Row | Row[]) => {
-      const name = TABLES.get(table); if (!name) throw new Error("Unexpected table");
-      let insertId = 0;
-      for (const row of Array.isArray(input) ? input : [input]) { enforceUnique(name, row); insertId = (db[name].reduce((max, other) => Math.max(max, Number(other.id ?? 0)), 0)) + 1; db[name].push({ id: insertId, createdAt: new Date(), ...structuredClone(row) }); }
-      return [{ affectedRows: 1, insertId }];
-    } }),
-    update: (table: unknown) => ({ set: (patch: Row) => ({ where: async (condition: SQL) => {
-      const selected = rowsOf(table).filter(row => matches(condition, row));
-      for (const row of selected) for (const [key, value] of Object.entries(patch)) { if (value instanceof SQL) throw new Error("SQL expressions in updates are not modelled"); if (value !== undefined) row[key] = structuredClone(value); }
-      return [{ affectedRows: selected.length }];
-    } }) }),
-  };
-}
-
-function fixtureDatabase() {
-  const base = api();
-  return { ...base, transaction: async (callback: (tx: ReturnType<typeof api>) => Promise<unknown>) => {
-    const snapshot = structuredClone(db);
-    try { return await callback(base); } catch (error) { db = snapshot; throw error; }
-  } };
-}
+// The in-memory MySQL stand-in (server/ledgerFixtureDb.ts); `db` is its live tables object.
+const fixture = createLedgerFixture();
+const db = fixture.tables;
 
 const at = (iso: string) => new Date(iso);
 const SEEKER = 7;
@@ -129,9 +26,9 @@ beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   vi.stubEnv("PROMO_GRANTS_ENABLED", "false");
   // The fixture wallet's 2 purchased credits have their purchase row, so the ledger audit reconciles from the start.
-  db = { wallets: [wallet()], txns: [purchaseRow()], grants: [], promo: [], notes: [], users: [{ id: SEEKER, canonicalPersonId: 1 }, { id: OTHER, canonicalPersonId: 1 }, { id: 9, canonicalPersonId: 2 }], events: [], intents: [], activity: [], requests: [] };
+  fixture.reset({ wallets: [wallet()], txns: [purchaseRow()], users: [{ id: SEEKER, canonicalPersonId: 1 }, { id: OTHER, canonicalPersonId: 1 }, { id: 9, canonicalPersonId: 2 }] });
   mocks.createPool.mockResolvedValue({});
-  mocks.drizzle.mockReturnValue(fixtureDatabase());
+  mocks.drizzle.mockReturnValue(fixture.database);
   vi.useFakeTimers();
   vi.setSystemTime(at("2026-10-06T00:05:00Z"));
 });

@@ -1,7 +1,7 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
-import { creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
+import { creditLedgerResponseSchema, creditsLedgerSchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { PLAN_CREDIT_CYCLE_BATCH, createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
 import { SCHEDULED_JOBS } from "./scheduledJobRegistry";
@@ -51,6 +51,32 @@ describe("GET /api/credits/ledger", () => {
     const response = await request(app).get("/api/credits/ledger").set("x-test-user", "7");
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: "We could not load your credit history" });
+  });
+});
+
+describe("GET /api/credits/summary ledger block", () => {
+  const ledgerFor = (userId: number): CreditsLedger => ({ balance: userId, buckets: { cycle: userId, carriedOver: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth: 10, carryover: 1, cycle: { key: "2026-10", startsAt: "2026-10-06T00:00:00.000Z", endsAt: "2026-11-06T00:00:00.000Z", granted: 10, used: 10 - userId }, planCreditsRemaining: userId, nextExpiry: { credits: userId, expiresAt: "2026-12-06T00:00:00.000Z" }, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 } });
+  function summaryApp() {
+    const app = express();
+    const getCreditSummary = vi.fn(async (userId: number, _role: string) => ({ plan: "pro", totalAvailable: userId, ledger: ledgerFor(userId) }));
+    registerPrivateReferralRoutes(app, { resolveIdentity: async (req: express.Request) => (req.header("x-test-user") ? { account: { id: Number(req.header("x-test-user")), openId: "workos-test" } } : undefined), getCreditSummary } as unknown as PrivateReferralRouteDeps);
+    return { app, getCreditSummary };
+  }
+
+  it("reports the caller's own buckets in the shared ledger shape, never another user's, never cached", async () => {
+    const { app, getCreditSummary } = summaryApp();
+    const response = await request(app).get("/api/credits/summary?role=job_seeker&userId=8").set("x-test-user", "7");
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(creditsLedgerSchema.parse(response.body.summary.ledger)).toEqual(ledgerFor(7));
+    expect(response.body.summary.totalAvailable).toBe(response.body.summary.ledger.balance);
+    expect(getCreditSummary.mock.calls).toEqual([[7, "job_seeker"]]);
+  });
+
+  it("needs a signed-in caller before reading any wallet", async () => {
+    const { app, getCreditSummary } = summaryApp();
+    expect((await request(app).get("/api/credits/summary")).status).toBe(401);
+    expect(getCreditSummary).not.toHaveBeenCalled();
   });
 });
 

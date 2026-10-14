@@ -238,6 +238,21 @@ describe("ask expiry", () => {
     await expect(withdrawCompanyReferralRequest(8, 502)).rejects.toThrow(/not in your account/);
   });
 
+  it("returns a pre-switch reserved credit once across withdraw and expiry, in either order", async () => {
+    tables.txns = [debitRow("purchased_balance", "2026-10"), { ...debitRow("purchased_balance", "2026-10"), id: 12, referenceId: "502" }];
+    tables.requests = [requestRow(new Date(NOW.getTime() - 8 * DAY)), requestRow(new Date(NOW.getTime() - 8 * DAY), { id: 502, debitTransactionId: 12 })];
+    // Withdraw first: a repeated withdraw and the later expiry sweep never refund again.
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, status: "withdrawn" });
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, status: "withdrawn" });
+    expect((await expireStalePendingReferralRequest(7, 501, NOW.getTime())).expired).toBe(false);
+    // Expiry first: the closed ask can no longer be withdrawn, so nothing comes back twice.
+    expect((await expireStalePendingReferralRequest(7, 502, NOW.getTime())).expired).toBe(true);
+    await expect(withdrawCompanyReferralRequest(7, 502)).rejects.toThrow(/can no longer be withdrawn/);
+    expect(tables.txns.filter(t => t.kind === "withdrawal_refund").map(t => t.reversesTransactionId)).toEqual([11]);
+    expect(tables.txns.filter(t => t.kind === "expiry_refund").map(t => t.reversesTransactionId)).toEqual([12]);
+    expect(tables.wallets[0].balance).toBe(4);
+  });
+
   it("throws like a withdraw when a debit exists but the wallet is gone", async () => {
     tables.wallets = [];
     tables.txns = [debitRow("monthly_allowance", "2026-10")];
