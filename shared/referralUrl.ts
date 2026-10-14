@@ -63,6 +63,11 @@ export const HOSTED_JOB_PLATFORMS = [
   "dice.com", "simplyhired.com", "talent.com", "jooble.org", "flexjobs.com", "jobstreet.com",
   "stepstone.com", "seek.com.au", "bayt.com", "adzuna.com", "lensa.com", "careerbuilder.com",
   "snagajob.com", "cutshort.io", "instahyre.com", "hirist.com", "timesjobs.com",
+  // Multi-tenant ATS hosts: "acme.keka.com" is Acme's job, never Keka's (D-012).
+  // Host-specific entries where the parent domain is the vendor's own company.
+  "keka.com", "darwinbox.in", "darwinbox.com", "zohorecruit.com", "zohorecruit.in", "zohorecruit.eu",
+  "jobs.zoho.com", "taleo.net", "successfactors.com", "successfactors.eu", "sapsf.com", "sapsf.eu",
+  "oraclecloud.com", "myworkdaysite.com", "freshteam.com",
 ];
 
 /**
