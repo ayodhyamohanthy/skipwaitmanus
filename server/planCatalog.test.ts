@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATALOG_PLANS, CREDIT_PACKS, FREE_PLAN, catalogItemPriceId, catalogPackItemPriceId, catalogPlanById, legacyPlanTarget, tierAtLeast } from "../shared/planCatalog";
+import { CATALOG_PLANS, CATALOG_PLAN_IDS, CREDIT_PACKS, FREE_PLAN, catalogItemPriceId, catalogPackItemPriceId, catalogPlanById, legacyPlanTarget, planDisplayName, tierAtLeast } from "../shared/planCatalog";
 
 const plan = (id: string) => catalogPlanById(id)!;
 
@@ -14,11 +14,16 @@ describe("plan catalog matches the kit and the recommended numbers", () => {
     expect(plan("land_100")).toMatchObject({ creditsPerMonth: 120, openRequests: 30, carryover: "subscribed" });
     expect(plan("land_100").prices.yearly.USD).toBe(100_000);
   });
-  it("Land levels: $200 and Concierge follow the locked table", () => {
-    expect(plan("land_200")).toMatchObject({ creditsPerMonth: 300, openRequests: 60 });
+  it("Land levels: Sprint and Concierge follow PRICING.md (Sprint holds 50 open requests)", () => {
+    expect(plan("land_200")).toMatchObject({ creditsPerMonth: 300, openRequests: 50 });
     expect(plan("land_500")).toMatchObject({ creditsPerMonth: 1_000, openRequests: null });
     expect([100, 200, 500].map(d => plan(`land_${d}`).prices.monthly.USD)).toEqual([10_000, 20_000, 50_000]);
     expect([100, 200, 500].map(d => plan(`land_${d}`).prices.yearly.USD)).toEqual([100_000, 200_000, 500_000]);
+  });
+  it("Land levels are named Focus, Sprint and Concierge; single-level tiers show their tier name", () => {
+    expect(CATALOG_PLANS.map(planDisplayName)).toEqual(["Start", "Momentum", "Land Focus", "Land Sprint", "Land Concierge"]);
+    expect(planDisplayName(FREE_PLAN)).toBe("Free");
+    expect(CATALOG_PLANS.map(p => p.id)).toEqual([...CATALOG_PLAN_IDS]);
   });
   it("Free has 3 open requests and no price", () => {
     expect(FREE_PLAN.openRequests).toBe(3);
