@@ -77,7 +77,7 @@ const JOB_REFERRAL_PLATFORMS: Guide = {
       ],
       points: [
         "Free allowance for seekers, with a cap. Usually a handful of referral requests a month, and no charge at all for the employee reviewing one.",
-        "Per-referral credit, consumed on acceptance. The credit is reserved when you send a request and only spent when an employee accepts it. If a service charges on submission instead, that is the single most important thing to notice.",
+        "Per-referral credit, consumed when an employee picks up your request. The credit is reserved when you send a request and spent once an employee accepts or declines it; it comes back if you withdraw first or the request expires. If a service charges on submission instead, that is the single most important thing to notice.",
         "Subscription for recurring volume. A monthly fee that includes a set number of credits, for people applying to many roles a month.",
         "Employer sponsorship. Companies pay to promote roles into seeker feeds. This costs a job seeker nothing, which is why it is the healthiest of the four from the seeker's side.",
       ],
@@ -108,7 +108,7 @@ const JOB_REFERRAL_PLATFORMS: Guide = {
     { question: "What is a job referral platform?", answer: "It is a service that connects a job seeker to an employee at the employer they are applying to, so that employee can pass the application on privately with their name on it." },
     { question: "Is a job referral platform the same as a job board?", answer: "No. A job board lists openings and takes your application. A referral platform routes that application to a specific person who already works at the company and lets them decide whether to pass it on." },
     { question: "Does a referral guarantee an interview?", answer: "No. The employee chooses whether to help, and the employer still runs its own process. A referral improves the chance that a human actually reads your application; it does not bypass the employer's requirements." },
-    { question: "What does a job referral platform cost a job seeker?", answer: "Most offer a free monthly allowance. Where there is a charge, it is usually per referral request, and the important detail is whether it is consumed when you send the request or only when an employee accepts it." },
+    { question: "What does a job referral platform cost a job seeker?", answer: "Most offer a free monthly allowance. Where there is a charge, it is usually per referral request, and the important detail is whether it is consumed when you send the request or only once an employee picks it up." },
   ],
 };
 
@@ -176,7 +176,7 @@ const CHOOSING_A_JOB_REFERRAL_PLATFORM: Guide = {
   faq: [
     { question: "What should I check before signing up for a job referral platform?", answer: "Four things: how a reviewer is tied to the employer, whether the employer sees your application before someone accepts it, when a credit is actually consumed and what the refund window is, and whether you can withdraw an unclaimed request and delete your resume." },
     { question: "How do I tell if a referral service actually has employees at the company?", answer: "Look for verification tied to the employer's email domain, such as a one-time code sent to a work address. A LinkedIn connection or a self-declared job title does not prove the person currently works there." },
-    { question: "Is it normal for a referral service to charge per request?", answer: "Yes. The detail that matters is timing: a credit reserved when you submit and only spent when an employee accepts is a different product from one spent at submission. Check the refund window before you start sending requests." },
+    { question: "Is it normal for a referral service to charge per request?", answer: "Yes. The detail that matters is timing: a credit reserved when you submit and only spent once an employee picks it up is a different product from one spent at submission. Check the refund window before you start sending requests." },
   ],
 };
 

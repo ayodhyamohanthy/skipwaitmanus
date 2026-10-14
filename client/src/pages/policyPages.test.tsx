@@ -161,3 +161,13 @@ describe("decline keeps the credit spent (founder decision, Oct 14 2026)", () =>
     expect(text).toMatch(/or if it expires without a decision/);
   });
 });
+
+describe("public credit copy matches the decline rule", () => {
+  it("no landing, premium or guide copy says a credit is used only on acceptance", async () => {
+    const { LANDING_FAQ } = await import("@shared/landingContent").then(m => ({ LANDING_FAQ: Object.values(m).flat().map(v => JSON.stringify(v)).join(" ") }));
+    const routes = await import("@shared/publicRoutes").then(m => JSON.stringify(Object.values(m)));
+    const guides = await import("@/content/guides").then(m => JSON.stringify(Object.values(m)));
+    for (const blob of [LANDING_FAQ, routes, guides]) expect(blob).not.toMatch(/only when an employee accepts|only spent when an employee accepts|consumed on acceptance/);
+    expect(LANDING_FAQ).toContain("spent once a verified employee picks up your request");
+  });
+});
