@@ -7,7 +7,7 @@ import { BUSINESS } from "@/lib/business";
  * /refunds — Refunds & cancellation.
  *
  * Mirrors the real billing behaviour: credit reservation/return on withdraw
- * and decline, end-of-term subscription cancellation (Chargebee
+ * and expiry (a decline keeps the credit spent), end-of-term subscription cancellation (Chargebee
  * `cancel_option=end_of_term`), and administrator-reviewed refunds that
  * deduct the credited tokens.
  */
@@ -23,8 +23,8 @@ export default function RefundPolicy() {
   >
     <PolicySection number="01" title="How a credit is used">
       <ul>
-        <li>Sending a referral request <strong>reserves one credit</strong>. The credit is returned to your balance automatically if you <strong>withdraw before a verified employee claims</strong> the request, or if the Referrer <strong>declines</strong>.</li>
-        <li>A credit is used up only when a Referrer <strong>accepts</strong> your request. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
+        <li>Sending a referral request <strong>reserves one credit</strong>. The credit is returned to your balance automatically if you <strong>withdraw before a verified employee claims</strong> the request, or if it <strong>expires</strong> without a decision.</li>
+        <li>If a Referrer <strong>declines</strong>, the credit stays spent: that employee invested time reviewing your request, and your request stays open for other employees at the company. A credit is also used when a Referrer <strong>accepts</strong>. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome.</li>
         <li>Free monthly credits reset each month and do not carry over. Purchased credits never expire.</li>
         <li><strong>Delivery.</strong> skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account <strong>immediately after the payment provider confirms payment</strong>; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check.</li>
       </ul>
