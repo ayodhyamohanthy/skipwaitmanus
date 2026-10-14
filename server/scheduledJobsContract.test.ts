@@ -65,7 +65,7 @@ describe("jobs tick protocol", () => {
 
 describe("scheduled jobs contract", () => {
   it("names each job once, within the column width", () => {
-    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep"]);
+    expect(SCHEDULED_JOB_NAMES).toEqual(["ask-expiry-sweep", "chargebee-pending-reconcile"]);
     expect(new Set(SCHEDULED_JOB_NAMES).size).toBe(SCHEDULED_JOB_NAMES.length);
     expect(Math.max(...SCHEDULED_JOB_NAMES.map(name => name.length))).toBeLessThanOrEqual(64);
   });

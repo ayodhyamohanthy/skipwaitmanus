@@ -51,6 +51,7 @@ export default function Ask() {
   const [uploading, setUploading] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendStage, setSendStage] = useState<"resume" | "ask">("resume");
   const [composeError, setComposeError] = useState("");
   const [sendError, setSendError] = useState("");
   const [sent, setSent] = useState<SentAsk | null>(null);
@@ -109,9 +110,10 @@ export default function Ask() {
 
   const send = async () => {
     if (!officialUrl || words < 10 || sending) return;
-    setSendError(""); setSending(true);
+    setSendError(""); setSendStage("resume"); setSending(true);
     try {
       const doc = await ensureResume();
+      setSendStage("ask");
       const params = new URLSearchParams(window.location.search);
       const targetRoleUrl = url.trim();
       const body: Record<string, string | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
@@ -192,7 +194,8 @@ export default function Ask() {
           <AskStrength checks={checks} />
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
-          <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? "Sending…" : <>Send ask <ArrowRight /></>}</Button>
+          <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
+          <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
           <p className="text-center text-xs text-muted-foreground">Uses 1 credit · referrals are always free</p>
         </aside>
       </div>

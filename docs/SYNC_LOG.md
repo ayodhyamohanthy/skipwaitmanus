@@ -321,3 +321,10 @@ Machine-appended by CI after every deploy attempt. Columns: timestamp | workflow
 | 2026-10-14T11:32:57Z | Deploy Web (Cloudflare Pages) | 2264a9f004f38b917aad0e8e6835aa045e8b6c78 | success |
 | 2026-10-14T15:26:31Z | Deploy Web (Cloudflare Pages) | 2ac7b5c9023797a55ea5a1eca7465d8a523f8eee | success |
 | 2026-10-14T15:49:58Z | Deploy Web (Cloudflare Pages) | 3fd9253e8afab7ea2ac55738cf0926a2859abec5 | success |
+| 2026-10-14T17:08:25Z | Deploy Web (Cloudflare Pages) | fdd3b528b68fb60573d85f12b6b23fcb7a0293b2 | success |
+| 2026-10-14T17:11:50Z | Deploy Web (Cloudflare Pages) | e6237b53ea750343f4ca0464692a397771db9b75 | success |
+| 2026-10-14T17:15:54Z | Deploy Web (Cloudflare Pages) | 281216fd9637c242597b5f7b688cc0d4132cdada | success |
+| 2026-10-14T17:39:26Z | Deploy Web (Cloudflare Pages) | 3a5bcf5596ffe58ae1916b43a2fadea9dd23089a | success |
+| 2026-10-14T19:46:49Z | Deploy Web (Cloudflare Pages) | 910a36c7d860361292123cbc71b93fa1ff6c4772 | success |
+| 2026-10-14T19:59:38Z | Deploy Web (Cloudflare Pages) | 0eb714aa6bdaf21e14b2fb3106615e436a45d597 | success |
+| 2026-10-14T20:22:10Z | Deploy Web (Cloudflare Pages) | 81279b01a4ac951949efc58bf8cebd0a99955455 | success |

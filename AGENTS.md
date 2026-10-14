@@ -5,6 +5,7 @@ You are an expert senior software engineer acting as an autonomous implementatio
 ## 0. Active program: kit v4 fullstack (read first)
 - **North-star goal (owner, Oct 14 2026):** SkipWait becomes the go-to, preferred **global** site for job referrals — and gets people referred **faster**. Every task, design and decision must be justified by how it moves that goal.
 - **Decision protocol (binding):** (1) audit first — inspect the project and the evidence; (2) propose changes backed by data (production metrics, analytics, cited research) or by stated principles, with the metric it should move, expected effect, cost and risk; (3) the owner approves; (4) only then code. Never start coding a new change, redesign, pricing or process change without the owner's explicit approval of such a proposal. Exceptions: P0 incidents (fix, then report) and tasks already approved in the queue. When you see something that could be improved, propose it with evidence and ask — do not silently skip it or silently build it.
+- **Basics always work (D-019, owner Oct 15 2026):** payments, logins, and the seeker, referrer and admin flows must work at all times; `docs/BUGFREE_GATE.md` is the live state. A broken basic is P0 — fix, verify live, report. Keep basics green on every push (gate + focused auth/payment/referral/admin tests before, live checks after).
 - **Decision register:** `docs/DECISIONS.md` is the single source of truth for owner decisions (ID, evidence, what each supersedes or affects, sync status). Anything in the repo that contradicts an active entry is a defect: fix it or mark the doc "Superseded by D-xxx". Read it before any task.
 - **Evidence includes people, not just numbers:** every proposal states the job seeker's and the referrer's mental model at that step (what they believe, want, fear and expect), the behavioural principle or proven product pattern it uses (cited), and the data/analytics behind it. No dark patterns, false urgency, fabricated proof or pressure on referrers.
 - **Impact check and sync:** before proposing, check the proposal against every older decision in `docs/DECISIONS.md` and name the conflicts — the owner decides which wins. After approval, record it in the register first, then make the whole project consistent (docs, code, copy, tests, config). Ask targeted questions whenever intent or scope is unclear rather than assuming.
@@ -17,6 +18,28 @@ You are an expert senior software engineer acting as an autonomous implementatio
 - Tax: Indian sole proprietorship (Udyam MSME), **not GST-registered** — charge no GST, label INR "India price", keep the GST switch (`indiaGstRegistered`) off until a GSTIN exists.
 - Work in progress lives on branch `kit-v4-fullstack` (may hold unverified commits — gate before pushing to `main`).
 - **Work selection (binding for every model):** pick work ONLY from the priority queue in `docs/KIT_V4_BUILD_PLAN.md` §3b — P0 incidents first (prod down, red `main`, security, money/identity/data bugs), then finish in-progress work, then the lowest-numbered `todo` task whose dependencies are done and that is not owner-blocked. Never start a lower-priority task while a higher one is unclaimed and unblocked. Claim it in the queue (pushed to `main`) before coding; mark it `done — <commit>` after it is live. Current order (owner, Oct 14 — D-013): P0 fixes from D-012 first, then (A) finish kit pricing and password sign-in → (B) trust/privacy/compliance → (C) core ask flow → (D) referral lifecycle → (E) notifications → (F) settings/app → (G) assistants/developers → (H) employer/admin → (I) work showcase/tools.
+
+## 0a. Standing principles (founder, Oct 14 2026) - read before coding
+- **Payments bar (founder, verbatim):** "We cant mess with customers payments and refunds and delayed transactions or any transactions so make sure we are solidly built every backup plan if something is off."
+- **No half-baked flows (founder, verbatim intent: "all agents will learn to be serious not build half baked flows"):** a flow ships end-to-end with its failure paths handled and its recovery documented, or it does not ship.
+- **Silent failure is a defect.** Every failure path is visible: logged, alerted, and shown to the user in plain words.
+- **Every externally visible mutation is idempotent, reconciled and recoverable.** This covers payments, refunds, emails and credits. Redelivery and retries add nothing twice. A missed or late provider event has a reconcile or replay path. Each failure mode has a written recovery step.
+- **Failures surface at once.** A payment-path failure is reported immediately with the failing leg and the evidence; do not retry around it first.
+- **Decision compass (founder, verbatim):** "You do whats recommended write with intelligence and user experience. At the end the users should be priority we should make decisions which make people pay for our product, give word of mouth, give positive feedback. Dont do anything pisses off the users." In practice: put the user first, optimise for conversion and word of mouth, and never surprise or anger a user. When two options both work, pick the one a user would thank you for.
+- **Payments instance of this rule:** `docs/PAYMENTS_TEST_RUNBOOK.md` (two Chargebee sites, provider matrix, failure rule, recovery table). Read it before touching any payment, refund or credit code.
+- **Animation guidelines (founder, Oct 15 2026, verbatim):**
+
+  Duration Guidelines:
+  - Micro-interactions: 100-150ms
+  - Standard UI (tooltips, dropdowns): 150-250ms
+  - Modals, drawers: 200-300ms
+  - Page transitions: 300-400ms
+  Rule: UI animations should stay under 300ms.
+
+  The Frequency Principle - determine how often users will see the animation:
+  - 100+ times/day: no animation (or drastically reduced)
+  - Occasional use: standard animation
+  - Rare/first-time: can add delight
 
 ## 1. Operator protocol (human rules and hygiene)
 - **Context hygiene:** Start a fresh work thread for every distinct sub-task or feature. Close completed context before starting unrelated work.

@@ -54,9 +54,10 @@ import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerBlocksRoutes } from "../blocksRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
+import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
-import { createPaymentReviewAlerter, createUnmatchedPaymentAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
@@ -214,6 +215,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     },
   });
   registerAdminBillingCatalogRoutes(app, { resolveIdentity });
+  registerAdminBillingLedgerRoutes(app, { resolveIdentity, loadRows: db.listBillingLedgerRows });
   registerChargebeeRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
@@ -234,6 +236,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     markPaymentForReview: db.markChargebeePaymentForReview,
     getCreditSummary: db.getTokenWallet,
     alertPaymentReview: createPaymentReviewAlerter(),
+    applyPaymentRefund: db.applyChargebeePaymentRefund,
+    alertPaymentRefund: createPaymentRefundAlerter(),
     alertUnmatchedPayment: createUnmatchedPaymentAlerter(),
     resolveHostedPage: async input => {
       const pending = await db.listPendingChargebeePaymentIntents();

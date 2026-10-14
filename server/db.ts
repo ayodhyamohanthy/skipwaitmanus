@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
@@ -2839,6 +2839,54 @@ export async function getRevenueSummary() {
   return { byProvider: credited.map(row => ({ provider: row.provider, currency: row.currency, totalAmount: Number(row.totalAmount ?? 0), count: Number(row.count ?? 0) })), totalsByCurrency: Array.from(byCurrency.values()), refundedTotalByCurrency: refunded.map(row => ({ currency: row.currency, totalAmount: Number(row.totalAmount ?? 0), count: Number(row.count ?? 0) })), recordedAt: new Date() };
 }
 
+export type ChargebeeRefundOutcome =
+  | { status: "revoked"; paymentId: number; tokenCount: number }
+  | { status: "duplicate"; paymentId: number }
+  | { status: "review"; paymentId: number; reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_of_uncredited_payment" | "refund_amount_unreadable"; expectedAmount: number; currency: string }
+  | { status: "unmatched"; reason: "refund_invoice_unreadable" | "refund_invoice_unknown" };
+
+/**
+ * Provider refund policy (founder, Oct 14 2026): a FULL refund of a credited
+ * pack payment takes back that payment's credits only if they are all still in
+ * the wallet; the balance never goes negative. Anything else (partial refund,
+ * credits already spent, unreadable amount) is parked as requires_review with
+ * no wallet change so a human decides. One transaction with the fulfillment and
+ * wallet rows locked, in the same order as revokeCreditedPaymentCredits. A
+ * redelivered event finds the row already refunded or parked and does nothing.
+ */
+export async function applyChargebeePaymentRefund(input: { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string }): Promise<ChargebeeRefundOutcome> {
+  if (!input.invoiceId) return { status: "unmatched", reason: "refund_invoice_unreadable" };
+  const invoiceId = input.invoiceId;
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerInvoiceId, invoiceId))).limit(1).for("update");
+    const row = rows[0];
+    if (!row) return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+    if (row.status === "refunded" || (row.status === "requires_review" && (row.reconciliationReason ?? "").startsWith("refund_"))) return { status: "duplicate" as const, paymentId: row.id };
+    const park = async (reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_of_uncredited_payment" | "refund_amount_unreadable") => {
+      if (row.status === "credited") {
+        await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
+      }
+      await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: "billing.refund_needs_review", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ reason, eventId: input.eventId, invoiceId, refundAmount: input.refundAmount ?? null, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount }) });
+      return { status: "review" as const, paymentId: row.id, reason, expectedAmount: row.amount, currency: row.currency };
+    };
+    if (row.status !== "credited") return park("refund_of_uncredited_payment");
+    if (!input.refundAmount) return park("refund_amount_unreadable");
+    if (input.currency && input.currency !== row.currency) return park("refund_currency_mismatch");
+    if (input.refundAmount < row.amount) return park("refund_partial");
+    const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
+    if (!wallet[0] || wallet[0].balance < row.tokenCount) return park("refund_credits_spent");
+    const updated = await tx.update(paymentFulfillments).set({ status: "refunded", reconciliationReason: "refunded_by_provider", lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
+    if (Number(updated[0]?.affectedRows ?? 0) !== 1) return { status: "duplicate" as const, paymentId: row.id };
+    const debited = await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} - ${row.tokenCount}` }).where(and(eq(tokenBalances.id, wallet[0].id), sql`${tokenBalances.balance} >= ${row.tokenCount}`));
+    if (Number(debited[0]?.affectedRows ?? 0) !== 1) throw new Error("Refund credit revocation could not debit the wallet");
+    await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -row.tokenCount, kind: "admin_adjustment", source: "payment_refund", referenceType: "payment_fulfillment", referenceId: String(row.id), idempotencyKey: `payment-refund-${row.id}`, balanceAfter: wallet[0].balance - row.tokenCount });
+    await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: "billing.refund_credits_revoked", outcome: "success", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ eventId: input.eventId, invoiceId, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount }) });
+    return { status: "revoked" as const, paymentId: row.id, tokenCount: row.tokenCount };
+  });
+}
+
 export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: PaidSubscriptionPlan; itemPriceId: string; amount: number; currency: "INR" | "USD" }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -3728,4 +3776,24 @@ export async function applyEmployerUnlockRefund(input:{refundId:string;paymentId
     if(debt){await tx.update(profileUnlocks).set({revokedAt:new Date(),revocationReason:"refunded_employer_credits_review"}).where(and(eq(profileUnlocks.employerUserId,intent.userId),isNull(profileUnlocks.revokedAt)));}
     await tx.insert(operationalActivityLogs).values({actorUserId:intent.userId,action:"employer.unlock_credits_refunded",outcome:"success",resourceType:"employer_unlock_refund",resourceId:input.refundId,metadata:JSON.stringify({paymentId:input.paymentId,refundAmount:input.amount,cumulativeRefunded:cumulative,creditsReversed:delta,creditDebt:debt})});return {status:"applied" as const,creditsReversed:delta,creditDebt:debt};
   });
+}
+
+/**
+ * Read-only rows for the admin billing ledger (GET /api/admin/billing/ledger).
+ * Three bounded SELECTs by time window; no writes, no joins to PII tables.
+ * Each source is fetched with limit+1 so the caller can tell when it was cut.
+ */
+export async function listBillingLedgerRows(window: { since: Date; until: Date; limit: number }) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const take = window.limit + 1;
+  const intents = await db.select({ checkoutIntentId: subscriptionCheckoutIntents.checkoutIntentId, hostedPageId: subscriptionCheckoutIntents.hostedPageId, userId: subscriptionCheckoutIntents.userId, role: subscriptionCheckoutIntents.role, plan: subscriptionCheckoutIntents.plan, itemPriceId: subscriptionCheckoutIntents.itemPriceId, amount: subscriptionCheckoutIntents.amount, currency: subscriptionCheckoutIntents.currency, status: subscriptionCheckoutIntents.status, createdAt: subscriptionCheckoutIntents.createdAt })
+    .from(subscriptionCheckoutIntents).where(and(gte(subscriptionCheckoutIntents.createdAt, window.since), lt(subscriptionCheckoutIntents.createdAt, window.until))).orderBy(asc(subscriptionCheckoutIntents.createdAt)).limit(take);
+  const payments = await db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, providerEventId: paymentFulfillments.providerEventId, providerInvoiceId: paymentFulfillments.providerInvoiceId, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, status: paymentFulfillments.status, reconciliationReason: paymentFulfillments.reconciliationReason, lastCheckedAt: paymentFulfillments.lastCheckedAt, creditedAt: paymentFulfillments.creditedAt, createdAt: paymentFulfillments.createdAt })
+    .from(paymentFulfillments).where(and(gte(paymentFulfillments.createdAt, window.since), lt(paymentFulfillments.createdAt, window.until))).orderBy(asc(paymentFulfillments.createdAt)).limit(take);
+  const transactions = await db.select({ id: tokenTransactions.id, userId: tokenTransactions.userId, role: tokenTransactions.role, tokenCount: tokenTransactions.tokenCount, kind: tokenTransactions.kind, source: tokenTransactions.source, referenceType: tokenTransactions.referenceType, referenceId: tokenTransactions.referenceId, idempotencyKey: tokenTransactions.idempotencyKey, reversesTransactionId: tokenTransactions.reversesTransactionId, balanceAfter: tokenTransactions.balanceAfter, createdAt: tokenTransactions.createdAt })
+    .from(tokenTransactions).where(and(gte(tokenTransactions.createdAt, window.since), lt(tokenTransactions.createdAt, window.until))).orderBy(asc(tokenTransactions.createdAt)).limit(take);
+  const parked = await db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt })
+    .from(operationalActivityLogs).where(and(inArray(operationalActivityLogs.action, ["billing.payment_unmatched", "billing.refund_needs_review"]), gte(operationalActivityLogs.createdAt, window.since), lt(operationalActivityLogs.createdAt, window.until))).orderBy(asc(operationalActivityLogs.createdAt)).limit(take);
+  return { intents, payments, transactions, parked };
 }
