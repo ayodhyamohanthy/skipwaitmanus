@@ -146,7 +146,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
           {titleId => (
             <>
               <h2 id={titleId} className="text-xl font-semibold">Accept this request?</h2>
-              <p className="mt-2 text-muted-foreground">You&apos;ll see their name, and you&apos;ll get the resume.</p>
+              <p className="mt-2 text-muted-foreground">You&apos;ll both see names, and you&apos;ll get the resume.</p>
               <label className="mt-4 flex items-start gap-3 text-sm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-1 size-4" />I&apos;ll refer only through {company}&apos;s official process and won&apos;t accept anything in return.</label>
               <ModalError message={action.error} />
               <footer className="mt-6 flex justify-end gap-2">

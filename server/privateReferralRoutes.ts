@@ -1069,10 +1069,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const request = await deps.getUnclaimedCompanyReferralPreview(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not available to your verified company account" });
       const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, availability: "after_claim" as const }));
-      const [named] = await attachCompanyIdentities([request], row => row.companyDomain, lookupCompanies);
+      // Privacy: the seeker's name is never part of the unclaimed preview (revealed only after accept).
+      const { candidateName: _withheld, ...anonymousRequest } = request as typeof request & { candidateName?: unknown }; void _withheld;
+      const [named] = await attachCompanyIdentities([anonymousRequest], row => row.companyDomain, lookupCompanies);
       record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only" } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ request: { ...withParsedJobFunction(request), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
+      res.json({ request: { ...withParsedJobFunction(anonymousRequest), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
     } catch { res.status(500).json({ error: "We could not load this private candidate preview" }); }
   });
   app.get("/api/company-referrals/:requestId", async (req, res) => {

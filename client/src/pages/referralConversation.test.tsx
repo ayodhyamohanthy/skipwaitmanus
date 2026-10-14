@@ -186,6 +186,19 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
   });
 
+  it("reveals the referrer's name and title to the seeker only after accept", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "approved", referrerId: 9, referrerName: "Priya Nair", referrerTitle: "Staff Designer" }] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Priya Nair · Staff Designer")).toBeTruthy();
+  });
+
+  it("keeps the referrer anonymous to the seeker while the ask is pending", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerPending, referrerName: "Priya Nair" }] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText(/Someone at/)).toBeTruthy();
+    expect(screen.queryByText(/Priya Nair/)).toBeNull();
+  });
+
   it("shows the referred seeker the reference ID the referrer recorded", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "intro_made" }] }) : ok({ messages: [], referenceId: "TC-4410" })));
     render(<ReferralConversation />);
