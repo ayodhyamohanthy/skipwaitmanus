@@ -15,12 +15,16 @@ const INTENT_RETURN_TO: Readonly<Record<Intent, string>> = { seeker: "/explore",
  * the password is entered on that secure screen, never on this page. The
  * intent switch picks where the person lands once AuthKit returns.
  */
-function workosAuthUrl(screen: "sign-in" | "sign-up", intent: Intent, email = ""): string {
+function workosAuthUrl(screen: "sign-in" | "sign-up", intent: Intent, email = "", provider = ""): string {
   const params = new URLSearchParams({ returnTo: INTENT_RETURN_TO[intent] });
+  if (provider) params.set("provider", provider);
   const loginHint = email.trim().toLowerCase();
   if (loginHint) params.set("login_hint", loginHint);
   return `/api/auth/workos/${screen}?${params}`;
 }
+
+/** Providers enabled in WorkOS (server/_core/workosAuth.ts SOCIAL_PROVIDERS). */
+const SOCIAL = [{ id: "google", label: "Google", mark: "G" }, { id: "microsoft", label: "Microsoft", mark: "M" }, { id: "github", label: "GitHub", mark: "H" }] as const;
 
 /** Kit draws the legal names as plain muted text; they stay links, underlined only on hover or keyboard focus. */
 const legalLink = "hover:underline focus-visible:underline";
@@ -47,7 +51,7 @@ export default function SignIn() {
       <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to SkipWait.</h2><p>Choose how you’ll use SkipWait. You can change this later.</p></div>
       <div className="intent-switch" role="group" aria-label="How do you want to use SkipWait?"><Button type="button" variant="ghost" className={intent === "seeker" ? "selected" : ""} aria-pressed={intent === "seeker"} onClick={() => setIntent("seeker")}><Sparkles />Find a referral</Button><Button type="button" variant="ghost" className={intent === "referrer" ? "selected" : ""} aria-pressed={intent === "referrer"} onClick={() => setIntent("referrer")}><ShieldCheck />Give a referral</Button></div>
       <div className="auth-context"><span>{intent === "seeker" ? "Explore companies and send a thoughtful request." : "Choose who you help and keep your identity private."}</span><Check /></div>
-      {!emailMode ? <div className="auth-options"><Button type="button" variant="outline" className="google-button" onClick={() => window.location.assign(workosAuthUrl("sign-in", intent))}><span className="google-g" aria-hidden="true">G</span>Continue with Google</Button><div className="auth-divider"><span>or</span></div><Button type="button" onClick={() => setEmailMode(true)}><Mail />Continue with email</Button></div>
+      {!emailMode ? <div className="auth-options">{SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(workosAuthUrl("sign-in", intent, "", item.id))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}<div className="auth-divider"><span>or</span></div><Button type="button" onClick={() => setEmailMode(true)}><Mail />Continue with email</Button></div>
         : <form className="auth-form" onSubmit={continueWithEmail}>
           <label htmlFor="email">Email address</label>
           <div className="auth-input"><Mail /><input id="email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} /></div>

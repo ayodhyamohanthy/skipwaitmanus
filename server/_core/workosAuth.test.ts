@@ -257,4 +257,15 @@ describe("canonical WorkOS callback session", () => {
       expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(401);
     } finally { restore(); }
   });
+
+  it("starts a listed social provider and falls back to AuthKit for anything else", { timeout: 20000 }, async () => {
+    const { app, restore } = await buildApp({ ...baseEnv });
+    const providerFor = async (provider: string) => { await request(app).get("/api/auth/workos/sign-in").query({ provider }); return (authUrl.mock.calls.at(-1)?.[0] as { provider?: string; screenHint?: string }); };
+    expect((await providerFor("google")).provider).toBe("GoogleOAuth");
+    expect((await providerFor("microsoft")).provider).toBe("MicrosoftOAuth");
+    expect((await providerFor("github")).provider).toBe("GitHubOAuth");
+    const unknown = await providerFor("AppleOAuth");
+    expect(unknown.provider).toBe("authkit"); expect(unknown.screenHint).toBe("sign-in");
+    restore();
+  });
 });
