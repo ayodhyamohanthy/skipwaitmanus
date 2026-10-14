@@ -115,6 +115,8 @@ export default function Ask() {
       const params = new URLSearchParams(window.location.search);
       const targetRoleUrl = url.trim();
       const body: Record<string, string | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
+      // A request that began on a company page must stay with that company.
+      if (prefill?.companySlug) body.companySlug = prefill.companySlug;
       if (compensation.trim()) body.compensation = compensation.trim().slice(0, 80);
       if (pickedFunction) body.jobFunction = pickedFunction;
       const fastTrackCode = params.get("fast")?.trim();

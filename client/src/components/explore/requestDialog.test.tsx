@@ -9,7 +9,7 @@ const { authState, go } = vi.hoisted(() => ({ authState: { isSignedIn: false }, 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: authState.isSignedIn }) }));
 vi.mock("wouter", () => ({ useLocation: () => ["/explore/acme", go] }));
 
-const company = { slug: "acme", name: "Acme", initials: "A" };
+const company = { slug: "acme", name: "Acme", initials: "A", domains: ["acme.com"] };
 
 beforeEach(() => {
   authState.isSignedIn = false;
