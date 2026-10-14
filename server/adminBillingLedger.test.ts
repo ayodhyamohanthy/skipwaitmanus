@@ -8,9 +8,10 @@ const member = { account: { id: 2, role: "user" as const } };
 const at = (s: string) => new Date(s);
 const empty = (): LedgerRows => ({ intents: [], payments: [], transactions: [], parked: [] });
 
-function appFor(rows: LedgerRows, identity: typeof admin | typeof member | null = admin, loadRows = vi.fn(async () => rows)) {
+const TOKEN = "t".repeat(40);
+function appFor(rows: LedgerRows, identity: typeof admin | typeof member | null = admin, loadRows = vi.fn(async () => rows), readToken: () => string | undefined = () => TOKEN) {
   const app = express();
-  registerAdminBillingLedgerRoutes(app, { resolveIdentity: async () => identity ?? undefined, loadRows, now: () => new Date("2026-10-15T00:00:00Z") });
+  registerAdminBillingLedgerRoutes(app, { resolveIdentity: async () => identity ?? undefined, loadRows, now: () => new Date("2026-10-15T00:00:00Z"), readToken });
   return { app, loadRows };
 }
 
@@ -77,5 +78,35 @@ describe("admin billing ledger", () => {
     const { app } = appFor(rows);
     const res = await request(app).get("/api/admin/billing/ledger").expect(200);
     expect(res.body.events[0]).toMatchObject({ type: "parked_event", eventId: null });
+  });
+
+  describe("read-only token", () => {
+    it("opens the ledger for a valid token without a session", async () => {
+      const { app, loadRows } = appFor(empty(), null);
+      await request(app).get("/api/admin/billing/ledger").set("x-billing-ledger-token", TOKEN).expect(200);
+      expect(loadRows).toHaveBeenCalledTimes(1);
+    });
+
+    it("rejects wrong, empty or missing tokens for non-admins", async () => {
+      const { app, loadRows } = appFor(empty(), member);
+      await request(app).get("/api/admin/billing/ledger").set("x-billing-ledger-token", "x".repeat(40)).expect(403);
+      await request(app).get("/api/admin/billing/ledger").set("x-billing-ledger-token", "").expect(403);
+      await request(app).get("/api/admin/billing/ledger").expect(403);
+      expect(loadRows).not.toHaveBeenCalled();
+    });
+
+    it("is disabled when the configured token is unset or shorter than 32 chars", async () => {
+      for (const configured of [undefined, "", "short-token"]) {
+        const { app } = appFor(empty(), null, undefined, () => configured);
+        await request(app).get("/api/admin/billing/ledger").set("x-billing-ledger-token", configured ?? "anything").expect(403);
+      }
+    });
+
+    it("does not extend to the catalog endpoint or any other admin route", async () => {
+      const { registerAdminBillingCatalogRoutes } = await import("./adminBillingCatalog");
+      const app = express();
+      registerAdminBillingCatalogRoutes(app, { resolveIdentity: async () => undefined, runtime: { site: "s", apiKey: "k", environment: "test" }, fetchImpl: vi.fn() as unknown as typeof fetch });
+      await request(app).get("/api/admin/billing/catalog").set("x-billing-ledger-token", TOKEN).expect(403);
+    });
   });
 });
