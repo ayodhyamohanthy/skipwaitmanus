@@ -450,6 +450,7 @@ export const referralRequestPasses = mysqlTable("referralRequestPasses", {
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   reason: mysqlEnum("reason", ["role_not_a_fit", "cannot_support", "timing"]).notNull(),
+  reasonCode: varchar("reasonCode", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_request_pass_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referral_request_pass_referrer_idx").on(table.referrerId, table.createdAt)]);
 

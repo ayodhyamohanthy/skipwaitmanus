@@ -1,3 +1,4 @@
+import { PASS_REASON_OPTIONS } from "@shared/passReasons";
 import { ArrowRight, Check, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -6,14 +7,8 @@ import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
 import { ModalError, ThreadModal } from "./ThreadModal";
 import { companyName, stageIndex, stageOf } from "./threadModel";
 
-/** Kit pass reasons mapped to the server's one-click decline reasons. */
-export const PASS_REASONS = [
-  { label: "Not my team or function", value: "role_not_a_fit" },
-  { label: "Role needs more experience", value: "role_not_a_fit" },
-  { label: "Not enough context", value: "cannot_support" },
-  { label: "At capacity right now", value: "timing" },
-  { label: "Prefer not to say", value: "cannot_support" },
-] as const;
+/** Kit pass reasons; `value` is the legacy decline reason the server routes on, `code` the kit reason. */
+export const PASS_REASONS = PASS_REASON_OPTIONS.map(option => ({ label: option.label, value: option.legacy, code: option.code }));
 
 const SEEKER_MILESTONES = [
   { status: "interview", stage: "Interviewing" },
@@ -103,7 +98,7 @@ type ReferrerProps = {
   passed: boolean;
   returnPath: string;
   onAccept: () => Promise<void>;
-  onPass: (reason: string) => Promise<void>;
+  onPass: (reason: string, passReason: string) => Promise<void>;
   onMarkReferred: (referenceId?: string) => Promise<void>;
 };
 
@@ -118,7 +113,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
   const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setReference(""); setModal(next); };
   const close = () => { setModal(null); action.reset(); };
   const submit = (run: () => Promise<void>, fallback: string) => { void action.run(run, fallback).then(ok => { if (ok) setModal(null); }); };
-  const reasonValue = PASS_REASONS.find(option => option.label === reasonLabel)?.value ?? PASS_REASONS[0].value;
+  const selectedReason = PASS_REASONS.find(option => option.label === reasonLabel) ?? PASS_REASONS[0];
 
   return (
     <>
@@ -162,7 +157,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
           {titleId => (
             <>
               <h2 id={titleId} className="text-xl font-semibold">Pass privately</h2>
-              <p className="mt-2 text-muted-foreground">The seeker sees a kind note. Never your name.</p>
+              <p className="mt-2 text-muted-foreground">The seeker sees a kind note with your reason. Never your name.</p>
               <div className="mt-4 grid gap-2" role="radiogroup" aria-label="Pass reason">
                 {PASS_REASONS.map(option => (
                   <label key={option.label} className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 ${reasonLabel === option.label ? "border-primary bg-primary/5" : "border-border"}`}>
@@ -173,7 +168,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
               <ModalError message={action.error} />
               <footer className="mt-6 flex justify-end gap-2">
                 <Button variant="ghost" onClick={close}>Cancel</Button>
-                <Button disabled={action.busy} onClick={() => submit(() => onPass(reasonValue), "We could not record your decision")}>Pass</Button>
+                <Button disabled={action.busy} onClick={() => submit(() => onPass(selectedReason.value, selectedReason.code), "We could not record your decision")}>Pass</Button>
               </footer>
             </>
           )}
