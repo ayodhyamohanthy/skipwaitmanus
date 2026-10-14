@@ -10,6 +10,8 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { clearAskPrefill, readAskPrefill } from "@/lib/askPrefill";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
+import { useAskCompany } from "@/lib/useAskCompany";
+import { careersPlaceholder } from "@shared/askCompany";
 import { AskStrength, askChecks, countWords } from "@/components/ask/AskStrength";
 import { AskSent, type SentAsk } from "@/components/ask/AskSent";
 import { AskFunctionEyebrow } from "@/components/ask/AskFunctionEyebrow";
@@ -61,6 +63,7 @@ export default function Ask() {
   const officialUrl = isValidTargetRoleUrl(url || undefined);
   const checks = askChecks({ officialUrl, note, hasResume: Boolean(resume || resumeFile) });
   const attachedName = resume?.fileName ?? resumeFile?.name ?? null;
+  const askCompany = useAskCompany(prefill?.companySlug, url, officialUrl);
   const shownFunction = pickedFunction ?? (officialUrl ? inferAskJobFunction({ targetRoleUrl: url.trim() }) : null);
 
   const authed = async (path: string, init?: RequestInit) => {
@@ -166,10 +169,10 @@ export default function Ask() {
   const busy = drafting || uploading;
   return (
     <main data-skipwait-screen="ask" className="page-content">
-      <AskHeading text="Referrers decide in under a minute. Make that minute easy." eyebrow={<AskFunctionEyebrow value={shownFunction} onPick={setPickedFunction} />} />
+      <AskHeading text="Referrers decide in under a minute. Make that minute easy." eyebrow={<AskFunctionEyebrow value={shownFunction} onPick={setPickedFunction} companyName={askCompany?.name} />} />
       <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Panel>
-          <label className="block text-sm font-medium">Official job link<input className={field} value={url} onChange={event => setUrl(event.target.value)} placeholder="https://careers.company.com/…" inputMode="url" aria-invalid={Boolean(url && !officialUrl)} /></label>
+          <label className="block text-sm font-medium">Official job link<input className={field} value={url} onChange={event => setUrl(event.target.value)} placeholder={careersPlaceholder(askCompany)} inputMode="url" aria-invalid={Boolean(url && !officialUrl)} /></label>
           {url && !officialUrl ? <p className="mt-2 flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />That doesn&apos;t look like a job posting link.</p> : null}
           <label className="mt-5 block text-sm font-medium">Compensation (optional)<input className={field} value={compensation} onChange={event => setCompensation(event.target.value)} placeholder="e.g. ₹18–22 LPA" maxLength={80} /></label>
           <label className="mt-5 block text-sm font-medium">Your note<textarea value={note} maxLength={NOTE_LIMIT} onChange={event => setNote(event.target.value)} placeholder="Name the role, one result that proves fit, and what you'd like from the referrer." className="mt-2 min-h-44 w-full rounded-xl border border-input bg-background p-4 text-base" /></label>
