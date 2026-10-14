@@ -68,3 +68,21 @@ Do not set `TRUST_CLOUDFLARE_CONNECTING_IP`, and do not change webhook verificat
 
 - Which Razorpay gateway mode (test or live) is attached to each Chargebee site is to be confirmed from the Chargebee dashboard and recorded here.
 - Matrix results go in `docs/BUGFREE_GATE.md` item 4.12, which QA owns.
+
+## 7. Failure-mode recovery (what the code does today, and what a human does)
+
+Source: code audit of `server/chargebeeRoutes.ts`, `server/db.ts` (`fulfillChargebeePayment`, `resolveRequiresReviewPayment`, `revokeCreditedPaymentCredits`) and `server/privateReferralRoutes.ts`, Oct 14 2026. Any failure here also triggers the section 4a notification.
+
+How a payment becomes credits: checkout creates a `pending:<hostedPageId>` row in `paymentFulfillments` tied to the checkout intent. A paid Chargebee event (`payment_succeeded`) at `/api/chargebee/webhook` is matched to that row by hosted page and intent, amount and currency are compared, and credits are added in ONE database transaction (status `credited`, wallet balance, ledger row). Redelivery of the same event, or a second event for the same checkout, returns `duplicate` and adds nothing. A paid event that cannot be tied to a checkout, or whose amount differs, is parked as `requires_review` and the admin is alerted. A failed transaction returns 500 so Chargebee retries.
+
+| Failure | What happens in code | Human recovery |
+|---|---|---|
+| Missed webhook (app down, 5xx, wrong URL or credentials) | Chargebee retries on its own schedule (confirm the schedule in Chargebee settings). There is NO scheduled job in this app that re-checks pending payments. The only recovery path is user-triggered: `/api/chargebee/credit-recovery` runs when the buyer returns to the app with the hosted page id. | 1. In Chargebee, find the paid invoice and the hosted page id. 2. In the database find the `pending:<hostedPageId>` row for that user. 3. Ask the user to reopen the success page (it calls credit-recovery), or replay the event from the Chargebee webhook log to `/api/chargebee/webhook`. 4. If neither works, admin review queue `credited` decision (`POST /api/admin/payments/review/:id`) after the row is `requires_review`. 5. Record in the gate doc. |
+| Stuck pending (paid in Chargebee, row still `pending`) | Same as above; nothing alerts on a stale pending row. | Same procedure. Check the wallet and ledger before crediting by hand so it is never credited twice. |
+| Delayed settlement (UPI, bank, EMI pending) | Credits land only after Chargebee reports the invoice paid. The user sees pending. | Wait for the provider event. Do not credit by hand until the invoice is paid in Chargebee. |
+| Double charge (two paid hosted pages for one intent) | The second paid page does not match a pending row, so it is parked for review and the admin is alerted. Credits are not added twice. | Refund the extra payment in the Chargebee dashboard (manual). |
+| Amount mismatch (tax, coupon, catalog drift) | Parked as `requires_review`, no credits added, admin alert. | Admin review: decide `credited` or `rejected`, with a note. |
+| Failed refund (API 403, gateway refusal) | The app never calls the Chargebee refund API. Refunds are made by a person in the Chargebee dashboard, or by a script with a read-write key. The old admin `refund` route is disabled (410) because it never refunded provider money. | Refund from the Chargebee dashboard (manual fallback). If the key lacks permission, check the key's scope on the correct site, or use the dashboard. Then run revoke-credits (next row). Notify the founder. |
+| Refund made at the provider, credits still in the wallet | The webhook does not handle Chargebee refund events (`payment_refunded`, `credit_note_created`), so credits are NOT removed automatically. | Use `POST /api/admin/payments/review/:id/revoke-credits` with a note, then confirm `/api/credits/summary` shows the original balance. |
+
+Known gaps (flagged to the founder, not fixed here): no scheduled reconciliation of pending payments; no alert on stale pending rows; no automatic credit revocation on a Chargebee refund. Fixing them changes money behaviour and needs the founder's call.
