@@ -4,6 +4,7 @@ import { breadcrumbsHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prere
 import { LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_SUMMARY } from "../shared/landingContent";
 import { breadcrumbsFor, canonicalUrl, PUBLIC_ROUTES, publicRoute } from "../shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
+import { KIT_PAID_PLANS, SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
 
 const template =
   '<html><head><title>skipwait.me — Job Referrals</title><meta name="description" content="previous copy" /><link rel="canonical" href="https://skipwait.me/" /><meta property="og:title" content="previous og title" /><meta property="og:description" content="previous og copy" /><meta property="og:url" content="https://skipwait.me/" /><meta name="twitter:title" content="previous twitter title" /><meta name="twitter:description" content="previous twitter copy" /></head><body><div id="root"></div></body></html>';
@@ -172,5 +173,25 @@ describe("crawlable landing and public snapshots", () => {
     expect(serialized).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
     expect(serialized).not.toMatch(/\bRef-\d+/i);
     expect(serialized).not.toMatch(/Sarah was just|fast-tracked|hiring guarantee|just got hired/i);
+  });
+
+  // The Kit v4 pricing refactor changed SUBSCRIPTION_PLANS so each plan's prices
+  // are keyed by billing interval first (prices.monthly.USD), and retired the
+  // legacy Pro/Max labels the /plans snapshot still printed. The snapshot threw
+  // `Cannot read properties of undefined (reading 'display')` and failed the
+  // build. It must advertise only the plans the live /pricing and /plans pages
+  // sell, with a price rendered for each, and never the retired labels.
+  it("describes /plans with the current kit plans and a rendered price per plan, never the retired labels", () => {
+    const plans = publicSnapshots().find(snapshot => snapshot.route === "/plans")!;
+    for (const plan of KIT_PAID_PLANS) {
+      const label = SUBSCRIPTION_PLANS[plan].label;
+      expect(plans.markup, `/plans snapshot omits ${label}`).toContain(label);
+      // Each plan row must carry at least one currency price, so a refactor of
+      // the price shape cannot silently emit a plan with no price.
+      expect(plans.markup).toMatch(new RegExp(`${label}:</strong> [^<]*(₹|\\$)`));
+    }
+    expect(plans.markup).not.toContain("Pro includes");
+    expect(plans.markup).not.toContain("Max includes");
+    expect(plans.markup).not.toMatch(/\bundefined\b/);
   });
 });

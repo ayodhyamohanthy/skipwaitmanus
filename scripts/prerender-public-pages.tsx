@@ -20,7 +20,7 @@ import path from "node:path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
+import { FREE_MONTHLY_ALLOWANCE, FREE_PLAN, KIT_PAID_PLANS, SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrency } from "../shared/subscriptionPlans";
 import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
@@ -91,8 +91,28 @@ export type PublicSnapshot = { route: string; title: string; description: string
  * `prerenderOutput.test.ts` fails the build if any public route drops below
  * three unique inbound sources.
  */
+/**
+ * A paid plan's offered prices for one currency, joined across the billing
+ * periods it is sold on. Derived from the shared catalog through
+ * `subscriptionPriceForPlan` — the same helper the live /pricing and /plans
+ * pages charge against — so the snapshot can never advertise a plan, a price or
+ * a cadence the live pages do not.
+ */
+function planPriceText(plan: PaidSubscriptionPlan, currency: SubscriptionCurrency): string {
+  const config = SUBSCRIPTION_PLANS[plan];
+  return config.intervals
+    .map(interval => config.prices[interval]?.[currency]?.display)
+    .filter((value): value is string => Boolean(value))
+    .join(" · ");
+}
+
 export function publicSnapshots(): PublicSnapshot[] {
-  const { pro, max } = SUBSCRIPTION_PLANS;
+  const freeAsks = FREE_PLAN.openRequests ?? 0;
+  const freeCredits = FREE_PLAN.creditsPerMonth;
+  const planRows = KIT_PAID_PLANS.map(plan => {
+    const config = SUBSCRIPTION_PLANS[plan];
+    return `<li><strong>${escapeHtml(config.label)}:</strong> ${escapeHtml(planPriceText(plan, "USD"))} (USD) or ${escapeHtml(planPriceText(plan, "INR"))} (INR, incl. GST) — ${config.openRequests ?? 0} open asks and ${config.monthlyAllowance.toLocaleString("en-US")} credits every 30 days.</li>`;
+  }).join("");
   return [
     {
       route: "/jobs",
@@ -116,7 +136,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/plans",
-      markup: `<main data-skipwait-snapshot="plans"><h1>Referral credits every month.</h1><p>The free plan keeps ${FREE_MONTHLY_ALLOWANCE} referral requests every month. ${escapeHtml(pro.label)} includes ${pro.monthlyAllowance} credits each month for ${escapeHtml(pro.prices.INR.display)} or ${escapeHtml(pro.prices.USD.display)}. ${escapeHtml(max.label)} includes ${max.monthlyAllowance} credits each month for ${escapeHtml(max.prices.INR.display)} or ${escapeHtml(max.prices.USD.display)}. Plans renew monthly until cancelled; access continues to the end of the paid month.</p><p><a href="/plans">Open plans</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="plans"><h1>Referral credits every month.</h1><p>Everyone starts free: ${freeAsks} open asks and ${freeCredits} credits every 30 days, no card needed. Paid plans add more open asks and more credits each 30-day pass, sold as a 30-day or 90-day pass.<ul>${planRows}</ul>Referrals are always free on every plan, and paying never changes your place in a referrer's queue. Plans renew until cancelled; access continues to the end of the paid pass.</p><p><a href="/plans">Open plans</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
     },
     {
       route: "/referrer",
