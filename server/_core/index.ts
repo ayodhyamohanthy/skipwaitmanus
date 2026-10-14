@@ -54,6 +54,7 @@ import { registerSafetyRoutes } from "../safetyRoutes";
 import { registerBlocksRoutes } from "../blocksRoutes";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
+import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
 import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
@@ -213,6 +214,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     },
   });
   registerAdminBillingCatalogRoutes(app, { resolveIdentity });
+  registerAdminBillingLedgerRoutes(app, { resolveIdentity, loadRows: db.listBillingLedgerRows });
   registerChargebeeRoutes(app, {
     resolveIdentity,
     recordActivity: db.recordOperationalActivity,
