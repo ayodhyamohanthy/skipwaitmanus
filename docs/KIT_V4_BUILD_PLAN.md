@@ -79,7 +79,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 6 | `work-email-reverify` (90-day re-check, badge removal, open asks returned) + `otp-policy-kit` (30 s resend, server lockout 15 min after 5 tries) | scheduled jobs (done) | L | todo |
 | 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | todo |
 | **Tier C — core ask flow (activation)** |||||
-| 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | todo |
+| 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | in progress — SkipWait eng agent — 2026-10-15 — branch task8-search-profile |
 | 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | todo |
 | 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | todo |
 | 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | todo |
