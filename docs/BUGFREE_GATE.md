@@ -68,7 +68,7 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 | 4.9 | Gift checkout stays gated OFF | Curl battery every deploy: `POST /api/chargebee/gift-checkout` returns 503 while the flag is unset; suite asserts the Gift button is absent from /plans (0 gift mentions). | GREEN |
 | 4.10 | Webhook signature gates | Curl battery every deploy: unsigned `POST /api/razorpay/webhook` -> 400; unsigned `POST /api/chargebee/webhook` -> 401. | GREEN |
 | 4.11 | Handoffs never touch the wallet | Suite reads `/api/credits/summary` before and after: plan free, 3 monthly + 0 purchased credits, unchanged. (Invariant tracks qa-sweep-1; the qa-sweep-2 wallet is managed separately.) | GREEN |
-| 4.12 | Real payment completion (charge succeeds, credits land, webhook posts) | **UNVERIFIED - deliberately not tested.** Policy: stop at the payment form, never enter card data. Closes only with a founder-approved real test payment (requested Oct 6, still open). | UNVERIFIED |
+| 4.12 | Real payment completion (charge succeeds, credits land, webhook posts) | **PARTIAL - verified up to the payment form on the LIVE Chargebee site (Oct 14 ~10:47 PM):** cart -> account details -> billing -> card controls all render at skipwait.chargebee.com (1 Token Rs.99.00); stopped before submission on founder's word that production checkout is wired to the live Chargebee site. **Production checkout is live-wired: anyone who completes it is charged real money.** Full-cycle charge + credits + webhook + refund test needs a real card charge and refund - founder's call. | PARTIAL |
 
 (Legs 4.1-4.11 latest pass 5:16-5:31 PM IST Oct 14, API `2264a9f0`, web `2264a9f0`.)
 
@@ -107,8 +107,9 @@ Each leg asserts the correct plan, currency, and amount on the Chargebee page. E
 
 - **Every live-testable item is GREEN.** 2.6 (withdraw) was RED for ~40 min on Oct 14 and is
   fixed + live-verified on `644ce81`. Everything that can run unattended is GREEN.
-- 1 coverage gap remains open: 4.12 (real payment completion) - closes with a
-  founder-approved real test payment. 3.1 and 3.2 closed Oct 14 ~9:15 PM via qa-sweep-2
+- 1 coverage gap remains open: 4.12 (real payment completion) - PARTIAL: verified up to
+  the payment form on the live Chargebee site; closes only with a real charge + refund,
+  founder's call. NOTE: production checkout is live-wired (real money on completion). 3.1 and 3.2 closed Oct 14 ~9:15 PM via qa-sweep-2
   (now a verified SkipWait referrer, gate 1.4).
 - Whether distribution starts with the 4 remaining UNVERIFIED gaps open is the founder's call.
 
