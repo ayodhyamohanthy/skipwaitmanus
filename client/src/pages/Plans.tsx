@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { ArrowRight, Check } from "lucide-react";
-import type { PaidSubscriptionPlan } from "@shared/subscriptionPlans";
+import type { PaidSubscriptionPlan, SubscriptionInterval } from "@shared/subscriptionPlans";
 import { Button } from "@/components/kit/button";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
@@ -16,6 +16,7 @@ import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansC
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { UpgradeMoments, upgradeMoments } from "@/components/plans/UpgradeMoments";
 import { activePaidPlan } from "@/components/plans/planCatalog";
+import { kitPlanLabel } from "@/components/plans/kitPlans";
 
 // Gift checkout stays hidden until the flow is verified end to end on the
 // Chargebee TEST site (#77/#78). Build with VITE_GIFT_CHECKOUT_ENABLED=true to show it.
@@ -27,7 +28,8 @@ export default function Plans() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const role = params.get("role") === "referrer" ? "referrer" : "job_seeker";
   const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
-  const [selected] = useState<PaidSubscriptionPlan>(() => params.get("plan") === "max" ? "max" : "pro");
+  const [interval, setInterval] = useState<SubscriptionInterval>(() => params.get("interval") === "quarterly" ? "quarterly" : "monthly");
+  const [landPlan, setLandPlan] = useState<PaidSubscriptionPlan>(() => params.get("plan") === "land_200" ? "land_200" : params.get("plan") === "land_500" ? "land_500" : "land_100");
   const [checkoutPlan, setCheckoutPlan] = useState<PaidSubscriptionPlan | null>(null);
   const [route, setRoute] = useState<PaymentRoute>(() => params.get("currency") === "INR" ? "INR" : params.get("currency") === "USD" ? "USD" : browserPaymentRoute());
   const [summary, setSummary] = useState<CreditSummary | null>(null);
@@ -48,7 +50,7 @@ export default function Plans() {
   const creditsHref = `/premium?role=${role}`;
 
   useEffect(() => {
-    applySeo({ title: "Monthly referral plans", description: "Pro and Max monthly plans add referral credits each month on top of the free allowance. Cancel any time.", path: "/plans" });
+    applySeo({ title: "Referral plans and credits", description: "Start, Momentum and Land plans add referral credits each month on top of the free allowance. Choose monthly or 90-day. Cancel any time.", path: "/plans" });
   }, []);
 
   useEffect(() => {
@@ -96,7 +98,7 @@ export default function Plans() {
     openSignIn({ returnTo: `${destination.pathname}${destination.search}${destination.hash}` });
   };
 
-  const openCheckout = (plan: PaidSubscriptionPlan) => { setCheckoutError(""); setCheckoutPlan(plan); };
+  const openCheckout = (plan: PaidSubscriptionPlan, chosenInterval: SubscriptionInterval) => { setCheckoutError(""); setCheckoutPlan(plan); setInterval(chosenInterval); };
 
   const startCheckout = async (plan: PaidSubscriptionPlan) => {
     if (!isLoaded) return;
@@ -109,7 +111,7 @@ export default function Plans() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json", ...authHeaders(await getToken()) },
-        body: JSON.stringify({ plan, currency: route, billingCountry: routeDetails.billingCountry, role }),
+        body: JSON.stringify({ plan, currency: route, interval, billingCountry: routeDetails.billingCountry, role }),
       });
       const payload = await readApiJson<{ checkoutUrl?: string; error?: string }>(response, "Unable to open secure plan checkout");
       if (!response.ok || typeof payload.checkoutUrl !== "string") throw new Error(payload.error || "Unable to open secure plan checkout");
@@ -156,7 +158,7 @@ export default function Plans() {
       if (!response.ok) throw new Error(payload.error || "We could not claim this gift");
       const claimed = claimableGifts.find(gift => gift.giftId === giftId);
       setClaimableGifts(current => current.filter(gift => gift.giftId !== giftId));
-      setClaimedPlan(claimed?.plan === "max" ? "Max" : "Pro");
+      setClaimedPlan(claimed?.plan ? kitPlanLabel(claimed.plan) : "");
       setSummaryKey(key => key + 1);
     } catch (reason) {
       setGiftError(failureMessage(reason, "We could not claim this gift"));
@@ -196,7 +198,10 @@ export default function Plans() {
 
     <PlanCards
       currency={route}
-      featured={activePlan ?? selected}
+      interval={interval}
+      onIntervalChange={setInterval}
+      landPlan={landPlan}
+      onLandPlanChange={setLandPlan}
       activePlan={activePlan}
       renewing={summary?.subscriptionStatus === "active"}
       isLoaded={isLoaded}
@@ -204,17 +209,17 @@ export default function Plans() {
       cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
       gift={{ enabled: giftCheckoutEnabled(), opening: giftStatus === "opening", isLoaded, onGift: plan => { void startGiftCheckout(plan); } }}
     />
-    <p className="plan-grid-note">Every account starts on the free tier — asking for referrals and tracking every request cost nothing, ever. Upgrading only adds more requests each month.</p>
+    <p className="plan-grid-note">Every account starts on the free tier — asking for referrals and tracking every request cost nothing, ever. Upgrading only adds more requests and credits each cycle.</p>
     <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
     {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
     <SentGifts sent={sentGifts} error={giftError} />
 
     <CreditsSection summary={summary} currency={route} creditsHref={creditsHref} />
     {summary ? <UsagePanel summary={summary} /> : null}
-    {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), creditsHref, openCheckout)} /> : null}
+    {summary ? <UpgradeMoments moments={upgradeMoments(summary, new Date(), creditsHref, plan => openCheckout(plan, interval))} /> : null}
     <FairBand />
     <PlansReference currency={route} />
 
-    {checkoutPlan ? <CheckoutDialog plan={checkoutPlan} currency={route} signedIn={Boolean(isSignedIn)} opening={status === "opening"} error={checkoutError} onPay={() => { void startCheckout(checkoutPlan); }} onClose={() => setCheckoutPlan(null)} /> : null}
+    {checkoutPlan ? <CheckoutDialog plan={checkoutPlan} currency={route} interval={interval} signedIn={Boolean(isSignedIn)} opening={status === "opening"} error={checkoutError} onPay={() => { void startCheckout(checkoutPlan); }} onClose={() => setCheckoutPlan(null)} /> : null}
   </main>;
 }

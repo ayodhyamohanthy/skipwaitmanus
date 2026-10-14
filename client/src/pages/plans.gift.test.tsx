@@ -49,14 +49,14 @@ describe("Plans gift subscriptions", () => {
       if (String(url).includes("/api/chargebee/gifts/mine")) return { ok: true, json: async () => emptyGifts };
       if (String(url).includes("/api/chargebee/gift-checkout")) {
         const body = JSON.parse(String(init?.body));
-        expect(body).toMatchObject({ plan: "pro", currency: "USD", billingCountry: "INTL" });
+        expect(body).toMatchObject({ plan: "start", currency: "USD", billingCountry: "INTL" });
         expect(body).not.toHaveProperty("receiverEmail");
         return { ok: true, json: async () => ({ checkoutUrl: "https://checkout.example/gift", hostedPageId: "hp_g" }) };
       }
       return { ok: true, json: async () => ({}) };
     });
     render(<Plans />);
-    const giftButton = await screen.findByRole("button", { name: "Gift Pro · $7/month" });
+    const giftButton = await screen.findByRole("button", { name: "Gift Start · $8/month" });
     fireEvent.click(giftButton);
     await waitFor(() => expect(openedCheckout).toHaveBeenCalledWith("https://checkout.example/gift"));
   });
@@ -88,7 +88,7 @@ describe("Plans gift subscriptions", () => {
       return { ok: false, status: 502, json: async () => ({ error: "Unable to open the gift checkout" }) };
     });
     render(<Plans />);
-    fireEvent.click(await screen.findByRole("button", { name: "Gift Pro · $7/month" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Gift Start · $8/month" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Unable to open the gift checkout");
     expect(openedCheckout).not.toHaveBeenCalled();
   });

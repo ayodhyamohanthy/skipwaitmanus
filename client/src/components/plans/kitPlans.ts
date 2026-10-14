@@ -99,6 +99,11 @@ export function kitPlanCard(planId: string): KitPlanCard | undefined {
   return [...KIT_PLAN_CARDS, ...LAND_LEVELS].find(c => c.id === planId);
 }
 
+/** The display label for a plan id (e.g. "Momentum", "Land Concierge"). */
+export function kitPlanLabel(planId: string): string {
+  return kitPlanCard(planId)?.label ?? SUBSCRIPTION_PLANS[planId as PaidSubscriptionPlan]?.label ?? planId;
+}
+
 /** "₹299/month" / "$19/quarter" for the selected currency and billing period. */
 export function kitPlanPrice(planId: string, currency: SubscriptionCurrency, interval: SubscriptionInterval): string {
   const plan = catalogPlanById(planId);

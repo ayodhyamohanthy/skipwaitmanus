@@ -44,14 +44,17 @@ export function activePaidPlan(summary: CreditSummary | null): PaidSubscriptionP
   return summary && hasActivePaidPlan(summary) && isPaidSubscriptionPlan(summary.plan) ? summary.plan : null;
 }
 
-/** The next plan up with a larger monthly allowance (Free → Pro → Max), or null on Max. */
+/** The next plan up the Kit ladder (Free → Start → Momentum → Land), or null at the top. */
 export function nextPlanUp(plan: string): PaidSubscriptionPlan | null {
-  if (plan === "max") return null;
-  return plan === "pro" ? "max" : "pro";
+  if (plan === "start" || plan === "pro") return "momentum";
+  if (plan === "momentum" || plan === "max") return "land_100";
+  if (plan === "land_100" || plan === "land_200" || plan === "land_500") return null;
+  return "start";
 }
 
 export type PlanCardCopy = { id: PlanId; name: string; tagline: string; features: string[]; cta: string };
 
+/** Legacy card copy, kept only for existing Pro/Max subscribers' billing views. */
 export function planCards(currency: SubscriptionCurrency): PlanCardCopy[] {
   return [
     {
@@ -80,17 +83,24 @@ export function planCards(currency: SubscriptionCurrency): PlanCardCopy[] {
 
 export type CompareValue = boolean | string;
 
-export function compareRows(currency: SubscriptionCurrency): Array<readonly [string, CompareValue, CompareValue, CompareValue]> {
+/** Free grants 2 tool credits every 30 days (§3.1), on top of 3 open asks. */
+const FREE_PLAN_CREDITS = 2;
+
+/** The 4-column compare table on /plans: Free, Start, Momentum, Land. */
+export function compareRows(currency: SubscriptionCurrency): Array<readonly [string, CompareValue, CompareValue, CompareValue, CompareValue]> {
+  const start = SUBSCRIPTION_PLANS.start;
+  const momentum = SUBSCRIPTION_PLANS.momentum;
+  const land = SUBSCRIPTION_PLANS.land_100;
   const credit = `${CREDIT_PRICE[currency]} each`;
   return [
-    ["Ask for referrals", true, true, true],
-    ["Referral requests each month", String(FREE_MONTHLY_ALLOWANCE), String(SUBSCRIPTION_PLANS.pro.monthlyAllowance), String(SUBSCRIPTION_PLANS.max.monthlyAllowance)],
-    ["Place in referrer queue", "Equal", "Equal", "Equal"],
-    ["Extra credits", credit, credit, credit],
-    ["Message referrers directly", false, true, true],
-    ["Connect an AI assistant", false, false, true],
-    ["Unused monthly requests", "Reset monthly", "Reset each cycle", "Reset each cycle"],
-    ["Bought credits expire", "Never", "Never", "Never"],
+    ["Ask for referrals", true, true, true, true],
+    ["Open asks at once", String(FREE_MONTHLY_ALLOWANCE), String(start.openRequests), String(momentum.openRequests), String(land.openRequests)],
+    ["Credits per 30 days", String(FREE_PLAN_CREDITS), String(start.monthlyAllowance), String(momentum.monthlyAllowance), String(land.monthlyAllowance)],
+    ["Place in referrer queue", "Equal", "Equal", "Equal", "Equal"],
+    ["Extra credits", credit, credit, credit, credit],
+    ["Monthly credit carryover", "None", "1 month", "3 months", "While Land active"],
+    ["Human time included", "—", "—", "—", land.humanIncluded || "1 written review"],
+    ["Bought credits expire", "Never", "Never", "Never", "Never"],
   ];
 }
 
@@ -102,15 +112,16 @@ export const fairnessRules = [
 ];
 
 export function planFaqs(): Array<readonly [string, string]> {
-  const pro = SUBSCRIPTION_PLANS.pro;
-  const max = SUBSCRIPTION_PLANS.max;
+  const start = SUBSCRIPTION_PLANS.start;
+  const momentum = SUBSCRIPTION_PLANS.momentum;
+  const land = SUBSCRIPTION_PLANS.land_100;
   return [
-    ["Does paying help me get referred?", "No. Referrers see the same queue whatever plan you are on. Paid plans raise your monthly request allowance; the decision stays human."],
-    ["How many referral requests can I send?", `Free includes ${FREE_MONTHLY_ALLOWANCE} referral requests every month. ${pro.label} raises it to ${pro.monthlyAllowance} and ${max.label} to ${max.monthlyAllowance}. Need more in a month? Add credits at ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
-    ["What are credits for?", "1 credit = one private referral request. Your monthly requests are used first; credits you buy cover the rest."],
-    ["Do unused credits expire?", "Credits you buy never expire — even if you cancel. Monthly plan credits reset with your plan cycle and do not carry over."],
+    ["Does paying help me get referred?", "No. Referrers see the same queue whatever plan you are on. Paid plans raise your open asks and credits; the decision stays human."],
+    ["How many referral requests can I have open?", `Free holds ${FREE_MONTHLY_ALLOWANCE} open at once. Start raises it to ${start.openRequests}, Momentum to ${momentum.openRequests} and Land to ${land.openRequests}. A request that is answered or passed frees its slot.`],
+    ["What are credits for?", "Credits buy finished AI work — ask rewrites, research, mock interviews and more. 1 credit = 1 finished unit. Extra open asks cost 2 credits for 30 days."],
+    ["Do unused credits expire?", "Credits you buy never expire. Plan credits roll over one month on Start, three months on Momentum, and while any Land pass is active."],
     ["Can I cancel?", "Anytime, from Manage plan. Paid access stays through the current cycle, then your account returns to Free."],
     ["Do referrers pay?", "Never to review requests. Referrers are always free."],
-    ["Is pricing local?", `Yes. In India plans are charged in rupees (${pro.label} ${planPriceDisplay("pro", "INR")}, ${max.label} ${planPriceDisplay("max", "INR")}); elsewhere in US dollars (${planPriceDisplay("pro", "USD")}, ${planPriceDisplay("max", "USD")}).`],
+    ["Is pricing local?", `Yes. In India plans are charged in rupees (Start ${planPriceDisplay("start", "INR")}, Momentum ${planPriceDisplay("momentum", "INR")}); elsewhere in US dollars (Start ${planPriceDisplay("start", "USD")}, Momentum ${planPriceDisplay("momentum", "USD")}). India prices include GST.`],
   ];
 }

@@ -17,7 +17,7 @@ export function FairBand() {
 export function PlansReference({ currency }: { currency: SubscriptionCurrency }) {
   return <>
     <section className="plans-section" id="compare"><span className="eyebrow">SIDE BY SIDE</span><h2>Compare every individual plan</h2>
-      <div className="compare-wrap wide"><table className="compare-table plan-compare"><thead><tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col">Pro</th><th scope="col">Max</th></tr></thead>
+      <div className="compare-wrap wide"><table className="compare-table plan-compare"><thead><tr><th scope="col">Feature</th><th scope="col">Free</th><th scope="col">Start</th><th scope="col">Momentum</th><th scope="col">Land</th></tr></thead>
         <tbody>{compareRows(currency).map(([feature, ...values]) => <tr key={feature}><th scope="row">{feature}</th>{values.map((value, index) => <td key={`${feature}-${index}`}><Cell v={value} /></td>)}</tr>)}</tbody>
       </table></div>
     </section>

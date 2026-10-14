@@ -25,7 +25,7 @@ describe("Plans payment return recovery", () => {
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Plans />);
     const loading = screen.getAllByRole("button", { name: /checking sign-in/i }) as HTMLButtonElement[];
-    expect(loading.length).toBe(2);
+    expect(loading.length).toBe(3);
     expect(loading.every(button => button.disabled)).toBe(true);
     for (const button of loading) fireEvent.click(button);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -37,7 +37,7 @@ describe("Plans payment return recovery", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     // Plans also loads gift receipts/claimables alongside the summary.
     expect(onlyAccountReads(fetchMock)).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Upgrade to Pro" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upgrade to Start" }));
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /^Pay / }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-checkout", expect.objectContaining({ method: "POST" })));
     expect(auth.openSignIn).not.toHaveBeenCalled();
@@ -50,21 +50,21 @@ describe("Plans payment return recovery", () => {
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Plans />);
     fireEvent.click(screen.getByRole("button", { name: /different billing country/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Upgrade to Max" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upgrade to Momentum" }));
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /sign in to pay/i }));
     const destination = String(auth.openSignIn.mock.calls[0]?.[0]?.returnTo);
     const query = new URL(destination, window.location.origin).searchParams;
     expect(query.get("role")).toBe("referrer");
     expect(query.get("source")).toBe("credits");
     expect(query.get("currency")).toBe("INR");
-    expect(query.get("plan")).toBe("max");
+    expect(query.get("plan")).toBe("momentum");
     expect(fetchMock).not.toHaveBeenCalled();
     view.unmount();
     auth.isSignedIn = true;
     window.history.pushState({}, "", destination);
     render(<Plans />);
-    expect(screen.getByRole("heading", { name: "Max", level: 2 }).closest("article")?.className).toContain("featured");
-    expect(screen.getByRole("heading", { name: "Pro", level: 2 }).closest("article")?.className).not.toContain("featured");
+    expect(screen.getByRole("heading", { name: "Momentum", level: 2 }).closest("article")?.className).toContain("featured");
+    expect(screen.getByRole("heading", { name: "Start", level: 2 }).closest("article")?.className).not.toContain("featured");
     expect(screen.getByText(/Razorpay/)).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
