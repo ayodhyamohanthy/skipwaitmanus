@@ -30,6 +30,9 @@ describe("administrator approval record detail", () => {
     expect(screen.getByText("Blake")).toBeTruthy();
     expect(screen.getByText("Product Designer")).toBeTruthy();
     expect(screen.getByText("1 credit reserved")).toBeTruthy();
+    // D-012 (amended): a decline uses the credit; only withdraw and expiry return it.
+    expect(screen.getByText("Reserved when the request was created. Returned on withdraw or expiry; used on accept or decline.")).toBeTruthy();
+    expect(screen.queryByText(/never consumed on decline/)).toBeNull();
     expect(screen.getByText(/Request created/)).toBeTruthy();
     expect(screen.getByText("1 credit reserved (monthly)")).toBeTruthy();
     expect(screen.getByText(/Claimed by verified referrer/)).toBeTruthy();

@@ -190,7 +190,9 @@ describe("ReferralConversation thread", () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "declined", referrerMessage: "I do not think this role is the right fit for my referral." }] }) : ok({ messages: [] })));
     render(<ReferralConversation />);
     expect(await screen.findByText("This referrer passed.")).toBeTruthy();
-    expect(screen.getByText("It's not a judgment of you. Your slot is open again — try another verified referrer at acme.com.")).toBeTruthy();
+    // D-012 (amended): a decline keeps the credit spent, so the note never implies it came back.
+    expect(screen.getByText("It's not a judgment of you. The credit for this ask is used; you can ask another verified employee at acme.com.")).toBeTruthy();
+    expect(screen.queryByText(/slot is open again/)).toBeNull();
     expect(screen.queryByText(/right fit for my referral/)).toBeNull();
   });
 
