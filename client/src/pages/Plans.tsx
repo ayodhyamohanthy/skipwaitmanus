@@ -204,7 +204,7 @@ export default function Plans() {
       cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
       gift={{ enabled: giftCheckoutEnabled(), opening: giftStatus === "opening", isLoaded, onGift: plan => { void startGiftCheckout(plan); } }}
     />
-    <p className="plan-grid-note">Every account starts on the free tier — asking for referrals and tracking every request cost nothing, ever. Upgrading adds more open requests at once and monthly credits.</p>
+    <p className="plan-grid-note">Every account starts on the free tier — you get monthly referral credits, and tracking every request is free. Each request uses 1 credit, which comes back if you withdraw before a verified employee picks it up or it expires. Upgrading adds more open requests at once and monthly credits.</p>
     <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
     {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
     <SentGifts sent={sentGifts} error={giftError} />
