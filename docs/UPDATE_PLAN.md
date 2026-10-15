@@ -19,7 +19,7 @@ Live wins each of these until the owner explicitly approves a migration, because
 | # | Kit claim | Live reality | Decision |
 |---|---|---|---|
 | D1 | `FOR_AI_BUILDERS.md` §3: "Backend to build (none exists)" | Backend exists and is mature: `server/_core/workosAuth.ts`, `server/_core/otpLogin.ts`, `server/workEmailOtp.ts`, `server/privateReferralRoutes.ts`, `server/employerRoutes.ts`, `server/dmRoutes.ts`, `server/followRoutes.ts`, `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebeeRoutes.ts`, `server/jobLinkPreviewRoutes.ts`, `server/healthRoutes.ts`; 50+ tables in `drizzle/schema.ts` | ADAPT kit screens to live backend. Never rebuild auth, OTP, billing, or messaging. |
-| D2 | Plans are Start / Momentum / Land / Concierge, $1/credit, 3 free credits (`PRICING.md`, `app/src/routes/plans.tsx`) | Live sells Pro / Max (₹599/$7, ₹1299/$15; 10/30 monthly credits) via `client/src/pages/Plans.tsx` + `/premium` ($1/credit) + `/pricing`; Chargebee test site, Razorpay + PayPal wired, gift checkout gated behind `VITE_GIFT_CHECKOUT_ENABLED` | OWNER DECISION. Do not rename plans or change credit math without a subscriber-migration + backfill plan. Kit `/plans` + `/billing` UX can be ported only onto approved plan definitions. |
+| D2 | Plans are Start / Momentum / Land / Concierge, $1/credit, 3 free credits (`PRICING.md`, `app/src/routes/plans.tsx`) | Live sells Pro / Max (₹599/$7, ₹1299/$15; 10/30 monthly credits) via `client/src/pages/Plans.tsx` + `/premium` ($1/credit) + `/pricing`; Chargebee test site, Razorpay + PayPal wired, gift checkout gated behind `VITE_GIFT_CHECKOUT_ENABLED` | **ANSWERED Oct 15 → D-025, narrowed by D-027.** The kit pass catalog (Keep warm, Start, Momentum, Land Focus/Sprint/Concierge, 30/90-day) is the approved plan set and Pro/Max stop being sold; existing Pro/Max subscribers move onto the passes **after** an approved written migration + notice plan (dry run → in-app + email notice → batch change at the effective date, keep-until-period-end, pro-rata credit or refund). Kit `/plans` + `/billing` port onto the pass catalog; the subscriber change itself does not run without that plan. |
 | D3 | Auth is email+password + Google with kit-owned `/forgot-password` + `/reset-password` | Live sign-in is WorkOS AuthKit (`client/src/_core/auth.tsx`, `server/_core/workosAuth.ts`); WorkOS owns credentials. Dev-auth plane active locally without WorkOS keys. | OWNER/ARCH DECISION. Kit forgot/reset screens apply only if a password credential exists; otherwise they become WorkOS-delegated states, not new endpoints. |
 | D4 | Feature flags via Statsig; lifecycle email via Customer.io; analytics via PostHog/Mixpanel | `.env.example` has NO Statsig, Customer.io, PostHog, Mixpanel, Datadog/New Relic keys. Present: `VITE_ANALYTICS_ENDPOINT` + `VITE_ANALYTICS_WEBSITE_ID`, `VITE_CLARITY_PROJECT_ID`, Sentry DSNs, `AI_PROVIDER_*` (model-agnostic router exists: `server/_core/modelRouter.ts`) | Verify in Batch 1. No experiment, email-template, or analytics code ships until the provider key + consent wiring (`ConsentBanner`, `/settings` Cookies & analytics) is confirmed. |
 | D5 | Launch companies with people open to referrals: SkipWait, Wipro, Go Neutrinos, TCS, Merkle | Company coverage infra exists (`companyCoverage` tests, `employerRouting.ts`) but live discovery is job-first (`/jobs`, `/wall`), not company-first | Verify seeded company + referrer records before building `/explore`; never fabricate people or counts (kit rule + live copy-truth guards agree). |
@@ -47,7 +47,7 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 | `/inbox` | `client/src/pages/MyCompanyInbox.tsx` at `/inbox` AND `client/src/pages/Messages.tsx` at `/messages` | update | Kit unified list (All/Asking/Referring, search, unread, status pills, hidden-identity marker) opening `/thread`. Open consolidation question: 2 live inboxes → 1 kit inbox needs a redirect + data-compat check. |
 | `/profile` | None | new | Identity, privacy controls, personal referral link. |
 | `/work` | None | new | Profile-only showcase (add/import, pin, per-item privacy). R2 storage exists for files. |
-| `/plans` | `client/src/pages/Plans.tsx` at `/plans` (Pro/Max) + `/premium` + `/pricing` | update — BLOCKED on D2 | Kit layout/copy is portable; plan definitions, prices, and credit math are NOT until owner approves migration. |
+| `/plans` | `client/src/pages/Plans.tsx` at `/plans` (Pro/Max) + `/premium` + `/pricing` | update — D2 answered by D-025, guards moot by D-027 (pass catalog) | Kit layout/copy is portable; plan definitions, prices and credit math now come from the approved pass catalog (`shared/planCatalog.ts`). The Pro/Max → pass change for existing subscribers runs only after the approved migration + notice plan. |
 
 ### Referrer (app shell)
 
@@ -105,7 +105,7 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 | `/forgot-password` | None | new — BLOCKED on D3 | Only if a password credential exists; WorkOS likely owns this. |
 | `/reset-password` | None | new — BLOCKED on D3 | Same as above + sign-out-other-devices behavior must match session infra. |
 | `/suggest-company` | None | new | Duplicate detection, 3/day limit, review promise → verify/invite next step. |
-| `/billing` | None (plan mgmt lives inside `Plans.tsx`; `/pricing` is marketing) | new — BLOCKED on D2 | Current plan, upgrade/downgrade, cancel (reason → pause/got-job → confirm), payment-failed, cancelling, card, receipts. Plan definitions must match live billing first. |
+| `/billing` | None (plan mgmt lives inside `Plans.tsx`; `/pricing` is marketing) | new — D2 answered by D-025, guards moot by D-027 | Current plan, upgrade/downgrade, cancel (reason → pause/got-job → confirm), payment-failed, cancelling, card, receipts. Plan definitions come from the approved pass catalog. |
 
 ### Assistant access (all new — no live surface)
 
@@ -127,7 +127,7 @@ No `remove` verdicts: per kit rule, existing URLs keep working. Live-only routes
 
 - Referral entry: `/fast/:linkCode`, `/refer/:companySlug/:vanityAlias`, `/share-card/:token`, `/email-review/:linkToken`, `/share`, `/start`
 - Messaging duality: `/messages` (+ `/inbox`) — consolidation is a batch decision, not a deletion
-- Monetization: `/premium`, `/pricing` — untouchable until D2 resolved
+- Monetization: `/premium`, `/pricing` — D2 answered by D-025 and narrowed by D-027: with no subscribers, Pro/Max come off sale now (step 2, after the read-only dry run counts 0 active Pro/Max wallets) and `/premium` + `/pricing` port onto the pass catalog in step 3 rather than keep selling Pro/Max.
 - Job marketplace: `/wall`, `/jobs`, `/post-opportunity` — kit has no equivalent; out of scope, keep fully working
 - Employer subroutes: `/employer/talent`, `/employer/billing`, `/employer/opportunities`
 - Admin consoles: all 10 `/admin/*` routes
