@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { SUBSCRIPTION_PLANS, subscriptionPlanFromItemPrice, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { resolvePlanItemPrice, type BillablePlanId, type BillingPeriod } from "../shared/billingCatalog";
 import { buyerUserIdFromGifter, normalizeGiftEmail } from "../shared/giftSubscriptions";
 
 export type TokenRole = "job_seeker" | "referrer";
@@ -40,7 +41,12 @@ export type ParsedSubscriptionEvent = {
   hostedPageId?: string;
   passThruContent?: string;
   subscriptionId: string;
-  plan?: PaidSubscriptionPlan;
+  /** The plan the subscription's item price sells: a kit pass/Keep warm plan or grandfathered Pro/Max. */
+  plan?: BillablePlanId;
+  /** The term that item price sells ("monthly" legacy, "30d"/"90d" pass, "yearly" Keep warm). */
+  interval?: BillingPeriod;
+  /** The item price itself, so a webhook can be tied to the term the checkout intent named. */
+  itemPriceId?: string;
   status: string;
   currency?: "INR" | "USD";
   currentTermStart?: Date;
@@ -136,7 +142,11 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
   const subscriptionId = typeof subscription?.id === "string" ? subscription.id : undefined;
   if (!eventId || !subscriptionId) return undefined;
   const itemPriceId = subscription?.subscription_items?.find?.((item: any) => typeof item?.item_price_id === "string")?.item_price_id;
-  const parsedPlan = subscriptionPlanFromItemPrice(itemPriceId);
+  // One price book decides which plan and term an item price sells: the kit
+  // catalog (30/90-day passes, Keep warm yearly) and grandfathered Pro/Max
+  // monthly all resolve here, so a live kit pass can never arrive unmatched.
+  const resolvedPrice = resolvePlanItemPrice(itemPriceId);
+  const parsedPlan = resolvedPrice ?? subscriptionPlanFromItemPrice(itemPriceId);
   const currency = typeof subscription?.currency_code === "string" ? subscription.currency_code.toUpperCase() : undefined;
   const hostedPage = payload?.content?.hosted_page;
   const resourceVersion = Number(subscription?.resource_version);
@@ -147,6 +157,8 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
     passThruContent: typeof hostedPage?.pass_thru_content === "string" ? hostedPage.pass_thru_content : undefined,
     subscriptionId,
     plan: parsedPlan?.plan,
+    interval: resolvedPrice?.interval,
+    itemPriceId: typeof itemPriceId === "string" ? itemPriceId : undefined,
     status: typeof subscription?.status === "string" ? subscription.status : "cancelled",
     currency: currency === "INR" || currency === "USD" ? currency : parsedPlan?.currency,
     currentTermStart: dateFromChargebeeSeconds(subscription?.current_term_start),

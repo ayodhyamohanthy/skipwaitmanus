@@ -4,6 +4,9 @@ import type { TokenRole } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 import { giftCheckoutRequestSchema, giftClaimRequestSchema } from "../shared/giftSubscriptions";
+import { kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
+import type { BillablePlanId, BillingPeriod } from "../shared/billingCatalog";
+import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -14,7 +17,9 @@ type Deps = {
   createPaymentIntent: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
   fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) => Promise<unknown>;
   createSubscriptionCheckout?: typeof createChargebeeSubscriptionCheckout;
-  createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: PaidSubscriptionPlan; itemPriceId: string; amount: number; currency: "INR" | "USD" }) => Promise<unknown>;
+  createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
+  /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
+  kitCheckout?: KitCheckoutDeps;
   applySubscriptionEvent?: (input: NonNullable<ReturnType<typeof parseSubscriptionEvent>>) => Promise<unknown>;
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
@@ -59,6 +64,23 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before purchasing tokens" });
       const itemPriceId = req.body?.itemPriceId;
+      // A kit credit pack names a pack, not a legacy token item price. Refuse
+      // before anything else so a pack body never falls through to "unsupported".
+      const kitPack = packCheckoutRequestSchema.safeParse(req.body);
+      if (kitPack.success) {
+        const origin = `${req.protocol}://${req.get("host")}`;
+        const started = await startKitPackCheckout({
+          req,
+          request: kitPack.data,
+          customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: kitPack.data.billingCountry },
+          urls: { redirectUrl: `${origin}/plans?role=${kitPack.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${kitPack.data.role}&payment=cancelled` },
+          deps: deps.kitCheckout,
+        });
+        if (!started.ok) return res.status(started.status).json(refusalBody(started));
+        await deps.createPaymentIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: kitPack.data.role, tokenCount: started.price.credits, amount: started.price.amount, currency: started.price.currency });
+        record({ actorUserId: identity.account.id, action: "billing.credit_checkout_started", outcome: "success", resourceType: "payment_intent", resourceId: started.checkout.hostedPageId, metadata: { role: kitPack.data.role, packId: kitPack.data.packId, tokenCount: started.price.credits, amount: started.price.amount, currency: started.price.currency, billingCountry: kitPack.data.billingCountry } });
+        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
+      }
       if (!isTokenPackId(itemPriceId)) return res.status(400).json({ error: "Choose a supported token currency" });
       const billingCountry = req.body?.billingCountry;
       if (billingCountry !== "IN" && billingCountry !== "INTL") return res.status(400).json({ error: "Choose India or international billing" });
@@ -96,6 +118,24 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before choosing a plan" });
+      // A kit pass/Keep warm body names a plan term. The pre-kit Pro/Max body
+      // ({plan, currency, billingCountry}) keeps the legacy path below untouched.
+      const kitPlan = kitPlanCheckoutRequestSchema.safeParse(req.body);
+      if (kitPlan.success) {
+        if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
+        const origin = `${req.protocol}://${req.get("host")}`;
+        const started = await startKitPlanCheckout({
+          req,
+          request: kitPlan.data,
+          customer: { email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined, firstName: identity.account.name?.split(" ")[0], lastName: identity.account.name?.split(" ").slice(1).join(" "), billingCountry: kitPlan.data.billingCountry },
+          urls: { redirectUrl: `${origin}/plans?role=${kitPlan.data.role}&payment=pending`, cancelUrl: `${origin}/plans?role=${kitPlan.data.role}&payment=cancelled` },
+          deps: deps.kitCheckout,
+        });
+        if (!started.ok) return res.status(started.status).json(refusalBody(started));
+        await deps.createSubscriptionIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId: identity.account.id, role: kitPlan.data.role, plan: started.price.plan, itemPriceId: started.price.itemPriceId, amount: started.price.amount, currency: started.price.currency, billingPeriod: started.price.interval, kind: "new" });
+        record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: started.checkout.hostedPageId, metadata: { role: kitPlan.data.role, plan: started.price.plan, interval: started.price.interval, amount: started.price.amount, currency: started.price.currency, billingCountry: kitPlan.data.billingCountry } });
+        return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
+      }
       const plan = req.body?.plan;
       const currency = req.body?.currency;
       const billingCountry = req.body?.billingCountry;

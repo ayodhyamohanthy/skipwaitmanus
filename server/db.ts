@@ -32,14 +32,14 @@ import {
   type DeveloperApp,
 } from "../shared/assistant";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
-import { type WalletPlanId } from "../shared/billingCatalog";
+import { isBillablePlanId, type BillablePlanId, type BillingPeriod, type WalletPlanId } from "../shared/billingCatalog";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
-import { resolvePlanEntitlements, type PlanEntitlements } from "../shared/planEntitlements";
+import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, grantWelcomeCreditsTx, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
@@ -3091,14 +3091,16 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
   });
 }
 
-export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: PaidSubscriptionPlan; itemPriceId: string; amount: number; currency: "INR" | "USD" }) {
+export async function createChargebeeSubscriptionIntent(input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: WalletRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const result = await db.insert(subscriptionCheckoutIntents).values({ ...input, status: "pending" });
+  // A kit pass names its term (30d/90d, yearly for Keep warm) so the webhook can
+  // refuse a delivery for a different term; the pre-kit body keeps "monthly".
+  const result = await db.insert(subscriptionCheckoutIntents).values({ ...input, billingPeriod: input.billingPeriod ?? "monthly", kind: input.kind ?? "new", status: "pending" });
   return { id: Number(result[0].insertId), hostedPageId: input.hostedPageId };
 }
 
-export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: PaidSubscriptionPlan; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
+export async function applyChargebeeSubscriptionEvent(input: { eventId: string; eventType: string; hostedPageId?: string; passThruContent?: string; subscriptionId: string; plan?: BillablePlanId; itemPriceId?: string; interval?: BillingPeriod; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
@@ -3118,6 +3120,10 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (!sameSubscription && intent && intent.status !== "pending") return { status: "ignored" as const, reason: "checkout_already_reconciled" };
     if (wallet && !sameSubscription && (wallet.plan !== "free" || wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing")) return { status: "ignored" as const, reason: "subscription_conflict" };
     if (intent && input.currency && input.currency !== intent.currency) return { status: "ignored" as const, reason: "currency_mismatch" };
+    // A pass's term is part of what was bought: a 90-day delivery must never
+    // activate the 30-day intent that started it (each term has its own item price).
+    if (intent && input.itemPriceId && input.itemPriceId !== intent.itemPriceId) return { status: "ignored" as const, reason: "item_price_mismatch" };
+    if (intent && input.interval && input.interval !== intent.billingPeriod) return { status: "ignored" as const, reason: "billing_period_mismatch" };
     const expectedPlan = intent?.plan ?? input.plan ?? (wallet?.plan !== "free" ? wallet?.plan : undefined);
     if (!wallet && !intent) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
@@ -3127,7 +3133,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       return { status: "ignored" as const, reason: "plan_mismatch" };
     }
-    if (!expectedPlan || !isPaidSubscriptionPlan(expectedPlan)) {
+    if (!expectedPlan || !isBillablePlanId(expectedPlan)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       return { status: "ignored" as const, reason: "unsupported_plan" };
     }
@@ -3137,7 +3143,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       return { status: "stale" as const };
     }
 
-    const allowance = SUBSCRIPTION_PLANS[expectedPlan].monthlyAllowance;
+    // Plan credits a cycle: the plan's entitlement (legacy Pro/Max keep at least
+    // what they pay for, kit passes grant their own creditsPerMonth).
+    const allowance = planEntitlementsFor(expectedPlan).creditsPerMonth;
     const retainsAccess = input.status === "active" || input.status === "non_renewing";
     const startsNewTerm = !currentSubscription?.subscriptionCurrentTermStart || (input.currentTermStart && currentSubscription.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
     const userId = wallet?.userId ?? intent!.userId;

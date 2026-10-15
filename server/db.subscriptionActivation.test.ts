@@ -3,6 +3,7 @@ import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
 import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
+import { planEntitlementsFor } from "../shared/planEntitlements";
 import { applyChargebeeSubscriptionEvent } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -199,5 +200,55 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
     expect(await applyChargebeeSubscriptionEvent(input)).toMatchObject({ status: "applied", userId: 7, role: "job_seeker" });
     expect(walletInserts).toHaveBeenCalledOnce();
     expect(wallets[0]).toMatchObject({ balance: 0, plan: "pro", subscriptionId: input.subscriptionId });
+  });
+});
+
+describe("applyChargebeeSubscriptionEvent on a kit pass (0091)", () => {
+  const passStart = new Date("2026-10-01T00:00:00.000Z");
+  const passEnd = new Date("2026-12-30T00:00:00.000Z");
+  const momentum90 = {
+    eventId: "event_kit", eventType: "subscription_created", hostedPageId: "page_new", passThruContent: "intent_new",
+    subscriptionId: "subscription_kit", plan: "momentum" as const, itemPriceId: "skipwait_momentum_90d-INR", interval: "90d" as const,
+    currency: "INR" as const, status: "active", currentTermStart: passStart, currentTermEnd: passEnd, resourceVersion: 5,
+  };
+  const momentumIntent = () => Object.assign(intents[0], { plan: "momentum", itemPriceId: "skipwait_momentum_90d-INR", amount: 249_900, billingPeriod: "90d" });
+
+  it("activates the pass with its own plan and credits, and keeps purchased credits", async () => {
+    momentumIntent();
+    expect(await applyChargebeeSubscriptionEvent(momentum90)).toMatchObject({ status: "applied", userId: 7, role: "job_seeker" });
+    expect(wallets[0]).toMatchObject({ plan: "momentum", balance: 12, monthlyAllowance: 30, monthlyCreditsRemaining: 30, subscriptionId: "subscription_kit", subscriptionStatus: "active", subscriptionCurrentTermStart: passStart, subscriptionCurrentTermEnd: passEnd });
+    expect(intents[0].status).toBe("activated");
+    // The 90-day pass is one term; its later cycles open from the scheduled job.
+    expect(events).toHaveLength(1);
+  });
+
+  it("refuses a delivery whose item price is a different term than the intent bought", async () => {
+    momentumIntent();
+    Object.assign(intents[0], { itemPriceId: "skipwait_momentum_30d-INR", billingPeriod: "30d", amount: 99_900 });
+    const before = structuredClone({ wallets, intents });
+    expect(await applyChargebeeSubscriptionEvent(momentum90)).toMatchObject({ status: "ignored", reason: "item_price_mismatch" });
+    expectUnchanged(before);
+  });
+
+  it("refuses a kit delivery for a plan the intent did not buy", async () => {
+    momentumIntent();
+    const before = structuredClone({ wallets, intents });
+    expect(await applyChargebeeSubscriptionEvent({ ...momentum90, plan: "land_focus" })).toMatchObject({ status: "ignored", reason: "plan_mismatch" });
+    expectUnchanged(before);
+  });
+
+  it("ends the pass cleanly: a cancelled pass returns the wallet to Free and keeps purchased credits", async () => {
+    momentumIntent();
+    await applyChargebeeSubscriptionEvent(momentum90);
+    expect(await applyChargebeeSubscriptionEvent({ ...momentum90, eventId: "event_kit_end", eventType: "subscription_cancelled", status: "cancelled", hostedPageId: undefined, passThruContent: undefined, itemPriceId: undefined, interval: undefined, resourceVersion: 6 })).toMatchObject({ status: "applied" });
+    expect(wallets[0]).toMatchObject({ plan: "free", balance: 12, monthlyAllowance: planEntitlementsFor("free").creditsPerMonth });
+    expect(wallets[0].subscriptionCurrentTermEnd).toEqual(passEnd);
+  });
+
+  it("refuses a subscription for a plan outside the price book", async () => {
+    momentumIntent();
+    const before = structuredClone({ wallets, intents });
+    expect(await applyChargebeeSubscriptionEvent({ ...momentum90, plan: undefined, itemPriceId: "skipwait_unknown-INR", interval: undefined })).toMatchObject({ status: "ignored" });
+    expectUnchanged(before);
   });
 });
