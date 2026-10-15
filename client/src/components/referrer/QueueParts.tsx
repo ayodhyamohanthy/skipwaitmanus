@@ -35,7 +35,7 @@ export function QueuePanel({ icon: Icon, title, text, label, children }: { icon:
   );
 }
 
-export type QueueCardRequest = { id: number; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; targetRoleUrl: string | null; compensation?: string | null; attachmentCount: number };
+export type QueueCardRequest = { jobTitle?: string | null; id: number; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; targetRoleUrl: string | null; compensation?: string | null; attachmentCount: number };
 
 /** One routed request in the kit queue card ("PRODUCT · WIPRO"). The role link and the seeker's note stay inside the opened request. */
 export function QueueRequestCard({ request, badge, expiry, expiryUrgent, footer }: {
@@ -49,7 +49,7 @@ export function QueueRequestCard({ request, badge, expiry, expiryUrgent, footer 
     <article aria-label={`Private request ${displayRef(request.id)}`} className="queue-card min-w-0">
       <header>
         <span className="company-mark" aria-hidden="true">{companyInitial(request.companyDomain)}</span>
-        <div className="min-w-0"><span className="eyebrow block truncate">{functionEyebrow(request.jobFunction, companyIdentityOf(request).name)}</span><h2>Private request</h2></div>
+        <div className="min-w-0"><span className="eyebrow block truncate">{functionEyebrow(request.jobFunction, companyIdentityOf(request).name)}</span><h2>{request.jobTitle?.trim() || "Private request"}</h2></div>
         <StatusPill status={badge} />
       </header>
       <div className="identity-locked"><EyeOff /><span><strong>Your identity stays hidden</strong><small>Shared only if you accept the request</small></span></div>
