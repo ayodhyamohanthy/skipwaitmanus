@@ -1197,7 +1197,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ ok: true, status: (result as { status?: string })?.status ?? (decision === "approved" ? "approved" : "declined"), decision });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not record this approval decision";
-      res.status(/already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
+      const claimedByEmployee = error instanceof Error && error.name === "AdminCannotAcceptClaimedReferralError";
+      res.status(claimedByEmployee || /already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
     }
   });
   app.get("/api/admin/users", async (req, res) => {

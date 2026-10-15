@@ -64,8 +64,8 @@ export function planCards(currency: SubscriptionCurrency): PlanCardCopy[] {
     {
       id: "pro",
       name: SUBSCRIPTION_PLANS.pro.label,
-      tagline: "For a focused search: more asks every month and direct messages.",
-      features: [`${SUBSCRIPTION_PLANS.pro.monthlyAllowance} referral requests every month`, "Message referrers directly", "Monthly credits reset with your plan cycle", "Cancel anytime; access stays through the paid cycle", "Same referrer queue as every plan"],
+      tagline: "For a focused search: more asks every month.",
+      features: [`${SUBSCRIPTION_PLANS.pro.monthlyAllowance} referral requests every month`, "Monthly credits reset with your plan cycle", "Cancel anytime; access stays through the paid cycle", "Same referrer queue as every plan"],
       cta: `Upgrade to ${SUBSCRIPTION_PLANS.pro.label}`,
     },
     {
@@ -87,7 +87,6 @@ export function compareRows(currency: SubscriptionCurrency): Array<readonly [str
     ["Referral requests each month", String(FREE_MONTHLY_ALLOWANCE), String(SUBSCRIPTION_PLANS.pro.monthlyAllowance), String(SUBSCRIPTION_PLANS.max.monthlyAllowance)],
     ["Place in referrer queue", "Equal", "Equal", "Equal"],
     ["Extra credits", credit, credit, credit],
-    ["Message referrers directly", false, true, true],
     ["Connect an AI assistant", false, false, true],
     ["Unused monthly requests", "Reset monthly", "Reset each cycle", "Reset each cycle"],
     ["Bought credits expire", "Never", "Never", "Never"],
