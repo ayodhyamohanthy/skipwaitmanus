@@ -70,6 +70,7 @@
     "drizzle-orm": "^0.45.2",
     "embla-carousel-react": "^8.6.0",
     "express": "^4.21.2",
+    "fflate": "^0.8.3",
     "framer-motion": "^12.23.22",
     "input-otp": "^1.4.2",
     "ipaddr.js": "^2.2.0",
