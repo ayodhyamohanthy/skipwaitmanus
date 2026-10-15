@@ -21,7 +21,7 @@
 // confirmedUndeliveredUserIds after checking each one in the provider's log.
 import type { TransactionalEmailInput, TransactionalEmailResult } from "./emailDelivery";
 import type { DmGateProfileRow, DmGateUserRow } from "./dmReferrerGate";
-import { noticeCopy, type NoticeCopy } from "./premiumDmChangeNoticeCopy";
+import { noticeCopy, type NoticeCopy, noticeMessageFor } from "./premiumDmChangeNoticeCopy";
 import { isActivePaidWallet, planNoticeAudience, summarizeAudience, type NoticeAudienceSummary, type NoticeGiftRow, type NoticeRecipient, type NoticeWalletRow } from "./premiumDmChangeNoticeAudience";
 
 export { NOTICE_EVENT_PREFIX, isActivePaidWallet, planNoticeAudience, summarizeAudience } from "./premiumDmChangeNoticeAudience";
@@ -86,8 +86,8 @@ export class NoticeCopyNotApprovedError extends Error {
   readonly verifiedReferrerRecipients: number;
   constructor(blocked: { creditsOnly: number; verifiedReferrers: number }) {
     const reasons = [
-      ...(blocked.creditsOnly > 0 ? [`${blocked.creditsOnly} subscriber(s) would get the credits_only notice (gifted or unbilled plan), whose text the owner has not approved yet (--credits-only-copy-approved)`] : []),
-      ...(blocked.verifiedReferrers > 0 ? [`${blocked.verifiedReferrers} subscriber(s) have a verified work email, so the change also closes their messages with members who are not referrers, which the approved text does not say; the owner has not decided their text yet (--verified-referrer-copy-approved)`] : []),
+      ...(blocked.creditsOnly > 0 ? [`${blocked.creditsOnly} subscriber(s) would get the credits_only notice (gifted or unbilled plan), (text approved Oct 15, D-020); confirm with --credits-only-copy-approved`] : []),
+      ...(blocked.verifiedReferrers > 0 ? [`${blocked.verifiedReferrers} subscriber(s) have a verified work email, so the change also closes their messages with members who are not referrers, who get the verified-referrer variant of the notice (approved Oct 15, D-020); confirm with --verified-referrer-copy-approved`] : []),
     ];
     super(`${reasons.join("; ")}. Nothing was written or sent. Get the owner's answer, record it in docs/DECISIONS.md under D-020, then re-run with the matching flag.`);
     this.name = "NoticeCopyNotApprovedError";
@@ -140,7 +140,7 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
   const results: NoticeResults = { notificationsCreated: 0, emailsSent: 0, emailsFailed: 0, emailsSkippedNoAddress: 0, alreadyNotifiedAndEmailed: 0, failedUserIds: [], unconfirmedUserIds: [], confirmedButNotFailedUserIds: [] };
   const deliver = async (recipient: NoticeRecipient) => {
     if (recipient.email === null) { results.emailsSkippedNoAddress += 1; return; }
-    const { email } = copy.byOffer[recipient.offer];
+    const { email } = noticeMessageFor(copy, recipient);
     const sent = await mailer({ to: recipient.email, subject: email.subject, text: email.text }).catch((): TransactionalEmailResult => ({ sent: false, reason: "delivery_failed" }));
     await store.recordEmailOutcome({ eventKey: recipient.eventKey, outcome: sent.sent ? "success" : "failure", reason: sent.reason });
     if (sent.sent) { results.emailsSent += 1; return; }
@@ -162,7 +162,7 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
 
   for (const recipient of recipients) {
     const earlier = outcomes.get(recipient.eventKey);
-    const { notification } = copy.byOffer[recipient.offer];
+    const { notification } = noticeMessageFor(copy, recipient);
     const claim = notified.has(recipient.eventKey) ? "exists" : await store.insertNotificationOnce({ userId: recipient.userId, eventKey: recipient.eventKey, title: notification.title, body: notification.body });
     if (claim === "created") { results.notificationsCreated += 1; await deliver(recipient); continue; }
     if (earlier === "success") results.alreadyNotifiedAndEmailed += 1;

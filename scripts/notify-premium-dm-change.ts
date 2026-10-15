@@ -111,16 +111,18 @@ async function main() {
   console.log(`Mode: ${report.mode}`);
   console.log(`Audience (aggregate): ${JSON.stringify(report.audience, null, 2)}`);
   for (const offer of NOTICE_OFFERS) {
-    const { notification, email } = report.copy.byOffer[offer];
-    console.log(`\n===== Offer: ${offer} (${offer === "refund_or_credits" ? report.audience.refundOrCredits : report.audience.creditsOnly} subscribers) =====`);
-    console.log(`\n--- In-app notification ---\nTitle: ${notification.title}\n${notification.body}`);
-    console.log(`\n--- Email ---\nSubject: ${email.subject}\n\n${email.text}\n`);
+    for (const [label, variants] of [["", report.copy.byOffer], [" — verified-referrer variant", report.copy.verifiedReferrerByOffer]] as const) {
+      const { notification, email } = variants[offer];
+      console.log(`\n===== Offer: ${offer}${label} (${offer === "refund_or_credits" ? report.audience.refundOrCredits : report.audience.creditsOnly} subscribers on this offer) =====`);
+      console.log(`\n--- In-app notification ---\nTitle: ${notification.title}\n${notification.body}`);
+      console.log(`\n--- Email ---\nSubject: ${email.subject}\n\n${email.text}\n`);
+    }
   }
   if (report.results) console.log(`Results: ${JSON.stringify(report.results, null, 2)}`);
   if (report.resendAwaitingProviderCheck) console.log(`Nothing was sent. A recorded failure may still have been delivered (a timeout after the provider accepted it). Check each failed user id (${report.results?.failedUserIds.join(", ") || "none"}) in the mail provider log, then re-run --resend-failed --confirmed-undelivered <ids that were not delivered>.`);
   else console.log("Dry run: nothing was written and no email was sent. Re-run with --apply after the owner approves the copy.");
-  if (report.audience.creditsOnly > 0 && !args.creditsOnlyCopyApproved) console.log("The credits_only text is not approved yet (D-020): --apply and --resend-failed refuse to send it without --credits-only-copy-approved.");
-  if (report.audience.verifiedReferrers > 0 && !args.verifiedReferrerCopyApproved) console.log(`${report.audience.verifiedReferrers} subscriber(s) have a verified work email: the change also closes their messages with members who are not referrers, which the approved text does not say. Open question to the owner under D-020 (a third text, or accept the current one). --apply and --resend-failed refuse to write to them without --verified-referrer-copy-approved.`);
+  if (report.audience.creditsOnly > 0 && !args.creditsOnlyCopyApproved) console.log("The credits_only text was approved on Oct 15 (D-020): confirm it at send time with --credits-only-copy-approved.");
+  if (report.audience.verifiedReferrers > 0 && !args.verifiedReferrerCopyApproved) console.log(`${report.audience.verifiedReferrers} subscriber(s) have a verified work email and get the verified-referrer variant (approved Oct 15, D-020): confirm it at send time with --verified-referrer-copy-approved.`);
   process.exit(0);
 }
 

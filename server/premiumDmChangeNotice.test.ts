@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseNoticeArgs } from "../scripts/notify-premium-dm-change";
+import { VERIFIED_REFERRER_SENTENCE } from "./premiumDmChangeNoticeCopy";
 import { NoticeCopyNotApprovedError, NoticeEmailNotConfiguredError, planNoticeAudience, runPremiumDmChangeNotice, summarizeAudience, type EmailOutcome, type NoticeGiftRow, type NoticeMailer, type NoticeStore, type NoticeWalletRow } from "./premiumDmChangeNotice";
 import type { DmGateProfileRow, DmGateUserRow } from "./dmReferrerGate";
 
@@ -259,6 +260,12 @@ describe("D-012 premium DM change notice: subscribers who are verified referrers
     const mailer = okMailer();
     const report = await runPremiumDmChangeNotice(memory.store, mailer, { mode: "apply", effectiveDate: "2026-10-20", now: NOW, creditsOnlyCopyApproved: true, verifiedReferrerCopyApproved: true });
     expect(report.results).toMatchObject({ notificationsCreated: 4, emailsSent: 3 });
+    // D-020 follow-up: verified referrers get the variant that says all their direct messages now need an accepted request; nobody else does.
+    const texts = mailer.mock.calls.map(([message]) => message.text);
+    const withReferrerNote = texts.filter(text => text.includes(VERIFIED_REFERRER_SENTENCE));
+    expect(withReferrerNote.length).toBeGreaterThan(0);
+    expect(withReferrerNote.length).toBeLessThanOrEqual(2);
+    expect(texts.length - withReferrerNote.length).toBeGreaterThan(0);
   });
 
   it("refuses --resend-failed for a failed email to one of them", async () => {

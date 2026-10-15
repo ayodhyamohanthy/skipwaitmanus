@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatEffectiveDate, noticeCopy } from "./premiumDmChangeNoticeCopy";
+import { formatEffectiveDate, noticeCopy, VERIFIED_REFERRER_SENTENCE, noticeMessageFor } from "./premiumDmChangeNoticeCopy";
 
 // The owner-approved text (D-020), rendered for 20 October 2026. Do not edit without a new approval.
 const APPROVED = {
@@ -78,6 +78,23 @@ describe("D-012 premium DM change notice: copy", () => {
     expect(copy.email.text).toMatch(/If you do nothing, your plan continues as it is/);
     expect(copy.notification.title.length).toBeLessThanOrEqual(180);
     for (const variant of Object.values(noticeCopy("2026-10-20").byOffer)) expect(`${variant.email.text} ${variant.notification.body}`).not.toMatch(/reply to this email|hurry|last chance|act now/i);
+  });
+
+  it("gives subscribers who are verified referrers the same text plus one sentence, and only them (D-020 follow-up)", () => {
+    const copy = noticeCopy("2026-10-20");
+    for (const offer of ["refund_or_credits", "credits_only"] as const) {
+      const base = copy.byOffer[offer];
+      const referrer = copy.verifiedReferrerByOffer[offer];
+      expect(base.email.text).not.toContain(VERIFIED_REFERRER_SENTENCE);
+      expect(base.notification.body).not.toContain(VERIFIED_REFERRER_SENTENCE);
+      expect(referrer.email.text).toContain(VERIFIED_REFERRER_SENTENCE);
+      expect(referrer.notification.body).toContain(VERIFIED_REFERRER_SENTENCE);
+      expect(referrer.email.text.replace(` ${VERIFIED_REFERRER_SENTENCE}`, "")).toBe(base.email.text);
+      expect(referrer.notification.body.replace(` ${VERIFIED_REFERRER_SENTENCE}`, "")).toBe(base.notification.body);
+      expect(noticeMessageFor(copy, { offer, verifiedReferrer: true })).toBe(referrer);
+      expect(noticeMessageFor(copy, { offer, verifiedReferrer: false })).toBe(base);
+      expect(`${referrer.email.text} ${referrer.notification.body}`).not.toMatch(/reply to this email|hurry|last chance|act now/i);
+    }
   });
 
   it("rejects an effective date that is not a real calendar date", () => {
