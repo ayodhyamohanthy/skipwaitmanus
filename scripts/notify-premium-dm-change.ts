@@ -9,6 +9,7 @@
  *   DATABASE_URL='mysql://…' pnpm tsx scripts/notify-premium-dm-change.ts --effective-date 2026-10-20
  *   DATABASE_URL='mysql://…' pnpm tsx scripts/notify-premium-dm-change.ts --effective-date 2026-10-20 --apply
  *   DATABASE_URL='mysql://…' pnpm tsx scripts/notify-premium-dm-change.ts --effective-date 2026-10-20 --resend-failed
+ *   DATABASE_URL='mysql://…' pnpm tsx scripts/notify-premium-dm-change.ts --effective-date 2026-10-20 --resend-failed --confirmed-undelivered 12,34
  *
  * Two copy variants (D-020): "refund_or_credits" for people who paid for
  * their plan (approved as written), "credits_only" for a gifted or
@@ -29,22 +30,38 @@
  * --apply creates one in-app notification per subscriber (unique eventKey
  * d012-dm-change:<person>) and emails each newly notified subscriber through
  * the transactional mailer, recording every email outcome. Re-running --apply
- * never notifies or emails anyone twice. --resend-failed retries only emails
- * whose last recorded outcome failed. Unconfirmed user ids (no recorded email
- * outcome, e.g. after a crash) need a manual check in the mail provider log.
+ * never notifies or emails anyone twice. Unconfirmed user ids (no recorded
+ * email outcome, e.g. after a crash) need a manual check in the mail provider
+ * log.
+ *
+ * A recorded email failure MAY STILL HAVE BEEN DELIVERED: the mailer records
+ * any error, including its own 10-second timeout after the provider may have
+ * accepted the email, as a failure, and it sends no provider idempotency key.
+ * So --resend-failed alone sends nothing: it lists the failed user ids. Look
+ * each one's address up in the mail provider's log (ZeptoMail, or Resend if
+ * that was the active sender), then re-run --resend-failed with
+ * --confirmed-undelivered <comma-separated ids that were NOT delivered>.
+ * Only those ids, and only while their last recorded email failed, are sent.
  * --effective-date (the day the change went live) is required for both
  * writing modes so the copy states the real date; the dry run defaults to today.
  */
 import type { NoticeMode } from "../server/premiumDmChangeNotice";
 import { NOTICE_OFFERS } from "../server/premiumDmChangeNoticeCopy";
 
-export type NoticeArgs = { mode: NoticeMode; effectiveDate: string; creditsOnlyCopyApproved: boolean; verifiedReferrerCopyApproved: boolean };
+export type NoticeArgs = { mode: NoticeMode; effectiveDate: string; creditsOnlyCopyApproved: boolean; verifiedReferrerCopyApproved: boolean; confirmedUndeliveredUserIds: number[] };
+
+function parseUserIds(value: string): number[] {
+  const parts = value.split(",").map(part => part.trim());
+  if (parts.some(part => !/^[1-9]\d{0,9}$/.test(part))) throw new Error(`--confirmed-undelivered needs comma-separated user ids, e.g. 12,34 (got "${value}")`);
+  return Array.from(new Set(parts.map(Number)));
+}
 
 export function parseNoticeArgs(argv: readonly string[], today: Date = new Date()): NoticeArgs {
   let mode: NoticeMode = "dry-run";
   let effectiveDate: string | null = null;
   let creditsOnlyCopyApproved = false;
   let verifiedReferrerCopyApproved = false;
+  let confirmedUndeliveredUserIds: number[] = [];
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--apply" || arg === "--resend-failed") {
@@ -61,6 +78,13 @@ export function parseNoticeArgs(argv: readonly string[], today: Date = new Date(
       verifiedReferrerCopyApproved = true;
       continue;
     }
+    if (arg === "--confirmed-undelivered") {
+      const value = argv[i + 1];
+      if (!value || value.startsWith("--")) throw new Error("--confirmed-undelivered needs comma-separated user ids, e.g. 12,34");
+      confirmedUndeliveredUserIds = parseUserIds(value);
+      i++;
+      continue;
+    }
     if (arg === "--effective-date") {
       const value = argv[i + 1];
       if (!value || value.startsWith("--")) throw new Error("--effective-date needs a date written YYYY-MM-DD");
@@ -68,10 +92,11 @@ export function parseNoticeArgs(argv: readonly string[], today: Date = new Date(
       i++;
       continue;
     }
-    throw new Error(`Unknown option ${arg}. Use --effective-date <YYYY-MM-DD>, --apply, --resend-failed, --credits-only-copy-approved or --verified-referrer-copy-approved.`);
+    throw new Error(`Unknown option ${arg}. Use --effective-date <YYYY-MM-DD>, --apply, --resend-failed, --confirmed-undelivered <ids>, --credits-only-copy-approved or --verified-referrer-copy-approved.`);
   }
   if (mode !== "dry-run" && effectiveDate === null) throw new Error(`--${mode} needs --effective-date <YYYY-MM-DD>, the day the change went live.`);
-  return { mode, effectiveDate: effectiveDate ?? today.toISOString().slice(0, 10), creditsOnlyCopyApproved, verifiedReferrerCopyApproved };
+  if (confirmedUndeliveredUserIds.length > 0 && mode !== "resend-failed") throw new Error("--confirmed-undelivered only goes with --resend-failed.");
+  return { mode, effectiveDate: effectiveDate ?? today.toISOString().slice(0, 10), creditsOnlyCopyApproved, verifiedReferrerCopyApproved, confirmedUndeliveredUserIds };
 }
 
 async function main() {
@@ -92,6 +117,7 @@ async function main() {
     console.log(`\n--- Email ---\nSubject: ${email.subject}\n\n${email.text}\n`);
   }
   if (report.results) console.log(`Results: ${JSON.stringify(report.results, null, 2)}`);
+  if (report.resendAwaitingProviderCheck) console.log(`Nothing was sent. A recorded failure may still have been delivered (a timeout after the provider accepted it). Check each failed user id (${report.results?.failedUserIds.join(", ") || "none"}) in the mail provider log, then re-run --resend-failed --confirmed-undelivered <ids that were not delivered>.`);
   else console.log("Dry run: nothing was written and no email was sent. Re-run with --apply after the owner approves the copy.");
   if (report.audience.creditsOnly > 0 && !args.creditsOnlyCopyApproved) console.log("The credits_only text is not approved yet (D-020): --apply and --resend-failed refuse to send it without --credits-only-copy-approved.");
   if (report.audience.verifiedReferrers > 0 && !args.verifiedReferrerCopyApproved) console.log(`${report.audience.verifiedReferrers} subscriber(s) have a verified work email: the change also closes their messages with members who are not referrers, which the approved text does not say. Open question to the owner under D-020 (a third text, or accept the current one). --apply and --resend-failed refuse to write to them without --verified-referrer-copy-approved.`);

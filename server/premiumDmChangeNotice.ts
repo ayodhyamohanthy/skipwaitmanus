@@ -9,10 +9,16 @@
 //
 // Idempotency: the in-app notification's unique eventKey is the claim. An
 // email goes out only in the run that created that notification, and every
-// email outcome is written to operationalActivityLogs, so a re-run never
-// emails anyone twice. Failed emails are retried only with --resend-failed;
-// an email whose outcome was never recorded (a crash mid-send) is listed as
-// unconfirmed for a manual check instead of being re-sent blindly.
+// email outcome is written to operationalActivityLogs, so re-running --apply
+// never emails anyone twice. An email whose outcome was never recorded (a
+// crash mid-send) is listed as unconfirmed for a manual check.
+//
+// A recorded failure is not proof of non-delivery: the transactional mailer
+// reports any error, including its own 10-second timeout after the provider
+// may already have accepted the email, as delivery_failed, and it passes no
+// provider idempotency key. So --resend-failed on its own only lists the
+// failed user ids; it emails only the ids the operator passes in
+// confirmedUndeliveredUserIds after checking each one in the provider's log.
 import type { TransactionalEmailInput, TransactionalEmailResult } from "./emailDelivery";
 import type { DmGateProfileRow, DmGateUserRow } from "./dmReferrerGate";
 import { noticeCopy, type NoticeCopy } from "./premiumDmChangeNoticeCopy";
@@ -51,12 +57,18 @@ export type NoticeResults = {
   alreadyNotifiedAndEmailed: number;
   failedUserIds: number[];
   unconfirmedUserIds: number[];
+  /** --resend-failed: ids the operator listed whose last recorded email did not fail (nothing sent to them). */
+  confirmedButNotFailedUserIds: number[];
 };
 
-export type NoticeReport = { mode: NoticeMode; audience: NoticeAudienceSummary; copy: NoticeCopy; results: NoticeResults | null };
+/** resendAwaitingProviderCheck: a --resend-failed run without confirmed ids, which only listed failedUserIds. */
+export type NoticeReport = { mode: NoticeMode; audience: NoticeAudienceSummary; copy: NoticeCopy; results: NoticeResults | null; resendAwaitingProviderCheck: boolean };
 
 export class NoticeEmailNotConfiguredError extends Error {
-  constructor() { super("Email delivery is not configured (ZeptoMail or Resend). Stopped after the first subscriber; configure email, then run --resend-failed and --apply again."); this.name = "NoticeEmailNotConfiguredError"; }
+  constructor(readonly userId: number) {
+    super(`Email delivery is not configured (ZeptoMail or Resend). Stopped at user ${userId}, who was not emailed because no provider was configured. Configure email, then run --resend-failed --confirmed-undelivered ${userId}, then --apply again.`);
+    this.name = "NoticeEmailNotConfiguredError";
+  }
 }
 
 /**
@@ -90,6 +102,8 @@ export type NoticeRunOptions = {
   now: Date;
   creditsOnlyCopyApproved?: boolean;
   verifiedReferrerCopyApproved?: boolean;
+  /** --resend-failed only: user ids checked in the provider log as not delivered. */
+  confirmedUndeliveredUserIds?: readonly number[];
 };
 
 async function loadRecipients(store: NoticeStore, now: Date): Promise<NoticeRecipient[]> {
@@ -109,11 +123,13 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
   const keys = recipients.map(recipient => recipient.eventKey);
   const notified = await store.existingNotificationKeys(keys);
   const audience = summarizeAudience(recipients, notified);
-  if (options.mode === "dry-run") return { mode: options.mode, audience, copy, results: null };
+  if (options.mode === "dry-run") return { mode: options.mode, audience, copy, results: null, resendAwaitingProviderCheck: false };
 
   const outcomes = await store.emailOutcomes(keys);
+  const confirmed = new Set(options.confirmedUndeliveredUserIds ?? []);
+  const failedBefore = (recipient: NoticeRecipient) => notified.has(recipient.eventKey) && outcomes.get(recipient.eventKey) === "failure";
   const writesTo = (recipient: NoticeRecipient) => options.mode === "resend-failed"
-    ? notified.has(recipient.eventKey) && outcomes.get(recipient.eventKey) === "failure"
+    ? failedBefore(recipient) && confirmed.has(recipient.userId)
     : !notified.has(recipient.eventKey);
   const writes = recipients.filter(writesTo);
   const blocked = {
@@ -121,7 +137,7 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
     verifiedReferrers: options.verifiedReferrerCopyApproved === true ? 0 : writes.filter(recipient => recipient.verifiedReferrer).length,
   };
   if (blocked.creditsOnly > 0 || blocked.verifiedReferrers > 0) throw new NoticeCopyNotApprovedError(blocked);
-  const results: NoticeResults = { notificationsCreated: 0, emailsSent: 0, emailsFailed: 0, emailsSkippedNoAddress: 0, alreadyNotifiedAndEmailed: 0, failedUserIds: [], unconfirmedUserIds: [] };
+  const results: NoticeResults = { notificationsCreated: 0, emailsSent: 0, emailsFailed: 0, emailsSkippedNoAddress: 0, alreadyNotifiedAndEmailed: 0, failedUserIds: [], unconfirmedUserIds: [], confirmedButNotFailedUserIds: [] };
   const deliver = async (recipient: NoticeRecipient) => {
     if (recipient.email === null) { results.emailsSkippedNoAddress += 1; return; }
     const { email } = copy.byOffer[recipient.offer];
@@ -130,15 +146,22 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
     if (sent.sent) { results.emailsSent += 1; return; }
     results.emailsFailed += 1;
     results.failedUserIds.push(recipient.userId);
-    if (sent.reason === "not_configured") throw new NoticeEmailNotConfiguredError();
+    if (sent.reason === "not_configured") throw new NoticeEmailNotConfiguredError(recipient.userId);
   };
+
+  if (options.mode === "resend-failed") {
+    for (const recipient of recipients) {
+      if (writesTo(recipient)) await deliver(recipient);
+      else if (failedBefore(recipient)) results.failedUserIds.push(recipient.userId);
+      else if (confirmed.has(recipient.userId)) results.confirmedButNotFailedUserIds.push(recipient.userId);
+    }
+    const known = new Set(recipients.map(recipient => recipient.userId));
+    for (const userId of Array.from(confirmed)) if (!known.has(userId)) results.confirmedButNotFailedUserIds.push(userId);
+    return { mode: options.mode, audience, copy, results, resendAwaitingProviderCheck: confirmed.size === 0 };
+  }
 
   for (const recipient of recipients) {
     const earlier = outcomes.get(recipient.eventKey);
-    if (options.mode === "resend-failed") {
-      if (writesTo(recipient)) await deliver(recipient);
-      continue;
-    }
     const { notification } = copy.byOffer[recipient.offer];
     const claim = notified.has(recipient.eventKey) ? "exists" : await store.insertNotificationOnce({ userId: recipient.userId, eventKey: recipient.eventKey, title: notification.title, body: notification.body });
     if (claim === "created") { results.notificationsCreated += 1; await deliver(recipient); continue; }
@@ -147,5 +170,5 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
     else if (recipient.email === null) results.emailsSkippedNoAddress += 1;
     else results.unconfirmedUserIds.push(recipient.userId);
   }
-  return { mode: options.mode, audience, copy, results };
+  return { mode: options.mode, audience, copy, results, resendAwaitingProviderCheck: false };
 }

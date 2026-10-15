@@ -81,13 +81,20 @@ describe("D-012 premium DM change notice: dry run", () => {
   });
 
   it("defaults the dry run to dry-run mode and today's date", () => {
-    expect(parseNoticeArgs([], NOW)).toEqual({ mode: "dry-run", effectiveDate: "2026-10-15", creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: false });
-    expect(parseNoticeArgs(["--effective-date", "2026-10-20", "--apply"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: false });
-    expect(parseNoticeArgs(["--apply", "--credits-only-copy-approved", "--effective-date", "2026-10-20"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: true, verifiedReferrerCopyApproved: false });
+    expect(parseNoticeArgs([], NOW)).toEqual({ mode: "dry-run", effectiveDate: "2026-10-15", creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: false, confirmedUndeliveredUserIds: [] });
+    expect(parseNoticeArgs(["--effective-date", "2026-10-20", "--apply"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: false, confirmedUndeliveredUserIds: [] });
+    expect(parseNoticeArgs(["--apply", "--credits-only-copy-approved", "--effective-date", "2026-10-20"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: true, verifiedReferrerCopyApproved: false, confirmedUndeliveredUserIds: [] });
     expect(parseNoticeArgs(["--apply", "--verified-referrer-copy-approved", "--effective-date", "2026-10-20"], NOW)).toMatchObject({ creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: true });
     expect(() => parseNoticeArgs(["--apply"], NOW)).toThrow(/--effective-date/);
     expect(() => parseNoticeArgs(["--apply", "--resend-failed", "--effective-date", "2026-10-20"], NOW)).toThrow(/either/);
     expect(() => parseNoticeArgs(["--send"], NOW)).toThrow(/Unknown option/);
+  });
+
+  it("reads --confirmed-undelivered ids only with --resend-failed", () => {
+    expect(parseNoticeArgs(["--resend-failed", "--confirmed-undelivered", "12, 34,12", "--effective-date", "2026-10-20"], NOW)).toMatchObject({ mode: "resend-failed", confirmedUndeliveredUserIds: [12, 34] });
+    expect(() => parseNoticeArgs(["--apply", "--confirmed-undelivered", "12", "--effective-date", "2026-10-20"], NOW)).toThrow(/only goes with --resend-failed/);
+    expect(() => parseNoticeArgs(["--resend-failed", "--confirmed-undelivered", "--effective-date", "2026-10-20"], NOW)).toThrow(/comma-separated user ids/);
+    for (const bad of ["12,x", "0", "-3", "1.5", "12,,34", "user12@example.test"]) expect(() => parseNoticeArgs(["--resend-failed", "--confirmed-undelivered", bad, "--effective-date", "2026-10-20"], NOW)).toThrow(/comma-separated user ids/);
   });
 });
 
@@ -105,16 +112,34 @@ describe("D-012 premium DM change notice: apply", () => {
     expect(memory.notifications.size).toBe(4);
   });
 
-  it("records a failed email, does not retry it on --apply, and retries it once with --resend-failed", async () => {
+  it("records a failed email, does not retry it on --apply, and retries it once with --resend-failed after the provider-log check", async () => {
     const memory = memoryStore([wallet({ userId: 1 })]);
     const failing = vi.fn<NoticeMailer>(async () => ({ sent: false, reason: "delivery_failed" as const }));
     expect((await runPremiumDmChangeNotice(memory.store, failing, { mode: "apply", effectiveDate: "2026-10-20", now: NOW })).results).toMatchObject({ emailsFailed: 1, failedUserIds: [1] });
     expect((await runPremiumDmChangeNotice(memory.store, failing, { mode: "apply", effectiveDate: "2026-10-20", now: NOW })).results).toMatchObject({ emailsSent: 0, failedUserIds: [1] });
     expect(failing).toHaveBeenCalledTimes(1);
     const mailer = okMailer();
-    expect((await runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW })).results).toMatchObject({ emailsSent: 1, notificationsCreated: 0 });
-    expect((await runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW })).results).toMatchObject({ emailsSent: 0 });
+    expect((await runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW, confirmedUndeliveredUserIds: [1] })).results).toMatchObject({ emailsSent: 1, notificationsCreated: 0 });
+    expect((await runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW, confirmedUndeliveredUserIds: [1] })).results).toMatchObject({ emailsSent: 0, confirmedButNotFailedUserIds: [1] });
     expect(mailer).toHaveBeenCalledTimes(1);
+  });
+
+  it("--resend-failed without confirmed ids only lists failures, since a timed-out send may have been delivered", async () => {
+    const memory = memoryStore([wallet({ userId: 1 }), wallet({ userId: 2 })]);
+    const timedOut = vi.fn<NoticeMailer>(async () => ({ sent: false, reason: "delivery_failed" as const }));
+    await runPremiumDmChangeNotice(memory.store, timedOut, { mode: "apply", effectiveDate: "2026-10-20", now: NOW });
+    const writesAfterApply = { ...memory.writes };
+    const mailer = okMailer();
+    const listed = await runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW });
+    expect(listed.resendAwaitingProviderCheck).toBe(true);
+    expect(listed.results).toMatchObject({ emailsSent: 0, failedUserIds: [1, 2] });
+    expect(mailer).not.toHaveBeenCalled();
+    expect(memory.writes).toEqual(writesAfterApply);
+    // The provider log showed user 2's email was delivered: only user 1 is confirmed.
+    const resent = await runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW, confirmedUndeliveredUserIds: [1, 99] });
+    expect(resent.resendAwaitingProviderCheck).toBe(false);
+    expect(resent.results).toMatchObject({ emailsSent: 1, failedUserIds: [2], confirmedButNotFailedUserIds: [99] });
+    expect(mailer.mock.calls.map(([input]) => input.to)).toEqual(["user1@example.test"]);
   });
 
   it("sends each person the copy for their offer: credits only for a gifted plan", async () => {
@@ -144,6 +169,7 @@ describe("D-012 premium DM change notice: apply", () => {
     const memory = memoryStore([wallet({ userId: 1 }), wallet({ userId: 2 })]);
     const unconfigured = vi.fn<NoticeMailer>(async () => ({ sent: false, reason: "not_configured" as const }));
     await expect(runPremiumDmChangeNotice(memory.store, unconfigured, { mode: "apply", effectiveDate: "2026-10-20", now: NOW })).rejects.toBeInstanceOf(NoticeEmailNotConfiguredError);
+    await expect(runPremiumDmChangeNotice(memoryStore([wallet({ userId: 1 })]).store, unconfigured, { mode: "apply", effectiveDate: "2026-10-20", now: NOW })).rejects.toMatchObject({ userId: 1, message: expect.stringContaining("--resend-failed --confirmed-undelivered 1") });
     expect(memory.notifications.size).toBe(1);
     expect(memory.outcomes).toEqual([{ eventKey: "d012-dm-change:u1", outcome: "failure", reason: "not_configured" }]);
   });
@@ -169,12 +195,12 @@ describe("D-012 premium DM change notice: unapproved credits-only copy (D-020)",
     const failing = vi.fn<NoticeMailer>(async () => ({ sent: false, reason: "delivery_failed" as const }));
     await runPremiumDmChangeNotice(memory.store, failing, { mode: "apply", effectiveDate: "2026-10-20", now: NOW, creditsOnlyCopyApproved: true });
     const mailer = okMailer();
-    await expect(runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW })).rejects.toMatchObject({ creditsOnlyRecipients: 1 });
+    await expect(runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW, confirmedUndeliveredUserIds: [1, 2] })).rejects.toMatchObject({ creditsOnlyRecipients: 1 });
     expect(mailer).not.toHaveBeenCalled();
     const paidOnly = memoryStore([wallet({ userId: 1 }), wallet({ userId: 2 })], gifted());
     await runPremiumDmChangeNotice(paidOnly.store, failing, { mode: "apply", effectiveDate: "2026-10-20", now: NOW, creditsOnlyCopyApproved: true });
     paidOnly.outcomes.push({ eventKey: "d012-dm-change:u2", outcome: "success", reason: "sent" });
-    expect((await runPremiumDmChangeNotice(paidOnly.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW })).results).toMatchObject({ emailsSent: 1 });
+    expect((await runPremiumDmChangeNotice(paidOnly.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW, confirmedUndeliveredUserIds: [1, 2] })).results).toMatchObject({ emailsSent: 1 });
     expect(mailer.mock.calls.map(([input]) => input.to)).toEqual(["user1@example.test"]);
   });
 
@@ -240,7 +266,7 @@ describe("D-012 premium DM change notice: subscribers who are verified referrers
     const failing = vi.fn<NoticeMailer>(async () => ({ sent: false, reason: "delivery_failed" as const }));
     await runPremiumDmChangeNotice(memory.store, failing, { mode: "apply", effectiveDate: "2026-10-20", now: NOW, verifiedReferrerCopyApproved: true });
     const mailer = okMailer();
-    await expect(runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW })).rejects.toMatchObject({ verifiedReferrerRecipients: 1 });
+    await expect(runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW, confirmedUndeliveredUserIds: [2] })).rejects.toMatchObject({ verifiedReferrerRecipients: 1 });
     expect(mailer).not.toHaveBeenCalled();
   });
 });
