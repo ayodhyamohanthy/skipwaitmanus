@@ -94,7 +94,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 19 | `pre-accept-question` (one anonymous question before accepting) | 14 | L | todo |
 | 20 | `thank-you-wall` + `landed-journey` + `referrer-impact-metrics` + `company-demand` | 14 | L | todo |
 | **Tier E — notifications** |||||
-| 21 | `notification-kinds` + `notification-preferences` (types, channels, quiet hours) | — | L | in progress (part A kinds only, in-app, no sends) - Claude - 2026-10-15 - branch task21a-kinds. Part B and email gated on founder; design docs/NOTIFICATIONS_DESIGN.md |
+| 21 | `notification-kinds` + `notification-preferences` (types, channels, quiet hours) | — | L | in progress (part A kinds LIVE #238; part B = Settings new-ask email switch only, client-only, branch task21b-new-ask-toggle) - Claude - 2026-10-15 - branch task21a-kinds. Part B and email gated on founder; design docs/NOTIFICATIONS_DESIGN.md |
 | 22 | `email-templates` (all 12 real) + `notification-reminder-jobs` | 21 | L | todo |
 | 23 | `approval-notifications` + `saved-alerts` function field and matching | 21 | M | todo |
 | 24 | `web-push` (subscriptions, sender, SW handler; delivery needs owner VAPID keys) | 21 | L | todo |
