@@ -32,6 +32,21 @@ describe("kit plan checkout decision", () => {
     expect(createPlanCheckout).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ itemPriceId: "skipwait_momentum_90d-INR", checkoutIntentId: "intent_kit", redirectUrl: urls.redirectUrl, email: "member@example.com", billingCountry: "IN" }));
   });
 
+  it("refuses a by-application plan (Land Concierge) with 403 before any availability or provider call", async () => {
+    const createPlanCheckout = vi.fn();
+    const isAvailable = vi.fn(() => true);
+    for (const [interval, currency] of [["30d", "USD"], ["30d", "INR"], ["90d", "USD"], ["90d", "INR"]] as const) {
+      const started = await startKitPlanCheckout({
+        req,
+        request: { planId: "land_concierge", interval, currency, billingCountry: currency === "INR" ? "IN" : "INTL", role: "job_seeker" },
+        customer: {}, urls, deps: { isAvailable, createPlanCheckout },
+      });
+      expect(started).toMatchObject({ ok: false, status: 403, code: "application_required" });
+    }
+    expect(isAvailable).not.toHaveBeenCalled();
+    expect(createPlanCheckout).not.toHaveBeenCalled();
+  });
+
   it("refuses an item price that is not live yet with the code the UI branches on, before any provider call", async () => {
     const createPlanCheckout = vi.fn();
     const started = await startKitPlanCheckout({
