@@ -67,7 +67,7 @@ describe("Ask composer", () => {
     expect(screen.getAllByRole("listitem").map(item => item.querySelector("strong")?.textContent)).toEqual(["Official job link", "30–120 words", "One specific proof of fit", "Resume attached"]);
     expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
     expect(screen.getByText("The referrer sees your role and note — not your name or resume — until they accept.")).toBeTruthy();
-    expect(screen.getByText("Uses 1 open slot · referrals are always free")).toBeTruthy();
+    expect(screen.getByText("Uses 1 credit and 1 open slot · the credit comes back if you withdraw before pickup or it expires")).toBeTruthy();
     const page = document.body.textContent ?? "";
     for (const preview of ["DESIGN PREVIEW", "Fill example", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
     expect(fetchCalls()).toBe(0);
@@ -180,7 +180,7 @@ describe("Ask composer", () => {
     // The note travels in the field the server stores as the seeker's pitch (shared/askNote.ts).
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ candidateMessage: STRONG_NOTE });
     expect(screen.getByRole("link", { name: /Track this ask/ }).getAttribute("href")).toBe("/conversation/9");
-    expect(screen.getByText("Verified wipro.com referrers will see it. It expires in 7 days if nobody accepts, and your slot returns.")).toBeTruthy();
+    expect(screen.getByText("Verified wipro.com referrers will see it. It expires in 7 days if nobody accepts, and your credit returns.")).toBeTruthy();
     expect(screen.getByText(/^Open slots:/).textContent).toBe("Open slots: 2 of 3 used");
     // The send response carries the count; no second request is needed.
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/mine"))).toBe(false);
