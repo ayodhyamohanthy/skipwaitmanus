@@ -1,6 +1,8 @@
 import express from "express";
 import request from "supertest";
+import { SignJWT, decodeJwt } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { HOSTED_LINK_COOKIE } from "./hostedAccountSwitch";
 
 const authUrl = vi.fn();
 const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@example.com", firstName: "Test", lastName: "User" } }));
@@ -227,6 +229,36 @@ describe("canonical WorkOS callback session", () => {
       expect(proof.status).toBe(200);
       expect(proof.body).toEqual({ openId: "workos_user_test" });
       expect(accounts.has("workos_user_second_provider")).toBe(false);
+    } finally { restore(); }
+  });
+
+  it("links a hosted sign-in's session id into the app session and a hosted-link cookie", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      // A real WorkOS access token always verifies with WorkOS's keys; the helper
+      // only reads the payload, so an unsigned-body JWT is enough here.
+      const accessToken = await new SignJWT({ sid: "session_live" }).setProtectedHeader({ alg: "HS256" }).sign(new TextEncoder().encode("workos-test"));
+      authenticate.mockResolvedValueOnce({ user: { id: "user_test", email: "test@example.com", emailVerified: true, firstName: "Test", lastName: "User" }, accessToken, sealedSession: "sealed" });
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      const cookies: string[] = callback.headers["set-cookie"];
+      expect(decodeJwt(cookies.find(value => value.startsWith("app_session_id="))!.split(";")[0].slice("app_session_id=".length)).sid).toBe("session_live");
+      const hostedCookie = cookies.find(value => value.startsWith(`${HOSTED_LINK_COOKIE}=`));
+      expect(hostedCookie).toBeDefined();
+      expect(hostedCookie).toContain("Path=/api/auth/workos");
+      expect(hostedCookie).toContain("HttpOnly");
+    } finally { restore(); }
+  });
+
+  it("sets no hosted-link cookie when the access token carries no session id", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      authenticate.mockResolvedValueOnce({ user: { id: "user_test", email: "test@example.com", emailVerified: true, firstName: "Test", lastName: "User" }, accessToken: "not-a-jwt" });
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      const cookies: string[] = callback.headers["set-cookie"];
+      expect(cookies.some(value => value.startsWith(`${HOSTED_LINK_COOKIE}=`))).toBe(false);
+      expect(decodeJwt(cookies.find(value => value.startsWith("app_session_id="))!.split(";")[0].slice("app_session_id=".length)).sid).toBeUndefined();
     } finally { restore(); }
   });
 
