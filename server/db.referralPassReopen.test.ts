@@ -332,6 +332,11 @@ describe("attachment lookup scopes the requested file before limiting", () => {
     expect(await getAccessibleReferralAttachment(10, 72)).toBeUndefined();
   });
 
+  it("keeps owner access even if the owner has a historical pass record", async () => {
+    rows.referralRequestPasses.push({ id: 2, referralRequestId: 501, referrerId: 7 });
+    expect(await getAccessibleReferralAttachment(7, 72)).toMatchObject({ id: 72 });
+  });
+
   it("preserves assigned-referrer grant, expiry and pass checks", async () => {
     expect(await getAccessibleReferralAttachment(9, 72)).toMatchObject({ id: 72 });
     rows.referralDocumentAccessGrants[0].expiresAt = new Date(0);
