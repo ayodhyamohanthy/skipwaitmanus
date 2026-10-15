@@ -8,13 +8,14 @@ type Tables = { users: DmGateUserRow[]; profiles: DmGateProfileRow[]; requests: 
 function memoryStore(tables: Tables): DmGateStore & { reads: string[] } {
   const reads: string[] = [];
   const post = new Set(["approved", "intro_made", "interview", "offer", "closed"]);
+  const accepted = new Set(["approved", "intro_made", "interview", "offer"]);
   return {
     reads,
     usersByIds: async ids => { reads.push("users"); return tables.users.filter(row => ids.includes(row.id)); },
     usersByPersons: async personIds => { reads.push("persons"); return tables.users.filter(row => row.canonicalPersonId !== null && personIds.includes(row.canonicalPersonId)); },
     verifiedProfiles: async userIds => { reads.push("profiles"); return tables.profiles.filter(row => userIds.includes(row.userId) && row.workEmailVerifiedAt !== null); },
     acceptedRequestsBetween: async (a, b) => { reads.push("requests"); return tables.requests.filter(row => post.has(row.status) && row.referrerId !== null && ((a.includes(row.jobSeekerId) && b.includes(row.referrerId)) || (b.includes(row.jobSeekerId) && a.includes(row.referrerId)))); },
-    approvalEvents: async ids => { reads.push("events"); return tables.events.filter(row => ids.includes(row.referralRequestId) && row.resultingStatus === "approved"); },
+    acceptanceEvents: async ids => { reads.push("events"); return tables.events.filter(row => ids.includes(row.referralRequestId) && (accepted.has(row.resultingStatus) || accepted.has(row.fromStatus))); },
   };
 }
 
@@ -53,8 +54,16 @@ describe("referrer DM gate decision", () => {
   it("counts closed only when the request was approved first", () => {
     const closed: DmGateRequestRow = { id: 7, jobSeekerId: SEEKER, referrerId: REFERRER, status: "closed" };
     expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [])).toBe(false);
-    expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [{ referralRequestId: 7, resultingStatus: "approved" }])).toBe(true);
-    expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [{ referralRequestId: 8, resultingStatus: "approved" }])).toBe(false);
+    expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [{ referralRequestId: 7, fromStatus: "pending", resultingStatus: "approved" }])).toBe(true);
+    expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [{ referralRequestId: 8, fromStatus: "pending", resultingStatus: "approved" }])).toBe(false);
+  });
+
+  it("accepts a closed request whose only recorded step left an accepted status (approved before events were kept)", () => {
+    const closed: DmGateRequestRow = { id: 7, jobSeekerId: SEEKER, referrerId: REFERRER, status: "closed" };
+    for (const fromStatus of ["approved", "intro_made", "interview", "offer"]) expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [{ referralRequestId: 7, fromStatus, resultingStatus: "closed" }])).toBe(true);
+    // An unclaimed ask that expired closes straight from pending: no acceptance.
+    expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [{ referralRequestId: 7, fromStatus: "pending", resultingStatus: "closed" }])).toBe(false);
+    expect(hasAcceptedLink([SEEKER], [REFERRER], [closed], [{ referralRequestId: 7, fromStatus: "pending", resultingStatus: "declined" }])).toBe(false);
   });
 
   it("ignores accepted requests that link other people", () => {
@@ -82,8 +91,12 @@ describe("referrer DM gate over stored rows", () => {
     const tables = base();
     tables.requests = [{ id: 9, jobSeekerId: SEEKER, referrerId: REFERRER, status: "closed" }];
     expect((await resolveReferrerDmGate(memoryStore(tables), SEEKER, REFERRER)).kind).toBe("acceptance_required");
-    tables.events = [{ referralRequestId: 9, resultingStatus: "approved" }];
+    tables.events = [{ referralRequestId: 9, fromStatus: "pending", resultingStatus: "closed" }];
+    expect((await resolveReferrerDmGate(memoryStore(tables), SEEKER, REFERRER)).kind).toBe("acceptance_required");
+    tables.events = [{ referralRequestId: 9, fromStatus: "pending", resultingStatus: "approved" }];
     expect((await resolveReferrerDmGate(memoryStore(tables), SEEKER, REFERRER)).kind).toBe("accepted");
+    tables.events = [{ referralRequestId: 9, fromStatus: "offer", resultingStatus: "closed" }];
+    expect((await resolveReferrerDmGate(memoryStore(tables), REFERRER, SEEKER)).kind).toBe("accepted");
   });
 
   it("treats every users row of a canonical person as that person", async () => {

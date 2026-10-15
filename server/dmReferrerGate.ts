@@ -15,7 +15,7 @@
 // so the verified work email, not the current accountType, is the test.
 // Each party is the whole canonical person: every users row sharing its
 // canonicalPersonId counts, so an alias row cannot sidestep the gate.
-import { and, eq, inArray, isNotNull, or } from "drizzle-orm";
+import { and, inArray, isNotNull, or } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { profiles, referralRequests, referralTransitionEvents, users } from "../drizzle/schema";
 import { dmSendBlockFor, type DmSendBlock, type ReferrerDmGate } from "../shared/directMessages";
@@ -24,7 +24,7 @@ import { postApprovalReferralStatuses, type ReferralStatus } from "../shared/ref
 export type DmGateUserRow = { readonly id: number; readonly canonicalPersonId: number | null };
 export type DmGateProfileRow = { readonly userId: number; readonly workEmailVerifiedAt: Date | null };
 export type DmGateRequestRow = { readonly id: number; readonly jobSeekerId: number; readonly referrerId: number | null; readonly status: ReferralStatus };
-export type DmGateEventRow = { readonly referralRequestId: number; readonly resultingStatus: string };
+export type DmGateEventRow = { readonly referralRequestId: number; readonly fromStatus: string; readonly resultingStatus: string };
 
 /** Plain reads; every decision is made in the pure functions below. */
 export type DmGateStore = {
@@ -32,11 +32,22 @@ export type DmGateStore = {
   usersByPersons(personIds: readonly number[]): Promise<readonly DmGateUserRow[]>;
   verifiedProfiles(userIds: readonly number[]): Promise<readonly DmGateProfileRow[]>;
   acceptedRequestsBetween(a: readonly number[], b: readonly number[]): Promise<readonly DmGateRequestRow[]>;
-  approvalEvents(requestIds: readonly number[]): Promise<readonly DmGateEventRow[]>;
+  /** Transition events of these requests that went into or out of an accepted status. */
+  acceptanceEvents(requestIds: readonly number[]): Promise<readonly DmGateEventRow[]>;
 };
 
-/** Statuses that only exist after the referrer accepted. "closed" also ends unclaimed expired asks, so it needs an approve event. */
+/**
+ * Statuses that only exist after the referrer accepted. "closed" also ends
+ * unclaimed expired asks, so a closed request counts only with a recorded
+ * transition into or out of one of these (an approve event, or a later step
+ * such as offer -> closed when the approval predates migration 0058's events).
+ */
 const OPEN_AFTER_ACCEPTANCE: readonly ReferralStatus[] = ["approved", "intro_made", "interview", "offer"];
+const ACCEPTED_STATUS_NAMES: ReadonlySet<string> = new Set(OPEN_AFTER_ACCEPTANCE);
+
+export function isAcceptanceEvidence(event: DmGateEventRow): boolean {
+  return ACCEPTED_STATUS_NAMES.has(event.resultingStatus) || ACCEPTED_STATUS_NAMES.has(event.fromStatus);
+}
 
 export function personUserIds(userId: number, own: readonly DmGateUserRow[], siblings: readonly DmGateUserRow[]): number[] {
   const personId = own.find(row => row.id === userId)?.canonicalPersonId ?? null;
@@ -56,7 +67,7 @@ export function hasAcceptedLink(a: readonly number[], b: readonly number[], requ
     const links = (a.includes(request.jobSeekerId) && b.includes(request.referrerId)) || (b.includes(request.jobSeekerId) && a.includes(request.referrerId));
     if (!links) return false;
     if (OPEN_AFTER_ACCEPTANCE.includes(request.status)) return true;
-    return request.status === "closed" && events.some(event => event.referralRequestId === request.id && event.resultingStatus === "approved");
+    return request.status === "closed" && events.some(event => event.referralRequestId === request.id && isAcceptanceEvidence(event));
   });
 }
 
@@ -79,7 +90,7 @@ export async function resolveReferrerDmGate(store: DmGateStore, senderUserId: nu
   const requests = await store.acceptedRequestsBetween(sender, recipient);
   const closedIds = requests.filter(request => request.status === "closed").map(request => request.id);
   const openAccepted = hasAcceptedLink(sender, recipient, requests, []);
-  const events = !openAccepted && closedIds.length > 0 ? await store.approvalEvents(closedIds) : [];
+  const events = !openAccepted && closedIds.length > 0 ? await store.acceptanceEvents(closedIds) : [];
   return decideReferrerDmGate({ senderIsReferrer, recipientIsReferrer, accepted: openAccepted || hasAcceptedLink(sender, recipient, requests, events) });
 }
 
@@ -102,8 +113,8 @@ export function drizzleDmGateStore(db: DmGateDb): DmGateStore {
     verifiedProfiles: userIds => db.select({ userId: profiles.userId, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(inArray(profiles.userId, [...userIds]), isNotNull(profiles.workEmailVerifiedAt))),
     acceptedRequestsBetween: (a, b) => db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests)
       .where(and(inArray(referralRequests.status, [...postApprovalReferralStatuses]), or(and(inArray(referralRequests.jobSeekerId, [...a]), inArray(referralRequests.referrerId, [...b])), and(inArray(referralRequests.jobSeekerId, [...b]), inArray(referralRequests.referrerId, [...a]))))),
-    approvalEvents: requestIds => db.select({ referralRequestId: referralTransitionEvents.referralRequestId, resultingStatus: referralTransitionEvents.resultingStatus }).from(referralTransitionEvents)
-      .where(and(inArray(referralTransitionEvents.referralRequestId, [...requestIds]), eq(referralTransitionEvents.resultingStatus, "approved"))),
+    acceptanceEvents: requestIds => db.select({ referralRequestId: referralTransitionEvents.referralRequestId, fromStatus: referralTransitionEvents.fromStatus, resultingStatus: referralTransitionEvents.resultingStatus }).from(referralTransitionEvents)
+      .where(and(inArray(referralTransitionEvents.referralRequestId, [...requestIds]), or(inArray(referralTransitionEvents.resultingStatus, [...OPEN_AFTER_ACCEPTANCE]), inArray(referralTransitionEvents.fromStatus, [...OPEN_AFTER_ACCEPTANCE])))),
   };
 }
 
