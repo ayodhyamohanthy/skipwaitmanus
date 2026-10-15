@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
-import { claimCompanyReferralRequest, createCompanyReferralRequest, expireStalePendingReferralRequest, listCompanyReferralInboxByState, listJobSeekerCompanyReferrals, oneClickReviewReferralRequest, reconcileExpiredPendingReferrals, withdrawCompanyReferralRequest } from "./db";
+import { REFERRER_LINK_INACTIVE_ERROR } from "../shared/referrerLink";
+import { claimCompanyReferralRequest, companyReferralFingerprint, createCompanyReferralRequest, expireStalePendingReferralRequest, listCompanyReferralInboxByState, listJobSeekerCompanyReferrals, oneClickReviewReferralRequest, reconcileExpiredPendingReferrals, withdrawCompanyReferralRequest } from "./db";
 import { referralFixtureDb, type FixtureRow, type FixtureStore } from "./referralFixtureDb";
 
 // D-017: an ask sent through a referrer's personal link is assigned to that
@@ -167,4 +168,20 @@ describe("sending an ask through a personal link", () => {
     expect(table("referralTransitionEvents")).toEqual([expect.objectContaining({ referralRequestId: created.requestId, action: "link_assign", actorUserId: SEEKER, resultingRevision: 0 })]);
   });
 
+  it("replays a send that already committed even after the link was paused", async () => {
+    // The first send committed, its response was lost, then the referrer paused the link.
+    store.set("referrerFastTrackLinks", []);
+    store.set("referralRequests", [linkAsk(0, { id: 600, idempotencyKey: input.idempotencyKey, requestFingerprint: companyReferralFingerprint(input, "acme.com") })]);
+    const replay = await createCompanyReferralRequest(SEEKER, input);
+    expect(replay).toMatchObject({ requestId: 600, replayed: true, fastTrack: true });
+    expect(table("referralRequests")).toHaveLength(1);
+    expect(table("tokenTransactions")).toEqual([]);
+  });
+
+  it("refuses a paused link when nothing was sent under the key, and charges nothing", async () => {
+    store.set("referrerFastTrackLinks", []);
+    await expect(createCompanyReferralRequest(SEEKER, input)).rejects.toThrow(REFERRER_LINK_INACTIVE_ERROR);
+    expect(table("referralRequests")).toEqual([]);
+    expect(table("tokenBalances")[0].monthlyCreditsRemaining).toBe(2);
+  });
 });

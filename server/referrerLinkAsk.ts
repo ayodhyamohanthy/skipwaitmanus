@@ -85,3 +85,13 @@ export function staleLinkAsksQuery(reader: Reader, cutoff: Date, limit: number) 
     .orderBy(asc(referralRequests.createdAt), asc(referralRequests.id))
     .limit(limit);
 }
+
+/**
+ * True when this seeker already has an ask under this idempotency key. A retry
+ * of a send that committed must replay it even if the personal link was paused
+ * since, so the link checks are skipped for it (the locked replay decides).
+ */
+export async function hasAskForIdempotencyKey(reader: Reader, jobSeekerId: number, idempotencyKey: string): Promise<boolean> {
+  const rows = await reader.select({ id: referralRequests.id }).from(referralRequests).where(and(eq(referralRequests.jobSeekerId, jobSeekerId), eq(referralRequests.idempotencyKey, idempotencyKey))).limit(1);
+  return rows.length > 0;
+}
