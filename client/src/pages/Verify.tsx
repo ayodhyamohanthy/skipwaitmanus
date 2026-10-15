@@ -10,11 +10,11 @@ import { useCompanyDirectory } from "@/lib/companyDirectory";
 
 const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "proton.me"];
 const MAX_ATTEMPTS = 5;
-/** The server accepts one code request per email per minute; a shorter
+/** The server accepts one code request per email per 30 seconds; a shorter
  * countdown would invite a resend the server is certain to refuse. */
-const RESEND_SECONDS = 60;
+const RESEND_SECONDS = 30;
 const EMPTY_CODE = ["", "", "", "", "", ""];
-const LOCKED_MESSAGE = "Too many tries. For your safety, this code no longer works. Send a new one.";
+const LOCKED_MESSAGE = "Too many tries. For your safety, wait 15 minutes, then send a new code.";
 const DEFAULT_COMPANY = "wipro";
 type Step = "company" | "email" | "code" | "done";
 const STEP_ORDER: Step[] = ["company", "email", "code", "done"];
@@ -108,6 +108,7 @@ export default function Verify() {
       if (!proof) {
         try { proof = await checkWorkEmailCode(email.trim(), entered, fetchToken); }
         catch (reason) {
+          if (reason instanceof VerifyRequestError && reason.status === 429) { setAttempts(MAX_ATTEMPTS); setCodeError(LOCKED_MESSAGE); return; }
           if (!(reason instanceof VerifyRequestError) || reason.status !== 400) { setCodeError(messageOf(reason, "We could not verify the code")); return; }
           const count = attempts + 1;
           const left = MAX_ATTEMPTS - count;

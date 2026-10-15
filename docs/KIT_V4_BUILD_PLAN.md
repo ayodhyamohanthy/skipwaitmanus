@@ -64,7 +64,10 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | # | Task (audit feature names) | Depends on | Size | Status |
 |---|---|---|---|---|
 | **P0 — approved Oct 14 (D-012), preempts everything** |||||
-| P0 | D-012: ATS vendor hosts never count as the employer; decline does NOT refund the credit (founder, Oct 14; no refund code or past-decline script; Terms/Refund copy to be corrected); no seeker↔referrer first message before acceptance (Pro/Max notice + pro-rata offer script, owner approves copy); truthful credits FAQ | — | M | in progress — Claude Code — 2026-10-14 — branch p0-promises (from main) |
+| P0 | D-012 status Oct 15: (1) ATS fix ready on branch p0-ats-vendor-hosts; (2) no code (founder amendment; Terms/FAQ fixed by #203/#204); (3) branch p0-referrer-messaging in progress; (4) done by #204. Original: ATS vendor hosts never count as the employer; decline does NOT refund the credit (founder, Oct 14; no refund code or past-decline script; Terms/Refund copy to be corrected); no seeker↔referrer first message before acceptance (Pro/Max notice + pro-rata offer script, owner approves copy); truthful credits FAQ | — | M | in progress — Claude Code — 2026-10-14 — branch p0-promises (from main) |
+| P0-basics | D-019 basics defects (Oct 15 status): (a) verified referrer's `/queue` shows the work-email gate — fixed on branch p0-basics-queue (one shared verified-referrer contract); review found the same wrong session-email check in AccountMenu, Alerts and PostOpportunity — fixing; (b) seeker's note dropped when sent as `personalPitch` — fixed and reviewed on branch p0-basics-pitch; (c) NEW: the pre-acceptance preview API returns the seeker's real name (`candidateName`) to referrers, contrary to the privacy promise — fixing; (d) NEW: an accepted referrer's thread detail omits the seeker's note — fixing. Owner action: 4.14 live INR payments fail — register skipwait.chargebee.com on the Razorpay merchant account | — | M | in progress — Claude Code — 2026-10-15 — branches p0-basics-queue, p0-basics-pitch |
+| P0e | D-021: a claimed decline reopens the ask for other verified employees (credit stays spent; declining referrer excluded; seeker told the ask is open again); D-020: notice script offers gifted plans bonus credits only | P0 | M | todo — next after the running basics workflow |
+| P0f | D-022: referrer-posted roles on the company page — openings section on `/explore/:slug`; asks on a post go to the poster first for 48 h, then colleagues; 30-day expiry with one-tap renew; optional first name; posting gate fixed for SSO + work-email-code referrers. Migration 0083 (additive: post expiry/renew + poster-name choice, ask first-look fields/link to the post) | P0, D-021 | L | todo — next after the running units (owner request Oct 15) |
 | P0b | D-017: referrer personal link keeps the referrer and job link through `/request` → `/ask` and sign-in | P0 | M | in progress — Claude Code — 2026-10-14 — branch p0-referrer-link |
 | P0c | D-018: admin baseline metrics panel on `/admin/flow-health` (aggregate only) | P0 | M | in progress — Claude Code — 2026-10-14 — branch p0-baseline-metrics |
 | P0d | D-015: founder supply sprint kit (`docs/SUPPLY_SPRINT.md`, tracker template) | — | S | in progress — Claude Code — 2026-10-14 |
@@ -73,32 +76,32 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 2 | Wave 4a password sign-in: `password-auth`, `sign-in-intent-routing` (spec 4.2) | P0 | L | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: ca6c23e + unverified WIP a0417a0; main changed `workosAuth.ts` (D-011) — expect a merge. Resumes after P0, alongside task 1 (D-013) |
 | **Tier B — trust, privacy, compliance** |||||
 | 3 | `work-email-hmac-storage`: store only an HMAC of work emails in OTP codes/receipts, purge plaintext, migrate existing rows | — | M | todo |
-| 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | todo |
-| 5 | `moderation-actions` + `safety-report-review`: severity, warn/restrict/ban with enforcement on every ask/accept path and alias, both parties notified, 14-day appeal, audit trail | — | XL | todo |
+| 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | in progress (4a data-export-async only) — Claude — 2026-10-15 — branch task4a-data-export. 4b deletion HELD pending founder answers |
+| 5 | `moderation-actions` + `safety-report-review`: severity, warn/restrict/ban with enforcement on every ask/accept path and alias, both parties notified, 14-day appeal, audit trail | — | XL | in progress (phase 1 only: case file, no sanctions) — Claude — 2026-10-15 — branch task5a-case-file (1a live c2b7d40); 1b evidence snapshot on branch task5b-evidence. Phase 2 (warn/restrict/ban, notices, appeals, auto-flag) HELD pending founder policy |
 | 6 | `work-email-reverify` (90-day re-check, badge removal, open asks returned) + `otp-policy-kit` (30 s resend, server lockout 15 min after 5 tries) | scheduled jobs (done) | L | todo |
-| 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | todo |
+| 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | in progress (7b session-management only) — Claude — 2026-10-15 — branch task7b-sessions. 7a consent toggles queued next |
 | **Tier C — core ask flow (activation)** |||||
-| 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | todo |
-| 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | todo |
-| 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | todo |
-| 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | todo |
+| 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | **Done, live** - #218 (0080) |
+| 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | **Slice A done, live** - slice A #219 (client only); slice B server enforcement HELD (money hold) |
+| 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | **Done, live** - #220 (client only, advisory) |
+| 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | **Done, live** - #221 (0081) |
 | 12 | `credit-metered-tools` + `ask-coach-rewrite` ("Improve my note · 1 credit", no charge on fallback) | 1 | M | todo |
 | 13 | `ask-pinned-work` / `pinned-work-in-asks` + `seeker-work-links` | 8 | M | todo |
 | **Tier D — referral lifecycle** |||||
-| 14 | `referrer-identity-reveal` + `identity-gated-preview` (both see names after accept) | — | M | todo |
-| 15 | `pass-reasons` (5 kit reasons, shared with the seeker, never the name) | — | M | todo |
-| 16 | `mark-referred-reference` + `thread-timeline` | — | M | todo |
-| 17 | `inbox-list-enrichment` + `referrer-preview-expiry` + `ask-quality-signals` | 9 | M | todo |
-| 18 | `referrer-capacity-routing` (monthly capacity; full → other referrers; area routing) + `named-referrer-visibility` | function taxonomy (done) | L | todo |
+| 14 | `referrer-identity-reveal` + `identity-gated-preview` (both see names after accept) | — | M | **Done, live** - #224 |
+| 15 | `pass-reasons` (5 kit reasons, shared with the seeker, never the name) | — | M | **Done, live** - #223 (0083) |
+| 16 | `mark-referred-reference` + `thread-timeline` | — | M | **Done, live** - #222 (0082) |
+| 17 | `inbox-list-enrichment` + `referrer-preview-expiry` + `ask-quality-signals` | 9 | M | in progress - Claude - 2026-10-15 - branch task17-inbox-enrich (read-only, no migration, no excerpt in payload) |
+| 18 | `referrer-capacity-routing` (monthly capacity; full → other referrers; area routing) + `named-referrer-visibility` | function taxonomy (done) | L | in progress - Claude - 2026-10-15 - PR 1 read model only (branch task18a-referrer-home). PR 2 routing emails and PR 3 inbox filtering HELD for founder |
 | 19 | `pre-accept-question` (one anonymous question before accepting) | 14 | L | todo |
 | 20 | `thank-you-wall` + `landed-journey` + `referrer-impact-metrics` + `company-demand` | 14 | L | todo |
 | **Tier E — notifications** |||||
-| 21 | `notification-kinds` + `notification-preferences` (types, channels, quiet hours) | — | L | todo |
+| 21 | `notification-kinds` + `notification-preferences` (types, channels, quiet hours) | — | L | in progress (part A kinds LIVE #238; part B = Settings new-ask email switch only, client-only, branch task21b-new-ask-toggle) - Claude - 2026-10-15 - branch task21a-kinds. Part B and email gated on founder; design docs/NOTIFICATIONS_DESIGN.md |
 | 22 | `email-templates` (all 12 real) + `notification-reminder-jobs` | 21 | L | todo |
 | 23 | `approval-notifications` + `saved-alerts` function field and matching | 21 | M | todo |
 | 24 | `web-push` (subscriptions, sender, SW handler; delivery needs owner VAPID keys) | 21 | L | todo |
 | **Tier F — settings and app** |||||
-| 25 | `region-preferences` (language/time zone/currency/date format persisted and applied; RTL direction) + `settings-kit-shell` | — | L | todo |
+| 25 | `region-preferences` (language/time zone/currency/date format persisted and applied; RTL direction) + `settings-kit-shell` | — | L | in progress - Claude - 2026-10-15 - API PR branch task25a-account-prefs (time zone + date format only; currency and language stay read-only, founder-approved cuts); client PR follows |
 | 26 | `app-display-preferences` (dark mode) + `pwa-install` + `offline-draft-sync` + `error-reference` + `lite-mode` | — | M | todo |
 | **Tier G — assistants and developers** |||||
 | 27 | `assistant-connection-grants` + `assistant-approvals-v2` + `ask-provenance` + `ask-send-limits` | 1 | L | todo |
@@ -146,7 +149,7 @@ Before pushing Wave 3: the whole wave goes together (its parts depend on each ot
 Build on the existing `/forgot-password`, `/reset-password` and `server/passwordResetRoutes.ts` (from `0222ce2`). Scope: email + password on the kit sign-in page (WorkOS `authenticateWithPassword`, same session creation as the WorkOS callback, generic errors, durable rate limits, typed `password_sign_in_unavailable` fallback to AuthKit when password auth is disabled); reset signs this browser in and every other session out; "Continue with Google" goes straight to Google (`provider=google` → WorkOS `GoogleOAuth`); decide sign-up-with-password from the PNGs. Security tests: enumeration, rate limits, suspension, open redirect, aliases, CSRF posture, no password logged.
 
 ## 5. Migrations
-Live: 0075 (user blocks, other session), 0076 company directory, 0077 job function, 0078 job runs, **0079 referral status `withdrawn` (PR #198, Oct 14)**. Branch `kit-v4-fullstack` only (not deployed) currently carries `0079_credit_ledger`, `0080_subscription_management` (old model — adapt) and `0081_pricing_model` (draft); they collide with main's 0079 and **must be renumbered to 0080, 0081, 0082 at the next merge of main into the branch**. **Reserved: 0080–0082 for queue task 1 (pricing). Any other work allocates 0083 or higher**. **0083 allocated (Oct 14) to D-012: `tokenTransactions.kind` gains `decline_refund` (additive, guarded); the pricing branch must carry this value into its credit-ledger enum at its next merge** — check `drizzle/deploy` on `main` at the moment you allocate and record it here.
+Live: 0075 (user blocks, other session), 0076 company directory, 0077 job function, 0078 job runs, **0079 referral status `withdrawn` (PR #198, Oct 14)**. Branch `kit-v4-fullstack` only (not deployed) currently carries `0079_credit_ledger`, `0080_subscription_management` (old model — adapt) and `0081_pricing_model` (draft); they collide with main's 0079 and **must be renumbered to 0080, 0081, 0082 at the next merge of main into the branch**. **Reserved: 0080–0082 for queue task 1 (pricing). Any other work allocates 0083 or higher**. **0083 released Oct 15 (the D-012 decline refund was withdrawn) and re-allocated Oct 15 to D-022 (posted roles + first look)** — check `drizzle/deploy` on `main` at the moment you allocate and record it here.
 
 ## 6. Owner actions outstanding
 - After Wave 3 ships: run the admin Chargebee catalog sync on the TEST site, test a checkout, then on LIVE.

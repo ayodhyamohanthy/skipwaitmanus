@@ -7,18 +7,17 @@ import type { ProfileVisibility } from "./VisibilityOptions";
 
 export type ProfileRole = "seeker" | "referrer";
 
-function discoverability(role: ProfileRole, visibility: ProfileVisibility, referrerNamed: boolean) {
+function discoverability(role: ProfileRole, visibility: ProfileVisibility) {
   if (visibility === "public") return { Icon: Globe, title: "Publicly discoverable", hint: "Anyone, and search engines, can see your public page." };
-  if (role === "referrer") return { Icon: LockKeyhole, title: "Not publicly discoverable", hint: referrerNamed ? "Seekers see your name, company and function." : "Seekers see your company and function, not your name." };
+  if (role === "referrer") return { Icon: LockKeyhole, title: "Not publicly discoverable", hint: "Seekers see your company and function. Your name is shown only after you accept." };
   return { Icon: LockKeyhole, title: "Not publicly discoverable", hint: visibility === "link" ? "Only people with your link see your public page." : "Only referrers reviewing your ask see context." };
 }
 
-export function PrivacyControls({ role, visibility, referrerNamed }: {
+export function PrivacyControls({ role, visibility }: {
   role: ProfileRole;
   visibility: ProfileVisibility;
-  referrerNamed: boolean;
 }) {
-  const first = discoverability(role, visibility, referrerNamed);
+  const first = discoverability(role, visibility);
   return (
     <aside className="privacy-controls">
       <span className="eyebrow">PRIVACY CONTROLS</span>

@@ -58,7 +58,7 @@ describe("Settings work email", () => {
 
   it("keeps the personal data download in Privacy", () => {
     renderAt("?section=privacy");
-    expect(screen.getByRole("button", { name: "Download my data" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Request my data" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Blocked people" })).toBeTruthy();
   });
 });

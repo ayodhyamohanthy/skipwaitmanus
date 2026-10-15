@@ -1,3 +1,4 @@
+import { retryAfterSecondsUntil, setRetryAfter } from "./retryAfter";
 import express, { type Express, type Request } from "express";
 import { randomBytes } from "node:crypto";
 import type { OAuthClient } from "./oauthStore";
@@ -29,7 +30,8 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
     if (!h || t - h.start >= 3_600_000) { hits.set(key, { start: t, count: 1 }); return false; }
     h.count += 1; return h.count > max;
   };
-  const oauthError = (res: express.Response, status: number, error: string, description: string) => res.set("Cache-Control", "no-store").status(status).json({ error, error_description: description });
+  const windowEnd = (key: string) => (hits.get(key)?.start ?? now()) + 3_600_000;
+  const oauthError = (res: express.Response, status: number, error: string, description: string, retryAfterKey?: string) => { if (retryAfterKey) setRetryAfter(res, retryAfterSecondsUntil(windowEnd(retryAfterKey), now())); return res.set("Cache-Control", "no-store").status(status).json({ error, error_description: description }); };
 
   app.get("/api/oauth/authorization-server", (_req, res) => {
     res.set("Cache-Control", "public, max-age=300").json({
@@ -50,7 +52,7 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
 
   // Dynamic client registration (RFC 7591), public clients only. Registering grants nothing: every connection still needs the owner's Allow.
   app.post("/api/oauth/register", express.json({ limit: "8kb" }), async (req, res) => {
-    if (limited(`reg:${req.ip ?? "?"}`, 20)) return oauthError(res, 429, "temporarily_unavailable", "Too many registrations. Try again later.");
+    if (limited(`reg:${req.ip ?? "?"}`, 20)) return oauthError(res, 429, "temporarily_unavailable", "Too many registrations. Try again later.", `reg:${req.ip ?? "?"}`);
     try {
       const client = await deps.registerClient({ clientName: req.body?.client_name, redirectUris: req.body?.redirect_uris });
       res.set("Cache-Control", "no-store").status(201).json({ client_id: client.clientId, client_name: client.clientName, redirect_uris: client.redirectUris, grant_types: ["authorization_code"], response_types: ["code"], token_endpoint_auth_method: "none" });
@@ -95,7 +97,7 @@ export function registerOAuthRoutes(app: Express, deps: OAuthRouteDeps) {
 
   app.post("/api/oauth/token", express.urlencoded({ extended: false, limit: "4kb" }), express.json({ limit: "4kb" }), async (req, res) => {
     const b = (req.body ?? {}) as Record<string, unknown>;
-    if (limited(`tok:${req.ip ?? "?"}`, 120)) return oauthError(res, 429, "temporarily_unavailable", "Too many requests.");
+    if (limited(`tok:${req.ip ?? "?"}`, 120)) return oauthError(res, 429, "temporarily_unavailable", "Too many requests.", `tok:${req.ip ?? "?"}`);
     if (b.grant_type !== "authorization_code") return oauthError(res, 400, "unsupported_grant_type", "Only authorization_code is supported");
     const { code, redirect_uri: redirectUri, client_id: clientId, code_verifier: verifier } = b;
     if (typeof code !== "string" || typeof redirectUri !== "string" || typeof clientId !== "string" || typeof verifier !== "string" || !VERIFIER_RE.test(verifier)) return oauthError(res, 400, "invalid_request", "Missing or malformed parameters");

@@ -69,7 +69,7 @@ describe("Ask composer", () => {
     expect(screen.getByText("The referrer sees your role and note — not your name or resume — until they accept.")).toBeTruthy();
     expect(screen.getByText("Uses 1 credit · referrals are always free")).toBeTruthy();
     const page = document.body.textContent ?? "";
-    for (const preview of ["DESIGN PREVIEW", "Fill example", "Role location", "Location works for you", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
+    for (const preview of ["DESIGN PREVIEW", "Fill example", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
     expect(fetchCalls()).toBe(0);
   });
 
@@ -253,6 +253,57 @@ describe("Ask composer", () => {
     fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
     await screen.findByText("Ask sent to wipro.com.");
     expect(sessionStorage.getItem("skipwait-ask-prefill")).toBeNull();
+  });
+
+  it("shows the company and function from the door the seeker came from, and a matching careers placeholder", async () => {
+    const company = { slug: "wipro", name: "Wipro", initials: "W", industry: "IT", location: "Bengaluru", functions: ["Design"], blurb: "b", domains: ["wipro.com"], openToReferrals: true };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/companies/wipro" ? { ok: true, status: 200, json: async () => ({ company }), headers: new Headers({ "content-type": "application/json" }), text: async () => JSON.stringify({ company }) } : { ok: false, status: 404, json: async () => ({}), headers: new Headers(), text: async () => "{}" }));
+    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://example.com/x", note: "", savedAt: Date.now() }));
+    render(<Ask />);
+    expect(await screen.findByText(/NEW ASK · WIPRO ·/)).toBeTruthy();
+    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).placeholder).toBe("https://careers.wipro.com/…");
+  });
+
+  it("keeps the plain eyebrow when the company is unknown or the lookup fails", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("offline"); }));
+    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "", savedAt: Date.now() }));
+    render(<Ask />);
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(screen.queryByText(/WIPRO/)).toBeNull();
+    expect(screen.getByPlaceholderText(/careers.company/)).toBeTruthy();
+  });
+
+  it("warns, without blocking, when the chosen role location is outside the saved setup", async () => {
+    const setup = { goal: "Actively looking", roles: [], level: "", links: [], city: "Pune, India", countries: "India", remote: true, visa: "Need sponsorship for some countries", resume: null };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/profile/setup" ? { ok: true, status: 200, json: async () => setup } : { ok: false, status: 404, json: async () => ({}) }));
+    render(<Ask />);
+    const select = await screen.findByLabelText(/Role location/);
+    await screen.findByRole("option", { name: "Hybrid · Pune" });
+    fireEvent.change(select, { target: { value: "other" } });
+    fireEvent.change(screen.getByLabelText("Where is the role?"), { target: { value: "Austin, USA" } });
+    expect(await screen.findByText(/may need work authorization/)).toBeTruthy();
+    expect(screen.getByText("Location works for you")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Where is the role?"), { target: { value: "Pune" } });
+    expect(screen.queryByText(/may need work authorization/)).toBeNull();
+    expect(screen.getByRole("button", { name: /Send ask/ }).hasAttribute("disabled")).toBe(true); // gated by link and note, never by location
+  });
+
+  it("continues a saved server draft into an empty composer and never overwrites typing", async () => {
+    const draft = { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "From the door.", updatedAt: "x" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/ask-drafts" ? { ok: true, status: 200, json: async () => ({ draft }) } : { ok: false, status: 404, json: async () => ({}) }));
+    render(<Ask />);
+    await waitFor(() => expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/1"));
+    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe("From the door.");
+  });
+
+  it("leaves a note the seeker already has alone when a draft arrives", async () => {
+    sessionStorage.setItem("skipwait-ask-prefill", JSON.stringify({ companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/7", note: "Mine.", savedAt: Date.now() }));
+    const draft = { companySlug: "wipro", targetRoleUrl: "https://careers.wipro.com/job/1", note: "Old draft.", updatedAt: "x" };
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => String(url) === "/api/ask-drafts" ? { ok: true, status: 200, json: async () => ({ draft }) } : { ok: false, status: 404, json: async () => ({}) }));
+    render(<Ask />);
+    await new Promise(resolve => setTimeout(resolve, 60));
+    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/7");
+    expect((screen.getByPlaceholderText(/Name the role/) as HTMLTextAreaElement).value).toBe("Mine.");
   });
 
   it("ignores a malformed hand-over instead of prefilling it", () => {
