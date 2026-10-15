@@ -78,24 +78,33 @@ export async function isBlockedBetween(userA: number, userB: number): Promise<bo
 /**
  * Batched block check for referral lists and thread guards. Returns the subset
  * of request ids where the other participant is blocked with the viewer, in
- * either direction. One extra query regardless of list size; caller filters.
+ * either direction. Queries are bounded per chunk without truncating coverage.
  */
 export async function getBlockedRequestIds(userId: number, requestIds: number[]): Promise<Set<number>> {
   const blocked = new Set<number>();
   const db = await getDb();
   if (!db) return blocked;
-  const ids = Array.from(new Set(requestIds.filter(id => Number.isInteger(id) && id > 0))).slice(0, 200);
-  if (ids.length === 0) return blocked;
-  const [rows, blocks] = await Promise.all([
-    db.select({ requestId: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(inArray(referralRequests.id, ids)),
-    db.select({ blockerUserId: userBlocks.blockerUserId, blockedUserId: userBlocks.blockedUserId }).from(userBlocks).where(or(eq(userBlocks.blockerUserId, userId), eq(userBlocks.blockedUserId, userId))).limit(500),
-  ]);
-  const blockedWith = new Set<number>();
-  for (const block of blocks) blockedWith.add(block.blockerUserId === userId ? block.blockedUserId : block.blockerUserId);
-  if (blockedWith.size === 0) return blocked;
-  for (const row of rows) {
-    const other = row.jobSeekerId === userId ? row.referrerId : row.jobSeekerId;
-    if (other !== null && other !== undefined && blockedWith.has(other)) blocked.add(row.requestId);
+  const ids = Array.from(new Set(requestIds.filter(id => Number.isInteger(id) && id > 0)));
+  const chunkSize = 200;
+  for (let offset = 0; offset < ids.length; offset += chunkSize) {
+    const rows = await db.select({ requestId: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId })
+      .from(referralRequests).where(inArray(referralRequests.id, ids.slice(offset, offset + chunkSize)));
+    const counterparts = Array.from(new Set(rows.map(row => row.jobSeekerId === userId ? row.referrerId : row.jobSeekerId)
+      .filter((id): id is number => id !== null && id !== undefined)));
+    if (counterparts.length === 0) continue;
+    // Scope both directions to this chunk's participants. A global row cap can
+    // otherwise hide the relevant pair behind unrelated blocks.
+    const blocks = await db.select({ blockerUserId: userBlocks.blockerUserId, blockedUserId: userBlocks.blockedUserId })
+      .from(userBlocks).where(or(
+        and(eq(userBlocks.blockerUserId, userId), inArray(userBlocks.blockedUserId, counterparts)),
+        and(eq(userBlocks.blockedUserId, userId), inArray(userBlocks.blockerUserId, counterparts)),
+      ));
+    const blockedWith = new Set<number>();
+    for (const block of blocks) blockedWith.add(block.blockerUserId === userId ? block.blockedUserId : block.blockerUserId);
+    for (const row of rows) {
+      const other = row.jobSeekerId === userId ? row.referrerId : row.jobSeekerId;
+      if (other !== null && other !== undefined && blockedWith.has(other)) blocked.add(row.requestId);
+    }
   }
   return blocked;
 }
