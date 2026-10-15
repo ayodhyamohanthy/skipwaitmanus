@@ -70,6 +70,15 @@ export const profiles = mysqlTable("profiles", {
   notifyNewAsk: boolean("notifyNewAsk").default(true).notNull(),
   notifyDigest: boolean("notifyDigest").default(false).notNull(),
   paused: boolean("paused").default(false).notNull(),
+  // Seeker setup answers (queue task 8). Roles live in openTo.
+  experienceLevel: varchar("experienceLevel", { length: 40 }),
+  seekerGoal: varchar("seekerGoal", { length: 60 }),
+  searchCity: varchar("searchCity", { length: 120 }),
+  searchCountries: varchar("searchCountries", { length: 240 }),
+  searchRemote: boolean("searchRemote"),
+  workAuthorization: varchar("workAuthorization", { length: 80 }),
+  workLinkKinds: text("workLinkKinds"),
+  defaultResumeAttachmentId: int("defaultResumeAttachmentId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("profiles_user_id_unique").on(table.userId), uniqueIndex("profiles_handle_unique").on(table.handle)]);
@@ -96,9 +105,42 @@ export const safetyReports = mysqlTable("safetyReports", {
   reportedUserId: int("reportedUserId").references(() => users.id, { onDelete: "set null" }),
   urgent: boolean("urgent").default(false).notNull(),
   status: mysqlEnum("status", ["open", "under_review", "resolved", "dismissed"]).default("open").notNull(),
+  severity: varchar("severity", { length: 8 }).default("normal").notNull(),
+  dueAt: timestamp("dueAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("safety_reports_reporter_idx").on(table.reporterUserId), index("safety_reports_status_idx").on(table.status)]);
+
+// Per-report case file (task 5 phase 1): reviewer notes and the audit trail. Admin-visible only.
+export const moderationEvents = mysqlTable("moderationEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  actorKind: varchar("actorKind", { length: 12 }).notNull(),
+  actorUserId: int("actorUserId"),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  note: varchar("note", { length: 600 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("moderation_events_report_idx").on(table.reportId, table.createdAt)]);
+
+// Filing-time copy of the reporter's own request thread (task 5 phase 1b). Insert-only; admin-visible only.
+export const moderationEvidence = mysqlTable("moderationEvidence", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  seq: int("seq").notNull(),
+  sender: varchar("sender", { length: 10 }).notNull(),
+  body: text("body").notNull(),
+  sentAt: timestamp("sentAt").notNull(),
+  capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+}, table => [index("moderation_evidence_report_idx").on(table.reportId, table.seq)]);
+
+// Per-account display preferences (queue task 25). NULL = use this device.
+export const accountPreferences = mysqlTable("accountPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  timeZone: varchar("timeZone", { length: 64 }),
+  dateFormat: varchar("dateFormat", { length: 8 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("account_preferences_user_unique").on(table.userId)]);
 
 export const companySuggestions = mysqlTable("companySuggestions", {
   id: int("id").autoincrement().primaryKey(),
@@ -163,6 +205,33 @@ export const seekerAlerts = mysqlTable("seekerAlerts", {
   notifiedAt: timestamp("notifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("seeker_alerts_user_domain_unique").on(table.userId, table.companyDomain), index("seeker_alerts_user_idx").on(table.userId), index("seeker_alerts_domain_idx").on(table.companyDomain)]);
+
+// One saved ask draft per user (queue task 11). Never sent; /ask continues it.
+export const askDrafts = mysqlTable("askDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companySlug: varchar("companySlug", { length: 64 }).notNull(),
+  targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }).notNull(),
+  note: varchar("note", { length: 600 }).notNull().default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_drafts_user_unique").on(table.userId)]);
+
+// Async personal-data export (task 4a). zipData is dropped when the export expires.
+const exportBlob = customType<{ data: Buffer; driverData: Buffer }>({ dataType() { return "longblob"; } });
+export const dataExports = mysqlTable("dataExports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 16 }).notNull().default("requested"),
+  activeKey: varchar("activeKey", { length: 40 }),
+  fileName: varchar("fileName", { length: 120 }),
+  byteSize: int("byteSize").notNull().default(0),
+  zipData: exportBlob("zipData"),
+  failureNote: varchar("failureNote", { length: 200 }),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  readyAt: timestamp("readyAt"),
+  expiresAt: timestamp("expiresAt"),
+}, table => [uniqueIndex("data_exports_active_unique").on(table.activeKey), index("data_exports_user_idx").on(table.userId, table.requestedAt)]);
 
 export const assistantConnections = mysqlTable("assistantConnections", {
   id: int("id").autoincrement().primaryKey(),
@@ -413,6 +482,8 @@ export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   fromStatus: varchar("fromStatus", { length: 32 }).notNull(),
   resultingStatus: varchar("resultingStatus", { length: 32 }).notNull(),
   resultingRevision: int("resultingRevision").notNull(),
+  // Optional portal reference recorded on mark-as-referred (queue task 16).
+  referenceId: varchar("referenceId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_transition_operation_unique").on(table.referralRequestId, table.operationKey), uniqueIndex("referral_transition_revision_unique").on(table.referralRequestId, table.resultingRevision)]);
 
@@ -428,6 +499,7 @@ export const referralRequestPasses = mysqlTable("referralRequestPasses", {
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   reason: mysqlEnum("reason", ["role_not_a_fit", "cannot_support", "timing"]).notNull(),
+  reasonCode: varchar("reasonCode", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_request_pass_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referral_request_pass_referrer_idx").on(table.referrerId, table.createdAt)]);
 
@@ -593,6 +665,8 @@ export const notifications = mysqlTable("notifications", {
   title: varchar("title", { length: 180 }).notNull(),
   body: text("body").notNull(),
   eventKey: varchar("eventKey", { length: 120 }),
+  kind: varchar("kind", { length: 32 }),
+  refId: int("refId"),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("notifications_user_idx").on(table.userId), uniqueIndex("notifications_event_key_unique").on(table.eventKey)]);

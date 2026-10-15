@@ -1,3 +1,4 @@
+import { setRetryAfter } from "./retryAfter";
 import { createHash } from "node:crypto";
 import express, { type Express, type Request } from "express";
 import { handleMcpMessage, type McpDeps } from "./mcpServer";
@@ -57,7 +58,7 @@ export function registerMcpRoutes(app: Express, deps: McpRouteDeps) {
         return res.status(403).json({ jsonrpc: "2.0", id: null, error: { code: -32002, message: "Assistant access is not part of this account's plan" } });
       }
       if (!allowed(auth.tokenId)) {
-        res.set("Retry-After", "60");
+        setRetryAfter(res, 60);
         return res.status(429).json({ jsonrpc: "2.0", id: null, error: { code: -32003, message: "Too many requests. Try again in a minute." } });
       }
       const body: unknown = req.body;

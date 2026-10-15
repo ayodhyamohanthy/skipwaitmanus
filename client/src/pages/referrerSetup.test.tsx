@@ -55,7 +55,8 @@ describe("ReferrerSetup", () => {
       if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (String(url).endsWith("/referrer-preferences") && init?.method === "PUT") {
         const body = JSON.parse(String(init.body));
-        expect(body).toMatchObject({ referralCapacity: 5, referrerVisibility: "named", notifyNewAsk: false });
+        expect(body).toMatchObject({ referralCapacity: 5, notifyNewAsk: false });
+        expect(body).not.toHaveProperty("referrerVisibility");
         expect(body.preferAreas).toEqual(["Design", "Product"]);
         expect(body.preferLevels).toEqual(["Mid-level", "Senior"]);
         return ok({ preferences: body });
@@ -75,8 +76,6 @@ describe("ReferrerSetup", () => {
     fireEvent.change(screen.getByLabelText("Monthly capacity"), { target: { value: "5" } });
     expect(screen.getByText("asks per month · about 25 minutes")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
-    fireEvent.click(screen.getByRole("radio", { name: /Named on company pages/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("switch", { name: /Email when a new ask arrives/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("You're open for asks.")).toBeTruthy();
@@ -94,7 +93,7 @@ describe("ReferrerSetup", () => {
     }));
     renderSetup();
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("Setup saved. New asks are paused.")).toBeTruthy();
     expect(screen.queryByText("You're open for asks.")).toBeNull();
@@ -109,7 +108,7 @@ describe("ReferrerSetup", () => {
     }));
     renderSetup();
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect((await screen.findByRole("link", { name: "Share my profile" })).getAttribute("href")).toBe("/p/meera-iyer");
   });
@@ -122,7 +121,7 @@ describe("ReferrerSetup", () => {
     }));
     renderSetup();
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("Capacity is 1 to 15 asks")).toBeTruthy();
     expect(screen.getByText("When should we tell you?")).toBeTruthy();

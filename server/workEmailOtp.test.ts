@@ -3,7 +3,7 @@ import { resolveMx } from "node:dns/promises";
 import { drizzle } from "drizzle-orm/mysql2";
 import type { Pool } from "mysql2/promise";
 import { getDb } from "./db";
-import { createWorkEmailOtpService, hashCode, isValidWorkEmailOtpEmail } from "./workEmailOtp";
+import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError, createWorkEmailOtpService, hashCode, isValidWorkEmailOtpEmail } from "./workEmailOtp";
 
 vi.mock("./db", async () => {
   const { isCorporateEmailDomain } = await import("../shared/const");
@@ -55,6 +55,27 @@ describe("work email OTP delivery", () => {
     expect(await pending).toEqual({ sent: true, reason: "sent" });
     expect(insert).toHaveBeenCalledOnce();
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("uses a 30 second resend cooldown and reports how long to wait", async () => {
+    expect(OTP_RESEND_COOLDOWN_SECONDS).toBe(30);
+    const { query } = connectedDatabase();
+    query.mockImplementation(async () => [{ affectedRows: 0, insertId: 0 }, []]);
+    const result = await createWorkEmailOtpService({ sendEmail: vi.fn(async () => ({ sent: true, reason: "sent" })), now: () => 1_000_000 }).sendCode("ref@acme.com", { ip: "1.2.3.4" });
+    expect(result.sent).toBe(false); expect(result.reason).toBe("rate_limited");
+    expect(result.retryAfterSeconds).toBeGreaterThan(0); expect(result.retryAfterSeconds).toBeLessThanOrEqual(600);
+  });
+
+  it("refuses to check a code while the email and IP pair is locked, and says when it ends", async () => {
+    const { query } = connectedDatabase();
+    const until = new Date(5_000_000 + 10 * 60_000);
+    query.mockImplementation(async (q: { sql: string }) => q.sql.includes("MAX(expiresAt)") ? [[{ until }], []] : [{ affectedRows: 1, insertId: 1 }, []]);
+    const error = await createWorkEmailOtpService({ now: () => 5_000_000 }).verifyCode("ref@acme.com", "123456", { ip: "1.2.3.4" }).catch(reason => reason);
+    expect(error).toBeInstanceOf(OtpLockedError);
+    expect(error.retryAfterSeconds).toBe(600);
+    expect(error.lockedUntil.getTime()).toBe(until.getTime());
+    // The code itself was never looked up while locked.
+    expect(query.mock.calls.some(([q]) => (q as { sql: string }).sql.includes("FROM workEmailOtpCodes"))).toBe(false);
   });
 
   it.each(["delivery_failed", "not_configured"])("does not store a code after %s", async reason => {

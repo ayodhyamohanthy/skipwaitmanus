@@ -58,3 +58,12 @@ export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" |
   const when = days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
   return `Waiting for a verified ${company} referrer. ${when} if nobody accepts — your slot returns automatically.`;
 }
+
+/** Referrer-side pending line: the real expiry first, then the existing "no reply needed" reassurance. */
+export function referrerPendingCopy(request: Pick<ThreadRequest, "createdAt">, nowMs: number = Date.now()): string {
+  const base = "No reply needed to pass — but a quick answer helps.";
+  const days = askDaysLeft({ createdAt: request.createdAt }, nowMs);
+  if (days === null || days < 0) return base;
+  const when = days === 0 ? "Expires today." : days === 1 ? "Expires tomorrow." : `Expires in ${days} days.`;
+  return `${when} ${base}`;
+}

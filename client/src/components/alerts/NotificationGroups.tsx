@@ -1,5 +1,6 @@
-import { BadgeCheck, Check, MessageSquare, Wallet } from "lucide-react";
-import { isToday, timeAgo, type NotificationCategory, type NotificationItem } from "./notifications";
+import { BadgeCheck, Check, Clock3, MessageSquare, Wallet } from "lucide-react";
+import { isSameDay, useDisplayPrefs } from "@/lib/displayPrefs";
+import { timeAgo, type NotificationCategory, type NotificationItem } from "./notifications";
 
 // Kit row icons (app/src/routes/alerts.tsx), chosen by the live category.
 const CATEGORY_ICON: Record<NotificationCategory, typeof Check> = {
@@ -9,6 +10,9 @@ const CATEGORY_ICON: Record<NotificationCategory, typeof Check> = {
   system: Wallet,
 };
 
+// Event kinds that need a different icon than their category (kit: expiry rows use Clock3).
+const KIND_ICON: Record<string, typeof Check> = { ask_expiring: Clock3, ask_expired: Clock3 };
+
 const GROUPS = ["Today", "Earlier"] as const;
 
 /**
@@ -17,17 +21,18 @@ const GROUPS = ["Today", "Earlier"] as const;
  * page decides.
  */
 export function NotificationGroups({ items, onOpen }: { items: readonly NotificationItem[]; onOpen: (item: NotificationItem) => void }) {
+  const prefs = useDisplayPrefs();
   return (
     <>
       {GROUPS.map(group => {
-        const rows = items.filter(item => (group === "Today") === isToday(item.createdAt));
+        const rows = items.filter(item => (group === "Today") === isSameDay(item.createdAt, new Date(), prefs));
         if (!rows.length) return null;
         return (
           <div key={group} className="mb-4">
             <h2 className="mb-2 text-xs font-semibold text-muted-foreground">{group.toUpperCase()}</h2>
             <ul className="overflow-hidden rounded-3xl border border-border">
               {rows.map(item => {
-                const Icon = CATEGORY_ICON[item.category];
+                const Icon = (item.kind ? KIND_ICON[item.kind] : undefined) ?? CATEGORY_ICON[item.category];
                 const unread = !item.readAt;
                 return (
                   <li key={item.id} className="border-b border-border last:border-0">

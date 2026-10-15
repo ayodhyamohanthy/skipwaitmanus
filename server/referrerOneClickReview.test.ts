@@ -40,7 +40,15 @@ describe("Referrer one-click review actions", () => {
     expect(accepted.status).toBe(200); expect(accepted.body).toEqual({ status: "approved" });
     const declined = await request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "timing" });
     expect(declined.status).toBe(200); expect(declined.body).toEqual({ status: "passed", declineReason: "timing" });
-    expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "approved", declineReason: undefined }, { userId: 2, requestId: 81, decision: "declined", declineReason: "timing" }]);
+    expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "approved", declineReason: undefined, passReason: null }, { userId: 2, requestId: 81, decision: "declined", declineReason: "timing", passReason: null }]);
+  });
+
+  it("accepts a kit pass reason code, rejects unknown codes, and never needs a name", async () => {
+    const { app, reviews } = appFor();
+    const post = (body: object) => request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send(body);
+    expect((await post({ decision: "declined", declineReason: "timing", passReason: "Jane Doe" })).status).toBe(400);
+    expect((await post({ decision: "declined", declineReason: "timing", passReason: "at_capacity" })).status).toBe(200);
+    expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "timing", passReason: "at_capacity" }]);
   });
 
   it("sends a company-only email handoff and completes its action once for the authenticated intended Referrer", async () => {
@@ -52,7 +60,7 @@ describe("Referrer one-click review actions", () => {
     const acted = await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" });
     expect(acted.status).toBe(200); expect(acted.body).toEqual({ status: "passed", declineReason: "role_not_a_fit" }); expect(JSON.stringify(acted.body)).not.toMatch(/request|email|token|company/i); expect(consumed).toEqual([token]);
     expect((await request(app).post(`/api/referrer-review-links/${token}/decision`).set("x-test-user", "employee").send({ decision: "declined", declineReason: "role_not_a_fit" })).status).toBe(409);
-    expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "role_not_a_fit", reviewLinkToken: token }]);
+    expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "role_not_a_fit", passReason: null, reviewLinkToken: token }]);
   });
 
   it("keeps recipient review emails factual and omits candidate-private details", async () => {
