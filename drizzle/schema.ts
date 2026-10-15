@@ -122,6 +122,17 @@ export const moderationEvents = mysqlTable("moderationEvents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("moderation_events_report_idx").on(table.reportId, table.createdAt)]);
 
+// Filing-time copy of the reporter's own request thread (task 5 phase 1b). Insert-only; admin-visible only.
+export const moderationEvidence = mysqlTable("moderationEvidence", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  seq: int("seq").notNull(),
+  sender: varchar("sender", { length: 10 }).notNull(),
+  body: text("body").notNull(),
+  sentAt: timestamp("sentAt").notNull(),
+  capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+}, table => [index("moderation_evidence_report_idx").on(table.reportId, table.seq)]);
+
 export const companySuggestions = mysqlTable("companySuggestions", {
   id: int("id").autoincrement().primaryKey(),
   submitterUserId: int("submitterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),

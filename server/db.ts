@@ -1,11 +1,11 @@
-import { cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, reportSeverity, reviewDueAt } from "./moderationCase";
+import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { moderationEvents, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
@@ -878,6 +878,18 @@ export async function createSafetyReport(userId: number, input: { reason?: unkno
   const id = Number(inserted[0].insertId);
   // The case file is best-effort: a failure here never blocks the report itself.
   try { await db.insert(moderationEvents).values(urgent ? [{ reportId: id, actorKind: "reporter", actorUserId: userId, kind: "opened" }, { reportId: id, actorKind: "reporter", actorUserId: userId, kind: "flagged_urgent" }] : [{ reportId: id, actorKind: "reporter", actorUserId: userId, kind: "opened" }]); } catch (error) { console.warn("[moderation] could not record opening event", { reportId: id, name: error instanceof Error ? error.name : "unknown" }); }
+  // Evidence snapshot: only messages the reporter sent or received in this approved request thread, copied once, best-effort.
+  if (requestId !== null) {
+    try {
+      const target = (await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1))[0];
+      const otherId = target ? (target.jobSeekerId === userId ? target.referrerId : target.jobSeekerId) : null;
+      if (target && otherId !== null && otherId !== undefined) {
+        const thread = await db.select({ id: messages.id, senderId: messages.senderId, body: messages.body, createdAt: messages.createdAt }).from(messages).where(and(eq(messages.referralRequestId, requestId), or(and(eq(messages.senderId, userId), eq(messages.recipientId, otherId)), and(eq(messages.senderId, otherId), eq(messages.recipientId, userId))))).orderBy(desc(messages.createdAt), desc(messages.id)).limit(50);
+        const rows = buildEvidenceRows(id, userId, thread);
+        if (rows.length) await db.insert(moderationEvidence).values(rows);
+      }
+    } catch (error) { console.warn("[moderation] could not record evidence snapshot", { reportId: id, name: error instanceof Error ? error.name : "unknown" }); }
+  }
   return { id, reference: `R-${1000 + id}`, urgent: Boolean(input.urgent) };
 }
 
@@ -916,7 +928,9 @@ export async function listSafetyReportsAdmin(limit = 100) {
   if (!reports.length) return reports.map(report => ({ ...report, events: [] as Array<{ actor: string; kind: string; note: string | null; createdAt: string }> }));
   let events = new Map() as ReturnType<typeof groupModerationEvents>;
   try { events = groupModerationEvents(await db.select({ reportId: moderationEvents.reportId, actorKind: moderationEvents.actorKind, kind: moderationEvents.kind, note: moderationEvents.note, createdAt: moderationEvents.createdAt }).from(moderationEvents).where(inArray(moderationEvents.reportId, reports.map(report => report.id))) as never); } catch (error) { console.warn("[moderation] could not load events", { name: error instanceof Error ? error.name : "unknown" }); }
-  return reports.map(report => ({ ...report, events: events.get(report.id) ?? [] }));
+  let evidence = new Map() as ReturnType<typeof groupEvidence>;
+  try { evidence = groupEvidence(await db.select({ reportId: moderationEvidence.reportId, seq: moderationEvidence.seq, sender: moderationEvidence.sender, body: moderationEvidence.body, sentAt: moderationEvidence.sentAt }).from(moderationEvidence).where(inArray(moderationEvidence.reportId, reports.map(report => report.id)))); } catch (error) { console.warn("[moderation] could not load evidence", { name: error instanceof Error ? error.name : "unknown" }); }
+  return reports.map(report => ({ ...report, events: events.get(report.id) ?? [], evidence: evidence.get(report.id) ?? [] }));
 }
 
 export async function reviewSafetyReport(adminId: number, reportId: number, input: { status?: unknown; note?: unknown }, notify?: (userId: number, title: string, body: string) => Promise<unknown>) {

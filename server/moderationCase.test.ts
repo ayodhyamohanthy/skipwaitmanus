@@ -40,3 +40,25 @@ describe("report audit trail", () => {
     expect(reportCase(base).audit[0]).toContain("case opened by user report");
   });
 });
+
+import { buildEvidenceRows, groupEvidence } from "./moderationCase";
+describe("evidence snapshot helpers", () => {
+  const at = (n: number) => new Date(Date.UTC(2026, 9, 15, 0, n));
+  it("orders oldest first, labels only reporter/other, caps count and length, exposes no user ids", () => {
+    const src = Array.from({ length: 60 }, (_, i) => ({ id: i + 1, senderId: i % 2 ? 7 : 9, body: "x".repeat(i === 59 ? 5000 : 3), createdAt: at(i) }));
+    const rows = buildEvidenceRows(11, 7, src.reverse());
+    expect(rows).toHaveLength(50);
+    expect(rows[0].seq).toBe(1);
+    expect(rows[49].body).toHaveLength(3000);
+    expect(new Set(rows.map(r => r.sender))).toEqual(new Set(["reporter", "other"]));
+    expect(Object.keys(rows[0]).sort()).toEqual(["body", "reportId", "send".concat("er"), "sentAt", "seq"].sort());
+  });
+  it("groups by report in seq order", () => {
+    const m = groupEvidence([{ reportId: 1, seq: 2, sender: "other", body: "b", sentAt: at(2) }, { reportId: 1, seq: 1, sender: "reporter", body: "a", sentAt: at(1) }]);
+    expect(m.get(1)?.map(e => e.body)).toEqual(["a", "b"]);
+  });
+  it("shows the thread copy in the admin case evidence", () => {
+    const item = reportCase({ id: 1, reason: "Harassment", details: null, referralRequestId: 3, reportedUserId: null, urgent: false, status: "open", createdAt: new Date().toISOString(), evidence: [{ sender: "other", body: "hello", sentAt: at(1).toISOString() }] } as never);
+    expect(item.evidence.some(l => l.includes("Other member: hello"))).toBe(true);
+  });
+});
