@@ -1,4 +1,4 @@
-import { askDaysLeft, isPostApprovalReferralStatus } from "@shared/referral";
+import { askDaysLeft, askDaysShown, isPostApprovalReferralStatus } from "@shared/referral";
 import { companyIdentityOf, type CompanyIdentitySource } from "@shared/companies";
 import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
 
@@ -53,7 +53,7 @@ export function companyInitials(request: CompanyIdentitySource): string {
 export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "companyName" | "companyInitials" | "referrerId" | "createdAt">, nowMs: number = Date.now()): string {
   const company = companyName(request);
   if (request.referrerId !== null) return `A verified ${company} employee is reviewing your request. We'll notify you the moment it's accepted.`;
-  const days = askDaysLeft({ createdAt: request.createdAt }, nowMs);
+  const days = askDaysShown({ createdAt: request.createdAt }, nowMs);
   if (days === null || days < 0) return `Waiting for a verified ${company} referrer.`;
   const when = days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
   return `Waiting for a verified ${company} referrer. ${when} if nobody accepts — your slot returns automatically.`;
@@ -62,7 +62,7 @@ export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" |
 /** Referrer-side pending line: the real expiry first, then the existing "no reply needed" reassurance. */
 export function referrerPendingCopy(request: Pick<ThreadRequest, "createdAt">, nowMs: number = Date.now()): string {
   const base = "No reply needed to pass — but a quick answer helps.";
-  const days = askDaysLeft({ createdAt: request.createdAt }, nowMs);
+  const days = askDaysShown({ createdAt: request.createdAt }, nowMs);
   if (days === null || days < 0) return base;
   const when = days === 0 ? "Expires today." : days === 1 ? "Expires tomorrow." : `Expires in ${days} days.`;
   return `${when} ${base}`;
