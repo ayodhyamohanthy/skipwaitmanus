@@ -3,6 +3,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
 import { giftSubscriptionFulfillments, notifications, operationalActivityLogs, tokenBalances, users } from "../drizzle/schema";
+import { dmGateQueries, type DmGateProfileRow, type DmGateUserRow } from "./dmReferrerGate";
 import { NOTICE_EMAIL_ACTION, type EmailOutcome, type NoticeGiftRow, type NoticeStore } from "./premiumDmChangeNotice";
 
 export type NoticeDb = Pick<MySql2Database<Record<string, never>>, "select" | "insert">;
@@ -21,6 +22,8 @@ function isDuplicateKeyError(error: unknown): boolean {
 }
 
 export function drizzleNoticeStore(db: NoticeDb): NoticeStore {
+  // The same queries the DM gate runs, so "verified referrer" means one thing (D-020).
+  const gate = dmGateQueries(db);
   return {
     listPaidWallets: () => db.select({
       userId: tokenBalances.userId,
@@ -42,6 +45,18 @@ export function drizzleNoticeStore(db: NoticeDb): NoticeStore {
           .where(inArray(giftSubscriptionFulfillments.subscriptionId, batch));
         for (const row of rows) if (row.subscriptionId !== null) found.push({ subscriptionId: row.subscriptionId, buyerUserId: row.buyerUserId, buyerCanonicalPersonId: row.buyerCanonicalPersonId });
       }
+      return found;
+    },
+
+    async usersByPersons(personIds) {
+      const found: DmGateUserRow[] = [];
+      for (const batch of chunks(personIds)) found.push(...(await gate.usersByPersons(batch)));
+      return found;
+    },
+
+    async verifiedProfiles(userIds) {
+      const found: DmGateProfileRow[] = [];
+      for (const batch of chunks(userIds)) found.push(...(await gate.verifiedProfiles(batch)));
       return found;
     },
 

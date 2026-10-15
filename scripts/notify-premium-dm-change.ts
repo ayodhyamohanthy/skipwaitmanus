@@ -17,6 +17,15 @@
  * write unless you add --credits-only-copy-approved, which you may do only
  * after the owner's approval of that text is recorded under D-020.
  *
+ * Subscribers who are themselves verified referrers (their person has a
+ * verified work email, D-020) lose more than the approved text says: the gate
+ * also closes their plan-based and mutual-follow messages with members who
+ * are not referrers. The dry run counts them ("verifiedReferrers"); a writing
+ * run that would notify or email any of them stops before its first write
+ * unless you add --verified-referrer-copy-approved, which you may do only
+ * after the owner's answer (a third text, or accepting the current one) is
+ * recorded under D-020.
+ *
  * --apply creates one in-app notification per subscriber (unique eventKey
  * d012-dm-change:<person>) and emails each newly notified subscriber through
  * the transactional mailer, recording every email outcome. Re-running --apply
@@ -29,12 +38,13 @@
 import type { NoticeMode } from "../server/premiumDmChangeNotice";
 import { NOTICE_OFFERS } from "../server/premiumDmChangeNoticeCopy";
 
-export type NoticeArgs = { mode: NoticeMode; effectiveDate: string; creditsOnlyCopyApproved: boolean };
+export type NoticeArgs = { mode: NoticeMode; effectiveDate: string; creditsOnlyCopyApproved: boolean; verifiedReferrerCopyApproved: boolean };
 
 export function parseNoticeArgs(argv: readonly string[], today: Date = new Date()): NoticeArgs {
   let mode: NoticeMode = "dry-run";
   let effectiveDate: string | null = null;
   let creditsOnlyCopyApproved = false;
+  let verifiedReferrerCopyApproved = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--apply" || arg === "--resend-failed") {
@@ -47,6 +57,10 @@ export function parseNoticeArgs(argv: readonly string[], today: Date = new Date(
       creditsOnlyCopyApproved = true;
       continue;
     }
+    if (arg === "--verified-referrer-copy-approved") {
+      verifiedReferrerCopyApproved = true;
+      continue;
+    }
     if (arg === "--effective-date") {
       const value = argv[i + 1];
       if (!value || value.startsWith("--")) throw new Error("--effective-date needs a date written YYYY-MM-DD");
@@ -54,10 +68,10 @@ export function parseNoticeArgs(argv: readonly string[], today: Date = new Date(
       i++;
       continue;
     }
-    throw new Error(`Unknown option ${arg}. Use --effective-date <YYYY-MM-DD>, --apply, --resend-failed or --credits-only-copy-approved.`);
+    throw new Error(`Unknown option ${arg}. Use --effective-date <YYYY-MM-DD>, --apply, --resend-failed, --credits-only-copy-approved or --verified-referrer-copy-approved.`);
   }
   if (mode !== "dry-run" && effectiveDate === null) throw new Error(`--${mode} needs --effective-date <YYYY-MM-DD>, the day the change went live.`);
-  return { mode, effectiveDate: effectiveDate ?? today.toISOString().slice(0, 10), creditsOnlyCopyApproved };
+  return { mode, effectiveDate: effectiveDate ?? today.toISOString().slice(0, 10), creditsOnlyCopyApproved, verifiedReferrerCopyApproved };
 }
 
 async function main() {
@@ -80,6 +94,7 @@ async function main() {
   if (report.results) console.log(`Results: ${JSON.stringify(report.results, null, 2)}`);
   else console.log("Dry run: nothing was written and no email was sent. Re-run with --apply after the owner approves the copy.");
   if (report.audience.creditsOnly > 0 && !args.creditsOnlyCopyApproved) console.log("The credits_only text is not approved yet (D-020): --apply and --resend-failed refuse to send it without --credits-only-copy-approved.");
+  if (report.audience.verifiedReferrers > 0 && !args.verifiedReferrerCopyApproved) console.log(`${report.audience.verifiedReferrers} subscriber(s) have a verified work email: the change also closes their messages with members who are not referrers, which the approved text does not say. Open question to the owner under D-020 (a third text, or accept the current one). --apply and --resend-failed refuse to write to them without --verified-referrer-copy-approved.`);
   process.exit(0);
 }
 

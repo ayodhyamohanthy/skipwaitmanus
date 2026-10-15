@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { parseNoticeArgs } from "../scripts/notify-premium-dm-change";
-import { NoticeCopyNotApprovedError, NoticeEmailNotConfiguredError, planNoticeAudience, runPremiumDmChangeNotice, type EmailOutcome, type NoticeGiftRow, type NoticeMailer, type NoticeStore, type NoticeWalletRow } from "./premiumDmChangeNotice";
+import { NoticeCopyNotApprovedError, NoticeEmailNotConfiguredError, planNoticeAudience, runPremiumDmChangeNotice, summarizeAudience, type EmailOutcome, type NoticeGiftRow, type NoticeMailer, type NoticeStore, type NoticeWalletRow } from "./premiumDmChangeNotice";
+import type { DmGateProfileRow, DmGateUserRow } from "./dmReferrerGate";
 
 const NOW = new Date("2026-10-15T12:00:00Z");
 const LATER = new Date("2026-11-10T00:00:00Z");
@@ -18,13 +19,17 @@ const WALLETS: NoticeWalletRow[] = [
   wallet({ userId: 9, plan: "free" }),
 ];
 
-function memoryStore(wallets: readonly NoticeWalletRow[], gifts: readonly NoticeGiftRow[] = []) {
+type PersonTables = { users?: readonly DmGateUserRow[]; profiles?: readonly DmGateProfileRow[] };
+
+function memoryStore(wallets: readonly NoticeWalletRow[], gifts: readonly NoticeGiftRow[] = [], people: PersonTables = {}) {
   const notifications = new Map<string, number>();
   const outcomes: Array<{ eventKey: string; outcome: EmailOutcome; reason: string }> = [];
   const writes = { notifications: 0, outcomes: 0 };
   const store: NoticeStore = {
     listPaidWallets: async () => wallets,
     giftsForSubscriptions: async ids => gifts.filter(gift => ids.includes(gift.subscriptionId)),
+    usersByPersons: async personIds => (people.users ?? []).filter(row => row.canonicalPersonId !== null && personIds.includes(row.canonicalPersonId)),
+    verifiedProfiles: async userIds => (people.profiles ?? []).filter(row => userIds.includes(row.userId) && row.workEmailVerifiedAt !== null),
     existingNotificationKeys: async keys => new Set(keys.filter(key => notifications.has(key))),
     insertNotificationOnce: async input => { writes.notifications += 1; if (notifications.has(input.eventKey)) return "exists"; notifications.set(input.eventKey, input.userId); return "created"; },
     emailOutcomes: async keys => { const latest = new Map<string, EmailOutcome>(); for (const row of outcomes) if (keys.includes(row.eventKey)) latest.set(row.eventKey, row.outcome); return latest; },
@@ -68,7 +73,7 @@ describe("D-012 premium DM change notice: dry run", () => {
     expect(mailer).not.toHaveBeenCalled();
     expect(memory.writes).toEqual({ notifications: 0, outcomes: 0 });
     expect(report.results).toBeNull();
-    expect(report.audience).toMatchObject({ subscribers: 4, pro: 2, max: 2, renewing: 3, endingAtTermEnd: 1, withEmail: 3, withoutEmail: 1, alreadyNotified: 0, refundOrCredits: 3, creditsOnly: 1, gifted: 0 });
+    expect(report.audience).toMatchObject({ subscribers: 4, pro: 2, max: 2, renewing: 3, endingAtTermEnd: 1, withEmail: 3, withoutEmail: 1, alreadyNotified: 0, refundOrCredits: 3, creditsOnly: 1, gifted: 0, verifiedReferrers: 0 });
     const printed = JSON.stringify(report);
     expect(printed).not.toMatch(/@example\.test/);
     expect(report.copy.byOffer.refund_or_credits.email.text).toContain("From 20 October 2026");
@@ -76,9 +81,10 @@ describe("D-012 premium DM change notice: dry run", () => {
   });
 
   it("defaults the dry run to dry-run mode and today's date", () => {
-    expect(parseNoticeArgs([], NOW)).toEqual({ mode: "dry-run", effectiveDate: "2026-10-15", creditsOnlyCopyApproved: false });
-    expect(parseNoticeArgs(["--effective-date", "2026-10-20", "--apply"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: false });
-    expect(parseNoticeArgs(["--apply", "--credits-only-copy-approved", "--effective-date", "2026-10-20"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: true });
+    expect(parseNoticeArgs([], NOW)).toEqual({ mode: "dry-run", effectiveDate: "2026-10-15", creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: false });
+    expect(parseNoticeArgs(["--effective-date", "2026-10-20", "--apply"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: false });
+    expect(parseNoticeArgs(["--apply", "--credits-only-copy-approved", "--effective-date", "2026-10-20"], NOW)).toEqual({ mode: "apply", effectiveDate: "2026-10-20", creditsOnlyCopyApproved: true, verifiedReferrerCopyApproved: false });
+    expect(parseNoticeArgs(["--apply", "--verified-referrer-copy-approved", "--effective-date", "2026-10-20"], NOW)).toMatchObject({ creditsOnlyCopyApproved: false, verifiedReferrerCopyApproved: true });
     expect(() => parseNoticeArgs(["--apply"], NOW)).toThrow(/--effective-date/);
     expect(() => parseNoticeArgs(["--apply", "--resend-failed", "--effective-date", "2026-10-20"], NOW)).toThrow(/either/);
     expect(() => parseNoticeArgs(["--send"], NOW)).toThrow(/Unknown option/);
@@ -178,5 +184,63 @@ describe("D-012 premium DM change notice: unapproved credits-only copy (D-020)",
     memory.outcomes.push({ eventKey: "d012-dm-change:u2", outcome: "success", reason: "sent" });
     const mailer = okMailer();
     expect((await runPremiumDmChangeNotice(memory.store, mailer, { mode: "apply", effectiveDate: "2026-10-20", now: NOW })).results).toMatchObject({ notificationsCreated: 1, emailsSent: 1, alreadyNotifiedAndEmailed: 1 });
+  });
+});
+
+describe("D-012 premium DM change notice: subscribers who are verified referrers (D-020 open question)", () => {
+  const verifiedAt = new Date("2026-09-01T00:00:00Z");
+  // Person 7 (wallets on users 3 and 4) also has login 70, whose profile has a verified work email.
+  const people: PersonTables = { users: [{ id: 3, canonicalPersonId: 7 }, { id: 4, canonicalPersonId: 7 }, { id: 70, canonicalPersonId: 7 }], profiles: [{ userId: 70, workEmailVerifiedAt: verifiedAt }, { userId: 2, workEmailVerifiedAt: verifiedAt }, { userId: 1, workEmailVerifiedAt: null }] };
+
+  it("marks a subscriber whose person has a verified work email on any login, with the gate's test", () => {
+    const audience = planNoticeAudience(WALLETS, NOW, [], { personRows: people.users ?? [], verifiedProfiles: (people.profiles ?? []).filter(row => row.workEmailVerifiedAt !== null) });
+    const flagged = (userId: number) => audience.find(r => r.userId === userId)?.verifiedReferrer;
+    expect(flagged(3)).toBe(true); // via login 70 of person 7, which holds no wallet
+    expect(flagged(2)).toBe(true); // own profile verified
+    expect(flagged(1)).toBe(false); // profile without a verified work email
+    expect(flagged(5)).toBe(false);
+    expect(summarizeAudience(audience, new Set()).verifiedReferrers).toBe(2);
+    expect(planNoticeAudience(WALLETS, NOW).every(r => !r.verifiedReferrer)).toBe(true);
+  });
+
+  it("counts them in the dry run without writing, sending or printing an address", async () => {
+    const memory = memoryStore(WALLETS, [], people);
+    const mailer = okMailer();
+    const report = await runPremiumDmChangeNotice(memory.store, mailer, { mode: "dry-run", effectiveDate: "2026-10-20", now: NOW });
+    expect(report.audience.verifiedReferrers).toBe(2);
+    expect(memory.writes).toEqual({ notifications: 0, outcomes: 0 });
+    expect(mailer).not.toHaveBeenCalled();
+    expect(JSON.stringify(report)).not.toMatch(/@example\.test/);
+  });
+
+  it("refuses --apply before any write while one of them would be notified, naming the flag", async () => {
+    const memory = memoryStore(WALLETS, [], people);
+    const mailer = okMailer();
+    const run = runPremiumDmChangeNotice(memory.store, mailer, { mode: "apply", effectiveDate: "2026-10-20", now: NOW, creditsOnlyCopyApproved: true });
+    await expect(run).rejects.toBeInstanceOf(NoticeCopyNotApprovedError);
+    await expect(run).rejects.toMatchObject({ verifiedReferrerRecipients: 2, creditsOnlyRecipients: 0, message: expect.stringMatching(/--verified-referrer-copy-approved/) });
+    expect(memory.writes).toEqual({ notifications: 0, outcomes: 0 });
+    expect(mailer).not.toHaveBeenCalled();
+  });
+
+  it("names both open texts in one refusal when both groups would be written to", async () => {
+    const run = runPremiumDmChangeNotice(memoryStore(WALLETS, [], people).store, okMailer(), { mode: "apply", effectiveDate: "2026-10-20", now: NOW });
+    await expect(run).rejects.toMatchObject({ creditsOnlyRecipients: 1, verifiedReferrerRecipients: 2, message: expect.stringMatching(/--credits-only-copy-approved.*--verified-referrer-copy-approved/) });
+  });
+
+  it("proceeds once the owner's answer is recorded and the operator confirms it", async () => {
+    const memory = memoryStore(WALLETS, [], people);
+    const mailer = okMailer();
+    const report = await runPremiumDmChangeNotice(memory.store, mailer, { mode: "apply", effectiveDate: "2026-10-20", now: NOW, creditsOnlyCopyApproved: true, verifiedReferrerCopyApproved: true });
+    expect(report.results).toMatchObject({ notificationsCreated: 4, emailsSent: 3 });
+  });
+
+  it("refuses --resend-failed for a failed email to one of them", async () => {
+    const memory = memoryStore([wallet({ userId: 2 })], [], { profiles: [{ userId: 2, workEmailVerifiedAt: verifiedAt }] });
+    const failing = vi.fn<NoticeMailer>(async () => ({ sent: false, reason: "delivery_failed" as const }));
+    await runPremiumDmChangeNotice(memory.store, failing, { mode: "apply", effectiveDate: "2026-10-20", now: NOW, verifiedReferrerCopyApproved: true });
+    const mailer = okMailer();
+    await expect(runPremiumDmChangeNotice(memory.store, mailer, { mode: "resend-failed", effectiveDate: "2026-10-20", now: NOW })).rejects.toMatchObject({ verifiedReferrerRecipients: 1 });
+    expect(mailer).not.toHaveBeenCalled();
   });
 });
