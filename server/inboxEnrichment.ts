@@ -2,7 +2,6 @@
 // review preview. Never includes seeker identity. No state, credit or send logic.
 import { askChecks, countWords } from "../shared/askQuality";
 
-export const FIT_NOTE_EXCERPT_MAX = 280;
 export type AskStrength = "strong" | "good" | "basic";
 
 export type InboxEnrichment = {
@@ -12,12 +11,6 @@ export type InboxEnrichment = {
   resumeAttached: boolean;
   askStrength: AskStrength;
 };
-
-export function plainExcerpt(note: string | null | undefined, max: number = FIT_NOTE_EXCERPT_MAX): string | null {
-  const text = (note ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
-  if (!text) return null;
-  return text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text;
-}
 
 export function enrichInboxRow(input: { title: string | null | undefined; pitch: string | null | undefined; targetRoleUrl: string | null | undefined; attachmentCount: number | null | undefined }): InboxEnrichment {
   const note = input.pitch ?? "";

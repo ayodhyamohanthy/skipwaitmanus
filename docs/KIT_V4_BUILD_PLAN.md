@@ -90,7 +90,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 15 | `pass-reasons` (5 kit reasons, shared with the seeker, never the name) | — | M | **Done, live** - #223 (0083) |
 | 16 | `mark-referred-reference` + `thread-timeline` | — | M | **Done, live** - #222 (0082) |
 | 17 | `inbox-list-enrichment` + `referrer-preview-expiry` + `ask-quality-signals` | 9 | M | in progress - Claude - 2026-10-15 - branch task17-inbox-enrich (read-only, no migration, no excerpt in payload) |
-| 18 | `referrer-capacity-routing` (monthly capacity; full → other referrers; area routing) + `named-referrer-visibility` | function taxonomy (done) | L | todo |
+| 18 | `referrer-capacity-routing` (monthly capacity; full → other referrers; area routing) + `named-referrer-visibility` | function taxonomy (done) | L | in progress - Claude - 2026-10-15 - PR 1 read model only (branch task18a-referrer-home). PR 2 routing emails and PR 3 inbox filtering HELD for founder |
 | 19 | `pre-accept-question` (one anonymous question before accepting) | 14 | L | todo |
 | 20 | `thank-you-wall` + `landed-journey` + `referrer-impact-metrics` + `company-demand` | 14 | L | todo |
 | **Tier E — notifications** |||||

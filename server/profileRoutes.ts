@@ -1,5 +1,5 @@
 import express, { type Express, type Request } from "express";
-import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
+import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerHome, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
 import { seekerSetupPatchSchema } from "../shared/seekerSetup";
 import { getSeekerSetup, SeekerSetupResumeError, updateSeekerSetup } from "./seekerSetup";
 import { referrerAreasInputSchema, referrerLevelsInputSchema } from "../shared/jobFunctions";
@@ -18,6 +18,7 @@ export type ProfileRouteDeps = {
   deleteWorkItem?: typeof deleteWorkItem;
   getPublicProfileByHandle?: typeof getPublicProfileByHandle;
   getReferrerPreferences?: typeof getReferrerPreferences;
+  getReferrerHome?: typeof getReferrerHome;
   updateReferrerPreferences?: typeof updateReferrerPreferences;
   getSeekerSetup?: typeof getSeekerSetup;
   updateSeekerSetup?: typeof updateSeekerSetup;
@@ -115,6 +116,16 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json({ preferences: await prefs(identity.account.id) });
     } catch { res.status(500).json({ error: "We could not load your referrer settings" }); }
+  });
+
+  // Read model only (queue task 18 PR 1): capacity used this month and routing state. Changes no routing.
+  app.get("/api/referrer/home", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your referrer home" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ home: await (deps.getReferrerHome ?? getReferrerHome)(identity.account.id) });
+    } catch { res.status(500).json({ error: "We could not load your referrer home" }); }
   });
 
   app.put("/api/referrer-preferences", express.json(), async (req, res) => {
