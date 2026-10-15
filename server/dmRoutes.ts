@@ -1,8 +1,9 @@
 import { retryAfterSecondsUntil, setRetryAfter } from "./retryAfter";
 import express, { type Express, type Request } from "express";
-import { DM_PREMIUM_REQUIRED_ERROR, dmSendBlockFor, type ReferrerDmGate } from "../shared/directMessages";
+import { DM_PREMIUM_REQUIRED_ERROR, dmSendBlockFor, type DmSendBlock, type ReferrerDmGate } from "../shared/directMessages";
 import { dmRecipientExists, dmThreadExists, getDb, hasActivePremiumSubscription, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
 import { DirectMessageReferrerGateError, loadReferrerDmGate } from "./dmReferrerGate";
+import { DM_REFUSAL_LIMITED_REASON, DM_REFUSAL_LIMIT_ERROR, DM_REFUSAL_WINDOW_MS, DM_SEND_ACTION, countRecentDmRefusals, isDmRefusalLimited } from "./dmRefusalLimit";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -21,6 +22,8 @@ export type DmRouteDeps = {
   isMutualFollow?: typeof isMutualFollow;
   /** D-012(3): when a verified referrer is involved, sending opens only after they accepted a request linking the two. */
   referrerDmGate?: (senderUserId: number, recipientUserId: number) => Promise<ReferrerDmGate>;
+  /** Refused sends by this sender in the last hour (server/dmRefusalLimit.ts). */
+  countRecentDmRefusals?: (senderUserId: number) => Promise<number>;
 };
 
 const DM_RATE_LIMIT_PER_HOUR = 30;
@@ -29,6 +32,12 @@ async function readReferrerDmGate(senderUserId: number, recipientUserId: number)
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return loadReferrerDmGate(db, senderUserId, recipientUserId);
+}
+
+async function readRecentDmRefusals(senderUserId: number): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return countRecentDmRefusals(db, senderUserId);
 }
 
 export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
@@ -41,24 +50,11 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
   const hasPremium = deps.hasActivePremiumSubscription ?? hasActivePremiumSubscription;
   const mutualFollow = deps.isMutualFollow ?? isMutualFollow;
   const referrerGate = deps.referrerDmGate ?? readReferrerDmGate;
+  const recentRefusals = deps.countRecentDmRefusals ?? readRecentDmRefusals;
 
-  app.get("/api/dms/compose/:userId", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to send direct messages" });
-      const counterpartUserId = Number(req.params.userId);
-      if (!Number.isInteger(counterpartUserId) || counterpartUserId <= 0) return res.status(400).json({ error: "Invalid member" });
-      if (counterpartUserId === identity.account.id) return res.status(400).json({ error: "You cannot message yourself" });
-      if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
-      const gate = await referrerGate(identity.account.id, counterpartUserId);
-      const existing = await threadExists(identity.account.id, counterpartUserId);
-      const isMutual = await mutualFollow(identity.account.id, counterpartUserId);
-      // A referrer pair ignores thread, follow and plan: only acceptance opens it.
-      const allowed = gate.kind === "accepted" || (gate.kind === "not_referrer_pair" && (existing || isMutual || (await hasPremium(identity.account.id))));
-      res.set("Cache-Control", "private, no-store");
-      res.json({ allowed, upgradeRequired: gate.kind === "not_referrer_pair" && !allowed, threadExists: existing, mutualFollow: isMutual, sendBlock: dmSendBlockFor(gate) });
-    } catch { res.status(500).json({ error: "We could not check direct messaging" }); }
-  });
+  // GET /api/dms/compose/:userId is retired (D-012 item 3 review): no client
+  // reads it, and its allowed/upgradeRequired answer told any member, without
+  // sending anything, whether a user ID has a verified work email.
 
   app.get("/api/dms/threads", async (req, res) => {
     try {
@@ -100,16 +96,24 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (!body) return res.status(400).json({ error: "Write a message before sending" });
       if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
       if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
+      const senderUserId = actorUserId;
+      // Past the hourly refusal limit, a 403 (referrer involved) and a 402 (member rules) look the same.
+      const refuse = async (status: 402 | 403, refusal: DmSendBlock | { error: string; upgrade: true }, reason: string) => {
+        if (isDmRefusalLimited(await recentRefusals(senderUserId))) {
+          record({ actorUserId: senderUserId, action: DM_SEND_ACTION, outcome: "denied", resourceType: "direct_message", metadata: { reason: DM_REFUSAL_LIMITED_REASON } });
+          const retryAt = new Date(Date.now() + DM_REFUSAL_WINDOW_MS);
+          setRetryAfter(res, retryAfterSecondsUntil(retryAt.getTime(), Date.now()));
+          return res.status(429).json({ error: DM_REFUSAL_LIMIT_ERROR, retryAt });
+        }
+        record({ actorUserId: senderUserId, action: DM_SEND_ACTION, outcome: "denied", resourceType: "direct_message", metadata: { reason } });
+        return res.status(status).json(refusal);
+      };
       const gate = await referrerGate(actorUserId, counterpartUserId);
       const block = dmSendBlockFor(gate);
-      if (block) {
-        record({ actorUserId, action: "dm.sent", outcome: "denied", resourceType: "direct_message", metadata: { reason: block.reason } });
-        return res.status(403).json(block);
-      }
+      if (block) return await refuse(403, block, block.reason);
       const existing = await threadExists(actorUserId, counterpartUserId);
       if (gate.kind === "not_referrer_pair" && !existing && !(await hasPremium(actorUserId)) && !(await mutualFollow(actorUserId, counterpartUserId))) {
-        record({ actorUserId, action: "dm.sent", outcome: "denied", resourceType: "direct_message", metadata: { reason: "premium_required" } });
-        return res.status(402).json({ error: DM_PREMIUM_REQUIRED_ERROR, upgrade: true });
+        return await refuse(402, { error: DM_PREMIUM_REQUIRED_ERROR, upgrade: true }, "premium_required");
       }
       if (deps.countRecentMessagesBySender) { const legacyCount=await deps.countRecentMessagesBySender(actorUserId,new Date(Date.now()-3600_000)); if(legacyCount>=DM_RATE_LIMIT_PER_HOUR)return res.status(429).json({error:"You're sending messages too quickly. Try again in a few minutes."}); }
       const message = await send(actorUserId, counterpartUserId, body, idempotencyKey);
