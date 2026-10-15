@@ -105,9 +105,22 @@ export const safetyReports = mysqlTable("safetyReports", {
   reportedUserId: int("reportedUserId").references(() => users.id, { onDelete: "set null" }),
   urgent: boolean("urgent").default(false).notNull(),
   status: mysqlEnum("status", ["open", "under_review", "resolved", "dismissed"]).default("open").notNull(),
+  severity: varchar("severity", { length: 8 }).default("normal").notNull(),
+  dueAt: timestamp("dueAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("safety_reports_reporter_idx").on(table.reporterUserId), index("safety_reports_status_idx").on(table.status)]);
+
+// Per-report case file (task 5 phase 1): reviewer notes and the audit trail. Admin-visible only.
+export const moderationEvents = mysqlTable("moderationEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  actorKind: varchar("actorKind", { length: 12 }).notNull(),
+  actorUserId: int("actorUserId"),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  note: varchar("note", { length: 600 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("moderation_events_report_idx").on(table.reportId, table.createdAt)]);
 
 export const companySuggestions = mysqlTable("companySuggestions", {
   id: int("id").autoincrement().primaryKey(),
