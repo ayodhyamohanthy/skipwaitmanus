@@ -1,3 +1,4 @@
+import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
 import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
@@ -3854,4 +3855,20 @@ export async function listBillingLedgerRows(window: { since: Date; until: Date; 
   const parked = await db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt })
     .from(operationalActivityLogs).where(and(inArray(operationalActivityLogs.action, ["billing.payment_unmatched", "billing.refund_needs_review"]), gte(operationalActivityLogs.createdAt, window.since), lt(operationalActivityLogs.createdAt, window.until))).orderBy(asc(operationalActivityLogs.createdAt)).limit(take);
   return { intents, payments, transactions, parked };
+}
+
+
+export async function getReferrerHome(userId: number, now: Date = new Date()) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const profile = await getProfileByUserId(userId);
+  const verified = Boolean(profile?.workEmailDomain && isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain));
+  let used = 0, waiting = 0, expiringSoon = 0;
+  if (verified) {
+    const claimed = await db.select({ requestId: referralTransitionEvents.referralRequestId }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.actorUserId, userId), gte(referralTransitionEvents.createdAt, monthStartUtc(now)), or(eq(referralTransitionEvents.action, "claim"), eq(referralTransitionEvents.action, "approve"), and(eq(referralTransitionEvents.action, "review"), eq(referralTransitionEvents.resultingStatus, "approved"))))).groupBy(referralTransitionEvents.referralRequestId);
+    used = claimed.length;
+    const fresh = await listCompanyReferralInboxByState(userId, "new");
+    waiting = fresh.length;
+    expiringSoon = fresh.filter(row => { const at = row.expiresAt ? Date.parse(row.expiresAt) : NaN; return Number.isFinite(at) && at - now.getTime() <= 86_400_000 && at > now.getTime(); }).length;
+  }
+  return buildReferrerHome({ verified, paused: Boolean(profile?.paused), capacity: profile?.referralCapacity ?? 3, usedThisMonth: used, waiting, expiringSoon });
 }
