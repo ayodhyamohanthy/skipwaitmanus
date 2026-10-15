@@ -20,8 +20,8 @@ import path from "node:path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
-import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
+import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
+import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_HERO_LEAD, LANDING_FREE_SLOTS, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
 import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
@@ -72,7 +72,7 @@ function stepsSection(heading: string, steps: readonly LandingStep[]) {
 export function landingSnapshot(policyLinks: ReadonlyArray<{ route: string; title: string }>): string {
   const employer = `<p><a href="${LANDING_EMPLOYER_LINK.href}">${escapeHtml(LANDING_EMPLOYER_LINK.label)}</a> — ${escapeHtml(LANDING_EMPLOYER_LINK.summary)}</p>`;
   const guides = `<h2>Guides</h2><ul>${LANDING_GUIDES.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>`;
-  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(LANDING_H1)}</h1><p>${escapeHtml(LANDING_SUMMARY)}</p><p><a href="/start">Request a private job referral</a> · <a href="/referrer">I work at a company and can help someone</a></p>${stepsSection("How job seekers use skipwait.me", LANDING_SEEKER_STEPS)}${stepsSection("How verified employees help", LANDING_EMPLOYEE_STEPS)}<h2>Private by default</h2><ul>${LANDING_COMMITMENTS.map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("")}</ul><h2>${escapeHtml(LANDING_FAQ_HEADING)}</h2><dl>${LANDING_FAQ.map(entry => `<dt>${escapeHtml(entry.question)}</dt><dd>${escapeHtml(entry.answer)}</dd>`).join("")}</dl><h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>${guides}${employer}${homeLinks(policyLinks)}</main>`;
+  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(LANDING_H1)}</h1><p>${escapeHtml(LANDING_HERO_LEAD)}</p><p><a href="/start">Request a private job referral</a> · <a href="/referrer">I work at a company and can help someone</a></p>${stepsSection("How job seekers use skipwait.me", LANDING_SEEKER_STEPS)}${stepsSection("How verified employees help", LANDING_EMPLOYEE_STEPS)}<h2>Private by default</h2><ul>${LANDING_COMMITMENTS.map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("")}</ul><h2>${escapeHtml(LANDING_FAQ_HEADING)}</h2><dl>${LANDING_FAQ.map(entry => `<dt>${escapeHtml(entry.question)}</dt><dd>${escapeHtml(entry.answer)}</dd>`).join("")}</dl><h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>${guides}${employer}${homeLinks(policyLinks)}</main>`;
 }
 
 export type PublicSnapshot = { route: string; title: string; description: string; markup: string };
@@ -112,11 +112,11 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/premium",
-      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>Every account gets ${FREE_MONTHLY_ALLOWANCE} free referral requests every month. Extra credits cost $1 each (₹99 in India), never expire, and are only used when an employee accepts your request. Reviewing and accepting requests is always free for employees.</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See monthly plans</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees review for free — verify a work email</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>${escapeHtml(LANDING_FREE_SLOTS)} Extra credits cost $1 each (₹99 in India), never expire, and are only used when an employee accepts your request. Reviewing and accepting requests is always free for employees.</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See monthly plans</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees review for free — verify a work email</a></p></main>`,
     },
     {
       route: "/plans",
-      markup: `<main data-skipwait-snapshot="plans"><h1>Referral credits every month.</h1><p>The free plan keeps ${FREE_MONTHLY_ALLOWANCE} referral requests every month. ${escapeHtml(pro.label)} includes ${pro.monthlyAllowance} credits each month for ${escapeHtml(pro.prices.INR.display)} or ${escapeHtml(pro.prices.USD.display)}. ${escapeHtml(max.label)} includes ${max.monthlyAllowance} credits each month for ${escapeHtml(max.prices.INR.display)} or ${escapeHtml(max.prices.USD.display)}. Plans renew monthly until cancelled; access continues to the end of the paid month.</p><p><a href="/plans">Open plans</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="plans"><h1>Referral credits every month.</h1><p>${escapeHtml(LANDING_FREE_SLOTS)} ${escapeHtml(pro.label)} includes ${pro.monthlyAllowance} credits each month for ${escapeHtml(pro.prices.INR.display)} or ${escapeHtml(pro.prices.USD.display)}. ${escapeHtml(max.label)} includes ${max.monthlyAllowance} credits each month for ${escapeHtml(max.prices.INR.display)} or ${escapeHtml(max.prices.USD.display)}. Plans renew monthly until cancelled; access continues to the end of the paid month.</p><p><a href="/plans">Open plans</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
     },
     {
       route: "/referrer",

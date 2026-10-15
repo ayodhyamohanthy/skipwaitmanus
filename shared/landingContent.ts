@@ -10,14 +10,21 @@
  * Nothing here may state an outcome, count, or identity that the product does
  * not produce itself.
  */
-import { FREE_MONTHLY_ALLOWANCE } from "./subscriptionPlans";
+import { FREE_PLAN } from "./planCatalog";
 
 export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
 
 export const LANDING_TITLE = "Private job referrals from verified employees";
-export const LANDING_H1 = "Good work deserves a good introduction.";
-export const LANDING_SUMMARY = `Paste the role link, add your resume, and verified employees at that company decide privately whether to refer you. ${FREE_MONTHLY_ALLOWANCE} referral requests are free every month.`;
+/** The hero headline, one line per row; the page breaks between them and adds the brand dot after the last. */
+export const LANDING_H1_LINES = ["Free job referrals.", "A warmer way in"] as const;
+export const LANDING_H1 = `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}.`;
+/** The hero paragraph, one sentence group per row (the page breaks between them on wide screens). */
+export const LANDING_HERO_LEAD_PARTS = ["Connect with people inside the companies you want to join.", "A real introduction. Not another application into the unknown."] as const;
+export const LANDING_HERO_LEAD = LANDING_HERO_LEAD_PARTS.join(" ");
+/** What the free plan gives, in the terms the product enforces today: open request slots, no credit needed to send. */
+export const LANDING_FREE_SLOTS = `The free plan keeps up to ${FREE_PLAN.openRequests} requests open at once, and you do not need credits to send one.`;
+export const LANDING_SUMMARY = `Paste the role link, add your resume, and verified employees at that company decide privately whether to refer you. Free plan: ${FREE_PLAN.openRequests} requests open at once.`;
 
 export const LANDING_SEEKER_STEPS: readonly LandingStep[] = [
   { title: "Start with the role", body: "Paste the job link for the company you want to join." },
@@ -82,6 +89,6 @@ export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
   { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
-  { question: "What does it cost?", answer: `${FREE_MONTHLY_ALLOWANCE} referral requests are free every month. Extra credits cost $1 each (₹99 in India), never expire, and are spent once a verified employee picks up your request; withdrawn or expired asks get the credit back.` },
+  { question: "What does it cost?", answer: `${LANDING_FREE_SLOTS} Extra credits cost $1 each (₹99 in India), never expire, and are spent once a verified employee picks up your request; withdrawn or expired asks get the credit back.` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
 ];
