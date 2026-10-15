@@ -130,7 +130,7 @@ describe("billing catalog", () => {
 
 describe("public catalog payload (GET /api/plans/catalog)", () => {
   const live = new Set(["skipwait_start_30d-USD", "skipwait_pack_5-USD", "skipwait_land_concierge_30d-USD", "skipwait_written_review-USD", "skipwait_momentum_30d-INR"]);
-  const base = { available: (id: string) => live.has(id), usdRecurringConfirmed: false, sessionsStaffed: false };
+  const base = { available: (id: string) => live.has(id), usdRecurringConfirmed: false, sessionsStaffed: false, indiaGstRegistered: false };
 
   it("global callers see USD prices only, each with its availability and auto-extend rails", () => {
     const catalog = planCatalogResponse({ ...base, region: "INTL" });
@@ -153,9 +153,11 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
     expect(catalog.creditCosts).toHaveLength(11);
   });
 
-  it("India sees INR prices incl. GST, its own pack set and UPI/e-mandate rails", () => {
+  it("India sees its own pack set and UPI/e-mandate rails, labelled \"India price\" until a GSTIN exists (D-007)", () => {
     const catalog = planCatalogResponse({ ...base, region: "IN" });
-    expect(catalog).toMatchObject({ region: "IN", currency: "INR", priceNote: "India price, incl. GST" });
+    expect(catalog).toMatchObject({ region: "IN", currency: "INR", priceNote: "India price" });
+    expect(planCatalogResponse({ ...base, region: "IN", indiaGstRegistered: true })).toMatchObject({ priceNote: "India price, incl. GST" });
+    expect(planCatalogResponse({ ...base, region: "INTL", indiaGstRegistered: true })).toMatchObject({ priceNote: null });
     expect(catalog.plans.find(plan => plan.id === "momentum")?.terms).toEqual([
       { interval: "30d", days: 30, amount: 99_900, available: true, autoExtend: ["upi_autopay", "card_netbanking_mandate"] },
       { interval: "90d", days: 90, amount: 249_900, available: false, autoExtend: ["upi_autopay", "card_netbanking_mandate"] },

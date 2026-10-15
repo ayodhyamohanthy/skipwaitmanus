@@ -7,7 +7,7 @@
  * client read the same answers.
  */
 import { z } from "zod";
-import { BILLING_REGIONS, INDIA_PRICE_NOTE, currencyForRegion, type BillingRegion } from "./billingRegion";
+import { BILLING_REGIONS, indiaPriceNote, currencyForRegion, type BillingRegion } from "./billingRegion";
 import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, REVERSE_TRIAL, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
 import { planEntitlementsFor } from "./planEntitlements";
 import { WELCOME_CREDITS } from "./creditLedger";
@@ -129,7 +129,7 @@ export const EMANDATE_MAX_PAISE = 1_500_000;
  * Concierge and Land 90-day passes never auto-renew (reminders and one-tap
  * re-buy instead). INR follows the mandate limits; USD stays one-time until
  * PayPal reference transactions or a card route are confirmed (the server's
- * single capability flag, server/billingCapabilities.ts).
+ * single capability flag, server/billingSettings.ts).
  */
 export function autoExtendMethods(planId: CatalogPlanId, interval: CatalogInterval, currency: CatalogCurrency, usdRecurringConfirmed: boolean): AutoExtendMethod[] {
   const plan = catalogPlanById(planId);
@@ -197,7 +197,7 @@ const humanTimeSchema = z.strictObject({ writtenReviews: z.number().int().min(0)
 export const planCatalogResponseSchema = z.strictObject({
   region: z.enum(BILLING_REGIONS),
   currency: z.enum(BILLING_CURRENCIES),
-  /** "India price, incl. GST" for INR; null for USD. */
+  /** "India price" for INR (adds ", incl. GST" only once GST-registered); null for USD. */
   priceNote: z.string().min(1).nullable(),
   free: z.strictObject({
     openRequests: z.number().int().positive(),
@@ -243,6 +243,8 @@ export type CatalogResponseInput = {
   usdRecurringConfirmed: boolean;
   /** An admin has marked human reviewers available; until then sessions are not sold. */
   sessionsStaffed: boolean;
+  /** GSTIN exists and Chargebee tax mode is on; off by default (D-007, Indian MSME not GST-registered). */
+  indiaGstRegistered: boolean;
 };
 
 function planEntry(plan: PaidCatalogPlan, input: CatalogResponseInput, currency: CatalogCurrency) {
@@ -281,7 +283,7 @@ export function planCatalogResponse(input: CatalogResponseInput): PlanCatalogRes
   return planCatalogResponseSchema.parse({
     region: input.region,
     currency,
-    priceNote: currency === "INR" ? INDIA_PRICE_NOTE : null,
+    priceNote: currency === "INR" ? indiaPriceNote(input.indiaGstRegistered) : null,
     free: {
       openRequests: FREE_PLAN.openRequests,
       creditsPerMonth: FREE_PLAN.creditsPerMonth,

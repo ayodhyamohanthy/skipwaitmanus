@@ -1,9 +1,9 @@
 /**
  * Pricing region (docs/PRICING_RECOMMENDATION.md, "Guarding against VPN
  * arbitrage"): the region comes from Cloudflare's CF-IPCountry for display, and
- * checkout locks it to the billing country. India sees INR prices including GST
- * ("India price"); everyone else sees the one global USD price. INR is charged
- * only with an Indian billing address.
+ * checkout locks it to the billing country. India sees the INR "India price"
+ * (GST wording only once registered, D-007); everyone else sees the one global
+ * USD price. INR is charged only with an Indian billing address.
  *
  * The Worker (src/worker.ts) rewrites the header from the edge's own
  * request.cf.country before the request reaches the container, so a caller
@@ -15,8 +15,19 @@ export type BillingRegion = (typeof BILLING_REGIONS)[number];
 export type RegionCurrency = "INR" | "USD";
 
 export const EDGE_COUNTRY_HEADER = "cf-ipcountry";
-/** Shown beside every INR price. GST is always included; it is never added at checkout. */
-export const INDIA_PRICE_NOTE = "India price, incl. GST";
+/**
+ * Shown beside every INR price. SkipWait is an Indian sole proprietorship with
+ * Udyam (MSME) registration and is **not** GST-registered (D-007), so no GST is
+ * charged and the label says only "India price". `INDIA_PRICE_NOTE_GST` is used
+ * once a GSTIN exists and the Chargebee tax mode is switched on.
+ */
+export const INDIA_PRICE_NOTE = "India price";
+export const INDIA_PRICE_NOTE_GST = "India price, incl. GST";
+
+/** The label beside an INR price: GST wording only once the seller is GST-registered. */
+export function indiaPriceNote(gstRegistered: boolean): string {
+  return gstRegistered ? INDIA_PRICE_NOTE_GST : INDIA_PRICE_NOTE;
+}
 
 const COUNTRY = /^[A-Z]{2}$/;
 

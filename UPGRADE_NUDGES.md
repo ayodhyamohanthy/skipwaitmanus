@@ -5,9 +5,9 @@ Design lives on `/plans` ("Your usage this cycle" + "Upgrade moments"). Values t
 ## Usage panel (signed-in user's OWN data only)
 | Stat | Source | Notes |
 |---|---|---|
-| Open referral slots used | count of user's requests in `pending` state vs plan limit (Free 3, Start 8, Momentum 15, Land 30/50/unlimited) | slot frees on answered/passed |
+| Open asks used | count of the user's requests in `pending` state vs the plan cap (Free 3, Keep warm 5, Start 8, Momentum 15, Land 30/50/75) | slot frees when the request is answered, passed or expires |
 | Credits used | ledger: spent vs granted this cycle | purchased credits never expire |
-| Plan credits expiring | included credits whose rollover window ends within 7 days | Start 1 mo, Momentum 3 mo, Land while subscribed |
+| Plan credits expiring | included credits whose rollover window ends within 7 days | Keep warm 1 mo, Start 1 mo, Momentum 3 mo, Land while the pass is active |
 
 ## Nudges — show only at the moment of the constraint
 1. **Slot cap reached** — on submitting a new request when open = limit. CTA "See Momentum" / "I'll wait".
