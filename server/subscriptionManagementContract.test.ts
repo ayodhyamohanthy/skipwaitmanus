@@ -135,7 +135,7 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
   it("global callers see USD prices only, each with its availability and auto-extend rails", () => {
     const catalog = planCatalogResponse({ ...base, region: "INTL" });
     expect(catalog).toMatchObject({ region: "INTL", currency: "USD", priceNote: null, fairness: { maxOpenAsksPerCompany: 2, planVisibleToReferrers: false } });
-    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 2, welcomeCredits: 3, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } });
+    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 3, welcomeCredits: 3, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } });
     expect(catalog.plans.map(plan => [plan.id, plan.terms.map(term => [term.interval, term.amount, term.available])])).toEqual([
       ["keep_warm", [["yearly", 2_900, false]]],
       ["start", [["30d", 800, true], ["90d", 1_900, false]]],

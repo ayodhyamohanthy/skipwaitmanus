@@ -56,7 +56,7 @@ async function planGrantRecordedTx(tx: LedgerTx, userId: number, role: WalletRol
  * Opens a cycle: grants the plan's credits for it with one plan_grant row. A
  * paid cycle is keyed (subscription, cycle start), so a second grant for the
  * same cycle fails on the unique index instead of paying twice. A Free cycle is
- * keyed by its calendar month: Free gets its 2 credits once per person per
+ * keyed by its calendar month: Free gets its 3 credits once per person per
  * month, however many times the wallet returns to Free inside that month.
  */
 export async function openCycleTx(tx: LedgerTx, input: { userId: number; role: WalletRole; next: { startsAt: Date; key: string }; plan: string; subscriptionId: string | null }): Promise<CyclePatch> {
@@ -128,7 +128,7 @@ function paidCycleSteps(wallet: WalletRow, now: Date): number[] {
  * Brings a locked job-seeker wallet up to `now`: opens every cycle a 90-day
  * pass or yearly term has reached (catching up missed ones in order), ends the
  * plan's credits once a paid term or pass has lapsed, rolls a stale Free
- * calendar month (its leftover expires, the new month grants Free's 2 credits),
+ * calendar month (its leftover expires, the new month grants Free's 3 credits),
  * and expires grants (carryover, trial). Writes the wallet.
  */
 export async function reconcileSeekerWalletTx(tx: LedgerTx, locked: WalletRow, now: Date): Promise<{ wallet: WalletRow; grants: GrantRow[]; changed: boolean }> {
