@@ -95,7 +95,7 @@ describe("GET /api/plans/catalog", () => {
       availableFor: undefined,
       ...configured,
       lookup: async (_credentials, itemPriceId) => {
-        if (itemPriceId === "skipwait_start_30d-INR") return { id: itemPriceId, status: "active", currency_code: "INR", price: 29_900, period_unit: "day", period: 30, item_type: "plan" };
+        if (itemPriceId === "skipwait_start_30d-INR") return { id: itemPriceId, status: "active", currency_code: "INR", price: 29_900, period_unit: "month", period: 1, item_type: "plan" };
         throw new Error("Chargebee down");
       },
     })).get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "IN");

@@ -1,7 +1,7 @@
 // Which catalog prices can be sold right now. A plan term, credit pack or human
 // session becomes purchasable only once the owner has created its Chargebee item
 // price, active, in the catalog's currency, at the catalog's amount and billing
-// period (30 or 90 days for a pass, 1 year for Keep warm). Until then checkout
+// period (1 or 3 months for a 30 or 90 day pass, 1 year for Keep warm). Until then checkout
 // answers "not available yet" instead of opening a broken page.
 //
 // Answers are cached per site and item price in process memory: this is a
@@ -50,12 +50,14 @@ function withDeadline<T>(work: Promise<T>, ms: number, onTimeout: () => T): Prom
   return Promise.race([work, deadline]).finally(() => { if (timer) clearTimeout(timer); });
 }
 
-/** The Chargebee billing period an item price must carry: passes in days, legacy monthly in months, Keep warm in years. */
+/** The Chargebee billing period an item price must carry: 30 and 90 day passes as 1 and 3 months, legacy monthly in months, Keep warm in years. */
 const EXPECTED_PERIOD: Readonly<Record<BillingPeriod, { unit: "day" | "month" | "year"; count: number }>> = {
   monthly: { unit: "month", count: 1 },
   yearly: { unit: "year", count: 1 },
-  "30d": { unit: "day", count: 30 },
-  "90d": { unit: "day", count: 90 },
+  // Chargebee accepts a day period only as 1, so a 30 or 90 day pass is one or
+  // three months on the provider side (the amounts do not change).
+  "30d": { unit: "month", count: 1 },
+  "90d": { unit: "month", count: 3 },
 };
 
 function periodMatches(price: ProviderItemPrice, interval: BillingPeriod): boolean {

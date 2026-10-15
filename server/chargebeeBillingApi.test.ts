@@ -79,15 +79,15 @@ describe("item price availability", () => {
   const session = sessionPrice("written_review", "INR")!;
 
   it("sells a price only when the site has it active, in the catalog currency, amount and period", () => {
-    const live = { id: pass30.itemPriceId, status: "active", currency_code: "USD", price: 2_400, period: 30, period_unit: "day", item_type: "plan" };
+    const live = { id: pass30.itemPriceId, status: "active", currency_code: "USD", price: 2_400, period: 1, period_unit: "month", item_type: "plan" };
     expect(itemPriceMatches(live, pass30)).toBe(true);
     expect(itemPriceMatches({ ...live, status: "archived" }, pass30)).toBe(false);
     expect(itemPriceMatches({ ...live, price: 2_399 }, pass30)).toBe(false);
     expect(itemPriceMatches({ ...live, currency_code: "INR" }, pass30)).toBe(false);
     // A 30-day pass is 30 days, never "1 month" (months run 28 to 31 days).
-    expect(itemPriceMatches({ ...live, period: 1, period_unit: "month" }, pass30)).toBe(false);
-    expect(itemPriceMatches({ ...live, id: pass90.itemPriceId, price: 5_900, period: 90, period_unit: "day" }, pass90)).toBe(true);
-    expect(itemPriceMatches({ ...live, id: pass90.itemPriceId, price: 5_900, period: 3, period_unit: "month" }, pass90)).toBe(false);
+    expect(itemPriceMatches({ ...live, period: 30, period_unit: "day" }, pass30)).toBe(false);
+    expect(itemPriceMatches({ ...live, id: pass90.itemPriceId, price: 5_900, period: 3, period_unit: "month" }, pass90)).toBe(true);
+    expect(itemPriceMatches({ ...live, id: pass90.itemPriceId, price: 5_900, period: 90, period_unit: "day" }, pass90)).toBe(false);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "year" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 12, period_unit: "month" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "month" }, yearly)).toBe(false);
@@ -99,7 +99,7 @@ describe("item price availability", () => {
   });
 
   it("caches each answer, shares an in-flight probe and treats a provider error as not available", async () => {
-    const lookup = vi.fn(async (_credentials: unknown, id: string) => (id === pass30.itemPriceId ? { id, status: "active", currency_code: "USD", price: 2_400, period: 30, period_unit: "day" } : null));
+    const lookup = vi.fn(async (_credentials: unknown, id: string) => (id === pass30.itemPriceId ? { id, status: "active", currency_code: "USD", price: 2_400, period: 1, period_unit: "month" } : null));
     const ids = await availablePriceIds([pass30, pass90, pass30], { credentials, lookup });
     expect([...ids]).toEqual([pass30.itemPriceId]);
     expect(lookup).toHaveBeenCalledTimes(2);
