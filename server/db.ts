@@ -1,10 +1,11 @@
+import { cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, reportSeverity, reviewDueAt } from "./moderationCase";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { moderationEvents, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
@@ -872,8 +873,11 @@ export async function createSafetyReport(userId: number, input: { reason?: unkno
   const dayAgo = new Date(Date.now() - 86400000);
   const today = (await db.select({ id: safetyReports.id }).from(safetyReports).where(and(eq(safetyReports.reporterUserId, userId), gt(safetyReports.createdAt, dayAgo))).limit(21)).length;
   if (today >= 20) throw new Error("You have filed several reports today. Contact support directly for anything urgent.");
-  const inserted = await db.insert(safetyReports).values({ reporterUserId: userId, reason: input.reason, details: details || null, referralRequestId: requestId, reportedUserId: reportedId, urgent: Boolean(input.urgent) });
+  const urgent = Boolean(input.urgent), filedAt = Date.now();
+  const inserted = await db.insert(safetyReports).values({ reporterUserId: userId, reason: input.reason, details: details || null, referralRequestId: requestId, reportedUserId: reportedId, urgent, severity: reportSeverity(urgent), dueAt: reviewDueAt(filedAt, urgent) });
   const id = Number(inserted[0].insertId);
+  // The case file is best-effort: a failure here never blocks the report itself.
+  try { await db.insert(moderationEvents).values(urgent ? [{ reportId: id, actorKind: "reporter", actorUserId: userId, kind: "opened" }, { reportId: id, actorKind: "reporter", actorUserId: userId, kind: "flagged_urgent" }] : [{ reportId: id, actorKind: "reporter", actorUserId: userId, kind: "opened" }]); } catch (error) { console.warn("[moderation] could not record opening event", { reportId: id, name: error instanceof Error ? error.name : "unknown" }); }
   return { id, reference: `R-${1000 + id}`, urgent: Boolean(input.urgent) };
 }
 
@@ -908,7 +912,11 @@ export async function listMyCompanySuggestions(userId: number) {
 
 export async function listSafetyReportsAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: safetyReports.id, reporterUserId: safetyReports.reporterUserId, reason: safetyReports.reason, details: safetyReports.details, referralRequestId: safetyReports.referralRequestId, reportedUserId: safetyReports.reportedUserId, urgent: safetyReports.urgent, status: safetyReports.status, createdAt: safetyReports.createdAt, updatedAt: safetyReports.updatedAt }).from(safetyReports).orderBy(desc(safetyReports.urgent), desc(safetyReports.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  const reports = await db.select({ id: safetyReports.id, severity: safetyReports.severity, dueAt: safetyReports.dueAt, reporterUserId: safetyReports.reporterUserId, reason: safetyReports.reason, details: safetyReports.details, referralRequestId: safetyReports.referralRequestId, reportedUserId: safetyReports.reportedUserId, urgent: safetyReports.urgent, status: safetyReports.status, createdAt: safetyReports.createdAt, updatedAt: safetyReports.updatedAt }).from(safetyReports).orderBy(desc(safetyReports.urgent), desc(safetyReports.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  if (!reports.length) return reports.map(report => ({ ...report, events: [] as Array<{ actor: string; kind: string; note: string | null; createdAt: string }> }));
+  let events = new Map() as ReturnType<typeof groupModerationEvents>;
+  try { events = groupModerationEvents(await db.select({ reportId: moderationEvents.reportId, actorKind: moderationEvents.actorKind, kind: moderationEvents.kind, note: moderationEvents.note, createdAt: moderationEvents.createdAt }).from(moderationEvents).where(inArray(moderationEvents.reportId, reports.map(report => report.id))) as never); } catch (error) { console.warn("[moderation] could not load events", { name: error instanceof Error ? error.name : "unknown" }); }
+  return reports.map(report => ({ ...report, events: events.get(report.id) ?? [] }));
 }
 
 export async function reviewSafetyReport(adminId: number, reportId: number, input: { status?: unknown; note?: unknown }, notify?: (userId: number, title: string, body: string) => Promise<unknown>) {
@@ -919,6 +927,7 @@ export async function reviewSafetyReport(adminId: number, reportId: number, inpu
   if (!current) throw new Error("This report could not be found");
   if (current.status === "resolved" || current.status === "dismissed") throw new Error("This report was already resolved");
   await db.update(safetyReports).set({ status: input.status, updatedAt: new Date() }).where(eq(safetyReports.id, reportId));
+  try { await db.insert(moderationEvents).values({ reportId, actorKind: "reviewer", actorUserId: adminId, kind: input.status, note: cleanModerationNote(input.note) }); } catch (error) { console.warn("[moderation] could not record decision event", { reportId, name: error instanceof Error ? error.name : "unknown" }); }
   if ((input.status === "resolved" || input.status === "dismissed") && notify) {
     await notify(current.reporterUserId, "Update on your report", input.status === "resolved" ? "Our safety team reviewed your report and took action. Thank you for flagging it." : "Our safety team reviewed your report and closed it with no violation found.").catch(() => undefined);
   }
