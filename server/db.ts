@@ -8,7 +8,7 @@ import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
@@ -3871,4 +3871,20 @@ export async function getReferrerHome(userId: number, now: Date = new Date()) {
     expiringSoon = fresh.filter(row => { const at = row.expiresAt ? Date.parse(row.expiresAt) : NaN; return Number.isFinite(at) && at - now.getTime() <= 86_400_000 && at > now.getTime(); }).length;
   }
   return buildReferrerHome({ verified, paused: Boolean(profile?.paused), capacity: profile?.referralCapacity ?? 3, usedThisMonth: used, waiting, expiringSoon });
+}
+
+
+export async function getAccountPreferences(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const row = (await db.select({ timeZone: accountPreferences.timeZone, dateFormat: accountPreferences.dateFormat }).from(accountPreferences).where(eq(accountPreferences.userId, userId)).limit(1))[0];
+  return { timeZone: row?.timeZone ?? null, dateFormat: (row?.dateFormat ?? null) as "dmy" | "mdy" | "iso" | null };
+}
+
+export async function saveAccountPreferences(userId: number, patch: { timeZone?: string | null; dateFormat?: "dmy" | "mdy" | "iso" | null }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const set: { timeZone?: string | null; dateFormat?: string | null } = {};
+  if (patch.timeZone !== undefined) set.timeZone = patch.timeZone;
+  if (patch.dateFormat !== undefined) set.dateFormat = patch.dateFormat;
+  await db.insert(accountPreferences).values({ userId, timeZone: set.timeZone ?? null, dateFormat: set.dateFormat ?? null }).onDuplicateKeyUpdate({ set });
+  return getAccountPreferences(userId);
 }

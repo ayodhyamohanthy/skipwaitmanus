@@ -133,6 +133,15 @@ export const moderationEvidence = mysqlTable("moderationEvidence", {
   capturedAt: timestamp("capturedAt").defaultNow().notNull(),
 }, table => [index("moderation_evidence_report_idx").on(table.reportId, table.seq)]);
 
+// Per-account display preferences (queue task 25). NULL = use this device.
+export const accountPreferences = mysqlTable("accountPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  timeZone: varchar("timeZone", { length: 64 }),
+  dateFormat: varchar("dateFormat", { length: 8 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("account_preferences_user_unique").on(table.userId)]);
+
 export const companySuggestions = mysqlTable("companySuggestions", {
   id: int("id").autoincrement().primaryKey(),
   submitterUserId: int("submitterUserId").notNull().references(() => users.id, { onDelete: "cascade" }),

@@ -99,7 +99,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 23 | `approval-notifications` + `saved-alerts` function field and matching | 21 | M | todo |
 | 24 | `web-push` (subscriptions, sender, SW handler; delivery needs owner VAPID keys) | 21 | L | todo |
 | **Tier F — settings and app** |||||
-| 25 | `region-preferences` (language/time zone/currency/date format persisted and applied; RTL direction) + `settings-kit-shell` | — | L | todo |
+| 25 | `region-preferences` (language/time zone/currency/date format persisted and applied; RTL direction) + `settings-kit-shell` | — | L | in progress - Claude - 2026-10-15 - API PR branch task25a-account-prefs (time zone + date format only; currency and language stay read-only, founder-approved cuts); client PR follows |
 | 26 | `app-display-preferences` (dark mode) + `pwa-install` + `offline-draft-sync` + `error-reference` + `lite-mode` | — | M | todo |
 | **Tier G — assistants and developers** |||||
 | 27 | `assistant-connection-grants` + `assistant-approvals-v2` + `ask-provenance` + `ask-send-limits` | 1 | L | todo |
