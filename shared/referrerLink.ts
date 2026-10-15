@@ -11,11 +11,11 @@ import { z } from "zod";
  * valid and the link is still active, and answers with the errors below, so a
  * link that cannot be used is never dropped silently on the way.
  */
-const linkPart = z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9-]+$/);
+export const referrerLinkPartSchema = z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9-]+$/);
 
 export const referrerLinkSchema = z.union([
-  z.strictObject({ fastTrackCode: linkPart }),
-  z.strictObject({ fastTrackCompanySlug: linkPart.toLowerCase(), fastTrackAlias: linkPart.toLowerCase() }),
+  z.strictObject({ fastTrackCode: referrerLinkPartSchema }),
+  z.strictObject({ fastTrackCompanySlug: referrerLinkPartSchema.toLowerCase(), fastTrackAlias: referrerLinkPartSchema.toLowerCase() }),
 ]);
 
 export type ReferrerLink = z.infer<typeof referrerLinkSchema>;
@@ -31,11 +31,25 @@ export const REFERRER_ALIAS_INVALID_ERROR = "This private referral alias is inva
 // The job link is for a different company than the referrer's personal link.
 export const REFERRER_LINK_OTHER_COMPANY_ERROR = "Use a job link for the same company as this private referral link";
 
-const UNUSABLE_LINK_ERRORS: ReadonlySet<string> = new Set([REFERRER_LINK_INACTIVE_ERROR, REFERRER_LINK_INVALID_ERROR, REFERRER_ALIAS_INVALID_ERROR]);
+/** Why the server refused a personal link (analytics: company_referral.referrer_link_refused). */
+export type ReferrerLinkRefusalReason = "inactive" | "invalid" | "alias_invalid" | "other_company";
+
+const REFUSAL_REASONS: ReadonlyMap<string, ReferrerLinkRefusalReason> = new Map([
+  [REFERRER_LINK_INACTIVE_ERROR, "inactive"],
+  [REFERRER_LINK_INVALID_ERROR, "invalid"],
+  [REFERRER_ALIAS_INVALID_ERROR, "alias_invalid"],
+  [REFERRER_LINK_OTHER_COMPANY_ERROR, "other_company"],
+]);
+
+/** The refusal reason for one of the errors above, or null for any other error. */
+export function referrerLinkRefusalReason(message: string): ReferrerLinkRefusalReason | null {
+  return REFUSAL_REASONS.get(message) ?? null;
+}
 
 /** True when the server refused the ask only because the personal link cannot be used. */
 export function isReferrerLinkUnusableError(message: string): boolean {
-  return UNUSABLE_LINK_ERRORS.has(message);
+  const reason = referrerLinkRefusalReason(message);
+  return reason !== null && reason !== "other_company";
 }
 
 /**
@@ -45,5 +59,5 @@ export function isReferrerLinkUnusableError(message: string): boolean {
  * seeker's explicit choice and never automatically.
  */
 export function isReferrerLinkRefusal(message: string): boolean {
-  return isReferrerLinkUnusableError(message) || message === REFERRER_LINK_OTHER_COMPANY_ERROR;
+  return referrerLinkRefusalReason(message) !== null;
 }

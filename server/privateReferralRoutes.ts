@@ -20,7 +20,8 @@ import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDire
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
 import { resolveAskNote } from "../shared/askNote";
-import { REFERRER_ALIAS_INVALID_ERROR, REFERRER_LINK_INVALID_ERROR } from "../shared/referrerLink";
+import { REFERRER_ALIAS_INVALID_ERROR, REFERRER_LINK_INVALID_ERROR, referrerLinkRefusalReason } from "../shared/referrerLink";
+import { readReferrerLinkFallback } from "../shared/askSend";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -588,9 +589,16 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     }
   });
   app.post("/api/company-referrals", async (req, res) => {
+    let actorUserId: number | undefined;
+    // A refused personal link is recorded (reason only, never the code) so link failures are visible (D-017).
+    const recordLinkRefusal = (message: string) => {
+      const reason = referrerLinkRefusalReason(message);
+      if (reason && actorUserId !== undefined) record({ actorUserId, action: "company_referral.referrer_link_refused", outcome: "failure", resourceType: "referral_request", metadata: { reason } });
+    };
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
+      actorUserId = identity.account.id;
       const { targetRoleUrl, attachmentIds, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
       // Optional seeker-confirmed function; absent means the server infers it from the job link.
       const chosenFunction = askJobFunctionInputSchema.safeParse(req.body?.jobFunction);
@@ -607,8 +615,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const safeFastTrackCode = typeof fastTrackCode === "string" && /^[a-zA-Z0-9-]{16,64}$/.test(fastTrackCode) ? fastTrackCode : undefined;
       const safeFastTrackCompanySlug = typeof fastTrackCompanySlug === "string" && /^[a-z0-9-]{1,48}$/.test(fastTrackCompanySlug) ? fastTrackCompanySlug : undefined;
       const safeFastTrackAlias = typeof fastTrackAlias === "string" && /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(fastTrackAlias) ? fastTrackAlias : undefined;
-      if ((fastTrackCompanySlug || fastTrackAlias) && (!safeFastTrackCompanySlug || !safeFastTrackAlias)) return res.status(400).json({ error: REFERRER_ALIAS_INVALID_ERROR });
-      if (fastTrackCode && !safeFastTrackCode) return res.status(400).json({ error: REFERRER_LINK_INVALID_ERROR });
+      if ((fastTrackCompanySlug || fastTrackAlias) && (!safeFastTrackCompanySlug || !safeFastTrackAlias)) { recordLinkRefusal(REFERRER_ALIAS_INVALID_ERROR); return res.status(400).json({ error: REFERRER_ALIAS_INVALID_ERROR }); }
+      if (fastTrackCode && !safeFastTrackCode) { recordLinkRefusal(REFERRER_LINK_INVALID_ERROR); return res.status(400).json({ error: REFERRER_LINK_INVALID_ERROR }); }
       // A request made from a company's page (/explore/:slug) must use a job link
       // that belongs to that company; the directory owns the allowed domains.
       let selectedCompany: { name: string; domains: string[] } | undefined;
@@ -646,12 +654,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       }
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
-      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: true, coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), jobFunctionChosen: Boolean(chosenFunction.data) } });
+      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: true, coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), referrerLinkFallback: readReferrerLinkFallback(req.body ?? {}), jobFunctionChosen: Boolean(chosenFunction.data) } });
       if (result.coverageStatus === "waiting_for_company_coverage") {
         record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: true } });
       }
       res.status(result.replayed ? 200 : 201).json({ ...withParsedJobFunction(result), ...(lifetimeRequestCount ? { lifetimeRequestCount } : {}) });
-    } catch (error) { res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
+    } catch (error) { if (error instanceof Error) recordLinkRefusal(error.message); res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
   });
   app.get("/api/credits/summary", async (req, res) => {
     try {
@@ -787,7 +795,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       if (!deps.getPublicReferrerFastTrackLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackLink(req.params.linkCode);
-      if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
+      if (!link) { record({ action: "referrer_fast_track.link_resolved", outcome: "failure", resourceType: "referrer_fast_track", metadata: { public: true } }); return res.status(404).json({ error: "This private referral link is no longer active" }); }
       record({ action: "referrer_fast_track.link_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
       res.set("Cache-Control", "no-store");
       res.json({ link });
@@ -797,7 +805,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       if (!deps.getPublicReferrerFastTrackVanityLink) return res.status(503).json({ error: "Fast-Track Links are unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackVanityLink(req.params.companySlug, req.params.vanityAlias);
-      if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
+      if (!link) { record({ action: "referrer_fast_track.vanity_resolved", outcome: "failure", resourceType: "referrer_fast_track", metadata: { public: true } }); return res.status(404).json({ error: "This private referral link is no longer active" }); }
       record({ action: "referrer_fast_track.vanity_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
       res.set("Cache-Control", "no-store");
       res.json({ link });
