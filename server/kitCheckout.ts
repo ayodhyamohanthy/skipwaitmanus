@@ -16,6 +16,7 @@
 import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import { billingPlanLabel, packPrice, planPrice, type CatalogPrice, type PackPrice, type PlanPrice } from "../shared/billingCatalog";
+import { catalogPlanById } from "../shared/planCatalog";
 import { NOT_AVAILABLE_CODE, type KitPlanCheckoutRequest, type PackCheckoutRequest } from "../shared/subscriptionManagement";
 import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
 import { createPackCheckout, createPlanCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
@@ -62,6 +63,7 @@ async function availabilityOf(req: Request, price: CatalogPrice, deps: KitChecko
 const kitPriceError = (price: PlanPrice): string => `${billingPlanLabel(price.plan)} is not on sale yet. Nothing has been charged.`;
 const packPriceError = (price: PackPrice): string => `The ${price.credits}-credit pack is not on sale yet. Nothing has been charged.`;
 
+export const APPLICATION_REQUIRED_CODE = "application_required";
 const notConfigured: KitCheckoutRefusal = { ok: false, status: 503, error: "Payments are not available right now. Please try again in a moment." };
 
 /** POST /api/chargebee/subscription-checkout for a kit plan term: the whole decision before any charge. */
@@ -71,6 +73,8 @@ export async function startKitPlanCheckout(input: { req: Request; request: KitPl
   const price = planPrice(planId, interval, currency);
   // The request schema already refuses a term the plan does not sell; this is defence in depth.
   if (!price) return { ok: false, status: 400, error: "That plan is not sold for this term" };
+  // A by-application plan (Land Concierge) is never self-serve: refuse before any provider call, whatever the client sends.
+  if (catalogPlanById(planId)?.byApplication) return { ok: false, status: 403, code: APPLICATION_REQUIRED_CODE, error: `${billingPlanLabel(price.plan)} is by application. Apply and we'll set it up with you; nothing has been charged.` };
   const credentials = credentialsFor(input.req, deps);
   if (!credentials && !deps.createPlanCheckout) return notConfigured;
   const verdict = await availabilityOf(input.req, price, deps);
