@@ -1,5 +1,6 @@
 import { WorkOS } from "@workos-inc/node";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
+import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS, readHostedLink, revokeHostedSessionOnAccountSwitch, signHostedLink } from "./hostedAccountSwitch";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, decodeJwt, jwtVerify, SignJWT } from "jose";
 import { safeAuthReturnTo } from "@shared/authReturnTo";
@@ -222,6 +223,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     const returnCookie = "workos_auth_return";
     const returnKey = new TextEncoder().encode(process.env.WORKOS_COOKIE_PASSWORD!);
     const returnAudience = "skipwait-workos-return";
+    const hostedLinkCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos" });
     const returnCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos/callback" });
 
     for (const screenHint of ["sign-in", "sign-up"] as const) {
@@ -237,6 +239,12 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
           const state = randomUUID();
           const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
           res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
+          // Typed email differs from the account this browser last signed in with: end that hosted session first,
+          // so AuthKit asks for the code instead of silently signing the previous account back in. Fail-soft.
+          if (authProvider === "authkit" && loginHint) {
+            const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
+            if (await revokeHostedSessionOnAccountSwitch(workos.userManagement as never, linked, loginHint, { log: message => console.warn("[workos-switch]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
+          }
           res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
         } catch {
           res.status(502).send("Authentication could not be started");
@@ -309,7 +317,10 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         }
         stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-        const token = await sdkCreateSessionToken(account.openId, account.name || name, hostedSessionIdFromAccessToken(auth.accessToken));
+        const hostedSid = hostedSessionIdFromAccessToken(auth.accessToken);
+        const token = await sdkCreateSessionToken(account.openId, account.name || name, hostedSid);
+        const hostedLink = hostedSid ? await signHostedLink({ uid: user.id, sid: hostedSid }, returnKey).catch(() => null) : null;
+        if (hostedLink) res.cookie(HOSTED_LINK_COOKIE, hostedLink, { ...hostedLinkCookieOptions(req), maxAge: HOSTED_LINK_MAX_AGE_MS });
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         res.redirect(302, returnTo);
       } catch (error) {
@@ -348,6 +359,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
       }
       res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
       res.clearCookie("workos_session", getSessionCookieOptions(req));
+      res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
       res.json({ signedOut: true });
     });
   };
