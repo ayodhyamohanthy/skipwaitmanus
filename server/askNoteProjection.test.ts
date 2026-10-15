@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SQL } from "drizzle-orm";
 import { MySqlDialect, type MySqlTable, type SelectedFields } from "drizzle-orm/mysql-core";
-import { jobs, messages, profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
+import { jobs, messages, profiles, referralAttachments, referralRequests, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { createCompanyReferralRequest, getClaimedCompanyReferralDetail, getUnclaimedCompanyReferralPreview, listCompanyReferralInboxByState, listJobSeekerCompanyReferrals } from "./db";
 
 /*
@@ -86,6 +86,7 @@ afterEach(() => { vi.unstubAllEnvs(); });
 describe("seeker note persistence", () => {
   it("writes the note to referralRequests.personalPitch exactly as the route resolved it", async () => {
     rowsByTable.set(tokenBalances, [wallet]);
+    rowsByTable.set(tokenTransactions, [{ id: 5 }]); // the fake database ignores where: the ask's spend row, read back for debitTransactionId
     rowsByTable.set(referralAttachments, [{ id: 77 }]);
     const created = await createCompanyReferralRequest(SEEKER, { targetRoleUrl: ROLE_URL, personalPitch: NOTE, attachmentIds: [77], idempotencyKey: "ask-note-projection-0001" });
     expect(created.replayed).toBe(false);

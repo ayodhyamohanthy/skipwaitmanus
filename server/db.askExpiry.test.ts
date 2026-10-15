@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { notifications, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { notifications, planCreditGrants, promoCreditGrants, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { expireStalePendingReferralRequest, reconcileExpiredPendingReferrals, withdrawCompanyReferralRequest } from "./db";
 import { createAskExpirySweep } from "./askExpirySweep";
 
@@ -13,7 +13,7 @@ const dialect = new MySqlDialect();
 const NOW = new Date("2026-10-08T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
 
-type Table = typeof referralRequests | typeof tokenBalances | typeof tokenTransactions | typeof referralTransitionEvents | typeof notifications | typeof referralDocumentAccessGrants;
+type Table = typeof referralRequests | typeof tokenBalances | typeof tokenTransactions | typeof referralTransitionEvents | typeof notifications | typeof referralDocumentAccessGrants | typeof planCreditGrants | typeof promoCreditGrants;
 let tables: Record<string, Array<Record<string, unknown>>>;
 
 function rowsFor(table: Table): Array<Record<string, unknown>> {
@@ -23,6 +23,7 @@ function rowsFor(table: Table): Array<Record<string, unknown>> {
   if (table === referralTransitionEvents) return tables.events;
   if (table === notifications) return tables.notes;
   if (table === referralDocumentAccessGrants) return tables.docGrants;
+  if (table === planCreditGrants || table === promoCreditGrants) return [];
   throw new Error("Unexpected table");
 }
 
@@ -35,7 +36,7 @@ const asMs = (value: unknown) => {
 
 function matches(condition: SQLQuery, row: Record<string, unknown>): boolean {
   const query = dialect.sqlToQuery(condition);
-  const tokens = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s*(=|<|is null|is not null)/gi)];
+  const tokens = [...query.sql.matchAll(/`[^`]+`\.`([^`]+)`\s*(=|<|is null|is not null|in \(([^)]*)\))/gi)];
   let i = 0;
   for (const token of tokens) {
     const col = token[1];
@@ -46,6 +47,12 @@ function matches(condition: SQLQuery, row: Record<string, unknown>): boolean {
     }
     if (op === "is not null") {
       if (row[col] === null || row[col] === undefined) return false;
+      continue;
+    }
+    if (op.startsWith("in")) {
+      const n = (token[3].match(/\?/g) ?? []).length;
+      const allowed = query.params.slice(i, i + n); i += n;
+      if (!allowed.some(value => asMs(value) === asMs(row[col]))) return false;
       continue;
     }
     const param = query.params[i++];
@@ -70,6 +77,7 @@ function insertInto(table: Table, row: Record<string, unknown>) {
 function chainable(selected: () => Array<Record<string, unknown>>) {
   const slice = (n: number) => structuredClone(selected().slice(0, n));
   return {
+    orderBy: () => chainable(selected),
     limit: (n: number) => ({ for: async (_mode: string) => slice(n), then: (resolve: (v: unknown) => unknown) => Promise.resolve(slice(n)).then(resolve) }),
     for: async (_mode: string) => structuredClone(selected()),
     then: (resolve: (v: unknown) => unknown) => Promise.resolve(structuredClone(selected())).then(resolve),
@@ -259,5 +267,23 @@ describe("ask expiry", () => {
     tables.requests = [requestRow(new Date(NOW.getTime() - 10 * DAY))];
     await expect(expireStalePendingReferralRequest(7, 501, NOW.getTime())).rejects.toThrow(/wallet is unavailable/);
     expect(tables.requests[0].status).toBe("pending");
+  });
+
+  it("credit spent at send: withdraw before pickup returns it once; expiry returns it once; claim and decline paths never refund", async () => {
+    const spend = (id: number, ask: number) => ({ id, userId: 7, role: "job_seeker" as const, tokenCount: -1, kind: "credit_spend" as const, source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: "referral_request", referenceId: `${ask}#1`, reversesTransactionId: null, idempotencyKey: `k${ask}#1`, balanceAfter: 2, monthlyCreditsAfter: 1, creditGrantId: null });
+    tables.wallets[0].monthlyCreditsRemaining = 0;
+    tables.txns = [spend(21, 501), spend(22, 502), spend(23, 503)];
+    tables.requests = [requestRow(new Date(NOW.getTime() - 2 * DAY), { debitTransactionId: 21 }), requestRow(new Date(NOW.getTime() - 8 * DAY), { id: 502, debitTransactionId: 22 }), requestRow(new Date(NOW.getTime() - 2 * DAY), { id: 503, debitTransactionId: 23, referrerId: 9, status: "claimed" })];
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, status: "withdrawn" });
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, status: "withdrawn" });
+    expect(tables.wallets[0].monthlyCreditsRemaining).toBe(1);
+    expect((await expireStalePendingReferralRequest(7, 502, NOW.getTime())).expired).toBe(true);
+    expect((await expireStalePendingReferralRequest(7, 502, NOW.getTime())).expired).toBe(false);
+    expect(tables.wallets[0].monthlyCreditsRemaining).toBe(2);
+    // A claimed ask keeps its credit: it cannot be withdrawn, and the sweep never touches it.
+    await expect(withdrawCompanyReferralRequest(7, 503)).rejects.toThrow(/already claimed/);
+    expect((await expireStalePendingReferralRequest(7, 503, NOW.getTime())).expired).toBe(false);
+    expect(tables.wallets[0].monthlyCreditsRemaining).toBe(2);
+    expect(tables.txns.filter(t => t.reversesTransactionId != null).map(t => [t.kind, t.reversesTransactionId, t.tokenCount])).toEqual([["withdrawal_refund", 21, 1], ["expiry_refund", 22, 1]]);
   });
 });

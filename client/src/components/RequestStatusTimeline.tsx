@@ -21,7 +21,7 @@ function formatStamp(value: string | null) {
 
 export function buildRequestTimeline(request: { status: ReferralStatus; referrerId: number | null; createdAt: string; updatedAt: string; queueStatus?: "available_for_review" | "waiting_for_coverage" | null }): TimelineEntry[] {
   const sent: TimelineEntry = { label: "Request sent", date: request.createdAt, tone: "green", state: "done" };
-  if (request.status === "withdrawn") return [sent, { label: "Withdrawn — slot freed", date: request.updatedAt, tone: "slate", state: "done" }];
+  if (request.status === "withdrawn") return [sent, { label: "Withdrawn — credit returned", date: request.updatedAt, tone: "slate", state: "done" }];
   const claimed = Boolean(request.referrerId);
   const claimedEntry: TimelineEntry = claimed
     ? { label: request.status === "pending" && request.queueStatus === "available_for_review" ? "Available to a verified employee" : "Claimed by a verified employee", date: request.status === "pending" ? request.updatedAt : null, tone: "blue", state: "done" }
