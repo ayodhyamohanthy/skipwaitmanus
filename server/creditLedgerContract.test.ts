@@ -5,16 +5,16 @@ import { CREDIT_GRANT_SOURCES, CREDIT_GRANT_STATUSES, TOKEN_LEDGER_KINDS } from 
 import { DESIRED_COLUMNS, DESIRED_FOREIGN_KEYS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
 
 // The ledger's enums are declared once in shared/creditLedger.ts; drizzle/schema.ts
-// and migration 0079 must carry the same values in the same order (MySQL ENUM order
+// and migration 0089 must carry the same values in the same order (MySQL ENUM order
 // is part of the column definition, so a reordered MODIFY would rewrite stored values).
-const migration = readFileSync(new URL("../drizzle/deploy/0079_credit_ledger.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../drizzle/deploy/0089_credit_ledger.sql", import.meta.url), "utf8");
 const quoted = (values: readonly string[], quote: string) => values.map(value => `${quote}${value}${quote}`).join(",");
 
-describe("credit ledger schema contract (0079)", () => {
+describe("credit ledger schema contract (0089)", () => {
   it("tokenTransactions.kind is the shared ledger kind list, existing values first and in order", () => {
     expect([...tokenTransactions.kind.enumValues]).toEqual([...TOKEN_LEDGER_KINDS]);
     expect(TOKEN_LEDGER_KINDS.slice(0, 11)).toEqual(["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund"]);
-    // 0079 shipped the first sixteen kinds; its file is immutable (0081 appends trial_grant).
+    // 0089 shipped the first sixteen kinds; its file is immutable (0091 appends trial_grant).
     expect(migration).toContain(`MODIFY \`kind\` ENUM(${quoted(TOKEN_LEDGER_KINDS.slice(0, 16), "''")}) NOT NULL`);
   });
 
@@ -32,7 +32,7 @@ describe("credit ledger schema contract (0079)", () => {
     expect(body.match(/information_schema\./g)).toHaveLength(4);
   });
 
-  it("boot reconcile requires exactly what 0079 creates", () => {
+  it("boot reconcile requires exactly what 0089 creates", () => {
     const table = DESIRED_TABLES.find(item => item.table === "planCreditGrants");
     expect(table?.createSql).toContain("UNIQUE INDEX `plan_credit_grants_grant_key_unique`(`grantKey`)");
     expect(DESIRED_COLUMNS).toContainEqual({ table: "tokenTransactions", column: "creditGrantId", definition: "INT NULL" });

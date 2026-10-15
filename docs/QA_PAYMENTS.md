@@ -1,6 +1,6 @@
 # QA payments runbook (test gateway only)
 
-Real-money QA is prohibited. Every payment below runs against the Chargebee
+Real-money QA is prohibited by default (see docs/PAYMENTS_TEST_RUNBOOK.md for the two-site matrix and the live-site approval rule). Every payment below runs against the Chargebee
 TEST site. Nothing here touches production billing.
 
 ## 1. Environment

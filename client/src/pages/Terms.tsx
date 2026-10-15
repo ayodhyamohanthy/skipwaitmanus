@@ -16,7 +16,7 @@ export default function Terms() {
     eyebrow="TERMS OF SERVICE"
     title="Terms"
     intro="Plain terms for a private referral handoff. These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms."
-    updated="23 Sep 2026"
+    updated="15 Oct 2026"
     status="published"
     summary={[
       "Referrals are always free. Plans and credit packs buy preparation tools and monthly allowances — never priority or outcomes.",
@@ -54,7 +54,7 @@ export default function Terms() {
 
     <PolicySection number="03" title="Credits, plans, and payment">
       <ul>
-        <li>Every Job Seeker account includes <strong>3 free referral credits each month</strong>. One credit is reserved when a request is sent and <strong>returned automatically</strong> if you withdraw before a Referrer claims it, or if a Referrer declines.</li>
+        <li>Every Job Seeker account includes <strong>3 free referral credits each month</strong>. One credit is reserved when a request is sent and <strong>returned automatically</strong> if you withdraw before a Referrer claims it, or if the request expires without a decision. If a Referrer declines, the credit stays spent and your request stays open for other employees at that company.</li>
         <li>Additional credits can be bought individually and never expire. Pro and Max plans add a monthly allowance that renews each cycle.</li>
         <li>Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Credits are added only after the payment is verified. Refund and cancellation rules are in the <Link href="/refunds" className="font-semibold text-foreground">Refunds & cancellation policy</Link>.</li>
         <li>Reviewing and accepting referrals is always free for Referrers.</li>
@@ -64,7 +64,7 @@ export default function Terms() {
     <PolicySection number="04" title="Privacy inside a request">
       <ul>
         <li>Your resume and note are visible only to you and verified employees of the target company, and then only to the single Referrer who claims your request.</li>
-        <li>Referrer identities are hidden from Job Seekers until the Referrer accepts and chooses to message.</li>
+        <li>Referrer identities are hidden from Job Seekers until the Referrer accepts. After acceptance, the Job Seeker and the Referrer see each other's names, and the Referrer receives the resume. Before acceptance, a Referrer sees neither the Job Seeker's name nor resume.</li>
         <li>Conversations open only after acceptance and are never public. Details are in our <Link href="/privacy" className="font-semibold text-foreground">Privacy & trust</Link> page.</li>
       </ul>
     </PolicySection>

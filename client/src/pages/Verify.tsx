@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowLeft, ArrowRight, Building2, Check, Clock3, LoaderCircle, LockKeyhole, Mail, RefreshCw, ShieldCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "wouter";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
@@ -10,11 +10,11 @@ import { useCompanyDirectory } from "@/lib/companyDirectory";
 
 const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com", "proton.me"];
 const MAX_ATTEMPTS = 5;
-/** The server accepts one code request per email per minute; a shorter
+/** The server accepts one code request per email per 30 seconds; a shorter
  * countdown would invite a resend the server is certain to refuse. */
-const RESEND_SECONDS = 60;
+const RESEND_SECONDS = 30;
 const EMPTY_CODE = ["", "", "", "", "", ""];
-const LOCKED_MESSAGE = "Too many tries. For your safety, this code no longer works. Send a new one.";
+const LOCKED_MESSAGE = "Too many tries. For your safety, wait 15 minutes, then send a new code.";
 const DEFAULT_COMPANY = "wipro";
 type Step = "company" | "email" | "code" | "done";
 const STEP_ORDER: Step[] = ["company", "email", "code", "done"];
@@ -72,9 +72,22 @@ export default function Verify() {
     finally { setSending(false); }
   };
 
-  const setDigit = (index: number, value: string) => {
-    const digits = value.replace(/\D/g, "");
+  // Paste lands in whichever box has focus. A 6-digit code always fills the
+  // row from the first box, so no leading digit is lost to an occupied box.
+  const pasteCode = (event: ClipboardEvent<HTMLInputElement>) => {
+    const digits = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (digits.length < 2) return;
+    event.preventDefault();
     setCodeError("");
+    setCode([...digits.split(""), ...EMPTY_CODE.slice(digits.length)]);
+    inputs.current[Math.min(digits.length, 5)]?.focus();
+  };
+
+  const setDigit = (index: number, value: string) => {
+    let digits = value.replace(/\D/g, "");
+    setCodeError("");
+    // Typing over a filled box gives two characters; keep the one just typed.
+    if (digits.length === 2 && code[index]) digits = digits.slice(-1);
     if (digits.length > 1) {
       const next = digits.slice(0, 6).split("");
       setCode([...next, ...EMPTY_CODE.slice(next.length)]);
@@ -95,6 +108,7 @@ export default function Verify() {
       if (!proof) {
         try { proof = await checkWorkEmailCode(email.trim(), entered, fetchToken); }
         catch (reason) {
+          if (reason instanceof VerifyRequestError && reason.status === 429) { setAttempts(MAX_ATTEMPTS); setCodeError(LOCKED_MESSAGE); return; }
           if (!(reason instanceof VerifyRequestError) || reason.status !== 400) { setCodeError(messageOf(reason, "We could not verify the code")); return; }
           const count = attempts + 1;
           const left = MAX_ATTEMPTS - count;
@@ -185,7 +199,7 @@ export default function Verify() {
           <p className="mt-1 text-muted-foreground">Sent to <strong className="break-all text-foreground">{email.trim()}</strong>. <button type="button" className="text-link" onClick={backToEmail}>Change</button></p>
           <div className="mt-6 flex gap-2 sm:gap-3" role="group" aria-label="6-digit code">
             {code.map((digit, i) => (
-              <input key={i} ref={element => { inputs.current[i] = element; }} value={digit} disabled={locked || Boolean(receipt)} onChange={event => setDigit(i, event.target.value)} onKeyDown={event => { if (event.key === "Backspace" && !digit && i > 0) inputs.current[i - 1]?.focus(); if (event.key === "Enter") void check(); }} inputMode="numeric" autoComplete={i === 0 ? "one-time-code" : "off"} aria-label={`Digit ${i + 1}`} className={`h-14 w-full min-w-0 max-w-14 rounded-xl border bg-background text-center text-2xl font-semibold ${codeError ? "border-destructive" : "border-input"} disabled:bg-muted disabled:text-muted-foreground`} />
+              <input key={i} ref={element => { inputs.current[i] = element; }} value={digit} disabled={locked || Boolean(receipt)} onPaste={pasteCode} onChange={event => setDigit(i, event.target.value)} onKeyDown={event => { if (event.key === "Backspace" && !digit && i > 0) inputs.current[i - 1]?.focus(); if (event.key === "Enter") void check(); }} inputMode="numeric" autoComplete={i === 0 ? "one-time-code" : "off"} aria-label={`Digit ${i + 1}`} className={`h-14 w-full min-w-0 max-w-14 rounded-xl border bg-background text-center text-2xl font-semibold ${codeError ? "border-destructive" : "border-input"} disabled:bg-muted disabled:text-muted-foreground`} />
             ))}
           </div>
           {codeError ? <p role="alert" className="mt-3 flex items-start gap-2 text-sm text-destructive"><AlertTriangle className="mt-0.5 size-4 shrink-0" />{codeError}</p> : null}

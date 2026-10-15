@@ -37,7 +37,7 @@ export const subscriptionStateSchema = z.object({
 }).strict();
 export type SubscriptionState = z.infer<typeof subscriptionStateSchema>;
 
-/** The tokenBalances fields this reads. Columns added by 0080 are optional so a pre-migration row still reads. */
+/** The tokenBalances fields this reads. Columns added by 0090 are optional so a pre-migration row still reads. */
 export type SubscriptionWallet = {
   plan: string;
   subscriptionId: string | null;

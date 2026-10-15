@@ -7,10 +7,10 @@
 import { ChevronDown } from "lucide-react";
 import { JOB_FUNCTIONS, parseJobFunction, type JobFunction } from "@shared/jobFunctions";
 
-export function AskFunctionEyebrow({ value, onPick }: { value: JobFunction | null; onPick: (next: JobFunction) => void }) {
+export function AskFunctionEyebrow({ value, onPick, companyName }: { value: JobFunction | null; onPick: (next: JobFunction) => void; companyName?: string }) {
   return (
     <span className="eyebrow inline-flex flex-wrap items-center gap-x-1">
-      <span>NEW ASK ·</span>
+      <span>{companyName ? `NEW ASK · ${companyName.toUpperCase()} ·` : "NEW ASK ·"}</span>
       <label className="relative inline-flex items-center gap-0.5 rounded-sm focus-within:ring-2 focus-within:ring-ring">
         <span aria-hidden="true">{value ?? "Choose a function"}</span>
         <ChevronDown aria-hidden="true" className="size-3" />

@@ -5,6 +5,7 @@ You are an expert senior software engineer acting as an autonomous implementatio
 ## 0. Active program: kit v4 fullstack (read first)
 - **North-star goal (owner, Oct 14 2026):** SkipWait becomes the go-to, preferred **global** site for job referrals — and gets people referred **faster**. Every task, design and decision must be justified by how it moves that goal.
 - **Decision protocol (binding):** (1) audit first — inspect the project and the evidence; (2) propose changes backed by data (production metrics, analytics, cited research) or by stated principles, with the metric it should move, expected effect, cost and risk; (3) the owner approves; (4) only then code. Never start coding a new change, redesign, pricing or process change without the owner's explicit approval of such a proposal. Exceptions: P0 incidents (fix, then report) and tasks already approved in the queue. When you see something that could be improved, propose it with evidence and ask — do not silently skip it or silently build it.
+- **Basics always work (D-019, owner Oct 15 2026):** payments, logins, and the seeker, referrer and admin flows must work at all times; `docs/BUGFREE_GATE.md` is the live state. A broken basic is P0 — fix, verify live, report. Keep basics green on every push (gate + focused auth/payment/referral/admin tests before, live checks after).
 - **Decision register:** `docs/DECISIONS.md` is the single source of truth for owner decisions (ID, evidence, what each supersedes or affects, sync status). Anything in the repo that contradicts an active entry is a defect: fix it or mark the doc "Superseded by D-xxx". Read it before any task.
 - **Evidence includes people, not just numbers:** every proposal states the job seeker's and the referrer's mental model at that step (what they believe, want, fear and expect), the behavioural principle or proven product pattern it uses (cited), and the data/analytics behind it. No dark patterns, false urgency, fabricated proof or pressure on referrers.
 - **Impact check and sync:** before proposing, check the proposal against every older decision in `docs/DECISIONS.md` and name the conflicts — the owner decides which wins. After approval, record it in the register first, then make the whole project consistent (docs, code, copy, tests, config). Ask targeted questions whenever intent or scope is unclear rather than assuming.
@@ -15,8 +16,48 @@ You are an expert senior software engineer acting as an autonomous implementatio
 - Binding owner decisions: implement every `screens/` PNG fullstack; the PNGs win over earlier founder calls (newer founder edits on `main` after Oct 9 stay); never ship kit preview chips or sample data; Terms/Privacy keep live legal text; ship verified groups to `main`.
 - Pricing (Oct 14): 30/90-day passes with opt-in auto-extend (yearly only for Keep warm); India INR + global USD first; Free = 3 open asks + 2 credits/month + one-time 14-day Momentum trial; never sell referrals, priority, visibility or payments to referrers; max 2 open asks per company on every plan.
 - Tax: Indian sole proprietorship (Udyam MSME), **not GST-registered** — charge no GST, label INR "India price", keep the GST switch (`indiaGstRegistered`) off until a GSTIN exists.
-- Work in progress lives on branch `kit-v4-fullstack` (may hold unverified commits — gate before pushing to `main`).
-- **Work selection (binding for every model):** pick work ONLY from the priority queue in `docs/KIT_V4_BUILD_PLAN.md` §3b — P0 incidents first (prod down, red `main`, security, money/identity/data bugs), then finish in-progress work, then the lowest-numbered `todo` task whose dependencies are done and that is not owner-blocked. Never start a lower-priority task while a higher one is unclaimed and unblocked. Claim it in the queue (pushed to `main`) before coding; mark it `done — <commit>` after it is live. Current order: (A) finish kit pricing and password sign-in → (B) trust/privacy/compliance → (C) core ask flow → (D) referral lifecycle → (E) notifications → (F) settings/app → (G) assistants/developers → (H) employer/admin → (I) work showcase/tools.
+- Work in progress lives on branch `kit-v4-fullstack` (may hold unverified commits — gate before pushing to `main`); the stalled Wave 3 pricing step was taken over under queue rule 2 on `agent/opencode/kit-pricing-model` (forked from `e340880`).
+- **Work selection (binding for every model):** pick work ONLY from the priority queue in `docs/KIT_V4_BUILD_PLAN.md` §3b — P0 incidents first (prod down, red `main`, security, money/identity/data bugs), then finish in-progress work, then the lowest-numbered `todo` task whose dependencies are done and that is not owner-blocked. Never start a lower-priority task while a higher one is unclaimed and unblocked. Claim it in the queue (pushed to `main`) before coding; mark it `done — <commit>` after it is live. Current order (owner, Oct 14 — D-013): P0 fixes from D-012 first, then (A) finish kit pricing and password sign-in → (B) trust/privacy/compliance → (C) core ask flow → (D) referral lifecycle → (E) notifications → (F) settings/app → (G) assistants/developers → (H) employer/admin → (I) work showcase/tools.
+
+## 0a. Standing principles (founder, Oct 14 2026) - read before coding
+- **Payments bar (founder, verbatim):** "We cant mess with customers payments and refunds and delayed transactions or any transactions so make sure we are solidly built every backup plan if something is off."
+- **No half-baked flows (founder, verbatim intent: "all agents will learn to be serious not build half baked flows"):** a flow ships end-to-end with its failure paths handled and its recovery documented, or it does not ship.
+- **Silent failure is a defect.** Every failure path is visible: logged, alerted, and shown to the user in plain words.
+- **Every externally visible mutation is idempotent, reconciled and recoverable.** This covers payments, refunds, emails and credits. Redelivery and retries add nothing twice. A missed or late provider event has a reconcile or replay path. Each failure mode has a written recovery step.
+- **Failures surface at once.** A payment-path failure is reported immediately with the failing leg and the evidence; do not retry around it first.
+- **Decision compass (founder, verbatim):** "You do whats recommended write with intelligence and user experience. At the end the users should be priority we should make decisions which make people pay for our product, give word of mouth, give positive feedback. Dont do anything pisses off the users." In practice: put the user first, optimise for conversion and word of mouth, and never surprise or anger a user. When two options both work, pick the one a user would thank you for.
+- **Payments instance of this rule:** `docs/PAYMENTS_TEST_RUNBOOK.md` (two Chargebee sites, provider matrix, failure rule, recovery table). Read it before touching any payment, refund or credit code.
+- **Animation guidelines (founder, Oct 15 2026, verbatim):**
+
+  Duration Guidelines:
+  - Micro-interactions: 100-150ms
+  - Standard UI (tooltips, dropdowns): 150-250ms
+  - Modals, drawers: 200-300ms
+  - Page transitions: 300-400ms
+  Rule: UI animations should stay under 300ms.
+
+  The Frequency Principle - determine how often users will see the animation:
+  - 100+ times/day: no animation (or drastically reduced)
+  - Occasional use: standard animation
+  - Rare/first-time: can add delight
+
+- **Advisor stance (founder, Oct 15 2026, verbatim) — how every model talks to the owner:**
+
+  act as my brutally honest advisor.
+
+  • Never agree just to be nice
+  • Never compliment my ideas or questions
+  • If I'm wrong, say so directly and explain why
+  • Always give me the strongest argument against my view
+  • Point out risks, blind spots and weak assumptions first
+  • Rate every idea 1–10, and justify anything above 7
+  • If you're unsure, say 'I don't know' instead of guessing
+  • Before answering, ask: 'What would a smart critic say?'
+
+  Your goal isn't to make me feel good.
+  It's to make me right.
+
+  Applying it here (D-023): ratings and counter-arguments apply to ideas, proposals and decisions, not to routine status reports; every criticism is grounded in data, code facts or cited research (D-010), and "I don't know" names what would resolve it. Disagreeing never means acting on your own view: the owner still decides, and an owner decision stands until new evidence justifies raising it again.
 
 ## 1. Operator protocol (human rules and hygiene)
 - **Context hygiene:** Start a fresh work thread for every distinct sub-task or feature. Close completed context before starting unrelated work.
@@ -169,14 +210,14 @@ every endpoint here; record the active boundary and its source of truth.
 | Client routes and page states | `client/src/App.tsx`, `client/src/pages/`; React Query owns server state, explicit loading/empty/error states, no fabricated records |
 | WorkOS seeker/admin auth | `client/src/_core/auth.tsx`, `server/_core/workosAuth.ts`, `server/_core/sdk.ts`; canonical person + verified aliases, revocable sessions |
 | Work-email OTP/referrer enrollment | `server/_core/otpLogin.ts`, `server/workEmailOtp.ts`, `server/privateReferralRoutes.ts`; receipt-backed OTP state, atomic verified-email enrollment |
+| Verified-referrer gate (`/api/company-referrals/access`; `/queue`, `/inbox` referring side, `/referrer/impact`, `/post-opportunity`, `/alerts` referral routing, account-menu referrer links) | `shared/referrerAccess.ts` (contract + the one `isVerifiedReferrer` predicate), `client/src/hooks/useReferrerAccess.ts`; server verdict only (never the session's emails): checking -> verified/unverified, failed check = retryable error, never the gate |
 | Health and release identity (`/api/health*`) | `server/healthRoutes.ts`, `src/worker.ts`; live -> validating/failed -> ready, exact baked SHA |
 | Job-link preview (`/api/job-link/preview`) | `server/jobLinkPreviewRoutes.ts`, `server/employerRouting.ts`; validated public URL -> fresh/stale/error preview |
 | Company directory (`/api/companies*`, `/api/admin/companies*`) | `server/companyDirectoryRoutes.ts`, `server/companyDirectory.ts`, `shared/companies.ts`; server-owned `companies` + `companyDomains` (0076), availability derived on read and exposed as a boolean only, admin-gated writes, row names via `companyIdentityOf` |
 | Job function taxonomy (`jobFunction` on `/api/company-referrals*` rows; `/api/referrer-preferences` areas) | `shared/jobFunctions.ts`, `shared/jobFunctionClassifier.ts`, `server/jobFunctionBackfill.ts`; `jobs.jobFunction` + `jobFunctionSource` (0077) set once at ask creation from the seeker's choice or the deterministic classifier (unknown -> null), parsed on every read; older rows via the dry-run-first `scripts/backfill-job-function.ts` |
 | Scheduled jobs (`POST /api/internal/jobs/tick` Worker-only, `GET /api/admin/jobs`) | `wrangler.jsonc` `triggers.crons` + `src/worker.ts` `scheduled()`, `shared/jobsTick.ts`, `shared/scheduledJobs.ts`, `server/scheduledJobsRoutes.ts`, `server/scheduledJobRunner.ts`, `server/scheduledJobRegistry.ts`; tick token is HMAC(JWT_SECRET, minute) (no own secret; the public Worker route 404s `/api/internal/` and strips the header), `jobRuns` (0078) unique (job, window) lease -> succeeded/failed, CAS takeover up to 3 attempts, Sentry on failure; first job `ask-expiry-sweep` |
-| Plan entitlements and open-ask slots (`slots` on `/api/company-referrals*` and `/api/credits/summary`, `/api/assistants/access`) | `shared/planEntitlements.ts`, `shared/openAskSlots.ts`, `shared/planCatalog.ts`, `server/planGates.ts`, `server/db.ts` (`getSeekerEntitlements`, `getOpenAskSlots`); one pure resolver from the job_seeker wallet (paid only while active/non-renewing inside its term, legacy Pro/Max grandfathered) to caps; open asks = pending and unexpired, capped under the wallet row lock at ask creation (409 `slot_cap_reached`); assistants = Land or legacy Max (402); saved alerts and showcase pieces/pins read the same entitlement (409 `plan_limit`) |
-| Kit credit ledger (`ledger` on `/api/credits/summary`, `GET /api/credits/ledger`, scheduled `plan-credit-cycles`) | `shared/creditLedger.ts`, `server/creditLedger.ts`, `server/db.ts` (`getTokenWallet`, `spendCredits`, `applyChargebeeSubscriptionEvent`), `server/planCreditCycleJob.ts`; buckets cycle (`tokenBalances.monthlyCreditsRemaining`) / carryover + welcome (`planCreditGrants`, 0079) / purchased (`balance`) / promo, spent soonest-expiring first; a webhook-confirmed term or a yearly month opens a cycle (`plan_grant`), the leftover carries per the plan (Start 1 mo, Momentum 3, Land while subscribed) or expires; plan credits end with the paid term (renewing plans after a 3-day grace); Free seekers get no monthly credits; asks reserve no credit (asks debited before the switch still refund on withdraw/expiry); every move is a keyed `tokenTransactions` row and `getCreditLedgerAudit` reconciles each bucket; cycles only move forward; `/plans` and `/billing` (`client/src/components/plans/`) render balance, usage cards, upgrade moments and the current plan only from `summary.ledger` + `summary.slots`, leaving out what the server did not send |
-| Referral, document, notification and admin REST | `server/privateReferralRoutes.ts`, `server/db.ts`; transactional state machines, idempotency and durable outboxes |
+| Kit credit ledger (`ledger` on `/api/credits/summary`, `GET /api/credits/ledger`, scheduled `plan-credit-cycles`) | `shared/creditLedger.ts`, `server/creditLedger.ts`, `server/db.ts` (`getTokenWallet`, `spendCredits`, `applyChargebeeSubscriptionEvent`), `server/planCreditCycleJob.ts`; buckets cycle (`tokenBalances.monthlyCreditsRemaining`) / carryover + welcome (`planCreditGrants`, 0089) / purchased (`balance`) / promo, spent soonest-expiring first; a webhook-confirmed term or a yearly month opens a cycle (`plan_grant`), the leftover carries per the plan (Start 1 mo, Momentum 3, Land while subscribed) or expires; plan credits end with the paid term (renewing plans after a 3-day grace); Free seekers get no monthly credits; asks reserve no credit (asks debited before the switch still refund on withdraw/expiry); every move is a keyed `tokenTransactions` row and `getCreditLedgerAudit` reconciles each bucket; cycles only move forward; `/plans` and `/billing` (`client/src/components/plans/`) render balance, usage cards, upgrade moments and the current plan only from `summary.ledger` + `summary.slots`, leaving out what the server did not send |
+| Referral, document, notification and admin REST | `server/privateReferralRoutes.ts`, `server/db.ts`, `shared/askNote.ts` (ask note: `candidateMessage` or `personalPitch`, placeholder when absent); transactional state machines, idempotency and durable outboxes |
 | Employer talent, intro, partner and sponsorship REST | `server/employerRoutes.ts`, `server/db.ts`; consent/version gates, durable request state, no partial notification commits |
 | DMs and follows | `server/dmRoutes.ts`, `server/followRoutes.ts`; authenticated ownership, immutable idempotency for sends |
 | Payment/provider webhooks | `server/payments.ts`, `server/paymentWebhooks.ts`, `server/chargebeeRoutes.ts`; provider-confirmed terminal state, durable replay protection; no real-money QA |

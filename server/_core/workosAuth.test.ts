@@ -7,12 +7,14 @@ const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@
 const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", role: "user", suspended: false, sessionsValidAfter: new Date(0), createdAt: new Date(0), updatedAt: new Date(0), lastSignedIn: new Date(0) };
 const accounts = vi.hoisted(() => new Map<string, Record<string, unknown>>());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
+const hosted = vi.hoisted(() => ({ list: vi.fn(async () => ({ data: [{ id: "session_live", status: "active" }] })), revoke: vi.fn(async () => {}) }));
 vi.mock("../db", () => ({
   upsertUser: vi.fn(),
   getDb: vi.fn(async () => ({})),
   getUserByOpenId: vi.fn(async (openId: string) => openId === account.openId ? account : accounts.get(openId)),
   revokeUserSessions: vi.fn(async (openId: string) => { const row = openId === account.openId ? account : accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); }),
   resolveLoginIdentity,
+  listWorkosSubjectsForUser: vi.fn(async (userId: number) => userId === 1 ? ["user_test"] : []),
 }));
 function defaultResolve(input: { openId: string; name: string; email: string }) {
   if (input.openId === account.openId) return account;
@@ -30,6 +32,8 @@ vi.mock("@workos-inc/node", () => {
     WorkOS: class {
       userManagement = {
         authenticateWithCode: authenticate,
+        listSessions: hosted.list,
+        revokeSession: hosted.revoke,
         getAuthorizationUrl: (options: { screenHint?: string; loginHint?: string; redirectUri: string }) => {
           authUrl(options);
           return `https://api.workos.com/user_management/authorize?screen=${options.screenHint ?? ""}&login=${options.loginHint ?? ""}&redirect=${encodeURIComponent(options.redirectUri)}`;
@@ -256,5 +260,41 @@ describe("canonical WorkOS callback session", () => {
       expect((await request(app).post("/api/auth/workos/logout").set("Cookie", cookie)).body).toEqual({ signedOut: true });
       expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(401);
     } finally { restore(); }
+  });
+
+  it("ends the signed-out person's hosted AuthKit sessions, only with a valid session of their own", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      hosted.list.mockClear(); hosted.revoke.mockClear();
+      expect((await request(app).post("/api/auth/workos/logout")).body).toEqual({ signedOut: true });
+      expect(hosted.list).not.toHaveBeenCalled();
+      const callback = await signIn(app);
+      const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
+      expect((await request(app).post("/api/auth/workos/logout").set("Cookie", cookie)).body).toEqual({ signedOut: true });
+      expect(hosted.list).toHaveBeenCalledWith("user_test");
+      expect(hosted.revoke).toHaveBeenCalledWith({ sessionId: "session_live" });
+    } finally { restore(); }
+  });
+
+  it("still signs out when WorkOS cannot list or revoke hosted sessions", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      hosted.list.mockRejectedValueOnce(new Error("workos down"));
+      const callback = await signIn(app);
+      const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
+      expect((await request(app).post("/api/auth/workos/logout").set("Cookie", cookie)).body).toEqual({ signedOut: true });
+      expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(401);
+    } finally { restore(); }
+  });
+
+  it("starts a listed social provider and falls back to AuthKit for anything else", { timeout: 20000 }, async () => {
+    const { app, restore } = await buildApp({ ...baseEnv });
+    const providerFor = async (provider: string) => { await request(app).get("/api/auth/workos/sign-in").query({ provider }); return (authUrl.mock.calls.at(-1)?.[0] as { provider?: string; screenHint?: string }); };
+    expect((await providerFor("google")).provider).toBe("GoogleOAuth");
+    expect((await providerFor("microsoft")).provider).toBe("MicrosoftOAuth");
+    expect((await providerFor("github")).provider).toBe("GitHubOAuth");
+    const unknown = await providerFor("AppleOAuth");
+    expect(unknown.provider).toBe("authkit"); expect(unknown.screenHint).toBe("sign-in");
+    restore();
   });
 });

@@ -1,6 +1,6 @@
 import { ArrowLeft, ArrowRight, Inbox, LockKeyhole } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { useAuth, useUser } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
 import { useLocation, useSearch } from "wouter";
 import { Button } from "@/components/kit/button";
 import { ReferrerCreditsCard } from "@/components/ReferrerCreditsCard";
@@ -15,19 +15,21 @@ import { CandidatePreviewCard, type CandidatePreview, type DeclineReason } from 
 import { askDaysLeft, formatAskExpiry, type ReferralStatus } from "@shared/referral";
 import { parseJobFunction, type JobFunction } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 
 type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number };
 type InboxPayload = { requests?: CompanyInboxItem[] };
 type PrivateImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
-const personalEmailDomains = new Set(["gmail.com", "googlemail.com", "yahoo.com", "yahoo.co.uk", "hotmail.com", "outlook.com", "live.com", "icloud.com", "me.com", "aol.com", "proton.me", "protonmail.com", "gmx.com", "mail.com", "zoho.com"]);
 
 /** Kit v4 request queue: routed new requests first, then any saved earlier. Decided requests live in /inbox and Impact. */
 export default function MyCompanyInbox() {
   const [, go] = useLocation();
   const requestedId = Number(new URLSearchParams(useSearch()).get("request"));
   const { isSignedIn, getToken } = useAuth();
-  const { user } = useUser();
+  // The server's verified-referrer verdict (shared predicate), never the sign-in account's emails.
+  const access = useReferrerAccess();
+  const verified = access.status === "verified";
   const [requests, setRequests] = useState<CompanyInboxItem[]>([]);
   const [preview, setPreview] = useState<CandidatePreview | null>(null);
   // Start in the loading state when signed in so the first paint is the skeleton,
@@ -43,7 +45,6 @@ export default function MyCompanyInbox() {
   const [pendingDecline, setPendingDecline] = useState<DeclineReason | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const { showSkeleton, isSlow } = useSlowLoad(loading);
-  const hasVerifiedWorkEmail = Boolean(user?.emailAddresses.some(address => { const domain = address.emailAddress.trim().toLowerCase().split("@")[1]; return address.verification?.status === "verified" && domain && !personalEmailDomains.has(domain); }));
 
   const companyFetch = async <T extends object>(path: string, init?: RequestInit): Promise<T & { error?: string }> => {
     const token = await getToken();
@@ -75,10 +76,12 @@ export default function MyCompanyInbox() {
     finally { setLoading(false); }
   };
   const raceError = error.includes("Another employee accepted");
-  useEffect(() => { void loadInbox(); }, [isSignedIn]);
+  // The queue loads once the server confirms the verification, so a retried check that
+  // succeeds also brings the queue in, and an unverified account never requests it.
+  useEffect(() => { if (verified) void loadInbox(); }, [isSignedIn, verified]);
   const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
   // /referrer-home rows link here as /queue?request=:id and open that request directly.
-  useEffect(() => { if (isSignedIn && hasVerifiedWorkEmail && Number.isInteger(requestedId) && requestedId > 0) void reviewCandidate(requestedId); }, [isSignedIn, hasVerifiedWorkEmail, requestedId]);
+  useEffect(() => { if (isSignedIn && verified && Number.isInteger(requestedId) && requestedId > 0) void reviewCandidate(requestedId); }, [isSignedIn, verified, requestedId]);
   const oneClickReview = async (requestId: number, decision: "approved" | "declined", declineReason?: DeclineReason) => {
     setWorkingId(requestId); setError("");
     try {
@@ -94,7 +97,9 @@ export default function MyCompanyInbox() {
   const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="queue" screen={screen} isSignedIn={Boolean(isSignedIn)} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
 
   if (!isSignedIn) return frame("company-inbox-sign-in", <section className="queue-layout"><QueuePanel icon={LockKeyhole} title="Give referrals with control." text="Use a company email to see only matching private requests. Your identity stays hidden."><Button type="button" className="mt-6" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Use company email <ArrowRight /></Button></QueuePanel><QueueGuidance /></section>);
-  if (!hasVerifiedWorkEmail) return frame("company-inbox-setup", <section className="queue-layout"><QueuePanel icon={LockKeyhole} title="Verify your work email." text="A one-time code confirms your company corridor. Your name and work email never appear to Job Seekers."><Button type="button" className="mt-6" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Add work email <ArrowRight /></Button></QueuePanel><QueueGuidance /></section>);
+  if (access.status === "checking") return frame("company-inbox-checking", <section className="queue-layout" aria-busy="true"><QueuePanel icon={LockKeyhole} title="Checking your verification." text="One moment.">{null}</QueuePanel></section>);
+  if (access.status === "error") return frame("company-inbox-access-error", <section className="queue-layout"><ActionErrorCard title="We couldn’t check your verification" detail={access.error.message || "Check your connection and try again."} reassurance="Nothing changed on your account. Try again in a moment." onRetry={access.retry} retrying={access.retrying} className="self-start" /><QueueGuidance /></section>);
+  if (!verified) return frame("company-inbox-setup", <section className="queue-layout"><QueuePanel icon={LockKeyhole} title="Verify your work email." text="A one-time code confirms your company corridor. Your name and work email never appear to Job Seekers."><Button type="button" className="mt-6" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Add work email <ArrowRight /></Button></QueuePanel><QueueGuidance /></section>);
 
   if (preview) return frame("company-candidate-preview", <section className="queue-layout">
     <div className="col-span-full"><Button type="button" variant="ghost" className="-ml-3" onClick={() => setPreview(null)}><ArrowLeft />Back</Button></div>

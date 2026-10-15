@@ -1,5 +1,7 @@
 import express, { type Express, type Request } from "express";
-import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
+import { createWorkItem, deleteWorkItem, getMyProfile, getPublicProfileByHandle, getReferrerHome, getReferrerPreferences, listMyWorkItems, normalizeProfileHandle, updateMyProfile, updateReferrerPreferences, updateWorkItem } from "./db";
+import { seekerSetupPatchSchema } from "../shared/seekerSetup";
+import { getSeekerSetup, SeekerSetupResumeError, updateSeekerSetup } from "./seekerSetup";
 import { referrerAreasInputSchema, referrerLevelsInputSchema } from "../shared/jobFunctions";
 import { PlanLimitError } from "./planGates";
 
@@ -17,7 +19,10 @@ export type ProfileRouteDeps = {
   deleteWorkItem?: typeof deleteWorkItem;
   getPublicProfileByHandle?: typeof getPublicProfileByHandle;
   getReferrerPreferences?: typeof getReferrerPreferences;
+  getReferrerHome?: typeof getReferrerHome;
   updateReferrerPreferences?: typeof updateReferrerPreferences;
+  getSeekerSetup?: typeof getSeekerSetup;
+  updateSeekerSetup?: typeof updateSeekerSetup;
 };
 
 const itemId = (raw: string) => {
@@ -42,6 +47,33 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json(await myProfile(identity.account.id));
     } catch { res.status(500).json({ error: "We could not load your profile" }); }
+  });
+
+  // Seeker setup answers (/onboarding). Owner-only: the user id always comes from
+  // the session, never from the request.
+  app.get("/api/profile/setup", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your setup" });
+      res.set("Cache-Control", "private, no-store");
+      res.json(await (deps.getSeekerSetup ?? getSeekerSetup)(identity.account.id));
+    } catch { res.status(500).json({ error: "We could not load your setup" }); }
+  });
+
+  app.patch("/api/profile/setup", express.json(), async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to save your setup" });
+      const parsed = seekerSetupPatchSchema.safeParse(req.body ?? {});
+      if (!parsed.success) return res.status(400).json({ error: "Check your setup answers and try again" });
+      const result = await (deps.updateSeekerSetup ?? updateSeekerSetup)(identity.account.id, parsed.data);
+      record({ actorUserId: identity.account.id, action: "profile.setup_updated", outcome: "success", resourceType: "profile" });
+      res.set("Cache-Control", "private, no-store");
+      res.json(result);
+    } catch (error) {
+      if (error instanceof SeekerSetupResumeError) return res.status(400).json({ error: error.message });
+      res.status(500).json({ error: "We could not save your setup" });
+    }
   });
 
   app.put("/api/profile/me", express.json(), async (req, res) => {
@@ -85,6 +117,16 @@ export function registerProfileRoutes(app: Express, deps: ProfileRouteDeps) {
       res.set("Cache-Control", "private, no-store");
       res.json({ preferences: await prefs(identity.account.id) });
     } catch { res.status(500).json({ error: "We could not load your referrer settings" }); }
+  });
+
+  // Read model only (queue task 18 PR 1): capacity used this month and routing state. Changes no routing.
+  app.get("/api/referrer/home", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to view your referrer home" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ home: await (deps.getReferrerHome ?? getReferrerHome)(identity.account.id) });
+    } catch { res.status(500).json({ error: "We could not load your referrer home" }); }
   });
 
   app.put("/api/referrer-preferences", express.json(), async (req, res) => {

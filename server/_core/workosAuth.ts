@@ -1,4 +1,6 @@
 import { WorkOS } from "@workos-inc/node";
+import { revokeHostedSessions } from "./hostedSessionRevoke";
+import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS, readHostedLink, revokeHostedSessionOnAccountSwitch, signHostedLink } from "./hostedAccountSwitch";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 import { safeAuthReturnTo } from "@shared/authReturnTo";
@@ -93,6 +95,31 @@ const WORKOS_IDENTITY_CACHE_MAX = 5_000;
 const workosIdentityCache = new Map<string, { identity: DevIdentity; expiresAt: number }>();
 export function clearWorkosIdentityCacheForTests() { workosIdentityCache.clear(); }
 
+/**
+ * The hosted session id of the caller's own current sign-in: from the verified app session cookie
+ * (the web app authenticates with that cookie), else from a verified WorkOS bearer. Null when unknown,
+ * for example sessions issued before the sid was recorded; callers must then treat "this device" as unknown.
+ */
+export async function currentWorkosSessionId(req: Request): Promise<string | null> {
+  const cookie = parseCookieHeader(req.headers.cookie ?? "")[COOKIE_NAME];
+  if (cookie) {
+    try {
+      const { sdk } = await import("./sdk");
+      const session = await sdk.verifySession(cookie);
+      if (session?.sid) return session.sid;
+    } catch { /* fall through to the bearer */ }
+  }
+  const header = req.headers.authorization;
+  if (typeof header !== "string" || !header.startsWith("Bearer ")) return null;
+  const bearer = header.slice(7).trim();
+  if (bearer.split(".").length !== 3) return null;
+  try {
+    const clientId = configuredWorkosClientId();
+    const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
+    return validateWorkosAccessClaims(payload, clientId) && typeof payload.sid === "string" ? payload.sid : null;
+  } catch { return null; }
+}
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
@@ -180,6 +207,9 @@ async function resolveWorkosIdentityUncached(req: Request, dependencies: Identit
   return resolveCookieIdentity(req);
 }
 
+/** Social sign-ins verified live against the WorkOS authorize endpoint on Oct 14 2026. Apple is not enabled in the dashboard (404), so it is not offered. */
+export const SOCIAL_PROVIDERS: Record<string, "GoogleOAuth" | "MicrosoftOAuth" | "GitHubOAuth"> = { google: "GoogleOAuth", microsoft: "MicrosoftOAuth", github: "GitHubOAuth" };
+
 export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) {
   return function registerWorkosAuthRoutes(app: Express) {
     if (!workosConfigured()) return;
@@ -194,6 +224,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     const returnCookie = "workos_auth_return";
     const returnKey = new TextEncoder().encode(process.env.WORKOS_COOKIE_PASSWORD!);
     const returnAudience = "skipwait-workos-return";
+    const hostedLinkCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos" });
     const returnCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos/callback" });
 
     for (const screenHint of ["sign-in", "sign-up"] as const) {
@@ -204,10 +235,18 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
           // The kit sign-in email step passes the typed address so AuthKit pre-fills it.
           const hint = typeof req.query.login_hint === "string" ? req.query.login_hint.trim().toLowerCase() : "";
           const loginHint = hint.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hint) ? hint : "";
+          // Social buttons on the kit sign-in pick a WorkOS provider. Only providers enabled in the WorkOS dashboard are listed here; anything else falls back to AuthKit.
+          const authProvider = typeof req.query.provider === "string" ? SOCIAL_PROVIDERS[req.query.provider] ?? "authkit" : "authkit";
           const state = randomUUID();
           const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
           res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
-          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: "authkit", redirectUri, state, screenHint, ...(loginHint ? { loginHint } : {}) }));
+          // Typed email differs from the account this browser last signed in with: end that hosted session first,
+          // so AuthKit asks for the code instead of silently signing the previous account back in. Fail-soft.
+          if (authProvider === "authkit" && loginHint) {
+            const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
+            if (await revokeHostedSessionOnAccountSwitch(workos.userManagement as never, linked, loginHint, { log: message => console.warn("[workos-switch]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
+          }
+          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
         } catch {
           res.status(502).send("Authentication could not be started");
         }
@@ -265,7 +304,13 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         // the email when WorkOS attests it is verified. The session is minted
         // for the canonical account's openId through the active-account gate,
         // so the cookie resolves to the same user on every later request.
-        const outcome = await completeWorkosLogin(req, res, { user, sealedSession: auth.sealedSession, onStage: next => { stage = next; } });
+        const outcome = await completeWorkosLogin(req, res, {
+          user,
+          sealedSession: auth.sealedSession,
+          accessToken: auth.accessToken,
+          signHostedLink: input => signHostedLink(input, returnKey),
+          onStage: next => { stage = next; },
+        });
         if (outcome.status === "blocked") {
           console.warn("[workos-callback]", { stage, code: outcome.code });
           return res.status(403).send(outcome.code === "IDENTITY_REVIEW_REQUIRED" ? "This account needs a quick review before it can sign in. Contact support@skipwait.me." : "This account is not active. Contact support@skipwait.me.");
@@ -292,10 +337,26 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
 
     app.post("/api/auth/workos/logout", async (req, res) => {
       const token = req.headers.cookie?.match(/(?:^|;\s*)app_session_id=([^;]+)/)?.[1];
-      await (await import("./sdk")).sdk.revokeSession(token);
+      const { sdk } = await import("./sdk");
+      // Resolve who is signing out from their own valid session only, never from client-supplied ids.
+      let hostedUserIds: string[] = [];
+      try {
+        const session = await sdk.verifySession(token);
+        const account = session ? await db.getUserByOpenId(session.openId) : undefined;
+        if (account) hostedUserIds = await db.listWorkosSubjectsForUser(account.id);
+      } catch { hostedUserIds = []; }
+      await sdk.revokeSession(token);
+      if (hostedUserIds.length) {
+        const outcome = await revokeHostedSessions(workos.userManagement as never, hostedUserIds, { log: message => console.warn("[workos-logout]", message) }).catch(() => ({ revoked: 0, failed: 1 }));
+        if (outcome.failed) console.warn("[workos-logout]", { hostedSessionsRevoked: outcome.revoked, failed: outcome.failed });
+      }
       res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
       res.clearCookie("workos_session", getSessionCookieOptions(req));
+      res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
       res.json({ signedOut: true });
     });
   };
 }
+
+/** Re-exported for server/_core/hostedSessionId.test.ts; the session helper lives in workosSession.ts. */
+export { hostedSessionIdFromAccessToken } from "./workosSession";

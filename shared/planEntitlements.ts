@@ -109,7 +109,7 @@ export function includedSignatureTools(tier: CatalogTier): SignatureToolId[] {
   return SIGNATURE_TOOL_IDS.filter(tool => tierAtLeast(tier, SIGNATURE_TOOL_INCLUDED_FROM[tool]));
 }
 
-/** The wallet fields that decide a plan. Matches tokenBalances' job_seeker row (trialEndsAt from 0081). */
+/** The wallet fields that decide a plan. Matches tokenBalances' job_seeker row (trialEndsAt from 0091). */
 export type EntitlementWallet = {
   plan: string;
   subscriptionStatus: string | null;

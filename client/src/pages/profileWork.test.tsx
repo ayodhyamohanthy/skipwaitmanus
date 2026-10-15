@@ -123,7 +123,7 @@ describe("Profile page", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Referrer profile" }));
     expect(screen.getByRole("option", { name: "wipro.com" })).toBeTruthy();
     expect(screen.queryByText("Resume")).toBeNull();
-    expect(await screen.findByText("Seekers see your name, company and function.")).toBeTruthy();
+    expect(await screen.findByText("Seekers see your company and function. Your name is shown only after you accept.")).toBeTruthy();
     expect(screen.queryByText(/Verified through your work email/)).toBeNull();
     expect(screen.queryByRole("link", { name: "Referrer settings" })).toBeNull();
   });

@@ -1,3 +1,4 @@
+import { formatDayTime, useDisplayPrefs } from "@/lib/displayPrefs";
 import type { ReferralStatus } from "@shared/referral";
 
 /**
@@ -15,9 +16,7 @@ const toneColor: Record<TimelineEntry["tone"], string> = { green: "#15803d", blu
 
 function formatStamp(value: string | null) {
   if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
+  return formatDayTime(value);
 }
 
 export function buildRequestTimeline(request: { status: ReferralStatus; referrerId: number | null; createdAt: string; updatedAt: string; queueStatus?: "available_for_review" | "waiting_for_coverage" | null }): TimelineEntry[] {
@@ -36,6 +35,7 @@ export function buildRequestTimeline(request: { status: ReferralStatus; referrer
 }
 
 export function RequestStatusTimeline({ entries, label = "Status history" }: { entries: TimelineEntry[]; label?: string }) {
+  useDisplayPrefs(); // re-render when the time zone or date format changes
   return <ol aria-label={label} className="space-y-2.5">
     {entries.map((entry, index) => {
       const color = entry.state === "waiting" ? "#767676" : toneColor[entry.tone];

@@ -101,7 +101,7 @@ export function asLedgerGrant(row: GrantRow): LedgerGrant {
   return { id: row.id, source: row.source, subscriptionId: row.subscriptionId ?? null, tokenCount: row.tokenCount, creditsRemaining: row.creditsRemaining, expiresAt: row.expiresAt ?? null, status: row.status };
 }
 
-/** Every grant row of the wallet, locked when `lock` (spends and reconcile). Before 0079 lands there are none. */
+/** Every grant row of the wallet, locked when `lock` (spends and reconcile). Before 0089 lands there are none. */
 export async function readGrantsTx(tx: Pick<LedgerTx, "select">, userId: number, role: WalletRole, lock: boolean): Promise<GrantRow[]> {
   try {
     const query = tx.select().from(planCreditGrants).where(and(eq(planCreditGrants.userId, userId), eq(planCreditGrants.role, role)));

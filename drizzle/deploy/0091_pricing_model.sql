@@ -1,9 +1,9 @@
--- 0081: the Oct 14 2026 pricing model (docs/PRICING_RECOMMENDATION.md,
+-- 0091: the Oct 14 2026 pricing model (docs/PRICING_RECOMMENDATION.md,
 -- shared/planCatalog.ts, shared/billingCatalog.ts, shared/creditLedger.ts).
 -- Additive only: ENUM widenings that append values (existing values first, in
 -- order, so no stored index moves) and two nullable columns. No data is written
 -- or moved: existing Pro/Max wallets, intents, invoices and ledger rows keep
--- their values. land_100/land_200/land_500 from 0080 stay as reserved members
+-- their values. land_100/land_200/land_500 from 0090 stay as reserved members
 -- (never written); the Land levels are land_focus/land_sprint/land_concierge.
 -- Each statement is guarded by information_schema so re-runs are no-ops.
 

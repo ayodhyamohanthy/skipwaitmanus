@@ -1,5 +1,5 @@
-import { AlertTriangle, ArrowRight, FileText, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { AlertTriangle, ArrowRight, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
 import { inferAskJobFunction } from "@shared/jobFunctionClassifier";
@@ -10,6 +10,11 @@ import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUp
 import { clearAskPrefill, readAskPrefill } from "@/lib/askPrefill";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
+import { discardAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
+import { useSeekerSetup } from "@/lib/useSeekerSetup";
+import { OTHER_LOCATION, locationFitMessage, parseRoleLocation, roleLocationFit, roleLocationOptions } from "@shared/roleLocationFit";
+import { useAskCompany } from "@/lib/useAskCompany";
+import { careersPlaceholder } from "@shared/askCompany";
 import { AskStrength, askChecks, countWords } from "@/components/ask/AskStrength";
 import { AskSent, type SentAsk } from "@/components/ask/AskSent";
 import { AskFunctionEyebrow } from "@/components/ask/AskFunctionEyebrow";
@@ -55,6 +60,7 @@ export default function Ask() {
   const [uploading, setUploading] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendStage, setSendStage] = useState<"resume" | "ask">("resume");
   const [composeError, setComposeError] = useState("");
   const [sendError, setSendError] = useState("");
   const [sent, setSent] = useState<SentAsk | null>(null);
@@ -65,6 +71,21 @@ export default function Ask() {
   const officialUrl = isValidTargetRoleUrl(url || undefined);
   const checks = askChecks({ officialUrl, note, hasResume: Boolean(resume || resumeFile) });
   const attachedName = resume?.fileName ?? resumeFile?.name ?? null;
+  const setup = useSeekerSetup(isLoaded && isSignedIn, fetchToken);
+  const [roleLocation, setRoleLocation] = useState("");
+  const [otherPlace, setOtherPlace] = useState("");
+  const locationOptions = roleLocationOptions(setup);
+  const chosenLocation = parseRoleLocation(roleLocation, otherPlace);
+  const locationFit = roleLocationFit(chosenLocation, setup);
+  const locationNote = locationFitMessage(locationFit, chosenLocation);
+  // A draft saved from a company door continues here, but only into an empty composer.
+  const draft = useAskDraft(isLoaded && isSignedIn, fetchToken);
+  useEffect(() => {
+    if (!draft) return;
+    setUrl(current => current || draft.targetRoleUrl);
+    setNote(current => current || draft.note.slice(0, NOTE_LIMIT));
+  }, [draft]);
+  const askCompany = useAskCompany(prefill?.companySlug ?? (draft && url === draft.targetRoleUrl ? draft.companySlug : undefined), url, officialUrl);
   const shownFunction = pickedFunction ?? (officialUrl ? inferAskJobFunction({ targetRoleUrl: url.trim() }) : null);
 
   const authed = async (path: string, init?: RequestInit) => {
@@ -114,12 +135,15 @@ export default function Ask() {
 
   const send = async () => {
     if (!officialUrl || words < 10 || sending) return;
-    setSendError(""); setSlotCap(null); setSending(true);
+    setSendError(""); setSlotCap(null); setSendStage("resume"); setSending(true);
     try {
       const doc = await ensureResume();
+      setSendStage("ask");
       const params = new URLSearchParams(window.location.search);
       const targetRoleUrl = url.trim();
       const body: Record<string, string | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
+      // A request that began on a company page must stay with that company.
+      if (prefill?.companySlug) body.companySlug = prefill.companySlug;
       if (compensation.trim()) body.compensation = compensation.trim().slice(0, 80);
       if (pickedFunction) body.jobFunction = pickedFunction;
       const fastTrackCode = params.get("fast")?.trim();
@@ -127,7 +151,7 @@ export default function Ask() {
       const confirmedDomain = confirmedCompanyDomain(targetRoleUrl);
       if (confirmedDomain) body.confirmedCompanyDomain = confirmedDomain;
       const token = await fetchToken();
-      const response = await fetch("/api/company-referrals", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": askIdempotencyKey(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) });
+      const response = await fetch("/api/company-referrals", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": askIdempotencyKey(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
       const payload = await readApiJson<Record<string, unknown>>(response, "We could not send this ask");
       const capped = parseSlotCapReached(response.status, payload);
       // At most one nudge per session, none for 7 days after "I'll wait"; the reason always shows.
@@ -136,6 +160,9 @@ export default function Ask() {
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       clearAskPrefill();
+      void discardAskDraftRemote(fetchToken);
+      // The ask exists now: show the sent screen at once, with the open-slot
+      // count from the send response (nothing else can hold the button on "Sending...").
       setSent(created);
     } catch (reason) { setSendError(askErrorMessage(reason, "We could not send this ask")); }
     finally { setSending(false); }
@@ -166,11 +193,14 @@ export default function Ask() {
   const busy = drafting || uploading;
   return (
     <main data-skipwait-screen="ask" className="page-content">
-      <AskHeading text="Referrers decide in under a minute. Make that minute easy." eyebrow={<AskFunctionEyebrow value={shownFunction} onPick={setPickedFunction} />} />
+      <AskHeading text="Referrers decide in under a minute. Make that minute easy." eyebrow={<AskFunctionEyebrow value={shownFunction} onPick={setPickedFunction} companyName={askCompany?.name} />} />
       <div className="mt-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <Panel>
-          <label className="block text-sm font-medium">Official job link<input className={field} value={url} onChange={event => setUrl(event.target.value)} placeholder="https://careers.company.com/…" inputMode="url" aria-invalid={Boolean(url && !officialUrl)} /></label>
+          <label className="block text-sm font-medium">Official job link<input className={field} value={url} onChange={event => setUrl(event.target.value)} placeholder={careersPlaceholder(askCompany)} inputMode="url" aria-invalid={Boolean(url && !officialUrl)} /></label>
           {url && !officialUrl ? <p className="mt-2 flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />That doesn&apos;t look like a job posting link.</p> : null}
+          <label className="mt-5 block text-sm font-medium">Role location (optional)<select className={field} value={roleLocation} onChange={event => setRoleLocation(event.target.value)}><option value="">Not sure</option>{locationOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+          {roleLocation === OTHER_LOCATION ? <label className="mt-3 block text-sm font-medium">Where is the role?<input className={field} value={otherPlace} maxLength={80} onChange={event => setOtherPlace(event.target.value)} placeholder="e.g. Austin, USA" /></label> : null}
+          {locationNote ? <p role="status" className="mt-3 flex gap-2 rounded-xl bg-muted p-3 text-sm"><Globe2 className="mt-0.5 size-4 shrink-0" />{locationNote}</p> : null}
           <label className="mt-5 block text-sm font-medium">Compensation (optional)<input className={field} value={compensation} onChange={event => setCompensation(event.target.value)} placeholder="e.g. ₹18–22 LPA" maxLength={80} /></label>
           <label className="mt-5 block text-sm font-medium">Your note<textarea value={note} maxLength={NOTE_LIMIT} onChange={event => setNote(event.target.value)} placeholder="Name the role, one result that proves fit, and what you'd like from the referrer." className="mt-2 min-h-44 w-full rounded-xl border border-input bg-background p-4 text-base" /></label>
           <div className="mt-1 flex justify-between text-xs text-muted-foreground"><span>Tip: one specific result beats a list of skills.</span><span>{note.length}/{NOTE_LIMIT}</span></div>
@@ -191,11 +221,12 @@ export default function Ask() {
           {composeError ? <p role="alert" className="mt-4 flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{composeError}</p> : null}
         </Panel>
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <AskStrength checks={checks} />
+          <AskStrength checks={locationFit === "unknown" ? checks : [...checks, { ok: locationFit === "fits", label: "Location works for you", hint: "See the note under Role location." }]} />
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
           {slotCap ? <SlotCapNudge slots={slotCap} onWait={() => { dismissNudge("slot_cap", nudgeAccount); setSlotCap(null); }} /> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
-          <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? "Sending…" : <>Send ask <ArrowRight /></>}</Button>
+          <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
+          <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
           <p className="text-center text-xs text-muted-foreground">Uses 1 open slot · referrals are always free</p>
         </aside>
       </div>

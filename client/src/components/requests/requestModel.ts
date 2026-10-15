@@ -1,3 +1,4 @@
+import { formatDay } from "@/lib/displayPrefs";
 // Pure view-model helpers for the seeker Requests screen (kit v4 /requests).
 // Every value here is derived from the live server payloads parsed in
 // ./requestsApi; nothing is sampled or illustrative.
@@ -34,9 +35,7 @@ export function requestPillStatus(request: ReferralRequest): RequestPillStatus {
 }
 
 function compactDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Recorded";
-  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
+  return formatDay(value) ?? "Recorded";
 }
 
 /** The row's second line after the company name: the next real step or fact. */

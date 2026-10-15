@@ -8,6 +8,18 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "wipro.com",
+        "companyName": "Wipro",
+        "companyInitials": "W"
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/company-referrals/inbox",
       "match": "exact",
       "status": 200,
@@ -62,6 +74,11 @@
         "notifications": [],
         "unreadCount": 0
       }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "article"
     }
   ]
 }

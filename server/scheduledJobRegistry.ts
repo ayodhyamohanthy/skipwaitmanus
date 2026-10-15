@@ -4,6 +4,9 @@
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
+import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
+import { createDataExportSweep } from "./dataExport";
+import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
 const MINUTE = 60_000;
@@ -22,5 +25,26 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 10 * MINUTE,
     run: createPlanCreditCycleJob(),
+  },
+  {
+    name: "chargebee-pending-reconcile",
+    description: "Re-checks Chargebee checkouts still pending after 15 minutes and credits the paid ones the webhook missed; unmatched paid ones go to review with an alert",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createChargebeePendingReconcile(),
+  },
+  {
+    name: "work-email-reverify-sweep",
+    description: "DRY RUN: counts verified referrers past the 90-day work-email re-check (grandfathered to 16 Oct 2026 + 90 days); changes nothing",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createWorkEmailReverifySweep(),
+  },
+  {
+    name: "data-export-sweep",
+    description: "Builds requested personal-data export ZIPs (size-capped) and drops expired ones after 7 days",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createDataExportSweep(),
   },
 ];

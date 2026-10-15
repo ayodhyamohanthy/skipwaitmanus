@@ -12,16 +12,6 @@ import { trpc } from "@/lib/trpc";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 
-/**
- * The claimed-detail endpoint omits the role title and pitch. Keep what this
- * session already loaded for the same request (e.g. the preview right before
- * accepting) instead of blanking the thread after a state change.
- */
-function keepKnown(previous: ThreadRequest | null, next: ThreadRequest): ThreadRequest {
-  if (!previous || previous.id !== next.id) return next;
-  return { ...next, title: next.title ?? previous.title, pitch: next.pitch ?? previous.pitch, targetRoleUrl: next.targetRoleUrl ?? previous.targetRoleUrl };
-}
-
 export default function ReferralConversation() {
   const [, params] = useRoute("/conversation/:requestId");
   const { isSignedIn, getToken } = useAuth();
@@ -34,13 +24,13 @@ export default function ReferralConversation() {
   const [role, setRole] = useState<ThreadRole | null>(null);
   const [request, setRequest] = useState<ThreadRequest | null>(null);
   const [messages, setMessages] = useState<ThreadMessage[]>([]);
+  const [referenceId, setReferenceId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [passed, setPassed] = useState(false);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [messageError, setMessageError] = useState("");
-  const lastRequest = useRef<ThreadRequest | null>(null);
   const sendingRef = useRef(false);
 
   const profile = trpc.profile.mine.useQuery(undefined, { enabled: Boolean(isSignedIn) && role === "seeker", retry: false, staleTime: 60_000 });
@@ -50,12 +40,11 @@ export default function ReferralConversation() {
     setLoading(true); setError("");
     try {
       const thread = await loadThread(requestId, fetchToken);
-      const next = keepKnown(lastRequest.current, thread.request);
-      lastRequest.current = next;
-      setRole(thread.role); setRequest(next);
-      if (!canMessage(thread.role, next)) { setMessages([]); return; }
+      setRole(thread.role); setRequest(thread.request);
+      if (!canMessage(thread.role, thread.request)) { setMessages([]); return; }
       try {
-        setMessages((await loadConversation(requestId, fetchToken)).messages);
+        const conversation = await loadConversation(requestId, fetchToken);
+        setMessages(conversation.messages); setReferenceId(conversation.referenceId);
         setMessageError("");
       } catch (reason) { setMessageError(errorText(reason, "We could not load these private messages")); }
     } catch (reason) { setError(errorText(reason, "We could not open this private thread")); }
@@ -94,8 +83,9 @@ export default function ReferralConversation() {
   const failure = validId ? error : "This private thread link is invalid.";
   const seekerName = user?.fullName ?? null;
   const headline = profile.data?.headline ?? profile.data?.currentTitle ?? null;
-  // The seeker is never told who the referrer is; a referrer who accepted sees their own name here.
-  const referrerLabel = request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "";
+  // Names are revealed only after the referrer accepts: the referrer sees their own name, the seeker the name the server returns (never before accept).
+  const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
+  const referrerLabel = seekerSeesReferrer ?? (request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
 
   return (
     <main data-skipwait-screen="referral-conversation" className="page-content">
@@ -150,8 +140,8 @@ export default function ReferralConversation() {
                   // A pass leaves the request in the queue for other verified
                   // employees and out of this referrer's reach, so there is
                   // nothing further to reload for this account.
-                  onPass={async reason => { await decideReview(request.id, "declined", reason, fetchToken); setPassed(true); }}
-                  onMarkReferred={async () => { await recordProgress(request.id, "intro_made", fetchToken); await reload(); }}
+                  onPass={async (reason, passReason) => { await decideReview(request.id, "declined", reason, fetchToken, passReason); setPassed(true); }}
+                  onMarkReferred={async reference => { await recordProgress(request.id, "intro_made", fetchToken, reference); await reload(); }}
                 />
               )}
             </div>
@@ -159,6 +149,7 @@ export default function ReferralConversation() {
               <span className="eyebrow">REFERRER</span>
               <p className="mt-2 flex items-center gap-2 font-medium">{referrerLabel}<BadgeCheck className="size-4 text-primary" /></p>
               <p className="text-muted-foreground">Verified via work email</p>
+              {referenceId ? <p className="mt-2 font-medium">Referred! Reference ID {referenceId}</p> : null}
             </div>
             <div className="rounded-3xl border border-border p-5 text-sm text-muted-foreground">
               <ShieldCheck className="mb-2 size-5 text-primary" />Referrals are free. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>

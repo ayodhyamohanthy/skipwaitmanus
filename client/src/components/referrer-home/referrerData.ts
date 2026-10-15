@@ -2,9 +2,11 @@
 // Parses the live REST payloads with Zod at the edge and derives the kit v4
 // referrer-home view from them. Derivations are pure so the honesty rules
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
+import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
 import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
-import { companyIdentityFieldsSchema, companyIdentityOf, type CompanyIdentity } from "@shared/companies";
+import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
+import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -12,13 +14,12 @@ export type TokenSource = () => Promise<string | null | undefined>;
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 /** Client-side re-verification nudge: warn 14 days before 90 days since the last verified work email. */
-export const REVERIFY_DAYS = 90;
+export { REVERIFY_DAYS } from "@shared/reverify";
 export const REVERIFY_WARNING_DAYS = 14;
 
 const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof value === "string" ? value : value.toISOString()));
 const count = z.number().int().nonnegative();
 
-const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish(), ...companyIdentityFieldsSchema.shape });
 const profileSchema = z.object({ profile: z.object({ workEmailVerifiedAt: timestamp.nullish(), referralCapacity: z.number().int().nullish() }).nullish() });
 const impactSchema = z.object({ summary: z.object({ reviewed: count, approved: count, introductions: count, interviews: count, offers: count, repliedWithin3DaysPct: z.number().min(0).max(100).nullish() }) });
 const inboxRowSchema = z.object({
@@ -31,6 +32,8 @@ const inboxRowSchema = z.object({
   unreadMessageCount: count.optional().transform(value => value ?? 0),
   attachmentCount: count.nullish(),
   expiresAt: timestamp.nullish(),
+  jobTitle: z.string().nullish(),
+  askStrength: z.enum(["strong", "good", "basic"]).nullish().catch(null),
 });
 const inboxSchema = z.object({ requests: z.array(inboxRowSchema) });
 
@@ -45,7 +48,7 @@ export const referrerPreferencesSchema = z.object({
 });
 const preferencesPayloadSchema = z.object({ preferences: referrerPreferencesSchema });
 
-/** Verified work-email access; companyName/companyInitials come from the server company directory. */
+/** Verified work-email access (shared/referrerAccess.ts); companyName/companyInitials come from the server company directory. */
 export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null };
 export type ReferrerPreferences = z.infer<typeof referrerPreferencesSchema>;
 export type ReferrerPreferencesPatch = Partial<Omit<ReferrerPreferences, "preferAreas" | "preferLevels">> & { preferAreas?: string[]; preferLevels?: string[] };
@@ -90,9 +93,10 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
   return parsed.data;
 }
 
+/** The server's verified-referrer verdict, judged by the one shared predicate. A failed or malformed check throws; it never reads as "not verified". */
 export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
-  const access = await getJson("/api/company-referrals/access", getToken, accessSchema, "We could not check your work-email verification.");
-  return { verified: Boolean(access.verifiedCompanyAccess), domain: access.workEmailDomain ?? "", companyName: access.companyName ?? null, companyInitials: access.companyInitials ?? null };
+  const access = await getJson(REFERRER_ACCESS_PATH, getToken, referrerAccessResponseSchema, "We could not check your work-email verification.");
+  return { verified: isVerifiedReferrer(access), domain: access.workEmailDomain ?? "", companyName: access.companyName, companyInitials: access.companyInitials };
 }
 
 export async function fetchReferrerPreferences(getToken: TokenSource): Promise<ReferrerPreferences> {
@@ -170,6 +174,8 @@ export type ReferrerHomeView = {
   isNew: boolean;
   paused: boolean;
   reverifyDue: boolean;
+  /** Whole days left before the badge needs re-verifying (grandfathered by the shared policy); null when not verified. */
+  reverifyDaysLeft: number | null;
 };
 
 export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): ReferrerHomeView {
@@ -183,8 +189,7 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
     const ms = expiryMs(row);
     return askCountdown(row, nowMs) !== null && ms !== null && ms - nowMs <= DAY_MS;
   }).length;
-  const verifiedMs = data.verifiedAt ? Date.parse(data.verifiedAt) : Number.NaN;
-  const daysSince = Number.isNaN(verifiedMs) ? null : Math.floor((nowMs - verifiedMs) / DAY_MS);
+  const daysLeft = reverifyDaysLeft(data.verifiedAt, nowMs);
   return {
     verified,
     company: data.access.domain ? companyIdentity(data.access) : null,
@@ -196,7 +201,8 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
     atCapacity: verified && used >= capacity,
     isNew: verified && waiting.length === 0 && (data.impact?.reviewed ?? 0) === 0,
     paused: verified && Boolean(data.preferences?.paused),
-    reverifyDue: verified && daysSince !== null && daysSince >= REVERIFY_DAYS - REVERIFY_WARNING_DAYS,
+    reverifyDue: verified && daysLeft !== null && daysLeft <= REVERIFY_WARNING_DAYS,
+    reverifyDaysLeft: verified ? daysLeft : null,
   };
 }
 

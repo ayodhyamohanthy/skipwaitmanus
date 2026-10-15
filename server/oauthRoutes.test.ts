@@ -129,9 +129,12 @@ describe("registration and client lookup", () => {
   });
   it("rate limits registration", async () => {
     const { app } = setup();
-    let last = 201;
-    for (let i = 0; i < 22; i++) last = (await request(app).post("/api/oauth/register").send({ client_name: "C", redirect_uris: [REDIRECT] })).status;
-    expect(last).toBe(429);
+    let last: { status: number; headers: Record<string, string> } = { status: 201, headers: {} };
+    for (let i = 0; i < 22; i++) last = await request(app).post("/api/oauth/register").send({ client_name: "C", redirect_uris: [REDIRECT] });
+    expect(last.status).toBe(429);
+    const wait = Number(last.headers["retry-after"]);
+    expect(wait).toBeGreaterThan(0);
+    expect(wait).toBeLessThanOrEqual(3600);
   });
 });
 

@@ -4,7 +4,7 @@ import { Container, getContainer } from "@cloudflare/containers";
 
 const CONTAINER_ENV_KEYS = [
   "ADMIN_SMOKE_SECRET", "AI_MODEL", "AI_PROVIDER_API_KEY", "AI_PROVIDER_BASE_URL",
-  "BUILT_IN_FORGE_API_KEY", "BUILT_IN_FORGE_API_URL", "BILLING_ENV", "CHARGEBEE_API_KEY",
+  "BUILT_IN_FORGE_API_KEY", "BUILT_IN_FORGE_API_URL", "BILLING_ENV", "BILLING_LEDGER_READ_TOKEN", "CHARGEBEE_API_KEY",
   "CHARGEBEE_LIVE_API_KEY", "CHARGEBEE_LIVE_DOMAIN", "CHARGEBEE_LIVE_ENABLED",
   "CHARGEBEE_LIVE_SITE", "CHARGEBEE_LIVE_WEBHOOK_SECRET", "CHARGEBEE_SITE",
   "CHARGEBEE_WEBHOOK_SECRET",
@@ -18,7 +18,7 @@ const CONTAINER_ENV_KEYS = [
   "VITE_APP_ID", "VITE_APP_TITLE", "WORKOS_API_KEY", "WORKOS_CLIENT_ID",
   "WORKOS_COOKIE_PASSWORD", "WORKOS_POST_SIGNIN_PATH", "WORKOS_REDIRECT_URI",
   "WORKOS_WEBHOOK_SECRET",
-  "ZEPTOMAIL_API_KEY", "ZEPTOMAIL_FROM_EMAIL",
+  "ZEPTOMAIL_API_KEY", "ZEPTOMAIL_FROM_EMAIL", "WORK_EMAIL_HMAC_KEY",
 ] as const;
 
 /**
@@ -47,6 +47,7 @@ export class SkipwaitApi extends Container {
 
 import { fetchContainerReplayingIdempotent, fetchContainerWithStoppedRecovery } from "./containerRecovery";
 import { buildJobsTickRequest, isInternalApiPath, withoutJobsTickHeader } from "../shared/jobsTick";
+import { withEdgeClientIp } from "../shared/clientIp";
 
 type WorkerEnv = Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string };
 
@@ -76,7 +77,9 @@ export default {
     const release = releaseOf(env);
     const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`);
     // A public request can never present the cron's tick token to the container.
-    return fetchContainerWithStoppedRecovery(container, withoutJobsTickHeader(request));
+    // Client-supplied X-Forwarded-For is never trusted: the container sees one
+    // forwarding header, set here from Cloudflare's CF-Connecting-IP.
+    return fetchContainerWithStoppedRecovery(container, withEdgeClientIp(withoutJobsTickHeader(request)));
   },
 
   // Cron trigger (wrangler.jsonc triggers.crons): POST the scheduled-jobs tick

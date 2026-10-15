@@ -7,16 +7,16 @@ import { CANCELLATION_REASONS, kitPlanCheckoutRequestSchema, legacyPlanCheckoutR
 import { subscriptionStateFor, type SubscriptionWallet } from "../shared/subscriptionState";
 import { DESIRED_COLUMNS, DESIRED_FOREIGN_KEYS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
 
-const migration = readFileSync(new URL("../drizzle/deploy/0080_subscription_management.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../drizzle/deploy/0090_subscription_management.sql", import.meta.url), "utf8");
 const quoted = (values: readonly string[]) => values.map(value => `''${value}''`).join(",");
 
-describe("subscription management schema contract (0080)", () => {
-  it("plan enums keep the existing values first and in order, then the kit plans (0081 appends the Oct 14 plans)", () => {
+describe("subscription management schema contract (0090)", () => {
+  it("plan enums keep the existing values first and in order, then the kit plans (0091 appends the Oct 14 plans)", () => {
     expect([...tokenBalances.plan.enumValues]).toEqual([...WALLET_PLAN_IDS]);
     expect(WALLET_PLAN_IDS.slice(0, 3)).toEqual(["free", "pro", "max"]);
     expect([...subscriptionCheckoutIntents.plan.enumValues]).toEqual([...INTENT_PLAN_IDS]);
     expect(INTENT_PLAN_IDS.slice(0, 2)).toEqual(["pro", "max"]);
-    // 0080 shipped the first eight wallet values; its file is immutable.
+    // 0090 shipped the first eight wallet values; its file is immutable.
     expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(WALLET_PLAN_IDS.slice(0, 8))}) NOT NULL DEFAULT ''free''`);
     expect(migration).toContain(`MODIFY \`plan\` ENUM(${quoted(INTENT_PLAN_IDS.slice(0, 7))}) NOT NULL`);
   });
@@ -34,7 +34,7 @@ describe("subscription management schema contract (0080)", () => {
     expect(body).not.toMatch(/^\s*ALTER TABLE/im);
   });
 
-  it("boot reconcile requires exactly what 0080 creates", () => {
+  it("boot reconcile requires exactly what 0090 creates", () => {
     for (const table of ["billingCustomers", "billingInvoices", "subscriptionCancellationFeedback"]) expect(DESIRED_TABLES.some(item => item.table === table)).toBe(true);
     const tokenColumns = Object.keys(tokenBalances).filter(column => ["subscriptionItemPriceId", "subscriptionBillingPeriod", "subscriptionAmount", "pendingPlan", "pendingBillingPeriod", "pendingPlanEffectiveAt", "subscriptionPauseAt", "subscriptionResumeAt", "paymentDueSince", "paymentDueInvoiceId", "paymentDueAmount", "paymentNextRetryAt", "paymentFailureReason", "paymentRetryRequestedAt"].includes(column));
     expect(tokenColumns).toHaveLength(14);
@@ -216,12 +216,12 @@ describe("subscription state", () => {
     expect(state.actions).toEqual({ changePlan: true, cancel: true, pause: true, reactivate: false, retryPayment: false, cancelScheduledChange: false });
   });
 
-  it("grandfathered Pro keeps its label and monthly price even before the 0080 columns exist", () => {
+  it("grandfathered Pro keeps its label and monthly price even before the 0090 columns exist", () => {
     const state = subscriptionStateFor({ plan: "pro", subscriptionId: "sub_p", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermEnd: new Date("2026-11-01T00:00:00.000Z") }, NOW);
     expect(state).toMatchObject({ plan: "pro", planLabel: "Pro", legacy: true, billingPeriod: "monthly", currency: "INR", amount: 59_900 });
   });
 
-  it("a pass without the 0080 period column still reads its 90-day term from the item price", () => {
+  it("a pass without the 0090 period column still reads its 90-day term from the item price", () => {
     expect(subscriptionStateFor(wallet({ subscriptionItemPriceId: "skipwait_momentum_90d-INR", subscriptionBillingPeriod: null, subscriptionAmount: null, subscriptionCurrency: "INR" }), NOW)).toMatchObject({ billingPeriod: "90d", currency: "INR", amount: 249_900 });
   });
 

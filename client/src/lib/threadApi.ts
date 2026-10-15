@@ -36,6 +36,8 @@ const seekerRowSchema = z.object({
   jobFunction: jobFunctionFieldSchema,
   status: statusSchema,
   referrerId: z.number().int().nullish(),
+  referrerName: z.string().nullish(),
+  referrerTitle: z.string().nullish(),
   referrerMessage: z.string().nullish(),
   createdAt: timestampSchema,
   attachmentCount: z.number().nullish(),
@@ -75,6 +77,7 @@ const detailSchema = z.object({
 
 const conversationSchema = z.object({
   messages: z.array(z.object({ id: z.number().int(), body: z.string(), createdAt: timestampSchema, isMine: z.boolean() })).nullish(),
+  referenceId: z.string().nullish(),
 });
 
 export type ThreadAttachment = { id: number; fileName: string; url: string | null };
@@ -93,6 +96,9 @@ export type ThreadRequest = {
   jobFunction: JobFunction | null;
   status: ReferralStatus;
   referrerId: number | null;
+  /** Revealed to the seeker only after the referrer accepts (queue task 14). */
+  referrerName?: string | null;
+  referrerTitle?: string | null;
   referrerMessage: string | null;
   createdAt: string | number | null;
   attachments: readonly ThreadAttachment[];
@@ -135,7 +141,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       role: "seeker",
       request: {
         id: own.id, title: own.title ?? null, pitch: own.pitch ?? null, candidateName: null, targetRoleUrl: own.targetRoleUrl ?? null,
-        companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerMessage: own.referrerMessage ?? null,
+        companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerName: own.referrerName ?? null, referrerTitle: own.referrerTitle ?? null, referrerMessage: own.referrerMessage ?? null,
         createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0,
       },
     };
@@ -172,25 +178,25 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
   };
 }
 
-export async function loadConversation(requestId: number, getToken: TokenGetter): Promise<{ messages: ThreadMessage[] }> {
+export async function loadConversation(requestId: number, getToken: TokenGetter): Promise<{ messages: ThreadMessage[]; referenceId: string | null }> {
   const payload = parse(conversationSchema, await authedFetch(`/api/company-referrals/${requestId}/conversation`, getToken));
-  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine })) };
+  return { messages: (payload.messages ?? []).map(message => ({ id: message.id, body: message.body, isMine: message.isMine })), referenceId: payload.referenceId ?? null };
 }
 
 export async function sendConversationMessage(requestId: number, body: string, getToken: TokenGetter) {
   await authedFetch(`/api/company-referrals/${requestId}/conversation`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body }) });
 }
 
-export async function decideReview(requestId: number, decision: "approved" | "declined", declineReason: string | undefined, getToken: TokenGetter) {
+export async function decideReview(requestId: number, decision: "approved" | "declined", declineReason: string | undefined, getToken: TokenGetter, passReason?: string) {
   return authedFetch(`/api/company-referrals/${requestId}/one-click-review`, getToken, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(declineReason ? { decision, declineReason } : { decision }),
+    body: JSON.stringify(declineReason ? { decision, declineReason, ...(passReason ? { passReason } : {}) } : decision === "approved" ? { decision, ethicsConfirmed: true } : { decision }),
   });
 }
 
-export async function recordProgress(requestId: number, status: string, getToken: TokenGetter) {
-  return authedFetch(`/api/company-referrals/${requestId}/progress`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+export async function recordProgress(requestId: number, status: string, getToken: TokenGetter, referenceId?: string) {
+  return authedFetch(`/api/company-referrals/${requestId}/progress`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(referenceId ? { status, referenceId } : { status }) });
 }
 
 export async function withdrawThreadRequest(requestId: number, getToken: TokenGetter) {

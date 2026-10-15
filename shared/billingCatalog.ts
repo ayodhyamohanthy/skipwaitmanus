@@ -18,14 +18,14 @@ export const BILLING_CURRENCIES = CATALOG_CURRENCIES;
 /**
  * Stored billing periods (tokenBalances.subscriptionBillingPeriod and the intent
  * and invoice columns): existing values first and in order (a MySQL ENUM stores
- * the index), then the passes 0081 added. "monthly" is legacy Pro/Max only.
+ * the index), then the passes 0091 added. "monthly" is legacy Pro/Max only.
  */
 export const BILLING_PERIODS = ["monthly", "yearly", "30d", "90d"] as const;
 export type BillingPeriod = (typeof BILLING_PERIODS)[number];
 
 export const LEGACY_PLAN_IDS = ["pro", "max"] as const;
 /**
- * Plan ids 0080 stored before the Oct 14 2026 decision renamed the Land levels.
+ * Plan ids 0090 stored before the Oct 14 2026 decision renamed the Land levels.
  * Never sold or written; they stay in the column ENUMs only because removing an
  * ENUM member is not an additive migration. A wallet holding one reads as Free.
  */
@@ -33,7 +33,7 @@ export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
 /** Every plan a subscription can bill: the kit plans plus grandfathered Pro/Max. */
 export const BILLABLE_PLAN_IDS = [...CATALOG_PLAN_IDS, ...LEGACY_PLAN_IDS] as const;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
-/** tokenBalances.plan: existing values first and in order (0080, then 0081). */
+/** tokenBalances.plan: existing values first and in order (0090, then 0091). */
 export const WALLET_PLAN_IDS = ["free", ...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */

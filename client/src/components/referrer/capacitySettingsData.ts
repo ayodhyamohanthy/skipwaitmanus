@@ -2,7 +2,7 @@
 // verified company (GET /api/company-referrals/access) and the live referrer
 // preferences (GET/PUT /api/referrer-preferences), validating both with Zod.
 import { z } from "zod";
-import { companyIdentityFieldsSchema } from "@shared/companies";
+import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
 import { REFERRER_AREAS } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -14,7 +14,6 @@ export const CAPACITY_MIN = 1;
 export const CAPACITY_MAX = 15;
 export const capacitySettingsKey = ["referrer-workspace", "capacity-settings"] as const;
 
-const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish(), ...companyIdentityFieldsSchema.shape });
 const preferencesSchema = z.object({
   preferences: z.object({
     // The profile form (tRPC) accepts 0-20; this control's real range is the PUT contract's 1-15.
@@ -46,15 +45,16 @@ function parsePreferences(payload: Record<string, unknown>) {
 
 export async function fetchCapacitySettings(getToken: TokenSource): Promise<CapacitySettings> {
   const [accessPayload, preferencesPayload] = await Promise.all([
-    authedJson("/api/company-referrals/access", getToken, "We could not check your work-email access"),
+    authedJson(REFERRER_ACCESS_PATH, getToken, "We could not check your work-email access"),
     authedJson("/api/referrer-preferences", getToken, "We could not load your referrer settings"),
   ]);
-  const access = accessSchema.safeParse(accessPayload);
+  const access = referrerAccessResponseSchema.safeParse(accessPayload);
   if (!access.success) throw new Error("We could not check your work-email access");
   const preferences = parsePreferences(preferencesPayload);
+  const verified = isVerifiedReferrer(access.data);
   return {
-    companyDomain: access.data.verifiedCompanyAccess && access.data.workEmailDomain ? access.data.workEmailDomain : null,
-    companyName: access.data.verifiedCompanyAccess && access.data.workEmailDomain ? access.data.companyName ?? null : null,
+    companyDomain: verified ? access.data.workEmailDomain : null,
+    companyName: verified ? access.data.companyName : null,
     capacity: preferences.referralCapacity,
     areas: preferences.preferAreas.filter(knownFunction),
     paused: preferences.paused,

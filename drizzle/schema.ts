@@ -70,6 +70,15 @@ export const profiles = mysqlTable("profiles", {
   notifyNewAsk: boolean("notifyNewAsk").default(true).notNull(),
   notifyDigest: boolean("notifyDigest").default(false).notNull(),
   paused: boolean("paused").default(false).notNull(),
+  // Seeker setup answers (queue task 8). Roles live in openTo.
+  experienceLevel: varchar("experienceLevel", { length: 40 }),
+  seekerGoal: varchar("seekerGoal", { length: 60 }),
+  searchCity: varchar("searchCity", { length: 120 }),
+  searchCountries: varchar("searchCountries", { length: 240 }),
+  searchRemote: boolean("searchRemote"),
+  workAuthorization: varchar("workAuthorization", { length: 80 }),
+  workLinkKinds: text("workLinkKinds"),
+  defaultResumeAttachmentId: int("defaultResumeAttachmentId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("profiles_user_id_unique").on(table.userId), uniqueIndex("profiles_handle_unique").on(table.handle)]);
@@ -96,9 +105,42 @@ export const safetyReports = mysqlTable("safetyReports", {
   reportedUserId: int("reportedUserId").references(() => users.id, { onDelete: "set null" }),
   urgent: boolean("urgent").default(false).notNull(),
   status: mysqlEnum("status", ["open", "under_review", "resolved", "dismissed"]).default("open").notNull(),
+  severity: varchar("severity", { length: 8 }).default("normal").notNull(),
+  dueAt: timestamp("dueAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("safety_reports_reporter_idx").on(table.reporterUserId), index("safety_reports_status_idx").on(table.status)]);
+
+// Per-report case file (task 5 phase 1): reviewer notes and the audit trail. Admin-visible only.
+export const moderationEvents = mysqlTable("moderationEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  actorKind: varchar("actorKind", { length: 12 }).notNull(),
+  actorUserId: int("actorUserId"),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  note: varchar("note", { length: 600 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("moderation_events_report_idx").on(table.reportId, table.createdAt)]);
+
+// Filing-time copy of the reporter's own request thread (task 5 phase 1b). Insert-only; admin-visible only.
+export const moderationEvidence = mysqlTable("moderationEvidence", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  seq: int("seq").notNull(),
+  sender: varchar("sender", { length: 10 }).notNull(),
+  body: text("body").notNull(),
+  sentAt: timestamp("sentAt").notNull(),
+  capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+}, table => [index("moderation_evidence_report_idx").on(table.reportId, table.seq)]);
+
+// Per-account display preferences (queue task 25). NULL = use this device.
+export const accountPreferences = mysqlTable("accountPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  timeZone: varchar("timeZone", { length: 64 }),
+  dateFormat: varchar("dateFormat", { length: 8 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("account_preferences_user_unique").on(table.userId)]);
 
 export const companySuggestions = mysqlTable("companySuggestions", {
   id: int("id").autoincrement().primaryKey(),
@@ -163,6 +205,33 @@ export const seekerAlerts = mysqlTable("seekerAlerts", {
   notifiedAt: timestamp("notifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("seeker_alerts_user_domain_unique").on(table.userId, table.companyDomain), index("seeker_alerts_user_idx").on(table.userId), index("seeker_alerts_domain_idx").on(table.companyDomain)]);
+
+// One saved ask draft per user (queue task 11). Never sent; /ask continues it.
+export const askDrafts = mysqlTable("askDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companySlug: varchar("companySlug", { length: 64 }).notNull(),
+  targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }).notNull(),
+  note: varchar("note", { length: 600 }).notNull().default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_drafts_user_unique").on(table.userId)]);
+
+// Async personal-data export (task 4a). zipData is dropped when the export expires.
+const exportBlob = customType<{ data: Buffer; driverData: Buffer }>({ dataType() { return "longblob"; } });
+export const dataExports = mysqlTable("dataExports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 16 }).notNull().default("requested"),
+  activeKey: varchar("activeKey", { length: 40 }),
+  fileName: varchar("fileName", { length: 120 }),
+  byteSize: int("byteSize").notNull().default(0),
+  zipData: exportBlob("zipData"),
+  failureNote: varchar("failureNote", { length: 200 }),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  readyAt: timestamp("readyAt"),
+  expiresAt: timestamp("expiresAt"),
+}, table => [uniqueIndex("data_exports_active_unique").on(table.activeKey), index("data_exports_user_idx").on(table.userId, table.requestedAt)]);
 
 export const assistantConnections = mysqlTable("assistantConnections", {
   id: int("id").autoincrement().primaryKey(),
@@ -413,6 +482,8 @@ export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   fromStatus: varchar("fromStatus", { length: 32 }).notNull(),
   resultingStatus: varchar("resultingStatus", { length: 32 }).notNull(),
   resultingRevision: int("resultingRevision").notNull(),
+  // Optional portal reference recorded on mark-as-referred (queue task 16).
+  referenceId: varchar("referenceId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_transition_operation_unique").on(table.referralRequestId, table.operationKey), uniqueIndex("referral_transition_revision_unique").on(table.referralRequestId, table.resultingRevision)]);
 
@@ -428,6 +499,7 @@ export const referralRequestPasses = mysqlTable("referralRequestPasses", {
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   reason: mysqlEnum("reason", ["role_not_a_fit", "cannot_support", "timing"]).notNull(),
+  reasonCode: varchar("reasonCode", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_request_pass_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referral_request_pass_referrer_idx").on(table.referrerId, table.createdAt)]);
 
@@ -593,6 +665,8 @@ export const notifications = mysqlTable("notifications", {
   title: varchar("title", { length: 180 }).notNull(),
   body: text("body").notNull(),
   eventKey: varchar("eventKey", { length: 120 }),
+  kind: varchar("kind", { length: 32 }),
+  refId: int("refId"),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("notifications_user_idx").on(table.userId), uniqueIndex("notifications_event_key_unique").on(table.eventKey)]);
@@ -605,8 +679,8 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
   monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
   monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
-  // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0080 added the kit plans,
-  // 0081 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
+  // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
+  // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
   plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
@@ -614,11 +688,11 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   subscriptionCurrentTermStart: timestamp("subscriptionCurrentTermStart"),
   subscriptionCurrentTermEnd: timestamp("subscriptionCurrentTermEnd"),
   subscriptionResourceVersion: bigint("subscriptionResourceVersion", { mode: "number" }),
-  // Subscription management (0080, shared/subscriptionState.ts): what the subscription bills,
+  // Subscription management (0090, shared/subscriptionState.ts): what the subscription bills,
   // a switch scheduled for term end, a scheduled or active pause, and the dunning state of a
   // failed renewal. Written only from provider responses and webhook snapshots.
   subscriptionItemPriceId: varchar("subscriptionItemPriceId", { length: 100 }),
-  // Order pinned to shared/billingCatalog.ts BILLING_PERIODS; 0081 added the 30- and 90-day passes.
+  // Order pinned to shared/billingCatalog.ts BILLING_PERIODS; 0091 added the 30- and 90-day passes.
   subscriptionBillingPeriod: mysqlEnum("subscriptionBillingPeriod", ["monthly", "yearly", "30d", "90d"]),
   subscriptionAmount: int("subscriptionAmount"),
   pendingPlan: varchar("pendingPlan", { length: 32 }),
@@ -632,7 +706,7 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   paymentNextRetryAt: timestamp("paymentNextRetryAt"),
   paymentFailureReason: varchar("paymentFailureReason", { length: 32 }),
   paymentRetryRequestedAt: timestamp("paymentRetryRequestedAt"),
-  // The one-time 14-day reverse trial (0081, shared/planEntitlements.ts): set once, from the JS
+  // The one-time 14-day reverse trial (0091, shared/planEntitlements.ts): set once, from the JS
   // clock, when a Free seeker's ask starts it; the trial credits are a planCreditGrants "trial" row.
   trialStartedAt: timestamp("trialStartedAt"),
   trialEndsAt: timestamp("trialEndsAt"),
@@ -644,7 +718,7 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0079 added the kit ledger kinds, 0081 trial_grant.
+  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0089 added the kit ledger kinds, 0091 trial_grant.
   kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund", "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend", "trial_grant"]).notNull(),
   source: varchar("source", { length: 40 }),
   sourceCycleKey: varchar("sourceCycleKey", { length: 16 }),
@@ -658,7 +732,7 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   qualifiedAt: timestamp("qualifiedAt"),
   balanceAfter: int("balanceAfter"),
   monthlyCreditsAfter: int("monthlyCreditsAfter"),
-  /** The planCreditGrants row this row grants, spends, carries into or expires (0079). */
+  /** The planCreditGrants row this row grants, spends, carries into or expires (0089). */
   creditGrantId: int("creditGrantId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("token_transactions_user_idx").on(table.userId), index("token_transactions_credit_grant_idx").on(table.creditGrantId), index("token_transactions_cycle_idx").on(table.userId, table.role, table.sourceCycleKey), uniqueIndex("token_transactions_debit_reference_unique").on(table.userId, table.role, table.kind, table.referenceType, table.referenceId), uniqueIndex("token_transactions_idempotency_kind_unique").on(table.userId, table.role, table.idempotencyKey, table.kind), uniqueIndex("token_transactions_reversal_unique").on(table.reversesTransactionId)]);
@@ -729,10 +803,10 @@ export const promoCreditGrants = mysqlTable("promoCreditGrants", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("promo_grant_user_role_unique").on(table.userId, table.role), index("promo_grant_user_status_idx").on(table.userId, table.role, table.status)]);
 
-// Kit credit ledger (0079, shared/creditLedger.ts): the dated and one-time
+// Kit credit ledger (0089, shared/creditLedger.ts): the dated and one-time
 // credit buckets. "carryover" holds what a plan cycle left unspent, bound to the
 // subscription that granted it (expiresAt NULL = while subscribed, Land);
-// "welcome" is the one-time 3 credits per person; "trial" (0081) the reverse
+// "welcome" is the one-time 3 credits per person; "trial" (0091) the reverse
 // trial's 5 credits, ending with the trial. grantKey is the idempotency claim:
 // one carryover per subscription cycle, one welcome and one trial per person.
 // Every change to creditsRemaining has a tokenTransactions row with creditGrantId.
@@ -740,7 +814,7 @@ export const planCreditGrants = mysqlTable("planCreditGrants", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
-  // Order pinned to shared/creditLedger.ts CREDIT_GRANT_SOURCES; 0081 added "trial".
+  // Order pinned to shared/creditLedger.ts CREDIT_GRANT_SOURCES; 0091 added "trial".
   source: mysqlEnum("source", ["carryover", "welcome", "trial"]).notNull(),
   grantKey: varchar("grantKey", { length: 64 }).notNull(),
   planId: varchar("planId", { length: 32 }),
@@ -838,13 +912,13 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
-  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0080 added the kit plans, 0081 the Oct 14 2026 plans.
+  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0090 added the kit plans, 0091 the Oct 14 2026 plans.
   plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).notNull(),
   itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   status: mysqlEnum("status", ["pending", "activated", "cancelled"]).default("pending").notNull(),
-  // 0080: yearly terms, plan changes of an existing subscription, and the provider's
+  // 0090: yearly terms, plan changes of an existing subscription, and the provider's
   // recorded payment failure (shared/billingAccount.ts PAYMENT_FAILURE_REASONS).
   billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly", "30d", "90d"]).default("monthly").notNull(),
   kind: mysqlEnum("kind", ["new", "change"]).default("new").notNull(),
@@ -855,7 +929,7 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("subscription_checkout_hosted_page_unique").on(table.hostedPageId), uniqueIndex("subscription_checkout_intent_unique").on(table.checkoutIntentId), index("subscription_checkout_user_idx").on(table.userId), index("subscription_checkout_subscription_idx").on(table.subscriptionId)]);
 
-// Subscription management (0080). The Chargebee customer that holds a member's
+// Subscription management (0090). The Chargebee customer that holds a member's
 // payment methods, per billing site (test and live ids never cross). Bound only
 // from an owned subscription or checkout; one customer never maps to two people.
 export const billingCustomers = mysqlTable("billingCustomers", {
@@ -869,7 +943,7 @@ export const billingCustomers = mysqlTable("billingCustomers", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("billing_customers_provider_customer_unique").on(table.provider, table.site, table.providerCustomerId), uniqueIndex("billing_customers_owner_unique").on(table.userId, table.role, table.provider, table.site)]);
 
-// Receipts (0080): every provider invoice of a member's subscription or credit
+// Receipts (0090): every provider invoice of a member's subscription or credit
 // pack, upserted from webhook snapshots in invoice resource_version order.
 export const billingInvoices = mysqlTable("billingInvoices", {
   id: int("id").autoincrement().primaryKey(),
@@ -893,7 +967,7 @@ export const billingInvoices = mysqlTable("billingInvoices", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("billing_invoices_provider_invoice_unique").on(table.provider, table.site, table.providerInvoiceId), index("billing_invoices_owner_paid_idx").on(table.userId, table.role, table.paidAt)]);
 
-// Why members leave (0080): one row per confirmed cancel or pause from the kit flow.
+// Why members leave (0090): one row per confirmed cancel or pause from the kit flow.
 export const subscriptionCancellationFeedback = mysqlTable("subscriptionCancellationFeedback", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),

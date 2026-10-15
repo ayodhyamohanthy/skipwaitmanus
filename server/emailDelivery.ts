@@ -21,7 +21,7 @@ export function createZeptoMailSender(dependencies: EmailDeliveryDependencies = 
         method: "POST",
         headers: { Authorization: `Zoho-enczapikey ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify({
-          from: { address: from },
+          from: { address: from, name: process.env.ZEPTOMAIL_FROM_NAME || "SkipWait" },
           to: [{ email_address: { address: to } }],
           subject,
           ...(html ? { htmlbody: html } : {}),

@@ -1,4 +1,4 @@
--- 0080: kit subscriptions and subscription management (PRICING.md plans,
+-- 0090: kit subscriptions and subscription management (PRICING.md plans,
 -- shared/billingCatalog.ts, shared/subscriptionState.ts, shared/billingAccount.ts).
 -- Additive only: two plan ENUM widenings (existing values first, in order),
 -- nullable columns on tokenBalances and subscriptionCheckoutIntents, and three

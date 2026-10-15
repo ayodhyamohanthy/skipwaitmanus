@@ -8,6 +8,18 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "tcs.com",
+        "companyName": "TCS",
+        "companyInitials": "T"
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/company-referrals/mine",
       "match": "exact",
       "status": 200,

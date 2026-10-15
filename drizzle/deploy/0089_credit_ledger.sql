@@ -1,4 +1,4 @@
--- 0079: kit credit ledger (PRICING.md credits, shared/creditLedger.ts).
+-- 0089: kit credit ledger (PRICING.md credits, shared/creditLedger.ts).
 -- Additive only: one new table, five new tokenTransactions.kind values, one
 -- nullable column and two indexes on tokenTransactions. No data is written or
 -- moved here: existing balances stay where they are (tokenBalances.balance for

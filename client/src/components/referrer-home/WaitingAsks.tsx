@@ -35,7 +35,7 @@ export function WaitingAsks({ view, nowMs }: { view: ReferrerHomeView; nowMs: nu
               <li key={item.id}>
                 <Link href={`/queue?request=${item.id}`} aria-label={`Private ask · Ref-${1000 + item.id}`} className="flex min-h-16 items-center gap-3 rounded-3xl border border-border p-4 hover:border-foreground/40">
                   <span className="company-mark">{company?.mark ?? (item.companyDomain.charAt(0) || "?").toUpperCase()}</span>
-                  <span className="min-w-0 flex-1"><strong className="block">Private ask · Ref-{1000 + item.id}</strong><small className="text-muted-foreground">{displayJobFunction(item.jobFunction) ?? name}{files > 0 ? ` · ${files} ${files === 1 ? "file" : "files"} attached` : ""}</small></span>
+                  <span className="min-w-0 flex-1"><strong className="block">{item.jobTitle?.trim() || `Private ask · Ref-${1000 + item.id}`}</strong><small className="text-muted-foreground">{displayJobFunction(item.jobFunction) ?? name}{item.askStrength ? ` · ask strength: ${item.askStrength === "strong" ? "Strong" : item.askStrength === "good" ? "Good" : "Basic"}` : ""}{files > 0 ? ` · ${files} ${files === 1 ? "file" : "files"} attached` : ""}</small></span>
                   {countdown ? <span className={`shrink-0 text-xs ${countdown.urgent ? "font-semibold text-destructive" : "text-muted-foreground"}`}>{countdown.label}</span> : null}
                   <ArrowRight className="size-4 shrink-0" />
                 </Link>

@@ -6,14 +6,14 @@ import { CREDIT_GRANT_SOURCES, TOKEN_LEDGER_KINDS } from "../shared/creditLedger
 import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { DESIRED_COLUMNS, DESIRED_TABLES } from "./schemaReconcile";
 
-// Migration 0081 (the Oct 14 2026 pricing model). Every ENUM it widens keeps
+// Migration 0091 (the Oct 14 2026 pricing model). Every ENUM it widens keeps
 // the values already stored first and in order (MySQL stores the index), and
 // the shared contracts, drizzle/schema.ts and the migration carry one list.
-const migration = readFileSync(new URL("../drizzle/deploy/0081_pricing_model.sql", import.meta.url), "utf8");
+const migration = readFileSync(new URL("../drizzle/deploy/0091_pricing_model.sql", import.meta.url), "utf8");
 const quoted = (values: readonly string[]) => values.map(value => `''${value}''`).join(",");
 
-describe("pricing model schema contract (0081)", () => {
-  it("plan enums append Keep warm and the renamed Land levels after 0080's values; every catalog plan is storable", () => {
+describe("pricing model schema contract (0091)", () => {
+  it("plan enums append Keep warm and the renamed Land levels after 0090's values; every catalog plan is storable", () => {
     expect(WALLET_PLAN_IDS.slice(0, 8)).toEqual(["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500"]);
     expect(INTENT_PLAN_IDS.slice(0, 7)).toEqual(["pro", "max", "start", "momentum", "land_100", "land_200", "land_500"]);
     for (const plan of CATALOG_PLAN_IDS) {

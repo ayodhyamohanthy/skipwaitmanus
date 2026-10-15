@@ -34,9 +34,13 @@ const ok = (body: unknown): FetchReply => ({ ok: true, status: 200, json: async 
 const list = (notifications: unknown[] = ITEMS) => ok({ notifications });
 
 function renderAlerts() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } });
   return render(<QueryClientProvider client={client}><Alerts /></QueryClientProvider>);
 }
+
+// Referral-alert routing on the server's verified-referrer verdict lives in alerts.referrerRouting.test.tsx.
+const ACCESS_PATH = "/api/company-referrals/access";
+const UNVERIFIED_ACCESS = ok({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
 
 beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; go.mockReset(); vi.useFakeTimers({ toFake: ["Date"], now }); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
@@ -87,15 +91,6 @@ describe("Alerts center", () => {
     expect(screen.queryByText("You're all caught up.")).toBeNull();
   });
 
-  it("opens a notification by marking it read then following its category", async () => {
-    const fetchMock = vi.fn(async (url: string) => String(url).endsWith("/read") ? ok({ success: true }) : list());
-    vi.stubGlobal("fetch", fetchMock);
-    renderAlerts();
-    fireEvent.click(await screen.findByRole("button", { name: /Your ask was accepted, unread/ }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/notifications/1/read", expect.objectContaining({ method: "POST" })));
-    await waitFor(() => expect(go).toHaveBeenCalledWith("/requests"));
-  });
-
   it("marks every unread item read in one action", async () => {
     const fetchMock = vi.fn(async (url: string) => String(url).endsWith("/read") ? ok({ success: true }) : list());
     vi.stubGlobal("fetch", fetchMock);
@@ -141,7 +136,7 @@ describe("Alerts center", () => {
 
   it("shows a loading status while the first fetch is in flight", async () => {
     let release: (reply: FetchReply) => void = () => undefined;
-    vi.stubGlobal("fetch", vi.fn(() => new Promise<FetchReply>(resolve => { release = resolve; })));
+    vi.stubGlobal("fetch", vi.fn((url: string) => String(url) === ACCESS_PATH ? Promise.resolve(UNVERIFIED_ACCESS) : new Promise<FetchReply>(resolve => { release = resolve; })));
     renderAlerts();
     expect(await screen.findByText("Loading your alerts…")).toBeTruthy();
     expect(screen.queryByText("No notifications yet.")).toBeNull();
@@ -152,7 +147,8 @@ describe("Alerts center", () => {
 
   it("surfaces a load error and recovers on Try again", async () => {
     let calls = 0;
-    const fetchMock = vi.fn(async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url) === ACCESS_PATH) return UNVERIFIED_ACCESS;
       calls += 1;
       return calls === 1 ? { ok: false, status: 401, json: async () => ({ error: "Sign in to view your private updates" }) } : list();
     });
