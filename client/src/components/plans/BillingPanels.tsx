@@ -7,6 +7,7 @@ import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import type { CreditSummary, Receipt } from "./billingApi";
 import { kitDate, money } from "./format";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { hasActivePaidPlan, planLabel } from "./planCatalog";
 
 /** "8 open asks" from the caller's own slots; left out when the server did not send them. */
@@ -21,7 +22,7 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
     return <Panel>
       <span className="eyebrow">CURRENT PLAN</span>
       <h2 className="mt-1 text-2xl font-semibold">Free</h2>
-      <p className="text-sm text-muted-foreground">{openAsks(summary) ? `${openAsks(summary)} · buy credits anytime` : "Buy credits anytime"}</p>
+      <p className="text-sm text-muted-foreground">{CREDIT_PACKS_ON_SALE ? (openAsks(summary) ? `${openAsks(summary)} · buy credits anytime` : "Buy credits anytime") : (openAsks(summary) || "Free plan")}</p>
       <Button asChild className="mt-4"><Link href="/plans">Upgrade</Link></Button>
     </Panel>;
   }

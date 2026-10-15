@@ -1,5 +1,6 @@
 import { ArrowRight, CreditCard } from "lucide-react";
 import { Link } from "wouter";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 
 export type SeekerCredits = {
   plan: string;
@@ -75,12 +76,11 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
       <div className="mt-4 grid gap-2">
         {outOfCredits ? (
           <>
-            <Link
-              href="/premium?role=job_seeker"
+            {CREDIT_PACKS_ON_SALE ? <Link href="/premium?role=job_seeker"
               className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-semibold text-white"
             >
               <CreditCard className="h-4 w-4" /> Add a credit for $1 <ArrowRight className="h-4 w-4" />
-            </Link>
+            </Link> : null}
             <Link
               href="/plans?role=job_seeker"
               className="text-center text-sm font-semibold text-black"
