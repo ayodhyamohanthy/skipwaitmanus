@@ -47,7 +47,7 @@ export default function Ask() {
   // fit note forward; nothing was sent there, so the seeker reviews it here.
   const [prefill] = useState(() => readAskPrefill());
   const [url, setUrl] = useState(prefill?.targetRoleUrl ?? "");
-  const [note, setNote] = useState(prefill?.note.slice(0, NOTE_LIMIT) ?? "");
+  const [note, setNote] = useState(prefill?.note?.slice(0, NOTE_LIMIT) ?? "");
   const [compensation, setCompensation] = useState("");
   // Only an explicit pick is sent; otherwise the server stores the same guess shown here.
   const [pickedFunction, setPickedFunction] = useState<JobFunction | null>(null);
