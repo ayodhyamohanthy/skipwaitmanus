@@ -67,7 +67,9 @@ import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
 import { sendTransactionalEmail } from "../emailDelivery";
 import { workEmailOtpService } from "../workEmailOtp";
 import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
-import { createWorkosAuthRoutesRegistrar, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
+import { createWorkosAuthRoutesRegistrar, currentWorkosSessionId, configuredWorkosClientId, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
+import { WorkOS } from "@workos-inc/node";
+import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
@@ -155,6 +157,14 @@ async function startServer() {
 registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError});
 
   registerAdminSmokeFixture(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  let sessionsApi: WorkOS | undefined;
+  registerAccountSessionRoutes(app, {
+    resolveIdentity,
+    listWorkosSubjects: db.listWorkosSubjectsForUser,
+    api: () => { if (!workosConfigured()) return undefined; sessionsApi ??= new WorkOS(process.env.WORKOS_API_KEY!, { clientId: configuredWorkosClientId() }); return sessionsApi.userManagement as never; },
+    currentSessionId: currentWorkosSessionId,
+    record: input => { void db.recordOperationalActivity(input as never)?.catch?.(() => undefined); },
+  });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.

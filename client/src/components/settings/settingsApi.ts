@@ -20,6 +20,7 @@ export const ACCESS_ERROR = "We could not check your work-email access";
 export const PRIVACY_REQUESTS_ERROR = "We could not load privacy requests";
 export const EXPORT_ERROR = "We could not prepare your data export";
 export const EXPORT_REQUEST_ERROR = "We could not start your data export";
+export const SESSIONS_ERROR = "We could not load your sessions";
 export const ERASURE_ERROR = "We could not create your request";
 export const BLOCKS_ERROR = "We could not load your blocked list";
 export const UNBLOCK_ERROR = "We could not remove this block";
@@ -59,7 +60,13 @@ const dataExportSchema = z.object({ export: z.object({
 }).nullable() });
 export type DataExportSummary = NonNullable<z.infer<typeof dataExportSchema>["export"]>;
 
+const sessionRowSchema = z.object({ id: z.string(), device: z.string(), lastActive: z.string().nullish(), signedInAt: z.string().nullish(), current: z.boolean() });
+export type SessionRow = z.infer<typeof sessionRowSchema>;
+const sessionsSchema = z.object({ sessions: z.array(sessionRowSchema).default([]), currentKnown: z.boolean().default(false), note: z.string().optional() });
+export type SessionList = z.infer<typeof sessionsSchema>;
+
 export const settingsKeys = {
+  sessions: ["settings", "sessions"] as const,
   dataExport: ["settings", "data-export"] as const,
   access: ["settings", "company-access"] as const,
   privacyRequests: ["settings", "privacy-requests"] as const,
@@ -165,4 +172,16 @@ export async function downloadDataExport(id: number, fileName: string | null | u
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+export async function fetchSessions(getToken: TokenSource): Promise<SessionList> {
+  return readReply(await call("/api/account/sessions", getToken), sessionsSchema, SESSIONS_ERROR);
+}
+
+export async function revokeSessionById(id: string, getToken: TokenSource): Promise<void> {
+  await readReply(await call(`/api/account/sessions/${encodeURIComponent(id)}`, getToken, "DELETE"), z.object({}).passthrough(), "We could not sign out that device");
+}
+
+export async function revokeOtherSessions(getToken: TokenSource): Promise<void> {
+  await readReply(await call("/api/account/sessions/revoke-others", getToken, "POST"), z.object({}).passthrough(), "We could not sign out your other devices");
 }
