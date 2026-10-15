@@ -1,8 +1,14 @@
+import { buildReferrerHome, monthStartUtc } from "./referrerHome";
+import { enrichInboxRow } from "./inboxEnrichment";
+import { transitionNotificationKind } from "./notificationKinds";
+import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
+import { workEmailStorageKeys } from "./workEmailKey";
+import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { FREE_ALERT_LIMIT, normalizeAlertDomain } from "../shared/alerts";
@@ -83,6 +89,13 @@ export function normalizeVerifiedEmail(email: string) { return email.trim().norm
 /** Resolve a login subject to a canonical account. Provider+subject aliases win.
  * A verified email may claim an existing unique account. Unverified email never
  * participates in linking and is retained only on the isolated account row. */
+/** WorkOS user ids (provider subjects) linked to this canonical account, used to end hosted sessions at sign-out. */
+export async function listWorkosSubjectsForUser(userId: number): Promise<string[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ subject: verifiedLoginAliases.subject }).from(verifiedLoginAliases).where(and(eq(verifiedLoginAliases.provider, "workos"), eq(verifiedLoginAliases.canonicalUserId, userId)));
+  return rows.map(row => row.subject).filter(subject => /^user_[A-Za-z0-9]+$/.test(subject));
+}
+
 export async function resolveLoginIdentity(input: { provider: string; subject: string; openId: string; email: string; emailVerified: boolean; name: string; loginMethod: string }) {
   const email = normalizeVerifiedEmail(input.email);
   const db = await getDb();
@@ -426,7 +439,7 @@ export async function notifySeekerAlertsForCompany(companyDomain: string, now: D
       // Claim the alert first: concurrent runs race here, exactly one wins.
       const stamped = await db.update(seekerAlerts).set({ notifiedAt: now }).where(and(eq(seekerAlerts.id, watcher.id), isNull(seekerAlerts.notifiedAt)));
       if (Number(stamped[0]?.affectedRows) !== 1) continue;
-      await db.insert(notifications).values({ userId: watcher.userId, category: "status", title: `Someone inside ${label} can refer`, body: `A verified employee at ${label} is now open to referral requests. Send your ask while the door is open.`, eventKey: `alert-coverage:${watcher.id}` }).onDuplicateKeyUpdate({ set: { eventKey: `alert-coverage:${watcher.id}` } });
+      await db.insert(notifications).values({ kind: "slot_open", userId: watcher.userId, category: "status", title: `Someone inside ${label} can refer`, body: `A verified employee at ${label} is now open to referral requests. Send your ask while the door is open.`, eventKey: `alert-coverage:${watcher.id}` }).onDuplicateKeyUpdate({ set: { eventKey: `alert-coverage:${watcher.id}` } });
       notified += 1;
     } catch { /* fail open per watcher: a missed alert never breaks verification */ }
   }
@@ -595,10 +608,13 @@ export async function editAssistantApproval(userId: number, approvalId: number, 
 export const ASSISTANT_ASK_CREDIT_COST = 1;
 const MAX_PENDING_ASSISTANT_ASKS = 5;
 
+/** Keeps the saved profile resume out of ask drafts and draft cleanup: it belongs to /onboarding, not to one ask. */
+const notProfileResume = (userId: number) => sql`${referralAttachments.id} NOT IN (SELECT ${profiles.defaultResumeAttachmentId} FROM ${profiles} WHERE ${profiles.userId} = ${userId} AND ${profiles.defaultResumeAttachmentId} IS NOT NULL)`;
+
 /** The member's own resume documents that are not attached to a request yet. Ids and names only. */
 export async function listMyUnattachedResumes(userId: number) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, createdAt: referralAttachments.createdAt }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId))).orderBy(desc(referralAttachments.createdAt)).limit(25);
+  return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, createdAt: referralAttachments.createdAt }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId), notProfileResume(userId))).orderBy(desc(referralAttachments.createdAt)).limit(25);
 }
 
 /**
@@ -860,8 +876,23 @@ export async function createSafetyReport(userId: number, input: { reason?: unkno
   const dayAgo = new Date(Date.now() - 86400000);
   const today = (await db.select({ id: safetyReports.id }).from(safetyReports).where(and(eq(safetyReports.reporterUserId, userId), gt(safetyReports.createdAt, dayAgo))).limit(21)).length;
   if (today >= 20) throw new Error("You have filed several reports today. Contact support directly for anything urgent.");
-  const inserted = await db.insert(safetyReports).values({ reporterUserId: userId, reason: input.reason, details: details || null, referralRequestId: requestId, reportedUserId: reportedId, urgent: Boolean(input.urgent) });
+  const urgent = Boolean(input.urgent), filedAt = Date.now();
+  const inserted = await db.insert(safetyReports).values({ reporterUserId: userId, reason: input.reason, details: details || null, referralRequestId: requestId, reportedUserId: reportedId, urgent, severity: reportSeverity(urgent), dueAt: reviewDueAt(filedAt, urgent) });
   const id = Number(inserted[0].insertId);
+  // The case file is best-effort: a failure here never blocks the report itself.
+  try { await db.insert(moderationEvents).values(urgent ? [{ reportId: id, actorKind: "reporter", actorUserId: userId, kind: "opened" }, { reportId: id, actorKind: "reporter", actorUserId: userId, kind: "flagged_urgent" }] : [{ reportId: id, actorKind: "reporter", actorUserId: userId, kind: "opened" }]); } catch (error) { console.warn("[moderation] could not record opening event", { reportId: id, name: error instanceof Error ? error.name : "unknown" }); }
+  // Evidence snapshot: only messages the reporter sent or received in this approved request thread, copied once, best-effort.
+  if (requestId !== null) {
+    try {
+      const target = (await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1))[0];
+      const otherId = target ? (target.jobSeekerId === userId ? target.referrerId : target.jobSeekerId) : null;
+      if (target && otherId !== null && otherId !== undefined) {
+        const thread = await db.select({ id: messages.id, senderId: messages.senderId, body: messages.body, createdAt: messages.createdAt }).from(messages).where(and(eq(messages.referralRequestId, requestId), or(and(eq(messages.senderId, userId), eq(messages.recipientId, otherId)), and(eq(messages.senderId, otherId), eq(messages.recipientId, userId))))).orderBy(desc(messages.createdAt), desc(messages.id)).limit(50);
+        const rows = buildEvidenceRows(id, userId, thread);
+        if (rows.length) await db.insert(moderationEvidence).values(rows);
+      }
+    } catch (error) { console.warn("[moderation] could not record evidence snapshot", { reportId: id, name: error instanceof Error ? error.name : "unknown" }); }
+  }
   return { id, reference: `R-${1000 + id}`, urgent: Boolean(input.urgent) };
 }
 
@@ -896,7 +927,13 @@ export async function listMyCompanySuggestions(userId: number) {
 
 export async function listSafetyReportsAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: safetyReports.id, reporterUserId: safetyReports.reporterUserId, reason: safetyReports.reason, details: safetyReports.details, referralRequestId: safetyReports.referralRequestId, reportedUserId: safetyReports.reportedUserId, urgent: safetyReports.urgent, status: safetyReports.status, createdAt: safetyReports.createdAt, updatedAt: safetyReports.updatedAt }).from(safetyReports).orderBy(desc(safetyReports.urgent), desc(safetyReports.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  const reports = await db.select({ id: safetyReports.id, severity: safetyReports.severity, dueAt: safetyReports.dueAt, reporterUserId: safetyReports.reporterUserId, reason: safetyReports.reason, details: safetyReports.details, referralRequestId: safetyReports.referralRequestId, reportedUserId: safetyReports.reportedUserId, urgent: safetyReports.urgent, status: safetyReports.status, createdAt: safetyReports.createdAt, updatedAt: safetyReports.updatedAt }).from(safetyReports).orderBy(desc(safetyReports.urgent), desc(safetyReports.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  if (!reports.length) return reports.map(report => ({ ...report, events: [] as Array<{ actor: string; kind: string; note: string | null; createdAt: string }> }));
+  let events = new Map() as ReturnType<typeof groupModerationEvents>;
+  try { events = groupModerationEvents(await db.select({ reportId: moderationEvents.reportId, actorKind: moderationEvents.actorKind, kind: moderationEvents.kind, note: moderationEvents.note, createdAt: moderationEvents.createdAt }).from(moderationEvents).where(inArray(moderationEvents.reportId, reports.map(report => report.id))) as never); } catch (error) { console.warn("[moderation] could not load events", { name: error instanceof Error ? error.name : "unknown" }); }
+  let evidence = new Map() as ReturnType<typeof groupEvidence>;
+  try { evidence = groupEvidence(await db.select({ reportId: moderationEvidence.reportId, seq: moderationEvidence.seq, sender: moderationEvidence.sender, body: moderationEvidence.body, sentAt: moderationEvidence.sentAt }).from(moderationEvidence).where(inArray(moderationEvidence.reportId, reports.map(report => report.id)))); } catch (error) { console.warn("[moderation] could not load evidence", { name: error instanceof Error ? error.name : "unknown" }); }
+  return reports.map(report => ({ ...report, events: events.get(report.id) ?? [], evidence: evidence.get(report.id) ?? [] }));
 }
 
 export async function reviewSafetyReport(adminId: number, reportId: number, input: { status?: unknown; note?: unknown }, notify?: (userId: number, title: string, body: string) => Promise<unknown>) {
@@ -907,6 +944,7 @@ export async function reviewSafetyReport(adminId: number, reportId: number, inpu
   if (!current) throw new Error("This report could not be found");
   if (current.status === "resolved" || current.status === "dismissed") throw new Error("This report was already resolved");
   await db.update(safetyReports).set({ status: input.status, updatedAt: new Date() }).where(eq(safetyReports.id, reportId));
+  try { await db.insert(moderationEvents).values({ reportId, actorKind: "reviewer", actorUserId: adminId, kind: input.status, note: cleanModerationNote(input.note) }); } catch (error) { console.warn("[moderation] could not record decision event", { reportId, name: error instanceof Error ? error.name : "unknown" }); }
   if ((input.status === "resolved" || input.status === "dismissed") && notify) {
     await notify(current.reporterUserId, "Update on your report", input.status === "resolved" ? "Our safety team reviewed your report and took action. Thank you for flagging it." : "Our safety team reviewed your report and closed it with no violation found.").catch(() => undefined);
   }
@@ -1042,8 +1080,8 @@ export async function completeResumeUploadSession(ownerId: number, sessionId: st
 export async function clearUnattachedResumeUploads(ownerId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const attachments = await tx.select({ id: referralAttachments.id, fileKey: referralAttachments.fileKey }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
-    if (attachments.length) await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId)));
+    const attachments = await tx.select({ id: referralAttachments.id, fileKey: referralAttachments.fileKey }).from(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId), notProfileResume(ownerId)));
+    if (attachments.length) await tx.delete(referralAttachments).where(and(eq(referralAttachments.ownerId, ownerId), isNull(referralAttachments.referralRequestId), notProfileResume(ownerId)));
     await tx.delete(resumeUploadSessions).where(eq(resumeUploadSessions.ownerId, ownerId));
     return { cleared: attachments.length, fileKeys: attachments.map(item => item.fileKey) };
   });
@@ -1346,7 +1384,7 @@ export async function completeWorkEmailOtpEnrollment(input: { receipt: string; e
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const receiptHash = createHash("sha256").update(input.receipt).digest("hex");
-    const receipts = await tx.select().from(workEmailOtpReceipts).where(and(eq(workEmailOtpReceipts.receiptHash, receiptHash), eq(workEmailOtpReceipts.email, email), eq(workEmailOtpReceipts.userId, input.userId), eq(workEmailOtpReceipts.purpose, "work_email_enrollment"), gt(workEmailOtpReceipts.expiresAt, new Date()))).limit(1).for("update");
+    const receipts = await tx.select().from(workEmailOtpReceipts).where(and(eq(workEmailOtpReceipts.receiptHash, receiptHash), inArray(workEmailOtpReceipts.email, workEmailStorageKeys(email).read), eq(workEmailOtpReceipts.userId, input.userId), eq(workEmailOtpReceipts.purpose, "work_email_enrollment"), gt(workEmailOtpReceipts.expiresAt, new Date()))).limit(1).for("update");
     const receipt = receipts[0];
     if (!receipt) throw new Error("OTP_RECEIPT_INVALID");
     // A replay after a lost response is safe and returns the already-completed
@@ -1389,7 +1427,7 @@ export async function saveVerifiedWorkEmail(userId: number, email: string) {
   const newlyVerifiedForDomain = previous[0]?.workEmailDomain !== domain || !previous[0]?.workEmailVerifiedAt;
   if (newlyVerifiedForDomain) {
     const waitingRequests = await db.select({ requestId: referralRequests.id }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, domain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
-    for (const request of waitingRequests) await db.insert(notifications).values({ userId, category: "referral", title: "A private referral request is waiting", body: `A candidate has asked for help at ${domain}. Review it only if you choose to help.` });
+    for (const request of waitingRequests) await db.insert(notifications).values({ kind: "ask_new", userId, category: "referral", title: "A private referral request is waiting", body: `A candidate has asked for help at ${domain}. Review it only if you choose to help.` });
   }
   return getProfileByUserId(userId);
 }
@@ -1479,7 +1517,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   const result = await db.insert(referralRequests).values({ jobId: input.jobId, jobSeekerId: userId, referrerId: input.referrerId, personalPitch: input.personalPitch });
   const requestId = Number(result[0].insertId);
   for (const attachmentId of input.attachmentIds ?? []) await db.update(referralAttachments).set({ referralRequestId: requestId }).where(and(eq(referralAttachments.id, attachmentId), eq(referralAttachments.ownerId, userId)));
-  await db.insert(notifications).values({ userId: input.referrerId, category: "referral", title: "New Referral Request", body: "A Job Seeker has shared a Referral Request for your review." });
+  await db.insert(notifications).values({ kind: "ask_new", userId: input.referrerId, category: "referral", title: "New Referral Request", body: "A Job Seeker has shared a Referral Request for your review." });
   return { id: requestId };
 }
 
@@ -1540,7 +1578,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is complete inside this transaction.
     await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     for(const employee of eligible){
-      await tx.insert(notifications).values({userId:employee.userId,category:"referral",title:fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
+      await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
@@ -1656,7 +1694,7 @@ const oneClickDeclineMessages = {
 
 export type OneClickDeclineReason = keyof typeof oneClickDeclineMessages;
 
-export async function oneClickReviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: OneClickDeclineReason; reviewLinkToken?: string }) {
+export async function oneClickReviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; declineReason?: OneClickDeclineReason; passReason?: string | null; reviewLinkToken?: string }) {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before reviewing referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -1669,7 +1707,7 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
     if (input.decision === "declined") {
       if (current.request.referrerId !== null) throw new ReferralTransitionConflict("An allocated referral must be released through the queue workflow", { status: current.request.status, revision: current.request.revision });
       const reason = input.declineReason ?? "cannot_support";
-      const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "pass", operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null) throw new Error("An allocated referral must be released through the queue workflow"); }, notification: { userId: current.request.jobSeekerId, title: `Update on your referral request — ${current.companyDomain}`, body: "The employee can't help right now. Your request stays active for other employees." }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: userId, reason }).onDuplicateKeyUpdate({ set: { reason } }); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,userId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,userId),eq(referralAvailabilitySlots.status,"allocated"))); } });
+      const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "pass", operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null) throw new Error("An allocated referral must be released through the queue workflow"); }, notification: { userId: current.request.jobSeekerId, title: `Update on your referral request — ${current.companyDomain}`, body: `The employee can't help right now${passReasonSeekerLabel(input.passReason) ? ` (${passReasonSeekerLabel(input.passReason)})` : ""}. Your request stays active for other employees.` }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: userId, reason, reasonCode: input.passReason ?? null }).onDuplicateKeyUpdate({ set: { reason, reasonCode: input.passReason ?? null } }); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,userId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,userId),eq(referralAvailabilitySlots.status,"allocated"))); } });
       return { ...result, status: "passed" as const, companyDomain: current.companyDomain, declineReason: reason, jobSeekerId: current.request.jobSeekerId };
     }
     const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "approve", operationKey, toStatus: "approved", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId, referrerMessage: null }, notification: { userId: current.request.jobSeekerId, title: "Referral Request approved", body: "A verified employee accepted your private referral request." }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } const previousPass = await tx.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId, input.requestId), eq(referralRequestPasses.referrerId, userId))).limit(1); if (previousPass[0]) throw new Error("You already passed on this referral request"); await grantPendingActionRewardsTx(tx, userId, "referrer", "referral_approval", String(input.requestId)); } });
@@ -1703,9 +1741,19 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   });
   const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
   const unreadByRequestId = new Map(unreadRows.map(row => [row.requestId, Number(row.unreadMessageCount)]));
+  // Read-only enrichment from fields the referrer already sees in the preview. Fail-soft: the list never depends on it.
+  const extra = new Map<number, { title: string | null; pitch: string | null }>();
+  if (scopedRows.length) {
+    try {
+      const detail = await db.select({ id: referralRequests.id, title: jobs.title, pitch: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(inArray(referralRequests.id, scopedRows.map(row => row.id)));
+      for (const item of detail) extra.set(item.id, { title: item.title, pitch: item.pitch });
+    } catch (error) { console.warn("[inbox] enrichment skipped", { name: error instanceof Error ? error.name : "unknown" }); }
+  }
   return scopedRows.map(row => {
     const expiresAtMs = getAskExpiresAtMs(row.createdAt);
-    return { ...row, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
+    const detail = extra.get(row.id);
+    const enrichment = detail ? enrichInboxRow({ title: detail.title, pitch: detail.pitch, targetRoleUrl: row.targetRoleUrl, attachmentCount: row.attachmentCount }) : {};
+    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
   });
 }
 
@@ -1713,7 +1761,7 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id))).limit(1);
+  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id))).limit(1);
   if (!request[0]) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
   return { ...request[0], attachments };
@@ -1814,12 +1862,21 @@ export async function reconcileExpiredPendingReferrals(userId: number, nowMs: nu
   return { expiredRequestIds };
 }
 
+const REFERRER_REVEALED_STATUSES: string[] = ["approved", "intro_made", "interview", "offer", "closed"];
+
 export async function listJobSeekerCompanyReferrals(userId: number) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ id: referralRequests.id, title: jobs.title, pitch: referralRequests.personalPitch, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralRequests.jobSeekerId, userId)).groupBy(referralRequests.id, jobs.title, referralRequests.personalPitch, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.referrerMessage, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
   const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
   const unreadByRequestId = new Map(unreadRows.map(row => [row.requestId, Number(row.unreadMessageCount)]));
-  return rows.map(row => ({ ...row, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? "waiting_for_coverage" as const : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+  // Identity reveal (queue task 14): once a referrer has accepted, the seeker sees their name and title.
+  const revealIds = Array.from(new Set(rows.filter(row => row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status)).map(row => row.referrerId as number)));
+  const revealed = new Map<number, { name: string | null; title: string | null }>();
+  if (revealIds.length) {
+    const people = await db.select({ id: users.id, name: users.name, title: profiles.currentTitle }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).where(inArray(users.id, revealIds));
+    for (const person of people) revealed.set(person.id, { name: person.name ?? null, title: person.title ?? null });
+  }
+  return rows.map(row => ({ ...row, referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? "waiting_for_coverage" as const : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
 export async function openCompanyReferralAvailability(userId: number, input: { slotCount?: number }) {
@@ -1976,6 +2033,7 @@ type ReferralTransitionInput = {
   patch?: Partial<typeof referralRequests.$inferInsert>;
   notification?: { userId: number; title: string; body: string };
   beforeCommit?: (tx: any, current: typeof referralRequests.$inferSelect) => Promise<void>;
+  eventReferenceId?: string | null;
 };
 
 async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInput) {
@@ -1993,8 +2051,8 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
     throw new ReferralTransitionConflict("This referral action lost a stale-write race", latest ?? { status: current.status, revision: current.revision });
   }
   if (["declined","withdrawn","closed"].includes(input.toStatus)) await tx.update(referralDocumentAccessGrants).set({revokedAt:new Date(),revokeReason:`terminal:${input.toStatus}`}).where(and(eq(referralDocumentAccessGrants.referralRequestId,input.requestId),isNull(referralDocumentAccessGrants.revokedAt)));
-  await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision });
-  if (input.notification) await tx.insert(notifications).values({ userId: input.notification.userId, category: "status", title: input.notification.title, body: input.notification.body, eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` }).onDuplicateKeyUpdate({ set: { eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` } });
+  await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision, referenceId: input.eventReferenceId ?? null });
+  if (input.notification) await tx.insert(notifications).values({ userId: input.notification.userId, category: "status", kind: transitionNotificationKind(input.action, input.toStatus), refId: input.requestId, title: input.notification.title, body: input.notification.body, eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` }).onDuplicateKeyUpdate({ set: { eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` } });
   return { status: input.toStatus, revision: nextRevision, replayed: false as const };
 }
 
@@ -2013,7 +2071,7 @@ export function authorizeApprovedReferralConversation(userId: number, request: {
   return { jobSeekerId: request.jobSeekerId, referrerId: request.referrerId, recipientId: userId === request.jobSeekerId ? request.referrerId : request.jobSeekerId };
 }
 
-export async function updateReferralProgress(userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus }) {
+export async function updateReferralProgress(userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus; referenceId?: string | null }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const existing = (await tx.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
@@ -2023,7 +2081,7 @@ export async function updateReferralProgress(userId: number, input: { requestId:
     const currentIndex = referralProgressUpdateStatuses.indexOf(existing.status as ReferralProgressUpdateStatus);
     const nextIndex = referralProgressUpdateStatuses.indexOf(input.status);
     if (!prior && (existing.status === "closed" || (input.status !== "closed" && (nextIndex < 0 || nextIndex <= currentIndex)))) throw new ReferralTransitionConflict("Choose a later real progress milestone", { status: existing.status, revision: existing.revision });
-    const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "progress", operationKey, toStatus: input.status, allowedFrom: [existing.status], authorize: row => { authorizeApprovedReferralConversation(userId, row); }, notification: { userId: recipientId, title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." } });
+    const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "progress", operationKey, toStatus: input.status, allowedFrom: [existing.status], eventReferenceId: input.status === "intro_made" ? input.referenceId ?? null : null, authorize: row => { authorizeApprovedReferralConversation(userId, row); }, notification: { userId: recipientId, title: `Referral progress: ${referralStatusLabels[input.status]}`, body: "Your private referral partner recorded a factual progress update." } });
     return { ...result, status: result.status as ReferralProgressUpdateStatus, changed: !result.replayed };
   });
 }
@@ -2035,12 +2093,14 @@ async function getApprovedReferralConversationParticipants(userId: number, reque
   return { db, ...authorizeApprovedReferralConversation(userId, request[0]) };
 }
 
-export async function getApprovedReferralProgressStatus(userId: number, requestId: number): Promise<{ status: ReferralStatus }> {
+export async function getApprovedReferralProgressStatus(userId: number, requestId: number): Promise<{ status: ReferralStatus; referenceId: string | null }> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const request = await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1);
   authorizeApprovedReferralConversation(userId, request[0]);
-  return { status: request[0].status as ReferralStatus };
+  // The latest portal reference recorded when the request was marked as referred.
+  const event = (await db.select({ referenceId: referralTransitionEvents.referenceId }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "progress"), eq(referralTransitionEvents.resultingStatus, "intro_made"), isNotNull(referralTransitionEvents.referenceId))).orderBy(desc(referralTransitionEvents.id)).limit(1))[0];
+  return { status: request[0].status as ReferralStatus, referenceId: event?.referenceId ?? null };
 }
 
 export type PrivateReferralShareCard = { shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean };
@@ -2092,7 +2152,7 @@ export async function sendReferralConversationMessage(userId: number, requestId:
   if (!trimmedBody) throw new Error("Write a message before sending");
   const { db, recipientId } = await getApprovedReferralConversationParticipants(userId, requestId);
   const result = await db.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
-  await db.insert(notifications).values({ userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
+  await db.insert(notifications).values({ kind: "message_new", userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
   return { id: Number(result[0].insertId) };
 }
 
@@ -2218,12 +2278,12 @@ export async function listDmThread(userId: number, counterpartUserId: number): P
 
 export class DirectMessageConflictError extends Error{constructor(){super("This message key was already used for different content");this.name="DirectMessageConflictError";}}
 export class DirectMessageRateLimitError extends Error{constructor(public retryAt:Date){super("You're sending messages too quickly. Try again later.");this.name="DirectMessageRateLimitError";}}
-export async function sendDirectMessage(userId:number,recipientId:number,body:string,idempotencyKey:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const safeBody=body.slice(0,3000),fingerprint=createHash("sha256").update(JSON.stringify({senderId:userId,recipientId,body:safeBody})).digest("hex");return db.transaction(async tx=>{const duplicate=(await tx.select().from(messages).where(and(eq(messages.senderId,userId),eq(messages.idempotencyKey,idempotencyKey))).limit(1).for("update"))[0];if(duplicate){if(duplicate.requestFingerprint!==fingerprint)throw new DirectMessageConflictError();return{id:duplicate.id,replayed:true as const};}const pair=await tx.select({id:users.id,suspended:users.suspended}).from(users).where(inArray(users.id,[userId,recipientId])).for("update");const sender=pair.find(x=>x.id===userId),recipient=pair.find(x=>x.id===recipientId);if(!sender||!recipient||sender.suspended||recipient.suspended)throw new Error("This member is not available");const thread=(await tx.select({id:messages.id}).from(messages).where(and(isNull(messages.referralRequestId),or(and(eq(messages.senderId,userId),eq(messages.recipientId,recipientId)),and(eq(messages.senderId,recipientId),eq(messages.recipientId,userId))))).limit(1))[0];const follows=await tx.select().from(userFollows).where(and(inArray(userFollows.followerUserId,[userId,recipientId]),inArray(userFollows.followingUserId,[userId,recipientId]))).for("update");const mutual=follows.some(x=>x.followerUserId===userId&&x.followingUserId===recipientId)&&follows.some(x=>x.followerUserId===recipientId&&x.followingUserId===userId);const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];const premium=Boolean(wallet&&isPaidSubscriptionPlan(wallet.plan)&&wallet.subscriptionStatus==="active"&&(!wallet.subscriptionCurrentTermEnd||wallet.subscriptionCurrentTermEnd>new Date()));if(!thread&&!mutual&&!premium)throw new Error("Direct messaging is a premium feature");const now=new Date(),windowStart=new Date(now);windowStart.setMinutes(0,0,0);await tx.insert(directMessageQuotaWindows).values({senderId:userId,windowStart,sendCount:0}).onDuplicateKeyUpdate({set:{senderId:userId}});const quota=(await tx.select().from(directMessageQuotaWindows).where(and(eq(directMessageQuotaWindows.senderId,userId),eq(directMessageQuotaWindows.windowStart,windowStart))).limit(1).for("update"))[0];if(!quota||quota.sendCount>=30)throw new DirectMessageRateLimitError(new Date(windowStart.getTime()+3600_000));await tx.update(directMessageQuotaWindows).set({sendCount:quota.sendCount+1}).where(and(eq(directMessageQuotaWindows.id,quota.id),eq(directMessageQuotaWindows.sendCount,quota.sendCount)));const inserted=await tx.insert(messages).values({senderId:userId,recipientId,body:safeBody,referralRequestId:null,idempotencyKey,requestFingerprint:fingerprint});const id=Number(inserted[0].insertId);await tx.insert(notifications).values({userId:recipientId,category:"message",title:"New direct message",body:"You have a new message from a member.",eventKey:`dm:${id}:notification`});await tx.insert(directMessageNotificationOutbox).values({messageId:id,recipientId,status:"pending"});return{id,replayed:false as const};});}
+export async function sendDirectMessage(userId:number,recipientId:number,body:string,idempotencyKey:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const safeBody=body.slice(0,3000),fingerprint=createHash("sha256").update(JSON.stringify({senderId:userId,recipientId,body:safeBody})).digest("hex");return db.transaction(async tx=>{const duplicate=(await tx.select().from(messages).where(and(eq(messages.senderId,userId),eq(messages.idempotencyKey,idempotencyKey))).limit(1).for("update"))[0];if(duplicate){if(duplicate.requestFingerprint!==fingerprint)throw new DirectMessageConflictError();return{id:duplicate.id,replayed:true as const};}const pair=await tx.select({id:users.id,suspended:users.suspended}).from(users).where(inArray(users.id,[userId,recipientId])).for("update");const sender=pair.find(x=>x.id===userId),recipient=pair.find(x=>x.id===recipientId);if(!sender||!recipient||sender.suspended||recipient.suspended)throw new Error("This member is not available");const thread=(await tx.select({id:messages.id}).from(messages).where(and(isNull(messages.referralRequestId),or(and(eq(messages.senderId,userId),eq(messages.recipientId,recipientId)),and(eq(messages.senderId,recipientId),eq(messages.recipientId,userId))))).limit(1))[0];const follows=await tx.select().from(userFollows).where(and(inArray(userFollows.followerUserId,[userId,recipientId]),inArray(userFollows.followingUserId,[userId,recipientId]))).for("update");const mutual=follows.some(x=>x.followerUserId===userId&&x.followingUserId===recipientId)&&follows.some(x=>x.followerUserId===recipientId&&x.followingUserId===userId);const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];const premium=Boolean(wallet&&isPaidSubscriptionPlan(wallet.plan)&&wallet.subscriptionStatus==="active"&&(!wallet.subscriptionCurrentTermEnd||wallet.subscriptionCurrentTermEnd>new Date()));if(!thread&&!mutual&&!premium)throw new Error("Direct messaging is a premium feature");const now=new Date(),windowStart=new Date(now);windowStart.setMinutes(0,0,0);await tx.insert(directMessageQuotaWindows).values({senderId:userId,windowStart,sendCount:0}).onDuplicateKeyUpdate({set:{senderId:userId}});const quota=(await tx.select().from(directMessageQuotaWindows).where(and(eq(directMessageQuotaWindows.senderId,userId),eq(directMessageQuotaWindows.windowStart,windowStart))).limit(1).for("update"))[0];if(!quota||quota.sendCount>=30)throw new DirectMessageRateLimitError(new Date(windowStart.getTime()+3600_000));await tx.update(directMessageQuotaWindows).set({sendCount:quota.sendCount+1}).where(and(eq(directMessageQuotaWindows.id,quota.id),eq(directMessageQuotaWindows.sendCount,quota.sendCount)));const inserted=await tx.insert(messages).values({senderId:userId,recipientId,body:safeBody,referralRequestId:null,idempotencyKey,requestFingerprint:fingerprint});const id=Number(inserted[0].insertId);await tx.insert(notifications).values({ kind: "message_new",userId:recipientId,category:"message",title:"New direct message",body:"You have a new message from a member.",eventKey:`dm:${id}:notification`});await tx.insert(directMessageNotificationOutbox).values({messageId:id,recipientId,status:"pending"});return{id,replayed:false as const};});}
 
 
 
 export async function listMessages(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(messages).where(or(eq(messages.senderId, userId), eq(messages.recipientId, userId))).orderBy(desc(messages.createdAt)); }
-export async function sendMessage(userId: number, input: { recipientId: number; body: string; referralRequestId?: number }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(messages).values({ senderId: userId, recipientId: input.recipientId, body: input.body, referralRequestId: input.referralRequestId }); await db.insert(notifications).values({ userId: input.recipientId, category: "message", title: "New message", body: "You have a new message in Bridge." }); return { id: Number(result[0].insertId) }; }
+export async function sendMessage(userId: number, input: { recipientId: number; body: string; referralRequestId?: number }) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); const result = await db.insert(messages).values({ senderId: userId, recipientId: input.recipientId, body: input.body, referralRequestId: input.referralRequestId }); await db.insert(notifications).values({ kind: "message_new", userId: input.recipientId, category: "message", title: "New message", body: "You have a new message in Bridge." }); return { id: Number(result[0].insertId) }; }
 export async function listNotifications(userId: number) { const db = await getDb(); if (!db) return []; return db.select().from(notifications).where(eq(notifications.userId, userId)).orderBy(desc(notifications.createdAt)); }
 export async function markNotificationRead(userId: number, notificationId: number) { const db = await getDb(); if (!db) throw new Error("Database unavailable"); await db.update(notifications).set({ readAt: new Date() }).where(and(eq(notifications.id, notificationId), eq(notifications.userId, userId))); return { success: true }; }
 export async function countRecentMessagesBySender(userId: number, since: Date) {
@@ -2523,7 +2583,7 @@ export async function grantPromoCreditsTx(tx: any, input: { userId: number; role
     const inserted = await tx.insert(promoCreditGrants).values({ userId: input.userId, role: input.role, tokenCount: PROMO_GRANT_TOKENS, creditsRemaining: PROMO_GRANT_TOKENS, status: "active", source: input.source.slice(0, 40), providerRef: input.providerRef.slice(0, 255), grantedAt: now, expiresAt });
     const grantId = Number(inserted[0].insertId);
     await tx.insert(tokenTransactions).values({ userId: input.userId, role: input.role, tokenCount: PROMO_GRANT_TOKENS, kind: "promo_grant", source: "promo_first_payment", referenceType: "promo_credit_grant", referenceId: String(grantId), idempotencyKey: `promo-grant-${grantId}` });
-    await tx.insert(notifications).values({ userId: input.userId, category: "system", title: `${PROMO_GRANT_TOKENS} bonus referral credits`, body: `Your verified payment earned ${PROMO_GRANT_TOKENS} bonus credits. They expire in 30 days and are used before monthly credits.` });
+    await tx.insert(notifications).values({ kind: "credits_added", userId: input.userId, category: "system", title: `${PROMO_GRANT_TOKENS} bonus referral credits`, body: `Your verified payment earned ${PROMO_GRANT_TOKENS} bonus credits. They expire in 30 days and are used before monthly credits.` });
     return { granted: true, grantId };
   } catch (error) {
     if ((error as { code?: string }).code === "ER_DUP_ENTRY") return { granted: false, reason: "already_granted" };
@@ -2582,7 +2642,7 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
     const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update");
     if (!wallet[0]) throw new Error("Recovery wallet update failed");
     await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment", source: "admin_recovery", referenceType: "admin_token_adjustment", referenceId: String(Number(adjustment[0].insertId)), idempotencyKey: `admin-adjustment-${Number(adjustment[0].insertId)}`, balanceAfter: wallet[0].balance });
-    await tx.insert(notifications).values({ userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.` });
+    await tx.insert(notifications).values({ kind: "credits_added", userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.` });
     return { adjustmentId: Number(adjustment[0].insertId), recipientUserId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, newBalance: wallet[0].balance };
   });
 }
@@ -2640,7 +2700,7 @@ async function grantPendingActionRewardsTx(tx: any, userId: number, role: Wallet
   const updated=await tx.update(tokenBalances).set({balance:sql`${tokenBalances.balance} + ${total}`}).where(eq(tokenBalances.id,wallet.id));
   if(Number(updated[0]?.affectedRows??0)!==1)throw new Error("Reward wallet update failed");
   for(const pendingId of claimedIds)await tx.insert(tokenTransactions).values({userId,role,tokenCount:Number(pending.find((row:any)=>row.id===pendingId)!.tokenCount),kind:"invite_reward_granted",source:"action_gated_reward",referenceType:"pending_reward",referenceId:String(pendingId),idempotencyKey:`reward-${pendingId}`,rewardStatus:"granted",qualifiedByType,qualifiedById,qualifiedAt:new Date()});
-  await tx.insert(notifications).values({userId,category:"system",title:"Referral credits unlocked",body:`Your ${total} invite credit${total===1?"":"s"} were added after your referral action.`});
+  await tx.insert(notifications).values({ kind: "credits_added",userId,category:"system",title:"Referral credits unlocked",body:`Your ${total} invite credit${total===1?"":"s"} were added after your referral action.`});
   return {granted:total};
 }
 
@@ -3795,4 +3855,36 @@ export async function listBillingLedgerRows(window: { since: Date; until: Date; 
   const parked = await db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt })
     .from(operationalActivityLogs).where(and(inArray(operationalActivityLogs.action, ["billing.payment_unmatched", "billing.refund_needs_review"]), gte(operationalActivityLogs.createdAt, window.since), lt(operationalActivityLogs.createdAt, window.until))).orderBy(asc(operationalActivityLogs.createdAt)).limit(take);
   return { intents, payments, transactions, parked };
+}
+
+
+export async function getReferrerHome(userId: number, now: Date = new Date()) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const profile = await getProfileByUserId(userId);
+  const verified = Boolean(profile?.workEmailDomain && isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain));
+  let used = 0, waiting = 0, expiringSoon = 0;
+  if (verified) {
+    const claimed = await db.select({ requestId: referralTransitionEvents.referralRequestId }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.actorUserId, userId), gte(referralTransitionEvents.createdAt, monthStartUtc(now)), or(eq(referralTransitionEvents.action, "claim"), eq(referralTransitionEvents.action, "approve"), and(eq(referralTransitionEvents.action, "review"), eq(referralTransitionEvents.resultingStatus, "approved"))))).groupBy(referralTransitionEvents.referralRequestId);
+    used = claimed.length;
+    const fresh = await listCompanyReferralInboxByState(userId, "new");
+    waiting = fresh.length;
+    expiringSoon = fresh.filter(row => { const at = row.expiresAt ? Date.parse(row.expiresAt) : NaN; return Number.isFinite(at) && at - now.getTime() <= 86_400_000 && at > now.getTime(); }).length;
+  }
+  return buildReferrerHome({ verified, paused: Boolean(profile?.paused), capacity: profile?.referralCapacity ?? 3, usedThisMonth: used, waiting, expiringSoon });
+}
+
+
+export async function getAccountPreferences(userId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const row = (await db.select({ timeZone: accountPreferences.timeZone, dateFormat: accountPreferences.dateFormat }).from(accountPreferences).where(eq(accountPreferences.userId, userId)).limit(1))[0];
+  return { timeZone: row?.timeZone ?? null, dateFormat: (row?.dateFormat ?? null) as "dmy" | "mdy" | "iso" | null };
+}
+
+export async function saveAccountPreferences(userId: number, patch: { timeZone?: string | null; dateFormat?: "dmy" | "mdy" | "iso" | null }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const set: { timeZone?: string | null; dateFormat?: string | null } = {};
+  if (patch.timeZone !== undefined) set.timeZone = patch.timeZone;
+  if (patch.dateFormat !== undefined) set.dateFormat = patch.dateFormat;
+  await db.insert(accountPreferences).values({ userId, timeZone: set.timeZone ?? null, dateFormat: set.dateFormat ?? null }).onDuplicateKeyUpdate({ set });
+  return getAccountPreferences(userId);
 }

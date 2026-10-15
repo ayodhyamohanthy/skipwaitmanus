@@ -139,7 +139,7 @@ describe("Verify work email", () => {
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
     expect(await screen.findByText("Enter the code")).toBeTruthy();
-    expect(screen.getByText(/Resend in 1:00/)).toBeTruthy();
+    expect(screen.getByText(/Resend in 0:30/)).toBeTruthy();
   });
 
   it("verifies the code, redeems the receipt, and only then shows the badge preview", async () => {
@@ -253,7 +253,7 @@ describe("Verify work email", () => {
     fireEvent.change(screen.getByLabelText(/Work email/), { target: { value: "name@wipro.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Send code/ }));
     await act(async () => { await vi.advanceTimersByTimeAsync(100); });
-    expect(screen.getByText(/Resend in 1:00/)).toBeTruthy();
+    expect(screen.getByText(/Resend in 0:30/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Resend code/ })).toBeNull();
     for (let second = 0; second < 61; second++) await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
     fireEvent.click(screen.getByRole("button", { name: /Resend code/ }));

@@ -1,3 +1,4 @@
+import { PASS_REASON_OPTIONS } from "@shared/passReasons";
 import { ArrowRight, Check, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -6,14 +7,8 @@ import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
 import { ModalError, ThreadModal } from "./ThreadModal";
 import { companyName, stageIndex, stageOf } from "./threadModel";
 
-/** Kit pass reasons mapped to the server's one-click decline reasons. */
-export const PASS_REASONS = [
-  { label: "Not my team or function", value: "role_not_a_fit" },
-  { label: "Role needs more experience", value: "role_not_a_fit" },
-  { label: "Not enough context", value: "cannot_support" },
-  { label: "At capacity right now", value: "timing" },
-  { label: "Prefer not to say", value: "cannot_support" },
-] as const;
+/** Kit pass reasons; `value` is the legacy decline reason the server routes on, `code` the kit reason. */
+export const PASS_REASONS = PASS_REASON_OPTIONS.map(option => ({ label: option.label, value: option.legacy, code: option.code }));
 
 const SEEKER_MILESTONES = [
   { status: "interview", stage: "Interviewing" },
@@ -103,21 +98,22 @@ type ReferrerProps = {
   passed: boolean;
   returnPath: string;
   onAccept: () => Promise<void>;
-  onPass: (reason: string) => Promise<void>;
-  onMarkReferred: () => Promise<void>;
+  onPass: (reason: string, passReason: string) => Promise<void>;
+  onMarkReferred: (referenceId?: string) => Promise<void>;
 };
 
 export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onPass, onMarkReferred }: ReferrerProps) {
   const [modal, setModal] = useState<null | "accept" | "pass" | "referred">(null);
   const [confirmed, setConfirmed] = useState(false);
+  const [reference, setReference] = useState("");
   const [reasonLabel, setReasonLabel] = useState<string>(PASS_REASONS[0].label);
   const action = useAction();
   const stage = stageOf(request);
   const company = companyName(request);
-  const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setModal(next); };
+  const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setReference(""); setModal(next); };
   const close = () => { setModal(null); action.reset(); };
   const submit = (run: () => Promise<void>, fallback: string) => { void action.run(run, fallback).then(ok => { if (ok) setModal(null); }); };
-  const reasonValue = PASS_REASONS.find(option => option.label === reasonLabel)?.value ?? PASS_REASONS[0].value;
+  const selectedReason = PASS_REASONS.find(option => option.label === reasonLabel) ?? PASS_REASONS[0];
 
   return (
     <>
@@ -145,7 +141,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
           {titleId => (
             <>
               <h2 id={titleId} className="text-xl font-semibold">Accept this request?</h2>
-              <p className="mt-2 text-muted-foreground">You&apos;ll see their name, and you&apos;ll get the resume.</p>
+              <p className="mt-2 text-muted-foreground">You&apos;ll both see names, and you&apos;ll get the resume.</p>
               <label className="mt-4 flex items-start gap-3 text-sm"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-1 size-4" />I&apos;ll refer only through {company}&apos;s official process and won&apos;t accept anything in return.</label>
               <ModalError message={action.error} />
               <footer className="mt-6 flex justify-end gap-2">
@@ -161,7 +157,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
           {titleId => (
             <>
               <h2 id={titleId} className="text-xl font-semibold">Pass privately</h2>
-              <p className="mt-2 text-muted-foreground">The seeker sees a kind note. Never your name.</p>
+              <p className="mt-2 text-muted-foreground">The seeker sees a kind note with your reason. Never your name.</p>
               <div className="mt-4 grid gap-2" role="radiogroup" aria-label="Pass reason">
                 {PASS_REASONS.map(option => (
                   <label key={option.label} className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 ${reasonLabel === option.label ? "border-primary bg-primary/5" : "border-border"}`}>
@@ -172,7 +168,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
               <ModalError message={action.error} />
               <footer className="mt-6 flex justify-end gap-2">
                 <Button variant="ghost" onClick={close}>Cancel</Button>
-                <Button disabled={action.busy} onClick={() => submit(() => onPass(reasonValue), "We could not record your decision")}>Pass</Button>
+                <Button disabled={action.busy} onClick={() => submit(() => onPass(selectedReason.value, selectedReason.code), "We could not record your decision")}>Pass</Button>
               </footer>
             </>
           )}
@@ -183,11 +179,12 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
           {titleId => (
             <>
               <h2 id={titleId} className="text-xl font-semibold">Mark as referred</h2>
-              <p className="mt-2 text-muted-foreground">Tell the seeker you submitted this through your company&apos;s process.</p>
+              <p className="mt-2 text-muted-foreground">Tell the seeker you submitted this through your company&apos;s process. Optional: add your portal&apos;s reference so the seeker can mention it.</p>
+              <label className="mt-4 block text-sm font-medium">Reference ID (optional)<input className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3 text-base" value={reference} maxLength={40} onChange={event => setReference(event.target.value)} placeholder="e.g. TC-4410" autoComplete="off" /></label>
               <ModalError message={action.error} />
               <footer className="mt-6 flex justify-end gap-2">
                 <Button variant="ghost" onClick={close}>Cancel</Button>
-                <Button disabled={action.busy} onClick={() => submit(onMarkReferred, "We could not mark this as referred")}>Confirm <Check /></Button>
+                <Button disabled={action.busy} onClick={() => submit(() => onMarkReferred(reference.trim() || undefined), "We could not mark this as referred")}>Confirm <Check /></Button>
               </footer>
             </>
           )}
