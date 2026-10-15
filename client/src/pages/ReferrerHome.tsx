@@ -62,7 +62,7 @@ export default function ReferrerHome() {
         </Panel>
       ) : (
         <>
-          {view.reverifyDue ? <Panel tone="accent" className="mb-4 flex flex-wrap items-center justify-between gap-3"><span role="status" className="flex items-center gap-2"><CalendarClock />Re-verify your {company?.name ?? "work"} email soon to keep receiving asks.</span><Button asChild size="sm"><Link href="/verify">Re-verify</Link></Button></Panel> : null}
+          {view.reverifyDue ? <Panel tone="accent" className="mb-4 flex flex-wrap items-center justify-between gap-3"><span role="status" className="flex items-center gap-2"><CalendarClock />{reverifyCopy(company?.name ?? "work", view.reverifyDaysLeft)}</span><Button asChild size="sm"><Link href="/verify">Re-verify</Link></Button></Panel> : null}
           {view.paused ? <Panel tone="muted" className="mb-4 flex flex-wrap items-center justify-between gap-3"><span role="status" className="flex items-center gap-2"><Pause />New asks are paused. Open conversations still work.</span><Button size="sm" disabled={pause.isPending} onClick={() => setPaused(false)}><Play />{pause.isPending ? "Resuming…" : "Resume"}</Button></Panel> : null}
           {pause.isError ? <p role="alert" className="mb-4 text-sm font-semibold text-destructive">{pause.error.message || "We could not update your pause setting. Try again."}</p> : null}
 
@@ -84,4 +84,10 @@ export default function ReferrerHome() {
       </div>
     </main>
   );
+}
+
+/** Kit copy: "Re-verify your Wipro email within 5 days to keep receiving asks." */
+export function reverifyCopy(company: string, daysLeft: number | null): string {
+  if (daysLeft === null || daysLeft <= 0) return `Re-verify your ${company} email now to keep receiving asks.`;
+  return `Re-verify your ${company} email within ${daysLeft} ${daysLeft === 1 ? "day" : "days"} to keep receiving asks.`;
 }
