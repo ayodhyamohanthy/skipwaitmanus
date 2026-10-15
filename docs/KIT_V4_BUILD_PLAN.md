@@ -77,7 +77,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | in progress (4a data-export-async only) — Claude — 2026-10-15 — branch task4a-data-export. 4b deletion HELD pending founder answers |
 | 5 | `moderation-actions` + `safety-report-review`: severity, warn/restrict/ban with enforcement on every ask/accept path and alias, both parties notified, 14-day appeal, audit trail | — | XL | todo |
 | 6 | `work-email-reverify` (90-day re-check, badge removal, open asks returned) + `otp-policy-kit` (30 s resend, server lockout 15 min after 5 tries) | scheduled jobs (done) | L | todo |
-| 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | todo |
+| 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | in progress (7b session-management only) — Claude — 2026-10-15 — branch task7b-sessions. 7a consent toggles queued next |
 | **Tier C — core ask flow (activation)** |||||
 | 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | in progress — SkipWait eng agent — 2026-10-15 — branch task8-search-profile |
 | 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | in progress (slice A: shared/askQuality.ts + ask-company-context, client only; server enforcement on the ask-create path held) - SkipWait eng agent - 2026-10-15 - branch task9-ask-company-context |
