@@ -3,6 +3,7 @@ import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { registerPlansCatalogRoutes } from "./plansCatalogRoutes";
 import { EDGE_COUNTRY_HEADER } from "../shared/billingRegion";
+import { clearPriceAvailabilityCache } from "./billingAvailability";
 
 const LIVE = new Set(["skipwait_start_30d-USD", "skipwait_momentum_30d-INR", "skipwait_pack_2-INR"]);
 
@@ -69,5 +70,37 @@ describe("GET /api/plans/catalog", () => {
       .get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "IN");
     expect(broken.status).toBe(503);
     expect(broken.body).toEqual({ error: "Prices are unavailable right now. Try again in a moment." });
+  });
+
+  it("answers 503 - not 'not on sale' - when the provider cannot be asked, and is bounded when it never answers", async () => {
+    const configured = { credentials: () => ({ environment: "test" as const, site: "fixture-test", apiKey: "fixture-key" }) };
+    const failed = await request(appFor({ availableFor: undefined, ...configured, lookup: async () => { throw new Error("Chargebee down"); } }))
+      .get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "IN");
+    expect(failed.status).toBe(503);
+    expect(failed.body).toEqual({ error: "Prices are unavailable right now. Try again in a moment." });
+    expect(failed.headers["cache-control"]).toBe("no-store");
+
+    // A lookup that never settles must still produce an answer inside the budget.
+    const startedAt = Date.now();
+    const hung = await request(appFor({ availableFor: undefined, ...configured, probeTimeoutMs: 40, lookup: () => new Promise(() => {}) }))
+      .get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "IN");
+    expect(hung.status).toBe(503);
+    expect(Date.now() - startedAt).toBeLessThan(5_000);
+
+    // One price the provider does answer for is enough to render the catalog: only
+    // the ids left unknown read as not available yet. Availability is cached per site
+    // in process memory, so drop the answers the two cases above cached first.
+    clearPriceAvailabilityCache();
+    const partial = await request(appFor({
+      availableFor: undefined,
+      ...configured,
+      lookup: async (_credentials, itemPriceId) => {
+        if (itemPriceId === "skipwait_start_30d-INR") return { id: itemPriceId, status: "active", currency_code: "INR", price: 29_900, period_unit: "day", period: 30, item_type: "plan" };
+        throw new Error("Chargebee down");
+      },
+    })).get("/api/plans/catalog").set(EDGE_COUNTRY_HEADER, "IN");
+    expect(partial.status).toBe(200);
+    expect(partial.body.plans.find((plan: { id: string }) => plan.id === "start").terms[0].available).toBe(true);
+    expect(partial.body.plans.find((plan: { id: string }) => plan.id === "momentum").terms[0].available).toBe(false);
   });
 });

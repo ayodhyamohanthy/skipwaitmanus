@@ -7,19 +7,39 @@
 // Answers are cached per site and item price in process memory: this is a
 // routing hint, not a money decision (Chargebee itself refuses an unknown item
 // price, and every paid state still comes only from a verified webhook).
+//
+// Every probe is bounded twice: the Chargebee call stops at 8s
+// (server/chargebeeSubscriptionApi.ts) and the whole probe stops here at
+// PROBE_DEADLINE_MS whatever the network does. A probe that never answers is
+// reported as "unknown", never as "not on sale": the caller decides what to say,
+// and a stuck probe can neither hang a request nor leave an in-flight entry that
+// blocks every later caller.
 import type { BillingPeriod, CatalogPrice } from "../shared/billingCatalog";
 import type { ChargebeeCredentials } from "./chargebeeApi";
 import { retrieveItemPrice, type ProviderItemPrice } from "./chargebeeSubscriptionApi";
 
 export type ItemPriceLookup = (credentials: ChargebeeCredentials, itemPriceId: string) => Promise<ProviderItemPrice | null>;
 
+/** Sellable now, not created yet, or the provider did not answer. */
+export type PriceAvailability = "available" | "missing" | "unknown";
+
 const AVAILABLE_TTL_MS = 5 * 60 * 1000;
 const MISSING_TTL_MS = 60 * 1000;
 const ERROR_TTL_MS = 30 * 1000;
 
-type Entry = { available: boolean; expiresAt: number };
+/** The budget for one probe, however slow the provider or the network is. */
+const PROBE_DEADLINE_MS = 6_000;
+
+type Entry = { verdict: PriceAvailability; expiresAt: number };
 const cache = new Map<string, Entry>();
-const inFlight = new Map<string, Promise<boolean>>();
+const inFlight = new Map<string, Promise<PriceAvailability>>();
+
+/** Resolves `onTimeout()` if `work` has not settled in `ms`; `work` never rejects here. */
+function withDeadline<T>(work: Promise<T>, ms: number, onTimeout: () => T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<T>(resolve => { timer = setTimeout(() => resolve(onTimeout()), ms); });
+  return Promise.race([work, deadline]).finally(() => { if (timer) clearTimeout(timer); });
+}
 
 /** The Chargebee billing period an item price must carry: passes in days, legacy monthly in months, Keep warm in years. */
 const EXPECTED_PERIOD: Readonly<Record<BillingPeriod, { unit: "day" | "month" | "year"; count: number }>> = {
@@ -45,39 +65,60 @@ export function itemPriceMatches(price: ProviderItemPrice | null, expected: Cata
   return periodMatches(price, expected.interval);
 }
 
-export type AvailabilityDeps = { credentials: ChargebeeCredentials | null; lookup?: ItemPriceLookup; now?: () => number };
+export type AvailabilityDeps = { credentials: ChargebeeCredentials | null; lookup?: ItemPriceLookup; now?: () => number; /** Test override for the probe budget. */ probeTimeoutMs?: number };
 
-/** One price's availability on the configured site; false when billing is not configured. */
-export async function isPriceAvailable(expected: CatalogPrice, deps: AvailabilityDeps): Promise<boolean> {
+/** What one catalog price is right now: sellable, not created yet, or unanswerable. */
+export async function itemPriceAvailability(expected: CatalogPrice, deps: AvailabilityDeps): Promise<PriceAvailability> {
   const { credentials } = deps;
-  if (!credentials) return false;
+  // Billing that is not configured sells nothing here; that is a definite answer,
+  // not an outage, so the catalog still renders with everything unavailable.
+  if (!credentials) return "missing";
   const now = deps.now ?? Date.now;
   const key = `${credentials.site}:${expected.itemPriceId}`;
   const cached = cache.get(key);
-  if (cached && cached.expiresAt > now()) return cached.available;
+  if (cached && cached.expiresAt > now()) return cached.verdict;
   const pending = inFlight.get(key);
   if (pending) return pending;
   const lookup = deps.lookup ?? retrieveItemPrice;
-  const probe = lookup(credentials, expected.itemPriceId)
-    .then(price => {
-      const available = itemPriceMatches(price, expected);
-      if (price && !available) console.warn("[Billing] item price does not match the catalog", { itemPriceId: expected.itemPriceId });
-      cache.set(key, { available, expiresAt: now() + (available ? AVAILABLE_TTL_MS : MISSING_TTL_MS) });
-      return available;
+  const answered = lookup(credentials, expected.itemPriceId)
+    .then((price): PriceAvailability => {
+      if (!price) return "missing";
+      const matched = itemPriceMatches(price, expected);
+      if (!matched) console.warn("[Billing] item price does not match the catalog", { itemPriceId: expected.itemPriceId });
+      return matched ? "available" : "missing";
     })
-    .catch(() => {
-      cache.set(key, { available: false, expiresAt: now() + ERROR_TTL_MS });
-      return false;
+    // A provider error is not proof the price is absent: say we do not know.
+    .catch((): PriceAvailability => "unknown");
+  const probe = withDeadline(answered, deps.probeTimeoutMs ?? PROBE_DEADLINE_MS, (): PriceAvailability => {
+    console.warn("[Billing] item price lookup did not answer in time", { itemPriceId: expected.itemPriceId, deadlineMs: deps.probeTimeoutMs ?? PROBE_DEADLINE_MS });
+    return "unknown";
+  })
+    .then(verdict => {
+      cache.set(key, { verdict, expiresAt: now() + (verdict === "available" ? AVAILABLE_TTL_MS : verdict === "missing" ? MISSING_TTL_MS : ERROR_TTL_MS) });
+      return verdict;
     })
     .finally(() => inFlight.delete(key));
   inFlight.set(key, probe);
   return probe;
 }
 
+/** One price's availability as a boolean; "unknown" reads as not available yet. */
+export async function isPriceAvailable(expected: CatalogPrice, deps: AvailabilityDeps): Promise<boolean> {
+  return (await itemPriceAvailability(expected, deps)) === "available";
+}
+
+/** Availability for many prices at once: sellable ids, and the ids the provider did not answer for. */
+export async function priceAvailability(prices: readonly CatalogPrice[], deps: AvailabilityDeps): Promise<{ available: Set<string>; unknown: Set<string> }> {
+  const answers = await Promise.all(prices.map(async price => [price.itemPriceId, await itemPriceAvailability(price, deps)] as const));
+  return {
+    available: new Set(answers.filter(([, verdict]) => verdict === "available").map(([id]) => id)),
+    unknown: new Set(answers.filter(([, verdict]) => verdict === "unknown").map(([id]) => id)),
+  };
+}
+
 /** Availability for many prices at once, as the set of item price ids that can be sold. */
 export async function availablePriceIds(prices: readonly CatalogPrice[], deps: AvailabilityDeps): Promise<Set<string>> {
-  const answers = await Promise.all(prices.map(async price => [price.itemPriceId, await isPriceAvailable(price, deps)] as const));
-  return new Set(answers.filter(([, available]) => available).map(([id]) => id));
+  return (await priceAvailability(prices, deps)).available;
 }
 
 /** Tests and the admin catalog check start from a clean cache. */

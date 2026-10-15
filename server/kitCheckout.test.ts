@@ -60,6 +60,25 @@ describe("kit plan checkout decision", () => {
     });
     expect(started).toMatchObject({ ok: false, status: 503 });
   });
+
+  it("says payments are unavailable, not 'not on sale yet', when the provider cannot be asked", async () => {
+    const createPlanCheckout = vi.fn();
+    const failed = await startKitPlanCheckout({
+      req, request: { planId: "momentum", interval: "90d", currency: "INR", billingCountry: "IN", role: "job_seeker" },
+      customer: {}, urls,
+      deps: { lookup: async () => { throw new Error("Chargebee down"); }, createPlanCheckout },
+    });
+    expect(failed).toEqual({ ok: false, status: 503, error: "Payments are not available right now. Please try again in a moment." });
+
+    // A provider that never answers is bounded too, and charges nothing.
+    const hung = await startKitPlanCheckout({
+      req, request: { planId: "momentum", interval: "90d", currency: "INR", billingCountry: "IN", role: "job_seeker" },
+      customer: {}, urls,
+      deps: { probeTimeoutMs: 40, lookup: () => new Promise(() => {}), createPlanCheckout },
+    });
+    expect(hung).toMatchObject({ ok: false, status: 503 });
+    expect(createPlanCheckout).not.toHaveBeenCalled();
+  });
 });
 
 describe("kit credit pack checkout decision", () => {

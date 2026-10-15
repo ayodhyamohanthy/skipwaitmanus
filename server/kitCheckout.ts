@@ -17,7 +17,7 @@ import { randomUUID } from "node:crypto";
 import type { Request } from "express";
 import { billingPlanLabel, packPrice, planPrice, type CatalogPrice, type PackPrice, type PlanPrice } from "../shared/billingCatalog";
 import { NOT_AVAILABLE_CODE, type KitPlanCheckoutRequest, type PackCheckoutRequest } from "../shared/subscriptionManagement";
-import { isPriceAvailable, type AvailabilityDeps } from "./billingAvailability";
+import { itemPriceAvailability, type AvailabilityDeps, type PriceAvailability } from "./billingAvailability";
 import { createPackCheckout, createPlanCheckout, type CheckoutCustomer, type HostedPageResult } from "./chargebeeSubscriptionApi";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 
@@ -26,6 +26,9 @@ export type KitCheckoutDeps = {
   credentials?: (req: Request) => AvailabilityDeps["credentials"];
   /** Tests: the availability answer for one item price. */
   isAvailable?: (req: Request, price: CatalogPrice) => boolean | Promise<boolean>;
+  /** Tests: how the provider is asked about one item price, and the budget for one probe. */
+  lookup?: AvailabilityDeps["lookup"];
+  probeTimeoutMs?: number;
   /** Tests: bound provider calls; the defaults resolve the site from the request host. */
   createPlanCheckout?: typeof createPlanCheckout;
   createPackCheckout?: typeof createPackCheckout;
@@ -50,9 +53,9 @@ function credentialsFor(req: Request, deps: KitCheckoutDeps): AvailabilityDeps["
   }
 }
 
-async function isAvailable(req: Request, price: CatalogPrice, deps: KitCheckoutDeps): Promise<boolean> {
-  if (deps.isAvailable) return Boolean(await deps.isAvailable(req, price));
-  return isPriceAvailable(price, { credentials: credentialsFor(req, deps) });
+async function availabilityOf(req: Request, price: CatalogPrice, deps: KitCheckoutDeps): Promise<PriceAvailability> {
+  if (deps.isAvailable) return (await deps.isAvailable(req, price)) ? "available" : "missing";
+  return itemPriceAvailability(price, { credentials: credentialsFor(req, deps), lookup: deps.lookup, probeTimeoutMs: deps.probeTimeoutMs });
 }
 
 /** "Momentum" / "Land Sprint"; the catalog label, never a client string. */
@@ -70,7 +73,10 @@ export async function startKitPlanCheckout(input: { req: Request; request: KitPl
   if (!price) return { ok: false, status: 400, error: "That plan is not sold for this term" };
   const credentials = credentialsFor(input.req, deps);
   if (!credentials && !deps.createPlanCheckout) return notConfigured;
-  if (!(await isAvailable(input.req, price, deps))) return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: kitPriceError(price) };
+  const verdict = await availabilityOf(input.req, price, deps);
+  // The provider did not answer: that is an outage, not a price that is missing.
+  if (verdict === "unknown") return notConfigured;
+  if (verdict !== "available") return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: kitPriceError(price) };
   const checkoutIntentId = (deps.newCheckoutIntentId ?? randomUUID)();
   const checkout = await (deps.createPlanCheckout ?? createPlanCheckout)(credentials!, {
     ...input.customer,
@@ -89,7 +95,10 @@ export async function startKitPackCheckout(input: { req: Request; request: PackC
   if (!price) return { ok: false, status: 400, error: "That credit pack is not available for this billing route" };
   const credentials = credentialsFor(input.req, deps);
   if (!credentials && !deps.createPackCheckout) return notConfigured;
-  if (!(await isAvailable(input.req, price, deps))) return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: packPriceError(price) };
+  const verdict = await availabilityOf(input.req, price, deps);
+  // The provider did not answer: that is an outage, not a price that is missing.
+  if (verdict === "unknown") return notConfigured;
+  if (verdict !== "available") return { ok: false, status: 409, code: NOT_AVAILABLE_CODE, error: packPriceError(price) };
   const checkoutIntentId = (deps.newCheckoutIntentId ?? randomUUID)();
   const checkout = await (deps.createPackCheckout ?? createPackCheckout)(credentials!, {
     ...input.customer,
