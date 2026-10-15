@@ -30,9 +30,9 @@ const opens = async (user: number) => (await getAccessibleReferralAttachment(use
 const grants = () => store.rows(referralDocumentAccessGrants);
 const status = () => store.rows(referralRequests)[0]?.status;
 
-describe("asks accepted before acceptance wrote grants keep the accepted referrer's access", () => {
+describe("asks accepted before acceptance wrote grants keep the accepted referrer's access for the grant window", () => {
   it("an accepted ask with no grant row (one-click acceptance before D-019(e)) opens, in the file route and the detail link", async () => {
-    resetStore({ ask: { status: "approved", referrerId: REFERRER, revision: 4 } });
+    resetStore({ ask: { status: "approved", referrerId: REFERRER, revision: 4 }, acceptance: { by: REFERRER, at: new Date(Date.now() - DAY) } });
     expect(await opens(REFERRER)).toBe(true);
     expect(await getClaimedCompanyReferralDetail(REFERRER, REQUEST_ID)).toMatchObject({ status: "approved", documentAccessActive: true });
     expect(await opens(COLLEAGUE)).toBe(false);
@@ -40,11 +40,27 @@ describe("asks accepted before acceptance wrote grants keep the accepted referre
   });
 
   it("later stages keep it too, until the ask is closed", async () => {
-    resetStore({ ask: { status: "interview", referrerId: REFERRER, revision: 6 } });
+    resetStore({ ask: { status: "interview", referrerId: REFERRER, revision: 6 }, acceptance: { by: REFERRER, at: new Date(Date.now() - 3 * DAY) } });
     expect(await opens(REFERRER)).toBe(true);
     await updateReferralProgress(REFERRER, { requestId: REQUEST_ID, status: "closed" });
     expect(await opens(REFERRER)).toBe(false);
     expect(await opens(SEEKER)).toBe(true);
+  });
+
+  it("with no grant row, access ends 30 days after that referrer's acceptance; the detail then shows the file unlinked", async () => {
+    resetStore({ ask: { status: "approved", referrerId: REFERRER, revision: 4 }, acceptance: { by: REFERRER, at: new Date(Date.now() - 31 * DAY) } });
+    expect(await opens(REFERRER)).toBe(false);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, REQUEST_ID)).toMatchObject({ status: "approved", documentAccessActive: false });
+    expect(await opens(SEEKER)).toBe(true);
+  });
+
+  it("with no grant row, a referrer assigned to an accepted ask they never accepted gets nothing", async () => {
+    resetStore({ ask: { status: "approved", referrerId: REFERRER, revision: 4 } });
+    expect(await opens(REFERRER)).toBe(false);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, REQUEST_ID)).toMatchObject({ documentAccessActive: false });
+    resetStore({ ask: { status: "approved", referrerId: REFERRER, revision: 4 }, acceptance: { by: COLLEAGUE, at: new Date(Date.now() - DAY) } });
+    expect(await opens(REFERRER)).toBe(false);
+    expect(await opens(COLLEAGUE)).toBe(false);
   });
 
   it("an accepted ask whose grant came from a claim keeps that grant's window; once it ends the detail shows the file unlinked", async () => {

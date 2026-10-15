@@ -1,21 +1,25 @@
-import { sql } from "drizzle-orm";
-import { referralDocumentAccessGrants } from "../drizzle/schema";
+import { and, eq, sql } from "drizzle-orm";
+import { referralDocumentAccessGrants, referralRequests, referralTransitionEvents } from "../drizzle/schema";
 
 /*
  * When a referrer may open a Job Seeker's files (D-019(e); Privacy: "documents
  * remain private until a request is accepted"; Terms: "On acceptance ... the
  * Referrer receives the resume").
  *
- * - A claim grants nothing. Only acceptance writes a document grant (every
- *   accept path: one-click/queue, email review, thread review, admin approval),
- *   in the same transaction as the status change, valid DOCUMENT_GRANT_TTL_MS.
+ * - A claim grants nothing. Only the referrer's own acceptance writes a document
+ *   grant (one-click/queue, email review, thread review), in the same
+ *   transaction as the status change, valid DOCUMENT_GRANT_TTL_MS. An
+ *   administrator can never accept a claimed ask (adminReferralApproval.ts).
  * - Access needs all of: the ask is accepted and not finished
  *   (REFERRER_DOCUMENT_ACCESS_STATUSES), it is assigned to this referrer, they
  *   have not passed on it, and their grant is active (not revoked, not expired).
  * - An accepted ask with no grant row at all for its referrer was accepted
- *   before acceptance wrote one (one-click acceptance created none). Access
- *   for it is derived from the accepted state, so those referrers keep the
- *   resume without a production backfill; terminal states still end it.
+ *   before acceptance wrote one (one-click acceptance created none). It opens
+ *   only within DOCUMENT_GRANT_TTL_MS of that referrer's own recorded
+ *   acceptance (their "approved" transition event, logged since migration
+ *   0058), the same window every acceptance gets, with no production backfill.
+ *   It fails closed: a referrer assigned to an accepted ask without accepting
+ *   it (no such event), or whose window ended, gets nothing.
  * - The Job Seeker who uploaded a file always has it (checked by the caller).
  *
  * GET /api/documents/:id and the assigned referrer's detail view both use
@@ -36,6 +40,8 @@ export type ReferrerDocumentAccessInput = {
   readonly requestStatus: string | null;
   readonly passedByActor: boolean;
   readonly grant: ReferrerDocumentGrant | null;
+  /** When this actor's own acceptance of the ask was recorded, or null; read only when they have no grant row. */
+  readonly acceptedByActorAt: Date | null;
   readonly now: Date;
 };
 
@@ -47,8 +53,17 @@ export function isReferrerDocumentAccessActive(input: ReferrerDocumentAccessInpu
   if (input.referrerId === null || input.referrerId !== input.actorUserId) return false;
   if (!isReferrerDocumentAccessStatus(input.requestStatus)) return false;
   if (input.passedByActor) return false;
-  if (input.grant === null) return true;
+  if (input.grant === null) return input.acceptedByActorAt !== null && input.acceptedByActorAt.getTime() + DOCUMENT_GRANT_TTL_MS > input.now.getTime();
   return input.grant.revokedAt === null && input.grant.expiresAt !== null && input.grant.expiresAt.getTime() > input.now.getTime();
+}
+
+/**
+ * Left-join condition for the actor's own acceptance event on the ask (select
+ * its createdAt as acceptedByActorAt). An ask reaches "approved" once, only
+ * from "pending", so the join adds at most one row.
+ */
+export function actorAcceptanceEventOn(actorUserId: number) {
+  return and(eq(referralTransitionEvents.referralRequestId, referralRequests.id), eq(referralTransitionEvents.actorUserId, actorUserId), eq(referralTransitionEvents.resultingStatus, "approved"));
 }
 
 /**

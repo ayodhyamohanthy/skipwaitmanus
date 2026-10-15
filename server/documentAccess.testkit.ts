@@ -6,7 +6,7 @@
  * vi.mock("drizzle-orm/mysql2", ...) and reseed with `resetStore`.
  */
 import express from "express";
-import { jobs, profiles, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequests, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
+import { jobs, profiles, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { claimCompanyReferralRequest, getAccessibleReferralAttachment, getClaimedCompanyReferralDetail, oneClickReviewReferralRequest, reviewReferralRequest } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
@@ -22,20 +22,26 @@ export const REQUEST_ID = 501;
 export const RESUME_ID = 77;
 export const NOTE = "I led a measurable product design launch.";
 
-export type AskSeed = { status?: string; referrerId?: number | null; revision?: number };
+export type AskSeed = { status?: string; referrerId?: number | null; revision?: number; waitingForCoverage?: boolean };
+/** A recorded acceptance of the ask (its "approved" transition event): who accepted it and when. */
+export type AcceptanceSeed = { by: number; at: Date };
 
 /** One ask (pending and unclaimed unless overridden), the seeker's resume on it, and the seeker's wallet with the ask's debit. */
-export function seedRows(options: { ask?: AskSeed; grants?: readonly Row[]; passedBy?: readonly number[]; extraAttachments?: readonly Row[] } = {}) {
+export function seedRows(options: { ask?: AskSeed; grants?: readonly Row[]; passedBy?: readonly number[]; extraAttachments?: readonly Row[]; acceptance?: AcceptanceSeed } = {}) {
   const verifiedAt = new Date("2026-09-01T00:00:00Z");
   const employee = (id: number, userId: number, domain: string): Row => ({ id, userId, accountType: "referrer", workEmailDomain: domain, workEmailVerifiedAt: verifiedAt });
+  const revision = options.ask?.revision ?? 3;
+  const coverage: Row = options.ask?.waitingForCoverage === undefined ? {} : { waitingForCoverage: options.ask.waitingForCoverage, coverageQueuedAt: new Date("2026-10-01T00:00:00Z") };
+  const acceptance = options.acceptance;
   return [
     [users, [{ id: SEEKER, name: "Avery Example" }, { id: REFERRER, name: "Riya Referrer" }, { id: COLLEAGUE, name: "Colin Colleague" }, { id: OUTSIDER, name: "Other Person" }]],
     [profiles, [employee(31, REFERRER, "acme.com"), employee(32, OUTSIDER, "other.com"), employee(33, COLLEAGUE, "acme.com")]],
     [jobs, [{ id: 11, company: "acme.com", title: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", jobFunction: null }]],
-    [referralRequests, [{ id: REQUEST_ID, jobId: 11, jobSeekerId: SEEKER, referrerId: options.ask?.referrerId ?? null, status: options.ask?.status ?? "pending", revision: options.ask?.revision ?? 3, personalPitch: NOTE, referrerMessage: null, debitTransactionId: 61, createdAt: new Date() }]],
+    [referralRequests, [{ id: REQUEST_ID, jobId: 11, jobSeekerId: SEEKER, referrerId: options.ask?.referrerId ?? null, status: options.ask?.status ?? "pending", revision, personalPitch: NOTE, referrerMessage: null, debitTransactionId: 61, createdAt: new Date(), ...coverage }]],
     [referralAttachments, [...(options.extraAttachments ?? []), { id: RESUME_ID, ownerId: SEEKER, referralRequestId: REQUEST_ID, fileName: "Avery-Example-Resume.pdf", fileKey: "private/avery.pdf", mimeType: "application/pdf", fileSize: 2048 }]],
     [referralDocumentAccessGrants, [...(options.grants ?? [])]],
     [referralRequestPasses, (options.passedBy ?? []).map((referrerId, index): Row => ({ id: 70 + index, referralRequestId: REQUEST_ID, referrerId, reason: "timing" }))],
+    [referralTransitionEvents, acceptance ? [{ id: 40, referralRequestId: REQUEST_ID, operationKey: `one-click:${acceptance.by}:approved`, actorUserId: acceptance.by, action: "approve", fromStatus: "pending", resultingStatus: "approved", resultingRevision: revision, referenceId: null, createdAt: acceptance.at }] : []],
     [tokenBalances, [{ id: 81, userId: SEEKER, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "free" }]],
     [tokenTransactions, [{ id: 61, userId: SEEKER, role: "job_seeker", tokenCount: -1, kind: "direct_request", source: "monthly_allowance", sourceCycleKey: "2026-10", reversesTransactionId: null }]],
   ] as const;
