@@ -93,6 +93,19 @@ const WORKOS_IDENTITY_CACHE_MAX = 5_000;
 const workosIdentityCache = new Map<string, { identity: DevIdentity; expiresAt: number }>();
 export function clearWorkosIdentityCacheForTests() { workosIdentityCache.clear(); }
 
+/** The WorkOS session id of the request's own bearer token, or null when the request is not bearer-authenticated. */
+export async function currentWorkosSessionId(req: Request): Promise<string | null> {
+  const header = req.headers.authorization;
+  if (typeof header !== "string" || !header.startsWith("Bearer ")) return null;
+  const bearer = header.slice(7).trim();
+  if (bearer.split(".").length !== 3) return null;
+  try {
+    const clientId = configuredWorkosClientId();
+    const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
+    return validateWorkosAccessClaims(payload, clientId) && typeof payload.sid === "string" ? payload.sid : null;
+  } catch { return null; }
+}
+
 async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | undefined> {
   const clientId = configuredWorkosClientId();
   const { payload } = await jwtVerify(bearer, workosJwks(clientId), { issuer: WORKOS_ISSUER, algorithms: ["RS256"] });
