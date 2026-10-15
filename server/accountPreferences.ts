@@ -11,6 +11,8 @@ export function validTimeZone(value: unknown): value is string {
 export function parsePreferencesPatch(body: unknown): { patch: Partial<AccountPreferences> } | { error: string } {
   if (typeof body !== "object" || body === null || Array.isArray(body)) return { error: "Send the settings to change" };
   const input = body as Record<string, unknown>;
+  const unknown = Object.keys(input).filter(key => key !== "timeZone" && key !== "dateFormat");
+  if (unknown.length) return { error: "Unknown setting" };
   const patch: Partial<AccountPreferences> = {};
   if ("timeZone" in input) {
     if (input.timeZone === null) patch.timeZone = null;

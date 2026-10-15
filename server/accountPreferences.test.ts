@@ -12,8 +12,9 @@ describe("parsePreferencesPatch", () => {
   it("rejects bad zones, formats, empty and non-object bodies", () => {
     for (const body of [{ timeZone: "Mars/Base" }, { timeZone: 5 }, { timeZone: "x".repeat(80) }, { dateFormat: "dd/mm" }, {}, [], null, "x"]) expect("error" in parsePreferencesPatch(body)).toBe(true);
   });
-  it("ignores unknown keys", () => {
-    expect(parsePreferencesPatch({ dateFormat: "iso", userId: 9, admin: true })).toEqual({ patch: { dateFormat: "iso" } });
+  it("rejects unknown keys like the rest of the API", () => {
+    expect(parsePreferencesPatch({ dateFormat: "iso", userId: 9 })).toEqual({ error: "Unknown setting" });
+    expect(parsePreferencesPatch({ admin: true })).toEqual({ error: "Unknown setting" });
   });
 });
 
@@ -31,8 +32,9 @@ describe("account preference routes", () => {
   });
   it("defaults to device, saves for the caller only, and rejects bad input", async () => {
     expect((await request(app).get("/api/account/preferences").set("x-u", "1")).body.preferences).toEqual({ timeZone: null, dateFormat: null });
-    const saved = await request(app).put("/api/account/preferences").set("x-u", "1").send({ timeZone: "Europe/London", dateFormat: "mdy", userId: 2 });
+    const saved = await request(app).put("/api/account/preferences").set("x-u", "1").send({ timeZone: "Europe/London", dateFormat: "mdy" });
     expect(saved.body.preferences).toEqual({ timeZone: "Europe/London", dateFormat: "mdy" });
+    expect((await request(app).put("/api/account/preferences").set("x-u", "1").send({ dateFormat: "iso", userId: 2 })).status).toBe(400);
     expect((await request(app).get("/api/account/preferences").set("x-u", "2")).body.preferences).toEqual({ timeZone: null, dateFormat: null });
     expect((await request(app).put("/api/account/preferences").set("x-u", "1").send({ timeZone: "nope" })).status).toBe(400);
   });
