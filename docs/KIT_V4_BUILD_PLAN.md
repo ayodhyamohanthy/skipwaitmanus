@@ -146,9 +146,14 @@ The owner subsequently authorized pushing these verified fixes directly to `main
 ### Local follow-up regression gate (Forge)
 Scope: `@server/db.ts`, `@server/db.referralPassReopen.test.ts`, `@vitest.config.ts`. Restore explicit owner bypass around the pass exclusion while retaining exact attachment-id filtering; add an owner-with-pass behavioural regression. Pin the test runner timezone to UTC so billing/plan fixture dates do not depend on the machine timezone. No production UI, schema or payment behavior changes. Run the three previously failing files, SQL fixture suite, full tests, typecheck and build. Local-only; remote main has advanced and integration review is required.
 
+### P0 block-enforcement coverage repair (Kat, 2026-10-16)
+Status: in progress locally on existing isolated branch `agent/forge/attachment-lookup`, base `63121fe`; docs claim committed first, shared push pending parent integrator. Parent inspected issue #23/open PRs and found no overlapping block claim. Owner ongoing bug-repair authorization covers restoring intended enforcement under D-019; no new product decision.
+Plan and exact scope: `@server/blocksRoutes.ts` keeps `getBlockedRequestIds(userId, requestIds): Promise<Set<number>>` unchanged; add `@server/blocksRoutes.queryCoverage.test.ts`; update only this plan and `@AGENTS.md` summary. Reproduce real query behavior through a getDb fixture before fixing the 200-request/500-block truncation. Deduplicate valid request IDs, process every ID in bounded 200-ID chunks, derive counterpart IDs from each chunk, and query both block directions scoped to those counterparts without a global row cap. Unassigned asks remain unblocked; no unavailable-DB/fail-open policy change. No dependencies, migrations, UI, privateReferralRoutes or payment/auth changes. Run red/green focused tests, existing block suites, typecheck and build, then atomic local commits. Parent owns full integrated gate, push, coordination and exact-release verification; do not mark live until verified.
+
 ## 4. Status (update when you claim, commit or push)
 | Wave | Scope | State | Where |
 |---|---|---|---|
+| P0 blocks | Full requested-thread and counterpart block-query coverage | In progress locally; shared docs push pending parent | Kat; base `63121fe` |
 | Kit screens v1 | All screen groups on the verbatim kit layer | **Live** | PR #172 → `1fc4214` |
 | Audit | 579 differences across all PNGs, feature catalog, waves | **Live (docs)** | `5de8832` |
 | 1 | UI fixes + founder-call reversals, 10 groups; shared follow-up (kit loading/error/offline states, CSS, verify/profile/SEO, minimised `/api/p`) | **Live** | `c27363f`, `286b638` |
