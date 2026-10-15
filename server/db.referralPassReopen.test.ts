@@ -14,7 +14,7 @@ import {
   referralTransitionEvents,
   referrerReviewEmailLinks,
 } from "../drizzle/schema";
-import { getUnclaimedCompanyReferralPreview, oneClickReviewReferralRequest, reviewReferralRequest } from "./db";
+import { getAccessibleReferralAttachment, getUnclaimedCompanyReferralPreview, oneClickReviewReferralRequest, reviewReferralRequest } from "./db";
 
 /*
  * D-021: a decline by a verified employee reopens the ask for the rest of that
@@ -310,5 +310,37 @@ describe("the claimed-review decline is the same pass (D-021)", () => {
     expect(retry).toMatchObject({ status: "passed", replayed: true });
     expect(rows.referralRequestPasses).toHaveLength(1);
     expect(rows.notifications).toHaveLength(1);
+  });
+});
+
+
+describe("attachment lookup scopes the requested file before limiting", () => {
+  beforeEach(() => {
+    rows.referralAttachments = [
+      { id: 71, ownerId: 7, referralRequestId: null, fileName: "first.pdf", fileKey: "private/first", mimeType: "application/pdf", fileSize: 3 },
+      { id: 72, ownerId: 7, referralRequestId: 501, fileName: "second.pdf", fileKey: "private/second", mimeType: "application/pdf", fileSize: 3 },
+    ];
+  });
+
+  it("returns each owned upload even when another upload was stored first", async () => {
+    expect(await getAccessibleReferralAttachment(7, 71)).toMatchObject({ id: 71 });
+    expect(await getAccessibleReferralAttachment(7, 72)).toMatchObject({ id: 72 });
+  });
+
+  it("returns nothing for a missing id or another user's file", async () => {
+    expect(await getAccessibleReferralAttachment(7, 99)).toBeUndefined();
+    expect(await getAccessibleReferralAttachment(10, 72)).toBeUndefined();
+  });
+
+  it("preserves assigned-referrer grant, expiry and pass checks", async () => {
+    expect(await getAccessibleReferralAttachment(9, 72)).toMatchObject({ id: 72 });
+    rows.referralDocumentAccessGrants[0].expiresAt = new Date(0);
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+    rows.referralDocumentAccessGrants[0].expiresAt = new Date("2099-01-01");
+    rows.referralDocumentAccessGrants[0].revokedAt = new Date();
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+    rows.referralDocumentAccessGrants[0].revokedAt = null;
+    rows.referralRequestPasses.push({ id: 1, referralRequestId: 501, referrerId: 9 });
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
   });
 });
