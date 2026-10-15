@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { planPrice, type CatalogPrice } from "../shared/billingCatalog";
-import { availablePriceIds, clearPriceAvailabilityCache, isPriceAvailable, itemPriceAvailability, priceAvailability } from "./billingAvailability";
+import { PROBE_DEADLINE_MS, availablePriceIds, clearPriceAvailabilityCache, isPriceAvailable, itemPriceAvailability, priceAvailability } from "./billingAvailability";
 import type { ProviderItemPrice } from "./chargebeeSubscriptionApi";
 
 // The live site sells a start pass in USD; the test pretends the owner has just
@@ -49,6 +49,14 @@ describe("billing availability", () => {
     // the promise that never settled.
     clock += 31_000;
     await expect(itemPriceAvailability(start, { ...deps, lookup: async () => liveStart })).resolves.toBe("available");
+  });
+
+  it("keeps the probe budget above the provider layer's own abort", () => {
+    // server/chargebeeSubscriptionApi.ts stops one item price lookup at 8s. A
+    // tighter app backstop would report a working but slow provider as
+    // "unknown" and make the catalog refuse prices it can actually read
+    // (a live cold resolve of the whole catalog measures 7.0-7.6s).
+    expect(PROBE_DEADLINE_MS).toBeGreaterThan(8_000);
   });
 
   it("reports unknown ids and saleable ids together for a whole catalog", async () => {

@@ -27,8 +27,17 @@ const AVAILABLE_TTL_MS = 5 * 60 * 1000;
 const MISSING_TTL_MS = 60 * 1000;
 const ERROR_TTL_MS = 30 * 1000;
 
-/** The budget for one probe, however slow the provider or the network is. */
-const PROBE_DEADLINE_MS = 6_000;
+/**
+ * The budget for one probe, however slow the provider or the network is.
+ *
+ * It sits above the provider layer's own 8s abort on purpose: a live cold
+ * resolve of the whole catalog measured 7.0-7.6s (warm, cached: 0.5-1.5s), so a
+ * tighter budget would report a working provider as "unknown" and make the
+ * catalog answer 503 while the prices were readable. This is the backstop for
+ * the case the provider abort did not cover (a connection that never settles),
+ * not the primary bound.
+ */
+export const PROBE_DEADLINE_MS = 15_000;
 
 type Entry = { verdict: PriceAvailability; expiresAt: number };
 const cache = new Map<string, Entry>();
