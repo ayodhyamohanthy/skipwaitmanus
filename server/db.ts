@@ -882,8 +882,8 @@ export async function createSafetyReport(userId: number, input: { reason?: unkno
   if (requestId !== null) {
     try {
       const target = (await db.select({ jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId }).from(referralRequests).where(eq(referralRequests.id, requestId)).limit(1))[0];
-      if (target) {
-        const otherId = target.jobSeekerId === userId ? target.referrerId : target.jobSeekerId;
+      const otherId = target ? (target.jobSeekerId === userId ? target.referrerId : target.jobSeekerId) : null;
+      if (target && otherId !== null && otherId !== undefined) {
         const thread = await db.select({ id: messages.id, senderId: messages.senderId, body: messages.body, createdAt: messages.createdAt }).from(messages).where(and(eq(messages.referralRequestId, requestId), or(and(eq(messages.senderId, userId), eq(messages.recipientId, otherId)), and(eq(messages.senderId, otherId), eq(messages.recipientId, userId))))).orderBy(desc(messages.createdAt), desc(messages.id)).limit(50);
         const rows = buildEvidenceRows(id, userId, thread);
         if (rows.length) await db.insert(moderationEvidence).values(rows);
