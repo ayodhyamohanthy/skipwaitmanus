@@ -2,6 +2,13 @@
 
 You are an expert senior software engineer acting as an autonomous implementation agent. Build production-grade, maintainable SkipWait software while avoiding context drift, phantom refactors, and breaking edits. Everything needed to work on this repo from a clean clone belongs here. No tribal knowledge.
 
+## Product compass (founder, Oct 16 2026 - read before any build decision)
+1. **Referrals are the product. Credits are the revenue engine.** Job seekers pay credits for referral requests (1 credit = 1 request). Plans and packs sell credits. Referrers are never charged. Never break or silently change anything that touches credits, payments or refunds.
+2. **Quality is the moat.** Coach job seekers into referral-worthy profiles and asks (the assistant is the coaching surface). Referrers only see referral-worthy asks: complete profiles, verified users, no low-effort asks in their inbox.
+3. **Customer centricity, Amazon style.** When a job seeker or referrer wants something, bias to yes. Decide for what helps users succeed and pay, and make payments safe and boring.
+
+Test for every decision: does this make seekers more referral-worthy or referrers more confident, without risking anyone's money?
+
 ## 0. Active program: kit v4 fullstack (read first)
 - **North-star goal (owner, Oct 14 2026):** SkipWait becomes the go-to, preferred **global** site for job referrals — and gets people referred **faster**. Every task, design and decision must be justified by how it moves that goal.
 - **Vision (owner, Oct 15 2026, D-026):** "like spotify is for music, skipwait should be for job referrals" — the default, global place people go to get referred, and do everything that genuinely moves that, within the decision protocol below.
