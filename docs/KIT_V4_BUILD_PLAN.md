@@ -80,7 +80,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | in progress (7b session-management only) — Claude — 2026-10-15 — branch task7b-sessions. 7a consent toggles queued next |
 | **Tier C — core ask flow (activation)** |||||
 | 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | **Done, live** - #218 (0080) |
-| 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | **Done, live** - slice A #219 (client only); slice B server enforcement HELD (money hold) |
+| 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | **Slice A done, live** - slice A #219 (client only); slice B server enforcement HELD (money hold) |
 | 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | **Done, live** - #220 (client only, advisory) |
 | 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | **Done, live** - #221 (0081) |
 | 12 | `credit-metered-tools` + `ask-coach-rewrite` ("Improve my note · 1 credit", no charge on fallback) | 1 | M | todo |
