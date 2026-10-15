@@ -38,7 +38,9 @@ export function useReferrerAccess(): ReferrerAccessState {
   if (access?.verified) return { status: "verified", access };
   // A failed check is an error with a retry, never the "verify your work email" gate.
   if (query.isError) return { status: "error", error: query.error, retrying: query.isFetching, retry: () => { void query.refetch(); } };
-  // A cached "not verified" is never shown as the gate while a fresh check is in flight.
-  if (!access || query.isFetching) return { status: "checking" };
+  // A cached "not verified" is never shown as the gate while this reader's first check is in
+  // flight (a code just verified on /verify must open the queue). Once this reader has its own
+  // answer, a re-check started by another reader (the account menu opening) keeps that answer.
+  if (!access || (query.isFetching && !query.isFetchedAfterMount)) return { status: "checking" };
   return { status: "unverified", access };
 }

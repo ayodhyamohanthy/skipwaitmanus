@@ -78,6 +78,24 @@ describe("useReferrerAccess", () => {
     expect(new Set(seen)).toEqual(new Set(["verified"]));
   });
 
+  it("keeps an answered 'not verified' steady when another reader re-checks (the account menu opening)", async () => {
+    reply = { status: 200, body: UNVERIFIED };
+    const first = renderAccess();
+    await waitFor(() => expect(first.result.current.status).toBe("unverified"));
+    const answeredAt = first.seen.length;
+    let release: (() => void) | undefined;
+    fetchMock.mockImplementationOnce(() => new Promise(resolve => { release = () => resolve({ ok: true, status: 200, json: async () => UNVERIFIED }); }));
+    const second = renderAccess(first.client);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    // The new reader has no answer of its own yet; the first reader keeps the one it has.
+    expect(second.result.current.status).toBe("checking");
+    expect(first.result.current.status).toBe("unverified");
+    release?.();
+    await waitFor(() => expect(second.result.current.status).toBe("unverified"));
+    expect(first.seen.slice(answeredAt)).not.toContain("checking");
+    expect(second.seen).not.toContain("error");
+  });
+
   it("keys the verdict by account so a different sign-in is checked afresh", async () => {
     const { result, rerender, client } = renderAccess();
     await waitFor(() => expect(result.current.status).toBe("verified"));
