@@ -10,7 +10,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MyCompanyInbox from "./MyCompanyInbox";
 
-const { session } = vi.hoisted(() => ({ session: { email: "ayodhyarammohanthy+qasweep2@gmail.com" } }));
+const { session } = vi.hoisted(() => ({ session: { email: "qa-sweep-2@gmail.com" } }));
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, userId: "12", getToken: vi.fn().mockResolvedValue("t") }),
@@ -44,7 +44,7 @@ const fetchMock = vi.fn(async (url: string) => {
 const accessCalls = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/company-referrals/access")).length;
 const renderQueue = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MyCompanyInbox /></QueryClientProvider>);
 
-beforeEach(() => { session.email = "ayodhyarammohanthy+qasweep2@gmail.com"; newRows = [ASK]; fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock); });
+beforeEach(() => { session.email = "qa-sweep-2@gmail.com"; newRows = [ASK]; fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("queue gate follows the server's verified-referrer verdict", () => {

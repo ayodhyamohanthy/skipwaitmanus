@@ -5,17 +5,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Alerts from "./Alerts";
 
-// D-019: the QA account signs in with Google (a personal address) and verified its work email by code.
-const GMAIL_SESSION = { id: "user-1", emailAddresses: [{ emailAddress: "qa-sweep-2@gmail.com", verification: { status: "verified" } }] };
-const { authState, userState, go } = vi.hoisted(() => ({
+const { authState, go } = vi.hoisted(() => ({
   authState: { isLoaded: true, isSignedIn: true, userId: "user-1", getToken: vi.fn().mockResolvedValue("test-token") },
-  userState: { user: null as unknown },
   go: vi.fn(),
 }));
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => authState,
-  useUser: () => userState,
+  useUser: () => ({ user: null }),
   SignInButton: ({ children, className }: { children?: React.ReactNode; className?: string }) => <button type="button" className={className}>{children}</button>,
 }));
 vi.mock("wouter", () => ({
@@ -41,38 +38,11 @@ function renderAlerts() {
   return render(<QueryClientProvider client={client}><Alerts /></QueryClientProvider>);
 }
 
-// The server's verified-referrer verdict (GET /api/company-referrals/access) decides where referral alerts open.
+// Referral-alert routing on the server's verified-referrer verdict lives in alerts.referrerRouting.test.tsx.
 const ACCESS_PATH = "/api/company-referrals/access";
-const VERIFIED_ACCESS = ok({ verifiedCompanyAccess: true, workEmailDomain: "skipwait.me", companyName: "SkipWait", companyInitials: "SW" });
 const UNVERIFIED_ACCESS = ok({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
-const FAILED_ACCESS: FetchReply = { ok: false, status: 500, json: async () => ({ error: "We could not check your company-email access" }) };
 
-/** Serves the verdict before the list, so the row a test clicks was rendered after the verdict landed. */
-function verdictThenList(access: FetchReply | "hang") {
-  let served: () => void = () => undefined;
-  const verdictServed = new Promise<void>(resolve => { served = resolve; });
-  return vi.fn(async (url: string): Promise<FetchReply> => {
-    if (String(url) === ACCESS_PATH) {
-      served();
-      return access === "hang" ? new Promise<FetchReply>(() => undefined) : access;
-    }
-    if (String(url).endsWith("/read")) return ok({ success: true });
-    await verdictServed;
-    await new Promise(resolve => setTimeout(resolve, 30));
-    return list();
-  });
-}
-
-async function openFirstReferralAlert(fetchMock: ReturnType<typeof verdictThenList>) {
-  vi.stubGlobal("fetch", fetchMock);
-  renderAlerts();
-  fireEvent.click(await screen.findByRole("button", { name: /Your ask was accepted, unread/ }));
-  await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/notifications/1/read", expect.objectContaining({ method: "POST" })));
-  await waitFor(() => expect(go).toHaveBeenCalledTimes(1));
-  return go.mock.calls[0][0];
-}
-
-beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; userState.user = null; go.mockReset(); vi.useFakeTimers({ toFake: ["Date"], now }); });
+beforeEach(() => { authState.isSignedIn = true; authState.isLoaded = true; go.mockReset(); vi.useFakeTimers({ toFake: ["Date"], now }); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe("Alerts center", () => {
@@ -119,43 +89,6 @@ describe("Alerts center", () => {
     expect(screen.getByRole("button", { name: "Unread" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.queryByText("Weekly summary")).toBeNull();
     expect(screen.queryByText("You're all caught up.")).toBeNull();
-  });
-
-  it("opens a notification by marking it read then following its category", async () => {
-    expect(await openFirstReferralAlert(verdictThenList(UNVERIFIED_ACCESS))).toBe("/requests");
-  });
-
-  it("opens referral alerts in /inbox for a Google sign-in whose work email the server verified by code (D-019)", async () => {
-    userState.user = GMAIL_SESSION;
-    const fetchMock = verdictThenList(VERIFIED_ACCESS);
-    expect(await openFirstReferralAlert(fetchMock)).toBe("/inbox");
-    expect(fetchMock).toHaveBeenCalledWith(ACCESS_PATH, expect.objectContaining({ credentials: "include" }));
-  });
-
-  it("does not trust a company address on the sign-in account: the server's 'not verified' keeps referral alerts on /requests", async () => {
-    userState.user = { id: "user-1", emailAddresses: [{ emailAddress: "employee@skipwait.me", verification: { status: "verified" } }] };
-    expect(await openFirstReferralAlert(verdictThenList(UNVERIFIED_ACCESS))).toBe("/requests");
-  });
-
-  it("opens referral alerts in /inbox, which serves both sides, when the verification check fails", async () => {
-    userState.user = GMAIL_SESSION;
-    expect(await openFirstReferralAlert(verdictThenList(FAILED_ACCESS))).toBe("/inbox");
-  });
-
-  it("opens referral alerts in /inbox while the verification check is still running", async () => {
-    userState.user = GMAIL_SESSION;
-    expect(await openFirstReferralAlert(verdictThenList("hang"))).toBe("/inbox");
-  });
-
-  it("keeps status and system alerts on their own pages whatever the verdict", async () => {
-    const status = { id: 5, category: "status", title: "Request updated", body: "Your ask moved to Referred", readAt: null, createdAt: new Date(now - 60000).toISOString() };
-    const fetchMock = vi.fn(async (url: string) => String(url) === ACCESS_PATH ? VERIFIED_ACCESS : String(url).endsWith("/read") ? ok({ success: true }) : list([status, ITEMS[2]]));
-    vi.stubGlobal("fetch", fetchMock);
-    renderAlerts();
-    fireEvent.click(await screen.findByRole("button", { name: /Request updated, unread/ }));
-    await waitFor(() => expect(go).toHaveBeenCalledWith("/requests"));
-    fireEvent.click(screen.getByRole("button", { name: "Weekly summary" }));
-    await waitFor(() => expect(go).toHaveBeenCalledWith("/settings"));
   });
 
   it("marks every unread item read in one action", async () => {
