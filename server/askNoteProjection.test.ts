@@ -1,14 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SQL } from "drizzle-orm";
 import { MySqlDialect, type MySqlTable, type SelectedFields } from "drizzle-orm/mysql-core";
-import { messages, profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
+import { jobs, messages, profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
 import { createCompanyReferralRequest, getClaimedCompanyReferralDetail, getUnclaimedCompanyReferralPreview, listCompanyReferralInboxByState, listJobSeekerCompanyReferrals } from "./db";
 
 /*
  * D-019 seeker basics, persistence side of askNoteRoundTrip.test.ts: the
  * note is written verbatim to referralRequests.personalPitch and read back to
- * the seeker as `pitch`. The referrer-facing projections are pinned as they
- * are today so this fix exposes nothing new to referrers.
+ * the seeker as `pitch`. Referrer-facing reads are pinned field by field: the
+ * inbox list stays note-free, the unclaimed preview carries the note as
+ * candidateMessage, and the claimed detail now serves the ask the referrer
+ * accepted (role title + note, D-019(d)).
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -105,7 +107,7 @@ describe("seeker note persistence", () => {
   });
 });
 
-describe("referrer projections stay as they are", () => {
+describe("referrer-facing reads", () => {
   beforeEach(() => { rowsByTable.set(profiles, [referrerProfile]); });
 
   it("inbox rows carry no note, even though the enrichment reads it to score the ask", async () => {
@@ -137,15 +139,19 @@ describe("referrer projections stay as they are", () => {
     expect(preview?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
   });
 
-  it("the claimed detail keeps its current fields", async () => {
-    rowsByTable.set(referralRequests, []);
-    await getClaimedCompanyReferralDetail(REFERRER, 501);
-    const detail = selectFrom(referralRequests);
-    // The claimed detail omitting the seeker's note is NOT a privacy rule. It is
-    // the known defect D-019(d) (an accepted referrer's thread detail omits the
-    // note; docs/KIT_V4_BUILD_PLAN.md P0-basics). It is pinned only so this unit
-    // changes nothing for referrers; the D-019(d) fix should update this assertion.
-    expect(exposesNote(detail)).toBe(false);
-    expect(columnsOf(detail)).toEqual(["candidateName", "companyDomain", "grantExpiresAt", "grantRevision", "grantVersion", "id", "jobFunction", "referrerId", "revision", "status", "targetRoleUrl"]);
+  it("serves the accepted referrer the ask they took on: role title and the seeker's note", async () => {
+    rowsByTable.set(referralRequests, [{ id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery", candidateMessage: NOTE, referrerId: REFERRER, status: "approved", revision: 2, grantVersion: 1, grantRevision: 2, grantExpiresAt: new Date("2026-11-01T00:00:00Z") }]);
+    rowsByTable.set(referralAttachments, []);
+    const detail = await getClaimedCompanyReferralDetail(REFERRER, 501);
+    const select = selectFrom(referralRequests);
+    // D-019(d) was an omission, not a privacy rule: every verified employee at the
+    // company already saw this note in the unclaimed preview, so the accepted
+    // referrer's own thread must show it too. Same field name as the preview and
+    // the client's detailSchema.
+    expect(select?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
+    expect(select?.projection?.title).toBe(jobs.title);
+    expect(exposesNote(select)).toBe(true);
+    expect(columnsOf(select)).toEqual(["candidateMessage", "candidateName", "companyDomain", "grantExpiresAt", "grantRevision", "grantVersion", "id", "jobFunction", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    expect(detail).toMatchObject({ id: 501, title: "Product Designer", candidateMessage: NOTE, candidateName: "Avery" });
   });
 });
