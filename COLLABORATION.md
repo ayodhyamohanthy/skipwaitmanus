@@ -2,6 +2,8 @@
 
 Applies to every model, IDE, CLI, automation agent, and human working on this repository. Read this file and AGENTS.md before editing. Configure tools that do not discover AGENTS.md automatically to read both files at session start. Instructions are a shared convention, not an enforced lock or a direct communication channel between models.
 
+Owner decisions in `docs/DECISIONS.md` win over this protocol (D-008, D-026): start every session with the sync in `AGENTS.md` section 0, and pick work only from the queue in `docs/KIT_V4_BUILD_PLAN.md` §3b (D-009).
+
 ## 1. Establish the baseline
 
 - Inspect `git status --short`, the current branch, recent commits, and `git worktree list` before writing.
@@ -51,14 +53,14 @@ Next: <next action or requested coordination>
 
 ## 5. Integrate through review
 
-- Default to feature-branch PRs rather than concurrent direct pushes to main. Commit, push, merge, and deploy only when authorized by the user or the environment's applicable instructions. This protocol does not grant new permission to publish.
+- Default to feature-branch PRs rather than concurrent direct pushes to main. Exception (D-003): a verified kit v4 group ships straight to `main` after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3, and docs-first claims and register updates go to `main` before code (D-008). Commit, push, merge, and deploy only when authorized by the user or the environment's applicable instructions. This protocol does not grant new permission to publish.
 - Before committing, inspect status, the full diff, recent history, and the staged diff. Stage explicit owned paths; never use `git add .` or `git add -A` to sweep up shared changes.
 - Before merging, fetch again and review the entire branch diff against current main, not only the latest commit.
 - Update only your clean, isolated branch. Resolve conflicts by reading both changes and preserving their intent; never blindly select ours/theirs or delete conflict markers to make tests pass.
 - Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge.
 - Run `git diff --check`, `pnpm check`, affected Vitest files, and `pnpm build` for runtime/dependency changes. Report exact commands and outcomes, including failures outside the task. Do not weaken tests to conceal conflicts.
 - Use one designated integrator or the repository merge queue to serialize integration. Never force-push main. A rejected push means fetch, inspect, coordinate, and revalidate, not force.
-- Where repository settings permit, maintainers should protect main with PR review and required CI checks. Documentation alone does not enable branch protection.
+- Where repository settings permit, maintainers should protect main with required CI checks; a PR-review requirement must not block the D-003 and D-008 direct pushes above. Documentation alone does not enable branch protection.
 
 ## 6. Leave a usable handoff
 

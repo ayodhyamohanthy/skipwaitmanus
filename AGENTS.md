@@ -16,7 +16,7 @@ You are an expert senior software engineer acting as an autonomous implementatio
 - **Docs first (owner rule, Oct 14 2026):** before ANY code change, update `docs/KIT_V4_BUILD_PLAN.md` (claim the step, its scope, decisions, migrations, owner actions) and this summary, and get them onto `main`, so any AI coding platform can finish the work if a session stops. Update status after every commit/push.
 - Living plan and handoff: `docs/KIT_V4_BUILD_PLAN.md`. Per-PNG audit and feature catalog: `docs/KIT_V4_AUDIT.md`. Pricing decisions and sources: `docs/PRICING_RECOMMENDATION.md`.
 - Binding owner decisions: implement every `screens/` PNG fullstack; the PNGs win over earlier founder calls (newer founder edits on `main` after Oct 9 stay); never ship kit preview chips or sample data; Terms/Privacy keep live legal text; ship verified groups to `main`.
-- Pricing (Oct 14): 30/90-day passes with opt-in auto-extend (yearly only for Keep warm); India INR + global USD first; Free = 3 open asks + 2 credits/month + one-time 14-day Momentum trial; never sell referrals, priority, visibility or payments to referrers; max 2 open asks per company on every plan.
+- Pricing (Oct 14): 30/90-day passes with opt-in auto-extend (yearly only for Keep warm); India INR + global USD first; Free = 3 open asks + 2 credits/month + one-time 14-day Momentum trial; never sell referrals, priority, visibility or payments to referrers; max 2 open asks per company on every plan. Pro/Max are no longer sold (D-025, D-027: no subscribers, so no notice or migration once the dry run counts 0; removal is part of pricing task 1). Chargebee holds every plan; Razorpay (INR) and PayPal (USD) are gateways behind its hosted checkout and the direct provider routes stay 503 (D-004).
 - Tax: Indian sole proprietorship (Udyam MSME), **not GST-registered** — charge no GST, label INR "India price", keep the GST switch (`indiaGstRegistered`) off until a GSTIN exists.
 - Work in progress lives on branch `kit-v4-fullstack` (may hold unverified commits — gate before pushing to `main`); the stalled Wave 3 pricing step was taken over under queue rule 2 on `agent/opencode/kit-pricing-model` (forked from `e340880`).
 - **Work selection (binding for every model):** pick work ONLY from the priority queue in `docs/KIT_V4_BUILD_PLAN.md` §3b — P0 incidents first (prod down, red `main`, security, money/identity/data bugs), then finish in-progress work, then the lowest-numbered `todo` task whose dependencies are done and that is not owner-blocked. Never start a lower-priority task while a higher one is unclaimed and unblocked. Claim it in the queue (pushed to `main`) before coding; mark it `done — <commit>` after it is live. Current order (owner, Oct 14 — D-013): P0 fixes from D-012 first, then (A) finish kit pricing and password sign-in → (B) trust/privacy/compliance → (C) core ask flow → (D) referral lifecycle → (E) notifications → (F) settings/app → (G) assistants/developers → (H) employer/admin → (I) work showcase/tools.
@@ -75,7 +75,7 @@ You are an expert senior software engineer acting as an autonomous implementatio
 - **Phased execution:** Clarify -> Plan -> Inspect -> Execute -> Verify.
 - **Milestone discipline:** Focus only on the active MVP/P0 milestone. Do not architect, stub, or implement P1/P2 work unless explicitly requested.
 - **Mandatory plan and inspect:** Before editing, output a concise plan listing affected files and export signatures, technical assumptions, and proposed step-by-step logic.
-- **Clarification gate:** Record targeted questions when requirements, edge cases, or architecture are ambiguous. Reconcile this with the founder's autonomy rule: when existing calibration covers the call, state the changeable assumption and continue instead of blocking.
+- **Clarification gate (D-010):** When requirements, edge cases, scope or architecture are ambiguous, ask the owner targeted questions and wait for approval before building any new change. Only P0 incidents, including restoring a broken basic (D-019), and tasks already approved in the queue proceed without a new approval. (Replaces the earlier "state the changeable assumption and continue" autonomy rule.)
 - **Zero unsolicited refactoring:** Do not rename variables, alter directories, clean formatting, or modify working code outside the requested scope.
 - **Package installation gate:** Do not add npm or Python dependencies without explicit approval and a written reason native or existing code is insufficient.
 
@@ -164,8 +164,11 @@ add that exact path and reason to the plan, check ownership/conflicts, then edit
   isolated branch/worktree per session. Never overwrite or commit another
   session's dirty files, or switch branches in a shared active working tree.
 - Default to feature branches and reviewed PRs with serialized integration,
-  not concurrent automatic pushes to main. Follow applicable user/tool
-  authorization before committing, pushing, merging, or deploying.
+  not concurrent automatic pushes to main. Exception (D-003): a verified kit v4
+  group ships straight to `main` after the gate in `docs/KIT_V4_BUILD_PLAN.md`
+  §3, and docs-first plan/register updates go to `main` before code (D-008).
+  Follow applicable user/tool authorization before committing, pushing,
+  merging, or deploying.
 - Validate the integrated result (`pnpm check` + affected Vitest files;
   `pnpm build` for runtime/dependency changes) and leave an explicit handoff.
 - A push to main triggers both Cloudflare deploys; no local Docker needed.
