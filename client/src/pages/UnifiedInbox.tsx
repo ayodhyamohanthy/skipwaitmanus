@@ -7,8 +7,8 @@ import { Heading } from "@/components/kit/preview-kit";
 import { InboxEmpty, InboxLoadError, InboxThreadList } from "@/components/inbox/InboxThreadList";
 import { buildInboxThreads, fetchAskingRows, fetchReferringRows, filterInboxThreads, type InboxSide } from "@/components/inbox/inboxThreads";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 
-const PERSONAL = new Set(["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "proton.me"]);
 const SIDES = [["all", "All"], ["asking", "Asking"], ["referring", "Referring"]] as const;
 const HEADING = { eyebrow: "MESSAGES", title: "Inbox", text: "Conversations open when a referrer accepts. Until then, identities stay private." } as const;
 
@@ -23,13 +23,13 @@ export default function UnifiedInbox() {
   const [side, setSide] = useState<"all" | InboxSide>("all");
   const [query, setQuery] = useState("");
 
-  const hasVerifiedWorkEmail = Boolean(user?.emailAddresses?.some(address => {
-    const domain = address.emailAddress.trim().toLowerCase().split("@")[1];
-    return address.verification?.status === "verified" && domain && !PERSONAL.has(domain);
-  }));
+  // The referring side follows the server's verified-referrer verdict (shared predicate), never the
+  // sign-in account's emails: an SSO account verified by one-time code is a referrer too.
+  const access = useReferrerAccess();
+  const isReferrer = access.status === "verified";
 
   const asking = useQuery({ queryKey: ["inbox", "asking", user?.id ?? null], queryFn: () => fetchAskingRows(fetchToken), enabled: Boolean(isSignedIn), retry: 1, refetchOnWindowFocus: false });
-  const referring = useQuery({ queryKey: ["inbox", "referring", user?.id ?? null], queryFn: () => fetchReferringRows(fetchToken), enabled: Boolean(isSignedIn) && hasVerifiedWorkEmail, retry: 1, refetchOnWindowFocus: false });
+  const referring = useQuery({ queryKey: ["inbox", "referring", user?.id ?? null], queryFn: () => fetchReferringRows(fetchToken), enabled: Boolean(isSignedIn) && isReferrer, retry: 1, refetchOnWindowFocus: false });
 
   const threads = useMemo(() => buildInboxThreads(asking.data ?? [], referring.data ? [...referring.data.fresh, ...referring.data.completed] : []), [asking.data, referring.data]);
   const visible = useMemo(() => filterInboxThreads(threads, side, query), [threads, side, query]);
@@ -47,10 +47,11 @@ export default function UnifiedInbox() {
     );
   }
 
-  const loading = asking.isPending || (hasVerifiedWorkEmail && referring.isPending);
-  const failed = [asking.isError ? asking.error : null, hasVerifiedWorkEmail && referring.isError ? referring.error : null].filter(error => error !== null);
-  const retrying = asking.isFetching || referring.isFetching;
-  const retry = () => { if (asking.isError) void asking.refetch(); if (referring.isError) void referring.refetch(); };
+  const loading = asking.isPending || access.status === "checking" || (isReferrer && referring.isPending);
+  // A failed verification check is a failed source, not "not a referrer".
+  const failed = [asking.isError ? asking.error : null, access.status === "error" ? access.error : null, isReferrer && referring.isError ? referring.error : null].filter(error => error !== null);
+  const retrying = asking.isFetching || referring.isFetching || (access.status === "error" && access.retrying);
+  const retry = () => { if (asking.isError) void asking.refetch(); if (access.status === "error") access.retry(); if (referring.isError) void referring.refetch(); };
   // Rows that did load stay visible; a failed source is never shown as an empty inbox.
   const partial = failed.length > 0 && threads.length > 0;
 

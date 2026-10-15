@@ -49,7 +49,7 @@ export function hostedEmployerCandidatesFromTargetUrl(targetRoleUrl: string) {
     if (isHostOrSubdomain(host, "lever.co") || isHostOrSubdomain(host, "greenhouse.io") || isHostOrSubdomain(host, "ashbyhq.com") || isHostOrSubdomain(host, "workable.com") || isHostOrSubdomain(host, "smartrecruiters.com") || isHostOrSubdomain(host, "jobvite.com") || isHostOrSubdomain(host, "recruitee.com") || isHostOrSubdomain(host, "breezy.hr")) {
       if (first) candidates.push(first);
     }
-    if (isHostOrSubdomain(host, "teamtailor.com") || isHostOrSubdomain(host, "bamboohr.com") || isHostOrSubdomain(host, "myworkdayjobs.com")) {
+    if (["teamtailor.com", "bamboohr.com", "myworkdayjobs.com", "myworkdaysite.com", "keka.com", "darwinbox.in", "darwinbox.com", "zohorecruit.com", "zohorecruit.in", "zohorecruit.eu", "taleo.net", "freshteam.com"].some(platform => isHostOrSubdomain(host, platform) && host !== platform)) {
       if (subdomain && !["jobs", "www", "careers", "wd1", "wd3", "wd5"].includes(subdomain)) candidates.push(subdomain);
     }
     if (isHostOrSubdomain(host, "icims.com") && first && first !== "jobs") candidates.push(first);

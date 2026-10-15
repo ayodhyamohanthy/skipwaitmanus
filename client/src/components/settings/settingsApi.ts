@@ -12,6 +12,7 @@
 // The server owns validation; the client parses what comes back so a malformed
 // payload reads as an error instead of a wrong state.
 import { z } from "zod";
+import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 
 export type TokenSource = () => Promise<string | null | undefined>;
@@ -28,7 +29,6 @@ export const SLACK_STATUS_ERROR = "We could not load your Slack triage status";
 export const SLACK_CONNECT_ERROR = "We could not connect your Slack triage channel";
 export const SLACK_DISCONNECT_ERROR = "We could not disconnect your Slack triage channel";
 
-const companyAccessSchema = z.object({ verifiedCompanyAccess: z.boolean(), workEmailDomain: z.string().nullish() });
 export type CompanyAccess = { verifiedCompanyAccess: boolean; workEmailDomain: string | null };
 
 const privacyRequestSchema = z.object({
@@ -93,11 +93,12 @@ async function readReply<S extends z.ZodType>(response: Response, schema: S, fal
 }
 
 export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
-  const reply = await readReply(await call("/api/company-referrals/access", getToken), companyAccessSchema, ACCESS_ERROR);
-  return { verifiedCompanyAccess: reply.verifiedCompanyAccess, workEmailDomain: reply.workEmailDomain ?? null };
+  const reply = await readReply(await call(REFERRER_ACCESS_PATH, getToken), referrerAccessResponseSchema, ACCESS_ERROR);
+  return { verifiedCompanyAccess: reply.verifiedCompanyAccess, workEmailDomain: reply.workEmailDomain };
 }
 
-export const hasVerifiedWorkEmail = (access: CompanyAccess | undefined): boolean => Boolean(access?.verifiedCompanyAccess && access.workEmailDomain);
+/** The shared verified-referrer predicate (shared/referrerAccess.ts). */
+export const hasVerifiedWorkEmail = (access: CompanyAccess | undefined): boolean => isVerifiedReferrer(access);
 
 export async function fetchPrivacyRequests(getToken: TokenSource): Promise<PrivacyRequest[]> {
   return (await readReply(await call("/api/privacy/requests", getToken), privacyRequestsSchema, PRIVACY_REQUESTS_ERROR)).requests;

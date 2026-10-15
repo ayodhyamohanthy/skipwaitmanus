@@ -18,6 +18,8 @@ import { getAskExpiresAtMs, isReferralProgressUpdateStatus, type ReferralProgres
 import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDirectoryEntry, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
+import type { ReferrerAccessResponse } from "../shared/referrerAccess";
+import { resolveAskNote } from "../shared/askNote";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -588,7 +590,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before sending a private company request" });
-      const { targetRoleUrl, attachmentIds, candidateMessage, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; candidateMessage?: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
+      const { targetRoleUrl, attachmentIds, confirmedCompanyDomain, compensation, fastTrackCode, fastTrackCompanySlug, fastTrackAlias, companySlug } = req.body as { companySlug?: string; targetRoleUrl?: string; attachmentIds?: number[]; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string };
       // Optional seeker-confirmed function; absent means the server infers it from the job link.
       const chosenFunction = askJobFunctionInputSchema.safeParse(req.body?.jobFunction);
       if (!chosenFunction.success) return res.status(400).json({ error: "Choose a function from the list" });
@@ -596,7 +598,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!/^[\x21-\x7E]{16,64}$/.test(idempotencyKey)) return res.status(428).json({ error: "A valid Idempotency-Key header is required" });
       if (!targetRoleUrl || !Array.isArray(attachmentIds) || attachmentIds.length === 0) return res.status(400).json({ error: "A Target Role URL and at least one resume document are required" });
       if (!isValidTargetRoleUrl(targetRoleUrl)) return res.status(400).json({ error: TARGET_ROLE_URL_ERROR });
-      const personalPitch = typeof candidateMessage === "string" && candidateMessage.trim() ? candidateMessage.trim().slice(0, 2000) : "No personal note was included with this referral request.";
+      // The note is read from candidateMessage (the app) or personalPitch; any other key is ignored.
+      const note = resolveAskNote(req.body);
+      if (!note.ok) return res.status(400).json({ error: note.error });
+      const personalPitch = note.personalPitch;
       const safeCompensation = typeof compensation === "string" && compensation.trim() ? compensation.trim().slice(0, 80) : undefined;
       const safeFastTrackCode = typeof fastTrackCode === "string" && /^[a-zA-Z0-9-]{16,64}$/.test(fastTrackCode) ? fastTrackCode : undefined;
       const safeFastTrackCompanySlug = typeof fastTrackCompanySlug === "string" && /^[a-z0-9-]{1,48}$/.test(fastTrackCompanySlug) ? fastTrackCompanySlug : undefined;
@@ -722,7 +727,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const access = await deps.getVerifiedWorkEmailAccess?.(identity.account.id);
       res.set("Cache-Control", "private, no-store");
       const [named] = access ? await attachCompanyIdentities([access], row => row.workEmailDomain, lookupCompanies) : [];
-      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null });
+      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null } satisfies ReferrerAccessResponse);
     } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
   });
   app.get("/api/referrer-impact/me", async (req, res) => {

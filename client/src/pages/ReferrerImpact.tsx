@@ -4,10 +4,10 @@ import { useAuth } from "@/_core/auth";
 import { ArrowRight, CheckCircle2, HeartHandshake, LoaderCircle, RefreshCw, ShieldCheck, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { REFERRER_SIGN_IN_HREF, ReferrerWorkspace } from "@/components/referrer/ReferrerWorkspace";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 
 type ReferrerImpactSummary = { acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
-type CompanyAccess = { verifiedCompanyAccess: boolean; workEmailDomain: string | null; error?: string };
 
 function relativeDays(iso: string) {
   const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
@@ -40,10 +40,9 @@ export default function ReferrerImpact() {
   const [summary, setSummary] = useState<ReferrerImpactSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [companyAccess, setCompanyAccess] = useState<CompanyAccess | null>(null);
-  const [accessReady, setAccessReady] = useState(!isSignedIn);
-  const hasVerifiedWorkEmail = Boolean(companyAccess?.verifiedCompanyAccess && companyAccess.workEmailDomain);
-  const loadCompanyAccess = async () => { if (!isSignedIn) { setCompanyAccess(null); setAccessReady(true); return; } try { const token = await getToken(); const response = await fetch("/api/company-referrals/access", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} }); const payload = await readApiJson<CompanyAccess>(response, "We could not check your work-email access"); setCompanyAccess({ verifiedCompanyAccess: Boolean(payload.verifiedCompanyAccess), workEmailDomain: payload.workEmailDomain ?? null }); } catch { setCompanyAccess(null); } finally { setAccessReady(true); } };
+  // The server's verified-referrer verdict (shared predicate); a failed check is an error, never the gate.
+  const access = useReferrerAccess();
+  const hasVerifiedWorkEmail = access.status === "verified";
   const loadSummary = async () => {
     if (!isSignedIn) return;
     setLoading(true); setError("");
@@ -56,7 +55,6 @@ export default function ReferrerImpact() {
     } catch (reason) { setSummary(null); setError(reason instanceof Error ? reason.message : "We could not load your referral impact"); }
     finally { setLoading(false); }
   };
-  useEffect(() => { void loadCompanyAccess(); }, [isSignedIn]);
   useEffect(() => { if (isSignedIn && hasVerifiedWorkEmail) void loadSummary(); }, [isSignedIn, hasVerifiedWorkEmail]);
   const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} isSignedIn={Boolean(isSignedIn)} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
   const loadingState = <ImpactState icon={LoaderCircle} eyebrow="PRIVATE BY DEFAULT" title="Loading your private impact…" busy />;
@@ -68,7 +66,11 @@ export default function ReferrerImpact() {
     <Button type="button" className="mt-8" onClick={() => openSignIn?.()}>Secure sign in</Button>
   </ImpactState>);
 
-  if (!accessReady) return frame("referrer-impact-loading", loadingState);
+  if (access.status === "checking") return frame("referrer-impact-loading", loadingState);
+
+  if (access.status === "error") return frame("referrer-impact-access-error", <ImpactState icon={RefreshCw} eyebrow="SOMETHING WENT WRONG" title="We could not check your verification." text={access.error.message || "Check your connection and try again."} alert>
+    <Button type="button" className="mt-8" disabled={access.retrying} onClick={access.retry}><RefreshCw />{access.retrying ? "Trying again…" : "Try again"}</Button>
+  </ImpactState>);
 
   if (!hasVerifiedWorkEmail) return frame("referrer-impact-setup", <ImpactState icon={ShieldCheck} eyebrow="PRIVATE BY DEFAULT" title="Verify your work email" text="Confirm a company email with a one-time code to unlock your private referral impact.">
     <Button asChild className="mt-8"><Link href="/referrer?setup=work-email">Add work email <ArrowRight /></Link></Button>

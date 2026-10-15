@@ -177,6 +177,8 @@ describe("Ask composer", () => {
     const headers = (sendCall as unknown as Array<{ headers?: Record<string, string> }>)?.[1]?.headers ?? {};
     expect(headers["Idempotency-Key"]).toMatch(/^[\x21-\x7E]{16,64}$/);
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ targetRoleUrl: "https://careers.wipro.com/job/product-designer-123", attachmentIds: [77] });
+    // The note travels in the field the server stores as the seeker's pitch (shared/askNote.ts).
+    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ candidateMessage: STRONG_NOTE });
     expect(screen.getByRole("link", { name: /Track this ask/ }).getAttribute("href")).toBe("/conversation/9");
     expect(screen.getByText("Verified wipro.com referrers will see it. It expires in 7 days if nobody accepts, and your credit returns.")).toBeTruthy();
     expect(screen.getByText("Open asks:").textContent).toBe("Open asks: 0");
