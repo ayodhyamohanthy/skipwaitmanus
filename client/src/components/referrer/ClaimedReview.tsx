@@ -7,7 +7,10 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Download, ExternalLink, FileText, 
 import { Button } from "@/components/kit/button";
 import { ReferralCoverageInviteBanner } from "./CoverageInviteBanner";
 
-export type ClaimedAttachment = { id: string; fileName: string; mimeType: string; fileSize: number; key: string; url: string };
+// Before acceptance the server sends files locked: no name and no link (D-019, shared/referrerAskView.ts).
+export type ClaimedAttachment = { id: string | number; fileName?: string; mimeType?: string | null; fileSize?: number | null; url?: string | null };
+type ViewableAttachment = ClaimedAttachment & { fileName: string; url: string };
+const isViewable = (attachment: ClaimedAttachment): attachment is ViewableAttachment => Boolean(attachment.fileName && attachment.url);
 export type ClaimedCompanyRequest = { id: number; targetRoleUrl: string; companyDomain: string; candidateName: string | null; attachments: ClaimedAttachment[] };
 
 export function companyInitial(domain: string) {
@@ -66,13 +69,17 @@ export function ClaimedReview({ request, activeDocument, setActiveDocument, mess
   );
 }
 
-function DocumentReview({ attachments, active, setActive }: { attachments: ClaimedAttachment[]; active: number; setActive: (value: number) => void }) {
+function DocumentReview({ attachments: received, active, setActive }: { attachments: ClaimedAttachment[]; active: number; setActive: (value: number) => void }) {
+  const attachments = received.filter(isViewable);
   const document = attachments[active];
-  const previewable = Boolean(document && (document.mimeType === "application/pdf" || document.mimeType.startsWith("image/")));
+  const mimeType = document?.mimeType ?? "";
+  const previewable = Boolean(document && (mimeType === "application/pdf" || mimeType.startsWith("image/")));
   return (
     <div className="mt-6 border-t border-border pt-5">
-      <div className="flex items-center justify-between gap-3"><span className="eyebrow">Candidate documents</span><span className="text-xs font-semibold">{attachments.length} attached</span></div>
-      {attachments.length ? (
+      <div className="flex items-center justify-between gap-3"><span className="eyebrow">Candidate documents</span><span className="text-xs font-semibold">{received.length} attached</span></div>
+      {received.length && !attachments.length ? (
+        <p className="mt-3 flex items-center gap-2 text-sm font-semibold"><FileText className="size-4 shrink-0 text-primary" />Resume ready after acceptance</p>
+      ) : attachments.length ? (
         <>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
             {attachments.map((attachment, index) => (

@@ -50,6 +50,7 @@ describe("private referral HTTP routes", () => {
     const app = express();
     app.use(express.json());
     let claimedBy: number | undefined;
+    let acceptedBy: number | undefined;
     let submittedCandidateMessage = "";
     let submittedCompensation: string | undefined;
     const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
@@ -67,7 +68,8 @@ describe("private referral HTTP routes", () => {
       listCompanyReferralInbox: async () => [{ id: 501, companyDomain: "acme.com" }],
       getUnclaimedCompanyReferralPreview: async (userId, requestId) => userId === 2 && requestId === 501 && !claimedBy ? { id: requestId, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
       claimCompanyReferralRequest: async (userId, requestId) => { claimedBy = userId; return { requestId, claimed: true }; },
-      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, candidateName: "Avery", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
+      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, candidateName: "Avery", targetRoleUrl: "https://careers.acme.com/jobs/design", status: acceptedBy === userId ? "approved" : "pending", documentAccessActive: true, attachments: [attachment] } : undefined,
+      oneClickReviewReferralRequest: async (userId, input) => { if (userId !== claimedBy || input.decision !== "approved") throw new Error("This referral request is no longer available"); acceptedBy = userId; return { status: "approved", companyDomain: "acme.com" }; },
       listPublicCompanyOpportunities: async () => [{ id: 91, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer" }],
       publishCompanyOpportunity: async (_userId, input) => ({ id: 92, companyDomain: "acme.com", ...input }),
       recordActivity: async input => { activity.push(input); },
@@ -85,11 +87,15 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).get("/api/company-referrals/501").set("x-test-user", "outsider")).status).toBe(404);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "outsider")).status).toBe(404);
     const preview = await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee");
-    expect(preview.status).toBe(200); expect(preview.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(preview.body)).not.toContain("Avery"); expect(preview.body.request).toMatchObject({ candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0]).toMatchObject({ availability: "after_claim", fileName: "resume.pdf" }); expect(preview.body.request.attachments[0]).not.toHaveProperty("url"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
+    expect(preview.status).toBe(200); expect(preview.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(preview.body)).not.toContain("Avery"); expect(preview.body.request).toMatchObject({ candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0]).toMatchObject({ availability: "after_claim", id: 77 }); expect(preview.body.request.attachments[0]).not.toHaveProperty("fileName"); expect(preview.body.request.attachments[0]).not.toHaveProperty("url"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
     expect((await request(app).post("/api/company-referrals/501/claim").set("x-test-user", "employee")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee")).status).toBe(404);
+    // Claimed but not yet accepted: still no name, file name or link (D-019).
+    const claimedDetail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
+    expect(claimedDetail.status).toBe(200); expect(claimedDetail.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(claimedDetail.body)).not.toContain("Avery"); expect(JSON.stringify(claimedDetail.body)).not.toContain("resume.pdf"); expect(claimedDetail.body.request.attachments[0]).not.toHaveProperty("url");
+    expect((await request(app).post("/api/company-referrals/501/one-click-review").set("x-test-user", "employee").send({ decision: "approved" })).status).toBe(200);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
-    expect(detail.status).toBe(200); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    expect(detail.status).toBe(200); expect(detail.body.request.candidateName).toBe("Avery"); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
     const securedDocument = await request(app).get("/api/documents/77").set("x-test-user", "employee");
     expect(securedDocument.status).toBe(307); expect(securedDocument.headers.location).toBe("https://signed.example/resume.pdf");
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));

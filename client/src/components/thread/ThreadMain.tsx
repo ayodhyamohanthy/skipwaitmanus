@@ -70,9 +70,12 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
               {!accepted ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><EyeOff className="size-3.5" />Resume and profile shared after acceptance</span>
               ) : role === "referrer-claimed" ? (
-                request.attachments.map(file => (
-                  <a key={file.id} href={file.url ?? `/api/documents/${file.id}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
-                ))
+                // A file without a link is one whose document access has ended; it is named, not linked to a dead page.
+                request.attachments.map(file => (file.url ? (
+                  <a key={file.id} href={file.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
+                ) : (
+                  <span key={file.id} className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</span>
+                )))
               ) : request.attachmentCount > 0 ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{request.attachmentCount === 1 ? "1 file shared" : `${request.attachmentCount} files shared`}</span>
               ) : null}

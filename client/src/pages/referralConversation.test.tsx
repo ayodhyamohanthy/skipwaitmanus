@@ -295,6 +295,33 @@ describe("ReferralConversation thread", () => {
     expect(screen.getByLabelText("Message")).toBeTruthy();
   });
 
+  it("shows an accepted referrer the seeker's note from the thread detail alone, naming a file whose access ended without linking it", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "accepted");
+      if (url.endsWith("/conversation")) return ok({ messages: [] });
+      return ok({ request: { id: 601, title: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", status: "approved", referrerId: 9, candidateName: "Asha R.", candidateMessage: "I have led two end-to-end redesigns.", attachments: [{ id: 31, fileName: "Asha_R_Resume.pdf", mimeType: "application/pdf", fileSize: 10, url: null }] } });
+    });
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Asha R.")).toBeTruthy();
+    expect(screen.getByText(/I have led two end-to-end redesigns\./)).toBeTruthy();
+    expect(screen.getByText("Asha_R_Resume.pdf")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Asha_R_Resume/ })).toBeNull();
+  });
+
+  it("keeps a claimed but not yet accepted ask anonymous while counting its locked files", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "claimed");
+      return ok({ request: { id: 601, title: "Product Designer", targetRoleUrl: null, companyDomain: "acme.com", status: "pending", referrerId: 9, candidateMessage: "I have led two end-to-end redesigns.", attachments: [{ id: 31, mimeType: "application/pdf", fileSize: 10, availability: "after_claim" }] } });
+    });
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
+    expect(screen.getByText(/I have led two end-to-end redesigns\./)).toBeTruthy();
+    expect(screen.getByText("Resume and profile shared after acceptance")).toBeTruthy();
+    expect(screen.queryByText("This thread isn't available.")).toBeNull();
+  });
+
   it("keeps the accept dialog open with the server error when accepting fails", async () => {
     stubFetch(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });

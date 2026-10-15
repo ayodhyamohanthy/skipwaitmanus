@@ -8,8 +8,10 @@ import { createCompanyReferralRequest, decideAssistantApproval, getClaimedCompan
 /*
  * D-019 seeker basics, persistence side of askNoteRoundTrip.test.ts: the
  * note is written verbatim to referralRequests.personalPitch and read back to
- * the seeker as `pitch`. The referrer-facing projections are pinned as they
- * are today so this fix exposes nothing new to referrers.
+ * the seeker as `pitch`. The referrer-facing projections are pinned: the note
+ * reaches referrers at that company (preview) and the referrer the ask is
+ * assigned to (detail); which identity fields leave the server, and when, is
+ * pinned at the route in referrerAskPrivacy.test.ts.
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -116,7 +118,7 @@ describe("seeker note persistence", () => {
   });
 });
 
-describe("referrer projections stay as they are", () => {
+describe("referrer projections", () => {
   beforeEach(() => { rowsByTable.set(profiles, [referrerProfile]); });
 
   it("inbox rows carry no note, even though the enrichment reads it to score the ask", async () => {
@@ -148,15 +150,28 @@ describe("referrer projections stay as they are", () => {
     expect(preview?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
   });
 
-  it("the claimed detail keeps its current fields", async () => {
+  it("the assigned referrer's detail reads the note, the role title and whether document access is active", async () => {
     rowsByTable.set(referralRequests, []);
     await getClaimedCompanyReferralDetail(REFERRER, 501);
     const detail = selectFrom(referralRequests);
-    // The claimed detail omitting the seeker's note is NOT a privacy rule. It is
-    // the known defect D-019(d) (an accepted referrer's thread detail omits the
-    // note; docs/KIT_V4_BUILD_PLAN.md P0-basics). It is pinned only so this unit
-    // changes nothing for referrers; the D-019(d) fix should update this assertion.
-    expect(exposesNote(detail)).toBe(false);
-    expect(columnsOf(detail)).toEqual(["candidateName", "companyDomain", "grantExpiresAt", "grantRevision", "grantVersion", "id", "jobFunction", "referrerId", "revision", "status", "targetRoleUrl"]);
+    // D-019: the accepted referrer's thread shows the seeker's note (it was missing before).
+    expect(detail?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
+    expect(columnsOf(detail)).toEqual(["candidateMessage", "candidateName", "companyDomain", "grantId", "id", "jobFunction", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    // Only the referrer the ask is assigned to; a pending ask also needs that referrer's active grant, an accepted one does not.
+    const where = detail?.where ? dialect.sqlToQuery(detail.where) : undefined;
+    expect(where?.sql).toContain("`referralRequests`.`referrerId` = ?");
+    expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer", "approved", "intro_made", "interview", "offer"]);
+    expect(where?.sql).toContain("`referralDocumentAccessGrants`.`id` is not null");
+  });
+
+  it("the detail row reports document access from the grant join and lists the files without storage keys", async () => {
+    rowsByTable.set(referralRequests, [{ id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery Lee", candidateMessage: NOTE, referrerId: REFERRER, status: "approved", revision: 4, grantId: null }]);
+    rowsByTable.set(referralAttachments, [{ id: 77, fileName: "Avery_Lee_Resume.pdf", mimeType: "application/pdf", fileSize: 2048 }]);
+    const withoutGrant = await getClaimedCompanyReferralDetail(REFERRER, 501);
+    expect(withoutGrant).toMatchObject({ id: 501, candidateMessage: NOTE, status: "approved", documentAccessActive: false });
+    expect(withoutGrant).not.toHaveProperty("grantId");
+    expect(columnsOf(selectFrom(referralAttachments))).toEqual(["fileName", "fileSize", "id", "mimeType"]);
+    rowsByTable.set(referralRequests, [{ id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery Lee", candidateMessage: NOTE, referrerId: REFERRER, status: "approved", revision: 4, grantId: 12 }]);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toMatchObject({ documentAccessActive: true });
   });
 });

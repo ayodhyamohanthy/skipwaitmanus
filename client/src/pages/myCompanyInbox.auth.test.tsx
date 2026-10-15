@@ -104,7 +104,7 @@ describe("My Company Inbox employee access", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/preview", expect.anything());
   });
 
-  it("shows the matching candidate note, role link, and resume before direct acceptance or a concise one-click decline", async () => {
+  it("shows the matching candidate note and role link, but never the seeker's name or resume file, before direct acceptance or a concise one-click decline", async () => {
     authState.signedIn = true;
     const inboxRequest = { id: 7, companyDomain: "acme.com", status: "pending", targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentCount: 1, savedAt: null, createdAt: "2026-01-01", updatedAt: "2026-01-01", isClaimedByYou: false };
     const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/preview") ? { request: { id: 7, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: inboxRequest.targetRoleUrl, attachments: [{ id: 4, fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 42, url: "https://signed.example/avery-resume.pdf" }] } } : url.includes("one-click-review") ? { status: "approved" } : { requests: [inboxRequest] } }));
@@ -112,9 +112,14 @@ describe("My Company Inbox employee access", () => {
     render(<MyCompanyInbox />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Open request" })).toBeTruthy());
     fireEvent.click(screen.getByRole("button", { name: "Open request" }));
-    await waitFor(() => expect(screen.getByText("Avery")).toBeTruthy());
-    expect(screen.getByText("I led a measurable product design launch.")).toBeTruthy();
-    expect(screen.getByText("avery-resume.pdf")).toBeTruthy();
+    expect(await screen.findByText("I led a measurable product design launch.")).toBeTruthy();
+    // D-019: before acceptance the card stays anonymous even if a payload carried the name, file name or a link.
+    expect(screen.getByRole("heading", { name: "Job Seeker" })).toBeTruthy();
+    expect(screen.getByText("Resume ready after acceptance")).toBeTruthy();
+    expect(screen.queryByText(/Avery/)).toBeNull();
+    expect(screen.queryByText(/avery-resume/)).toBeNull();
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(document.querySelector('a[href*="avery-resume"]')).toBeNull();
     expect(screen.getByRole("button", { name: "Accept & submit referral" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Not a fit" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Can’t support" })).toBeTruthy();

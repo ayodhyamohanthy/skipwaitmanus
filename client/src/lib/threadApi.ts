@@ -2,6 +2,7 @@ import { z } from "zod";
 import { companyIdentityFieldsSchema } from "@shared/companies";
 import { jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { isPostApprovalReferralStatus, referralStatuses, type ReferralStatus } from "@shared/referral";
+import { isOpenAskAttachment, referrerAskAttachmentSchema, type ReferrerAskAttachment } from "@shared/referrerAskView";
 import { readApiJson } from "@/lib/apiResponse";
 
 /*
@@ -17,13 +18,8 @@ const MALFORMED_ERROR = "We could not read this private thread. Try again in a m
 const statusSchema = z.enum(referralStatuses);
 const timestampSchema = z.union([z.string(), z.number()]).nullish();
 
-const attachmentSchema = z.object({
-  id: z.number().int(),
-  fileName: z.string(),
-  mimeType: z.string().nullish(),
-  fileSize: z.number().nullish(),
-  url: z.string().nullish(),
-});
+// Before acceptance a file arrives locked (counted, never named or linked); after it, named (shared/referrerAskView.ts).
+const attachmentSchema = referrerAskAttachmentSchema;
 
 /** Seeker's own row from GET /api/company-referrals/mine. */
 const seekerRowSchema = z.object({
@@ -127,8 +123,9 @@ function parse<T>(schema: z.ZodType<T>, payload: unknown): T {
   return result.data;
 }
 
-function attachmentsOf(list: readonly z.infer<typeof attachmentSchema>[] | null | undefined): ThreadAttachment[] {
-  return (list ?? []).map(file => ({ id: file.id, fileName: file.fileName, url: file.url ?? null }));
+/** Named files only; a locked file counts toward attachmentCount but is never listed. */
+function attachmentsOf(list: readonly ReferrerAskAttachment[] | null | undefined): ThreadAttachment[] {
+  return (list ?? []).filter(isOpenAskAttachment).map(file => ({ id: file.id, fileName: file.fileName, url: file.url ?? null }));
 }
 
 /** Resolve which side of the thread the viewer stands on, then load it. */
@@ -151,7 +148,6 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
   catch { /* not an available preview for this account; try the claimed detail */ }
   if (previewPayload) {
     const { request } = parse(previewSchema, previewPayload);
-    const attachments = attachmentsOf(request.attachments);
     return {
       role: "referrer-pending",
       // The preview endpoint only ever serves pending, unclaimed asks. The
@@ -160,7 +156,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       request: {
         id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: null, targetRoleUrl: request.targetRoleUrl ?? null,
         companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: "pending", referrerId: null, referrerMessage: null, createdAt: null,
-        attachments: [], attachmentCount: attachments.length,
+        attachments: [], attachmentCount: request.attachments?.length ?? 0,
       },
     };
   }
@@ -173,7 +169,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
     request: {
       id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: accepted ? request.candidateName ?? null : null,
       targetRoleUrl: request.targetRoleUrl ?? null, companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: request.status, referrerId: request.referrerId ?? null,
-      referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: attachments.length,
+      referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: request.attachments?.length ?? 0,
     },
   };
 }
