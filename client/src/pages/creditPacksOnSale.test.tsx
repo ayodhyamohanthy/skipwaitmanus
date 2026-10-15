@@ -26,6 +26,15 @@ describe("credit packs are on sale", () => {
     expect(screen.getAllByRole("button", { name: /pay/i }).length).toBeGreaterThan(0);
   });
 
+  it("labels only the purchased bucket as pack credits and names the free monthly credits separately", async () => {
+    window.history.pushState({}, "", "/premium?role=job_seeker");
+    vi.stubGlobal("fetch", vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ summary: { totalAvailable: 3, ledger: { buckets: { purchased: 0, cycle: 3 } } } }) })));
+    render(<Premium />);
+    expect(await screen.findByText(/in total, including your free monthly credits/)).toBeTruthy();
+    expect(document.body.textContent).toContain("You have 0 pack credits.");
+    expect(document.body.textContent).not.toContain("on top of your monthly");
+  });
+
   it("the plans credits bar renders and the out-of-credits moment offers Add credits", () => {
     const { container } = render(<CreditsSection summary={null} currency="USD" creditsHref="/premium" />);
     expect(container.innerHTML).not.toBe("");
