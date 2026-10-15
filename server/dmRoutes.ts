@@ -1,3 +1,4 @@
+import { retryAfterSecondsUntil, setRetryAfter } from "./retryAfter";
 import express, { type Express, type Request } from "express";
 import { dmRecipientExists, dmThreadExists, hasActivePremiumSubscription, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
 
@@ -99,6 +100,7 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       const message = error instanceof Error ? error.message : "We could not send this direct message";
       record({ actorUserId, action: "dm.sent", outcome: "failure", resourceType: "direct_message" });
       const retryAt=typeof error==="object"&&error!==null&&"retryAt" in error?(error as {retryAt:Date}).retryAt:undefined;
+      if(error instanceof Error&&error.name==="DirectMessageRateLimitError"&&retryAt instanceof Date)setRetryAfter(res,retryAfterSecondsUntil(retryAt.getTime(),Date.now()));
       res.status(error instanceof Error&&error.name==="DirectMessageRateLimitError"?429:error instanceof Error&&error.name==="DirectMessageConflictError"?409:/premium feature/i.test(message)?402:/not available/i.test(message)?404:500).json({ error: message, ...(retryAt?{retryAt}: {}) });
     }
   });
