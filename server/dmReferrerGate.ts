@@ -106,16 +106,26 @@ export function assertReferrerDmGateOpen(gate: ReferrerDmGate): void {
 /** Works on the pool and inside a transaction (sendDirectMessage rechecks under its locks). */
 export type DmGateDb = Pick<MySql2Database<Record<string, never>>, "select">;
 
-export function drizzleDmGateStore(db: DmGateDb): DmGateStore {
+/**
+ * The store's queries as unexecuted drizzle builders, so a contract test can
+ * read their SQL with .toSQL() (server/dmReferrerGateSql.test.ts).
+ */
+type Ids = readonly number[];
+
+export function dmGateQueries(db: DmGateDb) {
   return {
-    usersByIds: ids => db.select({ id: users.id, canonicalPersonId: users.canonicalPersonId }).from(users).where(inArray(users.id, [...ids])),
-    usersByPersons: personIds => db.select({ id: users.id, canonicalPersonId: users.canonicalPersonId }).from(users).where(inArray(users.canonicalPersonId, [...personIds])),
-    verifiedProfiles: userIds => db.select({ userId: profiles.userId, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(inArray(profiles.userId, [...userIds]), isNotNull(profiles.workEmailVerifiedAt))),
-    acceptedRequestsBetween: (a, b) => db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests)
+    usersByIds: (ids: Ids) => db.select({ id: users.id, canonicalPersonId: users.canonicalPersonId }).from(users).where(inArray(users.id, [...ids])),
+    usersByPersons: (personIds: Ids) => db.select({ id: users.id, canonicalPersonId: users.canonicalPersonId }).from(users).where(inArray(users.canonicalPersonId, [...personIds])),
+    verifiedProfiles: (userIds: Ids) => db.select({ userId: profiles.userId, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(profiles).where(and(inArray(profiles.userId, [...userIds]), isNotNull(profiles.workEmailVerifiedAt))),
+    acceptedRequestsBetween: (a: Ids, b: Ids) => db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests)
       .where(and(inArray(referralRequests.status, [...postApprovalReferralStatuses]), or(and(inArray(referralRequests.jobSeekerId, [...a]), inArray(referralRequests.referrerId, [...b])), and(inArray(referralRequests.jobSeekerId, [...b]), inArray(referralRequests.referrerId, [...a]))))),
-    acceptanceEvents: requestIds => db.select({ referralRequestId: referralTransitionEvents.referralRequestId, fromStatus: referralTransitionEvents.fromStatus, resultingStatus: referralTransitionEvents.resultingStatus }).from(referralTransitionEvents)
+    acceptanceEvents: (requestIds: Ids) => db.select({ referralRequestId: referralTransitionEvents.referralRequestId, fromStatus: referralTransitionEvents.fromStatus, resultingStatus: referralTransitionEvents.resultingStatus }).from(referralTransitionEvents)
       .where(and(inArray(referralTransitionEvents.referralRequestId, [...requestIds]), or(inArray(referralTransitionEvents.resultingStatus, [...OPEN_AFTER_ACCEPTANCE]), inArray(referralTransitionEvents.fromStatus, [...OPEN_AFTER_ACCEPTANCE])))),
   };
+}
+
+export function drizzleDmGateStore(db: DmGateDb): DmGateStore {
+  return dmGateQueries(db);
 }
 
 export function loadReferrerDmGate(db: DmGateDb, senderUserId: number, recipientUserId: number): Promise<ReferrerDmGate> {
