@@ -12,7 +12,9 @@ import { REFERRER_LINK_PARAMS, referrerLinkSchema, type ReferrerLink } from "@sh
  * never outlives the browsing session, short-lived, cleared on send and on
  * sign-out, and validated on read because browser storage is untrusted.
  * The referrer link also travels in the /ask URL (REFERRER_LINK_PARAMS), which
- * sign-in keeps in its return address; the URL wins over storage.
+ * sign-in keeps in its return address; the URL wins over storage. A link
+ * parameter that is present but malformed is passed on as it came, so /ask can
+ * say the link is invalid instead of quietly sending to the whole company.
  */
 export const ASK_PREFILL_KEY = "skipwait-ask-prefill";
 export const ASK_NOTE_LIMIT = 600;
@@ -67,14 +69,23 @@ export function clearAskPrefill(storage: StorageLike | null = sessionStore()): v
   try { storage?.removeItem(ASK_PREFILL_KEY); } catch { /* persistence is best-effort */ }
 }
 
-/** The referrer link in a query string: ?fast=<code>, else ?referCompany=<slug>&referAlias=<alias>. */
-export function referrerLinkFromSearch(search: string): ReferrerLink | null {
+/** What a query string says about a personal link: the link, or that a link parameter is there but unusable. */
+export type ReferrerLinkParams = { readonly link: ReferrerLink | null; readonly malformed: boolean };
+
+/** ?fast=<code> wins over ?referCompany=<slug>&referAlias=<alias>; any of them present but unparseable is malformed. */
+export function readReferrerLinkParams(search: string): ReferrerLinkParams {
   const params = new URLSearchParams(search);
   const code = params.get(REFERRER_LINK_PARAMS.code);
-  const candidate = code !== null
-    ? { fastTrackCode: code }
-    : { fastTrackCompanySlug: params.get(REFERRER_LINK_PARAMS.companySlug), fastTrackAlias: params.get(REFERRER_LINK_PARAMS.alias) };
-  return parseReferrerLink(candidate);
+  const companySlug = params.get(REFERRER_LINK_PARAMS.companySlug);
+  const alias = params.get(REFERRER_LINK_PARAMS.alias);
+  if (code === null && companySlug === null && alias === null) return { link: null, malformed: false };
+  const link = parseReferrerLink(code !== null ? { fastTrackCode: code } : { fastTrackCompanySlug: companySlug, fastTrackAlias: alias });
+  return { link, malformed: link === null };
+}
+
+/** The referrer link in a query string, or null (also when it is malformed). */
+export function referrerLinkFromSearch(search: string): ReferrerLink | null {
+  return readReferrerLinkParams(search).link;
 }
 
 /** "?fast=…" or "?referCompany=…&referAlias=…" for an entry page to hand the link on. */
@@ -85,8 +96,11 @@ export function referrerLinkSearch(link: ReferrerLink): string {
   return `?${params.toString()}`;
 }
 
-/** A referrer link from route parameters (/fast/:code, /refer/:company/:alias), or null. */
-export function parseReferrerLink(candidate: unknown): ReferrerLink | null {
+/** The two shapes a personal link arrives in, from route or query parameters. */
+export type ReferrerLinkCandidate = { readonly fastTrackCode: string } | { readonly fastTrackCompanySlug: string | null; readonly fastTrackAlias: string | null };
+
+/** A referrer link from route parameters (/fast/:code, /refer/:company/:alias) or the query, or null. */
+export function parseReferrerLink(candidate: ReferrerLinkCandidate): ReferrerLink | null {
   const parsed = referrerLinkSchema.safeParse(candidate);
   return parsed.success ? parsed.data : null;
 }
@@ -94,6 +108,24 @@ export function parseReferrerLink(candidate: unknown): ReferrerLink | null {
 /** `path` with the referrer link's query, or just `path` when there is none. */
 export function withReferrerLink(path: string, link: ReferrerLink | null): string {
   return link ? `${path}${referrerLinkSearch(link)}` : path;
+}
+
+/**
+ * `path` carrying the personal link found in `search`: the parsed link, or a
+ * malformed one as it came (each value cut to 128 characters, so it stays
+ * malformed) for /ask to show as invalid; just `path` when there is none.
+ */
+export function withReferrerLinkFrom(path: string, search: string): string {
+  const { link, malformed } = readReferrerLinkParams(search);
+  if (link) return withReferrerLink(path, link);
+  if (!malformed) return path;
+  const source = new URLSearchParams(search);
+  const kept = new URLSearchParams();
+  for (const name of Object.values(REFERRER_LINK_PARAMS)) {
+    const value = source.get(name);
+    if (value !== null) kept.set(name, value.slice(0, 128));
+  }
+  return `${path}?${kept.toString()}`;
 }
 
 /** The query string without the referrer-link parameters (other parameters kept). */
@@ -104,18 +136,34 @@ export function searchWithoutReferrerLink(search: string): string {
   return rest ? `?${rest}` : "";
 }
 
-/** What /ask starts from: the referrer link in its URL first, then the stored hand-off. */
+/** The hand-off without its referrer link, or null when nothing else is left. */
+function withoutReferrerLink(prefill: AskPrefill): AskPrefill | null {
+  if (!prefill.companySlug && !prefill.targetRoleUrl) return null;
+  return {
+    ...(prefill.companySlug !== undefined ? { companySlug: prefill.companySlug } : {}),
+    ...(prefill.targetRoleUrl !== undefined ? { targetRoleUrl: prefill.targetRoleUrl } : {}),
+    ...(prefill.note !== undefined ? { note: prefill.note } : {}),
+    savedAt: prefill.savedAt,
+  };
+}
+
+/**
+ * What /ask starts from: the referrer link in its URL first, then the stored
+ * hand-off. A malformed link in the URL is what the seeker came with, so a
+ * stored link is never used in its place (/ask shows the URL's as invalid).
+ */
 export function resolveAskPrefill(search: string, storage: StorageLike | null = sessionStore(), now: number = Date.now()): AskPrefill | null {
   const stored = readAskPrefill(storage, now);
-  const fromUrl = referrerLinkFromSearch(search);
-  if (!fromUrl) return stored;
-  return { ...(stored ?? {}), referrerLink: fromUrl, savedAt: stored?.savedAt ?? now };
+  const fromUrl = readReferrerLinkParams(search);
+  if (fromUrl.link) return { ...(stored ?? {}), referrerLink: fromUrl.link, savedAt: stored?.savedAt ?? now };
+  if (fromUrl.malformed && stored) return withoutReferrerLink(stored);
+  return stored;
 }
 
 /** The seeker chose to send to the company instead: keep the rest of the hand-off, forget the link. */
 export function forgetReferrerLink(storage: StorageLike | null = sessionStore(), now: number = Date.now()): void {
   const stored = readAskPrefill(storage, now);
   if (!stored?.referrerLink) return;
-  const rest: AskPrefillInput = { companySlug: stored.companySlug, targetRoleUrl: stored.targetRoleUrl, note: stored.note };
-  if (!saveAskPrefill(rest, storage, stored.savedAt)) clearAskPrefill(storage);
+  const rest = withoutReferrerLink(stored);
+  if (!rest || !saveAskPrefill({ companySlug: rest.companySlug, targetRoleUrl: rest.targetRoleUrl, note: rest.note }, storage, stored.savedAt)) clearAskPrefill(storage);
 }

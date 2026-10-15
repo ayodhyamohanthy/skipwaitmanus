@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { SentAsk } from "@/components/ask/AskSent";
 import type { JobFunction } from "@shared/jobFunctions";
 import type { ReferrerLink } from "@shared/referrerLink";
+import type { AskSendBody, ReferrerLinkFallback } from "@shared/askSend";
 
 const sendAskResponseSchema = z.object({
   requestId: z.number().int().positive(),
@@ -38,23 +39,12 @@ export type AskSendInput = {
   readonly compensation: string;
   readonly jobFunction: JobFunction | null;
   readonly referrerLink: ReferrerLink | null;
+  /** Set only on a send without a link, when the ask began on one (analytics; D-017). */
+  readonly referrerLinkFallback?: ReferrerLinkFallback | null;
   readonly confirmedCompanyDomain?: string;
 };
 
-/** POST /api/company-referrals body. A personal referrer link goes as its own fields (D-017). */
-export type AskSendBody = {
-  targetRoleUrl: string;
-  attachmentIds: number[];
-  candidateMessage: string;
-  companySlug?: string;
-  compensation?: string;
-  jobFunction?: JobFunction;
-  fastTrackCode?: string;
-  fastTrackCompanySlug?: string;
-  fastTrackAlias?: string;
-  confirmedCompanyDomain?: string;
-};
-
+/** POST /api/company-referrals body (shared contract @shared/askSend). A personal referrer link goes as its own fields (D-017). */
 export function buildAskBody(input: AskSendInput): AskSendBody {
   const compensation = input.compensation.trim().slice(0, 80);
   return {
@@ -67,6 +57,7 @@ export function buildAskBody(input: AskSendInput): AskSendBody {
     // Only an explicit pick is sent; otherwise the server infers the function.
     ...(input.jobFunction ? { jobFunction: input.jobFunction } : {}),
     ...(input.referrerLink ?? {}),
+    ...(!input.referrerLink && input.referrerLinkFallback ? { referrerLinkFallback: input.referrerLinkFallback } : {}),
     ...(input.confirmedCompanyDomain ? { confirmedCompanyDomain: input.confirmedCompanyDomain } : {}),
   };
 }

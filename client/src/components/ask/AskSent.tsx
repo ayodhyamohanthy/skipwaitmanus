@@ -14,7 +14,7 @@ export function AskSent({ sent, openAsks, onWriteAnother }: { sent: SentAsk; ope
   const detail = sent.waitingForCoverage
     ? "No verified referrers there yet — we'll route it privately the moment coverage opens."
     : sent.fastTrack
-    ? "Only the verified employee whose private link you used will see it."
+    ? `It goes first to the verified employee whose private link you used. If they pass, other verified ${sent.companyDomain ? `${sent.companyDomain} ` : ""}referrers can pick it up. It expires in ${ASK_TTL_DAYS} days if nobody accepts, and your credit returns.`
     : `Verified ${sent.companyDomain ? `${sent.companyDomain} ` : ""}referrers will see it. It expires in ${ASK_TTL_DAYS} days if nobody accepts, and your credit returns.`;
   return (
     <main data-skipwait-screen="ask-sent" className="page-content mx-auto max-w-xl text-center">
