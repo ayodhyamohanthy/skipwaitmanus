@@ -41,6 +41,7 @@ import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
+import { decideAdminReferralApproval } from "./adminReferralApproval";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -3425,12 +3426,12 @@ export async function resolveAdminApproval(adminUserId: number, itemKind: AdminA
     return { kind: itemKind, id: itemId, status: decision === "approved" ? "approved" as const : "declined" as const, tokenCount: result.tokenCount };
   }
   return db.transaction(async tx => {
-    const rows = await tx.select({ id: referralRequests.id, status: referralRequests.status, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, itemId)).limit(1);
+    // Locked read: a claim landing between this read and the update cannot slip past the claimed check (D-012 item 3).
+    const rows = await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, itemId)).limit(1).for("update");
     const row = rows[0];
     if (!row) throw new Error("This referral request could not be found");
-    if (row.status !== "pending") throw new Error("This record was already resolved");
-    const nextStatus = decision === "approved" ? "approved" : "declined";
-    const updated = await tx.update(referralRequests).set({ status: nextStatus }).where(and(eq(referralRequests.id, itemId), eq(referralRequests.status, "pending")));
+    const nextStatus = decideAdminReferralApproval(row, decision);
+    const updated = await tx.update(referralRequests).set({ status: nextStatus }).where(and(eq(referralRequests.id, itemId), eq(referralRequests.status, "pending"), ...(nextStatus === "approved" ? [isNull(referralRequests.referrerId)] : [])));
     if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("This record was already resolved");
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `admin.approval_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: String(itemId), companyDomain: row.companyDomain, metadata: JSON.stringify(trimmedNote ? { status: nextStatus, note: trimmedNote } : { status: nextStatus }) });
     return { kind: itemKind, id: itemId, status: nextStatus as AdminApprovalQueueStatus };

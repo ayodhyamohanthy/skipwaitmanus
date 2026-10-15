@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { decideReferrerDmGate, hasAcceptedLink, resolveReferrerDmGate, type DmGateEventRow, type DmGateProfileRow, type DmGateRequestRow, type DmGateStore, type DmGateUserRow } from "./dmReferrerGate";
 import { DM_REFERRER_ACCEPTANCE_ERROR, DM_REFERRER_ACCEPTANCE_SENDER_IS_REFERRER_ERROR, dmSendBlockFor, parseDmSendBlock } from "../shared/directMessages";
+import { AdminCannotAcceptClaimedReferralError, decideAdminReferralApproval } from "./adminReferralApproval";
 
 type Tables = { users: DmGateUserRow[]; profiles: DmGateProfileRow[]; requests: DmGateRequestRow[]; events: DmGateEventRow[] };
 
@@ -115,6 +116,19 @@ describe("referrer DM gate over stored rows", () => {
     expect(await resolveReferrerDmGate(memoryStore(tables), BOTH, MEMBER)).toEqual({ kind: "acceptance_required", senderRole: "referrer" });
     tables.requests = [{ id: 3, jobSeekerId: BOTH, referrerId: REFERRER, status: "approved" }];
     expect(await resolveReferrerDmGate(memoryStore(tables), REFERRER, BOTH)).toEqual({ kind: "accepted" });
+  });
+
+  it("stays closed on a claimed request an administrator tried to approve: only the referrer's own acceptance opens it", async () => {
+    const tables = base();
+    const claimed: DmGateRequestRow = { id: 12, jobSeekerId: SEEKER, referrerId: REFERRER, status: "pending" };
+    tables.requests = [claimed];
+    // resolveAdminApproval runs this decision and writes nothing when it throws.
+    expect(() => decideAdminReferralApproval(claimed, "approved")).toThrow(AdminCannotAcceptClaimedReferralError);
+    expect(await resolveReferrerDmGate(memoryStore(tables), SEEKER, REFERRER)).toEqual({ kind: "acceptance_required", senderRole: "member" });
+    expect(await resolveReferrerDmGate(memoryStore(tables), REFERRER, SEEKER)).toEqual({ kind: "acceptance_required", senderRole: "referrer" });
+    // An administrator's approval of an unclaimed request has no referrer, so it links nobody.
+    tables.requests = [{ id: 13, jobSeekerId: SEEKER, referrerId: null, status: decideAdminReferralApproval({ status: "pending", referrerId: null }, "approved") }];
+    expect((await resolveReferrerDmGate(memoryStore(tables), SEEKER, REFERRER)).kind).toBe("acceptance_required");
   });
 
   it("does not read requests for two members who are not verified referrers", async () => {

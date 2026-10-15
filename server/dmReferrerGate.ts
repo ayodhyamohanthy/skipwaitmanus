@@ -41,6 +41,9 @@ export type DmGateStore = {
  * unclaimed expired asks, so a closed request counts only with a recorded
  * transition into or out of one of these (an approve event, or a later step
  * such as offer -> closed when the approval predates migration 0058's events).
+ * An administrator cannot write "approved" on a claimed request
+ * (server/adminReferralApproval.ts), so "approved" with a referrer always
+ * comes from that referrer's own acceptance.
  */
 const OPEN_AFTER_ACCEPTANCE: readonly ReferralStatus[] = ["approved", "intro_made", "interview", "offer"];
 const ACCEPTED_STATUS_NAMES: ReadonlySet<string> = new Set(OPEN_AFTER_ACCEPTANCE);
