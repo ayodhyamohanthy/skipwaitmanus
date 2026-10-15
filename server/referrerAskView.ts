@@ -4,6 +4,7 @@ import { isPostApprovalReferralStatus, referralStatuses } from "../shared/referr
 import { toLockedAskAttachment, toOpenAskAttachment, type LockedAskAttachment, type OpenAskAttachment } from "../shared/referrerAskView";
 import type { JobFunction } from "../shared/jobFunctions";
 import type { ReferralStatus } from "../shared/referral";
+import type { PrivateReferralRouteDeps } from "./privateReferralRoutes";
 
 /*
  * What a referrer receives about an ask (D-019; Terms and Privacy: "Before
@@ -12,7 +13,8 @@ import type { ReferralStatus } from "../shared/referral";
  * Every view is an explicit allow-list built from a parsed store row, so a
  * column the store adds later never reaches a referrer by accident.
  * - Before acceptance (status pending, claimed or not): the role, the note and
- *   how many files wait. No seeker name, no file names, no links, no seeker id.
+ *   how many files wait. No seeker name, no file names, no file ids or links,
+ *   no seeker id.
  * - After acceptance (approved and later), for the referrer it is assigned to:
  *   the seeker's name, the note, and the files (linked while their document
  *   access is active).
@@ -95,7 +97,8 @@ export function buildClaimedAskDetailView(row: object): AskViewResult<ClaimedAsk
   return { ok: true, view };
 }
 
-export type ClaimResult = { requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean };
+/** The store's claim outcome, as the route deps declare it (one definition, no copy to drift). */
+export type ClaimResult = Awaited<ReturnType<PrivateReferralRouteDeps["claimCompanyReferralRequest"]>>;
 
 /** POST /api/company-referrals/:id/claim — the claim outcome without the seeker's account id. */
 export function claimResponseView(result: ClaimResult) {

@@ -10,9 +10,10 @@ const ROW = { id: 501, title: "Product Designer", targetRoleUrl: "https://career
 const EXTRA = { candidateName: "Avery Lee", jobSeekerId: 7, seekerEmail: "avery@example.com", avatarUrl: "https://cdn.example/avery.png", linkedinUrl: "https://linkedin.com/in/avery", grantVersion: 2 };
 
 describe("attachment views", () => {
-  it("a locked file is counted, never named or linked", () => {
+  it("a locked file is counted, never named, linked or identified by its file id", () => {
     const locked = toLockedAskAttachment(FILE);
-    expect(locked).toEqual({ id: 77, mimeType: "application/pdf", fileSize: 2048, availability: "after_claim" });
+    expect(locked).toEqual({ mimeType: "application/pdf", fileSize: 2048, availability: "after_claim" });
+    expect(locked).not.toHaveProperty("id");
     expect(lockedAskAttachmentSchema.parse(locked)).toEqual(locked);
     expect(isOpenAskAttachment(referrerAskAttachmentSchema.parse(locked))).toBe(false);
   });
@@ -27,7 +28,8 @@ describe("attachment views", () => {
     expect(referrerAskAttachmentSchema.parse({ ...toLockedAskAttachment(FILE), fileKey: "private/avery.pdf" })).not.toHaveProperty("fileKey");
     expect(lockedAskAttachmentSchema.safeParse({ id: 77, mimeType: "application/pdf", fileSize: 1 }).success).toBe(false);
     expect(openAskAttachmentSchema.safeParse({ id: 77, url: "/api/documents/77" }).success).toBe(false);
-    expect(referrerAskAttachmentSchema.safeParse({ id: -1, availability: "after_claim" }).success).toBe(false);
+    expect(referrerAskAttachmentSchema.parse({ id: 77, availability: "after_claim" })).toEqual({ availability: "after_claim" });
+    expect(openAskAttachmentSchema.safeParse({ id: -1, fileName: "a.pdf", url: null }).success).toBe(false);
   });
 });
 

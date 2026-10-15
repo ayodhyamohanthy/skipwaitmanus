@@ -85,7 +85,7 @@ describe("before acceptance a referrer never receives the seeker's identity", ()
     expect(preview.status).toBe(200);
     expect(leaksIdentity(preview.body)).toEqual([]);
     expect(preview.body.request).toMatchObject({ id: 501, title: "Product Designer", candidateMessage: NOTE, targetRoleUrl: ROLE_URL, jobFunction: "Design" });
-    expect(preview.body.request.attachments).toEqual([{ id: 77, mimeType: "application/pdf", fileSize: 2048, availability: "after_claim" }]);
+    expect(preview.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 2048, availability: "after_claim" }]);
     expect(lockedAskAttachmentSchema.safeParse(preview.body.request.attachments[0]).success).toBe(true);
   });
 
@@ -113,7 +113,7 @@ describe("before acceptance a referrer never receives the seeker's identity", ()
     expect(leaksIdentity(detail.body)).toEqual([]);
     expect(detail.body.request).not.toHaveProperty("candidateName");
     expect(detailSchema.parse(detail.body).request).toMatchObject({ status: "pending", candidateMessage: NOTE });
-    expect(detail.body.request.attachments).toEqual([{ id: 77, mimeType: "application/pdf", fileSize: 2048, availability: "after_claim" }]);
+    expect(detail.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 2048, availability: "after_claim" }]);
   });
 });
 

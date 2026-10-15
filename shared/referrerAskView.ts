@@ -4,9 +4,10 @@ import { z } from "zod";
  * How a referrer sees the files on an ask (D-019, privacy promise: "Before
  * acceptance, a Referrer sees neither the Job Seeker's name nor resume").
  *
- * Before acceptance a file is "locked": its id, type and size only, so the
- * card can say how many files wait. Never the file name (resume file names
- * routinely carry the seeker's full name) and never a link.
+ * Before acceptance a file is "locked": its type and size only, so the card
+ * can say how many files wait. Never the file name (resume file names
+ * routinely carry the seeker's full name), never a link and never the file id
+ * (nothing to try against GET /api/documents/:id, which refuses it anyway).
  *
  * After acceptance a file is "open": its name, and a link while the referrer's
  * document access is active (null once that access has ended).
@@ -16,7 +17,6 @@ import { z } from "zod";
 export const LOCKED_ATTACHMENT_AVAILABILITY = "after_claim" as const;
 
 export const lockedAskAttachmentSchema = z.object({
-  id: z.number().int().positive(),
   mimeType: z.string().nullish(),
   fileSize: z.number().int().nonnegative().nullish(),
   availability: z.literal(LOCKED_ATTACHMENT_AVAILABILITY),
@@ -41,7 +41,7 @@ export type ReferrerAskAttachment = z.infer<typeof referrerAskAttachmentSchema>;
 export type AskAttachmentRow = { readonly id: number; readonly fileName: string; readonly mimeType?: string | null; readonly fileSize?: number | null };
 
 export function toLockedAskAttachment(row: AskAttachmentRow): LockedAskAttachment {
-  return { id: row.id, mimeType: row.mimeType, fileSize: row.fileSize, availability: LOCKED_ATTACHMENT_AVAILABILITY };
+  return { mimeType: row.mimeType, fileSize: row.fileSize, availability: LOCKED_ATTACHMENT_AVAILABILITY };
 }
 
 export function toOpenAskAttachment(row: AskAttachmentRow, documentAccessActive: boolean): OpenAskAttachment {
