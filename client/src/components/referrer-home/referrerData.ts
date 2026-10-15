@@ -2,6 +2,7 @@
 // Parses the live REST payloads with Zod at the edge and derives the kit v4
 // referrer-home view from them. Derivations are pure so the honesty rules
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
+import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
 import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
 import { companyIdentityFieldsSchema, companyIdentityOf, type CompanyIdentity } from "@shared/companies";
@@ -12,7 +13,7 @@ export type TokenSource = () => Promise<string | null | undefined>;
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
 /** Client-side re-verification nudge: warn 14 days before 90 days since the last verified work email. */
-export const REVERIFY_DAYS = 90;
+export { REVERIFY_DAYS } from "@shared/reverify";
 export const REVERIFY_WARNING_DAYS = 14;
 
 const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof value === "string" ? value : value.toISOString()));
@@ -170,6 +171,8 @@ export type ReferrerHomeView = {
   isNew: boolean;
   paused: boolean;
   reverifyDue: boolean;
+  /** Whole days left before the badge needs re-verifying (grandfathered by the shared policy); null when not verified. */
+  reverifyDaysLeft: number | null;
 };
 
 export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): ReferrerHomeView {
@@ -183,8 +186,7 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
     const ms = expiryMs(row);
     return askCountdown(row, nowMs) !== null && ms !== null && ms - nowMs <= DAY_MS;
   }).length;
-  const verifiedMs = data.verifiedAt ? Date.parse(data.verifiedAt) : Number.NaN;
-  const daysSince = Number.isNaN(verifiedMs) ? null : Math.floor((nowMs - verifiedMs) / DAY_MS);
+  const daysLeft = reverifyDaysLeft(data.verifiedAt, nowMs);
   return {
     verified,
     company: data.access.domain ? companyIdentity(data.access) : null,
@@ -196,7 +198,8 @@ export function deriveReferrerHome(data: ReferrerHomeData, nowMs: number): Refer
     atCapacity: verified && used >= capacity,
     isNew: verified && waiting.length === 0 && (data.impact?.reviewed ?? 0) === 0,
     paused: verified && Boolean(data.preferences?.paused),
-    reverifyDue: verified && daysSince !== null && daysSince >= REVERIFY_DAYS - REVERIFY_WARNING_DAYS,
+    reverifyDue: verified && daysLeft !== null && daysLeft <= REVERIFY_WARNING_DAYS,
+    reverifyDaysLeft: verified ? daysLeft : null,
   };
 }
 

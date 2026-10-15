@@ -4,6 +4,7 @@
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
+import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
 const MINUTE = 60_000;
@@ -22,5 +23,12 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createChargebeePendingReconcile(),
+  },
+  {
+    name: "work-email-reverify-sweep",
+    description: "DRY RUN: counts verified referrers past the 90-day work-email re-check (grandfathered to 16 Oct 2026 + 90 days); changes nothing",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createWorkEmailReverifySweep(),
   },
 ];
