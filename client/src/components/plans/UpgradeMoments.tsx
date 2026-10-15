@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Link } from "wouter";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan } from "@shared/subscriptionPlans";
 import { kitDate } from "./format";
 import { hasActivePaidPlan, nextPlanUp, openRequestsLabel, planLimits, type CreditSummary } from "./planCatalog";
@@ -37,9 +38,9 @@ export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: s
       id: "credits",
       trigger: "Credit balance reaches 0",
       title: "You're out of credits",
-      copy: nextPlan ? `Add a pack once, or get ${nextPlan.creditsPerMonth} credits every month with ${nextPlan.label}.` : "Add a pack once. Credits you buy never expire.",
-      cta: { label: "Add credits", href: creditsHref },
-      alt: { label: "Compare plans", href: "#compare" },
+      copy: nextPlan ? `Get ${nextPlan.creditsPerMonth} credits every month with ${nextPlan.label}.` : "Your credits renew with your plan each cycle.",
+      cta: CREDIT_PACKS_ON_SALE ? { label: "Add credits", href: creditsHref } : { label: "Compare plans", href: "#compare" },
+      alt: CREDIT_PACKS_ON_SALE ? { label: "Compare plans", href: "#compare" } : "dismiss",
     });
   }
   const expiring = ledger?.planCreditsExpiringSoon;

@@ -4,7 +4,7 @@
 // from shared/planEntitlements.ts (legacy Pro/Max grandfathered), the rules the
 // server enforces. Kit tier names and example prices are not used here: live
 // checkout still sells Free / Pro / Max.
-import type { Carryover } from "@shared/planCatalog";
+import { CREDIT_PACKS_ON_SALE, type Carryover } from "@shared/planCatalog";
 import { planEntitlementsFor } from "@shared/planEntitlements";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionCurrency } from "@shared/subscriptionPlans";
 import type { CreditSummary } from "./billingApi";
@@ -82,7 +82,7 @@ export function planCards(currency: SubscriptionCurrency): PlanCardCopy[] {
       id: "free",
       name: "Free",
       tagline: "For getting started: a few private asks at a time.",
-      features: [`${openRequestsLabel(free.openRequests)} referral requests open at once`, "Track every request in one place", `Add credits anytime, ${CREDIT_PRICE[currency]} each`, "Same referrer queue as every plan"],
+      features: [`${openRequestsLabel(free.openRequests)} referral requests open at once`, "Track every request in one place", ...(CREDIT_PACKS_ON_SALE ? [`Add credits anytime, ${CREDIT_PRICE[currency]} each`] : []), "Same referrer queue as every plan"],
       cta: "Ask for a referral",
     },
     {
