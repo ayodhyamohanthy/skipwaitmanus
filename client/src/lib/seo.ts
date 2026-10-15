@@ -11,6 +11,25 @@ const SITE = "https://skipwait.me";
 const SUFFIX = " · skipwait.me";
 const JSON_LD_MARKER = "data-skipwait-jsonld";
 
+/**
+ * The path whose <head> was last written by a PAGE, not by the route-level
+ * fallback.
+ *
+ * A page that owns dynamic metadata -- a company page naming the company, a job
+ * list carrying JobPosting structured data -- must win over the registry's
+ * static entry. React runs child effects before parent effects, so the route
+ * handler always runs AFTER the page and would otherwise overwrite it. Recording
+ * which path a page claimed lets the handler tell "nobody set this" apart from
+ * "the page already set it", without either side needing to know about the
+ * other.
+ */
+let claimedPath: string | null = null;
+
+/** True when a page component has already written the head for this path. */
+export function seoClaimedByPage(path: string): boolean {
+  return claimedPath === path;
+}
+
 function upsertMeta(attribute: "name" | "property", key: string, content: string) {
   if (typeof document === "undefined") return;
   let tag = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`);
@@ -25,9 +44,12 @@ function upsertCanonical(href: string) {
   link.href = href;
 }
 
-export function applySeo(input: { title?: string; description?: string; path?: string; jsonLd?: unknown }) {
+export function applySeo(input: { title?: string; description?: string; path?: string; jsonLd?: unknown; noindex?: boolean; claim?: boolean }) {
   if (typeof document === "undefined") return;
   const path = input.path ?? (typeof location !== "undefined" ? location.pathname : "/");
+  // A page calling this with its own metadata claims the path, so the
+  // route-level handler leaves it alone. Pass claim:false from the handler.
+  if (input.claim !== false) claimedPath = path;
   const url = `${SITE}${path}`;
   const title = input.title ? `${input.title}${SUFFIX}` : "skipwait.me — Job Referrals";
   document.title = title;
@@ -38,6 +60,15 @@ export function applySeo(input: { title?: string; description?: string; path?: s
   upsertMeta("property", "og:title", title);
   upsertMeta("property", "og:url", url);
   upsertCanonical(url);
+
+  // A path absent from PUBLIC_ROUTES is an app or internal screen, and the
+  // registry's own contract is that it is "not a page we ask a crawler to
+  // index". Saying that in the document is what makes it true: without the tag,
+  // a crawler that reaches /settings or /admin through a link indexes whatever
+  // the shell rendered. Set explicitly rather than by omission, and CLEARED on
+  // the way back out -- a stale noindex left on a public page is worse than
+  // none, because it de-indexes a page we do want found.
+  upsertMeta("name", "robots", input.noindex ? "noindex,nofollow" : "index,follow");
 
   // Every script this module owns is tagged so a route change clears all of
   // them. A route's own structured data and its breadcrumb trail are separate
