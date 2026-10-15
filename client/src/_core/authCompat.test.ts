@@ -4,6 +4,7 @@ import { cleanup, render, waitFor, act } from "@testing-library/react";
 import { builtinEnvironments } from "vitest/runtime";
 import { AuthProvider, useAuth } from "./auth";
 import { getGlobalAccessToken, setGlobalAccessToken } from "./accessToken";
+import { ASK_PREFILL_KEY, readAskPrefill, saveAskPrefill } from "@/lib/askPrefill";
 
 const mocks = vi.hoisted(() => ({
   sdk: { isLoading: false, user: null as null | { id: string; email: string; emailVerified: boolean }, getAccessToken: vi.fn(), signOut: vi.fn(), signIn: vi.fn() },
@@ -128,6 +129,32 @@ describe("WorkOS client and server-session compatibility", () => {
     expect(mocks.invalidate).not.toHaveBeenCalled();
     expect(mocks.cancel).toHaveBeenCalled();
     expect(mocks.setData).toHaveBeenCalledWith(undefined, null);
+  });
+
+  it("forgets an unsent ask hand-off, including a referrer's personal link, on sign-out", async () => {
+    mount();
+    expect(saveAskPrefill({ targetRoleUrl: "https://careers.tcs.com/job/42", referrerLink: { fastTrackCode: "abcdefghijklmnop1234" } })).toBe(true);
+    await act(async () => { await auth.signOut(); });
+    expect(sessionStorage.getItem(ASK_PREFILL_KEY)).toBeNull();
+  });
+
+  it("keeps the ask hand-off when sign-out fails, so nothing the person still sees is lost", async () => {
+    mount();
+    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 503 } as Response);
+    saveAskPrefill({ targetRoleUrl: "https://careers.tcs.com/job/42" });
+    await expect(auth.signOut()).rejects.toThrow("Sign out could not be completed");
+    expect(readAskPrefill()?.targetRoleUrl).toBe("https://careers.tcs.com/job/42");
+    sessionStorage.clear();
+  });
+
+  it("returns to /ask with the referrer's personal link after sign-in", () => {
+    mocks.me.data = null;
+    mount();
+    const location = { href: "https://skipwait.me/ask?fast=abcdefghijklmnop1234", origin: "https://skipwait.me" };
+    vi.stubGlobal("window", { location });
+    auth.openSignIn();
+    expect(new URL(location.href, location.origin).searchParams.get("returnTo")).toBe("/ask?fast=abcdefghijklmnop1234");
+    vi.unstubAllGlobals();
   });
 
   it("does not pretend logout succeeded when the server could not clear the cookie", async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ASK_NETWORK_ERROR, askErrorMessage, confirmedDomainFor, countOpenAsks, parseSentAsk } from "./askApi";
+import { ASK_NETWORK_ERROR, askErrorMessage, buildAskBody, confirmedDomainFor, countOpenAsks, parseSentAsk } from "./askApi";
 
 describe("ask send boundary", () => {
   it("accepts a created or replayed ask and normalizes optional fields", () => {
@@ -32,5 +32,20 @@ describe("ask send boundary", () => {
     expect(askErrorMessage(new TypeError("Failed to fetch"), "fallback")).toBe(ASK_NETWORK_ERROR);
     expect(askErrorMessage(new Error("You have used this month's included credits."), "fallback")).toBe("You have used this month's included credits.");
     expect(askErrorMessage("boom", "fallback")).toBe("fallback");
+  });
+
+  it("marks an ask routed through a personal referrer link, and only when the server says so", () => {
+    expect(parseSentAsk({ requestId: 14, companyDomain: "tcs.com", fastTrack: true })).toEqual({ requestId: 14, companyDomain: "tcs.com", waitingForCoverage: false, fastTrack: true });
+    expect(parseSentAsk({ requestId: 15, companyDomain: "tcs.com", fastTrack: false })).toEqual({ requestId: 15, companyDomain: "tcs.com", waitingForCoverage: false });
+    expect(parseSentAsk({ requestId: 16, fastTrack: "yes" })).toBeNull();
+  });
+
+  it("builds the send body with the personal link as its own fields and nothing empty", () => {
+    const base = { targetRoleUrl: "https://careers.tcs.com/job/42", attachmentId: 77, note: "Strong fit.", compensation: "  ", jobFunction: null, referrerLink: null } as const;
+    expect(buildAskBody(base)).toEqual({ targetRoleUrl: "https://careers.tcs.com/job/42", attachmentIds: [77], candidateMessage: "Strong fit." });
+    expect(buildAskBody({ ...base, referrerLink: { fastTrackCode: "abcdefghijklmnop1234" } })).toMatchObject({ fastTrackCode: "abcdefghijklmnop1234" });
+    const vanity = buildAskBody({ ...base, referrerLink: { fastTrackCompanySlug: "tcs", fastTrackAlias: "asha-k" }, companySlug: "tcs", compensation: " ₹18 LPA ", jobFunction: "Design", confirmedCompanyDomain: "tcs.com" });
+    expect(vanity).toEqual({ targetRoleUrl: "https://careers.tcs.com/job/42", attachmentIds: [77], candidateMessage: "Strong fit.", companySlug: "tcs", compensation: "₹18 LPA", jobFunction: "Design", fastTrackCompanySlug: "tcs", fastTrackAlias: "asha-k", confirmedCompanyDomain: "tcs.com" });
+    expect(buildAskBody({ ...base, compensation: "x".repeat(100) }).compensation).toHaveLength(80);
   });
 });

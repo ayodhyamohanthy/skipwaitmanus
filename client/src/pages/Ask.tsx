@@ -7,7 +7,8 @@ import type { JobFunction } from "@shared/jobFunctions";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
-import { clearAskPrefill, readAskPrefill } from "@/lib/askPrefill";
+import { clearAskPrefill, forgetReferrerLink, resolveAskPrefill, searchWithoutReferrerLink } from "@/lib/askPrefill";
+import { isReferrerLinkUnusableError, type ReferrerLink } from "@shared/referrerLink";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { discardAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
@@ -18,7 +19,7 @@ import { careersPlaceholder } from "@shared/askCompany";
 import { AskStrength, askChecks, countWords } from "@/components/ask/AskStrength";
 import { AskSent, type SentAsk } from "@/components/ask/AskSent";
 import { AskFunctionEyebrow } from "@/components/ask/AskFunctionEyebrow";
-import { askErrorMessage, confirmedDomainFor, countOpenAsks, parseSentAsk } from "@/components/ask/askApi";
+import { askErrorMessage, buildAskBody, confirmedDomainFor, countOpenAsks, parseSentAsk } from "@/components/ask/askApi";
 
 const NOTE_LIMIT = 600;
 const IDEMPOTENCY_KEY = "skipwait-ask-idempotency-key";
@@ -40,12 +41,21 @@ function confirmedCompanyDomain(targetRoleUrl: string): string | undefined {
   catch { return undefined; /* unconfirmed links resolve server-side */ }
 }
 
+/** Once an ask is sent, or the seeker sends to the company instead, a reload must not reuse the link. */
+function dropReferrerLinkFromUrl() {
+  const search = searchWithoutReferrerLink(window.location.search);
+  if (search !== window.location.search) window.history.replaceState(window.history.state, "", `${window.location.pathname}${search}${window.location.hash}`);
+}
+
 export default function Ask() {
   const { isLoaded, isSignedIn, getToken } = useAuth();
   const fetchToken = usePersistFn(getToken);
-  // A company door's request dialog (/explore/:slug) hands its job link and
-  // fit note forward; nothing was sent there, so the seeker reviews it here.
-  const [prefill] = useState(() => readAskPrefill());
+  // A company door (/explore/:slug) or /start hands its job link (and fit note,
+  // or a referrer's personal link: D-017) forward; nothing was sent there, so
+  // the seeker reviews it here. The personal link in the URL wins over storage.
+  const [prefill] = useState(() => resolveAskPrefill(typeof window === "undefined" ? "" : window.location.search));
+  const [referrerLink, setReferrerLink] = useState<ReferrerLink | null>(prefill?.referrerLink ?? null);
+  const [linkUnusable, setLinkUnusable] = useState(false);
   const [url, setUrl] = useState(prefill?.targetRoleUrl ?? "");
   const [note, setNote] = useState(prefill?.note?.slice(0, NOTE_LIMIT) ?? "");
   const [compensation, setCompensation] = useState("");
@@ -128,30 +138,28 @@ export default function Ask() {
     finally { setDrafting(false); }
   };
 
-  const send = async () => {
+  // `via` is the referrer's personal link the ask goes to; null sends it to the company.
+  const send = async (via: ReferrerLink | null = referrerLink) => {
     if (!officialUrl || words < 10 || sending) return;
-    setSendError(""); setSendStage("resume"); setSending(true);
+    setSendError(""); setLinkUnusable(false); setSendStage("resume"); setSending(true);
     try {
       const doc = await ensureResume();
       setSendStage("ask");
-      const params = new URLSearchParams(window.location.search);
       const targetRoleUrl = url.trim();
-      const body: Record<string, string | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
-      // A request that began on a company page must stay with that company.
-      if (prefill?.companySlug) body.companySlug = prefill.companySlug;
-      if (compensation.trim()) body.compensation = compensation.trim().slice(0, 80);
-      if (pickedFunction) body.jobFunction = pickedFunction;
-      const fastTrackCode = params.get("fast")?.trim();
-      if (fastTrackCode) body.fastTrackCode = fastTrackCode;
-      const confirmedDomain = confirmedCompanyDomain(targetRoleUrl);
-      if (confirmedDomain) body.confirmedCompanyDomain = confirmedDomain;
+      const body = buildAskBody({ targetRoleUrl, attachmentId: doc.id, note: note.trim(), companySlug: prefill?.companySlug, compensation, jobFunction: pickedFunction, referrerLink: via, confirmedCompanyDomain: confirmedCompanyDomain(targetRoleUrl) });
       const token = await fetchToken();
       const response = await fetch("/api/company-referrals", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", "Idempotency-Key": askIdempotencyKey(), ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
       const payload = await readApiJson<Record<string, unknown>>(response, "We could not send this ask");
       const created = response.ok ? parseSentAsk(payload) : null;
-      if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
+      if (!created) {
+        const message = typeof payload.error === "string" ? payload.error : "We could not send this ask";
+        // A paused or invalid personal link is never swapped for the company silently: the seeker chooses.
+        if (via && isReferrerLinkUnusableError(message)) setLinkUnusable(true);
+        throw new Error(message);
+      }
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       clearAskPrefill();
+      dropReferrerLinkFromUrl();
       void discardAskDraftRemote(fetchToken);
       // The ask exists now: show the sent screen at once. The open-ask count is
       // informational, so it loads afterwards and can never hold the button on "Sending...".
@@ -160,6 +168,12 @@ export default function Ask() {
         .then(list => setOpenAsks(countOpenAsks(list))).catch(() => setOpenAsks(null));
     } catch (reason) { setSendError(askErrorMessage(reason, "We could not send this ask")); }
     finally { setSending(false); }
+  };
+
+  const sendToCompany = () => {
+    setReferrerLink(null); setLinkUnusable(false);
+    forgetReferrerLink(); dropReferrerLinkFromUrl();
+    void send(null);
   };
 
   if (!isLoaded) {
@@ -181,7 +195,7 @@ export default function Ask() {
   }
 
   if (sent) {
-    return <AskSent sent={sent} openAsks={openAsks} onWriteAnother={() => { setSent(null); setOpenAsks(null); setUrl(""); setNote(""); setCompensation(""); setPickedFunction(null); removeResume(); setComposeError(""); setSendError(""); }} />;
+    return <AskSent sent={sent} openAsks={openAsks} onWriteAnother={() => { setSent(null); setOpenAsks(null); setReferrerLink(null); setUrl(""); setNote(""); setCompensation(""); setPickedFunction(null); removeResume(); setComposeError(""); setSendError(""); }} />;
   }
 
   const busy = drafting || uploading;
@@ -217,7 +231,9 @@ export default function Ask() {
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <AskStrength checks={locationFit === "unknown" ? checks : [...checks, { ok: locationFit === "fits", label: "Location works for you", hint: "See the note under Role location." }]} />
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
+          {referrerLink ? <p className="text-sm text-muted-foreground">Goes only to the verified employee whose private link you used.</p> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
+          {linkUnusable ? <Button variant="outline" className="w-full" disabled={sending || uploading} onClick={sendToCompany}>Send to {askCompany?.name ?? "the company"} instead</Button> : null}
           <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
           <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
           <p className="text-center text-xs text-muted-foreground">Uses 1 credit · referrals are always free</p>

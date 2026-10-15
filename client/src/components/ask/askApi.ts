@@ -3,11 +3,14 @@
 // transport failures get plain copy instead of a raw browser error string.
 import { z } from "zod";
 import type { SentAsk } from "@/components/ask/AskSent";
+import type { JobFunction } from "@shared/jobFunctions";
+import type { ReferrerLink } from "@shared/referrerLink";
 
 const sendAskResponseSchema = z.object({
   requestId: z.number().int().positive(),
   companyDomain: z.string().nullish(),
   coverageStatus: z.string().nullish(),
+  fastTrack: z.boolean().nullish(),
 });
 
 const myAsksResponseSchema = z.object({
@@ -24,7 +27,48 @@ export function parseSentAsk(payload: Record<string, unknown>): SentAsk | null {
   const parsed = sendAskResponseSchema.safeParse(payload);
   if (!parsed.success) return null;
   const companyDomain = parsed.data.companyDomain?.trim() || null;
-  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage" };
+  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage", ...(parsed.data.fastTrack ? { fastTrack: true as const } : {}) };
+}
+
+export type AskSendInput = {
+  readonly targetRoleUrl: string;
+  readonly attachmentId: number;
+  readonly note: string;
+  readonly companySlug?: string;
+  readonly compensation: string;
+  readonly jobFunction: JobFunction | null;
+  readonly referrerLink: ReferrerLink | null;
+  readonly confirmedCompanyDomain?: string;
+};
+
+/** POST /api/company-referrals body. A personal referrer link goes as its own fields (D-017). */
+export type AskSendBody = {
+  targetRoleUrl: string;
+  attachmentIds: number[];
+  candidateMessage: string;
+  companySlug?: string;
+  compensation?: string;
+  jobFunction?: JobFunction;
+  fastTrackCode?: string;
+  fastTrackCompanySlug?: string;
+  fastTrackAlias?: string;
+  confirmedCompanyDomain?: string;
+};
+
+export function buildAskBody(input: AskSendInput): AskSendBody {
+  const compensation = input.compensation.trim().slice(0, 80);
+  return {
+    targetRoleUrl: input.targetRoleUrl,
+    attachmentIds: [input.attachmentId],
+    candidateMessage: input.note,
+    // A request that began on a company page must stay with that company.
+    ...(input.companySlug ? { companySlug: input.companySlug } : {}),
+    ...(compensation ? { compensation } : {}),
+    // Only an explicit pick is sent; otherwise the server infers the function.
+    ...(input.jobFunction ? { jobFunction: input.jobFunction } : {}),
+    ...(input.referrerLink ?? {}),
+    ...(input.confirmedCompanyDomain ? { confirmedCompanyDomain: input.confirmedCompanyDomain } : {}),
+  };
 }
 
 /** Pending asks from /api/company-referrals/mine; null when the list cannot be read. */

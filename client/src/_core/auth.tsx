@@ -3,6 +3,7 @@ import { AuthKitProvider as WorkOSAuthKitProvider, useAuth as useWorkOSAuth } fr
 import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
 import { identifyClarity } from "@/lib/clarity";
+import { clearAskPrefill } from "@/lib/askPrefill";
 import { smokeState } from "@/contexts/smokeRuntime";
 import { safeAuthReturnTo } from "@shared/authReturnTo";
 
@@ -119,6 +120,8 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
     try { await auth.signOut({ navigate: false }); } catch {}
     setGlobalAccessToken(null);
     try { sessionStorage.removeItem("manus-cookie"); } catch {}
+    // An unsent ask hand-off (job link, note, a referrer's personal link) belongs to this person only.
+    clearAskPrefill();
     await utils.auth.me.cancel();
     utils.auth.me.setData(undefined, null);
     // Callers may bring the person back to a same-origin page (e.g. an OAuth consent screen with its query).

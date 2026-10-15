@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ASK_NOTE_LIMIT, ASK_PREFILL_KEY, ASK_PREFILL_TTL_MS, clearAskPrefill, forgetReferrerLink, readAskPrefill, referrerLinkFromSearch, referrerLinkSearch, resolveAskPrefill, saveAskPrefill, searchWithoutReferrerLink } from "./askPrefill";
+import { ASK_NOTE_LIMIT, ASK_PREFILL_KEY, ASK_PREFILL_TTL_MS, clearAskPrefill, forgetReferrerLink, parseReferrerLink, readAskPrefill, referrerLinkFromSearch, referrerLinkSearch, resolveAskPrefill, saveAskPrefill, searchWithoutReferrerLink, withReferrerLink } from "./askPrefill";
 
 function memoryStorage() {
   const values = new Map<string, string>();
@@ -103,6 +103,9 @@ describe("referrer link hand-off (D-017)", () => {
     expect(referrerLinkFromSearch(referrerLinkSearch({ fastTrackCompanySlug: "tcs", fastTrackAlias: "asha-k" }))).toEqual({ fastTrackCompanySlug: "tcs", fastTrackAlias: "asha-k" });
     expect(searchWithoutReferrerLink(`?fast=${CODE}&utm_source=x`)).toBe("?utm_source=x");
     expect(searchWithoutReferrerLink("?referCompany=tcs&referAlias=asha-k")).toBe("");
+    expect(withReferrerLink("/start", parseReferrerLink({ fastTrackCode: CODE }))).toBe(`/start?fast=${CODE}`);
+    expect(withReferrerLink("/start", parseReferrerLink({ fastTrackCompanySlug: "TCS", fastTrackAlias: "asha-k" }))).toBe("/start?referCompany=tcs&referAlias=asha-k");
+    expect(withReferrerLink("/ask", parseReferrerLink({ fastTrackCode: "" }))).toBe("/ask");
   });
 
   it("prefers the link in the URL over the stored one and keeps the stored job link", () => {

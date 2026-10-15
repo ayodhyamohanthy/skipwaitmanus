@@ -74,8 +74,7 @@ export function referrerLinkFromSearch(search: string): ReferrerLink | null {
   const candidate = code !== null
     ? { fastTrackCode: code }
     : { fastTrackCompanySlug: params.get(REFERRER_LINK_PARAMS.companySlug), fastTrackAlias: params.get(REFERRER_LINK_PARAMS.alias) };
-  const parsed = referrerLinkSchema.safeParse(candidate);
-  return parsed.success ? parsed.data : null;
+  return parseReferrerLink(candidate);
 }
 
 /** "?fast=…" or "?referCompany=…&referAlias=…" for an entry page to hand the link on. */
@@ -84,6 +83,17 @@ export function referrerLinkSearch(link: ReferrerLink): string {
     ? new URLSearchParams({ [REFERRER_LINK_PARAMS.code]: link.fastTrackCode })
     : new URLSearchParams({ [REFERRER_LINK_PARAMS.companySlug]: link.fastTrackCompanySlug, [REFERRER_LINK_PARAMS.alias]: link.fastTrackAlias });
   return `?${params.toString()}`;
+}
+
+/** A referrer link from route parameters (/fast/:code, /refer/:company/:alias), or null. */
+export function parseReferrerLink(candidate: unknown): ReferrerLink | null {
+  const parsed = referrerLinkSchema.safeParse(candidate);
+  return parsed.success ? parsed.data : null;
+}
+
+/** `path` with the referrer link's query, or just `path` when there is none. */
+export function withReferrerLink(path: string, link: ReferrerLink | null): string {
+  return link ? `${path}${referrerLinkSearch(link)}` : path;
 }
 
 /** The query string without the referrer-link parameters (other parameters kept). */
