@@ -19,7 +19,7 @@ describe("credit packs are off sale", () => {
 
   it("/premium shows a paused state with no quantity picker and no pay button, and never starts a checkout", async () => {
     window.history.pushState({}, "", "/premium?role=job_seeker");
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) }));
+    const fetchMock = vi.fn(async (_url: string) => ({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) }));
     vi.stubGlobal("fetch", fetchMock);
     render(<Premium />);
     expect(await screen.findByText("Credit packs are paused.")).toBeTruthy();
