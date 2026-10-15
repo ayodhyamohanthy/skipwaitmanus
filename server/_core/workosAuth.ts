@@ -211,7 +211,11 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
           const state = randomUUID();
           const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
           res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
-          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
+          const authorizationUrl = workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) });
+          // The person typed a specific address. A still-live hosted AuthKit session (app sign-out only clears our own cookie) would otherwise
+          // silently sign them back in as the previous account and ignore the hint, so force a fresh authentication (WorkOS max_age=0, AuthKit only).
+          const finalUrl = loginHint && authProvider === "authkit" ? (() => { const url = new URL(authorizationUrl); url.searchParams.set("max_age", "0"); return url.toString(); })() : authorizationUrl;
+          res.set("Cache-Control", "no-store").redirect(302, finalUrl);
         } catch {
           res.status(502).send("Authentication could not be started");
         }

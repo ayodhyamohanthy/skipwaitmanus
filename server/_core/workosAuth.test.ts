@@ -106,6 +106,17 @@ describe("role-aware WorkOS sign-in entries", () => {
     restore();
   });
 
+  it("forces fresh authentication only when a typed email is given, so a live hosted session cannot override it", { timeout: 20000 }, async () => {
+    const { app, restore } = await buildApp({ ...baseEnv });
+    const hinted = await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "other@example.com" });
+    expect(new URL(hinted.headers.location).searchParams.get("max_age")).toBe("0");
+    const plain = await request(app).get("/api/auth/workos/sign-in");
+    expect(new URL(plain.headers.location).searchParams.has("max_age")).toBe(false);
+    const social = await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "other@example.com", provider: "google" });
+    expect(new URL(social.headers.location).searchParams.has("max_age")).toBe(false);
+    restore();
+  });
+
   it("forwards a valid typed email as the AuthKit login hint and drops anything else", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
     await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "  Asha@Example.com " });
