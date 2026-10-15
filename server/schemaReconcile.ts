@@ -45,6 +45,8 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "jobs", column: "compensation", definition: "TEXT NULL" },
   { table: "referralRequests", column: "savedAt", definition: "TIMESTAMP NULL" },
   { table: "notifications", column: "eventKey", definition: "VARCHAR(120) NULL" },
+  { table: "notifications", column: "kind", definition: "VARCHAR(32) NULL" },
+  { table: "notifications", column: "refId", definition: "INT NULL" },
   { table: "users", column: "suspended", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "users", column: "sessionsValidAfter", definition: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
   // B2B monetization (0037). The profiles.accountType enum widening
