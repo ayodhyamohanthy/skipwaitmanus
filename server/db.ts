@@ -1707,14 +1707,32 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
     const prior = (await tx.select().from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId,input.requestId),eq(referralTransitionEvents.operationKey,operationKey))).limit(1))[0];
     if (!prior && current.request.status !== "pending") throw new ReferralTransitionConflict("This referral request is no longer available", { status: current.request.status, revision: current.request.revision });
     if (input.decision === "declined") {
-      if (current.request.referrerId !== null) throw new ReferralTransitionConflict("An allocated referral must be released through the queue workflow", { status: current.request.status, revision: current.request.revision });
       const reason = input.declineReason ?? "cannot_support";
-      const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "pass", operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null) throw new Error("An allocated referral must be released through the queue workflow"); }, notification: { userId: current.request.jobSeekerId, title: `Update on your referral request — ${current.companyDomain}`, body: `The employee can't help right now${passReasonSeekerLabel(input.passReason) ? ` (${passReasonSeekerLabel(input.passReason)})` : ""}. Your request stays active for other employees.` }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: userId, reason, reasonCode: input.passReason ?? null }).onDuplicateKeyUpdate({ set: { reason, reasonCode: input.passReason ?? null } }); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,userId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,userId),eq(referralAvailabilitySlots.status,"allocated"))); } });
+      // D-021: declining reopens the ask for the rest of the company, whether or
+      // not this employee had claimed it. The pass, the claim release and the
+      // seeker's notice are one transition.
+      const result = await passReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, companyDomain: current.companyDomain, jobSeekerId: current.request.jobSeekerId, reason, reasonCode: input.passReason ?? null, operationKey, reviewLinkToken: input.reviewLinkToken, releasedClaim: current.request.referrerId === userId });
       return { ...result, status: "passed" as const, companyDomain: current.companyDomain, declineReason: reason, jobSeekerId: current.request.jobSeekerId };
     }
     const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "approve", operationKey, toStatus: "approved", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId, referrerMessage: null }, notification: { userId: current.request.jobSeekerId, title: "Referral Request approved", body: "A verified employee accepted your private referral request." }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,userId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } const previousPass = await tx.select({ id: referralRequestPasses.id }).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId, input.requestId), eq(referralRequestPasses.referrerId, userId))).limit(1); if (previousPass[0]) throw new Error("You already passed on this referral request"); await grantPendingActionRewardsTx(tx, userId, "referrer", "referral_approval", String(input.requestId)); } });
     return { ...result, status: "approved" as const, companyDomain: current.companyDomain, jobSeekerId: current.request.jobSeekerId };
   });
+}
+
+/**
+ * The pass transition (D-021): a verified employee declines an ask and the ask
+ * stays open to the rest of that company until it expires. The private pass
+ * excludes this employee for good, and a claim is released with it — the claim
+ * itself, the claimed ask's document grant, the actor's saved row, their private
+ * review link and any queue allocation all end in the same transaction, while
+ * the seeker is told in plain words that the ask is open again. Idempotent
+ * through operationKey; the caller owns the preconditions (verified employee,
+ * pending ask, not claimed by someone else).
+ */
+async function passReferralRequestTx(tx: any, input: { requestId: number; actorUserId: number; companyDomain: string; jobSeekerId: number; reason: string; reasonCode: string | null; operationKey: string; reviewLinkToken?: string; releasedClaim: boolean }) {
+  const reasonLabel = passReasonSeekerLabel(input.reasonCode);
+  const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: input.actorUserId, action: "pass", operationKey: input.operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== input.actorUserId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: input.jobSeekerId, title: `Update on your referral request — ${input.companyDomain}`, body: input.releasedClaim ? `The employee who was reviewing your request can't take it on${reasonLabel ? ` (${reasonLabel})` : ""}. Your ask is open again to other verified employees at ${input.companyDomain}.` : `The employee can't help right now${reasonLabel ? ` (${reasonLabel})` : ""}. Your request stays active for other employees.` }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,input.actorUserId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: input.actorUserId, reason: input.reason, reasonCode: input.reasonCode }).onDuplicateKeyUpdate({ set: { reason: input.reason, reasonCode: input.reasonCode } }); await tx.update(referralDocumentAccessGrants).set({ revokedAt: new Date(), revokeReason: "passed" }).where(and(eq(referralDocumentAccessGrants.referralRequestId,input.requestId),eq(referralDocumentAccessGrants.referrerId,input.actorUserId),isNull(referralDocumentAccessGrants.revokedAt))); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,input.actorUserId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,input.actorUserId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,input.actorUserId),eq(referralAvailabilitySlots.status,"allocated"))); } });
+  return { ...result, reopened: input.releasedClaim && !result.replayed };
 }
 
 export async function consumeReferrerReviewEmailLink(userId: number, linkToken: string) {
@@ -2061,9 +2079,21 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
 export async function reviewReferralRequest(userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const current = (await tx.select().from(referralRequests).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
-    if (!current || current.referrerId !== userId) throw new Error("Referral Request not found");
-    return transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "review", operationKey: `review:${userId}:${input.decision}`, toStatus: input.decision, allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== userId) throw new Error("Referral Request not found"); }, patch: { referrerMessage: input.message ?? null }, notification: { userId: current.jobSeekerId, title: `Referral Request ${input.decision === "approved" ? "approved" : "declined"}`, body: input.message || "Your Referrer has reviewed your Referral Request." } });
+    const rows = await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1).for("update");
+    const current = rows[0]?.request;
+    const operationKey = `review:${userId}:${input.decision}`;
+    const prior = (await tx.select().from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, input.requestId), eq(referralTransitionEvents.operationKey, operationKey))).limit(1))[0];
+    // Only the employee who holds the claim may review it; the one employee who
+    // already decided it (a lost response, a retry) replays that same decision.
+    if (!current || (current.referrerId !== userId && !prior)) throw new Error("Referral Request not found");
+    // D-021: a claimed decline reopens the ask for the rest of the company; it
+    // never ends it. Only expiry or withdrawal end an ask without acceptance.
+    if (input.decision === "declined") {
+      const note = input.message?.trim();
+      const result = await passReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, companyDomain: rows[0]?.companyDomain ?? "", jobSeekerId: current.jobSeekerId, reason: note || oneClickDeclineMessages.cannot_support, reasonCode: null, operationKey, releasedClaim: true });
+      return { ...result, status: "passed" as const };
+    }
+    return transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: userId, action: "review", operationKey, toStatus: "approved", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== userId) throw new Error("Referral Request not found"); }, patch: { referrerMessage: input.message ?? null }, notification: { userId: current.jobSeekerId, title: "Referral Request approved", body: input.message || "Your Referrer has reviewed your Referral Request." } });
   });
 }
 

@@ -13,7 +13,7 @@ describe("Referrer one-click review actions", () => {
   ]);
   afterEach(() => { delete process.env.RESEND_API_KEY; delete process.env.ERROR_ALERT_FROM_EMAIL; });
 
-  function appFor() {
+  function appFor(overrides: Record<string, unknown> = {}) {
     const app = express(); app.use(express.json());
     const reviews: Array<{ userId: number; requestId: number; decision: string; declineReason?: string }> = [];
     const consumed: string[] = [];
@@ -28,7 +28,8 @@ describe("Referrer one-click review actions", () => {
       oneClickReviewReferralRequest: async (userId, input) => { if (userId !== 2) throw new Error("This referral request is no longer available"); reviews.push({ userId, ...input }); return { status: input.decision === "declined" ? "passed" : input.decision, companyDomain: "acme.com", declineReason: input.declineReason }; },
       resolveReferrerReviewEmailLink: async (userId, linkToken) => { if (userId !== 2 || linkToken !== token || consumed.includes(linkToken)) throw new Error("This private review link is unavailable"); return { requestId: 81 }; },
       consumeReferrerReviewEmailLink: async (_userId, linkToken) => { consumed.push(linkToken); },
-    });
+      ...overrides,
+    } as Parameters<typeof registerPrivateReferralRoutes>[1]);
     return { app, reviews, consumed, sent };
   }
 
@@ -69,5 +70,30 @@ describe("Referrer one-click review actions", () => {
     const sender = createReferrerReviewEmailSender({ fetchImpl: async (_url, init) => { body = String(init?.body || ""); return new Response("{}", { status: 200 }); } });
     await expect(sender({ to: "employee@acme.com", companyDomain: "acme.com", reviewUrl: `https://skipwait.me/email-review/${token}` })).resolves.toEqual({ sent: true, reason: "sent" });
     expect(body).toContain("acme.com"); expect(body).toContain(`/email-review/${token}`); expect(body).not.toContain("decision="); expect(body).not.toContain("reason="); expect(body).not.toMatch(/candidate|resume|document|queue|hiring outcome guaranteed/i);
+  });
+  // D-021: a decline by the employee who claimed the ask reopens it for the rest
+  // of the company, so the email the seeker receives must say that and nothing more.
+  it("tells the seeker their ask is open again after a claimed pass, and never overstates it", async () => {
+    const mails: Array<{ to: string; subject: string; html: string }> = [];
+    const passDeps = {
+      getUserEmailById: async () => "seeker@example.com",
+      sendEmail: async (input: { to: string; subject: string; html: string }) => { mails.push(input); },
+    };
+    const claimed = appFor({ ...passDeps, oneClickReviewReferralRequest: async () => ({ status: "passed", companyDomain: "acme.com", declineReason: "timing", jobSeekerId: 1, revision: 5, reopened: true }) });
+    const passed = await request(claimed.app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "timing", passReason: "at_capacity" });
+    expect(passed.status).toBe(200); expect(passed.body).toEqual({ status: "passed", declineReason: "timing" });
+    expect(JSON.stringify(passed.body)).not.toMatch(/reopened|company|candidate|email/i);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mails).toHaveLength(1); expect(mails[0].to).toBe("seeker@example.com");
+    expect(mails[0].html).toContain("Your ask is open again to other verified employees there.");
+
+    mails.length = 0;
+    const unclaimed = appFor({ ...passDeps, oneClickReviewReferralRequest: async () => ({ status: "passed", companyDomain: "acme.com", declineReason: "timing", jobSeekerId: 1, revision: 5, reopened: false }) });
+    const plain = await request(unclaimed.app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send({ decision: "declined", declineReason: "timing" });
+    expect(plain.status).toBe(200);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(mails).toHaveLength(1);
+    expect(mails[0].html).toContain("remains visible to other verified employees");
+    expect(mails[0].html).not.toContain("open again");
   });
 });

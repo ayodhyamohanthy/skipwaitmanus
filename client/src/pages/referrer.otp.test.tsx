@@ -205,6 +205,27 @@ describe("Referrer work-email OTP verification", () => {
     window.history.pushState({}, "", "/");
   });
 
+  // D-021: declining a claimed request passes privately and reopens the ask for
+  // the rest of the company, so the recorded state must never read as "ended".
+  it("records a decline as a private pass and tells the referrer the ask stays open to colleagues", async () => {
+    window.history.pushState({}, "", "/referrer?request=901");
+    const posts: Array<{ url: string; body?: string }> = [];
+    vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/901") && !init?.method) return { ok: true, json: async () => ({ request: { id: 901, candidateName: "Avery", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [{ id: "doc-1", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 8, key: "private/doc-1", url: "https://signed.example/avery-resume.pdf" }] } }) };
+      if (url.endsWith("/901/review") && init?.method === "POST") { posts.push({ url, body: String(init.body) }); return { ok: true, json: async () => ({ status: "passed", reopened: true }) }; }
+      return { ok: true, json: async () => ({}) };
+    }));
+    render(<Referrer />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Decline respectfully" })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: "Decline respectfully" }));
+    await waitFor(() => expect(screen.getByText("You passed privately.")).toBeTruthy());
+    expect(posts).toEqual([{ url: "/api/company-referrals/901/review", body: JSON.stringify({ decision: "declined" }) }]);
+    expect(screen.getByText("Your name was never shown. Their ask is open again to other verified employees.")).toBeTruthy();
+    expect(screen.queryByText("Request declined.")).toBeNull();
+    window.history.pushState({}, "", "/");
+  });
+
   it("explains a company-coverage invitation to the signed-out recipient before sign-in", () => {
     resetReferrerState();
     stubReferrerFetch();

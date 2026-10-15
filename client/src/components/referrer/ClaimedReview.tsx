@@ -99,15 +99,17 @@ function DocumentReview({ attachments, active, setActive }: { attachments: Claim
   );
 }
 
-export function DecisionRecorded({ decision, request, onMessage }: { decision: "approved" | "declined"; request: ClaimedCompanyRequest | null; onMessage: (requestId: number) => void }) {
+// A decline is a private pass, not a terminal decision (D-021): the ask returns
+// to the company's queue, so the recorded state says what actually happened.
+export function DecisionRecorded({ decision, request, onMessage }: { decision: "approved" | "passed"; request: ClaimedCompanyRequest | null; onMessage: (requestId: number) => void }) {
   const approved = decision === "approved";
   return (
     <main data-skipwait-screen="referrer-decision" className="page-content">
       <section className="mx-auto grid max-w-xl justify-items-center py-14 text-center">
         <span className="impact-door">{approved ? <CheckCircle2 /> : <XCircle />}</span>
-        <span className="eyebrow">{approved ? "REFERRAL APPROVED" : "DECISION RECORDED"}</span>
-        <h1 className="mt-2.5 text-[28px] font-semibold">{approved ? "Referral approved." : "Request declined."}</h1>
-        <p className="mt-2 text-[13px] leading-[1.7] text-muted-foreground">{approved ? "You can now continue privately with this Job Seeker." : "The Job Seeker will receive your update privately."}</p>
+        <span className="eyebrow">{approved ? "REFERRAL APPROVED" : "PASSED PRIVATELY"}</span>
+        <h1 className="mt-2.5 text-[28px] font-semibold">{approved ? "Referral approved." : "You passed privately."}</h1>
+        <p className="mt-2 text-[13px] leading-[1.7] text-muted-foreground">{approved ? "You can now continue privately with this Job Seeker." : "Your name was never shown. Their ask is open again to other verified employees."}</p>
         {approved && request ? <div className="mt-7 w-full"><ReferralCoverageInviteBanner companyDomain={request.companyDomain} /></div> : null}
         <div className="mt-7 flex flex-wrap justify-center gap-3">
           {approved && request ? <Button type="button" onClick={() => onMessage(request.id)}>Message Job Seeker <ArrowRight /></Button> : null}
