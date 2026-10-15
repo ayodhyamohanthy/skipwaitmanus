@@ -74,7 +74,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 2 | Wave 4a password sign-in: `password-auth`, `sign-in-intent-routing` (spec 4.2) | P0 | L | paused — Claude Code — 2026-10-14 — branch kit-v4-fullstack: ca6c23e + unverified WIP a0417a0; main changed `workosAuth.ts` (D-011) — expect a merge. Resumes after P0, alongside task 1 (D-013) |
 | **Tier B — trust, privacy, compliance** |||||
 | 3 | `work-email-hmac-storage`: store only an HMAC of work emails in OTP codes/receipts, purge plaintext, migrate existing rows | — | M | todo |
-| 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | todo |
+| 4 | `account-deletion` / `account-deletion-grace` + `data-export-async` (typed confirm, 14-day grace, withdraw open asks, erase within 30 days, export ZIP within 24 h) | scheduled jobs (done) | L | in progress (4a data-export-async only) — Claude — 2026-10-15 — branch task4a-data-export. 4b deletion HELD pending founder answers |
 | 5 | `moderation-actions` + `safety-report-review`: severity, warn/restrict/ban with enforcement on every ask/accept path and alias, both parties notified, 14-day appeal, audit trail | — | XL | todo |
 | 6 | `work-email-reverify` (90-day re-check, badge removal, open asks returned) + `otp-policy-kit` (30 s resend, server lockout 15 min after 5 tries) | scheduled jobs (done) | L | todo |
 | 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | todo |
