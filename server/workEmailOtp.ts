@@ -1,5 +1,5 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
 import { getDb, isWorkEmailDomain } from "./db";
 import { sendTransactionalEmail } from "./emailDelivery";
@@ -8,6 +8,7 @@ import { resolve4, resolveMx } from "node:dns/promises";
 export type WorkEmailOtpDeliveryInput = { to: string; code: string };
 export type WorkEmailOtpSendResult = { sent: boolean; reason: "sent" | "not_configured" | "delivery_failed" | "rate_limited" | "invalid_email" | "invalid_domain"; retryAfterSeconds?: number };
 
+import { workEmailStorageKeys } from "./workEmailKey";
 import { OTP_LOCK_AFTER_FAILURES, OTP_LOCK_MS, OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "./otpPolicy";
 export { OtpLockedError, OTP_RESEND_COOLDOWN_SECONDS, OTP_LOCK_AFTER_FAILURES, OTP_LOCK_MS } from "./otpPolicy";
 
@@ -104,7 +105,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
       const delivery = await sendEmail({ to: email, code }).catch(() => ({ sent: false, reason: "delivery_failed" }));
       if (!delivery.sent) return { sent: false, reason: delivery.reason === "not_configured" ? "not_configured" : "delivery_failed" };
-      await db.insert(workEmailOtpCodes).values({ email, codeHash: hashCode(email, code), expiresAt: new Date(now() + CODE_TTL_MS), attempts: 0, createdAt: new Date(now()) });
+      await db.insert(workEmailOtpCodes).values({ email: workEmailStorageKeys(email).write, codeHash: hashCode(email, code), expiresAt: new Date(now() + CODE_TTL_MS), attempts: 0, createdAt: new Date(now()) });
       return { sent: true, reason: "sent" };
     },
     async verifyCode(rawEmail: string, rawCode: string, context: { ip?: string } = {}): Promise<boolean> {
@@ -127,7 +128,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const accepted = await db.transaction(async tx => {
         // Only the newest active code is accepted. Locking serializes correct
         // and wrong guesses, so one request consumes it and counters never lose increments.
-        const selected = await tx.execute(sql`SELECT id, codeHash, attempts FROM workEmailOtpCodes WHERE email = ${email} AND consumedAt IS NULL AND expiresAt > ${new Date(timestamp)} ORDER BY createdAt DESC, id DESC LIMIT 1 FOR UPDATE`);
+        const selected = await tx.execute(sql`SELECT id, codeHash, attempts FROM workEmailOtpCodes WHERE email IN (${sql.join(workEmailStorageKeys(email).read.map(value => sql`${value}`), sql`, `)}) AND consumedAt IS NULL AND expiresAt > ${new Date(timestamp)} ORDER BY createdAt DESC, id DESC LIMIT 1 FOR UPDATE`);
         const rows = (selected as unknown as Array<Array<{ id: number; codeHash: string; attempts: number }>>)[0] ?? [];
         if (rows.length !== 1 || rows[0].attempts >= MAX_ATTEMPTS) return false;
         if (rows[0].codeHash !== hashCode(email, code)) {
@@ -151,14 +152,14 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const db = await getDb(); if (!db) throw new Error("Database unavailable");
       const receipt = randomBytes(32).toString("base64url");
       const expiresAt = new Date(now() + VERIFICATION_RECEIPT_MS);
-      await db.insert(workEmailOtpReceipts).values({ receiptHash: receiptHash(receipt), email, userId, purpose: "work_email_enrollment", expiresAt });
+      await db.insert(workEmailOtpReceipts).values({ receiptHash: receiptHash(receipt), email: workEmailStorageKeys(email).write, userId, purpose: "work_email_enrollment", expiresAt });
       return { receipt, expiresAt };
     },
     async registerFailedAttempt(rawEmail: string, rawCode: string): Promise<void> {
       const email = rawEmail.trim().toLowerCase(), code = rawCode.trim();
       if (!isValidWorkEmailOtpEmail(email) || !/^\d{6}$/.test(code)) return;
       const db = await getDb(); if (!db) return;
-      await db.update(workEmailOtpCodes).set({ attempts: sql`${workEmailOtpCodes.attempts} + 1` }).where(and(eq(workEmailOtpCodes.email, email), isNull(workEmailOtpCodes.consumedAt), gt(workEmailOtpCodes.expiresAt, new Date(now())), lt(workEmailOtpCodes.attempts, MAX_ATTEMPTS)));
+      await db.update(workEmailOtpCodes).set({ attempts: sql`${workEmailOtpCodes.attempts} + 1` }).where(and(inArray(workEmailOtpCodes.email, workEmailStorageKeys(email).read), isNull(workEmailOtpCodes.consumedAt), gt(workEmailOtpCodes.expiresAt, new Date(now())), lt(workEmailOtpCodes.attempts, MAX_ATTEMPTS)));
     },
 
   };
