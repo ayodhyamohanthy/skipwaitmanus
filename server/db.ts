@@ -1,4 +1,5 @@
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
+import { workEmailStorageKeys } from "./workEmailKey";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -1350,7 +1351,7 @@ export async function completeWorkEmailOtpEnrollment(input: { receipt: string; e
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const receiptHash = createHash("sha256").update(input.receipt).digest("hex");
-    const receipts = await tx.select().from(workEmailOtpReceipts).where(and(eq(workEmailOtpReceipts.receiptHash, receiptHash), eq(workEmailOtpReceipts.email, email), eq(workEmailOtpReceipts.userId, input.userId), eq(workEmailOtpReceipts.purpose, "work_email_enrollment"), gt(workEmailOtpReceipts.expiresAt, new Date()))).limit(1).for("update");
+    const receipts = await tx.select().from(workEmailOtpReceipts).where(and(eq(workEmailOtpReceipts.receiptHash, receiptHash), inArray(workEmailOtpReceipts.email, workEmailStorageKeys(email).read), eq(workEmailOtpReceipts.userId, input.userId), eq(workEmailOtpReceipts.purpose, "work_email_enrollment"), gt(workEmailOtpReceipts.expiresAt, new Date()))).limit(1).for("update");
     const receipt = receipts[0];
     if (!receipt) throw new Error("OTP_RECEIPT_INVALID");
     // A replay after a lost response is safe and returns the already-completed
