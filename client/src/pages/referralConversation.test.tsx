@@ -311,6 +311,20 @@ describe("ReferralConversation thread", () => {
     expect(screen.getByText(/I have led two end-to-end redesigns\./)).toBeTruthy();
     expect(screen.getByText("Asha_R_Resume.pdf")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Asha_R_Resume/ })).toBeNull();
+    // Not a silent dead chip: the referrer is told access ended and what to do.
+    expect(screen.getByText("Resume access has ended. Message the Job Seeker here if you still need it.")).toBeTruthy();
+  });
+
+  it("links an accepted referrer's file while access is active, with no access-ended line", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "accepted");
+      if (url.endsWith("/conversation")) return ok({ messages: [] });
+      return ok({ request: { id: 601, title: "Product Designer", targetRoleUrl: null, companyDomain: "acme.com", status: "approved", referrerId: 9, candidateName: "Asha R.", candidateMessage: "Note.", attachments: [{ id: 31, fileName: "Asha_R_Resume.pdf", mimeType: "application/pdf", fileSize: 10, url: "/api/documents/31" }] } });
+    });
+    render(<ReferralConversation />);
+    expect((await screen.findByRole("link", { name: /Asha_R_Resume/ })).getAttribute("href")).toBe("/api/documents/31");
+    expect(screen.queryByText(/Resume access has ended/)).toBeNull();
   });
 
   it("keeps a claimed but not yet accepted ask anonymous while counting its locked files", async () => {

@@ -31,5 +31,22 @@ describe("legacy claimed review (/referrer?request=:id)", () => {
     expect(screen.getByText("Asha R. is requesting your referral")).toBeTruthy();
     expect(screen.getByText("Viewing Resume.pdf")).toBeTruthy();
     expect(document.querySelector("iframe")?.getAttribute("src")).toBe("/api/documents/31");
+    expect(screen.queryByText(/Resume access has ended/)).toBeNull();
+  });
+
+  it("after acceptance, a named file without a link says access ended, never 'ready after acceptance'", () => {
+    renderReview({ ...base, candidateName: "Asha R.", attachments: [{ id: 31, fileName: "Asha_R_Resume.pdf", mimeType: "application/pdf", fileSize: 10, url: null }] });
+    expect(screen.getByText("Asha_R_Resume.pdf")).toBeTruthy();
+    expect(screen.getByText("Resume access has ended. Message the Job Seeker in your private conversation if you still need it.")).toBeTruthy();
+    expect(screen.queryByText("Resume ready after acceptance")).toBeNull();
+    expect(document.querySelector("iframe")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Download/ })).toBeNull();
+  });
+
+  it("a locked file without an id (current wire shape) still counts and reads 'ready after acceptance'", () => {
+    renderReview({ ...base, attachments: [{ mimeType: "application/pdf", fileSize: 10 }] });
+    expect(screen.getByText("1 attached")).toBeTruthy();
+    expect(screen.getByText("Resume ready after acceptance")).toBeTruthy();
+    expect(screen.queryByText(/Resume access has ended/)).toBeNull();
   });
 });
