@@ -280,7 +280,7 @@ describe("ReferralConversation thread", () => {
     expect(screen.getByText(/is reviewing your request/)).toBeTruthy();
   });
 
-  it("reveals the candidate and resume only to the referrer who accepted", async () => {
+  it("gives the referrer who accepted the candidate, the resume and the note the ask was sent with", async () => {
     stubFetch(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });
       if (url.endsWith("/preview")) return fail(404, "claimed");
@@ -289,6 +289,10 @@ describe("ReferralConversation thread", () => {
     });
     render(<ReferralConversation />);
     expect(await screen.findByText("Asha R.")).toBeTruthy();
+    // Opened straight from the claimed detail, with no preview loaded first: the
+    // ask's role title and note come from that response alone (D-019(d)).
+    expect(screen.getByText("Product Designer")).toBeTruthy();
+    expect(screen.getByText(/I have led two end-to-end redesigns/)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Resume.pdf/ }).getAttribute("href")).toBe("/api/documents/31");
     expect(screen.getByText("Rahul K.")).toBeTruthy();
     expect(screen.getByText("Referral submitted")).toBeTruthy();
