@@ -136,6 +136,10 @@ Owner decisions: `docs/DECISIONS.md` D-022 (and D-021, D-019, D-006 open). Contr
 - **Analytics (activity log, no personal data):** `opportunity.published|renewed|closed|expired_hidden`, `company_referral.created` with `fromPost` and `firstLook`, `first_look.lapsed`.
 - **Tests:** contract round trips; posting gate for SSO + work-email-code referrers; public projection never leaks identity; expiry/renew/close; ask from a post → poster-only for 48 h, colleagues excluded then included, poster decline reopens, poster unavailable skips the first look; cross-company and non-owner 403/404; job idempotency; UI states at 390/1280.
 
+### Isolated P0 attachment lookup repair (Forge, 2026-10-15)
+Local-only branch `agent/forge/attachment-lookup`, based on `d84fc7a`. Shared GitHub coordination is unavailable; no push, merge, migration or deployment is authorized. This narrow repair does not take over the separate document-grant/privacy work.
+Plan: change only `@server/db.ts` attachment WHERE predicate and add behavioural regressions in the existing SQL-fixture suite `@server/db.referralPassReopen.test.ts`. `getAccessibleReferralAttachment(userId, attachmentId)` keeps its signature and authorization rules. Require the requested attachment id before LIMIT 1; the present owner-id OR matches unrelated owned uploads and masks valid later files. Cover multiple uploads, missing ids, cross-user access and existing grant/pass checks. No schema, API, dependencies or product-policy changes. Verify focused tests, typecheck and build; production acceptance remains pending.
+
 ## 4. Status (update when you claim, commit or push)
 | Wave | Scope | State | Where |
 |---|---|---|---|
