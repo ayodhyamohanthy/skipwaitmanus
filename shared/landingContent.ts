@@ -16,7 +16,12 @@ export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
 
 export const LANDING_TITLE = "Private job referrals from verified employees";
-export const LANDING_H1 = "Good work deserves a good introduction.";
+/** The hero headline, one line per row; the page breaks between them and adds the brand dot after the last. */
+export const LANDING_H1_LINES = ["Free job referrals.", "A warmer way in"] as const;
+export const LANDING_H1 = `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}.`;
+/** The hero paragraph, one sentence group per row (the page breaks between them on wide screens). */
+export const LANDING_HERO_LEAD_PARTS = ["Connect with people inside the companies you want to join.", "A real introduction. Not another application into the unknown."] as const;
+export const LANDING_HERO_LEAD = LANDING_HERO_LEAD_PARTS.join(" ");
 export const LANDING_SUMMARY = `Paste the role link, add your resume, and verified employees at that company decide privately whether to refer you. ${FREE_MONTHLY_ALLOWANCE} referral requests are free every month.`;
 
 export const LANDING_SEEKER_STEPS: readonly LandingStep[] = [

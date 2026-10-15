@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { landingSnapshot, PUBLIC_PAGES, publicSnapshots } from "./prerender-public-pages";
 import { breadcrumbsHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
-import { LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_SUMMARY } from "../shared/landingContent";
+import { LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_H1, LANDING_HERO_LEAD, LANDING_SUMMARY } from "../shared/landingContent";
 import { breadcrumbsFor, canonicalUrl, PUBLIC_ROUTES, publicRoute } from "../shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 
@@ -121,7 +121,7 @@ describe("crawlable landing and public snapshots", () => {
   it("writes the landing heading, summary, both role entry points, and every explore link", () => {
     const html = landingSnapshot(policyLinks);
     expect(html).toContain(`<h1>${LANDING_H1}</h1>`);
-    expect(html).toContain(LANDING_SUMMARY);
+    expect(html).toContain(LANDING_HERO_LEAD);
     expect(html).toContain('href="/start"');
     expect(html).toContain('href="/referrer"');
     for (const link of ["/jobs", "/wall", "/referrer", "/premium", "/pricing", "/about", "/contact", "/support"]) expect(html).toContain(`href="${link}"`);
