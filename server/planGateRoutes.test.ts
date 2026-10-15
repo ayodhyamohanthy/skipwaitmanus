@@ -45,7 +45,7 @@ describe("open-ask slot routes", () => {
     const response = await send(app);
     expect(response.status).toBe(409);
     const body = slotCapReachedSchema.parse(response.body);
-    expect(body).toEqual({ error: "All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Start (8).", code: "slot_cap_reached", slots: full });
+    expect(body).toEqual({ error: "All 3 slots are in use. Wait for an answer or withdraw an ask.", code: "slot_cap_reached", slots: full });
     expect(activity).toContainEqual(expect.objectContaining({ actorUserId: 11, action: "company_referral.slot_cap_reached", outcome: "denied", metadata: { open: 3, cap: 3, plan: "free" } }));
   });
 

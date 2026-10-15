@@ -112,8 +112,8 @@ describe("assistant access routes", () => {
     const app = setup({ decideAssistantApproval: async () => { throw new OpenAskSlotCapError(slots); } });
     const response = await authed(app).post("/api/assistants/approvals/1/decision").send({ decision: "approved" });
     expect(response.status).toBe(409);
-    expect(slotCapReachedSchema.parse(response.body)).toMatchObject({ code: "slot_cap_reached", slots: { open: 3, cap: 3, full: true, planLabel: "Free", nextPlan: { label: "Start", openRequests: 8 } } });
-    expect(response.body.error).toBe("All 3 slots are in use. Wait for an answer, withdraw an ask, or get more slots with Start (8).");
+    expect(slotCapReachedSchema.parse(response.body)).toMatchObject({ code: "slot_cap_reached", slots: { open: 3, cap: 3, full: true, planLabel: "Free", nextPlan: null } });
+    expect(response.body.error).toBe("All 3 slots are in use. Wait for an answer or withdraw an ask.");
   });
 
   it("creates tokens and shows the plaintext once", async () => {
