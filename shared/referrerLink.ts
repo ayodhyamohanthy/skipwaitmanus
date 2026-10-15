@@ -28,9 +28,22 @@ export const REFERRER_LINK_INACTIVE_ERROR = "This private referral link is no lo
 export const REFERRER_LINK_INVALID_ERROR = "This private referral link is invalid";
 export const REFERRER_ALIAS_INVALID_ERROR = "This private referral alias is invalid";
 
+// The job link is for a different company than the referrer's personal link.
+export const REFERRER_LINK_OTHER_COMPANY_ERROR = "Use a job link for the same company as this private referral link";
+
 const UNUSABLE_LINK_ERRORS: ReadonlySet<string> = new Set([REFERRER_LINK_INACTIVE_ERROR, REFERRER_LINK_INVALID_ERROR, REFERRER_ALIAS_INVALID_ERROR]);
 
 /** True when the server refused the ask only because the personal link cannot be used. */
 export function isReferrerLinkUnusableError(message: string): boolean {
   return UNUSABLE_LINK_ERRORS.has(message);
+}
+
+/**
+ * True when the ask was refused only because of the personal link: it cannot be
+ * used, or the job is at another company. Nothing was created or charged, so
+ * /ask may offer to send the same ask to the job's company instead, as the
+ * seeker's explicit choice and never automatically.
+ */
+export function isReferrerLinkRefusal(message: string): boolean {
+  return isReferrerLinkUnusableError(message) || message === REFERRER_LINK_OTHER_COMPANY_ERROR;
 }

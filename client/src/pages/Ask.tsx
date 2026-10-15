@@ -8,7 +8,7 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 import { clearAskPrefill, forgetReferrerLink, resolveAskPrefill, searchWithoutReferrerLink } from "@/lib/askPrefill";
-import { isReferrerLinkUnusableError, type ReferrerLink } from "@shared/referrerLink";
+import { isReferrerLinkRefusal, type ReferrerLink } from "@shared/referrerLink";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { discardAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
@@ -55,7 +55,8 @@ export default function Ask() {
   // the seeker reviews it here. The personal link in the URL wins over storage.
   const [prefill] = useState(() => resolveAskPrefill(typeof window === "undefined" ? "" : window.location.search));
   const [referrerLink, setReferrerLink] = useState<ReferrerLink | null>(prefill?.referrerLink ?? null);
-  const [linkUnusable, setLinkUnusable] = useState(false);
+  // The server refused the ask only because of the personal link (paused, invalid, or another company's job).
+  const [linkRefused, setLinkRefused] = useState(false);
   const [url, setUrl] = useState(prefill?.targetRoleUrl ?? "");
   const [note, setNote] = useState(prefill?.note?.slice(0, NOTE_LIMIT) ?? "");
   const [compensation, setCompensation] = useState("");
@@ -141,7 +142,7 @@ export default function Ask() {
   // `via` is the referrer's personal link the ask goes to; null sends it to the company.
   const send = async (via: ReferrerLink | null = referrerLink) => {
     if (!officialUrl || words < 10 || sending) return;
-    setSendError(""); setLinkUnusable(false); setSendStage("resume"); setSending(true);
+    setSendError(""); setLinkRefused(false); setSendStage("resume"); setSending(true);
     try {
       const doc = await ensureResume();
       setSendStage("ask");
@@ -153,8 +154,8 @@ export default function Ask() {
       const created = response.ok ? parseSentAsk(payload) : null;
       if (!created) {
         const message = typeof payload.error === "string" ? payload.error : "We could not send this ask";
-        // A paused or invalid personal link is never swapped for the company silently: the seeker chooses.
-        if (via && isReferrerLinkUnusableError(message)) setLinkUnusable(true);
+        // A refused personal link is never swapped for the company silently: the seeker chooses.
+        if (via && isReferrerLinkRefusal(message)) setLinkRefused(true);
         throw new Error(message);
       }
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
@@ -171,7 +172,7 @@ export default function Ask() {
   };
 
   const sendToCompany = () => {
-    setReferrerLink(null); setLinkUnusable(false);
+    setReferrerLink(null); setLinkRefused(false);
     forgetReferrerLink(); dropReferrerLinkFromUrl();
     void send(null);
   };
@@ -233,7 +234,7 @@ export default function Ask() {
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
           {referrerLink ? <p className="text-sm text-muted-foreground">Goes only to the verified employee whose private link you used.</p> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
-          {linkUnusable ? <Button variant="outline" className="w-full" disabled={sending || uploading} onClick={sendToCompany}>Send to {askCompany?.name ?? "the company"} instead</Button> : null}
+          {linkRefused ? <Button variant="outline" className="w-full" disabled={sending || uploading} onClick={sendToCompany}>Send to {askCompany?.name ?? "the company"} instead</Button> : null}
           <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
           <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
           <p className="text-center text-xs text-muted-foreground">Uses 1 credit · referrals are always free</p>

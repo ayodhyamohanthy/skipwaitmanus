@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
-import { isReferrerLinkUnusableError, REFERRER_ALIAS_INVALID_ERROR, REFERRER_LINK_INACTIVE_ERROR, REFERRER_LINK_INVALID_ERROR } from "../shared/referrerLink";
+import { isReferrerLinkRefusal, isReferrerLinkUnusableError, REFERRER_ALIAS_INVALID_ERROR, REFERRER_LINK_INACTIVE_ERROR, REFERRER_LINK_INVALID_ERROR, REFERRER_LINK_OTHER_COMPANY_ERROR } from "../shared/referrerLink";
 
 // /ask offers "send to the company instead" only on these exact errors (D-017),
 // so the route must answer with the shared copy, never a drifted string.
@@ -45,10 +45,19 @@ describe("personal referrer link errors on POST /api/company-referrals", () => {
     expect(isReferrerLinkUnusableError(response.body.error)).toBe(true);
   });
 
-  it("does not treat a wrong-company job link as an unusable referrer link", async () => {
-    const send = setup(async () => { throw new Error("Use a job link for the same company as this private referral link"); });
+  it("does not treat a wrong-company job link as an unusable referrer link, but as a refusal of the link", async () => {
+    const send = setup(async () => { throw new Error(REFERRER_LINK_OTHER_COMPANY_ERROR); });
     const response = await send({ fastTrackCode: "a".repeat(32) });
     expect(response.status).toBe(400);
+    expect(response.body.error).toBe(REFERRER_LINK_OTHER_COMPANY_ERROR);
     expect(isReferrerLinkUnusableError(response.body.error)).toBe(false);
+    expect(isReferrerLinkRefusal(response.body.error)).toBe(true);
+  });
+
+  it("never offers the company fallback for errors that are not about the link", () => {
+    for (const message of ["You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral.", "This submission key was already used for a different referral request", "One or more resume documents are unavailable or already attached", "We could not send this private referral request", ""]) {
+      expect(isReferrerLinkRefusal(message)).toBe(false);
+    }
+    for (const message of [REFERRER_LINK_INACTIVE_ERROR, REFERRER_LINK_INVALID_ERROR, REFERRER_ALIAS_INVALID_ERROR]) expect(isReferrerLinkRefusal(message)).toBe(true);
   });
 });

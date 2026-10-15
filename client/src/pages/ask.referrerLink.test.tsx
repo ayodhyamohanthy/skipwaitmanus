@@ -3,7 +3,7 @@ import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ASK_PREFILL_KEY, saveAskPrefill } from "@/lib/askPrefill";
-import { REFERRER_LINK_INACTIVE_ERROR } from "@shared/referrerLink";
+import { REFERRER_LINK_INACTIVE_ERROR, REFERRER_LINK_OTHER_COMPANY_ERROR } from "@shared/referrerLink";
 import Ask from "./Ask";
 
 // D-017: an ask begun from a referrer's personal link goes to that referrer.
@@ -101,16 +101,35 @@ describe("Ask through a referrer's personal link", () => {
     expect(window.location.search).toBe("");
   });
 
-  it("keeps the link and offers no company fallback for other errors", async () => {
-    const fetchMock = stubFetch(fail(400, "Use a job link for the same company as this private referral link"));
+  it("keeps the link and offers no company fallback for errors that are not about the link", async () => {
+    const fetchMock = stubFetch(fail(400, "You have used this month’s included credits. Add a credit pack or choose Pro or Max to send another referral."));
     window.history.replaceState(null, "", `/ask?fast=${CODE}`);
     render(<Ask />);
-    fireEvent.change(screen.getByLabelText(/Official job link/), { target: { value: "https://careers.wipro.com/job/9" } });
+    fireEvent.change(screen.getByLabelText(/Official job link/), { target: { value: JOB } });
     attachAndSend();
-    expect((await screen.findByRole("alert")).textContent).toContain("Use a job link for the same company");
+    expect((await screen.findByRole("alert")).textContent).toContain("included credits");
     expect(screen.queryByRole("button", { name: /instead/ })).toBeNull();
     expect(screen.getByText("Goes only to the verified employee whose private link you used.")).toBeTruthy();
     expect(sendBodies(fetchMock)).toEqual([expect.objectContaining({ fastTrackCode: CODE })]);
+  });
+
+  it("a job at another company: shows the error and sends to that company only when the seeker chooses", async () => {
+    const WIPRO_JOB = "https://careers.wipro.com/job/9";
+    const fetchMock = stubFetch(fail(400, REFERRER_LINK_OTHER_COMPANY_ERROR), ok({ requestId: 46, companyDomain: "wipro.com" }));
+    // A link kept from earlier in this tab; the seeker now asks about a Wipro job.
+    saveAskPrefill({ targetRoleUrl: JOB, referrerLink: { fastTrackCode: CODE } });
+    render(<Ask />);
+    fireEvent.change(screen.getByLabelText(/Official job link/), { target: { value: WIPRO_JOB } });
+    attachAndSend();
+    expect((await screen.findByRole("alert")).textContent).toContain(REFERRER_LINK_OTHER_COMPANY_ERROR);
+    expect(sendBodies(fetchMock)).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "Send to the company instead" }));
+    expect(await screen.findByText("Ask sent to wipro.com.")).toBeTruthy();
+    const [first, second] = sendBodies(fetchMock);
+    expect(first).toMatchObject({ targetRoleUrl: WIPRO_JOB, fastTrackCode: CODE });
+    expect(second).toMatchObject({ targetRoleUrl: WIPRO_JOB });
+    expect(second).not.toHaveProperty("fastTrackCode");
+    expect(sessionStorage.getItem(ASK_PREFILL_KEY)).toBeNull();
   });
 
   it("starts the next ask without the referrer once one is sent", async () => {
