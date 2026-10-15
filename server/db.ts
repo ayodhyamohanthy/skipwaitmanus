@@ -1,3 +1,4 @@
+import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
 import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, or, sql } from "drizzle-orm";
@@ -1739,9 +1740,19 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   });
   const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
   const unreadByRequestId = new Map(unreadRows.map(row => [row.requestId, Number(row.unreadMessageCount)]));
+  // Read-only enrichment from fields the referrer already sees in the preview. Fail-soft: the list never depends on it.
+  const extra = new Map<number, { title: string | null; pitch: string | null }>();
+  if (scopedRows.length) {
+    try {
+      const detail = await db.select({ id: referralRequests.id, title: jobs.title, pitch: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(inArray(referralRequests.id, scopedRows.map(row => row.id)));
+      for (const item of detail) extra.set(item.id, { title: item.title, pitch: item.pitch });
+    } catch (error) { console.warn("[inbox] enrichment skipped", { name: error instanceof Error ? error.name : "unknown" }); }
+  }
   return scopedRows.map(row => {
     const expiresAtMs = getAskExpiresAtMs(row.createdAt);
-    return { ...row, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
+    const detail = extra.get(row.id);
+    const enrichment = detail ? enrichInboxRow({ title: detail.title, pitch: detail.pitch, targetRoleUrl: row.targetRoleUrl, attachmentCount: row.attachmentCount }) : {};
+    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
   });
 }
 

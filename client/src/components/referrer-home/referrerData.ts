@@ -32,6 +32,8 @@ const inboxRowSchema = z.object({
   unreadMessageCount: count.optional().transform(value => value ?? 0),
   attachmentCount: count.nullish(),
   expiresAt: timestamp.nullish(),
+  jobTitle: z.string().nullish(),
+  askStrength: z.enum(["strong", "good", "basic"]).nullish().catch(null),
 });
 const inboxSchema = z.object({ requests: z.array(inboxRowSchema) });
 
