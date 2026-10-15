@@ -7,7 +7,8 @@ import { claimCompanyReferralRequest, expireStalePendingReferralRequest, getAcce
 /*
  * D-019(e) document grants across the ask's whole life, on the real store over
  * the in-memory database: asks accepted before acceptance wrote grants keep
- * the resume, every accept path (admin approval included) opens it, and every
+ * the resume, every referrer accept path opens it (an administrator can never
+ * approve a claimed ask, D-012(3), so admin approval opens it to no one), and every
  * way an ask ends (decline, close, withdraw, expiry) leaves no referrer access
  * while the seeker always keeps their own file.
  */
@@ -65,14 +66,14 @@ describe("asks accepted before acceptance wrote grants keep the accepted referre
   });
 });
 
-describe("admin approval is an accept path too", () => {
-  it("approving a claimed ask opens the resume to its claimant only", async () => {
+describe("admin approval never opens the resume", () => {
+  it("an administrator cannot approve a claimed ask, so its claimant gets no grant and no file", async () => {
     await claimCompanyReferralRequest(REFERRER, REQUEST_ID);
     expect(grants()).toEqual([]);
-    await resolveAdminApproval(1, "referral_request", REQUEST_ID, "approved");
-    expect(status()).toBe("approved");
-    expect(grants()).toEqual([expect.objectContaining({ referrerId: REFERRER, revokedAt: null })]);
-    expect(await opens(REFERRER)).toBe(true);
+    await expect(resolveAdminApproval(1, "referral_request", REQUEST_ID, "approved")).rejects.toThrow(/only they can accept it/);
+    expect(status()).toBe("pending");
+    expect(grants()).toEqual([]);
+    expect(await opens(REFERRER)).toBe(false);
     expect(await opens(COLLEAGUE)).toBe(false);
   });
 
