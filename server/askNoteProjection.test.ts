@@ -1,17 +1,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SQL } from "drizzle-orm";
 import { MySqlDialect, type MySqlTable, type SelectedFields } from "drizzle-orm/mysql-core";
-import { assistantApprovals, messages, profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
+import { assistantApprovals, jobs, messages, profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
 import { NO_PERSONAL_NOTE_TEXT } from "../shared/askNote";
 import { createCompanyReferralRequest, decideAssistantApproval, getClaimedCompanyReferralDetail, getUnclaimedCompanyReferralPreview, listCompanyReferralInboxByState, listJobSeekerCompanyReferrals } from "./db";
 
 /*
  * D-019 seeker basics, persistence side of askNoteRoundTrip.test.ts: the
  * note is written verbatim to referralRequests.personalPitch and read back to
- * the seeker as `pitch`. The referrer-facing projections are pinned: the note
- * reaches referrers at that company (preview) and the referrer the ask is
- * assigned to (detail); which identity fields leave the server, and when, is
- * pinned at the route in referrerAskPrivacy.test.ts.
+ * the seeker as `pitch`. Referrer-facing reads are pinned field by field: the
+ * inbox list stays note-free, the unclaimed preview carries the note as
+ * candidateMessage, and the detail of the ask assigned to a referrer serves
+ * the role title and note (D-019(d)); which identity fields and file links
+ * leave the server, and when, is pinned at the route in
+ * referrerAskPrivacy.test.ts.
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -118,7 +120,7 @@ describe("seeker note persistence", () => {
   });
 });
 
-describe("referrer projections", () => {
+describe("referrer-facing reads", () => {
   beforeEach(() => { rowsByTable.set(profiles, [referrerProfile]); });
 
   it("inbox rows carry no note, even though the enrichment reads it to score the ask", async () => {
@@ -156,6 +158,8 @@ describe("referrer projections", () => {
     const detail = selectFrom(referralRequests);
     // D-019: the accepted referrer's thread shows the seeker's note (it was missing before).
     expect(detail?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
+    expect(detail?.projection?.title).toBe(jobs.title);
+    expect(exposesNote(detail)).toBe(true);
     expect(columnsOf(detail)).toEqual(["candidateMessage", "candidateName", "companyDomain", "grantId", "id", "jobFunction", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
     // Only the referrer the ask is assigned to; a pending ask also needs that referrer's active grant, an accepted one does not.
     const where = detail?.where ? dialect.sqlToQuery(detail.where) : undefined;

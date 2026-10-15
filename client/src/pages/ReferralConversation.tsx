@@ -12,16 +12,6 @@ import { trpc } from "@/lib/trpc";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
 
-/**
- * The claimed-detail endpoint omits the role title and pitch. Keep what this
- * session already loaded for the same request (e.g. the preview right before
- * accepting) instead of blanking the thread after a state change.
- */
-function keepKnown(previous: ThreadRequest | null, next: ThreadRequest): ThreadRequest {
-  if (!previous || previous.id !== next.id) return next;
-  return { ...next, title: next.title ?? previous.title, pitch: next.pitch ?? previous.pitch, targetRoleUrl: next.targetRoleUrl ?? previous.targetRoleUrl };
-}
-
 export default function ReferralConversation() {
   const [, params] = useRoute("/conversation/:requestId");
   const { isSignedIn, getToken } = useAuth();
@@ -41,7 +31,6 @@ export default function ReferralConversation() {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const [messageError, setMessageError] = useState("");
-  const lastRequest = useRef<ThreadRequest | null>(null);
   const sendingRef = useRef(false);
 
   const profile = trpc.profile.mine.useQuery(undefined, { enabled: Boolean(isSignedIn) && role === "seeker", retry: false, staleTime: 60_000 });
@@ -51,10 +40,8 @@ export default function ReferralConversation() {
     setLoading(true); setError("");
     try {
       const thread = await loadThread(requestId, fetchToken);
-      const next = keepKnown(lastRequest.current, thread.request);
-      lastRequest.current = next;
-      setRole(thread.role); setRequest(next);
-      if (!canMessage(thread.role, next)) { setMessages([]); return; }
+      setRole(thread.role); setRequest(thread.request);
+      if (!canMessage(thread.role, thread.request)) { setMessages([]); return; }
       try {
         const conversation = await loadConversation(requestId, fetchToken);
         setMessages(conversation.messages); setReferenceId(conversation.referenceId);
