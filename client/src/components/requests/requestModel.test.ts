@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { openAskSlots, type OpenAskSlots } from "@shared/openAskSlots";
+import { nextSlotPlanAmong, openAskSlots, type OpenAskSlots } from "@shared/openAskSlots";
 import { resolvePlanEntitlements } from "@shared/planEntitlements";
 import { countExpiringSoon, countInConversation, requestNote, requestPillStatus, slotMeter, slotsFullCopy } from "./requestModel";
 import type { ReferralRequest } from "./requestsApi";
@@ -51,8 +51,15 @@ describe("requests view model", () => {
   });
 
   it("writes the kit slots-full nudge with the next plan and its cap from the catalog", () => {
-    expect(slotsFullCopy(slots("free", 3), true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer, withdraw an ask, or get more slots with Start (8)." });
-    expect(slotsFullCopy(slots("free", 3), false)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer or get more slots with Start (8)." });
-    expect(slotsFullCopy(slots("max", 30), true).next).toBe("Wait for an answer, withdraw an ask, or get more slots with Land Sprint (50).");
+    // As it reads once the plans are on sale; the live server names none until then.
+    const onSale = (plan: string, open: number): OpenAskSlots => {
+      const base = slots(plan, open);
+      const entitlements = resolvePlanEntitlements(plan === "free" ? null : { plan, subscriptionStatus: "active", subscriptionCurrentTermEnd: termEnd }, new Date(now));
+      return { ...base, nextPlan: nextSlotPlanAmong(entitlements, ["start", "momentum", "land_focus", "land_sprint"]) };
+    };
+    expect(slotsFullCopy(onSale("free", 3), true)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer, withdraw an ask, or get more slots with Start (8)." });
+    expect(slotsFullCopy(onSale("free", 3), false)).toEqual({ lead: "All 3 slots are in use.", next: "Wait for an answer or get more slots with Start (8)." });
+    expect(slotsFullCopy(onSale("max", 30), true).next).toBe("Wait for an answer, withdraw an ask, or get more slots with Land Sprint (50).");
+    expect(slotsFullCopy(slots("free", 3), true).next).toBe("Wait for an answer or withdraw an ask.");
   });
 });
