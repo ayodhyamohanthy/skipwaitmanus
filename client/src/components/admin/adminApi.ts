@@ -52,6 +52,7 @@ export const safetyReportSchema = z.object({
   severity: z.string().optional(),
   dueAt: z.string().nullable().optional(),
   events: z.array(z.object({ actor: z.string(), kind: z.string(), note: z.string().nullable(), createdAt: z.string() })).optional(),
+  evidence: z.array(z.object({ sender: z.string(), body: z.string(), sentAt: z.string() })).optional(),
   createdAt: z.string(),
   updatedAt: z.string().nullable().optional(),
 });

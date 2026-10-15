@@ -73,7 +73,7 @@ export function reportCase(report: SafetyReport): ReviewCase {
   return {
     key: `report:${report.id}`, kind: "report", id: report.id, ref: caseRef("R", report.id), title: report.reason, sub: links.join(" · ") || "Member report",
     urgent: report.urgent, status: report.status, terminal, createdAt: report.createdAt, updatedAt: report.updatedAt ?? null,
-    evidence: [report.details ?? "No written details — reason only.", report.referralRequestId ? `Linked referral request #${report.referralRequestId}` : null, report.reportedUserId ? `Reported account #${report.reportedUserId}` : null].filter((line): line is string => Boolean(line)),
+    evidence: [report.details ?? "No written details — reason only.", report.referralRequestId ? `Linked referral request #${report.referralRequestId}` : null, report.reportedUserId ? `Reported account #${report.reportedUserId}` : null, ...(report.evidence ?? []).map(line => `Thread copy at filing · ${line.sender === "reporter" ? "Reporter" : "Other member"}: ${line.body.length > 300 ? `${line.body.slice(0, 300)}…` : line.body}`)].filter((line): line is string => Boolean(line)),
     decisions: openDecisions(REPORT_DECISIONS, report.status),
     outcome: "Reporter notified. Appeal within 14 days via support.",
     audit: eventAudit(report) ?? [`${age} ago · case opened by user report`, report.urgent ? `${age} ago · flagged urgent by the reporter` : null, report.status !== "open" && report.updatedAt ? `${caseAge(report.updatedAt)} ago · marked ${statusLabel(report.status).toLowerCase()}` : null].filter((line): line is string => Boolean(line)),

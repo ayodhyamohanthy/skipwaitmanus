@@ -30,3 +30,24 @@ export function groupEvents(rows: ModerationEventRow[]): Map<number, Array<{ act
   }
   return grouped;
 }
+
+export const EVIDENCE_MAX_MESSAGES = 50;
+export const EVIDENCE_BODY_MAX = 3000;
+export type EvidenceSource = { id: number; senderId: number; body: string; createdAt: Date };
+
+/** The last messages of the reporter's own thread, oldest first, with the sender reduced to "reporter" or "other". */
+export function buildEvidenceRows(reportId: number, reporterId: number, rows: EvidenceSource[]) {
+  return [...rows].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id).slice(-EVIDENCE_MAX_MESSAGES)
+    .map((row, index) => ({ reportId, seq: index + 1, sender: row.senderId === reporterId ? "reporter" : "other", body: row.body.slice(0, EVIDENCE_BODY_MAX), sentAt: row.createdAt }));
+}
+
+export type EvidenceView = { sender: string; body: string; sentAt: string };
+export function groupEvidence(rows: Array<{ reportId: number; seq: number; sender: string; body: string; sentAt: Date }>): Map<number, EvidenceView[]> {
+  const grouped = new Map<number, EvidenceView[]>();
+  for (const row of [...rows].sort((a, b) => a.seq - b.seq)) {
+    const list = grouped.get(row.reportId) ?? [];
+    list.push({ sender: row.sender, body: row.body, sentAt: row.sentAt.toISOString() });
+    grouped.set(row.reportId, list);
+  }
+  return grouped;
+}
