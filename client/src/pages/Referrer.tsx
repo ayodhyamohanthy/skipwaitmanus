@@ -43,7 +43,7 @@ export default function Referrer() {
   const sessionEmailIsCompany = Boolean(sessionEmail) && isCompanyEmail(sessionEmail);
   const [signInOpen, setSignInOpen] = useState(wantsSignIn);
   const [signInDismissed, setSignInDismissed] = useState(false);
-  const [decision, setDecision] = useState<"" | "approved" | "declined">("");
+  const [decision, setDecision] = useState<"" | "approved" | "passed">("");
   const [deciding, setDeciding] = useState(false);
   const [message, setMessage] = useState("");
   const [activeDocument, setActiveDocument] = useState(0);
@@ -137,7 +137,7 @@ export default function Referrer() {
     setDeciding(true); setInboxError("");
     try {
       await companyFetch(`/api/company-referrals/${claimedRequest.id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision: approved ? "approved" : "declined", message: message.trim() || undefined }) });
-      setDecision(approved ? "approved" : "declined");
+      setDecision(approved ? "approved" : "passed");
     } catch (error) { setInboxError(error instanceof Error ? error.message : "We could not record this referral decision"); }
     finally { setDeciding(false); }
   };
