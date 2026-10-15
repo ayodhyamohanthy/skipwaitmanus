@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { companyIdentityFieldsSchema } from "./companies";
+import { jobFunctionFieldSchema } from "./jobFunctions";
 
 /*
  * How a referrer sees the files on an ask (D-019, privacy promise: "Before
@@ -51,3 +53,22 @@ export function toOpenAskAttachment(row: AskAttachmentRow, documentAccessActive:
 export function isOpenAskAttachment(attachment: ReferrerAskAttachment): attachment is OpenAskAttachment {
   return "fileName" in attachment;
 }
+
+/**
+ * The `request` of GET /api/company-referrals/:id/preview, as clients parse it
+ * (server/referrerAskView.ts builds it; always before acceptance). Files are
+ * read with the shared union so a payload that wrongly carried an open file
+ * still parses, and the queue card shows only the count either way.
+ */
+export const referrerAskPreviewSchema = z.object({
+  id: z.number().int().positive(),
+  title: z.string().nullish(),
+  targetRoleUrl: z.string().nullish(),
+  companyDomain: z.string().nullish(),
+  ...companyIdentityFieldsSchema.shape,
+  jobFunction: jobFunctionFieldSchema,
+  candidateMessage: z.string().nullish(),
+  attachments: z.array(referrerAskAttachmentSchema).nullish(),
+});
+export const referrerAskPreviewResponseSchema = z.object({ request: referrerAskPreviewSchema });
+export type ReferrerAskPreview = z.infer<typeof referrerAskPreviewSchema>;

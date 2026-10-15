@@ -2,7 +2,7 @@ import { z } from "zod";
 import { companyIdentityFieldsSchema } from "@shared/companies";
 import { jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { isPostApprovalReferralStatus, referralStatuses, type ReferralStatus } from "@shared/referral";
-import { isOpenAskAttachment, referrerAskAttachmentSchema, type ReferrerAskAttachment } from "@shared/referrerAskView";
+import { isOpenAskAttachment, referrerAskAttachmentSchema, referrerAskPreviewSchema, type ReferrerAskAttachment } from "@shared/referrerAskView";
 import { readApiJson } from "@/lib/apiResponse";
 
 /*
@@ -40,19 +40,8 @@ const seekerRowSchema = z.object({
 });
 const mineSchema = z.object({ requests: z.array(z.looseObject({ id: z.number() })) });
 
-/** Unclaimed preview from GET /api/company-referrals/:id/preview (always pending). */
-const previewSchema = z.object({
-  request: z.object({
-    id: z.number().int(),
-    title: z.string().nullish(),
-    targetRoleUrl: z.string().nullish(),
-    companyDomain: z.string(),
-    ...companyIdentityFieldsSchema.shape,
-    jobFunction: jobFunctionFieldSchema,
-    candidateMessage: z.string().nullish(),
-    attachments: z.array(attachmentSchema).nullish(),
-  }),
-});
+/** Unclaimed preview from GET /api/company-referrals/:id/preview (always pending); a thread needs its company. */
+const previewSchema = z.object({ request: referrerAskPreviewSchema.extend({ companyDomain: z.string() }) });
 
 /** Claimed detail from GET /api/company-referrals/:id (verified referrer only). */
 const detailSchema = z.object({

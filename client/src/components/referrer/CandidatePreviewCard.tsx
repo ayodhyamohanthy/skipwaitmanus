@@ -3,7 +3,8 @@
 // one reason after a confirmation). Before acceptance the seeker stays anonymous:
 // no name and no file names or links (D-019; the server sends neither).
 import { CheckCircle2, FileText } from "lucide-react";
-import type { ReferrerAskAttachment } from "@shared/referrerAskView";
+import type { ReferrerAskPreview } from "@shared/referrerAskView";
+import { NO_PERSONAL_NOTE_TEXT } from "@shared/askNote";
 import { Button } from "@/components/kit/button";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
 import { companyInitial } from "./ClaimedReview";
@@ -16,7 +17,8 @@ export const declineReasonOptions: ReadonlyArray<{ readonly value: DeclineReason
   { value: "timing", label: "Not now", hint: "You’re out of capacity at the moment." },
 ];
 
-export type CandidatePreview = { id: number; candidateMessage: string; targetRoleUrl: string | null; companyDomain: string; attachments: readonly ReferrerAskAttachment[] };
+/** Parsed with the shared preview contract (referrerAskPreviewResponseSchema) before it reaches the card. */
+export type CandidatePreview = ReferrerAskPreview;
 
 export function CandidatePreviewCard({ preview, working, error, raceError, pendingDecline, onAccept, onDecline, onConfirmDecline, onCancelDecline, onRetry, onBackToQueue }: {
   preview: CandidatePreview;
@@ -32,18 +34,20 @@ export function CandidatePreviewCard({ preview, working, error, raceError, pendi
   onBackToQueue: () => void;
 }) {
   const pendingOption = declineReasonOptions.find(option => option.value === pendingDecline);
+  const fileCount = preview.attachments?.length ?? 0;
+  const company = preview.companyDomain ?? "";
   return (
     <article aria-label="Candidate preview" className="queue-card min-w-0">
       <header>
-        <span className="company-mark" aria-hidden="true">{companyInitial(preview.companyDomain)}</span>
-        <div className="min-w-0"><span className="eyebrow block truncate">{preview.companyDomain} · {displayRef(preview.id)}</span><h2>Job Seeker</h2></div>
+        <span className="company-mark" aria-hidden="true">{companyInitial(company)}</span>
+        <div className="min-w-0"><span className="eyebrow block truncate">{company ? `${company} · ${displayRef(preview.id)}` : displayRef(preview.id)}</span><h2>Job Seeker</h2></div>
       </header>
-      <RoleLink url={preview.targetRoleUrl} />
+      <RoleLink url={preview.targetRoleUrl ?? null} />
       <span className="eyebrow mt-6 block">Job Seeker’s note</span>
-      <blockquote className="!mt-2 whitespace-pre-wrap">{preview.candidateMessage}</blockquote>
+      <blockquote className="!mt-2 whitespace-pre-wrap">{preview.candidateMessage?.trim() || NO_PERSONAL_NOTE_TEXT}</blockquote>
       <section aria-label="Resume and documents" className="border-t border-border pt-5">
-        <div className="flex items-center justify-between gap-3"><span className="eyebrow">Resume & documents</span><span className="text-xs font-semibold">{preview.attachments.length} attached</span></div>
-        {preview.attachments.length > 0
+        <div className="flex items-center justify-between gap-3"><span className="eyebrow">Resume & documents</span><span className="text-xs font-semibold">{fileCount} attached</span></div>
+        {fileCount > 0
           ? <p className="mt-3 flex items-center gap-2 text-sm font-semibold"><FileText className="size-4 shrink-0 text-primary" />Resume ready after acceptance</p>
           : <p className="mt-3 text-sm text-muted-foreground">No resume was attached.</p>}
       </section>
@@ -71,7 +75,7 @@ export function CandidatePreviewCard({ preview, working, error, raceError, pendi
           </div>
         ) : (
           <>
-            <Button type="button" className="w-full" onClick={onAccept} disabled={working || !preview.attachments.length}>{working ? "Recording decision…" : "Accept & submit referral"}<CheckCircle2 /></Button>
+            <Button type="button" className="w-full" onClick={onAccept} disabled={working || !fileCount}>{working ? "Recording decision…" : "Accept & submit referral"}<CheckCircle2 /></Button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">Or decline with one reason</p>
             <div className="mt-2 grid grid-cols-3 gap-2">
               {declineReasonOptions.map(option => (
