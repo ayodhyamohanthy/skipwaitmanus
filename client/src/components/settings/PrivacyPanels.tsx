@@ -1,7 +1,8 @@
 // Kit v4 Settings > Privacy: Blocked people, the binding Talent discovery
-// consent, Connected assistants and Download your data. Cookie and analytics
-// choices need a consent store that does not exist yet, so that kit Panel is
-// left out rather than shown with switches that change nothing.
+// consent, Cookies & analytics (Essential locked, Product analytics stored on
+// the device and driving Clarity; client error reports are not gated),
+// Connected assistants and Download your data.
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { Link } from "wouter";
@@ -10,7 +11,23 @@ import { Panel } from "@/components/kit/preview-kit";
 import BlockedPeople from "./BlockedPeople";
 import { TalentConsentPanel } from "./TalentConsentPanel";
 import { ErrorNotice } from "./settingsUi";
+import { readCookieConsent, saveCookieConsent } from "@/components/CookieConsent";
 import { EXPORT_ERROR, downloadDataExport, fetchLatestDataExport, requestDataExport, settingsKeys, type DataExportSummary, type TokenSource } from "./settingsApi";
+
+/** Cookies & analytics: Essential is always on; Product analytics is the only optional category and is stored on this device. */
+function CookiePanel() {
+  const [analytics, setAnalytics] = useState(() => readCookieConsent() === "all");
+  const toggle = () => { const next = !analytics; saveCookieConsent(next ? "all" : "essential"); setAnalytics(next); };
+  const row = "flex w-full items-center justify-between gap-3 py-2 text-left";
+  return <Panel>
+    <h2 className="text-lg font-semibold">Cookies &amp; analytics</h2>
+    <p className="mt-1 text-sm text-muted-foreground">Saved on this device only. Never sold, never used for ads.</p>
+    <div className="mt-3 divide-y">
+      <div className={row}><span className="text-sm"><strong className="block">Essential</strong><small className="block text-muted-foreground">Keeps you signed in and the site working. Always on.</small></span><span className="text-sm text-muted-foreground">Always on</span></div>
+      <button type="button" role="switch" aria-checked={analytics} aria-label="Product analytics" onClick={toggle} className={row}><span className="text-sm"><strong className="block">Product analytics</strong><small className="block text-muted-foreground">Anonymous usage recordings that help us fix and improve SkipWait.</small></span><span className="text-sm font-medium">{analytics ? "On" : "Off"}</span></button>
+    </div>
+  </Panel>;
+}
 
 function formatSize(bytes: number): string {
   return bytes >= 1024 * 1024 ? `${(bytes / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -46,6 +63,7 @@ export function PrivacyPanels({ getToken }: { getToken: TokenSource }) {
   return <>
     <BlockedPeople />
     <TalentConsentPanel />
+    <CookiePanel />
     <Panel>
       <h2 className="text-lg font-semibold">Connected assistants</h2>
       <p className="mt-1 text-sm text-muted-foreground">ChatGPT, Claude and API tokens that can use your account.</p>

@@ -21,6 +21,16 @@ export function readCookieConsent(): CookieConsentChoice | null {
   }
 }
 
+/** Stores the choice on this device and applies it to Clarity. Used by the banner and by Settings > Privacy. */
+export function saveCookieConsent(choice: CookieConsentChoice): void {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, choice);
+  } catch {
+    // Storage blocked (private mode): the choice still applies for this visit.
+  }
+  applyAnalyticsConsent(choice);
+}
+
 /**
  * Optional analytics are the Clarity replay cookies. They are granted only
  * after "Accept all"; until then (and after "Essential only") Clarity is told
@@ -48,12 +58,7 @@ export default function CookieConsent() {
   if (!visible) return null;
 
   const save = (choice: CookieConsentChoice) => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, choice);
-    } catch {
-      // Storage blocked (private mode): hide for this visit only.
-    }
-    applyAnalyticsConsent(choice);
+    saveCookieConsent(choice);
     setVisible(false);
   };
 
