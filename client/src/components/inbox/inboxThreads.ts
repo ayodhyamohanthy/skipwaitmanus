@@ -28,6 +28,7 @@ const referringRowSchema = z.object({
   status: z.enum(referralStatuses),
   unreadMessageCount: z.number().int().nonnegative().optional().transform(value => value ?? 0),
   updatedAt: timestamp,
+  jobTitle: z.string().nullish(),
 });
 
 export const askingListSchema = z.object({ requests: z.array(askingRowSchema) });
@@ -127,7 +128,7 @@ export function referringThread(row: ReferringRow): InboxThread {
   const revealed = isPostApprovalReferralStatus(row.status);
   const note = row.unreadMessageCount > 0
     ? unreadNote(row.unreadMessageCount)
-    : pending ? "New ask for you to review" : referralStatusLabels[row.status];
+    : pending ? (row.jobTitle?.trim() ? `${row.jobTitle.trim()} · New ask for you to review` : "New ask for you to review") : referralStatusLabels[row.status];
   return {
     key: `referring-${row.id}`,
     side: "referring",

@@ -57,6 +57,15 @@ function websiteHost(website: string | null) {
   try { return new URL(website).hostname.replace(/^www\./, ""); } catch { return website; }
 }
 
+const EVENT_LABEL: Record<string, string> = { opened: "case opened by user report", flagged_urgent: "flagged urgent by the reporter", under_review: "marked under review", resolved: "marked resolved", dismissed: "dismissed, no violation" };
+const EVENT_ACTOR: Record<string, string> = { reviewer: "reviewer", system: "system", reporter: "reporter" };
+
+/** Audit lines from the stored case events; the older derived lines are the fallback for reports filed before events existed. */
+function eventAudit(report: SafetyReport): string[] | null {
+  if (!report.events?.length) return null;
+  return report.events.map(event => `${caseAge(event.createdAt)} ago · ${EVENT_LABEL[event.kind] ?? event.kind} (${EVENT_ACTOR[event.actor] ?? event.actor})${event.note ? ` · "${event.note}"` : ""}`);
+}
+
 export function reportCase(report: SafetyReport): ReviewCase {
   const age = caseAge(report.createdAt);
   const terminal = TERMINAL_CASE_STATUSES.has(report.status);
@@ -64,10 +73,10 @@ export function reportCase(report: SafetyReport): ReviewCase {
   return {
     key: `report:${report.id}`, kind: "report", id: report.id, ref: caseRef("R", report.id), title: report.reason, sub: links.join(" · ") || "Member report",
     urgent: report.urgent, status: report.status, terminal, createdAt: report.createdAt, updatedAt: report.updatedAt ?? null,
-    evidence: [report.details ?? "No written details — reason only.", report.referralRequestId ? `Linked referral request #${report.referralRequestId}` : null, report.reportedUserId ? `Reported account #${report.reportedUserId}` : null].filter((line): line is string => Boolean(line)),
+    evidence: [report.details ?? "No written details — reason only.", report.referralRequestId ? `Linked referral request #${report.referralRequestId}` : null, report.reportedUserId ? `Reported account #${report.reportedUserId}` : null, ...(report.evidence ?? []).map(line => `Thread copy at filing · ${line.sender === "reporter" ? "Reporter" : "Other member"}: ${line.body.length > 300 ? `${line.body.slice(0, 300)}…` : line.body}`)].filter((line): line is string => Boolean(line)),
     decisions: openDecisions(REPORT_DECISIONS, report.status),
     outcome: "Reporter notified. Appeal within 14 days via support.",
-    audit: [`${age} ago · case opened by user report`, report.urgent ? `${age} ago · flagged urgent by the reporter` : null, report.status !== "open" && report.updatedAt ? `${caseAge(report.updatedAt)} ago · marked ${statusLabel(report.status).toLowerCase()}` : null].filter((line): line is string => Boolean(line)),
+    audit: eventAudit(report) ?? [`${age} ago · case opened by user report`, report.urgent ? `${age} ago · flagged urgent by the reporter` : null, report.status !== "open" && report.updatedAt ? `${caseAge(report.updatedAt)} ago · marked ${statusLabel(report.status).toLowerCase()}` : null].filter((line): line is string => Boolean(line)),
   };
 }
 

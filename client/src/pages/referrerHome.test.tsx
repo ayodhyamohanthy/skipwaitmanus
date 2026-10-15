@@ -118,10 +118,14 @@ describe("ReferrerHome", () => {
   });
 
   it("warns when re-verification approaches, driven by the real verified date", async () => {
-    stubHome({ verifiedAt: iso(Date.now() - 80 * DAY) });
-    renderWithQuery(<ReferrerHome />);
-    expect(await screen.findByText(/Re-verify your Wipro email soon/)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Re-verify" }).getAttribute("href")).toBe("/verify");
+    // 85 days after the grandfathering epoch (2026-10-16) the badge has 5 days left.
+    vi.useFakeTimers({ toFake: ["Date"], now: Date.parse("2026-10-16T00:00:00Z") + 85 * DAY });
+    try {
+      stubHome({ verifiedAt: "2026-10-16T00:00:00.000Z" });
+      renderWithQuery(<ReferrerHome />);
+      expect(await screen.findByText("Re-verify your Wipro email within 5 days to keep receiving asks.")).toBeTruthy();
+      expect(screen.getByRole("link", { name: "Re-verify" }).getAttribute("href")).toBe("/verify");
+    } finally { vi.useRealTimers(); }
   });
 
   it("shows the paused state with a working resume", async () => {
@@ -301,5 +305,13 @@ describe("Invite colleagues and request companies", () => {
     fireEvent.click(screen.getByRole("button", { name: /Invite someone inside/ }));
     expect(screen.getByText("Invite someone inside.")).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("reverifyCopy", () => {
+  it("pluralises and handles due-now", async () => {
+    const { reverifyCopy } = await import("./ReferrerHome");
+    expect(reverifyCopy("Wipro", 1)).toBe("Re-verify your Wipro email within 1 day to keep receiving asks.");
+    expect(reverifyCopy("Wipro", 0)).toBe("Re-verify your Wipro email now to keep receiving asks.");
   });
 });

@@ -3,7 +3,7 @@ import { Button } from "@/components/kit/button";
 import { StatusPill } from "@/components/kit/status-pill";
 import { functionEyebrow } from "@shared/jobFunctions";
 import type { ThreadMessage, ThreadRequest, ThreadRole } from "@/lib/threadApi";
-import { canMessage, companyInitials, companyName, isAccepted, seekerWaitingCopy, STAGES, stageIndex, stageOf } from "./threadModel";
+import { canMessage, companyInitials, companyName, isAccepted, referrerPendingCopy, seekerWaitingCopy, STAGES, stageIndex, stageOf } from "./threadModel";
 
 function Notice({ tone, title, text }: { tone: "muted" | "accent"; title: string; text: string }) {
   return <div className={`rounded-2xl p-4 ${tone === "accent" ? "bg-accent text-accent-foreground" : "bg-muted"}`}><strong>{title}</strong><p className="mt-1 text-sm">{text}</p></div>;
@@ -81,7 +81,7 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
         </div>
 
         {stage === "Requested" && seeker ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" />{seekerWaitingCopy(request)}</p> : null}
-        {stage === "Requested" && !seeker && !passed ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" />No reply needed to pass — but a quick answer helps.</p> : null}
+        {stage === "Requested" && !seeker && !passed ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" />{referrerPendingCopy(request)}</p> : null}
         {passed ? <Notice tone="muted" title="You passed privately." text="The request stays active for other verified employees. Your identity was never revealed." /> : null}
         {stage === "Declined" ? <Notice tone="muted" title="This referrer passed." text={`It's not a judgment of you. Your slot is open again — try another verified referrer at ${company}.`} /> : null}
         {stage === "Expired" ? <Notice tone="muted" title="This request expired." text="Nobody could take it within 7 days. Your slot is free — refresh your note and ask again." /> : null}

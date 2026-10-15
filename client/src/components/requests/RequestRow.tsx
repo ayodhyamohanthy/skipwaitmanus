@@ -2,6 +2,7 @@
 // a single link card (company mark, role, company · next step, pill, arrow)
 // that opens the thread, where the seeker can withdraw an unclaimed ask.
 import { ArrowRight } from "lucide-react";
+import { useDisplayPrefs } from "@/lib/displayPrefs";
 import { Link } from "wouter";
 import { StatusPill } from "@/components/kit/status-pill";
 import { companyIdentity } from "@/components/inbox/inboxThreads";
@@ -14,6 +15,7 @@ type RequestRowProps = {
 };
 
 export function RequestRow({ request, nowMs }: RequestRowProps) {
+  useDisplayPrefs();
   const pill = requestPillStatus(request);
   const company = companyIdentity(request);
   const urgent = isUrgentExpiry(request, nowMs);

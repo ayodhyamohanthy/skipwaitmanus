@@ -20,4 +20,9 @@ describe('session claims and revocation',()=>{
   expect(revokeUserSessions).not.toHaveBeenCalled();
  });
  it('revokes the subject on logout',async()=>{const token=await sdk.createSessionToken('user-1');await sdk.revokeSession(token);expect(revokeUserSessions).toHaveBeenCalledWith('user-1')});
+ it('carries a hosted session id round trip and ignores anything that is not one',async()=>{
+  expect((await sdk.verifySession(await sdk.createSessionToken('user-1',{sid:'session_ABC123'})))?.sid).toBe('session_ABC123');
+  expect((await sdk.verifySession(await sdk.createSessionToken('user-1',{sid:'not-a-session'})))?.sid).toBeUndefined();
+  expect((await sdk.verifySession(await sdk.createSessionToken('user-1')))?.sid).toBeUndefined();
+ });
 });

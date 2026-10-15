@@ -8,7 +8,7 @@ describe("work email OTP receipt invariants", () => {
     expect(service).toContain('receiptHash: receiptHash(receipt)');
     expect(service).not.toContain('async hasRecentVerification');
     expect(database).toContain('eq(workEmailOtpReceipts.userId, input.userId)');
-    expect(database).toContain('eq(workEmailOtpReceipts.email, email)');
+    expect(database).toContain('inArray(workEmailOtpReceipts.email, workEmailStorageKeys(email).read)');
     expect(database).toContain('eq(workEmailOtpReceipts.purpose, "work_email_enrollment")');
     expect(database).toContain('isNull(workEmailOtpReceipts.usedAt)');
     expect(database).toContain('.for("update")');
