@@ -160,7 +160,19 @@ export class NoticeEmailNotConfiguredError extends Error {
   constructor() { super("Email delivery is not configured (ZeptoMail or Resend). Stopped after the first subscriber; configure email, then run --resend-failed and --apply again."); this.name = "NoticeEmailNotConfiguredError"; }
 }
 
-export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: NoticeMailer, options: { mode: NoticeMode; effectiveDate: string; now: Date }): Promise<NoticeReport> {
+/**
+ * The credits_only text (gifted or unbilled plans) awaits the owner's approval
+ * (D-020). A writing run that would notify or email anyone with it stops
+ * before its first write unless the operator confirms that approval.
+ */
+export class NoticeCopyNotApprovedError extends Error {
+  constructor(readonly creditsOnlyRecipients: number) {
+    super(`${creditsOnlyRecipients} subscriber(s) would get the credits_only notice (gifted or unbilled plan), whose text the owner has not approved yet. Nothing was written or sent. Get the owner's approval of that text, record it in docs/DECISIONS.md under D-020, then re-run with --credits-only-copy-approved.`);
+    this.name = "NoticeCopyNotApprovedError";
+  }
+}
+
+export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: NoticeMailer, options: { mode: NoticeMode; effectiveDate: string; now: Date; creditsOnlyCopyApproved?: boolean }): Promise<NoticeReport> {
   const copy = noticeCopy(options.effectiveDate);
   const wallets = (await store.listPaidWallets()).filter(row => isActivePaidWallet(row, options.now));
   const subscriptionIds = Array.from(new Set(wallets.flatMap(row => (row.subscriptionId ? [row.subscriptionId] : []))));
@@ -172,6 +184,11 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
   if (options.mode === "dry-run") return { mode: options.mode, audience, copy, results: null };
 
   const outcomes = await store.emailOutcomes(keys);
+  const writesTo = (recipient: NoticeRecipient) => options.mode === "resend-failed"
+    ? notified.has(recipient.eventKey) && outcomes.get(recipient.eventKey) === "failure"
+    : !notified.has(recipient.eventKey);
+  const creditsOnlyWrites = recipients.filter(recipient => recipient.offer === "credits_only" && writesTo(recipient)).length;
+  if (creditsOnlyWrites > 0 && options.creditsOnlyCopyApproved !== true) throw new NoticeCopyNotApprovedError(creditsOnlyWrites);
   const results: NoticeResults = { notificationsCreated: 0, emailsSent: 0, emailsFailed: 0, emailsSkippedNoAddress: 0, alreadyNotifiedAndEmailed: 0, failedUserIds: [], unconfirmedUserIds: [] };
   const deliver = async (recipient: NoticeRecipient) => {
     if (recipient.email === null) { results.emailsSkippedNoAddress += 1; return; }

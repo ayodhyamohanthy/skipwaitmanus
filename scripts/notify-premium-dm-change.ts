@@ -11,7 +11,11 @@
  *   DATABASE_URL='mysql://…' pnpm tsx scripts/notify-premium-dm-change.ts --effective-date 2026-10-20 --resend-failed
  *
  * Two copy variants (D-020): "refund_or_credits" for people who paid for
- * their plan, "credits_only" for a gifted or never-billed plan.
+ * their plan (approved as written), "credits_only" for a gifted or
+ * never-billed plan (awaiting the owner's approval). A writing run that would
+ * notify or email anyone with the credits_only text stops before its first
+ * write unless you add --credits-only-copy-approved, which you may do only
+ * after the owner's approval of that text is recorded under D-020.
  *
  * --apply creates one in-app notification per subscriber (unique eventKey
  * d012-dm-change:<person>) and emails each newly notified subscriber through
@@ -25,17 +29,22 @@
 import type { NoticeMode } from "../server/premiumDmChangeNotice";
 import { NOTICE_OFFERS } from "../server/premiumDmChangeNoticeCopy";
 
-export type NoticeArgs = { mode: NoticeMode; effectiveDate: string };
+export type NoticeArgs = { mode: NoticeMode; effectiveDate: string; creditsOnlyCopyApproved: boolean };
 
 export function parseNoticeArgs(argv: readonly string[], today: Date = new Date()): NoticeArgs {
   let mode: NoticeMode = "dry-run";
   let effectiveDate: string | null = null;
+  let creditsOnlyCopyApproved = false;
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--apply" || arg === "--resend-failed") {
       const next: NoticeMode = arg === "--apply" ? "apply" : "resend-failed";
       if (mode !== "dry-run" && mode !== next) throw new Error("Use either --apply or --resend-failed, not both.");
       mode = next;
+      continue;
+    }
+    if (arg === "--credits-only-copy-approved") {
+      creditsOnlyCopyApproved = true;
       continue;
     }
     if (arg === "--effective-date") {
@@ -45,10 +54,10 @@ export function parseNoticeArgs(argv: readonly string[], today: Date = new Date(
       i++;
       continue;
     }
-    throw new Error(`Unknown option ${arg}. Use --effective-date <YYYY-MM-DD>, --apply or --resend-failed.`);
+    throw new Error(`Unknown option ${arg}. Use --effective-date <YYYY-MM-DD>, --apply, --resend-failed or --credits-only-copy-approved.`);
   }
   if (mode !== "dry-run" && effectiveDate === null) throw new Error(`--${mode} needs --effective-date <YYYY-MM-DD>, the day the change went live.`);
-  return { mode, effectiveDate: effectiveDate ?? today.toISOString().slice(0, 10) };
+  return { mode, effectiveDate: effectiveDate ?? today.toISOString().slice(0, 10), creditsOnlyCopyApproved };
 }
 
 async function main() {
@@ -70,6 +79,7 @@ async function main() {
   }
   if (report.results) console.log(`Results: ${JSON.stringify(report.results, null, 2)}`);
   else console.log("Dry run: nothing was written and no email was sent. Re-run with --apply after the owner approves the copy.");
+  if (report.audience.creditsOnly > 0 && !args.creditsOnlyCopyApproved) console.log("The credits_only text is not approved yet (D-020): --apply and --resend-failed refuse to send it without --credits-only-copy-approved.");
   process.exit(0);
 }
 

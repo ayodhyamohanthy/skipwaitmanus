@@ -3,10 +3,13 @@
 // remediation choice.
 //
 // D-020: the "refund_or_credits" text is approved as written (pinned
-// verbatim in premiumDmChangeNotice.test.ts). People whose plan was a gift,
-// or was never billed to them, are offered bonus referral credits only, since
-// cash refunds go only to whoever paid; that "credits_only" variant changes
-// only the choice sentence and needs the owner's approval before --apply.
+// verbatim in premiumDmChangeNoticeCopy.test.ts). People whose plan was a
+// gift, or was never billed to them, are offered bonus referral credits only,
+// since cash refunds go only to whoever paid. That "credits_only" text (its
+// "What stays the same" and choice sentences) is NOT approved yet:
+// runPremiumDmChangeNotice refuses to write it unless the caller passes
+// creditsOnlyCopyApproved (--credits-only-copy-approved), which the operator
+// may do only after the owner's approval is recorded under D-020.
 //
 // Transactional email is sent from noreply@skipwait.me with no Reply-To, so
 // the copy points people at the support address rather than "reply to this
@@ -36,7 +39,7 @@ export function formatEffectiveDate(isoDate: string): string {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-function message(when: string, choice: { notification: string; email: readonly string[] }): NoticeMessage {
+function message(when: string, staysTheSame: string, choice: { notification: string; email: readonly string[] }): NoticeMessage {
   return {
     notification: {
       title: "A change to messaging on Pro and Max",
@@ -56,7 +59,7 @@ function message(when: string, choice: { notification: string; email: readonly s
         "Our privacy page promises referrers that job seekers can message them only after they accept a specific request. Allowing messages before acceptance went against that promise, so the rule now applies to everyone.",
         "",
         "What stays the same",
-        "Everything else in your plan, including your monthly referral requests, any credits you bought and your billing date.",
+        staysTheSame,
         "",
         "Your choice",
         ...choice.email,
@@ -74,7 +77,7 @@ export function noticeCopy(effectiveIsoDate: string): NoticeCopy {
   return {
     effectiveDate: effectiveIsoDate,
     byOffer: {
-      refund_or_credits: message(when, {
+      refund_or_credits: message(when, "Everything else in your plan, including your monthly referral requests, any credits you bought and your billing date.", {
         notification: `Within ${days} days you can choose a pro-rata refund for your current billing cycle or bonus referral credits of equal value: write to ${NOTICE_SUPPORT_EMAIL}.`,
         email: [
           `Your plan included this, so within ${days} days of this email you can choose one of these:`,
@@ -83,10 +86,11 @@ export function noticeCopy(effectiveIsoDate: string): NoticeCopy {
           `Write to ${NOTICE_SUPPORT_EMAIL} with your choice. If you do nothing, your plan continues as it is.`,
         ],
       }),
-      credits_only: message(when, {
-        notification: `Within ${days} days you can ask for bonus referral credits equal in value to the rest of your current billing cycle: write to ${NOTICE_SUPPORT_EMAIL}.`,
+      // A gift recipient has no billing date or billing cycle of their own and usually bought no credits.
+      credits_only: message(when, "Everything else in your plan, including your monthly referral requests and the date your plan ends or renews.", {
+        notification: `Within ${days} days you can ask for bonus referral credits equal in value to the rest of your current plan period: write to ${NOTICE_SUPPORT_EMAIL}.`,
         email: [
-          `Your plan included this. It was not billed to you (for example, it was a gift), so within ${days} days of this email you can ask for bonus referral credits equal in value to the rest of your current billing cycle.`,
+          `Your plan included this. It was not billed to you (for example, it was a gift), so within ${days} days of this email you can ask for bonus referral credits equal in value to the rest of your current plan period.`,
           `Write to ${NOTICE_SUPPORT_EMAIL} to ask for them. If you do nothing, your plan continues as it is.`,
         ],
       }),
