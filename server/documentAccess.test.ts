@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canAccessReferralAttachment } from "./db";
 
 describe("private referral document access", () => {
-  const attachment = { ownerId: 12, referrerId: 28, requestStatus: "pending" };
+  const attachment = { ownerId: 12, referrerId: 28, requestStatus: "approved" };
 
   it("allows the Job Seeker who owns the document", () => {
     expect(canAccessReferralAttachment(12, attachment)).toBe(true);
@@ -10,6 +10,11 @@ describe("private referral document access", () => {
 
   it("allows only the Referrer assigned through the linked Referral Request", () => {
     expect(canAccessReferralAttachment(28, attachment)).toBe(true);
+  });
+
+  it("denies the assigned Referrer before acceptance (D-019: no resume before accepting)", () => {
+    expect(canAccessReferralAttachment(28, { ...attachment, requestStatus: "pending" })).toBe(false);
+    for (const status of ["approved", "intro_made", "interview", "offer"]) expect(canAccessReferralAttachment(28, { ...attachment, requestStatus: status })).toBe(true);
   });
 
   it("denies the assigned Referrer when the request status is unknown", () => {

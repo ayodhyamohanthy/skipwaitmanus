@@ -61,7 +61,8 @@ describe("private referral HTTP routes", () => {
       dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
       createReferralAttachment: async () => attachment,
-      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === claimedBy ? { ...attachment, referrerId: claimedBy } : undefined,
+      // Mirrors the store (documentAccessLifecycle.test.ts runs the real one): the owner, or the referrer once accepted.
+      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === acceptedBy ? { ...attachment, referrerId: claimedBy } : undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }),
       createCompanyReferralRequest: async (_userId, input) => { submittedCandidateMessage = input.personalPitch; submittedCompensation = input.compensation; return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 }; },
       listJobSeekerCompanyReferrals: async () => [{ id: 501 }, { id: 500 }, { id: 499 }],
@@ -92,6 +93,7 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee")).status).toBe(404);
     // Claimed but not yet accepted: still no name, file name or link (D-019).
     const claimedDetail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
+    expect((await request(app).get("/api/documents/77").set("x-test-user", "employee")).status).toBe(404);
     expect(claimedDetail.status).toBe(200); expect(claimedDetail.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(claimedDetail.body)).not.toContain("Avery"); expect(JSON.stringify(claimedDetail.body)).not.toContain("resume.pdf"); expect(claimedDetail.body.request.attachments[0]).not.toHaveProperty("url");
     expect((await request(app).post("/api/company-referrals/501/one-click-review").set("x-test-user", "employee").send({ decision: "approved" })).status).toBe(200);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
