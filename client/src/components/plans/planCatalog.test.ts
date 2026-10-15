@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { compareRows, fairnessRules, planCards, planFaqs } from "./planCatalog";
 
 // D-012 item 3: messages with a referrer open only after that referrer accepts,
@@ -19,10 +18,14 @@ describe("plan catalog copy after D-012 item 3", () => {
     });
   }
 
-  it("keeps every other Pro and Max feature", () => {
+  it("keeps every other Pro and Max feature, stated as the server enforces it", () => {
+    // The copy reads the enforced entitlements (shared/planEntitlements.ts), so a
+    // grandfathered Pro keeps at least what it pays for: 10 open asks at once,
+    // 10 credits a month and 1 month of credit carryover (Max: 30/30/3).
     const [, pro, max] = planCards("USD");
-    expect(pro.features).toEqual([`${SUBSCRIPTION_PLANS.pro.monthlyAllowance} referral requests every month`, "Monthly credits reset with your plan cycle", "Cancel anytime; access stays through the paid cycle", "Same referrer queue as every plan"]);
-    expect(max.features).toContain(`${SUBSCRIPTION_PLANS.max.monthlyAllowance} referral requests every month`);
+    expect(pro.features).toEqual(["10 referral requests open at once", "10 credits every month", "Unused plan credits carry over 1 month", "Cancel anytime; access stays through the paid cycle", "Same referrer queue as every plan"]);
+    expect(max.features).toContain("30 referral requests open at once");
+    expect(max.features).toContain("Unused plan credits carry over up to 3 months");
     expect(max.features).toContain("Connect ChatGPT, Claude or your own tools (you approve every send)");
     expect(compareRows("USD").map(([feature]) => feature)).toContain("Connect an AI assistant");
   });

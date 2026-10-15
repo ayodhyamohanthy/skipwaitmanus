@@ -1,10 +1,12 @@
 // Live plan catalog for the kit v4 /plans and /billing screens.
 // Every price derives from shared/subscriptionPlans.ts (the same contract the
-// server charges against) and every allowance from shared/planEntitlements.ts
-// (legacy Pro/Max grandfathered), the rules the server enforces. Kit tier names
-// and example prices are deliberately not used: live pricing stays Free / Pro / Max.
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionCurrency } from "@shared/subscriptionPlans";
+// server charges against); open requests, monthly credits and carryover come
+// from shared/planEntitlements.ts (legacy Pro/Max grandfathered), the rules the
+// server enforces. Kit tier names and example prices are not used here: live
+// checkout still sells Free / Pro / Max.
+import type { Carryover } from "@shared/planCatalog";
 import { planEntitlementsFor } from "@shared/planEntitlements";
+import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionCurrency } from "@shared/subscriptionPlans";
 import type { CreditSummary } from "./billingApi";
 
 export type PlanId = "free" | PaidSubscriptionPlan;
@@ -32,10 +34,6 @@ export function planPriceDisplay(plan: PaidSubscriptionPlan, currency: Subscript
   return SUBSCRIPTION_PLANS[plan].prices[currency].display;
 }
 
-export function monthlyAllowance(plan: PlanId): number {
-  return plan === "free" ? FREE_MONTHLY_ALLOWANCE : SUBSCRIPTION_PLANS[plan].monthlyAllowance;
-}
-
 /** Open requests at once ("Unlimited" when uncapped), plan credits a month and carryover, as the server enforces them. */
 export function planLimits(plan: PlanId) {
   const entitlements = planEntitlementsFor(plan);
@@ -44,6 +42,17 @@ export function planLimits(plan: PlanId) {
 
 export function openRequestsLabel(openRequests: number | null): string {
   return openRequests === null ? "Unlimited" : String(openRequests);
+}
+
+/** "1 month", "3 months", "Rolls over" (while subscribed) or "—" (none). */
+export function carryoverLabel(carryover: Carryover): string {
+  if (carryover === "subscribed") return "Rolls over";
+  return carryover === 0 ? "—" : `${carryover} month${carryover === 1 ? "" : "s"}`;
+}
+
+function carryoverFeature(carryover: Carryover): string {
+  if (carryover === "subscribed") return "Unused plan credits roll over while you're subscribed";
+  return carryover === 0 ? "Unused plan credits end with the cycle" : `Unused plan credits carry over ${carryover === 1 ? "1 month" : `up to ${carryover} months`}`;
 }
 
 /** A plan the account is paying for right now (renewing, or ending at term end). */
@@ -65,26 +74,29 @@ export function nextPlanUp(plan: string): PaidSubscriptionPlan | null {
 export type PlanCardCopy = { id: PlanId; name: string; tagline: string; features: string[]; cta: string };
 
 export function planCards(currency: SubscriptionCurrency): PlanCardCopy[] {
+  const free = planLimits("free");
+  const pro = planLimits("pro");
+  const max = planLimits("max");
   return [
     {
       id: "free",
       name: "Free",
-      tagline: "For getting started: a few private asks every month.",
-      features: [`${FREE_MONTHLY_ALLOWANCE} referral requests every month`, "Track every request in one place", `Add credits anytime, ${CREDIT_PRICE[currency]} each`, "Same referrer queue as every plan"],
+      tagline: "For getting started: a few private asks at a time.",
+      features: [`${openRequestsLabel(free.openRequests)} referral requests open at once`, "Track every request in one place", `Add credits anytime, ${CREDIT_PRICE[currency]} each`, "Same referrer queue as every plan"],
       cta: "Ask for a referral",
     },
     {
       id: "pro",
       name: SUBSCRIPTION_PLANS.pro.label,
-      tagline: "For a focused search: more asks every month.",
-      features: [`${SUBSCRIPTION_PLANS.pro.monthlyAllowance} referral requests every month`, "Monthly credits reset with your plan cycle", "Cancel anytime; access stays through the paid cycle", "Same referrer queue as every plan"],
+      tagline: "For a focused search: more open asks and monthly credits.",
+      features: [`${openRequestsLabel(pro.openRequests)} referral requests open at once`, `${pro.creditsPerMonth} credits every month`, carryoverFeature(pro.carryover), "Cancel anytime; access stays through the paid cycle", "Same referrer queue as every plan"],
       cta: `Upgrade to ${SUBSCRIPTION_PLANS.pro.label}`,
     },
     {
       id: "max",
       name: SUBSCRIPTION_PLANS.max.label,
-      tagline: "For a search that is your full-time job: the most asks and your own assistant.",
-      features: [`Everything in ${SUBSCRIPTION_PLANS.pro.label}`, `${SUBSCRIPTION_PLANS.max.monthlyAllowance} referral requests every month`, "Connect ChatGPT, Claude or your own tools (you approve every send)", "Monthly credits reset with your plan cycle", "Same referrer queue as every plan"],
+      tagline: "For a search that is your full-time job: the most open asks and your own assistant.",
+      features: [`Everything in ${SUBSCRIPTION_PLANS.pro.label}`, `${openRequestsLabel(max.openRequests)} referral requests open at once`, `${max.creditsPerMonth} credits every month`, "Connect ChatGPT, Claude or your own tools (you approve every send)", carryoverFeature(max.carryover), "Same referrer queue as every plan"],
       cta: `Upgrade to ${SUBSCRIPTION_PLANS.max.label}`,
     },
   ];
@@ -94,19 +106,22 @@ export type CompareValue = boolean | string;
 
 export function compareRows(currency: SubscriptionCurrency): Array<readonly [string, CompareValue, CompareValue, CompareValue]> {
   const credit = `${CREDIT_PRICE[currency]} each`;
+  const [free, pro, max] = (["free", "pro", "max"] as const).map(planLimits);
+  const monthly = (credits: number) => (credits > 0 ? String(credits) : "—");
   return [
     ["Ask for referrals", true, true, true],
-    ["Referral requests each month", String(FREE_MONTHLY_ALLOWANCE), String(SUBSCRIPTION_PLANS.pro.monthlyAllowance), String(SUBSCRIPTION_PLANS.max.monthlyAllowance)],
+    ["Open requests at once", openRequestsLabel(free.openRequests), openRequestsLabel(pro.openRequests), openRequestsLabel(max.openRequests)],
     ["Place in referrer queue", "Equal", "Equal", "Equal"],
+    ["Credits every month", monthly(free.creditsPerMonth), monthly(pro.creditsPerMonth), monthly(max.creditsPerMonth)],
     ["Extra credits", credit, credit, credit],
     ["Connect an AI assistant", false, false, true],
-    ["Unused monthly requests", "Reset monthly", "Reset each cycle", "Reset each cycle"],
+    ["Monthly credit carryover", carryoverLabel(free.carryover), carryoverLabel(pro.carryover), carryoverLabel(max.carryover)],
     ["Bought credits expire", "Never", "Never", "Never"],
   ];
 }
 
 export const fairnessRules = [
-  `${FREE_MONTHLY_ALLOWANCE} referral requests every month are free.`,
+  "Asking for a referral is free, forever.",
   "Paying never moves you up a referrer's queue.",
   "Referrers never pay to review requests.",
   "No commissions on hires. No paid priority.",
@@ -115,11 +130,13 @@ export const fairnessRules = [
 export function planFaqs(): Array<readonly [string, string]> {
   const pro = SUBSCRIPTION_PLANS.pro;
   const max = SUBSCRIPTION_PLANS.max;
+  const [free, proLimits, maxLimits] = (["free", "pro", "max"] as const).map(planLimits);
+  const carry = (carryover: Carryover) => (carryover === "subscribed" ? "while you're subscribed" : carryover === 1 ? "1 month" : `up to ${carryover} months`);
   return [
-    ["Does paying help me get referred?", "No. Referrers see the same queue whatever plan you are on. Paid plans raise your monthly request allowance; the decision stays human."],
-    ["How many referral requests can I send?", `Free includes ${FREE_MONTHLY_ALLOWANCE} referral requests every month. ${pro.label} raises it to ${pro.monthlyAllowance} and ${max.label} to ${max.monthlyAllowance}. Need more in a month? Add credits at ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
-    ["What are credits for?", "1 credit = one private referral request. Your monthly requests are used first; credits you buy cover the rest."],
-    ["Do unused credits expire?", "Credits you buy never expire — even if you cancel. Monthly plan credits reset with your plan cycle and do not carry over."],
+    ["Does paying help me get referred?", "No. Referrers see the same queue whatever plan you are on. Paid plans add more open requests at once and monthly credits; the decision stays human."],
+    ["How many referral requests can I have open?", `Free includes ${openRequestsLabel(free.openRequests)} open requests at a time. ${pro.label} raises it to ${openRequestsLabel(proLimits.openRequests)} and ${max.label} to ${openRequestsLabel(maxLimits.openRequests)}. A request that's answered, passed, withdrawn or expired frees its slot. Every plan shares the same queue.`],
+    ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from SkipWait's tools. Referral requests never cost credits. ${pro.label} includes ${proLimits.creditsPerMonth} credits a month and ${max.label} ${maxLimits.creditsPerMonth}; extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
+    ["Do unused credits expire?", `Credits you buy never expire — even if you cancel. Monthly plan credits carry over ${carry(proLimits.carryover)} on ${pro.label} and ${carry(maxLimits.carryover)} on ${max.label}, and end when the paid plan ends.`],
     ["Can I cancel?", "Anytime, from Manage plan. Paid access stays through the current cycle, then your account returns to Free."],
     ["Do referrers pay?", "Never to review requests. Referrers are always free."],
     ["Is pricing local?", `Yes. In India plans are charged in rupees (${pro.label} ${pro.prices.INR.display}, ${max.label} ${max.prices.INR.display}); elsewhere in US dollars (${pro.prices.USD.display}, ${max.prices.USD.display}).`],
