@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SQL } from "drizzle-orm";
 import { MySqlDialect, type MySqlTable, type SelectedFields } from "drizzle-orm/mysql-core";
-import { messages, profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
-import { createCompanyReferralRequest, getClaimedCompanyReferralDetail, getUnclaimedCompanyReferralPreview, listCompanyReferralInboxByState, listJobSeekerCompanyReferrals } from "./db";
+import { assistantApprovals, messages, profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
+import { NO_PERSONAL_NOTE_TEXT } from "../shared/askNote";
+import { createCompanyReferralRequest, decideAssistantApproval, getClaimedCompanyReferralDetail, getUnclaimedCompanyReferralPreview, listCompanyReferralInboxByState, listJobSeekerCompanyReferrals } from "./db";
 
 /*
  * D-019 seeker basics, persistence side of askNoteRoundTrip.test.ts: the
@@ -90,6 +91,16 @@ describe("seeker note persistence", () => {
     const written = inserts.filter(entry => entry.table === referralRequests);
     expect(written).toHaveLength(1);
     expect(written[0].values).toMatchObject({ jobSeekerId: SEEKER, personalPitch: NOTE, status: "pending" });
+  });
+
+  it("an assistant-proposed ask approved without a note stores the shared placeholder", async () => {
+    rowsByTable.set(tokenBalances, [wallet]);
+    rowsByTable.set(referralAttachments, [{ id: 77 }]);
+    rowsByTable.set(assistantApprovals, [{ id: 41, userId: SEEKER, kind: "ask_send", status: "pending", provider: "ChatGPT", note: "   ", targetRoleUrl: ROLE_URL, attachmentIds: "[77]", idempotencyKey: "assistant-ask-note-0001", expiresAt: new Date(Date.now() + 60 * 60 * 1000) }]);
+    expect(await decideAssistantApproval(SEEKER, 41, "approved")).toMatchObject({ id: 41, status: "approved" });
+    const written = inserts.filter(entry => entry.table === referralRequests);
+    expect(written).toHaveLength(1);
+    expect(written[0].values).toMatchObject({ jobSeekerId: SEEKER, personalPitch: NO_PERSONAL_NOTE_TEXT });
   });
 
   it("reads the stored note back to its seeker as pitch, scoped to that seeker", async () => {

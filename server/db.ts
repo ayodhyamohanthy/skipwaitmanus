@@ -36,6 +36,7 @@ import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
+import { NO_PERSONAL_NOTE_TEXT } from "../shared/askNote";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
@@ -665,7 +666,7 @@ export async function decideAssistantApproval(userId: number, approvalId: number
     let attachmentIds: number[] = [];
     try { const parsed = JSON.parse(current.attachmentIds ?? "[]"); if (Array.isArray(parsed)) attachmentIds = parsed.filter((v: unknown): v is number => typeof v === "number"); } catch { /* handled below */ }
     try {
-      const created = await createCompanyReferralRequest(userId, { targetRoleUrl: current.targetRoleUrl, personalPitch: current.note?.trim() || "No personal note was included with this referral request.", attachmentIds, idempotencyKey: current.idempotencyKey });
+      const created = await createCompanyReferralRequest(userId, { targetRoleUrl: current.targetRoleUrl, personalPitch: current.note?.trim() || NO_PERSONAL_NOTE_TEXT, attachmentIds, idempotencyKey: current.idempotencyKey });
       await db.update(assistantApprovals).set({ executedRequestId: created.requestId }).where(eq(assistantApprovals.id, approvalId));
       return { id: approvalId, status: "approved" as const, requestId: created.requestId };
     } catch (error) {
