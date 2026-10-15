@@ -8,6 +8,8 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { uploadResume, validateResumeFile, type ResumeDoc } from "@/lib/resumeUpload";
 import { clearAskPrefill, readAskPrefill } from "@/lib/askPrefill";
+import { fastTrackAskFields } from "@/lib/fastTrackHandoff";
+import { clearReferralDraft, readReferralDraft } from "@/lib/pwaContinuity";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { discardAskDraftRemote, useAskDraft } from "@/lib/askDraftApi";
@@ -50,7 +52,12 @@ export default function Ask() {
   // A company door's request dialog (/explore/:slug) hands its job link and
   // fit note forward; nothing was sent there, so the seeker reviews it here.
   const [prefill] = useState(() => readAskPrefill());
-  const [url, setUrl] = useState(prefill?.targetRoleUrl ?? "");
+  // D-017: a request begun on a referrer's personal link carries the job link
+  // from /start here, so an empty composer picks it up (the company-door
+  // prefill keeps priority). The draft is cleared on sign-out and on send.
+  const bridgeDraft = prefill ? null : readReferralDraft();
+  const bridgeUrl = bridgeDraft && isValidTargetRoleUrl(bridgeDraft.targetUrl) ? bridgeDraft.targetUrl : "";
+  const [url, setUrl] = useState(prefill?.targetRoleUrl ?? bridgeUrl);
   const [note, setNote] = useState(prefill?.note.slice(0, NOTE_LIMIT) ?? "");
   const [compensation, setCompensation] = useState("");
   // Only an explicit pick is sent; otherwise the server stores the same guess shown here.
@@ -139,15 +146,17 @@ export default function Ask() {
     try {
       const doc = await ensureResume();
       setSendStage("ask");
-      const params = new URLSearchParams(window.location.search);
       const targetRoleUrl = url.trim();
       const body: Record<string, string | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
       // A request that began on a company page must stay with that company.
       if (prefill?.companySlug) body.companySlug = prefill.companySlug;
       if (compensation.trim()) body.compensation = compensation.trim().slice(0, 80);
       if (pickedFunction) body.jobFunction = pickedFunction;
-      const fastTrackCode = params.get("fast")?.trim();
-      if (fastTrackCode) body.fastTrackCode = fastTrackCode;
+      // D-017: an ask begun on a referrer's personal link stays with that
+      // referrer (the server routes it to the link's owner), never the company.
+      const fastTrack = fastTrackAskFields(window.location.search);
+      if ("fastTrackCode" in fastTrack) body.fastTrackCode = fastTrack.fastTrackCode;
+      if ("fastTrackCompanySlug" in fastTrack) { body.fastTrackCompanySlug = fastTrack.fastTrackCompanySlug; body.fastTrackAlias = fastTrack.fastTrackAlias; }
       const confirmedDomain = confirmedCompanyDomain(targetRoleUrl);
       if (confirmedDomain) body.confirmedCompanyDomain = confirmedDomain;
       const token = await fetchToken();
@@ -160,6 +169,7 @@ export default function Ask() {
       if (!created) throw new Error(typeof payload.error === "string" ? payload.error : "We could not send this ask");
       sessionStorage.removeItem(IDEMPOTENCY_KEY);
       clearAskPrefill();
+      clearReferralDraft();
       void discardAskDraftRemote(fetchToken);
       // The ask exists now: show the sent screen at once, with the open-slot
       // count from the send response (nothing else can hold the button on "Sending...").
