@@ -35,7 +35,6 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const [referrerNamed, setReferrerNamed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // /profile?focus=handle (Verify, referrer setup) asks for the profile handle.
   // The kit /profile has no handle field, so the handle sheet opens with its
@@ -62,22 +61,6 @@ export default function Profile() {
   };
 
   useEffect(() => { void load(); }, [fetchToken, isSignedIn]);
-
-  // Referrer naming decides the referrer privacy line; anonymous is the
-  // server default, so a failed read keeps the anonymous wording.
-  useEffect(() => {
-    if (!isSignedIn || role !== "referrer") return;
-    let active = true;
-    void (async () => {
-      try {
-        const token = await fetchToken();
-        const response = await fetch("/api/referrer-preferences", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        const payload = await readApiJson<{ preferences?: { referrerVisibility?: string } }>(response, "We could not load your referrer settings");
-        if (active && response.ok) setReferrerNamed(payload.preferences?.referrerVisibility === "named");
-      } catch { /* keep the default anonymous wording */ }
-    })();
-    return () => { active = false; };
-  }, [fetchToken, isSignedIn, role]);
 
   const save = async () => {
     setSaving(true); setError(""); setSaved(false);
@@ -151,7 +134,7 @@ export default function Profile() {
             error={error}
             onSave={() => { void save(); }}
           />
-          <PrivacyControls role={role} visibility={asProfileVisibility(profile?.profileVisibility)} referrerNamed={referrerNamed} />
+          <PrivacyControls role={role} visibility={asProfileVisibility(profile?.profileVisibility)} />
         </section>
       )}
       {linkSheet && loaded ? <ProfileLinkSheet current={profile?.handle ?? null} busy={linkBusy} error={linkError} onClose={closeLinkSheet} onSubmit={handle => { void saveHandle(handle); }} /> : null}

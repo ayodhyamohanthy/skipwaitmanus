@@ -96,8 +96,9 @@ export default function ReferralConversation() {
   const failure = validId ? error : "This private thread link is invalid.";
   const seekerName = user?.fullName ?? null;
   const headline = profile.data?.headline ?? profile.data?.currentTitle ?? null;
-  // The seeker is never told who the referrer is; a referrer who accepted sees their own name here.
-  const referrerLabel = request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "";
+  // Names are revealed only after the referrer accepts: the referrer sees their own name, the seeker the name the server returns (never before accept).
+  const seekerSeesReferrer = request && role === "seeker" && isAccepted(request) && request.referrerName ? (request.referrerTitle ? `${request.referrerName} · ${request.referrerTitle}` : request.referrerName) : null;
+  const referrerLabel = seekerSeesReferrer ?? (request && role !== "seeker" && isAccepted(request) && user?.fullName ? user.fullName : request ? `Someone at ${companyName(request)}` : "");
 
   return (
     <main data-skipwait-screen="referral-conversation" className="page-content">

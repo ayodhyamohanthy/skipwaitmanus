@@ -36,6 +36,8 @@ const seekerRowSchema = z.object({
   jobFunction: jobFunctionFieldSchema,
   status: statusSchema,
   referrerId: z.number().int().nullish(),
+  referrerName: z.string().nullish(),
+  referrerTitle: z.string().nullish(),
   referrerMessage: z.string().nullish(),
   createdAt: timestampSchema,
   attachmentCount: z.number().nullish(),
@@ -94,6 +96,9 @@ export type ThreadRequest = {
   jobFunction: JobFunction | null;
   status: ReferralStatus;
   referrerId: number | null;
+  /** Revealed to the seeker only after the referrer accepts (queue task 14). */
+  referrerName?: string | null;
+  referrerTitle?: string | null;
   referrerMessage: string | null;
   createdAt: string | number | null;
   attachments: readonly ThreadAttachment[];
@@ -136,7 +141,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       role: "seeker",
       request: {
         id: own.id, title: own.title ?? null, pitch: own.pitch ?? null, candidateName: null, targetRoleUrl: own.targetRoleUrl ?? null,
-        companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerMessage: own.referrerMessage ?? null,
+        companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerName: own.referrerName ?? null, referrerTitle: own.referrerTitle ?? null, referrerMessage: own.referrerMessage ?? null,
         createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0,
       },
     };
@@ -186,7 +191,7 @@ export async function decideReview(requestId: number, decision: "approved" | "de
   return authedFetch(`/api/company-referrals/${requestId}/one-click-review`, getToken, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(declineReason ? { decision, declineReason, ...(passReason ? { passReason } : {}) } : { decision }),
+    body: JSON.stringify(declineReason ? { decision, declineReason, ...(passReason ? { passReason } : {}) } : decision === "approved" ? { decision, ethicsConfirmed: true } : { decision }),
   });
 }
 
