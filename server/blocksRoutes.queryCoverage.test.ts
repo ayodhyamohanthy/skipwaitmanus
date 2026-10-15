@@ -107,6 +107,15 @@ describe("real block lookup query coverage", () => {
     expect(await getBlockedRequestIds(11, [1, 2, 3, 4, 999])).toEqual(new Set([1, 2]));
   });
 
+  it("does not treat a block between unrelated request owners as a viewer block", async () => {
+    referrals.push({ id: 701, jobSeekerId: 55, referrerId: 66 });
+    blocks.push({ blockerUserId: 55, blockedUserId: 66 }, { blockerUserId: 66, blockedUserId: 55 });
+    // This helper filters block relationships only. Callers still own request
+    // authorization; an empty result must never be treated as an access grant.
+    expect(await getBlockedRequestIds(11, [701])).toEqual(new Set());
+    expect(await getThreadBlockStatus(11, 701)).toEqual({ blocked: false });
+  });
+
   it("deduplicates requested IDs and ignores invalid IDs", async () => {
     referrals.push({ id: 601, jobSeekerId: 11, referrerId: 22 });
     blocks.push({ blockerUserId: 11, blockedUserId: 22 });
