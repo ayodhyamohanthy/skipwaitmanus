@@ -1,5 +1,6 @@
 import { BadgeCheck, Check, Clock3, MessageSquare, Wallet } from "lucide-react";
-import { isToday, timeAgo, type NotificationCategory, type NotificationItem } from "./notifications";
+import { isSameDay, useDisplayPrefs } from "@/lib/displayPrefs";
+import { timeAgo, type NotificationCategory, type NotificationItem } from "./notifications";
 
 // Kit row icons (app/src/routes/alerts.tsx), chosen by the live category.
 const CATEGORY_ICON: Record<NotificationCategory, typeof Check> = {
@@ -20,10 +21,11 @@ const GROUPS = ["Today", "Earlier"] as const;
  * page decides.
  */
 export function NotificationGroups({ items, onOpen }: { items: readonly NotificationItem[]; onOpen: (item: NotificationItem) => void }) {
+  const prefs = useDisplayPrefs();
   return (
     <>
       {GROUPS.map(group => {
-        const rows = items.filter(item => (group === "Today") === isToday(item.createdAt));
+        const rows = items.filter(item => (group === "Today") === isSameDay(item.createdAt, new Date(), prefs));
         if (!rows.length) return null;
         return (
           <div key={group} className="mb-4">
