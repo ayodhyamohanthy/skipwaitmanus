@@ -73,6 +73,62 @@ describe("Direct messages with a referrer before acceptance (D-012 item 3)", () 
     expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();
     expect(screen.getByRole("link", { name: "Go to My requests" }).getAttribute("href")).toBe("/requests");
     expect(window.sessionStorage.length).toBe(0);
+    // The refused text stays visible and copyable, not hidden in the draft.
+    expect(document.querySelector("[data-skipwait-unsent='draft']")?.textContent).toContain("Can you refer me?");
+  });
+
+  it("never carries a blocked draft into another conversation", async () => {
+    const memberThread = { counterpartUserId: 33, counterpartLabel: "Member", messages: [{ id: 2, body: "Hey", createdAt: new Date().toISOString(), isMine: false }] };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === "/api/dms/threads") return { ok: true, json: async () => ({ threads: [threadList.threads[0], { ...threadList.threads[0], counterpartUserId: 33, counterpartLabel: "Member" }] }) };
+      if (init?.method === "POST") return { ok: false, status: 403, json: async () => memberBlock };
+      if (url === "/api/dms/threads/33") return { ok: true, json: async () => ({ thread: memberThread, sendBlock: null }) };
+      return { ok: true, json: async () => ({ thread: referrerThread, sendBlock: null }) };
+    }));
+    render(<Messages />);
+    fireEvent.click(await screen.findByRole("button", { name: /Referrer · acme\.com/ }));
+    fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "Can you refer me?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    expect(await screen.findByText("Messages open after acceptance")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "All chats" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Member/ }));
+    const composer = await screen.findByLabelText("Message");
+    expect((composer as HTMLInputElement).value).toBe("");
+    expect(screen.queryByText("Messages open after acceptance")).toBeNull();
+    expect(document.body.textContent).not.toContain("Can you refer me?");
+  });
+
+  it("does not show a late refusal for a conversation the member already left", async () => {
+    let answerPost: (value: { ok: boolean; status: number; json: () => Promise<typeof memberBlock> }) => void = () => undefined;
+    const memberThread = { counterpartUserId: 33, counterpartLabel: "Member", messages: [] };
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === "/api/dms/threads") return { ok: true, json: async () => ({ threads: [threadList.threads[0], { ...threadList.threads[0], counterpartUserId: 33, counterpartLabel: "Member" }] }) };
+      if (init?.method === "POST") return new Promise(resolve => { answerPost = resolve; });
+      if (url === "/api/dms/threads/33") return { ok: true, json: async () => ({ thread: memberThread, sendBlock: null }) };
+      return { ok: true, json: async () => ({ thread: referrerThread, sendBlock: null }) };
+    }));
+    render(<Messages />);
+    fireEvent.click(await screen.findByRole("button", { name: /Referrer · acme\.com/ }));
+    fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "Can you refer me?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+    await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === "POST")).toBe(true));
+    fireEvent.click(screen.getByRole("button", { name: "All chats" }));
+    fireEvent.click(await screen.findByRole("button", { name: /Member/ }));
+    await screen.findByLabelText("Message");
+    answerPost({ ok: false, status: 403, json: async () => memberBlock });
+    await waitFor(() => expect(window.sessionStorage.length).toBe(0));
+    expect(screen.queryByText("Messages open after acceptance")).toBeNull();
+    expect(screen.getByLabelText("Message")).toBeTruthy();
+    expect(document.body.textContent).not.toContain("Can you refer me?");
+  });
+
+  it("offers no New chat entry, since no direct message can start from scratch", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => threadList })));
+    render(<Messages />);
+    await screen.findByRole("button", { name: /Referrer · acme\.com/ });
+    expect(screen.queryByRole("button", { name: "New chat" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "New chat" })).toBeNull();
+    expect(document.querySelector("a[href='/wall']")).toBeNull();
   });
 
   it("shows the rule as soon as a pre-acceptance thread opens", async () => {
