@@ -1,4 +1,5 @@
 import { WorkOS } from "@workos-inc/node";
+import { revokeHostedSessions } from "./hostedSessionRevoke";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 import { safeAuthReturnTo } from "@shared/authReturnTo";
@@ -211,11 +212,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
           const state = randomUUID();
           const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
           res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
-          const authorizationUrl = workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) });
-          // The person typed a specific address. A still-live hosted AuthKit session (app sign-out only clears our own cookie) would otherwise
-          // silently sign them back in as the previous account and ignore the hint, so force a fresh authentication (WorkOS max_age=0, AuthKit only).
-          const finalUrl = loginHint && authProvider === "authkit" ? (() => { const url = new URL(authorizationUrl); url.searchParams.set("max_age", "0"); return url.toString(); })() : authorizationUrl;
-          res.set("Cache-Control", "no-store").redirect(302, finalUrl);
+          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
         } catch {
           res.status(502).send("Authentication could not be started");
         }
@@ -311,7 +308,19 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
 
     app.post("/api/auth/workos/logout", async (req, res) => {
       const token = req.headers.cookie?.match(/(?:^|;\s*)app_session_id=([^;]+)/)?.[1];
-      await (await import("./sdk")).sdk.revokeSession(token);
+      const { sdk } = await import("./sdk");
+      // Resolve who is signing out from their own valid session only, never from client-supplied ids.
+      let hostedUserIds: string[] = [];
+      try {
+        const session = await sdk.verifySession(token);
+        const account = session ? await db.getUserByOpenId(session.openId) : undefined;
+        if (account) hostedUserIds = await db.listWorkosSubjectsForUser(account.id);
+      } catch { hostedUserIds = []; }
+      await sdk.revokeSession(token);
+      if (hostedUserIds.length) {
+        const outcome = await revokeHostedSessions(workos.userManagement as never, hostedUserIds, { log: message => console.warn("[workos-logout]", message) }).catch(() => ({ revoked: 0, failed: 1 }));
+        if (outcome.failed) console.warn("[workos-logout]", { hostedSessionsRevoked: outcome.revoked, failed: outcome.failed });
+      }
       res.clearCookie(COOKIE_NAME, getSessionCookieOptions(req));
       res.clearCookie("workos_session", getSessionCookieOptions(req));
       res.json({ signedOut: true });

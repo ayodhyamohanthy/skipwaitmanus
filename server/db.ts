@@ -85,6 +85,13 @@ export function normalizeVerifiedEmail(email: string) { return email.trim().norm
 /** Resolve a login subject to a canonical account. Provider+subject aliases win.
  * A verified email may claim an existing unique account. Unverified email never
  * participates in linking and is retained only on the isolated account row. */
+/** WorkOS user ids (provider subjects) linked to this canonical account, used to end hosted sessions at sign-out. */
+export async function listWorkosSubjectsForUser(userId: number): Promise<string[]> {
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ subject: verifiedLoginAliases.subject }).from(verifiedLoginAliases).where(and(eq(verifiedLoginAliases.provider, "workos"), eq(verifiedLoginAliases.canonicalUserId, userId)));
+  return rows.map(row => row.subject).filter(subject => /^user_[A-Za-z0-9]+$/.test(subject));
+}
+
 export async function resolveLoginIdentity(input: { provider: string; subject: string; openId: string; email: string; emailVerified: boolean; name: string; loginMethod: string }) {
   const email = normalizeVerifiedEmail(input.email);
   const db = await getDb();

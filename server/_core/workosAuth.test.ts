@@ -7,12 +7,14 @@ const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@
 const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", role: "user", suspended: false, sessionsValidAfter: new Date(0), createdAt: new Date(0), updatedAt: new Date(0), lastSignedIn: new Date(0) };
 const accounts = vi.hoisted(() => new Map<string, Record<string, unknown>>());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
+const hosted = vi.hoisted(() => ({ list: vi.fn(async () => ({ data: [{ id: "session_live", status: "active" }] })), revoke: vi.fn(async () => {}) }));
 vi.mock("../db", () => ({
   upsertUser: vi.fn(),
   getDb: vi.fn(async () => ({})),
   getUserByOpenId: vi.fn(async (openId: string) => openId === account.openId ? account : accounts.get(openId)),
   revokeUserSessions: vi.fn(async (openId: string) => { const row = openId === account.openId ? account : accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); }),
   resolveLoginIdentity,
+  listWorkosSubjectsForUser: vi.fn(async (userId: number) => userId === 1 ? ["user_test"] : []),
 }));
 function defaultResolve(input: { openId: string; name: string; email: string }) {
   if (input.openId === account.openId) return account;
@@ -30,6 +32,8 @@ vi.mock("@workos-inc/node", () => {
     WorkOS: class {
       userManagement = {
         authenticateWithCode: authenticate,
+        listSessions: hosted.list,
+        revokeSession: hosted.revoke,
         getAuthorizationUrl: (options: { screenHint?: string; loginHint?: string; redirectUri: string }) => {
           authUrl(options);
           return `https://api.workos.com/user_management/authorize?screen=${options.screenHint ?? ""}&login=${options.loginHint ?? ""}&redirect=${encodeURIComponent(options.redirectUri)}`;
@@ -103,17 +107,6 @@ describe("role-aware WorkOS sign-in entries", () => {
     const signUp = await request(app).get("/api/auth/workos/sign-up");
     expect(signUp.status).toBe(302);
     expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up" }));
-    restore();
-  });
-
-  it("forces fresh authentication only when a typed email is given, so a live hosted session cannot override it", { timeout: 20000 }, async () => {
-    const { app, restore } = await buildApp({ ...baseEnv });
-    const hinted = await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "other@example.com" });
-    expect(new URL(hinted.headers.location).searchParams.get("max_age")).toBe("0");
-    const plain = await request(app).get("/api/auth/workos/sign-in");
-    expect(new URL(plain.headers.location).searchParams.has("max_age")).toBe(false);
-    const social = await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "other@example.com", provider: "google" });
-    expect(new URL(social.headers.location).searchParams.has("max_age")).toBe(false);
     restore();
   });
 
@@ -264,6 +257,31 @@ describe("canonical WorkOS callback session", () => {
       const callback = await signIn(app);
       const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
       expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(200);
+      expect((await request(app).post("/api/auth/workos/logout").set("Cookie", cookie)).body).toEqual({ signedOut: true });
+      expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(401);
+    } finally { restore(); }
+  });
+
+  it("ends the signed-out person's hosted AuthKit sessions, only with a valid session of their own", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      hosted.list.mockClear(); hosted.revoke.mockClear();
+      expect((await request(app).post("/api/auth/workos/logout")).body).toEqual({ signedOut: true });
+      expect(hosted.list).not.toHaveBeenCalled();
+      const callback = await signIn(app);
+      const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
+      expect((await request(app).post("/api/auth/workos/logout").set("Cookie", cookie)).body).toEqual({ signedOut: true });
+      expect(hosted.list).toHaveBeenCalledWith("user_test");
+      expect(hosted.revoke).toHaveBeenCalledWith({ sessionId: "session_live" });
+    } finally { restore(); }
+  });
+
+  it("still signs out when WorkOS cannot list or revoke hosted sessions", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      hosted.list.mockRejectedValueOnce(new Error("workos down"));
+      const callback = await signIn(app);
+      const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
       expect((await request(app).post("/api/auth/workos/logout").set("Cookie", cookie)).body).toEqual({ signedOut: true });
       expect((await request(app).get("/session-proof").set("Cookie", cookie)).status).toBe(401);
     } finally { restore(); }
