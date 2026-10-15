@@ -6,6 +6,7 @@ import { Button } from "@/components/kit/button";
 import { applySeo, faqJsonLd } from "@/lib/seo";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
+import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
 import CookieConsent from "@/components/CookieConsent";
 
 const QUESTIONS = [
@@ -44,8 +45,8 @@ export default function Home() {
           <img className="launch-hero-image" src="/launch-door.jpg" alt="An open blue door with a yellow path leading through it" width={1600} height={1008} fetchPriority="high" />
           <div className="launch-hero-copy">
             <span className="launch-kicker"><span />INTRODUCING SKIPWAIT</span>
-            <h1>Free job referrals.<br />A warmer way in<span className="brand-dot">.</span></h1>
-            <p>Connect with people inside the companies you want to join.<br className="desktop-break" /> A real introduction. Not another application into the unknown.</p>
+            <h1>{LANDING_H1_LINES[0]}<br />{LANDING_H1_LINES[1]}<span className="brand-dot">.</span></h1>
+            <p>{LANDING_HERO_LEAD_PARTS[0]}<br className="desktop-break" /> {LANDING_HERO_LEAD_PARTS[1]}</p>
             <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
             <Link className="hero-secondary" href="/referrer">Already on the inside? Become a referrer <ArrowRight size={14} /></Link>
             <div className="hero-assurances"><span><Check size={13} />Referrals are free</span><span><Check size={13} />Explore before signing in</span></div>
