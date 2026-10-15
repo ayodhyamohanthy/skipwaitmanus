@@ -72,14 +72,14 @@ const pass = (usd30: number, inr30: number, usd90: number, inr90: number): Catal
 export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 
 /**
- * Credit PACKS (the one-off $1 / INR 99 per credit purchase on /premium) are off
- * sale until credits have a spend that is verified end to end: a credit charged
+ * Credit PACKS (the one-off $1 / INR 99 per credit purchase on /premium) were off
+ * sale until credits had a spend verified end to end (reopened once it was): a credit charged
  * when an ask is sent, returned on withdraw or expiry. Flip to true to reopen the
  * client purchase entry points. Pro/Max are unaffected (they sell open-ask slots
  * and assistant access). This only hides client entry points: the server checkout
  * route, pricing and the payment-recovery screen are untouched.
  */
-export const CREDIT_PACKS_ON_SALE = false;
+export const CREDIT_PACKS_ON_SALE = true;
 
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
