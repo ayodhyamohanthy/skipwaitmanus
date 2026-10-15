@@ -7,7 +7,7 @@
  *  - Paid plans are 30-day and 90-day passes paid once. Keep warm is the only
  *    yearly plan. A 90-day pass grants credits in three cycles of about 30 days.
  *  - Prices: one global USD price and an India price in INR including GST.
- *  - Free: 3 open asks, 2 credits every month (no carryover), 3 welcome credits
+ *  - Free: 3 open asks, 3 credits every month (no carryover), 3 welcome credits
  *    and a one-time 14-day Momentum reverse trial after the first ask.
  *  - Land Concierge holds 75 open asks and is sold by application.
  *  - Human time is sold as sessions, never for credits.
@@ -83,7 +83,7 @@ export const CREDIT_PACKS_ON_SALE = false;
 
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
-  creditsPerMonth: 2, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
+  creditsPerMonth: 3, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
 };
 
 export const CATALOG_PLANS: readonly PaidCatalogPlan[] = [

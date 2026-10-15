@@ -2811,7 +2811,7 @@ export async function ensureTokenWallet(userId: number, role: WalletRole) {
   if (!existing[0]) {
     await db.insert(tokenBalances).values({ userId, role, balance: 0, ...freshWalletCycle(role, now) });
     const created = (await db.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, role))).limit(1))[0];
-    // A new seeker wallet opens Free's current month (2 credits, one plan_grant row) at once.
+    // A new seeker wallet opens Free's current month (3 credits, one plan_grant row) at once.
     if (role !== "job_seeker" || !created) return created;
     existing.push(created);
   }
