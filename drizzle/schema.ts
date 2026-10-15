@@ -184,6 +184,22 @@ export const askDrafts = mysqlTable("askDrafts", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, table => [uniqueIndex("ask_drafts_user_unique").on(table.userId)]);
 
+// Async personal-data export (task 4a). zipData is dropped when the export expires.
+const exportBlob = customType<{ data: Buffer; driverData: Buffer }>({ dataType() { return "longblob"; } });
+export const dataExports = mysqlTable("dataExports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 16 }).notNull().default("requested"),
+  activeKey: varchar("activeKey", { length: 40 }),
+  fileName: varchar("fileName", { length: 120 }),
+  byteSize: int("byteSize").notNull().default(0),
+  zipData: exportBlob("zipData"),
+  failureNote: varchar("failureNote", { length: 200 }),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  readyAt: timestamp("readyAt"),
+  expiresAt: timestamp("expiresAt"),
+}, table => [uniqueIndex("data_exports_active_unique").on(table.activeKey), index("data_exports_user_idx").on(table.userId, table.requestedAt)]);
+
 export const assistantConnections = mysqlTable("assistantConnections", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),

@@ -1,3 +1,4 @@
+import { setRetryAfter } from "./retryAfter";
 import { normalizeReferenceId, REFERENCE_ID_ERROR } from "../shared/referenceId";
 import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "./otpPolicy";
 import { isPassReasonCode, passReasonSeekerLabel } from "../shared/passReasons";
@@ -130,6 +131,9 @@ export type PrivateReferralRouteDeps = {
   getOrCreatePersonalReferralInvite?: (userId: number) => Promise<{ inviteCode: string }>;
   claimPersonalReferralInvite?: (joinerUserId: number, input: { inviteCode: string; verifiedEmail: string }) => Promise<{ rewarded: boolean; tokenCount?: number; reason?: string }>;
   exportUserData?: (userId: number) => Promise<unknown>;
+  requestDataExport?: (userId: number) => Promise<{ kind: "created" | "active" | "cooldown"; id: number; retryAfterSeconds?: number }>;
+  getLatestDataExport?: (userId: number) => Promise<{ id: number; status: string; requestedAt: Date; readyAt: Date | null; expiresAt: Date | null; byteSize: number; fileName: string | null } | null>;
+  getDataExportFile?: (userId: number, id: number) => Promise<{ data: Buffer; fileName: string } | null>;
   listMyPrivacyRequests?: (userId: number) => Promise<unknown[]>;
   createPrivacyErasureRequest?: (userId: number) => Promise<{ id: number; kind: "erasure"; status: string; createdAt: Date; alreadyRequested: boolean }>;
   listAdminPrivacyRequests?: (limit?: number) => Promise<unknown[]>;
@@ -471,6 +475,33 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: "privacy.data_exported", outcome: "success", resourceType: "privacy_export" });
       res.set("Cache-Control", "private, no-store"); res.attachment(`skipwait-personal-data-${new Date().toISOString().slice(0, 10)}.json`); res.json(exportData);
     } catch { res.status(500).json({ error: "We could not prepare your data export" }); }
+  });
+  app.post("/api/privacy/export-requests", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to request your data export" });
+      if (!deps.requestDataExport) return res.status(503).json({ error: "Data export is unavailable right now" });
+      const result = await deps.requestDataExport(identity.account.id);
+      record({ actorUserId: identity.account.id, action: "privacy.export_requested", outcome: result.kind === "cooldown" ? "denied" : "success", resourceType: "data_export", resourceId: result.id, metadata: { kind: result.kind } });
+      res.set("Cache-Control", "private, no-store");
+      if (result.kind === "cooldown") { const wait = setRetryAfter(res, result.retryAfterSeconds ?? 60); return res.status(429).json({ error: "You can request one export every 24 hours. Your last one is below.", retryAfterSeconds: wait, id: result.id }); }
+      return res.status(result.kind === "created" ? 201 : 200).json({ id: result.id, alreadyRequested: result.kind === "active" });
+    } catch { res.status(500).json({ error: "We could not create your export request" }); }
+  });
+  app.get("/api/privacy/export-requests/latest", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to view your data export" });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ export: await deps.getLatestDataExport?.(identity.account.id) ?? null });
+    } catch { res.status(500).json({ error: "We could not load your data export" }); }
+  });
+  app.get("/api/privacy/export-requests/:id/download", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to download your data export" });
+      const id = Number(req.params.id); if (!Number.isInteger(id) || id <= 0) return res.status(404).json({ error: "This export is not available" });
+      const file = await deps.getDataExportFile?.(identity.account.id, id); if (!file) return res.status(404).json({ error: "This export is not available. It may have expired, so request a new one." });
+      record({ actorUserId: identity.account.id, action: "privacy.data_exported", outcome: "success", resourceType: "data_export", resourceId: id });
+      res.set("Cache-Control", "private, no-store"); res.set("Content-Type", "application/zip"); res.attachment(file.fileName); res.send(file.data);
+    } catch { res.status(500).json({ error: "We could not download your data export" }); }
   });
   app.get("/api/privacy/requests", async (req, res) => {
     try { const identity = await deps.resolveIdentity(req); if (!identity) return res.status(401).json({ error: "Sign in to view privacy requests" }); res.set("Cache-Control", "private, no-store"); res.json({ requests: await deps.listMyPrivacyRequests?.(identity.account.id) ?? [] }); } catch { res.status(500).json({ error: "We could not load your privacy requests" }); }

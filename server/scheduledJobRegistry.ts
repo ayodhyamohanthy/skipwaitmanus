@@ -4,6 +4,7 @@
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
+import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
@@ -30,5 +31,12 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createWorkEmailReverifySweep(),
+  },
+  {
+    name: "data-export-sweep",
+    description: "Builds requested personal-data export ZIPs (size-capped) and drops expired ones after 7 days",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createDataExportSweep(),
   },
 ];
