@@ -16,6 +16,8 @@ export const notificationItemSchema = z.object({
   body: z.string(),
   readAt: z.string().nullable(),
   createdAt: z.string(),
+  kind: z.string().nullish(),
+  refId: z.number().nullish(),
 });
 
 export const notificationListSchema = z.object({ notifications: z.array(notificationItemSchema) });

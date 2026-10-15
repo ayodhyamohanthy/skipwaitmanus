@@ -656,6 +656,8 @@ export const notifications = mysqlTable("notifications", {
   title: varchar("title", { length: 180 }).notNull(),
   body: text("body").notNull(),
   eventKey: varchar("eventKey", { length: 120 }),
+  kind: varchar("kind", { length: 32 }),
+  refId: int("refId"),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("notifications_user_idx").on(table.userId), uniqueIndex("notifications_event_key_unique").on(table.eventKey)]);

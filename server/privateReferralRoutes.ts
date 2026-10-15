@@ -23,7 +23,7 @@ type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
 type Identity = { account: Account; primaryEmail?: EmailAddress | null; emailAddresses?: EmailAddress[] };
 type Attachment = { id: number; fileName: string; mimeType: string; fileSize: number; fileKey?: string };
-type PrivateNotification = { id: number; category: "referral" | "message" | "status" | "system"; title: string; body: string; readAt: Date | null; createdAt: Date };
+type PrivateNotification = { id: number; category: "referral" | "message" | "status" | "system"; title: string; body: string; readAt: Date | null; createdAt: Date; kind?: string | null; refId?: number | null };
 
 export type PrivateReferralRouteDeps = {
   resolveIdentity: (req: Request) => Promise<Identity | undefined>;
@@ -296,7 +296,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.listNotifications) return res.status(503).json({ error: "Your updates are unavailable right now" });
       res.set("Cache-Control", "private, no-store");
       const notifications = await deps.listNotifications(identity.account.id);
-      res.json({ notifications: notifications.map(({ id, category, title, body, readAt, createdAt }) => ({ id, category, title, body, readAt, createdAt })) });
+      res.json({ notifications: notifications.map(({ id, category, title, body, readAt, createdAt, kind, refId }) => ({ id, category, title, body, readAt, createdAt, kind: kind ?? null, refId: refId ?? null })) });
     } catch { res.status(500).json({ error: "We could not load your private updates" }); }
   });
   app.put("/api/referrer/slack-webhook", async (req, res) => {

@@ -1,4 +1,4 @@
-import { BadgeCheck, Check, MessageSquare, Wallet } from "lucide-react";
+import { BadgeCheck, Check, Clock3, MessageSquare, Wallet } from "lucide-react";
 import { isToday, timeAgo, type NotificationCategory, type NotificationItem } from "./notifications";
 
 // Kit row icons (app/src/routes/alerts.tsx), chosen by the live category.
@@ -8,6 +8,9 @@ const CATEGORY_ICON: Record<NotificationCategory, typeof Check> = {
   referral: BadgeCheck,
   system: Wallet,
 };
+
+// Event kinds that need a different icon than their category (kit: expiry rows use Clock3).
+const KIND_ICON: Record<string, typeof Check> = { ask_expiring: Clock3, ask_expired: Clock3 };
 
 const GROUPS = ["Today", "Earlier"] as const;
 
@@ -27,7 +30,7 @@ export function NotificationGroups({ items, onOpen }: { items: readonly Notifica
             <h2 className="mb-2 text-xs font-semibold text-muted-foreground">{group.toUpperCase()}</h2>
             <ul className="overflow-hidden rounded-3xl border border-border">
               {rows.map(item => {
-                const Icon = CATEGORY_ICON[item.category];
+                const Icon = (item.kind ? KIND_ICON[item.kind] : undefined) ?? CATEGORY_ICON[item.category];
                 const unread = !item.readAt;
                 return (
                   <li key={item.id} className="border-b border-border last:border-0">
