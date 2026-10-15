@@ -152,30 +152,37 @@ describe("referrer-facing reads", () => {
     expect(preview?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
   });
 
-  it("the assigned referrer's detail reads the note, the role title and whether document access is active", async () => {
+  it("the assigned referrer's detail reads the note, the role title and what document access needs", async () => {
     rowsByTable.set(referralRequests, []);
     await getClaimedCompanyReferralDetail(REFERRER, 501);
     const detail = selectFrom(referralRequests);
-    // D-019: the accepted referrer's thread shows the seeker's note (it was missing before).
+    // D-019(d): the accepted referrer's thread shows the seeker's note (it was missing before).
     expect(detail?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
     expect(detail?.projection?.title).toBe(jobs.title);
     expect(exposesNote(detail)).toBe(true);
-    expect(columnsOf(detail)).toEqual(["candidateMessage", "candidateName", "companyDomain", "grantId", "id", "jobFunction", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
-    // Only the referrer the ask is assigned to; a pending ask also needs that referrer's active grant, an accepted one does not.
+    expect(columnsOf(detail)).toEqual(["candidateMessage", "candidateName", "companyDomain", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    // Only the referrer the ask is assigned to, claimed or accepted; a claim needs no grant (it grants none, D-019(e)).
     const where = detail?.where ? dialect.sqlToQuery(detail.where) : undefined;
     expect(where?.sql).toContain("`referralRequests`.`referrerId` = ?");
-    expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer", "approved", "intro_made", "interview", "offer"]);
-    expect(where?.sql).toContain("`referralDocumentAccessGrants`.`id` is not null");
+    expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer"]);
+    expect(where?.sql).not.toContain("referralDocumentAccessGrants");
   });
 
-  it("the detail row reports document access from the grant join and lists the files without storage keys", async () => {
-    rowsByTable.set(referralRequests, [{ id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery Lee", candidateMessage: NOTE, referrerId: REFERRER, status: "approved", revision: 4, grantId: null }]);
+  it("the detail row reports document access by the shared rule and lists the files without storage keys", async () => {
+    const accepted = { id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery Lee", candidateMessage: NOTE, referrerId: REFERRER, status: "approved", revision: 4, passId: null };
+    rowsByTable.set(referralRequests, [{ ...accepted, grantId: 12, grantRevokedAt: null, grantExpiresAt: new Date(Date.now() - 60_000) }]);
     rowsByTable.set(referralAttachments, [{ id: 77, fileName: "Avery_Lee_Resume.pdf", mimeType: "application/pdf", fileSize: 2048 }]);
-    const withoutGrant = await getClaimedCompanyReferralDetail(REFERRER, 501);
-    expect(withoutGrant).toMatchObject({ id: 501, candidateMessage: NOTE, status: "approved", documentAccessActive: false });
-    expect(withoutGrant).not.toHaveProperty("grantId");
+    const expired = await getClaimedCompanyReferralDetail(REFERRER, 501);
+    expect(expired).toMatchObject({ id: 501, candidateMessage: NOTE, status: "approved", documentAccessActive: false });
+    for (const field of ["grantId", "grantRevokedAt", "grantExpiresAt", "passId"]) expect(expired).not.toHaveProperty(field);
     expect(columnsOf(selectFrom(referralAttachments))).toEqual(["fileName", "fileSize", "id", "mimeType"]);
-    rowsByTable.set(referralRequests, [{ id: 501, title: "Product Designer", targetRoleUrl: ROLE_URL, companyDomain: "acme.com", jobFunction: null, candidateName: "Avery Lee", candidateMessage: NOTE, referrerId: REFERRER, status: "approved", revision: 4, grantId: 12 }]);
+    rowsByTable.set(referralRequests, [{ ...accepted, grantId: 12, grantRevokedAt: null, grantExpiresAt: new Date(Date.now() + 60_000) }]);
     expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toMatchObject({ documentAccessActive: true });
+    // Accepted before acceptance wrote grants: no grant row, access follows the accepted state.
+    rowsByTable.set(referralRequests, [{ ...accepted, grantId: null, grantRevokedAt: null, grantExpiresAt: null }]);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toMatchObject({ documentAccessActive: true });
+    // Claimed but pending: never, whatever grant a claim left behind.
+    rowsByTable.set(referralRequests, [{ ...accepted, status: "pending", grantId: 12, grantRevokedAt: null, grantExpiresAt: new Date(Date.now() + 60_000) }]);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toMatchObject({ status: "pending", documentAccessActive: false });
   });
 });
