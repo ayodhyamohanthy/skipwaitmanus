@@ -79,16 +79,16 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | 6 | `work-email-reverify` (90-day re-check, badge removal, open asks returned) + `otp-policy-kit` (30 s resend, server lockout 15 min after 5 tries) | scheduled jobs (done) | L | todo |
 | 7 | `session-management` (list and revoke sessions) + `privacy-consent-controls` | — | L | in progress (7b session-management only) — Claude — 2026-10-15 — branch task7b-sessions. 7a consent toggles queued next |
 | **Tier C — core ask flow (activation)** |||||
-| 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | in progress — SkipWait eng agent — 2026-10-15 — branch task8-search-profile |
-| 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | in progress (slice A: shared/askQuality.ts + ask-company-context, client only; server enforcement on the ask-create path held) - SkipWait eng agent - 2026-10-15 - branch task9-ask-company-context |
-| 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | in progress (client only, advisory/warn-only; no server ask-path change) - SkipWait eng agent - 2026-10-15 - branch task10-role-location-fit |
-| 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | in progress - SkipWait eng agent - 2026-10-15 - branch task11-ask-drafts (migration 0081, no ask-create path change) |
+| 8 | `seeker-search-profile` (onboarding answers server-side) + `profile-resume` (resume on file, reused by /ask) | — | L | **Done, live** - #218 (0080) |
+| 9 | `ask-quality-checks` (shared client/server checks) + `ask-company-context` | 8 | M | **Done, live** - slice A #219 (client only); slice B server enforcement HELD (money hold) |
+| 10 | `ask-role-location-fit` (role location select, mismatch callout) | 8 | L | **Done, live** - #220 (client only, advisory) |
+| 11 | `ask-drafts` (company-door dialog saves a server draft that /ask continues) | 9 | M | **Done, live** - #221 (0081) |
 | 12 | `credit-metered-tools` + `ask-coach-rewrite` ("Improve my note · 1 credit", no charge on fallback) | 1 | M | todo |
 | 13 | `ask-pinned-work` / `pinned-work-in-asks` + `seeker-work-links` | 8 | M | todo |
 | **Tier D — referral lifecycle** |||||
-| 14 | `referrer-identity-reveal` + `identity-gated-preview` (both see names after accept) | — | M | todo |
-| 15 | `pass-reasons` (5 kit reasons, shared with the seeker, never the name) | — | M | todo |
-| 16 | `mark-referred-reference` + `thread-timeline` | — | M | in progress - SkipWait eng agent - 2026-10-15 - branch task16-referred-reference (migration 0082, no credit path) |
+| 14 | `referrer-identity-reveal` + `identity-gated-preview` (both see names after accept) | — | M | **Done, live** - #224 |
+| 15 | `pass-reasons` (5 kit reasons, shared with the seeker, never the name) | — | M | **Done, live** - #223 (0083) |
+| 16 | `mark-referred-reference` + `thread-timeline` | — | M | **Done, live** - #222 (0082) |
 | 17 | `inbox-list-enrichment` + `referrer-preview-expiry` + `ask-quality-signals` | 9 | M | todo |
 | 18 | `referrer-capacity-routing` (monthly capacity; full → other referrers; area routing) + `named-referrer-visibility` | function taxonomy (done) | L | todo |
 | 19 | `pre-accept-question` (one anonymous question before accepting) | 14 | L | todo |
