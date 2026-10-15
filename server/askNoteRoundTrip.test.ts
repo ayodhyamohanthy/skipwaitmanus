@@ -1,6 +1,7 @@
 import express from "express";
-import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import request, { type Response } from "supertest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 import { ASK_NOTE_CONFLICT_ERROR, ASK_NOTE_MAX_LENGTH, ASK_NOTE_NOT_TEXT_ERROR, NO_PERSONAL_NOTE_TEXT } from "../shared/askNote";
 import { ReferralIdempotencyConflictError } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
@@ -15,11 +16,42 @@ import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./
 
 type StoredAsk = { id: number; userId: number; idempotencyKey: string; personalPitch: string; targetRoleUrl: string };
 type RouteDeps = Pick<PrivateReferralRouteDeps, "resolveIdentity" | "createCompanyReferralRequest" | "listJobSeekerCompanyReferrals" | "getBlockedReferralRequestIds" | "resolveCompanyIdentities">;
+type RequiredDepName = { [K in keyof PrivateReferralRouteDeps]-?: undefined extends PrivateReferralRouteDeps[K] ? never : K }[keyof PrivateReferralRouteDeps];
+
+// Response bodies are parsed, not trusted: the shapes these tests read.
+const mineResponseSchema = z.object({ requests: z.array(z.object({ id: z.number(), pitch: z.string() })) });
+const createdResponseSchema = z.object({ requestId: z.number() });
+const errorResponseSchema = z.object({ error: z.string() });
+const requestIdOf = (response: Response) => createdResponseSchema.parse(response.body).requestId;
+const errorOf = (response: Response) => errorResponseSchema.parse(response.body).error;
 
 const SEEKER = 7;
 const OTHER_SEEKER = 8;
 const ROLE_URL = "https://careers.acme.com/jobs/design-1";
 const NOTE = "I led the redesign of an approvals product used by 3,000 people and would value an honest fit check.";
+
+// The route catches errors as a generic 500, so a reached stub is also recorded and checked after each test.
+let unusedDepsReached: RequiredDepName[] = [];
+beforeEach(() => { unusedDepsReached = []; });
+afterEach(() => { expect(unusedDepsReached).toEqual([]); });
+
+const unusedDep = (name: RequiredDepName) => (): never => {
+  unusedDepsReached.push(name);
+  throw new Error(`askNoteRoundTrip: the route reached ${name}, which this test does not provide`);
+};
+
+/** Full route deps: the ones under test, every other required dep a stub that fails loudly. Optional deps stay absent. */
+function routeDeps(used: RouteDeps): PrivateReferralRouteDeps {
+  return {
+    dataUrlToBuffer: unusedDep("dataUrlToBuffer"), sanitizeDocumentName: unusedDep("sanitizeDocumentName"), storagePut: unusedDep("storagePut"),
+    storageGetSignedUrl: unusedDep("storageGetSignedUrl"), createReferralAttachment: unusedDep("createReferralAttachment"),
+    getAccessibleReferralAttachment: unusedDep("getAccessibleReferralAttachment"), saveVerifiedWorkEmail: unusedDep("saveVerifiedWorkEmail"),
+    listCompanyReferralInbox: unusedDep("listCompanyReferralInbox"), claimCompanyReferralRequest: unusedDep("claimCompanyReferralRequest"),
+    getClaimedCompanyReferralDetail: unusedDep("getClaimedCompanyReferralDetail"), listPublicCompanyOpportunities: unusedDep("listPublicCompanyOpportunities"),
+    publishCompanyOpportunity: unusedDep("publishCompanyOpportunity"),
+    ...used,
+  };
+}
 
 function setup() {
   const asks: StoredAsk[] = [];
@@ -44,7 +76,7 @@ function setup() {
     resolveCompanyIdentities: async () => new Map(),
   };
   const app = express(); app.use(express.json());
-  registerPrivateReferralRoutes(app, deps as PrivateReferralRouteDeps);
+  registerPrivateReferralRoutes(app, routeDeps(deps));
   let keyCounter = 0;
   const send = (body: object, options: { user?: number; key?: string } = {}) => request(app).post("/api/company-referrals")
     .set("x-test-user", String(options.user ?? SEEKER))
@@ -53,8 +85,7 @@ function setup() {
   const mine = async (user = SEEKER) => {
     const response = await request(app).get("/api/company-referrals/mine").set("x-test-user", String(user));
     expect(response.status).toBe(200);
-    const rows: Array<{ id: number; pitch: string }> = response.body.requests;
-    return rows;
+    return mineResponseSchema.parse(response.body).requests;
   };
   return { send, mine, createCompanyReferralRequest, asks };
 }
@@ -64,7 +95,7 @@ describe("seeker note round trip (POST /api/company-referrals -> GET /mine)", ()
     const { send, mine } = setup();
     const created = await send({ candidateMessage: `  ${NOTE}  ` });
     expect(created.status).toBe(201);
-    expect(await mine()).toEqual([expect.objectContaining({ id: created.body.requestId, pitch: NOTE })]);
+    expect(await mine()).toEqual([{ id: requestIdOf(created), pitch: NOTE }]);
   });
 
   it("keeps a note sent as personalPitch instead of storing the placeholder", async () => {
@@ -92,7 +123,7 @@ describe("seeker note round trip (POST /api/company-referrals -> GET /mine)", ()
     const { send, mine, createCompanyReferralRequest } = setup();
     const response = await send({ candidateMessage: NOTE, personalPitch: "A different note." });
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe(ASK_NOTE_CONFLICT_ERROR);
+    expect(errorOf(response)).toBe(ASK_NOTE_CONFLICT_ERROR);
     expect(createCompanyReferralRequest).not.toHaveBeenCalled();
     expect(await mine()).toEqual([]);
   });
@@ -101,7 +132,7 @@ describe("seeker note round trip (POST /api/company-referrals -> GET /mine)", ()
     const { send, createCompanyReferralRequest } = setup();
     const response = await send(body);
     expect(response.status).toBe(400);
-    expect(response.body.error).toBe(ASK_NOTE_NOT_TEXT_ERROR);
+    expect(errorOf(response)).toBe(ASK_NOTE_NOT_TEXT_ERROR);
     expect(createCompanyReferralRequest).not.toHaveBeenCalled();
   });
 
@@ -117,7 +148,7 @@ describe("seeker note round trip (POST /api/company-referrals -> GET /mine)", ()
     const retry = await send({ personalPitch: NOTE }, { key: "ask-note-retry-key-0001" });
     expect(first.status).toBe(201);
     expect(retry.status).toBe(200);
-    expect(retry.body.requestId).toBe(first.body.requestId);
+    expect(requestIdOf(retry)).toBe(requestIdOf(first));
     expect(asks).toHaveLength(1);
     expect((await mine())[0].pitch).toBe(NOTE);
   });
