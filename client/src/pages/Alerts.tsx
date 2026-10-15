@@ -2,20 +2,20 @@ import { Bell, BellOff, CheckCheck } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { SignInButton, useAuth, useUser } from "@/_core/auth";
+import { SignInButton, useAuth } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
 import { NotificationGroups } from "@/components/alerts/NotificationGroups";
 import { SavedAlerts } from "@/components/alerts/SavedAlerts";
 import { notificationListSchema, orderNotifications, type NotificationItem } from "@/components/alerts/notifications";
 import { usePersistFn } from "@/hooks/usePersistFn";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { readApiJson } from "@/lib/apiResponse";
 
 const TABS = ["Notifications", "Saved alerts"] as const;
 const FILTERS = ["All", "Unread"] as const;
 const LOAD_ERROR = "We could not load your alerts";
 const NETWORK_ERROR = "We could not reach SkipWait. Check your connection and try again.";
-const PERSONAL_DOMAINS = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "proton.me"];
 const HEADING = { eyebrow: "STAY IN THE LOOP", title: "Alerts", text: "Only things that need you. No marketing, no “you might like”." } as const;
 // Kit visual height, 44px tap target: a transparent ::before stretched past the control's edges.
 const HIT_AREA_Y = "relative before:absolute before:inset-x-0";
@@ -23,7 +23,6 @@ const HIT_AREA_Y = "relative before:absolute before:inset-x-0";
 export default function Alerts() {
   const [, go] = useLocation();
   const { isLoaded, isSignedIn, userId, getToken } = useAuth();
-  const { user } = useUser();
   const fetchToken = usePersistFn(getToken);
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<(typeof TABS)[number]>("Notifications");
@@ -50,12 +49,13 @@ export default function Alerts() {
     },
   });
 
-  const hasVerifiedWorkEmail = Boolean(user?.emailAddresses?.some(address => {
-    const domain = address.emailAddress.trim().toLowerCase().split("@")[1];
-    return address.verification?.status === "verified" && domain && !PERSONAL_DOMAINS.includes(domain);
-  }));
+  // Referral and message alerts follow the server's verified-referrer verdict (shared predicate), never the
+  // session's own emails: a Google sign-in that verified a work email by code is a referrer. Only a server
+  // "not verified" opens the seeker's /requests; while the check runs or after it fails they open /inbox,
+  // which serves both the asking and the referring side.
+  const access = useReferrerAccess();
   const destinationFor = (item: NotificationItem) =>
-    item.category === "status" ? "/requests" : item.category === "system" ? "/settings" : hasVerifiedWorkEmail ? "/inbox" : "/requests";
+    item.category === "status" ? "/requests" : item.category === "system" ? "/settings" : access.status === "unverified" ? "/requests" : "/inbox";
 
   const stampRead = (ids: readonly number[]) => {
     if (!ids.length) return;

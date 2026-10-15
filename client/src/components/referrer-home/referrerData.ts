@@ -5,7 +5,8 @@
 import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
 import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
-import { companyIdentityFieldsSchema, companyIdentityOf, type CompanyIdentity } from "@shared/companies";
+import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
+import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
@@ -19,7 +20,6 @@ export const REVERIFY_WARNING_DAYS = 14;
 const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof value === "string" ? value : value.toISOString()));
 const count = z.number().int().nonnegative();
 
-const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish(), ...companyIdentityFieldsSchema.shape });
 const profileSchema = z.object({ profile: z.object({ workEmailVerifiedAt: timestamp.nullish(), referralCapacity: z.number().int().nullish() }).nullish() });
 const impactSchema = z.object({ summary: z.object({ reviewed: count, approved: count, introductions: count, interviews: count, offers: count, repliedWithin3DaysPct: z.number().min(0).max(100).nullish() }) });
 const inboxRowSchema = z.object({
@@ -48,7 +48,7 @@ export const referrerPreferencesSchema = z.object({
 });
 const preferencesPayloadSchema = z.object({ preferences: referrerPreferencesSchema });
 
-/** Verified work-email access; companyName/companyInitials come from the server company directory. */
+/** Verified work-email access (shared/referrerAccess.ts); companyName/companyInitials come from the server company directory. */
 export type CompanyAccess = { verified: boolean; domain: string; companyName: string | null; companyInitials: string | null };
 export type ReferrerPreferences = z.infer<typeof referrerPreferencesSchema>;
 export type ReferrerPreferencesPatch = Partial<Omit<ReferrerPreferences, "preferAreas" | "preferLevels">> & { preferAreas?: string[]; preferLevels?: string[] };
@@ -93,9 +93,10 @@ async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, 
   return parsed.data;
 }
 
+/** The server's verified-referrer verdict, judged by the one shared predicate. A failed or malformed check throws; it never reads as "not verified". */
 export async function fetchCompanyAccess(getToken: TokenSource): Promise<CompanyAccess> {
-  const access = await getJson("/api/company-referrals/access", getToken, accessSchema, "We could not check your work-email verification.");
-  return { verified: Boolean(access.verifiedCompanyAccess), domain: access.workEmailDomain ?? "", companyName: access.companyName ?? null, companyInitials: access.companyInitials ?? null };
+  const access = await getJson(REFERRER_ACCESS_PATH, getToken, referrerAccessResponseSchema, "We could not check your work-email verification.");
+  return { verified: isVerifiedReferrer(access), domain: access.workEmailDomain ?? "", companyName: access.companyName, companyInitials: access.companyInitials };
 }
 
 export async function fetchReferrerPreferences(getToken: TokenSource): Promise<ReferrerPreferences> {
