@@ -98,3 +98,13 @@ Observed behaviour, not a new policy:
 - Withdrawing AFTER acceptance correctly returns 409. An accepted-then-closed ask consumes the credit for good.
 - A pass by a referrer still spends the credit while the ask stays open for other employees (founder decision).
 Do not change any of this without the founder's explicit say-so via the parent.
+
+## Parked: work-email reverify enforcement (task 6 PR 2)
+
+Status: DEFERRED by the founder's relay (revisit early January 2027, or sooner if referral volume matters). PR 1 (dry-run sweep, grandfathered policy in shared/reverify.ts) is live. Design, parent-approved 15 Oct 2026:
+- Epoch 2026-10-16; window 90 days from max(workEmailVerifiedAt, epoch).
+- Kill switch REVERIFY_ENFORCE, default OFF, dry-run logging first.
+- When due, in one transaction: clear workEmailVerifiedAt (domain stays), release claimed-but-not-accepted pending asks (credit stays consumed, kind note to the seeker), notify the referrer. Accepted and in-progress asks are never touched.
+- Reminders at 14 and 5 days left, deduped via a guarded additive migration (next free number 0084).
+- A released unclaimed ask waits and expires normally; the expiry path owns the credit.
+Enforcement ships only after QA verification and an explicit OK.
