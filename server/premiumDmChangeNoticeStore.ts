@@ -2,8 +2,8 @@
 // only; the notice module makes every decision.
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
-import { notifications, operationalActivityLogs, tokenBalances, users } from "../drizzle/schema";
-import { NOTICE_EMAIL_ACTION, type EmailOutcome, type NoticeStore } from "./premiumDmChangeNotice";
+import { giftSubscriptionFulfillments, notifications, operationalActivityLogs, tokenBalances, users } from "../drizzle/schema";
+import { NOTICE_EMAIL_ACTION, type EmailOutcome, type NoticeGiftRow, type NoticeStore } from "./premiumDmChangeNotice";
 
 export type NoticeDb = Pick<MySql2Database<Record<string, never>>, "select" | "insert">;
 
@@ -31,6 +31,19 @@ export function drizzleNoticeStore(db: NoticeDb): NoticeStore {
       subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd,
       subscriptionId: tokenBalances.subscriptionId,
     }).from(tokenBalances).innerJoin(users, eq(users.id, tokenBalances.userId)).where(inArray(tokenBalances.plan, ["pro", "max"])),
+
+    // Any gift purchase that produced the subscription marks it as bought by
+    // the gift's buyer, whatever the fulfillment status says now.
+    async giftsForSubscriptions(subscriptionIds) {
+      const found: NoticeGiftRow[] = [];
+      for (const batch of chunks(subscriptionIds)) {
+        const rows = await db.select({ subscriptionId: giftSubscriptionFulfillments.subscriptionId, buyerUserId: giftSubscriptionFulfillments.buyerUserId, buyerCanonicalPersonId: users.canonicalPersonId })
+          .from(giftSubscriptionFulfillments).leftJoin(users, eq(users.id, giftSubscriptionFulfillments.buyerUserId))
+          .where(inArray(giftSubscriptionFulfillments.subscriptionId, batch));
+        for (const row of rows) if (row.subscriptionId !== null) found.push({ subscriptionId: row.subscriptionId, buyerUserId: row.buyerUserId, buyerCanonicalPersonId: row.buyerCanonicalPersonId });
+      }
+      return found;
+    },
 
     async existingNotificationKeys(eventKeys) {
       const found = new Set<string>();

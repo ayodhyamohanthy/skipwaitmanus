@@ -1,7 +1,12 @@
-// Draft copy for the D-012 item 3 notice to active Pro/Max subscribers.
-// Plain and factual: what changes and when, why, what stays the same, and the
-// 30-day choice of a pro-rata refund or bonus credits of equal value. The
-// owner approves this text before anyone runs the script with --apply.
+// Copy for the D-012 item 3 notice to active Pro/Max subscribers. Plain and
+// factual: what changes and when, why, what stays the same, and the 30-day
+// remediation choice.
+//
+// D-020: the "refund_or_credits" text is approved as written (pinned
+// verbatim in premiumDmChangeNotice.test.ts). People whose plan was a gift,
+// or was never billed to them, are offered bonus referral credits only, since
+// cash refunds go only to whoever paid; that "credits_only" variant changes
+// only the choice sentence and needs the owner's approval before --apply.
 //
 // Transactional email is sent from noreply@skipwait.me with no Reply-To, so
 // the copy points people at the support address rather than "reply to this
@@ -9,10 +14,17 @@
 export const NOTICE_SUPPORT_EMAIL = "support@skipwait.me";
 export const NOTICE_CHOICE_WINDOW_DAYS = 30;
 
-export type NoticeCopy = {
-  effectiveDate: string;
+export const NOTICE_OFFERS = ["refund_or_credits", "credits_only"] as const;
+export type NoticeOffer = (typeof NOTICE_OFFERS)[number];
+
+export type NoticeMessage = {
   notification: { title: string; body: string };
   email: { subject: string; text: string };
+};
+
+export type NoticeCopy = {
+  effectiveDate: string;
+  byOffer: Readonly<Record<NoticeOffer, NoticeMessage>>;
 };
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -24,14 +36,11 @@ export function formatEffectiveDate(isoDate: string): string {
   return date.toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-export function noticeCopy(effectiveIsoDate: string): NoticeCopy {
-  const when = formatEffectiveDate(effectiveIsoDate);
-  const days = NOTICE_CHOICE_WINDOW_DAYS;
+function message(when: string, choice: { notification: string; email: readonly string[] }): NoticeMessage {
   return {
-    effectiveDate: effectiveIsoDate,
     notification: {
       title: "A change to messaging on Pro and Max",
-      body: `From ${when}, you can message a referrer only after they accept your referral request, on every plan. This keeps our privacy promise to referrers. Everything else in your plan stays the same. Within ${days} days you can choose a pro-rata refund for your current billing cycle or bonus referral credits of equal value: write to ${NOTICE_SUPPORT_EMAIL}.`,
+      body: `From ${when}, you can message a referrer only after they accept your referral request, on every plan. This keeps our privacy promise to referrers. Everything else in your plan stays the same. ${choice.notification}`,
     },
     email: {
       subject: "A change to messaging on your SkipWait plan",
@@ -50,14 +59,37 @@ export function noticeCopy(effectiveIsoDate: string): NoticeCopy {
         "Everything else in your plan, including your monthly referral requests, any credits you bought and your billing date.",
         "",
         "Your choice",
-        `Your plan included this, so within ${days} days of this email you can choose one of these:`,
-        "- a pro-rata refund for your current billing cycle, or",
-        "- bonus referral credits of equal value.",
-        `Write to ${NOTICE_SUPPORT_EMAIL} with your choice. If you do nothing, your plan continues as it is.`,
+        ...choice.email,
         "",
         "Thank you for using SkipWait.",
         "The SkipWait team",
       ].join("\n"),
+    },
+  };
+}
+
+export function noticeCopy(effectiveIsoDate: string): NoticeCopy {
+  const when = formatEffectiveDate(effectiveIsoDate);
+  const days = NOTICE_CHOICE_WINDOW_DAYS;
+  return {
+    effectiveDate: effectiveIsoDate,
+    byOffer: {
+      refund_or_credits: message(when, {
+        notification: `Within ${days} days you can choose a pro-rata refund for your current billing cycle or bonus referral credits of equal value: write to ${NOTICE_SUPPORT_EMAIL}.`,
+        email: [
+          `Your plan included this, so within ${days} days of this email you can choose one of these:`,
+          "- a pro-rata refund for your current billing cycle, or",
+          "- bonus referral credits of equal value.",
+          `Write to ${NOTICE_SUPPORT_EMAIL} with your choice. If you do nothing, your plan continues as it is.`,
+        ],
+      }),
+      credits_only: message(when, {
+        notification: `Within ${days} days you can ask for bonus referral credits equal in value to the rest of your current billing cycle: write to ${NOTICE_SUPPORT_EMAIL}.`,
+        email: [
+          `Your plan included this. It was not billed to you (for example, it was a gift), so within ${days} days of this email you can ask for bonus referral credits equal in value to the rest of your current billing cycle.`,
+          `Write to ${NOTICE_SUPPORT_EMAIL} to ask for them. If you do nothing, your plan continues as it is.`,
+        ],
+      }),
     },
   };
 }

@@ -10,6 +10,9 @@
  *   DATABASE_URL='mysql://…' pnpm tsx scripts/notify-premium-dm-change.ts --effective-date 2026-10-20 --apply
  *   DATABASE_URL='mysql://…' pnpm tsx scripts/notify-premium-dm-change.ts --effective-date 2026-10-20 --resend-failed
  *
+ * Two copy variants (D-020): "refund_or_credits" for people who paid for
+ * their plan, "credits_only" for a gifted or never-billed plan.
+ *
  * --apply creates one in-app notification per subscriber (unique eventKey
  * d012-dm-change:<person>) and emails each newly notified subscriber through
  * the transactional mailer, recording every email outcome. Re-running --apply
@@ -20,6 +23,7 @@
  * writing modes so the copy states the real date; the dry run defaults to today.
  */
 import type { NoticeMode } from "../server/premiumDmChangeNotice";
+import { NOTICE_OFFERS } from "../server/premiumDmChangeNoticeCopy";
 
 export type NoticeArgs = { mode: NoticeMode; effectiveDate: string };
 
@@ -58,8 +62,12 @@ async function main() {
   const report = await runPremiumDmChangeNotice(drizzleNoticeStore(db), sendTransactionalEmail, { ...args, now: new Date() });
   console.log(`Mode: ${report.mode}`);
   console.log(`Audience (aggregate): ${JSON.stringify(report.audience, null, 2)}`);
-  console.log(`\n--- In-app notification ---\nTitle: ${report.copy.notification.title}\n${report.copy.notification.body}`);
-  console.log(`\n--- Email ---\nSubject: ${report.copy.email.subject}\n\n${report.copy.email.text}\n`);
+  for (const offer of NOTICE_OFFERS) {
+    const { notification, email } = report.copy.byOffer[offer];
+    console.log(`\n===== Offer: ${offer} (${offer === "refund_or_credits" ? report.audience.refundOrCredits : report.audience.creditsOnly} subscribers) =====`);
+    console.log(`\n--- In-app notification ---\nTitle: ${notification.title}\n${notification.body}`);
+    console.log(`\n--- Email ---\nSubject: ${email.subject}\n\n${email.text}\n`);
+  }
   if (report.results) console.log(`Results: ${JSON.stringify(report.results, null, 2)}`);
   else console.log("Dry run: nothing was written and no email was sent. Re-run with --apply after the owner approves the copy.");
   process.exit(0);

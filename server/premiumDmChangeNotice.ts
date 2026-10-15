@@ -6,6 +6,11 @@
 // refund or the bonus credits writes to support, and the owner handles each
 // choice through the existing, reviewed billing tools.
 //
+// Offer (D-020): cash refunds go only to whoever paid. A person is offered
+// "refund_or_credits" when at least one of their active paid plans is a
+// provider subscription they paid for; a plan bought as a gift by someone
+// else, or never billed through a provider, gets "credits_only".
+//
 // Idempotency: the in-app notification's unique eventKey is the claim. An
 // email goes out only in the run that created that notification, and every
 // email outcome is written to operationalActivityLogs, so a re-run never
@@ -15,7 +20,7 @@
 import { z } from "zod";
 import { isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 import type { TransactionalEmailInput, TransactionalEmailResult } from "./emailDelivery";
-import { noticeCopy, type NoticeCopy } from "./premiumDmChangeNoticeCopy";
+import { noticeCopy, type NoticeCopy, type NoticeOffer } from "./premiumDmChangeNoticeCopy";
 
 export const NOTICE_EVENT_PREFIX = "d012-dm-change";
 export const NOTICE_EMAIL_ACTION = "notice.d012_dm_change.email";
@@ -30,6 +35,13 @@ export type NoticeWalletRow = {
   readonly subscriptionId: string | null;
 };
 
+/**
+ * A gift purchase that created this provider subscription. buyerUserId is null
+ * when the buyer was not signed in; buyerCanonicalPersonId lets a gift bought
+ * from another login of the same person count as paid by them.
+ */
+export type NoticeGiftRow = { readonly subscriptionId: string; readonly buyerUserId: number | null; readonly buyerCanonicalPersonId: number | null };
+
 export type NoticeRecipient = {
   readonly userId: number;
   readonly eventKey: string;
@@ -37,6 +49,8 @@ export type NoticeRecipient = {
   readonly plan: PaidSubscriptionPlan;
   readonly status: "active" | "non_renewing";
   readonly providerBilled: boolean;
+  readonly gifted: boolean;
+  readonly offer: NoticeOffer;
 };
 
 export type EmailOutcome = "success" | "failure";
@@ -44,6 +58,7 @@ export type EmailOutcome = "success" | "failure";
 /** Plain reads and writes; every decision is made in this module. */
 export type NoticeStore = {
   listPaidWallets(): Promise<readonly NoticeWalletRow[]>;
+  giftsForSubscriptions(subscriptionIds: readonly string[]): Promise<readonly NoticeGiftRow[]>;
   existingNotificationKeys(eventKeys: readonly string[]): Promise<ReadonlySet<string>>;
   insertNotificationOnce(input: { userId: number; eventKey: string; title: string; body: string }): Promise<"created" | "exists">;
   /** Latest recorded email outcome per eventKey. */
@@ -64,7 +79,7 @@ export function isActivePaidWallet(row: NoticeWalletRow, now: Date): boolean {
 }
 
 /** One recipient per canonical person (or per users row when it has no person). */
-export function planNoticeAudience(rows: readonly NoticeWalletRow[], now: Date): NoticeRecipient[] {
+export function planNoticeAudience(rows: readonly NoticeWalletRow[], now: Date, gifts: readonly NoticeGiftRow[] = []): NoticeRecipient[] {
   const groups = new Map<string, NoticeWalletRow[]>();
   for (const row of rows) {
     if (!isActivePaidWallet(row, now)) continue;
@@ -74,13 +89,22 @@ export function planNoticeAudience(rows: readonly NoticeWalletRow[], now: Date):
   return Array.from(groups.entries()).map(([key, group]): NoticeRecipient => {
     const ordered = [...group].sort((a, b) => a.userId - b.userId);
     const email = ordered.map(row => emailSchema.safeParse(row.email ?? "")).find(parsed => parsed.success)?.data ?? null;
+    const personUserIds = new Set(ordered.map(row => row.userId));
+    const personId = ordered[0].canonicalPersonId;
+    const boughtByThem = (gift: NoticeGiftRow) => (gift.buyerUserId !== null && personUserIds.has(gift.buyerUserId)) || (personId !== null && gift.buyerCanonicalPersonId === personId);
+    const giftedBySomeoneElse = (row: NoticeWalletRow) => gifts.some(gift => gift.subscriptionId === row.subscriptionId && !boughtByThem(gift));
+    const billed = ordered.filter(row => Boolean(row.subscriptionId));
+    const gifted = billed.some(giftedBySomeoneElse);
+    const paidByThem = billed.some(row => !giftedBySomeoneElse(row));
     return {
       userId: ordered[0].userId,
       eventKey: `${NOTICE_EVENT_PREFIX}:${key}`,
       email,
       plan: ordered.some(row => row.plan === "max") ? "max" : "pro",
       status: ordered.some(row => row.subscriptionStatus === "active") ? "active" : "non_renewing",
-      providerBilled: ordered.some(row => Boolean(row.subscriptionId)),
+      providerBilled: billed.length > 0,
+      gifted,
+      offer: paidByThem ? "refund_or_credits" : "credits_only",
     };
   }).sort((a, b) => a.userId - b.userId);
 }
@@ -96,6 +120,9 @@ export type NoticeAudienceSummary = {
   withEmail: number;
   withoutEmail: number;
   alreadyNotified: number;
+  refundOrCredits: number;
+  creditsOnly: number;
+  gifted: number;
 };
 
 export type NoticeResults = {
@@ -123,6 +150,9 @@ export function summarizeAudience(recipients: readonly NoticeRecipient[], notifi
     withEmail: count(r => r.email !== null),
     withoutEmail: count(r => r.email === null),
     alreadyNotified: count(r => notified.has(r.eventKey)),
+    refundOrCredits: count(r => r.offer === "refund_or_credits"),
+    creditsOnly: count(r => r.offer === "credits_only"),
+    gifted: count(r => r.gifted),
   };
 }
 
@@ -132,7 +162,10 @@ export class NoticeEmailNotConfiguredError extends Error {
 
 export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: NoticeMailer, options: { mode: NoticeMode; effectiveDate: string; now: Date }): Promise<NoticeReport> {
   const copy = noticeCopy(options.effectiveDate);
-  const recipients = planNoticeAudience(await store.listPaidWallets(), options.now);
+  const wallets = (await store.listPaidWallets()).filter(row => isActivePaidWallet(row, options.now));
+  const subscriptionIds = Array.from(new Set(wallets.flatMap(row => (row.subscriptionId ? [row.subscriptionId] : []))));
+  const gifts = subscriptionIds.length > 0 ? await store.giftsForSubscriptions(subscriptionIds) : [];
+  const recipients = planNoticeAudience(wallets, options.now, gifts);
   const keys = recipients.map(recipient => recipient.eventKey);
   const notified = await store.existingNotificationKeys(keys);
   const audience = summarizeAudience(recipients, notified);
@@ -142,7 +175,8 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
   const results: NoticeResults = { notificationsCreated: 0, emailsSent: 0, emailsFailed: 0, emailsSkippedNoAddress: 0, alreadyNotifiedAndEmailed: 0, failedUserIds: [], unconfirmedUserIds: [] };
   const deliver = async (recipient: NoticeRecipient) => {
     if (recipient.email === null) { results.emailsSkippedNoAddress += 1; return; }
-    const sent = await mailer({ to: recipient.email, subject: copy.email.subject, text: copy.email.text }).catch((): TransactionalEmailResult => ({ sent: false, reason: "delivery_failed" }));
+    const { email } = copy.byOffer[recipient.offer];
+    const sent = await mailer({ to: recipient.email, subject: email.subject, text: email.text }).catch((): TransactionalEmailResult => ({ sent: false, reason: "delivery_failed" }));
     await store.recordEmailOutcome({ eventKey: recipient.eventKey, outcome: sent.sent ? "success" : "failure", reason: sent.reason });
     if (sent.sent) { results.emailsSent += 1; return; }
     results.emailsFailed += 1;
@@ -156,7 +190,8 @@ export async function runPremiumDmChangeNotice(store: NoticeStore, mailer: Notic
       if (notified.has(recipient.eventKey) && earlier === "failure") await deliver(recipient);
       continue;
     }
-    const claim = notified.has(recipient.eventKey) ? "exists" : await store.insertNotificationOnce({ userId: recipient.userId, eventKey: recipient.eventKey, title: copy.notification.title, body: copy.notification.body });
+    const { notification } = copy.byOffer[recipient.offer];
+    const claim = notified.has(recipient.eventKey) ? "exists" : await store.insertNotificationOnce({ userId: recipient.userId, eventKey: recipient.eventKey, title: notification.title, body: notification.body });
     if (claim === "created") { results.notificationsCreated += 1; await deliver(recipient); continue; }
     if (earlier === "success") results.alreadyNotifiedAndEmailed += 1;
     else if (earlier === "failure") results.failedUserIds.push(recipient.userId);
