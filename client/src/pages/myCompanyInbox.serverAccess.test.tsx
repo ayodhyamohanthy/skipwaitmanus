@@ -33,7 +33,9 @@ const ASK = { id: 13, targetRoleUrl: null, companyDomain: "skipwait.me", company
 
 let accessReplies: Reply[];
 let newRows: unknown[];
+let networkDown = false;
 const fetchMock = vi.fn(async (url: string) => {
+  if (networkDown) throw new TypeError("Failed to fetch");
   if (url.endsWith("/api/company-referrals/access")) {
     const reply = accessReplies.length > 1 ? accessReplies.shift() : accessReplies[0];
     if (!reply || reply === "hang") return new Promise<never>(() => undefined);
@@ -41,10 +43,11 @@ const fetchMock = vi.fn(async (url: string) => {
   }
   return { ok: true, status: 200, json: async () => (url.includes("scope=new") ? { requests: newRows } : { requests: [] }) };
 });
+const inboxCalls = () => fetchMock.mock.calls.filter(([url]) => String(url).includes("/api/company-referrals/inbox")).length;
 const accessCalls = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/api/company-referrals/access")).length;
 const renderQueue = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><MyCompanyInbox /></QueryClientProvider>);
 
-beforeEach(() => { session.email = "qa-sweep-2@gmail.com"; newRows = [ASK]; fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock); });
+beforeEach(() => { session.email = "qa-sweep-2@gmail.com"; newRows = [ASK]; networkDown = false; fetchMock.mockClear(); vi.stubGlobal("fetch", fetchMock); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("queue gate follows the server's verified-referrer verdict", () => {
@@ -71,6 +74,8 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     expect(await screen.findByText("Verify your work email.")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Add work email" })).toBeTruthy();
     expect(screen.queryByRole("article")).toBeNull();
+    // The private queue is requested only once the server confirms the verification.
+    expect(inboxCalls()).toBe(0);
   });
 
   it("does not trust a company address on the sign-in account when the server says not verified", async () => {
@@ -95,11 +100,27 @@ describe("queue gate follows the server's verified-referrer verdict", () => {
     accessReplies = [{ status: 500, body: { error: "We could not check your company-email access" } }, { status: 500, body: { error: "We could not check your company-email access" } }, VERIFIED];
     renderQueue();
     expect(await screen.findByText("We couldn’t check your verification", undefined, { timeout: 4000 })).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toContain("We could not check your company-email access");
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("We could not check your company-email access");
+    // The check failed, so the page cannot know the account's state: no claim about a verification.
+    expect(alert.textContent).toContain("Nothing changed on your account. Try again in a moment.");
+    expect(alert.textContent).not.toMatch(/your verification and/i);
     expect(screen.queryByText("Verify your work email.")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
     expect(screen.queryByText("We couldn’t check your verification")).toBeNull();
+  });
+
+  it("opens the queue after a single Try again when a dropped network failed the verification check and the queue", async () => {
+    networkDown = true;
+    accessReplies = [VERIFIED];
+    renderQueue();
+    expect(await screen.findByText("We couldn’t check your verification", undefined, { timeout: 4000 })).toBeTruthy();
+    networkDown = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("article", { name: "Private request Ref-1013" })).toBeTruthy();
+    expect(screen.queryByText("We couldn’t load your queue")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("treats a malformed verification reply as an error, not as unverified", async () => {

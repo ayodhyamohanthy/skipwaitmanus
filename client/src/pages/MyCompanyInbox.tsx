@@ -76,7 +76,9 @@ export default function MyCompanyInbox() {
     finally { setLoading(false); }
   };
   const raceError = error.includes("Another employee accepted");
-  useEffect(() => { void loadInbox(); }, [isSignedIn]);
+  // The queue loads once the server confirms the verification, so a retried check that
+  // succeeds also brings the queue in, and an unverified account never requests it.
+  useEffect(() => { if (verified) void loadInbox(); }, [isSignedIn, verified]);
   const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
   // /referrer-home rows link here as /queue?request=:id and open that request directly.
   useEffect(() => { if (isSignedIn && verified && Number.isInteger(requestedId) && requestedId > 0) void reviewCandidate(requestedId); }, [isSignedIn, verified, requestedId]);
@@ -96,7 +98,7 @@ export default function MyCompanyInbox() {
 
   if (!isSignedIn) return frame("company-inbox-sign-in", <section className="queue-layout"><QueuePanel icon={LockKeyhole} title="Give referrals with control." text="Use a company email to see only matching private requests. Your identity stays hidden."><Button type="button" className="mt-6" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Use company email <ArrowRight /></Button></QueuePanel><QueueGuidance /></section>);
   if (access.status === "checking") return frame("company-inbox-checking", <section className="queue-layout" aria-busy="true"><QueuePanel icon={LockKeyhole} title="Checking your verification." text="One moment.">{null}</QueuePanel></section>);
-  if (access.status === "error") return frame("company-inbox-access-error", <section className="queue-layout"><ActionErrorCard title="We couldn’t check your verification" detail={access.error.message || "Check your connection and try again."} reassurance="Nothing changed. Your verification and your queue are intact." onRetry={access.retry} retrying={access.retrying} className="self-start" /><QueueGuidance /></section>);
+  if (access.status === "error") return frame("company-inbox-access-error", <section className="queue-layout"><ActionErrorCard title="We couldn’t check your verification" detail={access.error.message || "Check your connection and try again."} reassurance="Nothing changed on your account. Try again in a moment." onRetry={access.retry} retrying={access.retrying} className="self-start" /><QueueGuidance /></section>);
   if (!verified) return frame("company-inbox-setup", <section className="queue-layout"><QueuePanel icon={LockKeyhole} title="Verify your work email." text="A one-time code confirms your company corridor. Your name and work email never appear to Job Seekers."><Button type="button" className="mt-6" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Add work email <ArrowRight /></Button></QueuePanel><QueueGuidance /></section>);
 
   if (preview) return frame("company-candidate-preview", <section className="queue-layout">
