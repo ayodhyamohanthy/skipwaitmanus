@@ -1,7 +1,8 @@
 // Scheduled job "ask-expiry-sweep": expiry no longer waits for someone to read.
 //
-// Finds unclaimed pending asks older than ASK_TTL_DAYS across all seekers, in
-// bounded oldest-first batches, and hands each to the same
+// Finds unclaimed pending asks older than ASK_TTL_DAYS across all seekers
+// (including asks sent through a personal link that its owner never claimed,
+// D-017), in bounded oldest-first batches, and hands each to the same
 // expireStalePendingReferralRequest the seeker's own reads already use. That
 // function re-checks ownership (the ask's own seeker), status, claimant and age
 // under a row lock, refunds the reserved credit once and notifies the seeker,
@@ -12,6 +13,7 @@ import { referralRequests } from "../drizzle/schema";
 import { ASK_TTL_MS } from "../shared/referral";
 import { expireStalePendingReferralRequest, getDb } from "./db";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
+import { staleLinkAsksQuery } from "./referrerLinkAsk";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
 export const ASK_EXPIRY_SWEEP_BATCH = 200;
@@ -23,14 +25,32 @@ export type AskExpirySweepDeps = {
   expire: (jobSeekerId: number, requestId: number, nowMs: number) => Promise<{ expired: boolean }>;
 };
 
+type DatedStaleAsk = StaleAsk & { createdAt: Date };
+
+/** Oldest first across both lists, at most `limit`, each ask once. */
+export function oldestStaleAsks(lists: ReadonlyArray<readonly DatedStaleAsk[]>, limit: number): StaleAsk[] {
+  const ordered = lists.flat().sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id);
+  const seen = new Set<number>();
+  const oldest: StaleAsk[] = [];
+  for (const ask of ordered) {
+    if (oldest.length >= limit) break;
+    if (seen.has(ask.id)) continue;
+    seen.add(ask.id);
+    oldest.push({ id: ask.id, jobSeekerId: ask.jobSeekerId });
+  }
+  return oldest;
+}
+
 export async function listStalePendingAsks(cutoff: Date, limit: number): Promise<StaleAsk[]> {
   const db = await getDb();
   if (!db) throw new JobRunStoreUnavailableError();
-  return db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId })
+  const unclaimed = await db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, createdAt: referralRequests.createdAt })
     .from(referralRequests)
     .where(and(eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), lt(referralRequests.createdAt, cutoff)))
     .orderBy(asc(referralRequests.createdAt), asc(referralRequests.id))
     .limit(limit);
+  const linkAsks = await staleLinkAsksQuery(db, cutoff, limit);
+  return oldestStaleAsks([unclaimed, linkAsks], limit);
 }
 
 export function createAskExpirySweep(deps: AskExpirySweepDeps = { listStale: listStalePendingAsks, expire: expireStalePendingReferralRequest }) {
