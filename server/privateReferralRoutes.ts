@@ -1,4 +1,5 @@
 import { normalizeReferenceId, REFERENCE_ID_ERROR } from "../shared/referenceId";
+import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "./otpPolicy";
 import { isPassReasonCode, passReasonSeekerLabel } from "../shared/passReasons";
 import { randomUUID } from "node:crypto";
 import { resolveTrustedClientIp } from "./_core/trustedClientIp";
@@ -105,7 +106,7 @@ export type PrivateReferralRouteDeps = {
   deactivateReferrerSlackWebhook?: (userId: number) => Promise<{ deactivated: boolean }>;
   getActiveReferrerSlackWebhooks?: (referrerIds: number[]) => Promise<Array<{ referrerId: number; webhookUrl: string }>>;
   sendReferrerSlackDelivery?: (input: { to: string; companyDomain: string; reviewUrl: string }) => Promise<{ sent: boolean; reason: string }>;
-  sendWorkEmailOtp?: (input: { email: string; ip?: string }) => Promise<{ sent: boolean; reason: string }>;
+  sendWorkEmailOtp?: (input: { email: string; ip?: string }) => Promise<{ sent: boolean; reason: string; retryAfterSeconds?: number }>;
   verifyWorkEmailOtp?: (input: { email: string; code: string; ip?: string }) => Promise<boolean>;
   registerWorkEmailOtpFailure?: (input: { email: string; code: string }) => Promise<void>;
   issueWorkEmailEnrollmentReceipt?: (input: { email: string; userId: number }) => Promise<{ receipt: string; expiresAt: Date }>;
@@ -490,7 +491,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.sendWorkEmailOtp) return res.status(503).json({ error: "Work-email verification is unavailable right now" });
       const result = await deps.sendWorkEmailOtp({ email, ip: resolveTrustedClientIp(req) });
       if (result.sent) { record({ actorUserId: identity.account.id, action: "work_email.otp_sent", outcome: "success", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } }); return res.json({ sent: true }); }
-      if (result.reason === "rate_limited") { res.set("Retry-After", "600"); return res.status(429).json({ error: "Too many code requests. Wait before trying again.", retryAfterSeconds: 600 }); }
+      if (result.reason === "rate_limited") { const retryAfterSeconds = result.retryAfterSeconds ?? 600; res.set("Retry-After", String(retryAfterSeconds)); return res.status(429).json({ error: retryAfterSeconds <= OTP_RESEND_COOLDOWN_SECONDS ? "Wait a moment before requesting another code." : "Too many code requests. Wait before trying again.", retryAfterSeconds }); }
       if (result.reason === "invalid_email") return res.status(400).json({ error: "Enter a valid work email address" });
       if (result.reason === "invalid_domain") return res.status(400).json({ error: "Enter a deliverable work email address" });
       if (result.reason === "not_configured") return res.status(503).json({ error: "Work-email verification is unavailable right now" });
@@ -513,7 +514,10 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       }
       record({ actorUserId: identity.account.id, action: "work_email.otp_verified", outcome: "denied", resourceType: "work_email_otp", metadata: { domain: email.split("@")[1] ?? "" } });
       res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
-    } catch { res.status(500).json({ error: "We could not verify the code" }); }
+    } catch (error) {
+      if (error instanceof OtpLockedError) { res.set("Retry-After", String(error.retryAfterSeconds)); return res.status(429).json({ error: "Too many tries. Try again later.", retryAfterSeconds: error.retryAfterSeconds, lockedUntil: error.lockedUntil.toISOString() }); }
+      res.status(500).json({ error: "We could not verify the code" });
+    }
   });
   app.post("/api/company-referrals/verify-work-email", async (req, res) => {
     try {
