@@ -67,6 +67,8 @@ export function registerAccountSessionRoutes(app: Express, deps: AccountSessionD
     try {
       const ctx = await context(req, res); if (!ctx) return;
       const id = String(req.params.id);
+      // If we cannot tell which session is this device, a single revoke could sign the caller out of their own session.
+      if (!ctx.currentSid) return res.status(409).json({ error: "We could not tell which device you are on, so nothing was signed out. Sign in again and retry." });
       const owned = (await listOwnSessions(ctx.api, ctx.userIds, ctx.currentSid)).find(row => row.id === id);
       if (!owned) return res.status(404).json({ error: "That session is not available" });
       if (owned.current) return res.status(409).json({ error: "This is the device you are using. Use Sign out instead." });

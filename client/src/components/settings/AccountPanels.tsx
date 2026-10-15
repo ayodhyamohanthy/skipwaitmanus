@@ -86,13 +86,14 @@ function SessionsPanel({ getToken }: { getToken: TokenSource }) {
     <MonitorSmartphone className="mb-2 size-5" aria-hidden="true" />
     <h2 className="text-lg font-semibold">Where you&apos;re signed in</h2>
     <p className="mt-1 text-sm text-muted-foreground">Devices that can keep you signed in. A device you sign out may stay signed in for up to 30 minutes.</p>
+    {sessions.data && rows.length > 0 && !sessions.data.currentKnown ? <p className="mt-2 text-sm text-muted-foreground">Sign in again to sign out individual devices. We can&apos;t tell which one you are using yet.</p> : null}
     {sessions.isPending ? <Loading>Loading your sessions…</Loading>
       : sessions.isError ? <ErrorNotice message={messageOf(sessions.error, SESSIONS_ERROR)} onRetry={() => void sessions.refetch()} />
       : rows.length === 0 ? <p className="mt-3 text-sm text-muted-foreground">You are signed in on this device. We can only list devices that sign in through our hosted sign-in.</p>
       : <ul className="mt-3 divide-y">
         {rows.map(row => <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
           <span className="text-sm"><strong className="block">{row.device}{row.current ? " · This device" : ""}</strong>{row.lastActive ? <small className="block text-muted-foreground">Last active {new Date(row.lastActive).toLocaleString()}</small> : null}</span>
-          {row.current ? null : <Button variant="outline" size="sm" disabled={revokeOne.isPending} onClick={() => revokeOne.mutate(row.id)}>Sign out</Button>}
+          {row.current || !sessions.data?.currentKnown ? null : <Button variant="outline" size="sm" disabled={revokeOne.isPending} onClick={() => revokeOne.mutate(row.id)}>Sign out</Button>}
         </li>)}
       </ul>}
     {error ? <ErrorNotice message={messageOf(error, SESSIONS_ERROR)} /> : null}

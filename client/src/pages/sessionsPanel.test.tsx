@@ -41,6 +41,13 @@ describe("Where you're signed in", () => {
     await screen.findByText("Safari on iOS");
     expect(screen.queryByRole("button", { name: "Sign out everywhere else" })).toBeNull();
   });
+  it("hides every per-device Sign out while the current device is unknown, so nobody revokes their own session", async () => {
+    list = { sessions: [{ id: "a", device: "Chrome on Windows", current: false }, { id: "b", device: "Chrome on Windows", current: false }], currentKnown: false };
+    renderPanel();
+    await screen.findAllByText("Chrome on Windows");
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
+    expect(screen.getByText(/Sign in again to sign out individual devices/)).toBeTruthy();
+  });
   it("says so when nothing can be listed", async () => {
     list = { sessions: [], currentKnown: false };
     renderPanel();

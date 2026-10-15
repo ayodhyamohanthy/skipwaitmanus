@@ -71,6 +71,11 @@ describe("account session routes", () => {
     const list = await as(request(app).get("/api/account/sessions"));
     expect(list.body.currentKnown).toBe(false);
   });
+  it("refuses a single revoke when the current session is unknown (cannot self-revoke)", async () => {
+    const { app, revokeSession } = setup({ sid: null });
+    expect((await as(request(app).delete("/api/account/sessions/session_two"))).status).toBe(409);
+    expect(revokeSession).not.toHaveBeenCalled();
+  });
   it("revokes nothing when the current session id is not among the caller's own", async () => {
     const { app, revokeSession } = setup({ sid: "session_unrelated" });
     expect((await as(request(app).post("/api/account/sessions/revoke-others"))).status).toBe(409);

@@ -1,7 +1,7 @@
 import { WorkOS } from "@workos-inc/node";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
 import { COOKIE_NAME } from "@shared/const";
-import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
+import { createRemoteJWKSet, decodeJwt, jwtVerify, SignJWT } from "jose";
 import { safeAuthReturnTo } from "@shared/authReturnTo";
 import type { Express, Request } from "express";
 import { parse as parseCookieHeader } from "cookie";
@@ -93,8 +93,20 @@ const WORKOS_IDENTITY_CACHE_MAX = 5_000;
 const workosIdentityCache = new Map<string, { identity: DevIdentity; expiresAt: number }>();
 export function clearWorkosIdentityCacheForTests() { workosIdentityCache.clear(); }
 
-/** The WorkOS session id of the request's own bearer token, or null when the request is not bearer-authenticated. */
+/**
+ * The hosted session id of the caller's own current sign-in: from the verified app session cookie
+ * (the web app authenticates with that cookie), else from a verified WorkOS bearer. Null when unknown,
+ * for example sessions issued before the sid was recorded; callers must then treat "this device" as unknown.
+ */
 export async function currentWorkosSessionId(req: Request): Promise<string | null> {
+  const cookie = parseCookieHeader(req.headers.cookie ?? "")[COOKIE_NAME];
+  if (cookie) {
+    try {
+      const { sdk } = await import("./sdk");
+      const session = await sdk.verifySession(cookie);
+      if (session?.sid) return session.sid;
+    } catch { /* fall through to the bearer */ }
+  }
   const header = req.headers.authorization;
   if (typeof header !== "string" || !header.startsWith("Bearer ")) return null;
   const bearer = header.slice(7).trim();
@@ -297,7 +309,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         }
         stage = "session";
         if (auth.sealedSession) res.cookie("workos_session", auth.sealedSession, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
-        const token = await sdkCreateSessionToken(account.openId, account.name || name);
+        const token = await sdkCreateSessionToken(account.openId, account.name || name, hostedSessionIdFromAccessToken(auth.accessToken));
         res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
         res.redirect(302, returnTo);
       } catch (error) {
@@ -341,7 +353,16 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
   };
 }
 
-async function sdkCreateSessionToken(openId: string, name: string): Promise<string> {
+/** The hosted session id (sid) inside the access token WorkOS just returned to us; undefined if it cannot be read. */
+export function hostedSessionIdFromAccessToken(accessToken: unknown): string | undefined {
+  if (typeof accessToken !== "string") return undefined;
+  try {
+    const sid = decodeJwt(accessToken).sid;
+    return typeof sid === "string" && /^session_[A-Za-z0-9]+$/.test(sid) ? sid : undefined;
+  } catch { return undefined; }
+}
+
+async function sdkCreateSessionToken(openId: string, name: string, sid?: string): Promise<string> {
   const { sdk } = await import("./sdk");
-  return sdk.createSessionToken(openId, { name });
+  return sdk.createSessionToken(openId, { name, sid });
 }
