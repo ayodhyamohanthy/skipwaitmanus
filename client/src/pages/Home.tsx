@@ -116,6 +116,10 @@ export default function Home() {
           <Link href="/guidelines">Guidelines</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
+          <Link href="/refunds">Refunds</Link>
+          <Link href="/cancellations">Cancellation</Link>
+          <Link href="/shipping">Shipping</Link>
+          <Link href="/contact">Contact</Link>
           <Link href="/for-companies">For companies <ArrowUpRight size={14} /></Link>
         </span>
       </footer>

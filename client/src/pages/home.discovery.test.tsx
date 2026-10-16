@@ -41,11 +41,11 @@ describe("landing discovery and search metadata", () => {
     expect(jsonLd.mainEntity[0].name).toBe("Are job referrals really free?");
   });
 
-  it("links the kit footer set of policy and company pages (Help & safety lives in the header)", () => {
+  it("links the kit footer set plus the payment-provider policy pages (refunds, cancellation, shipping, contact) (Help & safety lives in the header)", () => {
     render(<Home />);
     const footer = document.querySelector("footer") as HTMLElement;
     const footerLinks = Array.from(footer.querySelectorAll("span a")).map(link => link.getAttribute("href"));
-    expect(footerLinks).toEqual(["/help", "/guidelines", "/terms", "/privacy", "/for-companies"]);
+    expect(footerLinks).toEqual(["/help", "/guidelines", "/terms", "/privacy", "/refunds", "/cancellations", "/shipping", "/contact", "/for-companies"]);
   });
 
   it("sends the header Sign in to the kit sign-in page, not straight to the hosted screen", () => {

@@ -18,7 +18,7 @@ export default function About() {
       <p>A job seeker pastes the link to a role and sends a referral request with their resume. Only employees who have verified their company email at that employer can see and review the request. If a Referrer accepts, the two can message each other privately.</p>
     </PolicySection>
     <PolicySection number="02" title="What we sell">
-      <p>Job seekers get free referral credits every month. Extra credits and Pro or Max monthly plans can be bought online. Everything we sell is digital and is delivered to your account instantly. See <Link href="/pricing" className="font-semibold text-black">Pricing</Link>.</p>
+      <p>Job seekers get free referral credits every month. Extra credits and paid plans can be bought online. Everything we sell is digital and is delivered to your account instantly. See <Link href="/pricing" className="font-semibold text-black">Pricing</Link>.</p>
     </PolicySection>
     <PolicySection number="03" title="Who runs skipwait.me">
       <p>skipwait.me is owned and operated by <strong>{BUSINESS.operator}</strong>, {BUSINESS.country}. Reach us at <a href={`mailto:${BUSINESS.email}`} className="font-semibold text-black">{BUSINESS.email}</a> or see <Link href="/contact" className="font-semibold text-black">Contact us</Link>.</p>
