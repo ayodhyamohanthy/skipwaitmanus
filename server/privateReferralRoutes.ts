@@ -129,6 +129,8 @@ export type PrivateReferralRouteDeps = {
   listMyUploadStarts?: (userId: number, since: Date) => Promise<Array<{ sessionId: string | null; clientUploadId: string | null; fileName: string | null; createdAt: Date }>>;
   listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
   getReferralFlowHealth?: () => Promise<unknown>;
+  /** D-018 aggregate baseline; absent in partial test apps, never faked. */
+  getReferralFlowBaseline?: () => Promise<unknown>;
   getCreditLedgerAudit?: (limit?: number) => Promise<unknown>;
   getDomainIntegrity?: (limit?: number) => Promise<unknown>;
   findUsersForTokenRecovery?: (query: string) => Promise<unknown[]>;
@@ -1343,9 +1345,16 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
-      const health = await deps.getReferralFlowHealth?.() ?? { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
+      // The baseline block is deliberately separate from the live funnel: it is the
+      // measurement D-018 asks for (D-034/D-037 need it), and null when unwired so the
+      // panel shows nothing rather than invented numbers.
+      const [health, baseline] = await Promise.all([
+        deps.getReferralFlowHealth?.() ?? { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } },
+        deps.getReferralFlowBaseline ? deps.getReferralFlowBaseline() : Promise.resolve(null),
+      ]);
       record({ actorUserId: identity.account.id, action: "admin.flow_health_viewed", outcome: "success", resourceType: "flow_health" });
-      res.json({ health });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ health, baseline });
     } catch { res.status(500).json({ error: "We could not load referral flow health" }); }
   });
   app.get("/api/admin/revenue", async (req, res) => {
