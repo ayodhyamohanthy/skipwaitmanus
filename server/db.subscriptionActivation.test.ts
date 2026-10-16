@@ -216,7 +216,7 @@ describe("applyChargebeeSubscriptionEvent on a kit pass (0091)", () => {
   it("activates the pass with its own plan and credits, and keeps purchased credits", async () => {
     momentumIntent();
     expect(await applyChargebeeSubscriptionEvent(momentum90)).toMatchObject({ status: "applied", userId: 7, role: "job_seeker" });
-    expect(wallets[0]).toMatchObject({ plan: "momentum", balance: 12, monthlyAllowance: 36, monthlyCreditsRemaining: 36, subscriptionId: "subscription_kit", subscriptionStatus: "active", subscriptionCurrentTermStart: passStart, subscriptionCurrentTermEnd: passEnd });
+    expect(wallets[0]).toMatchObject({ plan: "momentum", balance: 12, monthlyAllowance: 30, monthlyCreditsRemaining: 30, subscriptionId: "subscription_kit", subscriptionStatus: "active", subscriptionCurrentTermStart: passStart, subscriptionCurrentTermEnd: passEnd });
     expect(intents[0].status).toBe("activated");
     // The 90-day pass is one term; its later cycles open from the scheduled job.
     expect(events).toHaveLength(1);

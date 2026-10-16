@@ -14,18 +14,18 @@ auto-renew: we send a reminder and a one-tap re-buy instead.
 
 | Plan | Price 30 days | Price 90 days | Plan credits / month | Rollover | Open asks |
 |---|---|---|---|---|---|
-| Free (never a card) | $0 | — | 3, no welcome credits | none | 3 |
-| Keep warm | — (yearly $29 / ₹999) | — | 4 | 1 month | 5 |
+| Free (never a card) | $0 | — | 2 (plus 3 welcome credits, once) | none | 3 |
+| Keep warm | — (yearly $29 / ₹999) | — | 1 | 1 month | 5 |
 | Start | $8 / ₹299 | $19 / ₹699 | 10 | 1 month | 8 |
-| Momentum (recommended) | $24 / ₹999 | $59 / ₹2,499 | 36 | 3 months | 15 |
+| Momentum (recommended) | $24 / ₹999 | $59 / ₹2,499 | 30 | 3 months | 15 |
 | Land Focus | $100 / ₹5,999 | $249 / ₹13,999 | 120 | while the pass is active | 30 |
 | Land Sprint | $200 / ₹11,999 | $499 / ₹27,999 | 300 | while the pass is active | 50 |
 | Land Concierge (by application) | $750 / ₹34,999 | $1,990 / ₹84,999 | 1,000 | while the pass is active | 75 |
 
 - USD is the one global price. India sees the INR "India price"; GST wording appears only once a
   GSTIN exists (`INDIA_GST_REGISTERED`, off — Indian sole proprietorship, Udyam MSME; see D-007).
-- Free includes a one-time 14-day reverse trial: Momentum's 15 open asks and
-  5 trial credits, no card, once per person (start timing is an open owner question).
+- Free includes a one-time 14-day reverse trial after the first ask: Momentum's 15 open asks and
+  5 trial credits, no card, once per person.
 - An open ask slot frees when the request is answered, passed or expires.
 - Every plan holds at most **2 open asks at the same company**; Land Focus includes 1 written
   expert review, Land Sprint 1 written review + 1 live session, Concierge 6 human hours per cycle.

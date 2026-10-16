@@ -42,7 +42,7 @@ import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegr
 import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
-import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
+import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, grantWelcomeCreditsTx, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
@@ -2930,6 +2930,24 @@ export async function reconcileSeekerCredits(userId: number, now: Date): Promise
     if (!locked) return { changed: false };
     const { changed } = await reconcileSeekerWalletTx(tx, locked, now);
     return { changed };
+  });
+}
+
+/**
+ * The one-time welcome credits (PRICING.md: 3 after completing a profile), once
+ * per canonical person. Internal: the owner defines "profile complete" before a
+ * route calls it.
+ */
+export async function grantWelcomeCredits(userId: number, now: Date = new Date()): Promise<{ granted: boolean }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await ensureTokenWallet(userId, "job_seeker");
+  return db.transaction(async tx => {
+    const locked = (await tx.select({ id: tokenBalances.id }).from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
+    if (!locked) throw new Error("Your credit wallet is unavailable");
+    const account = (await tx.select({ canonicalPersonId: users.canonicalPersonId }).from(users).where(eq(users.id, userId)).limit(1))[0];
+    const result = await grantWelcomeCreditsTx(tx, { userId, canonicalPersonId: account?.canonicalPersonId ?? null, now });
+    return { granted: result.granted };
   });
 }
 
