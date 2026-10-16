@@ -7,6 +7,23 @@ import { readApiJson } from "@/lib/apiResponse";
 type NotificationPreview = { id: number; readAt: string | null };
 type NotificationResponse = { notifications?: NotificationPreview[]; error?: string };
 
+// One in-flight request shared by every bell on the page (the menu renders more than once).
+let inFlight: { token: string | null; at: number; promise: Promise<number> } | null = null;
+async function loadUnread(getToken: () => Promise<string | null>): Promise<number> {
+  const token = await getToken();
+  if (inFlight && inFlight.token === token) return inFlight.promise;
+  const promise = (async () => {
+    const response = await fetch("/api/notifications", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const payload = await readApiJson<NotificationResponse>(response, "Your private updates are unavailable right now.");
+    if (!response.ok) throw new Error(payload.error || "Your private updates are unavailable right now.");
+    return (payload.notifications || []).filter(notification => !notification.readAt).length;
+  })();
+  inFlight = { token, at: Date.now(), promise };
+  const clear = () => { if (inFlight?.promise === promise) inFlight = null; };
+  promise.then(clear, clear);
+  return promise;
+}
+
 export function NotificationBell() {
   const { isSignedIn, getToken } = useAuth();
   const [, go] = useLocation();
@@ -17,11 +34,8 @@ export function NotificationBell() {
     let active = true;
     void (async () => {
       try {
-        const token = await getToken();
-        const response = await fetch("/api/notifications", { credentials: "include", headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        const payload = await readApiJson<NotificationResponse>(response, "Your private updates are unavailable right now.");
-        if (!response.ok) throw new Error(payload.error || "Your private updates are unavailable right now.");
-        if (active) setUnreadCount((payload.notifications || []).filter(notification => !notification.readAt).length);
+        const unread = await loadUnread(getToken);
+        if (active) setUnreadCount(unread);
       } catch { if (active) setUnreadCount(0); }
     })();
     return () => { active = false; };

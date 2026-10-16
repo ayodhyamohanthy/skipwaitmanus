@@ -108,15 +108,20 @@ export async function saveReferrerPreferences(getToken: TokenSource, patch: Refe
 }
 
 export async function fetchReferrerHome(getToken: TokenSource): Promise<ReferrerHomeData> {
-  const access = await fetchCompanyAccess(getToken);
-  if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
-  const [preferences, fresh, completed, profile, impact] = await Promise.all([
+  // One round trip instead of two: the access check no longer gates the other five requests.
+  // Unverified accounts are still refused by the server (the inbox returns an empty list for them),
+  // and the results below are only used when access.verified.
+  const rest = Promise.all([
     fetchReferrerPreferences(getToken),
     getJson("/api/company-referrals/inbox?scope=new", getToken, inboxSchema, "We could not load new asks."),
     getJson("/api/company-referrals/inbox?scope=completed", getToken, inboxSchema, "We could not load your reviews."),
     getOptional("/api/profile/me", getToken, profileSchema),
     getOptional("/api/referrer-impact/me", getToken, impactSchema),
   ]);
+  rest.catch(() => undefined);
+  const access = await fetchCompanyAccess(getToken);
+  if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
+  const [preferences, fresh, completed, profile, impact] = await rest;
   return {
     access,
     preferences,
