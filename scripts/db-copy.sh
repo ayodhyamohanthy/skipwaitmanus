@@ -9,7 +9,7 @@ MODE="${1:?usage: db-copy.sh inventory|rehearse|verify}"
 : "${OLD_HOST:?}" "${OLD_USER:?}" "${OLD_NAME:?}" "${OLD_PWD:?}" "${NEW_HOST:?}" "${NEW_USER:?}" "${NEW_PWD:?}"
 OLD_PORT="${OLD_PORT:-3306}"; NEW_PORT="${NEW_PORT:-3306}"
 TARGET_DB="${TARGET_DB:-skipwait_rehearsal}"
-case "$TARGET_DB" in skipwait_rehearsal) ;; *) echo "refusing TARGET_DB=$TARGET_DB (only skipwait_rehearsal is allowed by this script version)"; exit 2;; esac
+case "$TARGET_DB" in skipwait_rehearsal|skipwait) ;; *) echo "refusing TARGET_DB=$TARGET_DB (only skipwait_rehearsal or skipwait)"; exit 2;; esac
 COMMON=(--ssl-mode=REQUIRED --connect-timeout=20 --default-character-set=utf8mb4 --init-command="SET time_zone='+00:00'")
 oldq() { MYSQL_PWD="$OLD_PWD" mysql --host="$OLD_HOST" --port="$OLD_PORT" --user="$OLD_USER" "${COMMON[@]}" -N -B "$@"; }
 newq() { MYSQL_PWD="$NEW_PWD" mysql --host="$NEW_HOST" --port="$NEW_PORT" --user="$NEW_USER" "${COMMON[@]}" -N -B "$@"; }
@@ -41,6 +41,7 @@ inventory)
   echo "OK: lower_case_table_names matches ($L_OLD)"
   ;;
 rehearse)
+  [ "$TARGET_DB" = skipwait_rehearsal ] || { echo "rehearse only writes skipwait_rehearsal"; exit 2; }
   echo "Recreating $TARGET_DB on NEW only"
   newq -e "DROP DATABASE IF EXISTS \`$TARGET_DB\`; CREATE DATABASE \`$TARGET_DB\` CHARACTER SET utf8mb4;"
   MYSQL_PWD="$OLD_PWD" mysqldump --host="$OLD_HOST" --port="$OLD_PORT" --user="$OLD_USER" --ssl-mode=REQUIRED \
@@ -49,6 +50,22 @@ rehearse)
     | sed -E "s/DEFINER=\`[^\`]+\`@\`[^\`]+\`/DEFINER=\`$NEW_USER\`@\`%\`/g" \
     | MYSQL_PWD="$NEW_PWD" mysql --host="$NEW_HOST" --port="$NEW_PORT" --user="$NEW_USER" --ssl-mode=REQUIRED --default-character-set=utf8mb4 "$TARGET_DB"
   echo "Restore finished into $TARGET_DB (run verify next)"
+  ;;
+inflight)
+  echo "== payments in flight on OLD (read-only); anything listed here must settle before the switch"
+  oldq -e "SELECT 'paymentFulfillments pending/requires_review', COUNT(*) FROM paymentFulfillments WHERE status IN ('pending','requires_review'); SELECT 'paymentFulfillments created last 30m', COUNT(*) FROM paymentFulfillments WHERE createdAt > NOW() - INTERVAL 30 MINUTE; SELECT 'employerPaymentFulfillments not final (creating/provider_create_in_progress/pending/processing)', COUNT(*) FROM employerPaymentFulfillments WHERE status IN ('creating','provider_create_in_progress','pending','processing'); SELECT 'employerPaymentFulfillments created last 30m', COUNT(*) FROM employerPaymentFulfillments WHERE createdAt > NOW() - INTERVAL 30 MINUTE;"
+  ;;
+cutover-copy)
+  [ "$TARGET_DB" = skipwait ] || { echo "cutover-copy requires TARGET_DB=skipwait"; exit 2; }
+  n=$(newq -e "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='skipwait'")
+  [ "$n" = 0 ] || { echo "REFUSING: NEW skipwait already has $n tables (never overwrite)"; exit 3; }
+  newq -e "CREATE DATABASE IF NOT EXISTS \`skipwait\` CHARACTER SET utf8mb4;"
+  MYSQL_PWD="$OLD_PWD" mysqldump --host="$OLD_HOST" --port="$OLD_PORT" --user="$OLD_USER" --ssl-mode=REQUIRED \
+    --single-transaction --routines --triggers --events --set-gtid-purged=OFF --no-tablespaces \
+    --default-character-set=utf8mb4 --hex-blob "$OLD_NAME" \
+    | sed -E "s/DEFINER=\`[^\`]+\`@\`[^\`]+\`/DEFINER=\`$NEW_USER\`@\`%\`/g" \
+    | MYSQL_PWD="$NEW_PWD" mysql --host="$NEW_HOST" --port="$NEW_PORT" --user="$NEW_USER" --ssl-mode=REQUIRED --default-character-set=utf8mb4 skipwait
+  echo "Cutover copy finished into skipwait (run verify with target skipwait next)"
   ;;
 verify)
   fail=0
