@@ -135,13 +135,13 @@ describe("opportunity clocks", () => {
   });
 });
 
-// 0093 backfills `expiresAt` on deploy day. The backfill must reproduce the
+// 0094 backfills `expiresAt` on deploy day. The backfill must reproduce the
 // pre-migration wall exactly from the one clock it installs, or a post's
 // visible state flips on deploy: hiring-now rows kept their 30-day createdAt
 // window, walk-in rows lived only until walkInEndsAt, and a legacy walk-in
 // with no end time was never live — it must never be revived.
-describe("postings migration (0093) backfill", () => {
-  const migration = readFileSync(new URL("../drizzle/deploy/0093_opportunity_postings.sql", import.meta.url), "utf8");
+describe("postings migration (0094) backfill", () => {
+  const migration = readFileSync(new URL("../drizzle/deploy/0094_opportunity_postings.sql", import.meta.url), "utf8");
 
   it("fills every existing row from its pre-migration visible state", () => {
     expect(migration).toContain("SET `expiresAt` = CASE WHEN `kind` = 'walk_in' THEN COALESCE(`walkInEndsAt`, `createdAt`) ELSE DATE_ADD(`createdAt`, INTERVAL 30 DAY) END WHERE `expiresAt` IS NULL");

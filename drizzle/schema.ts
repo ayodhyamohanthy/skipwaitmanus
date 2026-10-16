@@ -331,7 +331,7 @@ export const companyOpportunities = mysqlTable("companyOpportunities", {
   walkInEndsAt: timestamp("walkInEndsAt"),
   isActive: boolean("isActive").default(true).notNull(),
   // D-022 referrer-posted roles: a post is live for 30 days; the poster can
-  // renew it in one tap. Always set by the publish/renew paths (0093 backfilled
+  // renew it in one tap. Always set by the publish/renew paths (0094 backfilled
   // existing rows to their pre-migration visible state and holds the column NOT NULL).
   expiresAt: timestamp("expiresAt").notNull(),
   // D-022: the poster chose to show their first name (never the last name).

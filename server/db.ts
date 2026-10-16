@@ -1491,7 +1491,7 @@ export type PublishCompanyOpportunityInput = { kind: "hiring_now" | "walk_in"; r
 
 // One liveness clock for every read and the posting caps: the D-022 expiresAt
 // column (a walk-in ends with its event, a hiring post with its window). Rows
-// from before 0093 (null) stay live — the schemaReconcile fail-open rule.
+// from before 0094 (null) stay live — the schemaReconcile fail-open rule.
 const liveOpportunityCondition = () => and(
   eq(companyOpportunities.isActive, true),
   or(isNull(companyOpportunities.expiresAt), gt(companyOpportunities.expiresAt, new Date())),

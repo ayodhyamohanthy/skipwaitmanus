@@ -32,7 +32,7 @@ export function firstLookUntilFrom(now: Date): Date {
 }
 
 /**
- * A missing or unparsable expiry never hides a post (pre-0093 rows, schema
+ * A missing or unparsable expiry never hides a post (pre-0094 rows, schema
  * drift); only a known past date does. Reads must use this, not a raw compare.
  */
 export function isOpportunityExpired(expiresAt: Date | string | null | undefined, nowMs: number): boolean {

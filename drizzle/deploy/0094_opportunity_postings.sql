@@ -1,4 +1,4 @@
--- 0093: D-022 referrer-posted roles (docs/KIT_V4_BUILD_PLAN.md section 3c,
+-- 0094: D-022 referrer-posted roles (docs/KIT_V4_BUILD_PLAN.md section 3c,
 -- docs/DECISIONS.md D-022). Additive only:
 --   companyOpportunities.expiresAt            the post window; walk-ins end with their event
 --   companyOpportunities.showPosterFirstName  the poster's chosen public face (default off)
@@ -6,7 +6,7 @@
 --   referralRequests.firstLookReferrerId      the poster's 48-hour first look
 --   referralRequests.firstLookUntil
 -- The backfill preserves each existing post's pre-migration visible state: hiring-now
--- rows get createdAt + 30 days (the pre-0093 wall window), walk-in rows keep their
+-- rows get createdAt + 30 days (the pre-0094 wall window), walk-in rows keep their
 -- walkInEndsAt, and legacy walk-ins without an end time stay hidden. The column is
 -- then held NOT NULL.
 -- Every statement is information_schema-guarded, so re-runs are no-ops; the
