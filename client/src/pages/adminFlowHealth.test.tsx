@@ -106,3 +106,61 @@ describe("administrator flow-health baseline panel (D-018)", () => {
     expect(screen.queryByText("Week of")).toBeNull();
   });
 });
+
+const fanOut = {
+  requests: 9,
+  creationsScanned: 5,
+  employeeNotifications: 18,
+  largestRequestFanOut: 7,
+  fastTrackRequests: 2,
+  reviewGrants: 11,
+  requestsWithGrants: 4,
+  grantsPerRequest: 2.8,
+  mostEmailedEmployee: 5,
+  repeatedRoleLinks: 1,
+  requestsOnRepeatedRoleLinks: 3,
+};
+
+function serveHealth(payloadHealth: unknown) {
+  vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+    if (String(input).includes("/api/admin/revenue")) return { ok: true, json: async () => ({ revenue: { byProvider: [], totalsByCurrency: [], refundedTotalByCurrency: [], recordedAt: "" } }) };
+    return { ok: true, json: async () => ({ health: payloadHealth }) };
+  }));
+}
+
+describe("administrator flow-health notification fan-out panel", () => {
+  afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+
+  it("separates employee reach from review links, and states the window it measured", async () => {
+    serveHealth({ ...health, fanOut });
+    render(<AdminFlowHealth />);
+    await waitFor(() => expect(screen.getByText("Notification fan-out")).toBeTruthy());
+    expect(screen.getByText("In-app notices across the last 5 recorded requests.")).toBeTruthy();
+    expect(screen.getByText("One request reached this many verified employees.")).toBeTruthy();
+    expect(screen.getByText("Review links the single most-emailed employee received.")).toBeTruthy();
+    expect(screen.getByText("2 of 5 recorded requests reached one named referrer")).toBeTruthy();
+    expect(screen.getByText("1 role link reused by 3 requests.")).toBeTruthy();
+  });
+
+  it("keeps a measured zero visible and drops the reuse line when nothing repeated", async () => {
+    serveHealth({ ...health, fanOut: { ...fanOut, repeatedRoleLinks: 0, requestsOnRepeatedRoleLinks: 0, mostEmailedEmployee: 0 } });
+    render(<AdminFlowHealth />);
+    await waitFor(() => expect(screen.getByText("Notification fan-out")).toBeTruthy());
+    expect(screen.getByText("Review links the single most-emailed employee received.")).toBeTruthy();
+    expect(screen.queryByText(/reused by/)).toBeNull();
+  });
+
+  it("names the API build when the payload has no fan-out block at all", async () => {
+    serveHealth(health);
+    render(<AdminFlowHealth />);
+    await waitFor(() => expect(screen.getByText("Notification fan-out")).toBeTruthy());
+    expect(screen.getByText("This API build does not report fan-out yet. Deploy the matching API release to read it.")).toBeTruthy();
+  });
+
+  it("treats a partial fan-out block as unavailable instead of rendering blank counts", async () => {
+    serveHealth({ ...health, fanOut: { requests: 9, employeeNotifications: 18 } });
+    render(<AdminFlowHealth />);
+    await waitFor(() => expect(screen.getByText("Notification fan-out")).toBeTruthy());
+    expect(screen.getByText("This API build does not report fan-out yet. Deploy the matching API release to read it.")).toBeTruthy();
+  });
+});
