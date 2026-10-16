@@ -31,6 +31,15 @@
     </script>
   </head>
   <body>
+    <style>html.sw-boot #root{visibility:hidden}</style>
+    <script>
+      // Keep the app invisible until the brand font is ready, so users never see text in a fallback font
+      // or half-built pieces. A hard timer guarantees the page is never left hidden.
+      document.documentElement.classList.add("sw-boot");
+      window.__swReveal = function () { document.documentElement.classList.remove("sw-boot"); };
+      setTimeout(window.__swReveal, 2500);
+    </script>
+    <noscript><style>html.sw-boot #root{visibility:visible}</style></noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
