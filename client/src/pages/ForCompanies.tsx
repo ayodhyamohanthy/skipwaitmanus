@@ -99,6 +99,10 @@ export default function ForCompanies() {
         <span>A warmer way in. · skipwait.me</span>
         <Link href="/employer">Employer workspace</Link>
         <Link href="/safety">Help &amp; safety</Link>
+        <Link href="/terms">Terms</Link>
+        <Link href="/privacy">Privacy</Link>
+        <Link href="/refunds">Refunds</Link>
+        <Link href="/contact">Contact</Link>
       </footer>
     </div>
   );
