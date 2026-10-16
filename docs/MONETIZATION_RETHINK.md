@@ -1,6 +1,6 @@
 # Monetization rethink — proposals awaiting the owner (Oct 16 2026)
 
-**Status: PROPOSALS, not decisions.** The owner asked on Oct 16 to "rethink and push to main the 10/10 monetizable for us, 100x value for users decisions". Each proposal below becomes binding only when the owner approves it. It is then recorded in `docs/DECISIONS.md` as the next free D-number (D-044 onward). Until then agents must not build from this file (D-010). Read with D-034–D-043 and `docs/GROWTH_STRATEGY.md`.
+**Status: PROPOSALS, not decisions.** The owner asked on Oct 16 to "rethink and push to main the 10/10 monetizable for us, 100x value for users decisions". Each proposal below becomes binding only when the owner approves it. It is then recorded in `docs/DECISIONS.md` as the next free D-number (D-044 is taken by the #293 ruling). Until then agents must not build from this file (D-010). Read with D-034–D-043 and `docs/GROWTH_STRATEGY.md`.
 
 **How it was made:**
 - Six lenses proposed decisions: outcome-aligned pricing, packaging, coaching, other revenue sources, timing and trust, and a contrarian lens.
@@ -27,8 +27,8 @@
 
 | # | Proposal | Action | Rating | Switches on |
 |---|---|---|---|---|
-| P-1 | Checkout opens one payment leg at a time, only once proven | change D-036/D-037 rollout | 8 | Now: INR off until Razorpay clears; USD $5 pack after one owner round trip |
-| P-2 | The catalog equals the register; advertise only what code grants; resolve #293 | change | 8 | #293 resolved by D-044 (register numbers win, restore in progress); remaining items await approval |
+| P-1 | Checkout opens one payment leg at a time, only once proven | change D-036/D-037 rollout | 8 | Now: Razorpay review cleared Oct 16 (BUGFREE 4.14), so INR opens after one owner-run ₹99 round trip; USD $5 pack after one owner round trip |
+| P-2 | The catalog equals the register; advertise only what code grants; resolve #293 | change | 8 | #293 resolved by D-044 (register numbers win, restore in progress); "on sale until the gate" approved as D-045 (Oct 17); remaining items await approval |
 | P-3 | Keep the outcome-aligned credit rule (D-034 + D-038 + D-035) as the only charge event; one outcome per ask | keep + refine | 7 | Build D-034, then D-038, then D-035 |
 | P-4 | Paywall only where a credit buys a deliverable ask: free waiting list, release at coverage, four honest paid moments | change (implements D-034) | 7 | With the D-034 build |
 | P-5 | Money-truth rule: every money sentence is generated from the catalog or ledger; banned phrases | change (makes D-043 move 3 binding) | 8 | Now |
@@ -43,7 +43,7 @@
 ### P-1 — Checkout opens one payment leg at a time, only once proven (8/10)
 - **Rule:**
   1. One server check (`checkoutLiveFor(currency)`) gates every buy surface, and a test proves no surface bypasses it.
-  2. **INR is off now**, because every live INR payment fails at Razorpay (BUGFREE 4.14). Its screens stay in code (D-042) and say "India checkout opens soon. Email me when it does" (opt-in, logged, no counts).
+  2. **Update Oct 17:** the Razorpay review cleared on Oct 16 (BUGFREE 4.14), so INR no longer needs to be switched off. It opens, like USD, after the owner's one live round trip on the smallest item. Until then INR screens say "India checkout opens soon. Email me when it does" (opt-in, logged, no counts).
   3. A currency opens only after the owner completes one real round trip on the smallest item: credits land, and the webhook and reconcile run. Agents never pay.
   4. USD opens with the $5-for-5 pack; the $1 single credit never reopens.
   5. INR shows one-time UPI first.
