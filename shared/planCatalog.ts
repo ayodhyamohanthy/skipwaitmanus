@@ -1,14 +1,16 @@
 /**
  * SkipWait plan catalog: the pricing model the owner decided on Oct 14 2026
  * (docs/PRICING_RECOMMENDATION.md, "Owner decisions" and sections 3 to 5),
- * amended Oct 16 2026 (D-036–D-042 in docs/DECISIONS.md). It
+ * amended Oct 16–17 2026 (D-036–D-046 in docs/DECISIONS.md). It
  * overrides PRICING.md, UPGRADE_NUDGES.md and the kit PNG numbers wherever
  * they differ; those files now repeat these numbers.
  *
  *  - Paid plans are 30-day and 90-day passes paid once. Keep warm is the only
  *    yearly plan. A 90-day pass grants credits in three cycles of about 30 days.
- *    Passes switch on only once 3 outside companies each have 3+ available
- *    referrers (D-037); until then packs are the paid product.
+ *    Every payment option goes on sale now, before referrers onboard (D-046,
+ *    Oct 17 2026: no supply gate; supersedes D-037's timing and D-045; plan
+ *    contents and prices unchanged; the purchase entry points switch fully
+ *    on with queue task 1 step 3).
  *  - Prices: one global USD price and an India price in INR, no GST
  *    (D-007: Indian sole proprietorship, not GST-registered).
  *  - Free: 3 open asks, 3 credits every UTC calendar month (no carryover).
@@ -81,7 +83,7 @@ export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 
 /**
  * Credit PACKS (the D-005/D-036 ladder: first pack ₹99 for 2 / $5 for 5, then
- * 25 / 60 / 150) are the paid product until passes switch on (D-037). The flag
+ * 25 / 60 / 150) stay on sale alongside the passes (D-036/D-046). The flag
  * below only hides client entry points: the server checkout route, pricing and
  * the payment-recovery screen are untouched. Pro/Max are unaffected (they sell
  * open-ask slots and assistant access, and stay off sale per D-027).
