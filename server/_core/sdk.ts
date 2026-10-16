@@ -2,7 +2,11 @@ import { SignJWT, jwtVerify } from "jose";
 import { randomUUID } from "node:crypto";
 import { ENV } from "./env";
 import * as db from "../db";
-const ACCESS_TTL_MS = 30 * 60_000;
+// Sliding session (founder mandate Oct 16 2026, changeable): a session token lasts 30 days from its last
+// renewal, and an active session is re-issued once it is more than a day old (see sessionRenewal.ts).
+// Revocation is unchanged: account.sessionsValidAfter, suspension and logout still end a session at once.
+const ACCESS_TTL_MS = 30 * 24 * 60 * 60_000;
+const RENEW_AFTER_MS = 24 * 60 * 60_000;
 const ISSUER = "https://skipwait.me";
 const AUDIENCE = "skipwait-web";
 const isNonEmptyString = (value: unknown): value is string => typeof value === "string" && value.length > 0;
@@ -40,6 +44,16 @@ class SDKServer {
       if(account.sessionsValidAfter&&Math.floor(account.sessionsValidAfter.getTime()/1000)>payload.iat)return null;
       return {openId,appId,name:typeof name==="string"?name:"",sid:hostedSid((payload as Record<string,unknown>).sid)};
     }catch{return null}
+  }
+  /** A fresh token for a valid session older than RENEW_AFTER_MS, else null. Young tokens cost no DB read. */
+  async renewSessionIfDue(cookieValue:string|undefined|null){
+    if(!cookieValue)return null;
+    let iat:number;
+    try{const {payload}=await jwtVerify(cookieValue,this.getSessionSecret(),{algorithms:["HS256"],issuer:ISSUER,audience:AUDIENCE});if(typeof payload.iat!=="number")return null;iat=payload.iat}catch{return null}
+    if(Date.now()-iat*1000<RENEW_AFTER_MS)return null;
+    const session=await this.verifySession(cookieValue);
+    if(!session)return null;
+    return this.createSessionToken(session.openId,{name:session.name,...(session.sid?{sid:session.sid}:{})});
   }
   async revokeSession(cookieValue:string|undefined|null){
     if(!cookieValue)return;

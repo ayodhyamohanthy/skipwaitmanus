@@ -5,7 +5,7 @@ import { resolveTrustedClientIp } from "./trustedClientIp";
 import * as db from "../db";
 import { isWorkEmailDomain } from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk } from "./sdk";
+import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { workEmailOtpService } from "../workEmailOtp";
 
 /**
@@ -68,7 +68,7 @@ export function registerReferrerOtpLoginRoutes(app: Express) {
       const existingProfile = await db.getVerifiedWorkEmailAccess(account.id).catch(() => undefined);
       if (!existingProfile?.workEmailDomain) await db.saveVerifiedWorkEmail(account.id, email).catch(() => undefined);
       const token = await sdk.createSessionToken(openId, { name: account.name ?? email });
-      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
+      res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       res.json({ signedIn: true, role: account.role, email });
     } catch (error) {
       if (error instanceof OtpLockedError) { res.set("Retry-After", String(error.retryAfterSeconds)); return res.status(429).json({ error: "Too many tries. Try again later.", retryAfterSeconds: error.retryAfterSeconds, lockedUntil: error.lockedUntil.toISOString() }); }
