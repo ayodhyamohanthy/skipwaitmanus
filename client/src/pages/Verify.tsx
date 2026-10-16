@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowLeft, ArrowRight, Building2, Check, Clock3, LoaderCircle, LockKeyhole, Mail, RefreshCw, ShieldCheck } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -134,7 +135,7 @@ export default function Verify() {
     return (
       <VerifyLayout screen="verify-loading" company={selected} busy>
         <VerifyProgress stepIndex={0} />
-        <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Checking your sign-in…</p>
+        <LoadingNote>Checking your sign-in…</LoadingNote>
       </VerifyLayout>
     );
   }
