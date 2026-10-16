@@ -14,7 +14,7 @@ import {
   claimCompanyReferralRequest, closeCompanyOpportunity, companyReferralFingerprint,
   createCompanyReferralRequest, firstLookExcludesViewer, getUnclaimedCompanyReferralPreview,
   listCompanyOpportunityPosts, listCompanyReferralInboxByState, listMyCompanyOpportunities,
-  oneClickReviewReferralRequest, releaseFirstLookForRequest, renewCompanyOpportunity,
+  oneClickReviewReferralRequest, publishCompanyOpportunity, releaseFirstLookForRequest, renewCompanyOpportunity,
   saveCompanyReferralRequest, opportunityPosterOf,
 } from "./db";
 import { listLapsedFirstLooks } from "./firstLookRelease";
@@ -524,5 +524,30 @@ describe("firstLookExcludesViewer", () => {
     expect(firstLookExcludesViewer({ firstLookReferrerId: POSTER, firstLookUntil: new Date(NOW - HOUR) }, COLLEAGUE, NOW)).toBe(false);
     expect(firstLookExcludesViewer({ firstLookReferrerId: POSTER, firstLookUntil: null }, COLLEAGUE, NOW)).toBe(false);
     expect(firstLookExcludesViewer({ firstLookReferrerId: POSTER, firstLookUntil: "not-a-date" }, COLLEAGUE, NOW)).toBe(false);
+  });
+});
+
+describe("the posting caps and the one expiry clock", () => {
+  const walkIn = () => ({ kind: "walk_in" as const, roleTitle: "Store Associate", location: "Pune", walkInAt: new Date(NOW + HOUR), walkInEndsAt: new Date(NOW + 3 * HOUR) });
+
+  it("blocks a fourth live post with the open-cap message and writes nothing", async () => {
+    rows.companyOpportunities = [post({ id: 60 }), post({ id: 61 }), post({ id: 62 })];
+    await expect(publishCompanyOpportunity(POSTER, walkIn())).rejects.toThrow(/3 openings/);
+    expect(rows.companyOpportunities).toHaveLength(3);
+  });
+
+  it("blocks the day's eleventh post even when nothing is live", async () => {
+    const ended = new Date(NOW - HOUR);
+    rows.companyOpportunities = Array.from({ length: 10 }, (_, index) => post({ id: 70 + index, kind: "walk_in", walkInEndsAt: ended, expiresAt: ended, createdAt: new Date(NOW - HOUR) }));
+    await expect(publishCompanyOpportunity(POSTER, walkIn())).rejects.toThrow(/today's posting limit/);
+    expect(rows.companyOpportunities).toHaveLength(10);
+  });
+
+  it("a walk-in post lands with its own end as the expiry, name off by default", async () => {
+    rows.companyOpportunities = [];
+    const created = await publishCompanyOpportunity(POSTER, walkIn());
+    const stored = rows.companyOpportunities.find(row => row.id === created.id)!;
+    expect(stored).toMatchObject({ kind: "walk_in", isActive: true, showPosterFirstName: false });
+    expect((stored.expiresAt as Date).getTime()).toBe(NOW + 3 * HOUR);
   });
 });
