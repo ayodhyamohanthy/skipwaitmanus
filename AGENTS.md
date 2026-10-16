@@ -14,6 +14,12 @@ Test for every decision: does this make seekers more referral-worthy or referrer
 - **Referrer login = work email org verification ONLY** (work-email OTP). No personal email, no social logins, on any referrer-facing sign-in (`/sign-in` with "Give a referral", `/referrer` dialog, `/referrer-setup`, `/referrer-home`, `/referrer/impact`, `/verify`). Use `referrerSignInHref()` (`client/src/lib/referrerSignIn.ts`), never `SignInButton` or `openSignIn` on a referrer surface.
 - Pinned by `client/src/pages/loginRule.test.tsx` and `client/src/pages/signIn.test.tsx`; a failing pin means the rule drifted. Decision register: D-030.
 
+## Team rules (owner standing instructions, Oct 16 2026, relayed by the parent - numbered, binding for every agent and model)
+1. **Read before acting.** At the START of every session, read this file, `docs/DECISIONS.md` (the current decisions list, newest first, including D-030 login rule, D-031 money rule and the product compass above) before any work. The whole team stays in sync on decisions.
+2. **Money rule (D-031).** Never choose money-spending options. Choose free or money-earning options only. Paid plans and add-ons are dropped, not proposed as defaults.
+3. **Meritocracy (D-032).** If you see a better approach than a recorded decision, always recommend it with evidence. The founder takes the call: ask him, never override a decision on your own.
+4. **Where decisions live.** `docs/DECISIONS.md` is the current decisions list; keep it current when a decision is made or changed. These rules live here in `AGENTS.md`.
+
 ## 0. Active program: kit v4 fullstack (read first)
 - **North-star goal (owner, Oct 14 2026):** SkipWait becomes the go-to, preferred **global** site for job referrals — and gets people referred **faster**. Every task, design and decision must be justified by how it moves that goal.
 - **Vision (owner, Oct 15 2026, D-026):** "like spotify is for music, skipwait should be for job referrals" — the default, global place people go to get referred, and do everything that genuinely moves that, within the decision protocol below.
