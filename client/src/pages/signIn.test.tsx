@@ -32,14 +32,10 @@ describe("SignIn", () => {
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/Choose who you help/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue with (Google|Microsoft|GitHub)/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Continue to sign in/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Create a free account/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continue with email/ })).toBeNull();
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send sign-in code" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /Find a referral/ }));
-    fireEvent.click(screen.getByRole("button", { name: /Create a free account/ }));
-    expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-up?returnTo=%2Fexplore");
-    expect(assign).toHaveBeenCalledTimes(1);
+    expect(assign).not.toHaveBeenCalled();
   });
 
   it("keeps Terms and Privacy Policy reachable as plain-text links, underlined only on hover or focus", () => {
@@ -52,13 +48,14 @@ describe("SignIn", () => {
     }
   });
 
-  it("job seeker continues straight to the hosted WorkOS AuthKit screen (email + all socials)", () => {
+  it("job seeker signs in on skipwait.me: five socials go straight to the provider, email uses a code", () => {
     const assign = stubAssign();
     render(<SignIn />);
     expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(document.querySelector("input[type=password]")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Continue to sign in/ }));
-    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&fresh=1");
+    fireEvent.click(screen.getByRole("button", { name: /Continue with LinkedIn/ }));
+    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=linkedin");
+    for (const name of ["Google", "Microsoft", "GitHub", "Slack"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeTruthy();
   });
 
   it("ships no design-preview scaffolding", () => {

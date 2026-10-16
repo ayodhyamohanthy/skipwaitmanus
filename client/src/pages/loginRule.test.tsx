@@ -4,7 +4,7 @@
 // If this file fails, the rule drifted. Do not edit these expectations without the owner's explicit say-so.
 import React from "react";
 import { readFileSync } from "node:fs";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SignIn from "./SignIn";
 import { referrerSignInHref, safeReturnTo } from "@/lib/referrerSignIn";
@@ -17,15 +17,33 @@ vi.mock("wouter", () => ({
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState({}, "", "/"); });
 
 describe("login rule: job seeker", () => {
-  it("hands off to the hosted AuthKit screen, which offers personal email and every social login", () => {
+  it("offers personal email and all five social logins, on skipwait.me (never a hosted authkit.app page)", () => {
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign, search: "" });
     render(<SignIn />);
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: /Continue to sign in/ }));
-    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&fresh=1");
-    expect(screen.getByRole("button", { name: /Create a free account/ })).toBeTruthy();
+    for (const provider of ["Google", "Microsoft", "GitHub", "LinkedIn", "Slack"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${provider}`) })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /Continue with email/ })).toBeTruthy();
     expect(screen.queryByLabelText("Company email")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=google");
+    expect(assign).not.toHaveBeenCalledWith(expect.stringContaining("authkit.app"));
+  });
+
+  it("email sign-in sends a code and verifies it against the email-code routes", async () => {
+    const calls: Array<[string, unknown]> = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string }) => { calls.push([url, JSON.parse(init.body)]); return { ok: true, json: async () => (url.endsWith("/send") ? { sent: true } : { signedIn: true }) }; }));
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign, search: "" });
+    render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Asha@Gmail.com " } });
+    fireEvent.click(screen.getByRole("button", { name: /Send sign-in code/ }));
+    const codeInput = await screen.findByLabelText("Six-digit code");
+    fireEvent.change(codeInput, { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith("/explore"));
+    expect(calls).toEqual([["/api/auth/workos/email-code/send", { email: "asha@gmail.com" }], ["/api/auth/workos/email-code/verify", { email: "asha@gmail.com", code: "123456" }]]);
   });
 });
 
@@ -36,7 +54,7 @@ describe("login rule: referrer", () => {
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue with (Google|Microsoft|GitHub)/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Continue to sign in/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continue with email/ })).toBeNull();
     expect(screen.queryByLabelText("Email address")).toBeNull();
     expect(screen.queryByRole("button", { name: /Create a free account/ })).toBeNull();
   });
