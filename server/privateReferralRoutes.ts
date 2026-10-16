@@ -1383,7 +1383,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // measurement D-018 asks for (D-034/D-037 need it), and null when unwired so the
       // panel shows nothing rather than invented numbers.
       const [health, baseline] = await Promise.all([
-        deps.getReferralFlowHealth?.() ?? { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } },
+        deps.getReferralFlowHealth?.() ?? { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 }, fanOut: EMPTY_REFERRAL_FAN_OUT },
         deps.getReferralFlowBaseline ? deps.getReferralFlowBaseline() : Promise.resolve(null),
       ]);
       record({ actorUserId: identity.account.id, action: "admin.flow_health_viewed", outcome: "success", resourceType: "flow_health" });
@@ -1460,3 +1460,4 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
 }
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { EMPTY_REFERRAL_FAN_OUT } from "./referralFanOut";
