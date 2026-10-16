@@ -78,11 +78,15 @@ describe("Verify work email", () => {
     expect(screen.queryByText(/123456/)).toBeNull();
   });
 
-  it("never ships preview scaffolding or invented storage claims", async () => {
+  it("never ships preview scaffolding and states what the server really stores", async () => {
     stubApi({});
     renderVerify();
     expect(await screen.findAllByRole("radio")).toHaveLength(5);
-    for (const scaffold of [/DESIGN PREVIEW/i, /Try states/i, /Preview code/i, /one-way fingerprint/i, /next re-check/i]) expect(screen.queryByText(scaffold)).toBeNull();
+    for (const scaffold of [/DESIGN PREVIEW/i, /Try states/i, /Preview code/i, /next re-check/i]) expect(screen.queryByText(scaffold)).toBeNull();
+    // Queue task 3 made the fingerprint unconditional, so the kit line is true now and ships verbatim.
+    expect(screen.getByText("A one-way fingerprint of your email")).toBeTruthy();
+    expect(screen.getByText("Company and verification date")).toBeTruthy();
+    expect(screen.getByText("Never the code or your inbox")).toBeTruthy();
   });
 
   it("loads the companies from the directory, holding Continue until one is chosen", async () => {

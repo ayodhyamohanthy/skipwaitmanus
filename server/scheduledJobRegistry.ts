@@ -8,6 +8,7 @@ import { createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
+import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
 const MINUTE = 60_000;
@@ -54,5 +55,12 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createDataExportSweep(),
+  },
+  {
+    name: "work-email-otp-purge",
+    description: "Drops spent and expired work-email OTP codes, receipts and rate limits, and rewrites any legacy plaintext address to its one-way fingerprint",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createWorkEmailOtpPurgeJob(),
   },
 ];
