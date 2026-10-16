@@ -1,4 +1,5 @@
 import { ArrowRight, ShieldCheck, UserRound } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
@@ -115,7 +116,7 @@ export default function Profile() {
       </div>
 
       {loading ? (
-        <div className="workspace-empty slim" role="status"><p>Loading your profile…</p></div>
+        <LoadingNote>Loading your profile…</LoadingNote>
       ) : loadFailed ? (
         <div className="workspace-empty slim" role="alert">
           <p className="font-semibold text-destructive">{error}</p>

@@ -1,4 +1,5 @@
 import { Check, Circle, Eye, EyeOff } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 
@@ -81,7 +82,7 @@ export default function ResetPassword() {
           SkipWait<span className="brand-dot">.</span>
         </Link>
         {checking ? (
-          <p className="mt-10 text-center text-sm text-[var(--muted-foreground)]">Checking this link…</p>
+          <LoadingNote>Checking this link…</LoadingNote>
         ) : !linkValid ? (
           <section className="mt-10">
             <h1 className="text-3xl font-semibold tracking-[-.02em]">This link has expired.</h1>

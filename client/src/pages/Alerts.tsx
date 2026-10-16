@@ -1,4 +1,5 @@
 import { Bell, BellOff, CheckCheck } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
@@ -103,7 +104,7 @@ export default function Alerts() {
   const loadError = notifications.isError && !notifications.isFetching ? notifications.error.message : "";
 
   if (!isLoaded) {
-    return <main data-skipwait-screen="alerts" className="page-content"><Heading {...HEADING} /><p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your alerts…</p></main>;
+    return <main data-skipwait-screen="alerts" className="page-content"><Heading {...HEADING} /><LoadingNote>Loading your alerts…</LoadingNote></main>;
   }
 
   if (!isSignedIn) {
@@ -145,7 +146,7 @@ export default function Alerts() {
           </div>
 
           {actionNotice ? <p role="status" className="mb-4 text-sm text-muted-foreground">{actionNotice}</p> : null}
-          {loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your alerts…</p> : null}
+          {loading ? <LoadingNote>Loading your alerts…</LoadingNote> : null}
           {loadError ? (
             <div role="alert" className="mb-4 rounded-3xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
               {loadError} <button type="button" className="font-semibold underline" onClick={() => { void notifications.refetch(); }}>Try again</button>

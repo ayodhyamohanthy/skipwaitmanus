@@ -1,4 +1,5 @@
 import { ArrowRight, BadgeCheck, CalendarClock, Clock3, Inbox, Pause, Play, ShieldCheck } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -49,7 +50,7 @@ export default function ReferrerHome() {
       <Heading eyebrow={`REFERRER HOME${company ? ` · ${company.name}` : ""}`} title={greetingFor(new Date(nowMs).getHours())} text={SUBTITLE} aside={aside} />
 
       <div className="mt-5">
-      {home.isPending ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your referrer day…</p> : home.isError ? (
+      {home.isPending ? <LoadingNote>Loading your referrer day…</LoadingNote> : home.isError ? (
         <Panel tone="muted" className="text-center">
           <h2 className="text-xl font-semibold">We could not load your referrer day.</h2>
           <p role="alert" className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{home.error.message || "Check your connection and try again."}</p>
