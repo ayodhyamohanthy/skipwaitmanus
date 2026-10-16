@@ -20,7 +20,7 @@ const ALL_SOCIAL = [
   { id: "linkedin", label: "LinkedIn", mark: "in" },
   { id: "slack", label: "Slack", mark: "S" },
 ] as const;
-const WORKING_SOCIAL_IDS: readonly string[] = ["google", "github", "microsoft"];
+const WORKING_SOCIAL_IDS: readonly string[] = ["google", "github", "microsoft", "linkedin", "slack"];
 export const SEEKER_SOCIAL = ALL_SOCIAL.filter(p => WORKING_SOCIAL_IDS.includes(p.id));
 
 export function seekerSocialUrl(provider: string, returnTo: string): string {
