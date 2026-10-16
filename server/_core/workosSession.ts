@@ -1,3 +1,4 @@
+import { SESSION_ACCESS_TTL_MS } from "./sdk";
 import type { Request, Response } from "express";
 import { decodeJwt } from "jose";
 import { COOKIE_NAME } from "@shared/const";
@@ -13,7 +14,7 @@ import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS } from "./hostedAccountSwitc
  * suspension/review gate, and the same app_session_id cookie.
  */
 
-export const APP_SESSION_MAX_AGE_MS = 30 * 60_000;
+export const APP_SESSION_MAX_AGE_MS = SESSION_ACCESS_TTL_MS;
 
 export function resolveWorkosOpenId(workosUserId: string): string { return `workos_${workosUserId}`.slice(0, 64); }
 

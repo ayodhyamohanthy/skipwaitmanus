@@ -73,6 +73,7 @@ import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
@@ -174,6 +175,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
   // Referrer OTP-first login is a public surface, always registered.
+  app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
   registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
