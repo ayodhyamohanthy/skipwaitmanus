@@ -107,7 +107,57 @@ export async function saveReferrerPreferences(getToken: TokenSource, patch: Refe
   return (await sendJson("/api/referrer-preferences", "PUT", patch, getToken, preferencesPayloadSchema, "We could not save your referrer settings.")).preferences;
 }
 
+const bundleSchema = z.object({
+  access: referrerAccessResponseSchema,
+  preferences: preferencesPayloadSchema.shape.preferences.nullable(),
+  inboxNew: inboxSchema.nullable(),
+  inboxCompleted: inboxSchema.nullable(),
+  profile: profileSchema.nullable(),
+  impact: impactSchema.shape.summary.nullable(),
+  failed: z.array(z.string()),
+});
+
+type PrefetchedBundle = { at: number; response: Promise<Response> };
+
+/** The request index.html started at page load, used once and only while fresh. Any problem means "ask again". */
+async function takePrefetchedBundle(): Promise<z.infer<typeof bundleSchema> | null> {
+  const holder = globalThis as unknown as { __swHomeBundle?: PrefetchedBundle };
+  const prefetched = holder.__swHomeBundle;
+  holder.__swHomeBundle = undefined;
+  if (!prefetched || Date.now() - prefetched.at > 15_000) return null;
+  try {
+    const response = await prefetched.response;
+    if (!response.ok) return null;
+    const parsed = bundleSchema.safeParse(await response.json());
+    return parsed.success ? parsed.data : null;
+  } catch { return null; }
+}
+
+/** One request for the whole page. Returns null on any problem so the caller uses the separate endpoints instead. */
+async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData | null> {
+  try {
+    const bundle = (await takePrefetchedBundle()) ?? await getJson("/api/referrer/home-bundle", getToken, bundleSchema, "bundle unavailable");
+    const access: CompanyAccess = (() => { const a = bundle.access; return { verified: isVerifiedReferrer(a), domain: a.workEmailDomain ?? "", companyName: a.companyName, companyInitials: a.companyInitials }; })();
+    if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
+    // The page needs preferences and both lists; profile and impact are optional extras.
+    if (!bundle.preferences || !bundle.inboxNew || !bundle.inboxCompleted) return null;
+    return {
+      access,
+      preferences: bundle.preferences,
+      verifiedAt: bundle.profile?.profile?.workEmailVerifiedAt ?? null,
+      profileCapacity: bundle.profile?.profile?.referralCapacity ?? null,
+      impact: bundle.impact ?? null,
+      fresh: bundle.inboxNew.requests,
+      completed: bundle.inboxCompleted.requests,
+    };
+  } catch { return null; }
+}
+
 export async function fetchReferrerHome(getToken: TokenSource): Promise<ReferrerHomeData> {
+  return (await fetchHomeBundle(getToken)) ?? fetchReferrerHomeSeparately(getToken);
+}
+
+async function fetchReferrerHomeSeparately(getToken: TokenSource): Promise<ReferrerHomeData> {
   const access = await fetchCompanyAccess(getToken);
   if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
   const [preferences, fresh, completed, profile, impact] = await Promise.all([

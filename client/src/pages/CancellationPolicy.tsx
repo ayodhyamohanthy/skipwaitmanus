@@ -15,7 +15,7 @@ export default function CancellationPolicy() {
     icon={CircleSlash}
     eyebrow="Cancellation policy"
     title="Cancel any time. Here is exactly what happens."
-    intro="How to cancel a referral request, a Pro or Max subscription, or a credit purchase, and when any money comes back."
+    intro="How to cancel a referral request, a paid plan, or a credit purchase, and when any money comes back."
     updated="September 23, 2026"
     footnote="Statutory consumer rights in your country apply in addition to this policy and are not limited by it."
   >
@@ -27,10 +27,10 @@ export default function CancellationPolicy() {
       </ul>
     </PolicySection>
 
-    <PolicySection number="02" title="Cancelling a Pro or Max subscription">
+    <PolicySection number="02" title="Cancelling a paid plan">
       <ul>
         <li>Cancel renewal <strong>at any time</strong> from <Link href="/plans" className="font-semibold text-black">Plans</Link>, or email <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-black">{SUPPORT_EMAIL}</a> from your account email.</li>
-        <li>The cancellation takes effect at the <strong>end of the current billing cycle</strong>. Your plan and monthly allowance stay active until then and <strong>no further charges are made</strong>.</li>
+        <li>The cancellation takes effect at the <strong>end of the current billing cycle</strong>. Your plan and its allowance stay active until then and <strong>no further charges are made</strong>.</li>
         <li>Partly used months are not pro-rated. If you are charged after cancelling, that charge is <strong>refunded in full</strong>.</li>
       </ul>
     </PolicySection>
