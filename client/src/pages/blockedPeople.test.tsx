@@ -61,3 +61,104 @@ describe("BlockedPeople settings Panel", () => {
     expect(blockLabel({ id: 1, blockedUserId: 2, reason: "Asked for payment", createdAt: "not a date" })).toBe("Member · blocked · Asked for payment");
   });
 });
+
+/**
+ * Standalone block initiation (gate item 3.2's open gap).
+ *
+ * The server always accepted it -- POST /api/blocks takes `blockedUserId` or
+ * `referralRequestId`. What was missing was any way to reach it from Settings:
+ * the Panel listed blocks and removed them, full stop. These pin the client half.
+ */
+describe("BlockedPeople settings Panel — blocking a member directly", () => {
+  const fillAndSubmit = (id: string, reason?: string) => {
+    fireEvent.change(screen.getByLabelText("Block a member"), { target: { value: id } });
+    if (reason !== undefined) fireEvent.change(screen.getByLabelText(/Reason/), { target: { value: reason } });
+    fireEvent.click(screen.getByRole("button", { name: "Block member" }));
+  };
+
+  it("posts the member id and refetches the list", async () => {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") return ok({ blocked: true, created: true, id: 9, blockedUserId: 22 });
+      return ok({ blocks: [{ id: 9, blockedUserId: 22, reason: "spam", createdAt: "2026-10-16T00:00:00.000Z" }] });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel();
+    expect(await screen.findByText("You haven't blocked anyone.")).toBeTruthy();
+
+    fillAndSubmit("22", "spam");
+
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+    expect(post, "a block must actually be created").toBeTruthy();
+    expect(String(post![0])).toBe("/api/blocks");
+    expect(JSON.parse(String(post![1]?.body))).toMatchObject({ blockedUserId: 22, reason: "spam" });
+    // The 201 carries no reason or createdAt, so the row is refetched rather than invented.
+    expect(await screen.findByText("Member · blocked · spam")).toBeTruthy();
+  });
+
+  it("omits the reason entirely when none is given", async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "POST" ? ok({ blocked: true, created: true, id: 9, blockedUserId: 22 }) : ok({ blocks: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel();
+    expect(await screen.findByText("You haven't blocked anyone.")).toBeTruthy();
+
+    fillAndSubmit("22");
+
+    const post = fetchMock.mock.calls.find(([, init]) => init?.method === "POST");
+    expect(JSON.parse(String(post![1]?.body))).toEqual({ blockedUserId: 22 });
+  });
+
+  it("refuses a non-numeric, zero or negative id without calling the server", async () => {
+    // The server would also reject these; rejecting client-side avoids a round trip that
+    // can only fail, and the message is the same either way.
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "POST" ? ok({ blocked: true, created: true, id: 9, blockedUserId: 22 }) : ok({ blocks: [] }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel();
+    expect(await screen.findByText("You haven't blocked anyone.")).toBeTruthy();
+
+    for (const bad of ["abc", "0", "-3", "1.5", "  "]) {
+      fillAndSubmit(bad);
+      expect(await screen.findByRole("alert")).toBeTruthy();
+    }
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(false);
+  });
+
+  it("keeps the input and shows the server's own message when the block is refused", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "POST"
+        ? { ok: false, status: 400, json: async () => ({ error: "You cannot block yourself" }) }
+        : ok({ blocks: [] })));
+    renderPanel();
+    expect(await screen.findByText("You haven't blocked anyone.")).toBeTruthy();
+
+    fillAndSubmit("99");
+
+    expect((await screen.findByRole("alert")).textContent).toContain("You cannot block yourself");
+    // Still filled in, so a typo is corrected rather than retyped.
+    expect((screen.getByLabelText("Block a member") as HTMLInputElement).value).toBe("99");
+  });
+
+  it("clears the form on success", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === "POST" ? ok({ blocked: true, created: true, id: 9, blockedUserId: 22 }) : ok({ blocks: [] })));
+    renderPanel();
+    expect(await screen.findByText("You haven't blocked anyone.")).toBeTruthy();
+
+    fillAndSubmit("22", "spam");
+    await screen.findByRole("button", { name: "Block member" });
+
+    expect((screen.getByLabelText("Block a member") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(/Reason/) as HTMLInputElement).value).toBe("");
+  });
+
+  it("disables the button until an id is entered", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => ok({ blocks: [] })));
+    renderPanel();
+    expect(await screen.findByText("You haven't blocked anyone.")).toBeTruthy();
+    const button = screen.getByRole("button", { name: "Block member" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("Block a member"), { target: { value: "22" } });
+    expect(button.disabled).toBe(false);
+  });
+});

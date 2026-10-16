@@ -25,6 +25,7 @@ export const SESSIONS_ERROR = "We could not load your sessions";
 export const ERASURE_ERROR = "We could not create your request";
 export const BLOCKS_ERROR = "We could not load your blocked list";
 export const UNBLOCK_ERROR = "We could not remove this block";
+export const BLOCK_ERROR = "We could not save this block";
 export const SLACK_STATUS_ERROR = "We could not load your Slack triage status";
 export const SLACK_CONNECT_ERROR = "We could not connect your Slack triage channel";
 export const SLACK_DISCONNECT_ERROR = "We could not disconnect your Slack triage channel";
@@ -48,6 +49,8 @@ export type SlackStatus = { connected: boolean; active: boolean };
 const blockRowSchema = z.object({ id: z.number(), blockedUserId: z.number(), reason: z.string().nullish(), createdAt: z.string().nullish() });
 export type BlockRow = z.infer<typeof blockRowSchema>;
 const blocksSchema = z.object({ blocks: z.array(blockRowSchema).default([]) });
+/** The server's 201 for a new block. Deliberately partial: no reason, no createdAt. */
+const blockCreatedSchema = z.object({ blocked: z.boolean(), created: z.boolean(), id: z.number(), blockedUserId: z.number() });
 
 const dataExportSchema = z.object({ export: z.object({
   id: z.number(),
@@ -76,7 +79,7 @@ export const settingsKeys = {
 
 type Method = "GET" | "POST" | "PUT" | "DELETE";
 
-async function call(url: string, getToken: TokenSource, method: Method = "GET", body?: Record<string, string>): Promise<Response> {
+async function call(url: string, getToken: TokenSource, method: Method = "GET", body?: Record<string, unknown>): Promise<Response> {
   const token = await getToken();
   const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {};
   if (body || method === "POST") headers["Content-Type"] = "application/json";
@@ -148,6 +151,33 @@ export async function fetchBlocks(getToken: TokenSource): Promise<BlockRow[]> {
 export async function unblock(id: number, getToken: TokenSource): Promise<void> {
   const response = await call(`/api/blocks/${id}`, getToken, "DELETE");
   if (!response.ok) throw new Error(UNBLOCK_ERROR);
+}
+
+/**
+ * Block a member directly, from Settings.
+ *
+ * The blocks API already accepted this -- `POST /api/blocks` takes either
+ * `blockedUserId` (block by member) or `referralRequestId` (block by conversation),
+ * and refuses both at once. The bug-free gate's item 3.2 recorded the gap as
+ * "block initiation exists only inside the safety Report flow, not as a standalone
+ * Settings action", which was true of the CLIENT only: Settings listed blocks and
+ * removed them, with no way to create one. This closes that.
+ *
+ * Returns only the new block's id. The server's 201 reply is
+ * `{ blocked, created, id, blockedUserId }` -- no reason, no createdAt -- so a
+ * full BlockRow cannot be assembled from it, and the caller refetches the list
+ * instead of inventing a row to look like one.
+ */
+export async function blockMember(
+  getToken: TokenSource,
+  input: { blockedUserId: number; reason?: string },
+): Promise<number> {
+  const response = await call("/api/blocks", getToken, "POST", {
+    blockedUserId: input.blockedUserId,
+    ...(input.reason && input.reason.trim() ? { reason: input.reason.trim() } : {}),
+  });
+  const parsed = await readReply(response, blockCreatedSchema, BLOCK_ERROR);
+  return parsed.id;
 }
 
 export async function fetchLatestDataExport(getToken: TokenSource): Promise<DataExportSummary | null> {
