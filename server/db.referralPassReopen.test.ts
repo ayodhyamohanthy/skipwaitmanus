@@ -392,6 +392,43 @@ describe("pickup permanently spends the ask credit", () => {
     }
   }
 
+  it.each([
+    ["ledger refund", "credit_spend", "monthly_allowance", "2026-10", 2, false, true],
+    ["ended ledger cycle", "credit_spend", "monthly_allowance", "2026-09", 2, false, false],
+    ["capped ledger cycle", "credit_spend", "monthly_allowance", "2026-10", 3, false, false],
+    ["prior ledger reversal", "credit_spend", "monthly_allowance", "2026-10", 2, true, false],
+    ["legacy monthly refund", "direct_request", "monthly_allowance", "2026-10", 2, false, true],
+    ["ended legacy cycle", "direct_request", "monthly_allowance", "2026-09", 2, false, false],
+    ["capped legacy cycle", "direct_request", "monthly_allowance", "2026-10", 3, false, false],
+    ["legacy purchased refund", "direct_request", "purchased_balance", null, 2, false, true],
+    ["prior legacy reversal", "direct_request", "monthly_allowance", "2026-10", 2, true, false],
+  ] as const)("reports actual movement, not debit existence, for %s", async (_scenario, kind, source, sourceCycleKey, monthly, reversed, creditRefunded) => {
+    Object.assign(rows.tokenTransactions[0], { kind, source, sourceCycleKey });
+    rows.tokenBalances[0].monthlyCreditsRemaining = monthly;
+    if (reversed) rows.tokenTransactions.push({ id: 12, reversesTransactionId: 11 });
+    const result = await withdrawCompanyReferralRequest(7, 501);
+    expect(result).toMatchObject({ withdrawn: true, status: "withdrawn", creditRefunded });
+    expect(ask().status).toBe("withdrawn");
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(monthly + (creditRefunded && source === "monthly_allowance" ? 1 : 0));
+    expect(rows.tokenBalances[0].balance).toBe(creditRefunded && source === "purchased_balance" ? 1 : 0);
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, creditRefunded: false });
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
+  });
+
+  it("reports no refund for a free ask", async () => {
+    ask().debitTransactionId = null; rows.tokenTransactions = [];
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, creditRefunded: false });
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2); expect(rows.tokenTransactions).toEqual([]);
+  });
+
+  it("reports no refund after actual claim, pass and withdrawal", async () => {
+    await claimCompanyReferralRequest(9, 501);
+    await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
+    expect(await withdrawCompanyReferralRequest(7, 501)).toMatchObject({ withdrawn: true, creditRefunded: false });
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
+  });
+
   for (const terminal of ["withdraw", "expiry"] as const) {
     it(`never refunds after actual claim then declined review then ${terminal}`, async () => {
       await claimCompanyReferralRequest(9, 501);
