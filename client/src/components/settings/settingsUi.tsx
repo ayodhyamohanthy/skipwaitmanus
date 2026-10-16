@@ -1,6 +1,6 @@
 // Small kit-token building blocks shared by the Settings panels.
 import type { ReactNode } from "react";
-import { CheckCircle2, LoaderCircle } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { SignInButton } from "@/_core/auth";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
@@ -25,7 +25,7 @@ export function ErrorNotice({ message, onRetry }: { message: string; onRetry?: (
 }
 
 export function Loading({ children }: { children: ReactNode }) {
-  return <p className="mt-3 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" aria-hidden="true" />{children}</p>;
+  return <div role="status" className="mt-3 space-y-2"><span className="sr-only">{children}</span><div aria-hidden="true" className="h-4 w-40 rounded-[0.25rem] bg-muted motion-safe:animate-pulse" /><div aria-hidden="true" className="h-12 rounded-xl bg-muted motion-safe:animate-pulse" /></div>;
 }
 
 /** Signed-out stand-in for a section whose controls belong to an account. */

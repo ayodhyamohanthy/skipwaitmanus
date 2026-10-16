@@ -18,6 +18,18 @@ export function LoadingScreen() {
   );
 }
 
+/** Inline loading placeholder: grey skeleton bars for sighted users, the message stays for screen readers only. */
+export function LoadingNote({ children }: { children: string }) {
+  return (
+    <div role="status" className="mt-10 space-y-3">
+      <span className="sr-only">{children}</span>
+      <div aria-hidden="true" className="h-5 w-48 rounded-[0.25rem] bg-muted motion-safe:animate-pulse" />
+      <div aria-hidden="true" className="h-20 rounded-2xl bg-muted motion-safe:animate-pulse" />
+      <div aria-hidden="true" className="h-20 rounded-2xl bg-muted motion-safe:animate-pulse" />
+    </div>
+  );
+}
+
 /** Kit banner row (offline, slow connection), pinned to the top of the viewport. */
 export function StatusBanner({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (

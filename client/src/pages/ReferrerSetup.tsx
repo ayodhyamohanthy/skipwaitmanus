@@ -1,4 +1,5 @@
 import { ArrowRight, BadgeCheck } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -37,7 +38,7 @@ export default function ReferrerSetup() {
   const data = setup.data;
   return (
     <main data-skipwait-screen="referrer-setup" className="page-content mx-auto max-w-2xl">
-      {setup.isPending ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your referrer setup…</p> : setup.isError ? (
+      {setup.isPending ? <LoadingNote>Loading your referrer setup…</LoadingNote> : setup.isError ? (
         <Panel tone="muted" className="text-center">
           <h1 className="text-2xl font-semibold">We could not load your setup.</h1>
           <p role="alert" className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{setup.error.message || "Check your connection and try again."}</p>

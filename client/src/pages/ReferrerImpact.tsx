@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
-import { ArrowRight, CheckCircle2, HeartHandshake, LoaderCircle, RefreshCw, ShieldCheck, type LucideIcon } from "lucide-react";
+import { ArrowRight, CheckCircle2, HeartHandshake, RefreshCw, ShieldCheck, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { REFERRER_SIGN_IN_HREF, ReferrerWorkspace } from "@/components/referrer/ReferrerWorkspace";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
@@ -57,7 +58,7 @@ export default function ReferrerImpact() {
   };
   useEffect(() => { if (isSignedIn && hasVerifiedWorkEmail) void loadSummary(); }, [isSignedIn, hasVerifiedWorkEmail]);
   const frame = (screen: string, content: ReactNode) => <ReferrerWorkspace view="impact" screen={screen} isSignedIn={Boolean(isSignedIn)} onSignIn={() => go(REFERRER_SIGN_IN_HREF)}>{content}</ReferrerWorkspace>;
-  const loadingState = <ImpactState icon={LoaderCircle} eyebrow="PRIVATE BY DEFAULT" title="Loading your private impact…" busy />;
+  const loadingState = <LoadingNote>Loading your private impact…</LoadingNote>;
 
   if (!isLoaded) return frame("referrer-impact-loading", loadingState);
 

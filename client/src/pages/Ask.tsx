@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowRight, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
@@ -172,7 +173,7 @@ export default function Ask() {
     return (
       <main data-skipwait-screen="ask-loading" className="page-content mx-auto max-w-xl" aria-busy="true">
         <AskHeading text="Referrers decide in under a minute. Make that minute easy." />
-        <p role="status" className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"><LoaderCircle className="size-4 animate-spin" />Checking your sign-in…</p>
+        <LoadingNote>Checking your sign-in…</LoadingNote>
       </main>
     );
   }

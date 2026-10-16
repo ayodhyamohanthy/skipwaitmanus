@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
@@ -80,7 +81,7 @@ export default function Billing() {
     <main data-skipwait-screen="billing" className="page-content mx-auto max-w-3xl">
       <Heading eyebrow="PLANS & CREDITS" title="Manage plan" aside={comparePlans} />
 
-      {loading ? <Panel><p role="status" className="text-sm text-muted-foreground">Loading billing…</p></Panel> : null}
+      {loading ? <Panel><LoadingNote>Loading billing…</LoadingNote></Panel> : null}
       {!loading && error ? <Panel tone="muted" className="border border-destructive/40"><div role="alert"><strong className="text-destructive">{error}</strong><p className="mt-1 text-sm">Your plan and payments are unchanged. Try again in a moment.</p></div><Button size="sm" className="mt-3" onClick={() => setReloadKey(key => key + 1)}>Try again</Button></Panel> : null}
 
       {!loading && !error && summary ? (
