@@ -1,4 +1,5 @@
 import { Check, Eye, Pin, Plus, Upload, Users } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useCallback, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -163,7 +164,7 @@ export default function Work() {
       {error && !adding && !editing ? <div role="alert" className="mb-4 flex flex-wrap items-center gap-3 text-sm font-semibold text-destructive"><p>{error}</p>{loadFailed ? <Button variant="outline" size="sm" onClick={() => { void load(); }}>Try again</Button> : null}</div> : null}
 
       {loading ? (
-        <div className="workspace-empty slim" role="status"><p>Loading your work…</p></div>
+        <LoadingNote>Loading your work…</LoadingNote>
       ) : loadFailed ? null : shown.length === 0 ? (
         <div className="workspace-empty">
           <span className="empty-icon"><Upload /></span>

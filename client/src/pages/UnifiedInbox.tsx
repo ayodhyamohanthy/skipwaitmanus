@@ -1,4 +1,5 @@
 import { Search } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth, useUser } from "@/_core/auth";
@@ -35,7 +36,7 @@ export default function UnifiedInbox() {
   const visible = useMemo(() => filterInboxThreads(threads, side, query), [threads, side, query]);
 
   if (!isLoaded) {
-    return <main data-skipwait-screen="inbox" className="page-content"><Heading {...HEADING} /><p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your conversations…</p></main>;
+    return <main data-skipwait-screen="inbox" className="page-content"><Heading {...HEADING} /><LoadingNote>Loading your conversations…</LoadingNote></main>;
   }
 
   if (!isSignedIn) {
@@ -67,7 +68,7 @@ export default function UnifiedInbox() {
       </div>
 
       {failed.length > 0 ? <InboxLoadError message={errorMessage(failed[0])} partial={partial} retrying={retrying} onRetry={retry} /> : null}
-      {loading && threads.length === 0 ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your conversations…</p> : null}
+      {loading && threads.length === 0 ? <LoadingNote>Loading your conversations…</LoadingNote> : null}
       {!loading && failed.length === 0 && visible.length === 0 ? <InboxEmpty filtered={threads.length > 0} /> : null}
       {partial && visible.length === 0 ? <InboxEmpty filtered /> : null}
       {visible.length > 0 ? <InboxThreadList threads={visible} /> : null}

@@ -1,4 +1,5 @@
 import { Bell, BellOff, Plus, Search, Trash2 } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FREE_ALERT_LIMIT, type SeekerAlert } from "@shared/alerts";
@@ -95,7 +96,7 @@ export function SavedAlerts({ userId, getToken }: { userId: string | null; getTo
 
   return (
     <div className="mt-4 space-y-3" data-skipwait-saved-alerts="live">
-      {loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your saved alerts…</p> : null}
+      {loading ? <LoadingNote>Loading your saved alerts…</LoadingNote> : null}
       {loadError ? (
         <div role="alert" className="rounded-3xl border border-destructive/30 bg-destructive/10 p-4 text-sm">
           {loadError} <button type="button" className="font-semibold underline" onClick={() => { void alerts.refetch(); }}>Try again</button>
