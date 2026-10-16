@@ -137,8 +137,10 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "tokenBalances", column: "trialStartedAt", definition: "TIMESTAMP NULL" },
   { table: "tokenBalances", column: "trialEndsAt", definition: "TIMESTAMP NULL" },
   // D-022 referrer-posted roles (0093). Post expiry is added defensively as NULL here;
-  // 0093 backfills createdAt + 30 days and enforces NOT NULL, and every read treats a
-  // missing expiry as "not expired" so a drifted DB never hides live posts.
+  // 0093 backfills each row to its pre-migration visible state (hiring-now: createdAt +
+  // 30 days; walk-ins: walkInEndsAt, malformed end-less walk-ins stay hidden) and
+  // enforces NOT NULL, and every read treats a missing expiry as "not expired" so a
+  // drifted DB never hides live posts.
   { table: "companyOpportunities", column: "expiresAt", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "showPosterFirstName", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "referralRequests", column: "opportunityId", definition: "INT NULL" },

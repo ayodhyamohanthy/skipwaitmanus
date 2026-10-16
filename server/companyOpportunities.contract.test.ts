@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   OPPORTUNITY_FIRST_LOOK_MS,
@@ -131,5 +132,26 @@ describe("opportunity clocks", () => {
     expect(isOpportunityExpired(null, nowMs)).toBe(false);
     expect(isOpportunityExpired(undefined, nowMs)).toBe(false);
     expect(isOpportunityExpired("not-a-date", nowMs)).toBe(false);
+  });
+});
+
+// 0093 backfills `expiresAt` on deploy day. The backfill must reproduce the
+// pre-migration wall exactly from the one clock it installs, or a post's
+// visible state flips on deploy: hiring-now rows kept their 30-day createdAt
+// window, walk-in rows lived only until walkInEndsAt, and a legacy walk-in
+// with no end time was never live — it must never be revived.
+describe("postings migration (0093) backfill", () => {
+  const migration = readFileSync(new URL("../drizzle/deploy/0093_opportunity_postings.sql", import.meta.url), "utf8");
+
+  it("fills every existing row from its pre-migration visible state", () => {
+    expect(migration).toContain("SET `expiresAt` = CASE WHEN `kind` = 'walk_in' THEN COALESCE(`walkInEndsAt`, `createdAt`) ELSE DATE_ADD(`createdAt`, INTERVAL 30 DAY) END WHERE `expiresAt` IS NULL");
+  });
+
+  it("keeps one guarded data write and ends with the column NOT NULL", () => {
+    const body = migration.replace(/--.*$/gm, "");
+    const writes = body.match(/^\s*(UPDATE|INSERT\s+INTO|DELETE\s+FROM)\b.*$/gim) ?? [];
+    expect(writes).toHaveLength(1);
+    expect(body).toContain("MODIFY `expiresAt` TIMESTAMP NOT NULL");
+    expect(body).not.toMatch(/^\s*ALTER TABLE/im);
   });
 });

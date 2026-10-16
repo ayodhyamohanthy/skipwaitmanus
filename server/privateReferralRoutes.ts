@@ -280,9 +280,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   // The wall's wired projection carries `createdAt` and may omit `expiresAt`
   // (the sponsored-capable select). Judge every row by the one clock migration
-  // 0093 backfills — the row's own expiry, or createdAt + 30 days — and never
-  // hide a row whose age cannot be established (drift stays visible, like
-  // every other read).
+  // 0093 backfills — the row's own expiry — and fall back to createdAt + 30 days
+  // only when a drifted projection omits the expiry; never hide a row whose age
+  // cannot be established (drift stays visible, like every other read).
   const wallRowExpiresAt = (row: unknown): Date | string | null => {
     if (!row || typeof row !== "object") return null;
     const { expiresAt, createdAt } = row as { expiresAt?: unknown; createdAt?: unknown };
