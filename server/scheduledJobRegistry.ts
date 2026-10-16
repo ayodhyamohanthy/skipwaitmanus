@@ -3,6 +3,7 @@
 // is a whole number of cron periods so every period lands in exactly one.
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
+import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
 import { createDataExportSweep } from "./dataExport";
@@ -18,6 +19,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createAskExpirySweep(),
+  },
+  {
+    name: "first-look-release",
+    description: "Opens asks written from a post to the rest of the company once the poster's 48-hour first look lapses without a decision",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createFirstLookRelease(),
   },
   {
     name: "plan-credit-cycles",
