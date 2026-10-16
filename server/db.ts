@@ -25,7 +25,8 @@ import {
   type DeveloperApp,
 } from "../shared/assistant";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
-import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { ASK_TTL_DAYS, ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { summariseReferredOutcomeFromEvents, type ReferredOutcomeSummary } from "../shared/referralOutcome";
 import { CONSUMER_EMAIL_DOMAINS } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
@@ -1144,6 +1145,39 @@ export async function getPrivateReferrerImpactSummary(userId: number): Promise<P
     offers: statusCount("offer"),
     repliedWithin3DaysPct: decided === 0 ? null : Math.round((within3Days / decided) * 100),
   };
+}
+
+/**
+ * "Referred within N days" across the whole platform, from the append-only transition log.
+ *
+ * The growth note ranks this 9/10 AS A PREREQUISITE: it moves nothing by itself, but every other
+ * claim in that note ("becomes a 10 when 70% of the first 20 accepted asks are marked Referred
+ * within 5 days") is a clause about this number. Without it, nothing that follows is testable.
+ *
+ * Derived, not stored. referralRequests carries no acceptedAt/referredAt column, and it does not
+ * need one: the transition log already records every status change with its timestamp, and this
+ * reads acceptance and referral moments out of it. A new column would be a second copy of a fact
+ * that can drift from the first.
+ *
+ * Note the shape of the empty answer: accepted 0 and rate null. Never 0% for "nothing has happened".
+ * The existing ReferrerImpactSummary already uses that convention (repliedWithin3DaysPct is null,
+ * not 0, when nothing has decided), and a rate that silently reads 0% would fake a failure that has
+ * not occurred.
+ */
+export async function getReferredOutcomeSummary(): Promise<ReferredOutcomeSummary> {
+  const empty: ReferredOutcomeSummary = { accepted: 0, referredWithin: 0, rate: null, medianDays: null, windowDays: ASK_TTL_DAYS };
+  const db = await getDb();
+  if (!db) return empty;
+
+  const events = await db.select({
+    requestId: referralTransitionEvents.referralRequestId,
+    resultingStatus: referralTransitionEvents.resultingStatus,
+    at: referralTransitionEvents.createdAt,
+  }).from(referralTransitionEvents);
+
+  // Earliest moment each ask reached each stage. Later stages imply the earlier one happened, so
+  // taking the minimum over every qualifying transition is correct even if a row skipped a stage.
+  return summariseReferredOutcomeFromEvents(events);
 }
 
 export type ReferrerImpactSummary = { acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> };
