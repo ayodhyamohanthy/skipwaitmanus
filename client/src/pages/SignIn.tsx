@@ -19,6 +19,8 @@ const INTENT_RETURN_TO: Readonly<Record<Intent, string>> = { seeker: "/explore",
  */
 function workosAuthUrl(screen: "sign-in" | "sign-up", intent: Intent, email = "", provider = ""): string {
   const params = new URLSearchParams({ returnTo: INTENT_RETURN_TO[intent] });
+  // Clicking Continue on this page must show the AuthKit screen, not silently reuse a leftover hosted session.
+  if (screen === "sign-in" && !provider) params.set("fresh", "1");
   if (provider) params.set("provider", provider);
   const loginHint = email.trim().toLowerCase();
   if (loginHint) params.set("login_hint", loginHint);

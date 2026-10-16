@@ -49,3 +49,16 @@ export async function revokeHostedSessionOnAccountSwitch(api: AccountSwitchApi |
   const timeout = new Promise<boolean>(resolve => { timer = setTimeout(() => { log("hosted account-switch revoke timed out"); resolve(false); }, options.timeoutMs ?? 3000); });
   try { return await Promise.race([work, timeout]); } finally { if (timer) clearTimeout(timer); }
 }
+
+/**
+ * An explicit "Continue to sign in" click on /sign-in must show the AuthKit box, not silently reuse a hosted
+ * session left in this browser (founder report Oct 16 2026: Sign in went straight to /explore). Revokes the linked
+ * hosted session, fail-soft. True when a session was revoked.
+ */
+export async function revokeLinkedHostedSession(api: Pick<AccountSwitchApi, "revokeSession"> | undefined, link: HostedLink | null, options: { timeoutMs?: number; log?: (message: string) => void } = {}): Promise<boolean> {
+  if (!api || !link) return false;
+  const work = api.revokeSession({ sessionId: link.sid }).then(() => true).catch(() => false);
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<boolean>(resolve => { timer = setTimeout(() => { (options.log ?? (() => {}))("hosted fresh sign-in revoke timed out"); resolve(false); }, options.timeoutMs ?? 3000); });
+  try { return await Promise.race([work, timeout]); } finally { if (timer) clearTimeout(timer); }
+}

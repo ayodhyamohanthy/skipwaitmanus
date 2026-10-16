@@ -58,7 +58,7 @@ describe("SignIn", () => {
     expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(document.querySelector("input[type=password]")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Continue to sign in/ }));
-    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore");
+    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&fresh=1");
   });
 
   it("ships no design-preview scaffolding", () => {

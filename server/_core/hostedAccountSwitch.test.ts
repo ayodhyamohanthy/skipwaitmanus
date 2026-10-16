@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { readHostedLink, revokeHostedSessionOnAccountSwitch, signHostedLink, type AccountSwitchApi } from "./hostedAccountSwitch";
+import { readHostedLink, revokeHostedSessionOnAccountSwitch, revokeLinkedHostedSession, signHostedLink, type AccountSwitchApi } from "./hostedAccountSwitch";
 
 const key = new TextEncoder().encode("k".repeat(32));
 const link = { uid: "user_A1", sid: "session_A1" };
@@ -48,5 +48,20 @@ describe("revokeHostedSessionOnAccountSwitch", () => {
     const log = vi.fn();
     expect(await revokeHostedSessionOnAccountSwitch(api({ listUsers: () => new Promise(() => undefined) }), link, "b@example.com", { timeoutMs: 20, log })).toBe(false);
     expect(log).toHaveBeenCalled();
+  });
+});
+
+describe("revokeLinkedHostedSession (fresh sign-in from /sign-in)", () => {
+  it("revokes the linked hosted session so AuthKit shows its box", async () => {
+    const revokeSession = vi.fn().mockResolvedValue({});
+    expect(await revokeLinkedHostedSession({ revokeSession }, { uid: "user_1", sid: "session_1" })).toBe(true);
+    expect(revokeSession).toHaveBeenCalledWith({ sessionId: "session_1" });
+  });
+  it("does nothing without a link and never throws when WorkOS fails", async () => {
+    const revokeSession = vi.fn().mockRejectedValue(new Error("down"));
+    expect(await revokeLinkedHostedSession({ revokeSession }, null)).toBe(false);
+    expect(revokeSession).not.toHaveBeenCalled();
+    expect(await revokeLinkedHostedSession({ revokeSession }, { uid: "user_1", sid: "session_1" })).toBe(false);
+    expect(await revokeLinkedHostedSession(undefined, { uid: "user_1", sid: "session_1" })).toBe(false);
   });
 });

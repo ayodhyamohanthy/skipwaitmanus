@@ -23,7 +23,7 @@ describe("login rule: job seeker", () => {
     render(<SignIn />);
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(screen.getByRole("button", { name: /Continue to sign in/ }));
-    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore");
+    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&fresh=1");
     expect(screen.getByRole("button", { name: /Create a free account/ })).toBeTruthy();
     expect(screen.queryByLabelText("Company email")).toBeNull();
   });
