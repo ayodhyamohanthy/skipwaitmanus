@@ -35,7 +35,7 @@ import {
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { isBillablePlanId, type BillablePlanId, type BillingPeriod, type WalletPlanId } from "../shared/billingCatalog";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
-import { firstLookUntilFrom, isOpportunityExpired, opportunityExpiresAtFrom, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
+import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
@@ -1678,7 +1678,7 @@ export async function renewCompanyOpportunity(userId: number, opportunityId: num
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const owned = await db.select({ id: companyOpportunities.id }).from(companyOpportunities).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId))).limit(1);
   if (!owned[0]) return undefined;
-  const expiresAt = opportunityExpiresAtFrom(new Date(nowMs));
+  const expiresAt = opportunityWindowEnd(nowMs);
   await db.update(companyOpportunities).set({ expiresAt, isActive: true }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId)));
   return { id: opportunityId, renewed: true as const, expiresAt };
 }
