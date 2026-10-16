@@ -27,8 +27,8 @@ inventory_one() { # label, function, db
 
 sig() { # q db -> column+index signature hash (schema-name independent)
   local q="$1" db="$2"
-  $q -e "SELECT MD5(GROUP_CONCAT(CONCAT_WS('|',TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IFNULL(CHARACTER_SET_NAME,''),IFNULL(COLLATION_NAME,''),IS_NULLABLE,IFNULL(COLUMN_DEFAULT,'~NULL~'),EXTRA) ORDER BY TABLE_NAME,ORDINAL_POSITION SEPARATOR ';')) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$db'" 
-  $q -e "SELECT MD5(GROUP_CONCAT(CONCAT_WS('|',TABLE_NAME,INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,IFNULL(SUB_PART,'')) ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX SEPARATOR ';')) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='$db'"
+  $q -e "SET SESSION group_concat_max_len=4294967295; SELECT MD5(GROUP_CONCAT(CONCAT_WS('|',TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IFNULL(CHARACTER_SET_NAME,''),IFNULL(COLLATION_NAME,''),IS_NULLABLE,IFNULL(COLUMN_DEFAULT,'~NULL~'),EXTRA) ORDER BY TABLE_NAME,ORDINAL_POSITION SEPARATOR ';')) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$db'" 
+  $q -e "SET SESSION group_concat_max_len=4294967295; SELECT MD5(GROUP_CONCAT(CONCAT_WS('|',TABLE_NAME,INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,IFNULL(SUB_PART,'')) ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX SEPARATOR ';')) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='$db'"
 }
 
 case "$MODE" in
@@ -56,7 +56,7 @@ verify)
   if [ "$S_OLD" = "$S_NEW" ]; then echo "OK definitions identical (columns+indexes): $S_OLD"; else echo "DIFF definitions: old=$S_OLD new=$S_NEW"; fail=1; fi
   printf '%-40s %10s %10s %s\n' TABLE OLD_ROWS NEW_ROWS RESULT
   for t in $(oldq -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='$OLD_NAME' AND TABLE_TYPE='BASE TABLE' ORDER BY 1"); do
-    cols=$(oldq -e "SELECT GROUP_CONCAT(IF(DATA_TYPE IN ('binary','varbinary','blob','tinyblob','mediumblob','longblob','bit','geometry'),CONCAT('IFNULL(HEX(\`',COLUMN_NAME,'\`),''~NULL~'')'),CONCAT('IFNULL(CAST(\`',COLUMN_NAME,'\` AS CHAR),''~NULL~'')')) ORDER BY ORDINAL_POSITION SEPARATOR ',') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$OLD_NAME' AND TABLE_NAME='$t'")
+    cols=$(oldq -e "SET SESSION group_concat_max_len=1000000; SELECT GROUP_CONCAT(IF(DATA_TYPE IN ('binary','varbinary','blob','tinyblob','mediumblob','longblob','bit','geometry'),CONCAT('IFNULL(HEX(\`',COLUMN_NAME,'\`),''~NULL~'')'),CONCAT('IFNULL(CAST(\`',COLUMN_NAME,'\` AS CHAR),''~NULL~'')')) ORDER BY ORDINAL_POSITION SEPARATOR ',') FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='$OLD_NAME' AND TABLE_NAME='$t'" | tail -1)
     hq="SET SESSION group_concat_max_len=4294967295; SELECT COUNT(*), IFNULL(MD5(GROUP_CONCAT(h ORDER BY h SEPARATOR '')),'empty') FROM (SELECT MD5(CONCAT_WS('|',$cols)) h FROM \`@DB@\`.\`$t\`) x"
     o=$(oldq -e "${hq//@DB@/$OLD_NAME}" | tail -1); n=$(newq -e "${hq//@DB@/$TARGET_DB}" 2>&1 | tail -1)
     oc=${o%%$'\t'*}; nc=${n%%$'\t'*}
