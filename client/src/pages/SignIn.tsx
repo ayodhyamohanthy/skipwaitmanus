@@ -32,8 +32,12 @@ export default function SignIn() {
     </section>
     <section className="auth-panel"><div className="auth-panel-inner">
       <Link className="auth-back" href="/"><ArrowLeft /> Back to home</Link>
-      <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to SkipWait.</h2><p>Choose how you’ll use SkipWait. You can change this later.</p></div>
-      <div className="intent-switch" role="group" aria-label="How do you want to use SkipWait?"><Button type="button" variant="ghost" className={intent === "seeker" ? "selected" : ""} aria-pressed={intent === "seeker"} onClick={() => setIntent("seeker")}><Sparkles />Find a referral</Button><Button type="button" variant="ghost" className={intent === "referrer" ? "selected" : ""} aria-pressed={intent === "referrer"} onClick={() => setIntent("referrer")}><ShieldCheck />Give a referral</Button></div>
+      <div className="auth-heading"><span className="auth-step">YOUR DOOR STARTS HERE</span><h2>Welcome to SkipWait.</h2><p>Pick your side. You can switch any time on this screen.</p></div>
+      <p className="intent-prompt" id="intent-prompt">I’m here to…</p>
+      <div className="intent-switch intent-cards" role="group" aria-labelledby="intent-prompt">
+        <Button type="button" variant="ghost" className={intent === "seeker" ? "selected" : ""} aria-pressed={intent === "seeker"} onClick={() => setIntent("seeker")}><Sparkles /><span className="intent-title">Find a referral</span><span className="intent-sub">I’m looking for a job</span>{intent === "seeker" && <Check className="intent-check" aria-hidden="true" />}</Button>
+        <Button type="button" variant="ghost" className={intent === "referrer" ? "selected" : ""} aria-pressed={intent === "referrer"} onClick={() => setIntent("referrer")}><ShieldCheck /><span className="intent-title">Give a referral</span><span className="intent-sub">I work at a company</span>{intent === "referrer" && <Check className="intent-check" aria-hidden="true" />}</Button>
+      </div>
       <div className="auth-context"><span>{intent === "seeker" ? "Explore companies and send a thoughtful request." : "Choose who you help and keep your identity private."}</span><Check /></div>
       {intent === "referrer"
         // FOUNDER-LOCKED (Oct 16 2026): referrers sign in with a work-email OTP only. No social, no personal email.
