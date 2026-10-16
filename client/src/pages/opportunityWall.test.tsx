@@ -37,6 +37,22 @@ describe("Opportunity Wall", () => {
     expect(whatsApp).not.toContain("employee%40");
   });
 
+  it("labels a paid placement as a featured listing and keeps it after employee posts", async () => {
+    const opening = (overrides: Record<string, unknown>) => ({ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14", isSponsored: false, ...overrides });
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (String(url).includes("/api/partners")) return { ok: true, json: async () => ({ modules: [] }) };
+      return { ok: true, json: async () => ({ opportunities: [opening({}), opening({ id: 2, companyDomain: "merkle.com", roleTitle: "Data Analyst", isSponsored: true })] }) };
+    }));
+    render(<OpportunityWall />);
+    await waitFor(() => expect(screen.getByText("Product Designer")).toBeTruthy());
+    expect(screen.getByText(/Employee-shared opening/)).toBeTruthy();
+    expect(screen.queryByText("Featured listing")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => expect(screen.getByText("Data Analyst")).toBeTruthy());
+    expect(screen.getByText(/Featured listing · paid placement/)).toBeTruthy();
+    expect(screen.getByText("Featured listing")).toBeTruthy();
+  });
+
   it("uses a visual no-opening state with one share action when no internal openings are live", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [] }) })));
     render(<OpportunityWall />);

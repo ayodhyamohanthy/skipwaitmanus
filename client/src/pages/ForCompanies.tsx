@@ -11,7 +11,7 @@ const VALUE = [
   { icon: Users, title: "Referrals from people who know the work", text: "Employees choose who to refer. You get context, not cold applications." },
   { icon: BarChart3, title: "Private by default", text: "Candidate names and resumes stay hidden until a verified employee accepts." },
   { icon: ShieldCheck, title: "Your team stays in control", text: "Passing is private and always okay. Nobody is ranked or pressured." },
-  { icon: Check, title: "Candidates never pay", text: "No commissions, no paid priority, no pay-to-win — enforced in the product." },
+  { icon: Check, title: "Candidates never pay", text: "No commissions, no paid ranking of candidates — the only paid placement is a labeled featured listing, enforced in the product." },
 ];
 
 const FAIR = ["Candidates never pay to be referred", "No paid ranking of candidates", "Employees can decline without pressure", "Privacy-first: names shared only on acceptance"];

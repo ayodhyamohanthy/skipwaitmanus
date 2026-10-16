@@ -1,8 +1,9 @@
 import express from "express";
 import request from "supertest";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { registerEmployerRoutes, type EmployerRouteDeps } from "./employerRoutes";
-import { EMPLOYER_UNLOCK_CREDIT_COST, SPONSOR_TIERS, UNLOCK_CREDIT_PACKS, orderOpportunitiesSponsoredFirst } from "./db";
+import { EMPLOYER_UNLOCK_CREDIT_COST, SPONSOR_TIERS, UNLOCK_CREDIT_PACKS, orderOpportunitiesOrganicFirst } from "./db";
 
 const employerIdentity = { account: { id: 11, openId: "workos_employer", role: "user" as const }, primaryEmail: { emailAddress: "hiring@acme.com" } };
 const seekerIdentity = { account: { id: 22, openId: "workos_seeker", role: "user" as const }, primaryEmail: { emailAddress: "seeker@example.com" } };
@@ -51,16 +52,38 @@ describe("b2b monetization constants", () => {
     expect(SPONSOR_TIERS.spotlight).toEqual({ days: 30, cost: 25 });
   });
 
-  it("orders sponsored opportunities first, then organic by recency", () => {
+  it("never lets a paid sponsorship outrank an employee post (D-040)", () => {
     const now = Date.now();
-    const ordered = orderOpportunitiesSponsoredFirst([
+    const ordered = orderOpportunitiesOrganicFirst([
       { id: 1, createdAt: new Date(now - 1000), sponsoredUntil: null },
       { id: 2, createdAt: new Date(now - 3000), sponsoredUntil: new Date(now + 86_400_000) },
       { id: 3, createdAt: new Date(now - 2000), sponsoredUntil: null },
       { id: 4, createdAt: new Date(now - 5000), sponsoredUntil: new Date(now - 1000) },
       { id: 5, createdAt: new Date(now - 4000), sponsoredUntil: new Date(now + 7 * 86_400_000) },
     ]);
-    expect(ordered.map(row => row.id)).toEqual([5, 2, 1, 3, 4]);
+    // Employee posts first (newest first, an expired sponsorship is organic
+    // again), then the two live sponsorships in their own labeled slot.
+    expect(ordered.map(row => row.id)).toEqual([1, 3, 4, 2, 5]);
+    const featured = ordered.map(row => (row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now ? 1 : 0));
+    expect(featured).toEqual([...featured].sort((a, b) => a - b));
+  });
+
+  it("keeps the ladder honest however long or large a sponsorship is", () => {
+    const now = Date.now();
+    const yearLong = { id: 1, createdAt: new Date(now - 10 * 86_400_000), sponsoredUntil: new Date(now + 365 * 86_400_000) };
+    const freshPost = { id: 2, createdAt: new Date(now - 60_000), sponsoredUntil: null };
+    expect(orderOpportunitiesOrganicFirst([yearLong, freshPost]).map(row => row.id)).toEqual([2, 1]);
+    expect(orderOpportunitiesOrganicFirst([freshPost, yearLong]).map(row => row.id)).toEqual([2, 1]);
+    expect(orderOpportunitiesOrganicFirst([])).toEqual([]);
+  });
+
+  it("orders only the public feed, so paid placement cannot reach asks or referrer inboxes", () => {
+    const dbSource = readFileSync(new URL("./db.ts", import.meta.url), "utf8");
+    // One definition, one caller; no sponsored-first helper survives anywhere.
+    expect(dbSource.match(/orderOpportunitiesOrganicFirst/g)).toHaveLength(2);
+    expect(dbSource).not.toMatch(/SponsoredFirst/);
+    const feed = dbSource.slice(dbSource.indexOf("export async function listPublicCompanyOpportunitiesWithSponsorship()"), dbSource.indexOf("export async function listPartnerModules"));
+    expect(feed).toContain("orderOpportunitiesOrganicFirst(rows)");
   });
 });
 
@@ -222,6 +245,26 @@ describe("sponsored roles", () => {
     expect(response.status).toBe(201);
     expect(response.body.sponsorship).toMatchObject({ tier: "featured", creditsSpent: 10 });
     expect(sponsorships).toEqual([[7, { tier: "featured", idempotencyKey: "sponsor-test-key-123456" }]]);
+  });
+
+  it("answers 503 and charges nothing while the owner has paused paid placement", async () => {
+    let charges = 0;
+    const app = buildApp(baseDeps({
+      employerSponsorshipEnabled: () => false,
+      sponsorCompanyOpportunity: async (_userId, opportunityId, input) => { charges += 1; return { opportunityId, tier: input.tier, creditsSpent: 10 }; },
+    }));
+    const response = await request(app).post("/api/employer/opportunities/7/sponsor").set("Idempotency-Key", "sponsor-test-key-123456").send({ tier: "featured" });
+    expect(response.status).toBe(503);
+    expect(response.body.error).toContain("Nothing was charged");
+    expect(charges).toBe(0);
+  });
+
+  it("keeps sponsorship purchasable when the switch is on or unset", async () => {
+    const key = "sponsor-test-key-123456";
+    const explicitOn = buildApp(baseDeps({ employerSponsorshipEnabled: () => true }));
+    expect((await request(explicitOn).post("/api/employer/opportunities/7/sponsor").set("Idempotency-Key", key).send({ tier: "featured" })).status).toBe(201);
+    const unset = buildApp(baseDeps());
+    expect((await request(unset).post("/api/employer/opportunities/7/sponsor").set("Idempotency-Key", key).send({ tier: "featured" })).status).toBe(201);
   });
 
   it("rejects an invalid tier and an invalid opportunity id", async () => {

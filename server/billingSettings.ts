@@ -32,3 +32,15 @@ export function usdRecurringConfirmed(env: BillingEnv = process.env): boolean {
 export function humanReviewersStaffed(env: BillingEnv = process.env): boolean {
   return flag(env, "HUMAN_REVIEWERS_STAFFED");
 }
+
+/**
+ * Paid employer placement (the sponsor route) is a labeled "Featured listing"
+ * that never outranks employee posts (D-040). Unlike the switches above, this
+ * one defaults to **on**: the surface already delivers what it sells, so the
+ * switch exists only so the owner can pause paid placement without a code
+ * change. Set EMPLOYER_SPONSORSHIP_ENABLED=false to pause it; the sponsor route
+ * then answers 503 and charges nothing.
+ */
+export function employerSponsorshipEnabled(env: BillingEnv = process.env): boolean {
+  return (env.EMPLOYER_SPONSORSHIP_ENABLED ?? "").trim().toLowerCase() !== "false";
+}

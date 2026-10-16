@@ -3974,16 +3974,18 @@ export async function listEmployerOpportunities(userId: number) {
   return rows.map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && row.sponsoredUntil.getTime() > now) }));
 }
 
-// Sponsored-first ordering: active sponsorships (longest window first), then
-// organic by recency. Pure so the ordering contract is testable without a DB.
-export function orderOpportunitiesSponsoredFirst<T extends { createdAt?: Date | string; sponsoredUntil?: Date | string | null }>(rows: T[]): T[] {
+// D-040: a paid placement never buys priority. Employee posts stay newest-first
+// and sponsored rows follow in their own labeled "Featured listing" slot; the
+// sponsorship flag is carried for that label only. Pure, so the ordering
+// contract is testable without a database.
+export function orderOpportunitiesOrganicFirst<T extends { createdAt?: Date | string; sponsoredUntil?: Date | string | null }>(rows: T[]): T[] {
   const now = Date.now();
   const time = (value?: Date | string | null) => (value ? new Date(value).getTime() : 0);
+  const featured = (row: T) => Boolean(row.sponsoredUntil && time(row.sponsoredUntil) > now);
   return [...rows].sort((a, b) => {
-    const aSponsored = a.sponsoredUntil ? time(a.sponsoredUntil) > now : false;
-    const bSponsored = b.sponsoredUntil ? time(b.sponsoredUntil) > now : false;
-    if (aSponsored !== bSponsored) return aSponsored ? -1 : 1;
-    if (aSponsored && bSponsored && time(a.sponsoredUntil) !== time(b.sponsoredUntil)) return time(b.sponsoredUntil) - time(a.sponsoredUntil);
+    const aFeatured = featured(a);
+    const bFeatured = featured(b);
+    if (aFeatured !== bFeatured) return aFeatured ? 1 : -1;
     return time(b.createdAt) - time(a.createdAt);
   });
 }
@@ -3995,7 +3997,7 @@ export async function listPublicCompanyOpportunitiesWithSponsorship() {
   try {
     const rows = await attempt();
     const now = Date.now();
-    return orderOpportunitiesSponsoredFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
+    return orderOpportunitiesOrganicFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
   } catch {
     // Pre-migration fallback mirrors the organic list with sponsor flags off.
     return (await listPublicCompanyOpportunities()).map(row => ({ ...row, sponsoredUntil: null as Date | null, sponsoredTier: null as "featured" | "spotlight" | null, isSponsored: false }));
