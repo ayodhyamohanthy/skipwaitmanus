@@ -1628,30 +1628,6 @@ export async function listMyCompanyOpportunities(userId: number, nowMs: number =
 }
 
 /**
- * Renew in one tap: the post opens a fresh 30-day window from now. Read then
- * update (not affected-rows-driven) because MySQL reports 0 affected rows for a
- * no-change update, and a missing or foreign post is undefined so the route
- * answers 404 without revealing that the post exists.
- */
-export async function renewCompanyOpportunity(userId: number, opportunityId: number, nowMs: number = Date.now()) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const owned = await db.select({ id: companyOpportunities.id }).from(companyOpportunities).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId))).limit(1);
-  if (!owned[0]) return undefined;
-  const expiresAt = opportunityExpiresAtFrom(new Date(nowMs));
-  await db.update(companyOpportunities).set({ expiresAt, isActive: true }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId)));
-  return { id: opportunityId, renewed: true as const, expiresAt };
-}
-
-/** Close the post without deleting anything; the row and its audit stay. */
-export async function closeCompanyOpportunity(userId: number, opportunityId: number) {
-  const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const owned = await db.select({ id: companyOpportunities.id }).from(companyOpportunities).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId))).limit(1);
-  if (!owned[0]) return undefined;
-  await db.update(companyOpportunities).set({ isActive: false }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId)));
-  return { id: opportunityId, closed: true as const };
-}
-
-/**
  * The 48-hour first look: true when this ask is still inside its poster's head
  * start and the viewer is someone else. Missing or unparsable data never hides
  * an ask (fail open), and the poster always sees their own ask.
@@ -1687,6 +1663,34 @@ async function resolveAskFirstLookTx(tx: any, input: { posterUserId: number; see
 
 export const isPrivateReferralJob = (row: { title?: string | null; description?: string | null }) =>
   row.title === "Role from shared job link" || row.description === "Private referral request routed from a Target Role URL.";
+
+// ---- D-022 referrer-posted roles: the poster's write controls, deliberately
+// outside the read-only region above (the public-read guard proves that region
+// stays side-effect-free). ----
+
+/**
+ * Renew in one tap: the post opens a fresh 30-day window from now. Read then
+ * update (not affected-rows-driven) because MySQL reports 0 affected rows for a
+ * no-change update, and a missing or foreign post is undefined so the route
+ * answers 404 without revealing that the post exists.
+ */
+export async function renewCompanyOpportunity(userId: number, opportunityId: number, nowMs: number = Date.now()) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const owned = await db.select({ id: companyOpportunities.id }).from(companyOpportunities).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId))).limit(1);
+  if (!owned[0]) return undefined;
+  const expiresAt = opportunityExpiresAtFrom(new Date(nowMs));
+  await db.update(companyOpportunities).set({ expiresAt, isActive: true }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId)));
+  return { id: opportunityId, renewed: true as const, expiresAt };
+}
+
+/** Close the post without deleting anything; the row and its audit stay. */
+export async function closeCompanyOpportunity(userId: number, opportunityId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const owned = await db.select({ id: companyOpportunities.id }).from(companyOpportunities).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId))).limit(1);
+  if (!owned[0]) return undefined;
+  await db.update(companyOpportunities).set({ isActive: false }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId)));
+  return { id: opportunityId, closed: true as const };
+}
 
 export async function listJobs(input: { query?: string; company?: string; location?: string; seniority?: string }) {
   const db = await getDb(); if (!db) return [];
