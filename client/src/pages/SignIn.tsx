@@ -1,8 +1,9 @@
-import { ArrowLeft, ArrowRight, Check, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowLeft, Check, ShieldCheck, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
+import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 
 type Intent = "seeker" | "referrer";
@@ -11,22 +12,10 @@ type Intent = "seeker" | "referrer";
 const INTENT_RETURN_TO: Readonly<Record<Intent, string>> = { seeker: "/explore", referrer: "/referrer-setup" };
 
 /**
- * Kit v4 sign-in (app/src/components/sign-in-page.tsx). WorkOS AuthKit is the
- * only credential store, so every continuation hands off to the hosted AuthKit
- * screen: the email step only carries the address forward as a login hint and
- * the password is entered on that secure screen, never on this page. The
- * intent switch picks where the person lands once AuthKit returns.
+ * Kit v4 sign-in (app/src/components/sign-in-page.tsx), all on skipwait.me. Job seekers: SeekerSignIn (social
+ * straight to the provider, email by six-digit code). Referrers: work-email OTP only. The intent switch picks
+ * where the person lands afterwards.
  */
-function workosAuthUrl(screen: "sign-in" | "sign-up", intent: Intent, email = "", provider = ""): string {
-  const params = new URLSearchParams({ returnTo: INTENT_RETURN_TO[intent] });
-  // Clicking Continue on this page must show the AuthKit screen, not silently reuse a leftover hosted session.
-  if (screen === "sign-in" && !provider) params.set("fresh", "1");
-  if (provider) params.set("provider", provider);
-  const loginHint = email.trim().toLowerCase();
-  if (loginHint) params.set("login_hint", loginHint);
-  return `/api/auth/workos/${screen}?${params}`;
-}
-
 /** Kit draws the legal names as plain muted text; they stay links, underlined only on hover or keyboard focus. */
 const legalLink = "hover:underline focus-visible:underline";
 
@@ -49,9 +38,9 @@ export default function SignIn() {
       {intent === "referrer"
         // FOUNDER-LOCKED (Oct 16 2026): referrers sign in with a work-email OTP only. No social, no personal email.
         ? <div className="auth-form" data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
-        // Job seekers get the hosted WorkOS AuthKit screen itself (email + Google/Microsoft/GitHub/LinkedIn/Slack).
-        : <div className="auth-options"><Button type="button" onClick={() => window.location.assign(workosAuthUrl("sign-in", intent))}>Continue to sign in <ArrowRight /></Button><p className="text-xs leading-relaxed text-muted-foreground">You’ll sign in on the next, secure screen with your email or Google, Microsoft, GitHub, LinkedIn or Slack.</p></div>}
-      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to SkipWait? <Button type="button" variant="link" onClick={() => window.location.assign(workosAuthUrl("sign-up", intent))}>Create a free account</Button></p>}
+        // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a six-digit code.
+        : <SeekerSignIn returnTo={INTENT_RETURN_TO.seeker} />}
+      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to SkipWait? Enter your email and we’ll create your account.</p>}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. Referrals are free and never guarantee an interview.</p>
     </div></section>
   </main>;

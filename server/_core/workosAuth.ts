@@ -1,5 +1,6 @@
 import { WorkOS } from "@workos-inc/node";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
+import { registerSeekerEmailCodeRoutes } from "./seekerEmailCode";
 import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS, readHostedLink, revokeHostedSessionOnAccountSwitch, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
@@ -207,8 +208,8 @@ async function resolveWorkosIdentityUncached(req: Request, dependencies: Identit
   return resolveCookieIdentity(req);
 }
 
-/** Social sign-ins verified live against the WorkOS authorize endpoint on Oct 14 2026. Apple is not enabled in the dashboard (404), so it is not offered. */
-export const SOCIAL_PROVIDERS: Record<string, "GoogleOAuth" | "MicrosoftOAuth" | "GitHubOAuth"> = { google: "GoogleOAuth", microsoft: "MicrosoftOAuth", github: "GitHubOAuth" };
+/** Social sign-ins verified live against the WorkOS authorize endpoint on Oct 14 2026 (LinkedIn and Slack re-verified Oct 16 2026: both 302 to the provider). Apple is not enabled in the dashboard (404), so it is not offered. */
+export const SOCIAL_PROVIDERS: Record<string, "GoogleOAuth" | "MicrosoftOAuth" | "GitHubOAuth" | "LinkedInOAuth" | "SlackOAuth"> = { google: "GoogleOAuth", microsoft: "MicrosoftOAuth", github: "GitHubOAuth", linkedin: "LinkedInOAuth", slack: "SlackOAuth" };
 
 export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) {
   return function registerWorkosAuthRoutes(app: Express) {
@@ -331,6 +332,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
       }
     });
+    registerSeekerEmailCodeRoutes(app, { workos, clientId, signHostedLink: input => signHostedLink(input, returnKey) });
     app.get("/api/auth/workos/admin-diagnostic/:id",(req,res)=>{
       if(process.env.ENABLE_ADMIN_BOOTSTRAP!=="true"||req.header("x-admin-secret")!==process.env.ADMIN_SMOKE_SECRET)return res.status(404).send("Not found");
       const diagnostic=authDiagnostics.get(req.params.id);return diagnostic?res.set("Cache-Control","no-store").json(diagnostic):res.status(404).send("Not found");
