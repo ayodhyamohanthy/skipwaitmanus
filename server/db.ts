@@ -1518,6 +1518,22 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
   return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, compensation: input.compensation?.trim() || null };
 }
 
+/** The poster's own live openings (never anyone else's). */
+export async function listMyCompanyOpportunities(userId: number) {
+  const db = await getDb(); if (!db) return [];
+  return db.select({ id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, createdAt: companyOpportunities.createdAt, walkInEndsAt: companyOpportunities.walkInEndsAt })
+    .from(companyOpportunities).where(and(eq(companyOpportunities.ownerId, userId), liveOpportunityCondition())).orderBy(desc(companyOpportunities.createdAt)).limit(20);
+}
+
+/** Retire the poster's own opening. Idempotent; only the owner's row can match. Returns false when it is not theirs or not found. */
+export async function closeCompanyOpportunity(userId: number, opportunityId: number) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const [row] = await db.select({ id: companyOpportunities.id }).from(companyOpportunities).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId))).limit(1);
+  if (!row) return false;
+  await db.update(companyOpportunities).set({ isActive: false }).where(and(eq(companyOpportunities.id, opportunityId), eq(companyOpportunities.ownerId, userId)));
+  return true;
+}
+
 export async function listPublicCompanyOpportunities() {
   const db = await getDb(); if (!db) return [];
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
