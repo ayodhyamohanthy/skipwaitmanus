@@ -8,7 +8,7 @@ import { createDecipheriv } from "node:crypto";
 import express, { type Express, type Request, type Response as ExpressResponse } from "express";
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
-import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard, listCreditLedger } from "./db";
+import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard, listCreditLedger, getMyProfile, getReferrerPreferences } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
@@ -52,6 +52,8 @@ export type PrivateReferralRouteDeps = {
   completeResumeUploadSession?: (ownerId: number, sessionId: string, finalizationOwner: string, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
   saveVerifiedWorkEmail: (userId: number, email: string) => Promise<{ workEmailDomain?: string | null } | undefined>;
   getVerifiedWorkEmailAccess?: (userId: number) => Promise<{ workEmailDomain: string } | undefined>;
+  getMyProfile?: typeof getMyProfile;
+  getReferrerPreferences?: typeof getReferrerPreferences;
   getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
   getReferrerImpactSummary?: (userId: number) => Promise<{ acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> }>;
   getOwnedResumeAttachmentForPitch?: (userId: number, attachmentId: number) => Promise<{ id: number; fileKey: string; mimeType: string }>;
@@ -759,14 +761,18 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.status(/not in your account/i.test(message) ? 404 : 500).json({ error: message });
     }
   });
+  const loadAccess = async (userId: number): Promise<ReferrerAccessResponse> => {
+    const access = await deps.getVerifiedWorkEmailAccess?.(userId);
+    const [named] = access ? await attachCompanyIdentities([access], row => row.workEmailDomain, lookupCompanies) : [];
+    return { verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null } satisfies ReferrerAccessResponse;
+  };
   app.get("/api/company-referrals/access", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
-      const access = await deps.getVerifiedWorkEmailAccess?.(identity.account.id);
+      const body = await loadAccess(identity.account.id);
       res.set("Cache-Control", "private, no-store");
-      const [named] = access ? await attachCompanyIdentities([access], row => row.workEmailDomain, lookupCompanies) : [];
-      res.json({ verifiedCompanyAccess: Boolean(access), workEmailDomain: access?.workEmailDomain ?? null, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null } satisfies ReferrerAccessResponse);
+      res.json(body);
     } catch { res.status(500).json({ error: "We could not check your company-email access" }); }
   });
   app.get("/api/referrer-impact/me", async (req, res) => {
@@ -957,18 +963,45 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ requests, expiredRequestIds, ...(slots ? { slots } : {}) });
     } catch { res.status(500).json({ error: "We could not load your referral requests" }); }
   });
+  const loadInbox = async (userId: number, requestedScope: string) => {
+    const scope = requestedScope === "saved" || requestedScope === "completed" ? requestedScope : "new";
+    const requests = deps.listCompanyReferralInboxByState ? await deps.listCompanyReferralInboxByState(userId, scope) : await deps.listCompanyReferralInbox(userId);
+    const blockedInbox = await blockedRequestIds(userId, requests);
+    const visible = requests.filter(row => typeof row !== "object" || row === null || !blockedInbox.has(Number((row as Record<string, unknown>).id)));
+    record({ actorUserId: userId, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: visible.length, scope } });
+    return { requests: await withCompanyIdentities(visible.map(row => (isRecordRow(row) ? withParsedJobFunction(row) : row))), scope };
+  };
   app.get("/api/company-referrals/inbox", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to view employee requests" });
-      const requestedScope = typeof req.query.scope === "string" ? req.query.scope : "new";
-      const scope = requestedScope === "saved" || requestedScope === "completed" ? requestedScope : "new";
-      const requests = deps.listCompanyReferralInboxByState ? await deps.listCompanyReferralInboxByState(identity.account.id, scope) : await deps.listCompanyReferralInbox(identity.account.id);
-      const blockedInbox = await blockedRequestIds(identity.account.id, requests);
-      const visible = requests.filter(row => typeof row !== "object" || row === null || !blockedInbox.has(Number((row as Record<string, unknown>).id)));
-      record({ actorUserId: identity.account.id, action: "company_referral.inbox_viewed", outcome: "success", resourceType: "inbox", metadata: { requestCount: visible.length, scope } });
-      res.json({ requests: await withCompanyIdentities(visible.map(row => (isRecordRow(row) ? withParsedJobFunction(row) : row))), scope });
+      res.json(await loadInbox(identity.account.id, typeof req.query.scope === "string" ? req.query.scope : "new"));
     } catch { res.status(500).json({ error: "We could not load private company requests" }); }
+  });
+  // One call for the referrer home page: same helpers as the separate endpoints, one sign-in check, sections in parallel.
+  // Unverified accounts get no inbox/impact data. A failing section is reported in `failed` and does not hide the others.
+  app.get("/api/referrer/home-bundle", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with your company email to continue" });
+      const userId = identity.account.id;
+      res.set("Cache-Control", "private, no-store");
+      const access = await loadAccess(userId);
+      const failed: string[] = [];
+      const section = async <T>(name: string, run: () => Promise<T>, skip = false): Promise<T | null> => {
+        if (skip) return null;
+        try { return await run(); } catch { failed.push(name); return null; }
+      };
+      const verified = access.verifiedCompanyAccess;
+      const [preferences, fresh, completed, profile, impact] = await Promise.all([
+        section("preferences", () => (deps.getReferrerPreferences ?? getReferrerPreferences)(userId), !verified),
+        section("inboxNew", () => loadInbox(userId, "new"), !verified),
+        section("inboxCompleted", () => loadInbox(userId, "completed"), !verified),
+        section("profile", () => (deps.getMyProfile ?? getMyProfile)(userId), !verified),
+        section("impact", () => (deps.getPrivateReferrerImpactSummary ?? getPrivateReferrerImpactSummary)(userId), !verified),
+      ]);
+      res.json({ access, preferences, inboxNew: fresh, inboxCompleted: completed, profile, impact, failed });
+    } catch { res.status(500).json({ error: "We could not load your referrer home" }); }
   });
   app.post("/api/company-referrals/availability/open", async (req, res) => {
     try {
