@@ -332,7 +332,7 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
       }
     });
-    registerSeekerEmailCodeRoutes(app, { workos, clientId, signHostedLink: input => signHostedLink(input, returnKey) });
+    registerSeekerEmailCodeRoutes(app);
     app.get("/api/auth/workos/admin-diagnostic/:id",(req,res)=>{
       if(process.env.ENABLE_ADMIN_BOOTSTRAP!=="true"||req.header("x-admin-secret")!==process.env.ADMIN_SMOKE_SECRET)return res.status(404).send("Not found");
       const diagnostic=authDiagnostics.get(req.params.id);return diagnostic?res.set("Cache-Control","no-store").json(diagnostic):res.status(404).send("Not found");
