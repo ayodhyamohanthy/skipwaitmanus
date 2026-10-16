@@ -9,9 +9,9 @@ describe("plan catalog follows the Oct 14 2026 pricing decision", () => {
   it("plan contents: open asks 3/5/8/15/30/50/75, credits per cycle and carryover", () => {
     expect([FREE_PLAN, ...CATALOG_PLANS].map(p => [p.id, p.openRequests, p.creditsPerMonth, p.carryover])).toEqual([
       ["free", 3, 3, 0],
-      ["keep_warm", 5, 1, 1],
+      ["keep_warm", 5, 4, 1],
       ["start", 8, 10, 1],
-      ["momentum", 15, 30, 3],
+      ["momentum", 15, 36, 3],
       ["land_focus", 30, 120, "subscribed"],
       ["land_sprint", 50, 300, "subscribed"],
       ["land_concierge", 75, 1_000, "subscribed"],
@@ -29,7 +29,7 @@ describe("plan catalog follows the Oct 14 2026 pricing decision", () => {
     ]);
   });
 
-  it("INR prices include GST: Keep warm ₹999 a year, passes 30 / 90 days, nothing reaches ₹1 lakh", () => {
+  it("INR prices as the plain India price (no GST until registered): Keep warm ₹999 a year, passes 30 / 90 days, nothing reaches ₹1 lakh", () => {
     expect(price("keep_warm", "yearly", "INR")).toBe(99_900);
     expect(CATALOG_PLANS.filter(p => p.id !== "keep_warm").map(p => [p.id, price(p.id, "30d", "INR")! / 100, price(p.id, "90d", "INR")! / 100])).toEqual([
       ["start", 299, 699],
@@ -131,7 +131,7 @@ describe("structure", () => {
     const ladder = [FREE_PLAN, ...CATALOG_PLANS];
     for (let i = 1; i < ladder.length; i++) expect(ladder[i].openRequests).toBeGreaterThan(ladder[i - 1].openRequests);
     for (let i = 1; i < CATALOG_PLANS.length; i++) expect(CATALOG_PLANS[i].creditsPerMonth).toBeGreaterThan(CATALOG_PLANS[i - 1].creditsPerMonth);
-    // Free's 3 a month beat Keep warm's 1 by decision: Keep warm sells open asks and alerts, not credits.
+    // Keep warm's 4 a month beat Free's 3 by decision (D-041): Keep warm sells open asks and alerts, not credits.
     expect(FREE_PLAN.creditsPerMonth).toBe(3);
     const paid = CATALOG_PLANS.filter(p => p.id !== "keep_warm");
     for (let i = 1; i < paid.length; i++) expect(price(paid[i].id, "30d", "USD")!).toBeGreaterThan(price(paid[i - 1].id, "30d", "USD")!);

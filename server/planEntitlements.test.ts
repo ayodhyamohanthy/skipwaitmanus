@@ -30,14 +30,14 @@ describe("plan entitlement resolver (Oct 14 2026 pricing decision, 19_plans comp
 
   it("each kit plan carries its catalog numbers and tier limits", () => {
     expect(resolve(paid("start"))).toMatchObject({ planLabel: "Start", tier: "start", openRequests: 8, creditsPerMonth: 10, carryover: 1, savedAlerts: null, showcase: { pieces: 10, pins: 3 }, customLink: false, assistants: false, tools: { preparation: "expanded", research: "basic", included: ["onepager", "pack"] } });
-    expect(resolve(paid("momentum"))).toMatchObject({ planLabel: "Momentum", tier: "momentum", openRequests: 15, creditsPerMonth: 30, carryover: 3, showcase: { pieces: null, pins: 6 }, customLink: true, privateInsights: true, guidedWorkflows: false, assistants: false, tools: { included: ["onepager", "salary", "dossier", "offer", "pack"] } });
+    expect(resolve(paid("momentum"))).toMatchObject({ planLabel: "Momentum", tier: "momentum", openRequests: 15, creditsPerMonth: 36, carryover: 3, showcase: { pieces: null, pins: 6 }, customLink: true, privateInsights: true, guidedWorkflows: false, assistants: false, tools: { included: ["onepager", "salary", "dossier", "offer", "pack"] } });
     expect(resolve(paid("land_focus"))).toMatchObject({ planLabel: "Land Focus", tier: "land", level: 1, openRequests: 30, creditsPerMonth: 120, carryover: "subscribed", guidedWorkflows: true, assistants: true, humanTime: { writtenReviews: 1, liveSessions: 0, hours: 0 } });
     expect(resolve(paid("land_sprint"))).toMatchObject({ planLabel: "Land Sprint", level: 2, openRequests: 50, creditsPerMonth: 300, assistants: true, humanTime: { writtenReviews: 1, liveSessions: 1, hours: 0 } });
     expect(resolve(paid("land_concierge"))).toMatchObject({ planLabel: "Land Concierge", level: 3, openRequests: 75, creditsPerMonth: 1_000, assistants: true, humanTime: { writtenReviews: 0, liveSessions: 0, hours: 6 }, tools: { preparation: "maximum", uploads: "highest", research: "maximum", included: ["onepager", "salary", "dossier", "offer", "pack"] } });
   });
 
-  it("Keep warm: 5 open asks, 1 credit a cycle kept a month, Free's tools and showcase, unlimited alerts", () => {
-    expect(resolve(paid("keep_warm"))).toMatchObject({ plan: "keep_warm", planLabel: "Keep warm", tier: "keep_warm", openRequests: 5, creditsPerMonth: 1, carryover: 1, savedAlerts: null, showcase: { pieces: 3, pins: 1 }, assistants: false, tools: { preparation: "limited", included: [] }, humanTime: NO_HUMAN });
+  it("Keep warm: 5 open asks, 4 credits a cycle kept a month, Free's tools and showcase, unlimited alerts", () => {
+    expect(resolve(paid("keep_warm"))).toMatchObject({ plan: "keep_warm", planLabel: "Keep warm", tier: "keep_warm", openRequests: 5, creditsPerMonth: 4, carryover: 1, savedAlerts: null, showcase: { pieces: 3, pins: 1 }, assistants: false, tools: { preparation: "limited", included: [] }, humanTime: NO_HUMAN });
   });
 
   it("human expert review is a session, never an included credit tool", () => {
@@ -54,7 +54,7 @@ describe("plan entitlement resolver (Oct 14 2026 pricing decision, 19_plans comp
   });
 
   it("grandfathers legacy Max at least to Momentum and keeps its assistant access", () => {
-    expect(resolve(paid("max"))).toMatchObject({ plan: "max", planLabel: "Max", tier: "momentum", legacy: true, openRequests: 30, creditsPerMonth: 30, showcase: { pieces: null, pins: 6 }, customLink: true, assistants: true });
+    expect(resolve(paid("max"))).toMatchObject({ plan: "max", planLabel: "Max", tier: "momentum", legacy: true, openRequests: 30, creditsPerMonth: 36, showcase: { pieces: null, pins: 6 }, customLink: true, assistants: true });
   });
 
   it("legacy plans are never weaker than the tier they map to", () => {

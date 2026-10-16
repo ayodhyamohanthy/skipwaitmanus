@@ -10,7 +10,6 @@ import { z } from "zod";
 import { BILLING_REGIONS, indiaPriceNote, currencyForRegion, type BillingRegion } from "./billingRegion";
 import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, REVERSE_TRIAL, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
 import { planEntitlementsFor } from "./planEntitlements";
-import { WELCOME_CREDITS } from "./creditLedger";
 import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
 
 export const BILLING_INTERVALS = CATALOG_INTERVALS;
@@ -202,7 +201,6 @@ export const planCatalogResponseSchema = z.strictObject({
   free: z.strictObject({
     openRequests: z.number().int().positive(),
     creditsPerMonth: z.number().int().min(0),
-    welcomeCredits: z.number().int().min(0),
     trial: z.strictObject({ plan: z.enum(CATALOG_PLAN_IDS), planLabel: z.string().min(1), days: z.number().int().positive(), openRequests: z.number().int().positive(), credits: z.number().int().min(0) }),
   }),
   plans: z.array(z.strictObject({
@@ -216,6 +214,8 @@ export const planCatalogResponseSchema = z.strictObject({
     creditsPerMonth: z.number().int().nonnegative(),
     carryover: carryoverSchema,
     humanTime: humanTimeSchema,
+    /** The plan's included human time can be delivered now; false reads as "coming later" (D-041). */
+    humanTimeOffered: z.boolean(),
     byApplication: z.boolean(),
     recommended: z.boolean(),
     terms: z.array(z.strictObject({
@@ -249,6 +249,7 @@ export type CatalogResponseInput = {
 
 function planEntry(plan: PaidCatalogPlan, input: CatalogResponseInput, currency: CatalogCurrency) {
   const id = plan.id;
+  const hasHumanTime = plan.humanTime.writtenReviews > 0 || plan.humanTime.liveSessions > 0 || plan.humanTime.hours > 0;
   return [{
     id,
     tier: plan.tier,
@@ -260,6 +261,8 @@ function planEntry(plan: PaidCatalogPlan, input: CatalogResponseInput, currency:
     creditsPerMonth: plan.creditsPerMonth,
     carryover: plan.carryover,
     humanTime: { ...plan.humanTime },
+    // Concierge is delivered through its application path; Focus/Sprint need staffed reviewers (D-041).
+    humanTimeOffered: !hasHumanTime || plan.byApplication || input.sessionsStaffed,
     byApplication: plan.byApplication,
     recommended: plan.recommended,
     terms: planIntervals(plan).flatMap(interval => {
@@ -287,7 +290,6 @@ export function planCatalogResponse(input: CatalogResponseInput): PlanCatalogRes
     free: {
       openRequests: FREE_PLAN.openRequests,
       creditsPerMonth: FREE_PLAN.creditsPerMonth,
-      welcomeCredits: WELCOME_CREDITS,
       trial: { plan: REVERSE_TRIAL.plan, planLabel: trialPlan ? planDisplayName(trialPlan) : REVERSE_TRIAL.plan, days: REVERSE_TRIAL.days, openRequests: trialPlan?.openRequests ?? FREE_PLAN.openRequests, credits: REVERSE_TRIAL.credits },
     },
     plans: CATALOG_PLANS.flatMap(plan => planEntry(plan, input, currency)),
