@@ -29,6 +29,10 @@ Two supported paths, both wired in this repo:
 - Hyperdrive: create a MySQL Hyperdrive binding against the Aiven URI for
   pooled connections from Containers.
 
+## Expected red check: "Workers Builds: skipwaitmanus" on main
+
+Cloudflare's own Git-connected build for the `skipwaitmanus` Worker runs `npx wrangler deploy` on every push to main and fails at the Docker step (`COPY commit-sha.txt` - that file is generated only by the Deploy API GitHub workflow). It fails before anything is uploaded, so production is unaffected, and the check is green on PR branches. Do not chase it, and do not make the Dockerfile tolerate the missing file: Cloudflare's build would then succeed and deploy an unversioned container to production, racing the gated Deploy API workflow. Truth for a deploy is the Deploy API run plus /api/health `commitSha`. (Founder-approved to leave the Cloudflare setting as is, Oct 17.)
+
 ## Database migrations
 
 Run once per environment after the first deploy (or locally against the prod
