@@ -60,8 +60,8 @@ export default function MyOpenings({ onBack }: { onBack: () => void }) {
             <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-bold ${state.tone}`}>{state.label}</span>
           </div>
           <div className="mt-4 flex gap-2">
-            {post.renewable ? <button type="button" disabled={busyId === post.id} onClick={() => { void run(post, "renew"); }} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#141414] px-4 py-2.5 text-sm font-bold text-white">{busyId === post.id ? "Renewing…" : "Renew 30 days"}</button> : null}
-            {post.isActive && !post.expired ? <button type="button" disabled={busyId === post.id} onClick={() => { void run(post, "close"); }} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e5e5e5] px-4 py-2.5 text-sm font-bold text-[#505050]">{busyId === post.id ? "Closing…" : "Close"}</button> : null}
+            {post.renewable ? <button type="button" disabled={busyId === post.id} onClick={() => { void run(post, "renew"); }} aria-label={`Renew ${post.roleTitle} 30 days`} className="inline-flex min-h-11 items-center justify-center rounded-lg bg-[#141414] px-4 py-2.5 text-sm font-bold text-white">{busyId === post.id ? "Renewing…" : "Renew 30 days"}</button> : null}
+            {post.isActive && !post.expired ? <button type="button" disabled={busyId === post.id} onClick={() => { void run(post, "close"); }} aria-label={`Close ${post.roleTitle}`} className="inline-flex min-h-11 items-center justify-center rounded-lg border border-[#e5e5e5] px-4 py-2.5 text-sm font-bold text-[#505050]">{busyId === post.id ? "Closing…" : "Close"}</button> : null}
           </div>
         </article>;
       })}

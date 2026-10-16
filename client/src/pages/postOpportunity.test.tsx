@@ -168,9 +168,9 @@ describe("poster's openings list", () => {
     fireEvent.click(screen.getByRole("button", { name: "Your openings" }));
     expect(await screen.findByText("Product Designer")).toBeTruthy();
     expect(screen.getByText(/^Lapsed /)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Renew 30 days" }));
+    fireEvent.click(screen.getByRole("button", { name: "Renew Product Designer 30 days" }));
     await waitFor(() => expect(screen.getByText(/^Live until /)).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close Product Designer" }));
     await waitFor(() => expect(screen.getByText("Closed")).toBeTruthy());
     expect(fetchMock.mock.calls.filter(([url]) => url === "/api/opportunities/mine")).toHaveLength(3);
   });
@@ -196,10 +196,30 @@ describe("poster's openings list", () => {
     failList = false;
     fireEvent.click(within(alert).getByRole("button", { name: /Try again/ }));
     expect(await screen.findByText("Product Designer")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Renew 30 days" }));
+    fireEvent.click(screen.getByRole("button", { name: "Renew Product Designer 30 days" }));
     const actionAlert = await screen.findByRole("alert");
     expect(actionAlert.textContent).toContain("We could not renew this opening");
     // The failed action never removes the list behind it.
     expect(screen.getByText("Product Designer")).toBeTruthy();
+  });
+
+  // Re-added from the pre-merge #304 pin (Instinct Agent): same guarantee — the
+  // owner closes one of their own openings and the refreshed server list no
+  // longer carries it. The row is the full owner contract, and the list renders
+  // from the reloaded payload rather than from local filtering.
+  it("lets the poster close one of their own openings and removes it from the list", async () => {
+    let closed = false;
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === ACCESS_PATH) return VERIFIED;
+      if (url === "/api/opportunities/mine") return { ok: true, status: 200, json: async () => ({ opportunities: closed ? [] : [ownerPost({ id: 7 })] }) };
+      if (url === "/api/opportunities/7/close" && init?.method === "POST") { closed = true; return { ok: true, status: 200, json: async () => ({ closed: true, id: 7 }) }; }
+      return { ok: false, status: 404, json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderPost();
+    fireEvent.click(await screen.findByRole("button", { name: "Your openings" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Close Product Designer" }));
+    await waitFor(() => expect(screen.getByText("No roles yet.")).toBeTruthy());
+    expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities/7/close")).toBe(true);
   });
 });
