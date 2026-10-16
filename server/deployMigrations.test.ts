@@ -32,6 +32,6 @@ describe("deploy-time migration gate", () => {
     const workflow = readFileSync(".github/workflows/deploy-api.yml", "utf8");
     expect(workflow).toMatch(/migrate-db:\n[\s\S]*apply-deploy-migrations\.sh/);
     expect(workflow).toMatch(/deploy:\n    needs: migrate-db/);
-    expect(workflow).toContain("secrets.SKIPWAIT_DB_PASSWORD");
+    expect(workflow).toContain("secrets.SKIPWAIT_NEWDB_PASSWORD");
   });
 });
