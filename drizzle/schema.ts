@@ -330,6 +330,12 @@ export const companyOpportunities = mysqlTable("companyOpportunities", {
   walkInAt: timestamp("walkInAt"),
   walkInEndsAt: timestamp("walkInEndsAt"),
   isActive: boolean("isActive").default(true).notNull(),
+  // D-022 referrer-posted roles: a post is live for 30 days; the poster can
+  // renew it in one tap. Always set by the publish/renew paths (0094 backfilled
+  // existing rows to their pre-migration visible state and holds the column NOT NULL).
+  expiresAt: timestamp("expiresAt").notNull(),
+  // D-022: the poster chose to show their first name (never the last name).
+  showPosterFirstName: boolean("showPosterFirstName").default(false).notNull(),
   // Sponsored Role Engine: paid placement window + tier. NULL while organic.
   sponsoredUntil: timestamp("sponsoredUntil"),
   sponsoredTier: mysqlEnum("sponsoredTier", ["standard", "featured", "spotlight"]),
@@ -469,9 +475,14 @@ export const referralRequests = mysqlTable("referralRequests", {
   idempotencyKey: varchar("idempotencyKey", { length: 64 }),
   requestFingerprint: varchar("requestFingerprint", { length: 64 }),
   debitTransactionId: int("debitTransactionId"),
+  // D-022 referrer-posted roles: the post this ask was written from, and the
+  // posting employee's 48-hour first look (they alone see it until then).
+  opportunityId: int("opportunityId").references(() => companyOpportunities.id, { onDelete: "set null" }),
+  firstLookReferrerId: int("firstLookReferrerId").references(() => users.id, { onDelete: "set null" }),
+  firstLookUntil: timestamp("firstLookUntil"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
 export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   id: int("id").autoincrement().primaryKey(),

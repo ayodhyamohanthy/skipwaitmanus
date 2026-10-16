@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fetchReferrerHome } from "./referrerData";
 
@@ -79,5 +80,16 @@ describe("fetchReferrerHome with a prefetched bundle", () => {
     (globalThis as unknown as { __swHomeBundle?: unknown }).__swHomeBundle = { at: Date.now(), response: Promise.resolve(json({ error: "Sign in" }, 401)) };
     await fetchReferrerHome(async () => null);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("remembers a good bundle load so the page-load prefetch starts next time, and forgets it after a 401", async () => {
+    localStorage.clear();
+    vi.stubGlobal("fetch", vi.fn(async () => json(bundle())));
+    await fetchReferrerHome(async () => null);
+    expect(localStorage.getItem("sw-home-prefetch-ok")).toBe("1");
+    vi.stubGlobal("fetch", vi.fn(async () => json({ error: "Sign in" }, 401)));
+    (globalThis as unknown as { __swHomeBundle?: unknown }).__swHomeBundle = { at: Date.now(), response: Promise.resolve(json({ error: "Sign in" }, 401)) };
+    await fetchReferrerHome(async () => null).catch(() => undefined);
+    expect(localStorage.getItem("sw-home-prefetch-ok")).toBeNull();
   });
 });

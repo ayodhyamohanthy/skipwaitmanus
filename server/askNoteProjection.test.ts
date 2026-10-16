@@ -119,7 +119,7 @@ describe("referrer-facing reads", () => {
     const rows = await listCompanyReferralInboxByState(REFERRER, "new");
     const [inbox, enrichment] = selectsFrom(referralRequests);
     expect(exposesNote(inbox)).toBe(false);
-    expect(columnsOf(inbox)).toEqual(["attachmentCount", "companyDomain", "compensation", "createdAt", "id", "jobFunction", "queueAllocationId", "referrerId", "savedAt", "savedByYouAt", "status", "targetRoleUrl", "updatedAt"]);
+    expect(columnsOf(inbox)).toEqual(["attachmentCount", "companyDomain", "compensation", "createdAt", "firstLookReferrerId", "firstLookUntil", "id", "jobFunction", "queueAllocationId", "referrerId", "savedAt", "savedByYouAt", "status", "targetRoleUrl", "updatedAt"]);
     expect(enrichment).toBeDefined();
     expect(rows).toHaveLength(1);
     // The note reached the scorer (a full fit note, strong ask) ...

@@ -23,6 +23,7 @@ import { OpenAskSlotCapError } from "./planGates";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
 import { resolveAskNote } from "../shared/askNote";
+import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -62,7 +63,7 @@ export type PrivateReferralRouteDeps = {
   revokeReferralShareCard?: (userId: number, requestId: number) => Promise<{ revoked: boolean }>;
   getPublicReferralShareCard?: (shareToken: string) => Promise<{ companyDomain: string; status: ReferralStatus; inviteCode?: string | null } | undefined>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
-  createCompanyReferralRequest: (userId: number, input: { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; replayed?: boolean }>;
+  createCompanyReferralRequest: (userId: number, input: { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; replayed?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
   getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
   getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
@@ -126,7 +127,11 @@ export type PrivateReferralRouteDeps = {
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
   sendReferralConversationMessage?: (userId: number, requestId: number, body: string) => Promise<{ id: number }>;
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
-  publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date }) => Promise<unknown>;
+  publishCompanyOpportunity: (userId: number, input: { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date; showPosterFirstName?: boolean }) => Promise<unknown>;
+  /** The poster's own openings: owner list plus the renew/close controls (D-022). */
+  listMyCompanyOpportunities?: (userId: number, nowMs?: number) => Promise<unknown[]>;
+  renewCompanyOpportunity?: (userId: number, opportunityId: number, nowMs?: number) => Promise<{ id: number; renewed: true; expiresAt: Date } | undefined>;
+  closeCompanyOpportunity?: (userId: number, opportunityId: number) => Promise<{ id: number; closed: true } | undefined>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; companyDomain?: string; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   listMyUploadStarts?: (userId: number, since: Date) => Promise<Array<{ sessionId: string | null; clientUploadId: string | null; fileName: string | null; createdAt: Date }>>;
   listOperationalActivity?: (input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" }) => Promise<unknown[]>;
@@ -273,8 +278,38 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     });
     next();
   });
+  // The wall's wired projection carries `createdAt` and may omit `expiresAt`
+  // (the sponsored-capable select). Judge every row by the one clock migration
+  // 0094 backfills — the row's own expiry — and fall back to createdAt + 30 days
+  // only when a drifted projection omits the expiry; never hide a row whose age
+  // cannot be established (drift stays visible, like every other read).
+  const wallRowExpiresAt = (row: unknown): Date | string | null => {
+    if (!row || typeof row !== "object") return null;
+    const { expiresAt, createdAt } = row as { expiresAt?: unknown; createdAt?: unknown };
+    if (expiresAt instanceof Date || typeof expiresAt === "string") return expiresAt;
+    const createdMs = createdAt instanceof Date ? createdAt.getTime() : typeof createdAt === "string" ? Date.parse(createdAt) : NaN;
+    return Number.isFinite(createdMs) ? new Date(createdMs + OPPORTUNITY_TTL_MS) : null;
+  };
   app.get("/api/opportunities", async (_req, res) => {
-    try { res.json({ opportunities: await deps.listPublicCompanyOpportunities() }); } catch { res.status(500).json({ error: "We could not load opportunities right now" }); }
+    try {
+      const opportunities = await deps.listPublicCompanyOpportunities();
+      const nowMs = Date.now();
+      const live = opportunities.filter(row => !isOpportunityExpired(wallRowExpiresAt(row), nowMs));
+      // The repair loop's only signal for lapsed posts the wall is hiding.
+      if (live.length < opportunities.length) record({ action: "opportunity.expired_hidden", outcome: "success", resourceType: "opportunity", metadata: { hiddenCount: opportunities.length - live.length } });
+      res.json({ opportunities: live });
+    } catch { res.status(500).json({ error: "We could not load opportunities right now" }); }
+  });
+  // The poster's own openings (kit /post-opportunity list): owner only, never cached.
+  app.get("/api/opportunities/mine", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to see your openings" });
+      if (!deps.listMyCompanyOpportunities) return res.status(503).json({ error: "Your openings are unavailable right now" });
+      const opportunities = await deps.listMyCompanyOpportunities(identity.account.id, Date.now());
+      res.set("Cache-Control", "private, no-store");
+      res.json(myOpportunitiesResponseSchema.parse({ opportunities }));
+    } catch { res.status(500).json({ error: "We could not load your openings" }); }
   });
   app.get("/api/jobs", async (req, res) => {
     try {
@@ -360,16 +395,50 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to publish an opportunity" });
-      if (!identity.primaryEmail || identity.primaryEmail.verification?.status !== "verified") return res.status(403).json({ error: "Verify your primary work email before publishing" });
-      const { kind, roleTitle, targetRoleUrl, location, compensation, walkInAt, walkInEndsAt } = req.body as { kind?: string; roleTitle?: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: string; walkInEndsAt?: string };
+      // D-022: the gate is the server's own work-email verdict (the shared
+      // verified-referrer rule), never a sign-in email presented on the session.
+      const access = await deps.getVerifiedWorkEmailAccess?.(identity.account.id);
+      if (!access?.workEmailDomain) return res.status(403).json({ error: "Verify your work email before publishing" });
+      const { kind, roleTitle, targetRoleUrl, location, compensation, walkInAt, walkInEndsAt, showPosterFirstName } = req.body as { kind?: string; roleTitle?: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: string; walkInEndsAt?: string; showPosterFirstName?: unknown };
       if ((kind !== "hiring_now" && kind !== "walk_in") || !roleTitle?.trim()) return res.status(400).json({ error: "Choose Hiring now or Walk-in and add the role" });
       const safeCompensation = typeof compensation === "string" && compensation.trim() ? compensation.trim().slice(0, 80) : undefined;
       const parseDate = (value?: string) => { if (!value) return undefined; const date = new Date(value); return Number.isNaN(date.getTime()) ? undefined : date; };
       if ((walkInAt && !parseDate(walkInAt)) || (walkInEndsAt && !parseDate(walkInEndsAt))) return res.status(400).json({ error: "Use valid walk-in dates" });
-      const opportunity = await deps.publishCompanyOpportunity(identity.account.id, { kind, roleTitle, targetRoleUrl, location, compensation: safeCompensation, walkInAt: parseDate(walkInAt), walkInEndsAt: parseDate(walkInEndsAt) });
-      const logged = opportunity as { id?: number; companyDomain?: string }; record({ actorUserId: identity.account.id, action: "opportunity.published", outcome: "success", resourceType: "opportunity", resourceId: logged.id, companyDomain: logged.companyDomain, metadata: { kind } });
+      // Only the exact boolean true shows a first name; every other value stays anonymous.
+      const opportunity = await deps.publishCompanyOpportunity(identity.account.id, { kind, roleTitle, targetRoleUrl, location, compensation: safeCompensation, walkInAt: parseDate(walkInAt), walkInEndsAt: parseDate(walkInEndsAt), showPosterFirstName: showPosterFirstName === true });
+      const logged = opportunity as { id?: number; companyDomain?: string }; record({ actorUserId: identity.account.id, action: "opportunity.published", outcome: "success", resourceType: "opportunity", resourceId: logged.id, companyDomain: logged.companyDomain, metadata: { kind, posterNamed: showPosterFirstName === true } });
       res.status(201).json({ opportunity });
     } catch (error) { res.status(400).json({ error: error instanceof Error ? error.message : "We could not publish that opportunity" }); }
+  });
+  // One-tap renew/close for the poster's own openings; a foreign or missing id
+  // answers 404 so post ids are not enumerable, and only success is recorded.
+  app.post("/api/opportunities/:id/renew", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const opportunityId = Number(req.params.id);
+      if (!identity) return res.status(401).json({ error: "Sign in to renew your opening" });
+      if (!Number.isInteger(opportunityId) || opportunityId <= 0) return res.status(400).json({ error: "Invalid opening reference" });
+      if (!deps.renewCompanyOpportunity) return res.status(503).json({ error: "Your openings are unavailable right now" });
+      const renewed = await deps.renewCompanyOpportunity(identity.account.id, opportunityId, Date.now());
+      if (!renewed) return res.status(404).json({ error: "This opening is not available" });
+      record({ actorUserId: identity.account.id, action: "opportunity.renewed", outcome: "success", resourceType: "opportunity", resourceId: opportunityId });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ renewed: true, id: opportunityId, expiresAt: renewed.expiresAt });
+    } catch { res.status(500).json({ error: "We could not renew this opening" }); }
+  });
+  app.post("/api/opportunities/:id/close", async (req, res) => {
+    try {
+      const identity = await deps.resolveIdentity(req);
+      const opportunityId = Number(req.params.id);
+      if (!identity) return res.status(401).json({ error: "Sign in to close your opening" });
+      if (!Number.isInteger(opportunityId) || opportunityId <= 0) return res.status(400).json({ error: "Invalid opening reference" });
+      if (!deps.closeCompanyOpportunity) return res.status(503).json({ error: "Your openings are unavailable right now" });
+      const closed = await deps.closeCompanyOpportunity(identity.account.id, opportunityId);
+      if (!closed) return res.status(404).json({ error: "This opening is not available" });
+      record({ actorUserId: identity.account.id, action: "opportunity.closed", outcome: "success", resourceType: "opportunity", resourceId: opportunityId });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ closed: true, id: opportunityId });
+    } catch { res.status(500).json({ error: "We could not close this opening" }); }
   });
   app.post("/api/documents", legacyDocumentBody, async (req, res) => {
     try {
@@ -628,7 +697,14 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         selectedCompany = await (deps.getCompanyDirectoryEntry ?? defaultCompanyDirectoryEntry)(companySlug);
         if (!selectedCompany) return res.status(400).json({ error: "Choose a company from the list" });
       }
-      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}) });
+      // A post selection from "/ask?post=<id>" must parse as one positive
+      // integer id; anything else is refused so a typo never silently becomes
+      // a plain ask (the message matches the DB's stale-post wording).
+      const opportunitySelection = req.body?.opportunityId === undefined || req.body?.opportunityId === null
+        ? null
+        : opportunityAskSelectionSchema.safeParse({ opportunityId: req.body.opportunityId });
+      if (opportunitySelection && !opportunitySelection.success) return res.status(400).json({ error: "That opening is no longer available. Refresh the company page and choose again." });
+      const result = await deps.createCompanyReferralRequest(identity.account.id, { ...(selectedCompany ? { selectedCompany: { name: selectedCompany.name, domains: selectedCompany.domains } } : {}), ...(opportunitySelection?.success ? { opportunityId: opportunitySelection.data.opportunityId } : {}), targetRoleUrl: normalizeTargetRoleUrl(targetRoleUrl), attachmentIds, personalPitch, idempotencyKey, confirmedCompanyDomain: typeof confirmedCompanyDomain === "string" ? confirmedCompanyDomain : undefined, compensation: safeCompensation, fastTrackCode: safeFastTrackCode, fastTrackCompanySlug: safeFastTrackCompanySlug, fastTrackAlias: safeFastTrackAlias, submittedTargetRoleUrl: targetRoleUrl.trim(), ...(chosenFunction.data ? { jobFunction: chosenFunction.data } : {}) });
       // Referrer email + Slack delivery runs after the response: the ask is already committed, each send has a durable claim/lease row, and every outcome (with elapsedMs) goes to the audit log, so a slow or dead send never holds the seeker on "Sending your ask...".
       const dispatchReviewDeliveries = async () => {
       const t0 = Date.now();
@@ -662,7 +738,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       void dispatchReviewDeliveries().catch(error => record({ actorUserId: identity.account.id, action: "company_referral.review_dispatch_crashed", outcome: "failure", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { error: error instanceof Error ? error.message : "dispatch crashed" } }));
       const requests = await deps.listJobSeekerCompanyReferrals?.(identity.account.id);
       const lifetimeRequestCount = Array.isArray(requests) ? requests.length : undefined;
-      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: true, coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), jobFunctionChosen: Boolean(chosenFunction.data) } });
+      record({ actorUserId: identity.account.id, action: "company_referral.created", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { attachmentCount: attachmentIds.length, notifiedEmployees: result.notifiedEmployees, creditReserved: true, coverageStatus: result.coverageStatus ?? "covered", fastTrack: Boolean(result.fastTrack), fromPost: Boolean(result.fromPost), firstLook: Boolean(result.firstLook), jobFunctionChosen: Boolean(chosenFunction.data) } });
       if (result.coverageStatus === "waiting_for_company_coverage") {
         record({ actorUserId: identity.account.id, action: "company_referral.manual_follow_up_queued", outcome: "success", resourceType: "referral_request", resourceId: result.requestId, companyDomain: result.companyDomain, metadata: { notifiedEmployees: 0, creditReserved: true } });
       }
@@ -673,7 +749,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         record({ actorUserId, action: "company_referral.slot_cap_reached", outcome: "denied", resourceType: "referral_request", metadata: { open: error.slots.open, cap: error.slots.cap, plan: error.slots.plan } });
         return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
       }
-      res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
+      res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key|opening/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
   });
   app.get("/api/credits/summary", async (req, res) => {
     try {

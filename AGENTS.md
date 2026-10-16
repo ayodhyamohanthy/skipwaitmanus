@@ -42,7 +42,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 - Living plan and handoff: `docs/KIT_V4_BUILD_PLAN.md`. Per-PNG audit and feature catalog: `docs/KIT_V4_AUDIT.md`. Pricing decisions and sources: `docs/PRICING_RECOMMENDATION.md`.
 - Binding owner decisions: implement every `screens/` PNG fullstack; the PNGs win over earlier founder calls (newer founder edits on `main` after Oct 9 stay); never ship kit preview chips or sample data; Terms/Privacy keep live legal text; ship verified groups to `main`.
 - Pricing (Oct 14, amended Oct 16 by D-034–D-042):
-  - **Passes:** 30/90-day passes with opt-in auto-extend (yearly only for Keep warm). They switch on only once at least 3 outside companies each have at least 3 available referrers (D-037).
+  - **Passes:** 30/90-day passes with opt-in auto-extend (yearly only for Keep warm). All payment options go live now, before referrers onboard (D-046, supersedes D-045 and D-037's gate): packs, every pass and Keep warm sold from `/plans`, coverage shown before payment; Concierge by application; human sessions off until deliverable; Pro/Max stay retired.
   - **Packs:** credit packs on the D-005 ladder are the paid product until then (D-036). Pro/Max stay off sale (D-027).
   - **Regions:** India INR + global USD first.
   - **Free:** 3 open asks + 3 credits a month, with no welcome credits (D-039). The reverse-trial timing is an open owner question.

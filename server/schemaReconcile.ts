@@ -136,6 +136,16 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   // and ledger kind ENUM widenings are applied by the migration only.
   { table: "tokenBalances", column: "trialStartedAt", definition: "TIMESTAMP NULL" },
   { table: "tokenBalances", column: "trialEndsAt", definition: "TIMESTAMP NULL" },
+  // D-022 referrer-posted roles (0094). Post expiry is added defensively as NULL here;
+  // 0094 backfills each row to its pre-migration visible state (hiring-now: createdAt +
+  // 30 days; walk-ins: walkInEndsAt, malformed end-less walk-ins stay hidden) and
+  // enforces NOT NULL, and every read treats a missing expiry as "not expired" so a
+  // drifted DB never hides live posts.
+  { table: "companyOpportunities", column: "expiresAt", definition: "TIMESTAMP NULL" },
+  { table: "companyOpportunities", column: "showPosterFirstName", definition: "BOOLEAN NOT NULL DEFAULT false" },
+  { table: "referralRequests", column: "opportunityId", definition: "INT NULL" },
+  { table: "referralRequests", column: "firstLookReferrerId", definition: "INT NULL" },
+  { table: "referralRequests", column: "firstLookUntil", definition: "TIMESTAMP NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -202,6 +212,8 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "billingInvoices", name: "billing_invoices_provider_invoice_unique", columns: "`provider`,`site`,`providerInvoiceId`" },
   { table: "billingInvoices", name: "billing_invoices_owner_paid_idx", columns: "`userId`,`role`,`paidAt`", nonUnique: true },
   { table: "subscriptionCancellationFeedback", name: "subscription_cancellation_feedback_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
+  // D-022 referrer-posted roles (0094): the first-look-release sweep scans by this clock.
+  { table: "referralRequests", name: "referral_requests_first_look_idx", columns: "`firstLookUntil`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -238,6 +250,10 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "billingCustomers", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "billingInvoices", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "subscriptionCancellationFeedback", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  // D-022 referrer-posted roles (0094): deleting a post or a person must never
+  // pin ask history, so both links null out.
+  { table: "referralRequests", column: "opportunityId", referencedTable: "companyOpportunities", referencedColumn: "id" },
+  { table: "referralRequests", column: "firstLookReferrerId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived
