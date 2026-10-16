@@ -9,7 +9,7 @@ import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -43,7 +43,8 @@ import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
-import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
+import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
+import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
@@ -1724,7 +1725,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number };
+export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[] };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1737,10 +1738,12 @@ export function companyAskJobRow(input: { companyDomain: string; targetRoleUrl: 
   return { title: "Role from shared job link", company: input.companyDomain, location: "Not specified", compensation: input.compensation, description: "Private referral request routed from a Target Role URL.", targetRoleUrl: input.targetRoleUrl, workMode: "Not specified", seniority: "Not specified", employmentType: "Not specified", jobFunction: decided.jobFunction, jobFunctionSource: decided.source, publishedAt: input.publishedAt };
 }
 export class CompanyLinkMismatchError extends Error { constructor(companyName: string) { super(`This job link is not from ${companyName}. Paste a job link from ${companyName}’s own careers page.`); this.name="CompanyLinkMismatchError"; } }
+/** Task 13: an id that is not one of the caller's own showcase pieces, or vanished while the ask was being written. */
+export class AskWorkItemNotInShowcaseError extends Error { constructor() { super("That work is no longer in your showcase. Add it again, or choose a piece you still have."); this.name="AskWorkItemNotInShowcaseError"; } }
 export class ReferralIdempotencyConflictError extends Error { constructor() { super("This submission key was already used for a different referral request"); this.name="ReferralIdempotencyConflictError"; } }
-/** Idempotency fingerprint. An explicit job function is part of it only when sent, so retries from before 0077 still match. A post selection is part of it only when sent, so a retry that drops it can never silently become a different ask. */
+/** Idempotency fingerprint. An explicit job function is part of it only when sent, so retries from before 0077 still match. A post selection is part of it only when sent, so a retry that drops it can never silently become a different ask. Pinned work follows the same rule (0095), deduplicated so an order-only or repeated-id retry replays instead of conflicting. */
 export function companyReferralFingerprint(input: CreateCompanyReferralInput, companyDomain: string) {
-  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{})};
+  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{}),...(input.workItemIds?.length?{workItemIds:dedupeAskWorkItemIds(input.workItemIds)}:{})};
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
@@ -1785,6 +1788,22 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const uniqueAttachmentIds=Array.from(new Set(input.attachmentIds));
     const owned=await tx.select({id:referralAttachments.id}).from(referralAttachments).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId))).for("update");
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
+    // Task 13 (0095): the showcase pieces pinned to this ask. How many ride
+    // along is the plan's existing pin entitlement, so no new limit is sold.
+    // The read is deliberately not locked: withdraw and expiry take the ask row
+    // before the wallet, and the reverse order here could deadlock. A piece
+    // deleted between this read and the send still snapshots honestly, because
+    // only rows owned by this seeker were ever selected.
+    const workItemIds=dedupeAskWorkItemIds(askWorkItemIdsSchema.parse(input.workItemIds??[]));
+    const pins=entitlements.showcase.pins;
+    if(workItemIds.length>pins)throw new PlanLimitError("showcase_pins",pins,`Your ${entitlements.planLabel} plan puts ${pins} ${pins===1?"piece":"pieces"} of work in front of a referrer. Choose the ${pins===1?"one":"ones"} that best proves this role.`);
+    let pinnedWork:Array<{id:number}&AskWorkItem>=[];
+    if(workItemIds.length){
+      const found=await tx.select({id:workItems.id,title:workItems.title,kind:workItems.kind,source:workItems.source,url:workItems.url}).from(workItems).where(and(inArray(workItems.id,workItemIds),eq(workItems.userId,userId)));
+      if(found.length!==workItemIds.length)throw new AskWorkItemNotInShowcaseError();
+      const byId=new Map(found.map(item=>[item.id,item]));
+      pinnedWork=workItemIds.map(id=>byId.get(id)).filter((item):item is {id:number}&AskWorkItem=>item!==undefined);
+    }
     const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
     const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));const coverageStatus=companyCoverageStatus(eligible.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
     // D-022: an ask written from a post goes to the poster alone for 48 hours
@@ -1803,6 +1822,9 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
     await tx.update(referralRequests).set({debitTransactionId:debitRow.id}).where(eq(referralRequests.id,requestId));
     const bound=await tx.update(referralAttachments).set({referralRequestId:requestId}).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId)));if(Number(bound[0]?.affectedRows??0)!==uniqueAttachmentIds.length)throw new Error("One or more resume documents changed during submission");
+    // Task 13 (0095): the pinned-work snapshot, copied once at the send instant so
+    // a later showcase edit or delete never rewrites what a referrer was shown.
+    for(let index=0;index<pinnedWork.length;index++){const item=pinnedWork[index];await tx.insert(askWorkItems).values({referralRequestId:requestId,workItemId:item.id,title:item.title,kind:item.kind,source:item.source,url:item.url,position:index});}
     // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is complete inside this transaction.
     await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     // D-022 first look: only the poster is told while their 48 hours run; every
@@ -2026,7 +2048,10 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
     or(isNull(referralRequests.firstLookReferrerId), isNull(referralRequests.firstLookUntil), lt(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookReferrerId, userId)))).limit(1);
   if (!request[0]) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
-  return { ...request[0], attachments };
+  // Task 13 (0095): the work pinned at send time, in the order the seeker chose.
+  // Title, kind, source and link only — no showcase row ids, no seeker identity.
+  const pinnedWork = await db.select({ title: askWorkItems.title, kind: askWorkItems.kind, source: askWorkItems.source, url: askWorkItems.url }).from(askWorkItems).where(eq(askWorkItems.referralRequestId, requestId)).orderBy(asc(askWorkItems.position));
+  return { ...request[0], attachments, workItems: pinnedWork };
 }
 
 export async function saveCompanyReferralRequest(userId: number, requestId: number, saved: boolean) {
