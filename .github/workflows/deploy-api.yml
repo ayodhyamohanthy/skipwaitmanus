@@ -49,11 +49,11 @@ jobs:
       - uses: actions/checkout@v4
       - name: Apply pending production migrations
         env:
-          DB_HOST: ${{ vars.SKIPWAIT_DB_HOST }}
-          DB_USER: ${{ vars.SKIPWAIT_DB_USER }}
+          DB_HOST: ${{ vars.SKIPWAIT_NEWDB_HOST }}
+          DB_USER: ${{ vars.SKIPWAIT_NEWDB_USER }}
           DB_NAME: ${{ vars.SKIPWAIT_DB_NAME }}
           DB_PORT: ${{ vars.SKIPWAIT_DB_PORT }}
-          MYSQL_PWD: ${{ secrets.SKIPWAIT_DB_PASSWORD }}
+          MYSQL_PWD: ${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}
         run: bash scripts/apply-deploy-migrations.sh
 
   deploy:
@@ -143,6 +143,9 @@ jobs:
         if: steps.changes.outputs.classification == 'runtime'
         run: bash scripts/deploy-cloudflare-two-phase.sh
         env:
+          NEWDB_HOST: ${{ vars.SKIPWAIT_NEWDB_HOST }}
+          NEWDB_USER: ${{ vars.SKIPWAIT_NEWDB_USER }}
+          NEWDB_PASSWORD: ${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}
           EXPECTED_SHA: ${{ github.sha }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
