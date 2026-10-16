@@ -8,13 +8,20 @@ import { Button } from "@/components/kit/button";
  * Social buttons go straight to the provider through /api/auth/workos/sign-in?provider=...; email uses a
  * six-digit code (/api/auth/workos/email-code/*), which also creates the account for a new person.
  */
-export const SEEKER_SOCIAL = [
+/**
+ * Providers whose WorkOS connection completes sign-in in production. Microsoft, LinkedIn and Slack are hidden
+ * (Oct 16 2026) because each provider app rejects WorkOS's callback URL (redirect_uri mismatch), so a click
+ * ends on a provider error page. Re-add the id here once the provider app has the WorkOS redirect URI registered.
+ */
+const ALL_SOCIAL = [
   { id: "google", label: "Google", mark: "G" },
   { id: "microsoft", label: "Microsoft", mark: "M" },
   { id: "github", label: "GitHub", mark: "H" },
   { id: "linkedin", label: "LinkedIn", mark: "in" },
   { id: "slack", label: "Slack", mark: "S" },
 ] as const;
+const WORKING_SOCIAL_IDS: readonly string[] = ["google", "github"];
+export const SEEKER_SOCIAL = ALL_SOCIAL.filter(p => WORKING_SOCIAL_IDS.includes(p.id));
 
 export function seekerSocialUrl(provider: string, returnTo: string): string {
   return `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo, provider })}`;
