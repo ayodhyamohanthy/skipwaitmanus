@@ -14,7 +14,7 @@
 2. Revenue is about ₹0 under *every* design until outside referrers exist: 0 outside companies are open, INR checkout fails at Razorpay review, and there are 0 subscribers. The real money lever is the supply sprint (`GROWTH_STRATEGY.md` move 1). No pricing rule can do that job.
 3. Whether a per-ask fee counts as an employment-agency fee under NY GBL §171(2)(c) or Cal. Civ. Code §1812.501 is unresolved. Settling it needs counsel, which is a money-spending call for the owner (D-031).
 4. The approved credit rule (D-034/D-035/D-038) adds return paths to a ledger that had refund P0s this week.
-5. P-2 needs the owner's ruling on PR #293 versus D-039/D-041. An agent may not overrule the owner (D-032).
+5. P-2's #293 question is resolved: the owner ruled Oct 16 2026 (D-044) that the register numbers win — Free 3/mo with no welcome credits, Keep warm 4/mo, Momentum 36/30d. The rest of P-2 stays a proposal.
 
 **"100x for users":** the evidence supports "never pay for silence, always get a reason, and pay about ₹55–95 per referred ask instead of ₹1,299–2,499 elsewhere". That is roughly 2–20x on cost and trust. The 100x comes only when seekers can actually be referred at the companies they want, which is supply.
 
@@ -28,7 +28,7 @@
 | # | Proposal | Action | Rating | Switches on |
 |---|---|---|---|---|
 | P-1 | Checkout opens one payment leg at a time, only once proven | change D-036/D-037 rollout | 8 | Now: INR off until Razorpay clears; USD $5 pack after one owner round trip |
-| P-2 | The catalog equals the register; advertise only what code grants; resolve #293 | change | 8 | After the owner rules on #293 |
+| P-2 | The catalog equals the register; advertise only what code grants; resolve #293 | change | 8 | #293 resolved by D-044 (register numbers win, restore in progress); remaining items await approval |
 | P-3 | Keep the outcome-aligned credit rule (D-034 + D-038 + D-035) as the only charge event; one outcome per ask | keep + refine | 7 | Build D-034, then D-038, then D-035 |
 | P-4 | Paywall only where a credit buys a deliverable ask: free waiting list, release at coverage, four honest paid moments | change (implements D-034) | 7 | With the D-034 build |
 | P-5 | Money-truth rule: every money sentence is generated from the catalog or ledger; banned phrases | change (makes D-043 move 3 binding) | 8 | Now |
@@ -55,6 +55,7 @@
 - **Becomes a 10 when:** both legs carry real payments for 30 days with 0 failed or stuck payments and 0 reconcile mismatches.
 
 ### P-2 — The catalog equals the register; resolve #293 (8/10)
+**Update Oct 16 2026: the owner ruled on the #293 conflict — the register numbers win. Recorded as D-044 (Free 3/mo with no welcome credits, Keep warm 4/mo, Momentum 36/30d; the restore is a code change in progress). The remaining items below (checkout gating until the D-037 gate, per-currency retirement of the single credit, hiding the trial and unbuilt tools from the public catalog, the register-pinning contract test) stay proposals awaiting approval.**
 - **Rule (a recommendation; the owner's ruling decides):**
   - The kit governs layout and the register governs numbers. D-001 already exempts founder edits after Oct 9, and D-005 replaced the kit's prices.
   - So: Free 3 credits a month with no welcome credits; Keep warm 4 a month; Momentum 36 per 30 days.
