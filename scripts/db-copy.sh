@@ -91,6 +91,14 @@ delta-sync)
       | MYSQL_PWD="$NEW_PWD" mysql --host="$NEW_HOST" --port="$NEW_PORT" --user="$NEW_USER" --ssl-mode=REQUIRED --default-character-set=utf8mb4 skipwait
   done
   ;;
+oldstats)
+  echo "== OLD read-only stats at $(date -u +%FT%TZ)"
+  oldq -D "$OLD_NAME" -e "SELECT 'oal_count_max_id_max_createdAt', COUNT(*), MAX(id), MAX(createdAt) FROM operationalActivityLogs; SELECT 'jobruns_count_max_id', COUNT(*), MAX(id) FROM jobRuns; SELECT 'checkoutintents_count_max_id_max_createdAt', COUNT(*), MAX(id), MAX(createdAt) FROM subscriptionCheckoutIntents; SELECT 'balances_count', COUNT(*) FROM balances; SELECT 'users_count_max_createdAt', COUNT(*), MAX(createdAt) FROM users;"
+  echo "== paymentFulfillments breakdown (no personal data)"
+  oldq -D "$OLD_NAME" -e "SELECT provider, status, role, IFNULL(reconciliationReason,'-'), COUNT(*), COUNT(DISTINCT userId), MIN(createdAt), MAX(createdAt), SUM(amount), MIN(currency), SUM(creditedAt IS NOT NULL), SUM(lastCheckedAt IS NOT NULL), SUM(tokenCount) FROM paymentFulfillments GROUP BY 1,2,3,4 ORDER BY 5 DESC LIMIT 40;"
+  echo "== sample providerEventId prefixes"
+  oldq -D "$OLD_NAME" -e "SELECT provider, status, LEFT(providerEventId,8), COUNT(*) FROM paymentFulfillments GROUP BY 1,2,3 ORDER BY 4 DESC LIMIT 15; SELECT 'users_with_fulfillments', COUNT(DISTINCT userId) FROM paymentFulfillments; SELECT 'distinct_email_domains_of_those_users', COUNT(DISTINCT SUBSTRING_INDEX(u.email,'@',-1)) FROM users u WHERE u.id IN (SELECT userId FROM paymentFulfillments);"
+  ;;
 verify)
   fail=0
   S_OLD=$(sig oldq "$OLD_NAME" | tr '\n' ' '); S_NEW=$(sig newq "$TARGET_DB" | tr '\n' ' ')
