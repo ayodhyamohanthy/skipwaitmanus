@@ -280,7 +280,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
   });
   // The wall's wired projection carries `createdAt` and may omit `expiresAt`
   // (the sponsored-capable select). Judge every row by the one clock migration
-  // 0092 backfills — the row's own expiry, or createdAt + 30 days — and never
+  // 0093 backfills — the row's own expiry, or createdAt + 30 days — and never
   // hide a row whose age cannot be established (drift stays visible, like
   // every other read).
   const wallRowExpiresAt = (row: unknown): Date | string | null => {

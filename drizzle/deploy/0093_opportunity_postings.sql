@@ -1,4 +1,4 @@
--- 0092: D-022 referrer-posted roles (docs/KIT_V4_BUILD_PLAN.md section 3c,
+-- 0093: D-022 referrer-posted roles (docs/KIT_V4_BUILD_PLAN.md section 3c,
 -- docs/DECISIONS.md D-022). Additive only:
 --   companyOpportunities.expiresAt            the 30-day post window (backfilled from createdAt)
 --   companyOpportunities.showPosterFirstName  the poster's chosen public face (default off)
