@@ -23,6 +23,16 @@ describe("Opportunity Wall", () => {
     expect(JSON.parse(localStorage.getItem("skipwait-pwa-referral-draft") || "{}").targetUrl).toBe("https://careers.acme.com/jobs/design");
   });
 
+  it("marks the poster as a verified employee, links the directory company, and offers posting", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => ({ ok: true, json: async () => String(url).includes("/api/companies") ? { companies: [{ slug: "acme", name: "Acme", domains: ["acme.com"] }] } : { opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: null, compensation: null, walkInAt: null, walkInEndsAt: null, createdAt: "2026-10-01T00:00:00.000Z" }] } })));
+    render(<OpportunityWall />);
+    await waitFor(() => expect(screen.getByText("Product Designer")).toBeTruthy());
+    expect(screen.getByText(/Verified employee at/)).toBeTruthy();
+    await waitFor(() => expect(screen.getByRole("link", { name: "Acme" }).getAttribute("href")).toBe("/explore/acme"));
+    expect(screen.getByRole("link", { name: /Share an opening you can refer for/ }).getAttribute("href")).toBe("/post-opportunity");
+    expect(screen.queryByText(/@/)).toBeNull();
+  });
+
   it("offers direct opening shares without exposing a Referrer or candidate", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14" }] }) })));
     render(<OpportunityWall />);
@@ -40,7 +50,7 @@ describe("Opportunity Wall", () => {
   it("labels a paid placement as a featured listing and keeps it after employee posts", async () => {
     const opening = (overrides: Record<string, unknown>) => ({ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14", isSponsored: false, ...overrides });
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).includes("/api/partners")) return { ok: true, json: async () => ({ modules: [] }) };
+      if (String(url).includes("/api/partners") || String(url).includes("/api/companies")) return { ok: true, json: async () => ({ modules: [], companies: [] }) };
       return { ok: true, json: async () => ({ opportunities: [opening({}), opening({ id: 2, companyDomain: "merkle.com", roleTitle: "Data Analyst", isSponsored: true })] }) };
     }));
     render(<OpportunityWall />);
@@ -72,7 +82,7 @@ describe("Opportunity Wall", () => {
   it("recovers through Try again when the openings request fails first", async () => {
     let attempts = 0;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).includes("/api/partners")) return { ok: true, json: async () => ({ modules: [] }) };
+      if (String(url).includes("/api/partners") || String(url).includes("/api/companies")) return { ok: true, json: async () => ({ modules: [], companies: [] }) };
       attempts += 1;
       return attempts === 1 ? { ok: false, status: 503, json: async () => ({ error: "Internal openings are temporarily unavailable. Please try again." }) } : { ok: true, json: async () => ({ opportunities: [{ id: 1, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer", targetRoleUrl: "https://careers.acme.com/jobs/design", location: "Remote", compensation: null, walkInAt: null, walkInEndsAt: null, createdAt: "2026-08-14" }] }) };
     }));
