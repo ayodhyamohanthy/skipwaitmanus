@@ -83,7 +83,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
   const now = dependencies.now ?? (() => Date.now());
   const sendEmail = dependencies.sendEmail;
   return {
-    async sendCode(rawEmail: string, context: { ip?: string } = {}): Promise<WorkEmailOtpSendResult> {
+    async sendCode(rawEmail: string, context: { ip?: string; seeker?: boolean } = {}): Promise<WorkEmailOtpSendResult> {
       const email = rawEmail.trim().toLowerCase();
       if (!isValidWorkEmailOtpEmail(email)) return { sent: false, reason: "invalid_email" };
       const domain = email.slice(email.lastIndexOf("@") + 1);
@@ -93,8 +93,9 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const timestamp = now();
       const limits: Limit[] = [
         { key: limiterKey("ip10m", context.ip || "unknown"), windowMs: 600_000, limit: 5 },
-        { key: limiterKey("domain10m", domain), windowMs: 600_000, limit: 8 },
-        { key: limiterKey("global1h", "all"), windowMs: 3_600_000, limit: 200 },
+        // Seeker codes go to shared mailbox domains (gmail.com), so the per-domain cap would throttle everyone.
+        context.seeker ? { key: limiterKey("seeker-global1h", "all"), windowMs: 3_600_000, limit: 500 } : { key: limiterKey("domain10m", domain), windowMs: 600_000, limit: 8 },
+        { key: limiterKey("global1h", "all"), windowMs: 3_600_000, limit: context.seeker ? 700 : 200 },
         { key: limiterKey("email10m", email), windowMs: 600_000, limit: 3 },
         { key: limiterKey("email30s", email), windowMs: OTP_RESEND_COOLDOWN_SECONDS * 1000, limit: 1 },
       ];
