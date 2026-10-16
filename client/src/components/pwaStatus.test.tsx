@@ -44,22 +44,12 @@ describe("PWA status", () => {
     act(() => { window.dispatchEvent(new Event("offline")); });
     expect(screen.queryByRole("status")).toBeNull();
   });
-  it("prompts for a waiting worker and tells it to take over only on Refresh", () => {
+  it("activates a waiting worker quietly: no banner, no reload", () => {
     const postMessage = vi.fn();
     render(<PwaUpdatePrompt />);
-    expect(screen.queryByRole("status")).toBeNull();
     act(() => { window.dispatchEvent(new CustomEvent(SW_UPDATE_EVENT, { detail: { postMessage } })); });
-    expect(screen.getByText("A new version of SkipWait is ready.")).toBeTruthy();
-    expect(postMessage).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     expect(postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
-  });
-  it("Later hides the prompt without touching the worker", () => {
-    const postMessage = vi.fn();
-    render(<PwaUpdatePrompt />);
-    act(() => { window.dispatchEvent(new CustomEvent(SW_UPDATE_EVENT, { detail: { postMessage } })); });
-    fireEvent.click(screen.getByRole("button", { name: "Later" }));
     expect(screen.queryByRole("status")).toBeNull();
-    expect(postMessage).not.toHaveBeenCalled();
+    expect(screen.queryByText("A new version of SkipWait is ready.")).toBeNull();
   });
 });
