@@ -20,8 +20,8 @@
       "image": "./Dockerfile",
       "max_instances": 3,
       "name": "skipwaitmanus-api",
-      // Keep the API next to the production MySQL (East US). Default placement follows the first request, which put it ~265 ms from the DB.
-      "constraints": { "regions": ["ENAM"] }
+      // Keep the API next to the production MySQL (West US 2). Default placement follows the first request, which put it ~265 ms from the DB.
+      "constraints": { "regions": ["WNAM"] }
     }
   ],
   "durable_objects": {
