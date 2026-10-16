@@ -37,6 +37,7 @@ const storagePut = r2Configured() ? r2StoragePut : process.env.BUILT_IN_FORGE_AP
 // Forge presigned GET, or DB blobs — matching the storagePut selection above.
 const storageGetBytes = r2Configured() ? r2StorageGetBytes : process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY ? forgeStorageGetBytes : dbStorageGetBytes;
 import * as db from "../db";
+import { sql } from "drizzle-orm";
 import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
@@ -158,7 +159,7 @@ async function startServer() {
 
 // Liveness is process-only; readiness gates on schema reconciliation. The
 // legacy endpoint stays 200-compatible for existing SHA verification clients.
-registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError});
+registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError,dbPing:async()=>{const d=await db.getDb();if(!d)throw new Error("no db");await d.execute(sql`SELECT 1`)}});
 
   registerAdminSmokeFixture(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   let sessionsApi: WorkOS | undefined;
