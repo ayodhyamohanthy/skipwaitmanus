@@ -59,7 +59,7 @@ export function PlanCards({ currency, featured, activePlan, renewing, isLoaded, 
               ? <CurrentPlanAction renewing={renewing} cancelRenewal={cancelRenewal} />
               : activePlan
                 ? <Button asChild variant="outline" className="brand-button w-full"><Link href="/billing">Manage plan<ArrowRight /></Link></Button>
-                : <Button className="brand-button w-full" disabled={!isLoaded} onClick={() => onUpgrade(paid)}>{isLoaded ? card.cta : "Checking sign-in…"}<ArrowRight /></Button>}
+                : <Button className="brand-button w-full" disabled={!isLoaded} onClick={() => onUpgrade(paid)}>{card.cta}<ArrowRight /></Button>}
             <GiftButton plan={paid} currency={currency} gift={gift} />
           </div>}
       </article>;
