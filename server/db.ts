@@ -1487,7 +1487,7 @@ export async function saveProfile(userId: number, input: { accountType: "job_see
   return getProfileByUserId(userId);
 }
 
-export type PublishCompanyOpportunityInput = { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date };
+export type PublishCompanyOpportunityInput = { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date; showPosterFirstName?: boolean };
 
 // One liveness clock for every read and the posting caps: the D-022 expiresAt
 // column (a walk-in ends with its event, a hiring post with its window). Rows
@@ -1521,7 +1521,7 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
   // D-022: the post lands with its own expiry on the one column every read uses —
   // a walk-in ends with its event, a hiring post opens the TTL window.
   const expiresAt = input.kind === "walk_in" && input.walkInEndsAt ? input.walkInEndsAt : opportunityWindowEnd(Date.now());
-  const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl, location, compensation: input.compensation?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true, expiresAt });
+  const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl, location, compensation: input.compensation?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true, showPosterFirstName: input.showPosterFirstName === true, expiresAt });
   return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, compensation: input.compensation?.trim() || null };
 }
 

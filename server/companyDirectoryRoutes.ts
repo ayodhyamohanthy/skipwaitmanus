@@ -1,15 +1,19 @@
 // Company directory REST surface.
 //   GET  /api/companies            public, cacheable: listed companies + openCount
 //   GET  /api/companies/:slug      public, cacheable: one listed company, 404 otherwise
+//   GET  /api/companies/:slug/opportunities  public, cacheable: a company's live
+//                                  employee-posted roles (D-022), newest first
 //   GET  /api/admin/companies?q=   admin: every company with status and domains
 //   POST /api/admin/companies      admin: create (strict Zod body)
 //   PATCH /api/admin/companies/:id admin: edit, hide/list, add/remove alias domains
 // Contracts live in shared/companies.ts; services are injectable for tests.
 import express, { type Express, type Request, type Response } from "express";
 import { adminCompanyCreateSchema, adminCompanyUpdateSchema, COMPANY_NOT_FOUND_ERROR, COMPANY_SLUG_PATTERN, type AdminCompany, type AdminCompanyCreate, type AdminCompanyUpdate, type CompanyDirectoryResponse, type PublicCompany } from "../shared/companies";
+import { companyOpportunitiesResponseSchema } from "../shared/companyOpportunities";
 import { getCompanyDirectoryEntry, listAdminCompanies, listCompanyDirectory } from "./companyDirectory";
 import { CompanyConflictError, CompanyInputError, CompanyNotFoundError, createCompany, updateCompany } from "./companyDirectoryAdmin";
 import { CompanyDirectoryUnavailableError } from "./companyDirectorySource";
+import { listCompanyOpportunityPosts } from "./db";
 
 type Identity = { account: { id: number; role?: "user" | "admin" } };
 type ActivityInput = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number };
@@ -19,6 +23,8 @@ export type CompanyDirectoryRouteDeps = {
   recordActivity?: (input: ActivityInput) => void | Promise<void>;
   listCompanyDirectory?: () => Promise<CompanyDirectoryResponse>;
   getCompanyDirectoryEntry?: (slug: string) => Promise<PublicCompany | undefined>;
+  /** A company's live posts for the given domains (defaults to server/db.ts). */
+  listCompanyOpportunities?: (domains: readonly string[], nowMs?: number) => Promise<unknown[]>;
   listAdminCompanies?: (query?: string) => Promise<AdminCompany[]>;
   createCompany?: (input: AdminCompanyCreate) => Promise<AdminCompany>;
   updateCompany?: (id: number, patch: AdminCompanyUpdate) => Promise<AdminCompany>;
@@ -38,6 +44,7 @@ function failure(res: Response, error: unknown, fallback: string) {
 export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirectoryRouteDeps) {
   const list = deps.listCompanyDirectory ?? listCompanyDirectory;
   const getOne = deps.getCompanyDirectoryEntry ?? getCompanyDirectoryEntry;
+  const listOpportunities = deps.listCompanyOpportunities ?? listCompanyOpportunityPosts;
   const adminList = deps.listAdminCompanies ?? listAdminCompanies;
   const create = deps.createCompany ?? createCompany;
   const update = deps.updateCompany ?? updateCompany;
@@ -69,6 +76,22 @@ export function registerCompanyDirectoryRoutes(app: Express, deps: CompanyDirect
       if (!company) return res.status(404).set("Cache-Control", "public, max-age=30").json({ error: COMPANY_NOT_FOUND_ERROR });
       res.set("Cache-Control", PUBLIC_CACHE).json({ company });
     } catch (error) { failure(res, error, "We could not load this company"); }
+  });
+
+  // A company's live openings from its verified employees (D-022, plan 3c):
+  // public and cached like the directory read. The service omits lapsed and
+  // closed posts and never returns poster ids, emails or names unless the
+  // poster chose a first name; a row that fails the shared contract is an
+  // error, never a partially rendered card.
+  app.get("/api/companies/:slug/opportunities", async (req, res) => {
+    const slug = req.params.slug ?? "";
+    if (!COMPANY_SLUG_PATTERN.test(slug)) return res.status(400).set("Cache-Control", "no-store").json({ error: "Invalid company link" });
+    try {
+      const company = await getOne(slug);
+      if (!company) return res.status(404).set("Cache-Control", "public, max-age=30").json({ error: COMPANY_NOT_FOUND_ERROR });
+      const opportunities = await listOpportunities(company.domains, Date.now());
+      res.set("Cache-Control", PUBLIC_CACHE).json(companyOpportunitiesResponseSchema.parse({ opportunities }));
+    } catch (error) { failure(res, error, "We could not load this company's openings"); }
   });
 
   app.get("/api/admin/companies", async (req, res) => {
