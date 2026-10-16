@@ -49,6 +49,7 @@ export class SkipwaitApi extends Container {
 import { fetchContainerReplayingIdempotent, fetchContainerWithStoppedRecovery } from "./containerRecovery";
 import { buildJobsTickRequest, isInternalApiPath, withoutJobsTickHeader } from "../shared/jobsTick";
 import { withEdgeClientIp } from "../shared/clientIp";
+import { isWriteFrozen, writeFreezeResponse } from "../shared/writeFreeze";
 
 type WorkerEnv = Record<string, unknown> & { SkipwaitApi: DurableObjectNamespace; API_RELEASE?: string };
 
@@ -74,6 +75,9 @@ export default {
     if (isInternalApiPath(url.pathname)) {
       return new Response("Not Found", { status: 404, headers: { "cache-control": "no-store" } });
     }
+    // Planned maintenance (database move): refuse writes at the edge. No-op unless WRITE_FREEZE is "1".
+    const frozen = writeFreezeResponse(env, request.method, url.pathname);
+    if (frozen) return frozen;
     // Single-instance API: all requests to one container for session affinity.
     const release = releaseOf(env);
     const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${release}`);
@@ -89,6 +93,7 @@ export default {
   // replay after a stopped-instance start is safe. A non-2xx answer throws so
   // the cron invocation is marked failed in Workers observability.
   async scheduled(controller: ScheduledController, env: WorkerEnv, ctx: ExecutionContext): Promise<void> {
+    if (isWriteFrozen(env)) { console.log("[jobs] tick skipped: WRITE_FREEZE is on"); return; }
     const secret = typeof env.JWT_SECRET === "string" ? env.JWT_SECRET : "";
     if (!secret) throw new Error("Scheduled jobs tick skipped: JWT_SECRET is not set on the Worker");
     const container = getContainer(env.SkipwaitApi, `skipwaitmanus-api-${releaseOf(env)}`);
