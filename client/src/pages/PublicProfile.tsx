@@ -1,4 +1,5 @@
 import { ArrowRight, BadgeCheck, Copy, Link2, LockKeyhole, MapPin, Share2 } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState } from "react";
 import { Link, useRoute } from "wouter";
 import { useAuth } from "@/_core/auth";
@@ -116,7 +117,7 @@ export default function PublicProfile() {
         ) : null}
       </header>
       <main className="mx-auto max-w-5xl px-5 pb-16">
-        {loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading this profile…</p> : null}
+        {loading ? <LoadingNote>Loading this profile…</LoadingNote> : null}
         {!loading && gated ? (
           <section className="rounded-3xl bg-muted p-10 text-center">
             <LockKeyhole className="mx-auto mb-3 size-8" />

@@ -1,7 +1,7 @@
 // Kit v4 loading, error and empty states for the seeker Requests screen.
 // Empty copy and layout follow app/src/routes/requests.tsx; loading and error
 // keep the live screen's honest copy on kit Panel / Button surfaces.
-import { LoaderCircle, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
@@ -10,13 +10,7 @@ export function RequestsLoading({ slow }: { slow: boolean }) {
   return (
     <div role="status" aria-busy="true" aria-live="polite" data-skipwait-loading="true" className="mt-6">
       <Panel>
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /></span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Loading your requests…</p>
-            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Routing checks usually take a second.</p>
-          </div>
-        </div>
+        <div className="sr-only"><p>Loading your requests…</p><p>Routing checks usually take a second.</p></div>
         <div aria-hidden="true" className="mt-4 space-y-2">
           <div className="h-2.5 w-3/4 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
           <div className="h-2.5 w-full animate-pulse rounded-full bg-muted motion-reduce:animate-none" />

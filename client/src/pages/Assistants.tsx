@@ -1,4 +1,5 @@
 import { Bot } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useCallback, useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -130,7 +131,7 @@ export default function Assistants() {
     <main data-skipwait-screen="assistants" className="page-content mx-auto max-w-3xl">
       <Heading {...HEADING} />
 
-      {!loaded && loading ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your assistants…</p> : null}
+      {!loaded && loading ? <LoadingNote>Loading your assistants…</LoadingNote> : null}
 
       {loadError && !loaded ? (
         <Panel tone="muted" className="mb-4 text-center">
