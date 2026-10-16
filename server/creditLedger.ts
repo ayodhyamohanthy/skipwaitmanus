@@ -12,8 +12,8 @@
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import type { MySql2Database } from "drizzle-orm/mysql2";
-import { planCreditGrants, promoCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { BUCKET_SOURCES, type CreditsLedger, type LedgerGrant, type PromoBucket } from "../shared/creditLedger";
+import { notifications, planCreditGrants, promoCreditGrants, tokenBalances, tokenTransactions } from "../drizzle/schema";
+import { BUCKET_SOURCES, WELCOME_CREDITS, type CreditsLedger, type LedgerGrant, type PromoBucket } from "../shared/creditLedger";
 import { REVERSE_TRIAL } from "../shared/planCatalog";
 import { allocateSpend, buildCreditsLedger, spendableBuckets, usedInCycle, type SpendAllocation } from "../shared/creditSpend";
 import type { Carryover } from "../shared/planCatalog";
@@ -176,6 +176,25 @@ export async function spendCreditsTx(tx: LedgerTx, input: { wallet: WalletRow; g
 export async function spendAlreadyRecordedTx(tx: LedgerTx, userId: number, role: WalletRole, idempotencyKey: string): Promise<boolean> {
   const rows = await tx.select({ id: tokenTransactions.id }).from(tokenTransactions).where(and(eq(tokenTransactions.userId, userId), eq(tokenTransactions.role, role), eq(tokenTransactions.idempotencyKey, `${idempotencyKey}#1`))).limit(1);
   return rows.length > 0;
+}
+
+/**
+ * The one-time welcome credits. The grant key is the claim: once per canonical
+ * person across every alias (or per account for a person-less legacy account).
+ */
+export async function grantWelcomeCreditsTx(tx: LedgerTx, input: { userId: number; canonicalPersonId: number | null; now: Date }): Promise<{ granted: boolean; grantId: number | null }> {
+  const grantKey = input.canonicalPersonId ? `welcome:person:${input.canonicalPersonId}` : `welcome:user:${input.userId}`;
+  let grantId: number;
+  try {
+    const inserted = await tx.insert(planCreditGrants).values({ userId: input.userId, role: "job_seeker", source: "welcome", grantKey, tokenCount: WELCOME_CREDITS, creditsRemaining: WELCOME_CREDITS, status: "active", grantedAt: input.now, expiresAt: null });
+    grantId = Number(inserted[0].insertId);
+  } catch (error) {
+    if (isDuplicateKey(error)) return { granted: false, grantId: null };
+    throw error;
+  }
+  await writeLedgerRow(tx, { userId: input.userId, role: "job_seeker", tokenCount: WELCOME_CREDITS, kind: "welcome_grant", source: BUCKET_SOURCES.welcome, referenceType: "credit_grant", referenceId: String(grantId), idempotencyKey: `welcome:${grantId}`, creditGrantId: grantId });
+  await tx.insert(notifications).values({ userId: input.userId, category: "system", title: `${WELCOME_CREDITS} free credits added`, body: `Your profile is complete, so ${WELCOME_CREDITS} free credits are on your balance. They never expire and never change your place in any queue.`, eventKey: `welcome-credits:${grantKey}`.slice(0, 120) });
+  return { granted: true, grantId };
 }
 
 /**

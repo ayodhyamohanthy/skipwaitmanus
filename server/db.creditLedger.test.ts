@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { creditsLedgerSchema } from "../shared/creditLedger";
 import { InsufficientCreditsError, grantTrialCreditsTx, type LedgerTx } from "./creditLedger";
-import { applyChargebeeSubscriptionEvent, ensureTokenWallet, getCreditLedgerAudit, getTokenWallet, listCreditLedger, reconcileSeekerCredits, spendCredits, spendToken } from "./db";
+import { applyChargebeeSubscriptionEvent, ensureTokenWallet, getCreditLedgerAudit, getTokenWallet, grantWelcomeCredits, listCreditLedger, reconcileSeekerCredits, spendCredits, spendToken } from "./db";
 import { createLedgerFixture, type Row } from "./ledgerFixtureDb";
 import { listWalletsDueForCreditCycle } from "./planCreditCycleJob";
 
@@ -115,12 +115,12 @@ describe("spending", () => {
 describe("reconcile and the scheduled safety net", () => {
   it("a yearly Max term opens a cycle every month, catching up missed months, and carries up to 3 months", async () => {
     db.txns = [];
-    db.wallets[0] = wallet({ plan: "max", subscriptionId: "sub_max", monthlyAllowance: 36, monthlyCreditsRemaining: 25, balance: 0, monthlyCycleKey: "2026-09", subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2027-09-01T00:00:00Z") });
+    db.wallets[0] = wallet({ plan: "max", subscriptionId: "sub_max", monthlyAllowance: 30, monthlyCreditsRemaining: 25, balance: 0, monthlyCycleKey: "2026-09", subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2027-09-01T00:00:00Z") });
     expect(await listWalletsDueForCreditCycle(at("2026-11-15T00:00:00Z"), 50)).toEqual([SEEKER]);
     expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T00:00:00Z"))).toEqual({ changed: true });
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 36 });
+    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-11", monthlyCreditsRemaining: 30 });
     expect(txns({ kind: "plan_grant" }).map(row => row.sourceCycleKey)).toEqual(["2026-10", "2026-11"]);
-    expect(db.grants.map(grant => [grant.cycleKey, grant.tokenCount, iso(grant.expiresAt)])).toEqual([["2026-09", 25, "2027-01-01T00:00:00.000Z"], ["2026-10", 36, "2027-02-01T00:00:00.000Z"]]);
+    expect(db.grants.map(grant => [grant.cycleKey, grant.tokenCount, iso(grant.expiresAt)])).toEqual([["2026-09", 25, "2027-01-01T00:00:00.000Z"], ["2026-10", 30, "2027-02-01T00:00:00.000Z"]]);
     // Same window again: nothing due, nothing written.
     expect(await reconcileSeekerCredits(SEEKER, at("2026-11-15T01:00:00Z"))).toEqual({ changed: false });
     expect(await listWalletsDueForCreditCycle(at("2026-11-15T01:00:00Z"), 50)).toEqual([]);
@@ -129,12 +129,12 @@ describe("reconcile and the scheduled safety net", () => {
     await reconcileSeekerCredits(SEEKER, at("2027-01-02T00:00:00Z"));
     expect(db.grants[0]).toMatchObject({ status: "expired", creditsRemaining: 0 });
     expect(txns({ kind: "plan_credit_expiry", creditGrantId: db.grants[0].id })).toEqual([expect.objectContaining({ tokenCount: -25 })]);
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2027-01", monthlyCreditsRemaining: 36 });
+    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2027-01", monthlyCreditsRemaining: 30 });
     // A reader whose clock is behind (another instance, before the boundary) never rolls the wallet back.
     expect(await reconcileSeekerCredits(SEEKER, at("2026-12-31T23:59:00Z"))).toEqual({ changed: false });
     vi.setSystemTime(at("2027-01-02T00:00:00Z"));
     const summary = await getTokenWallet(SEEKER, "job_seeker");
-    expect(summary.ledger).toMatchObject({ creditsPerMonth: 36, carryover: 3, buckets: { cycle: 36, carriedOver: 108 }, planCreditsExpiringSoon: null, nextExpiry: { credits: 36, expiresAt: "2027-02-01T00:00:00.000Z" } });
+    expect(summary.ledger).toMatchObject({ creditsPerMonth: 30, carryover: 3, buckets: { cycle: 30, carriedOver: 90 }, planCreditsExpiringSoon: null, nextExpiry: { credits: 30, expiresAt: "2027-02-01T00:00:00.000Z" } });
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 
@@ -202,16 +202,16 @@ describe("reconcile and the scheduled safety net", () => {
   });
 });
 
-describe("retired welcome grants still read, and nothing grants new ones", () => {
-  it("a historic welcome grant row still reconciles in the ledger", async () => {
+describe("welcome credits and the ledger read", () => {
+  it("grants 3 welcome credits once per person across aliases, with a ledger row and a notice", async () => {
     db.wallets[0] = wallet({ plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10", balance: 0 });
-    // Exactly what a pre-D-039 wallet holds: the grant row plus its original grant txn row.
-    db.grants = [{ id: 1, userId: SEEKER, role: "job_seeker", source: "welcome", grantKey: "welcome:person:1", tokenCount: 3, creditsRemaining: 3, status: "active", grantedAt: at("2026-09-01T00:00:00Z"), expiresAt: null }];
-    db.txns = [{ id: 1, userId: SEEKER, role: "job_seeker", tokenCount: 3, kind: "welcome_grant", source: "welcome_grant", referenceType: "credit_grant", referenceId: "1", idempotencyKey: "welcome:1", creditGrantId: 1, createdAt: at("2026-09-01T00:00:00Z") }];
+    expect(await grantWelcomeCredits(SEEKER)).toEqual({ granted: true });
+    expect(await grantWelcomeCredits(SEEKER)).toEqual({ granted: false });
+    expect(await grantWelcomeCredits(OTHER)).toEqual({ granted: false });
+    expect(db.grants).toEqual([expect.objectContaining({ userId: SEEKER, source: "welcome", grantKey: "welcome:person:1", tokenCount: 3, expiresAt: null })]);
+    expect(txns({ kind: "welcome_grant" })).toEqual([expect.objectContaining({ userId: SEEKER, tokenCount: 3, creditGrantId: db.grants[0].id })]);
+    expect(db.notes).toHaveLength(1);
     expect((await getTokenWallet(SEEKER, "job_seeker")).ledger).toMatchObject({ balance: 3, welcome: { granted: true, credits: 3, remaining: 3 } });
-    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
-    // The granter is gone (D-039): reintroducing it must touch this test.
-    expect(await import("./db")).not.toHaveProperty("grantWelcomeCredits");
   });
 
   it("lists only the caller's own rows, newest first, without pending invite rewards", async () => {

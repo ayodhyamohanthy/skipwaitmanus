@@ -28,9 +28,8 @@ import { z } from "zod";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Welcome credits were retired Oct 16 2026 (D-039): nothing grants them, and
-// the public catalog no longer lists them. Historic `welcome` grant rows still
-// read through the buckets below, so old wallets reconcile.
+/** One-time credits for every person (keyed on the canonical person, never per alias). */
+export const WELCOME_CREDITS = 3;
 /**
  * A renewing plan whose term end has passed is waiting for the provider's
  * renewal webhook. Its plan credits stop being spendable at the term end (the
