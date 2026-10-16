@@ -76,7 +76,7 @@ export async function getDb() {
         idleTimeout: 10 * 60_000,
       });
       // Warm a few connections in the background (best effort, never blocks or fails startup).
-      for (let i = 0; i < 4; i += 1) void connection.query("SELECT 1").catch(() => undefined);
+      for (let i = 0; i < 4; i += 1) { try { void Promise.resolve(connection.query?.("SELECT 1")).catch(() => undefined); } catch { /* warm-up is best effort */ } }
       _db = drizzle(connection) as unknown as ReturnType<typeof drizzle>;
     } catch (error) { console.warn("[Database] Failed to connect:", error); _db = null; }
   }
