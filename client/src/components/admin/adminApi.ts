@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { flowBaselineSchema } from "@shared/flowBaseline";
 import { readApiJson } from "@/lib/apiResponse";
 
 /** Thrown for 401/403 so admin screens can show the access gate instead of retrying. */
@@ -38,6 +39,8 @@ export const flowHealthSchema = z.object({
     funnel: z.object({ requestsCreated: z.number(), requestsClaimed: z.number(), decisionsRecorded: z.number(), waitingForCoverage: z.number() }),
     coverageGaps: z.array(z.object({ companyDomain: z.string(), waitingRequests: z.number(), verifiedCoverage: z.number() })),
   }),
+  /** D-018 aggregate baseline, a sibling of `health`; absent or null when the server did not measure it. */
+  baseline: flowBaselineSchema.nullable().optional(),
 });
 export type FlowHealth = z.infer<typeof flowHealthSchema>["health"];
 
