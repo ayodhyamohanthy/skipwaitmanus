@@ -1,8 +1,9 @@
-import { AlertTriangle, ArrowRight, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
+import { AlertTriangle, ArrowRight, Clock3, FileText, Globe2, Lightbulb, LoaderCircle, Sparkles, X } from "lucide-react";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
+import { parseOpportunityAskSearch } from "@shared/companyOpportunities";
 import { inferAskJobFunction } from "@shared/jobFunctionClassifier";
 import type { JobFunction } from "@shared/jobFunctions";
 import { usePersistFn } from "@/hooks/usePersistFn";
@@ -58,7 +59,14 @@ export default function Ask() {
   // prefill keeps priority). The draft is cleared on sign-out and on send.
   const bridgeDraft = prefill ? null : readReferralDraft();
   const bridgeUrl = bridgeDraft && isValidTargetRoleUrl(bridgeDraft.targetUrl) ? bridgeDraft.targetUrl : "";
-  const [url, setUrl] = useState(prefill?.targetRoleUrl ?? bridgeUrl);
+  // D-022: an ask opened from a posted role ("/ask?post=<id>&job=<link>") carries
+  // the post id with the send, so the server routes it to the poster first. The
+  // job link only prefills the composer; "Write another" drops the selection.
+  const [postSelection, setPostSelection] = useState(() => parseOpportunityAskSearch(window.location.search));
+  // The navigation from a post is fresher than a stored /start draft; a walk-in
+  // post carries no link, so a draft URL fills in only when nothing is on screen.
+  const postedJobUrl = postSelection?.jobUrl ?? "";
+  const [url, setUrl] = useState(prefill?.targetRoleUrl ?? (postedJobUrl || bridgeUrl));
   const [note, setNote] = useState(prefill?.note.slice(0, NOTE_LIMIT) ?? "");
   const [compensation, setCompensation] = useState("");
   // Only an explicit pick is sent; otherwise the server stores the same guess shown here.
@@ -148,11 +156,13 @@ export default function Ask() {
       const doc = await ensureResume();
       setSendStage("ask");
       const targetRoleUrl = url.trim();
-      const body: Record<string, string | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
+      const body: Record<string, string | number | number[]> = { targetRoleUrl, attachmentIds: [doc.id], candidateMessage: note.trim() };
       // A request that began on a company page must stay with that company.
       if (prefill?.companySlug) body.companySlug = prefill.companySlug;
       if (compensation.trim()) body.compensation = compensation.trim().slice(0, 80);
       if (pickedFunction) body.jobFunction = pickedFunction;
+      // D-022: the posted role travels with the ask so the server can give the poster the first look.
+      if (postSelection) body.opportunityId = postSelection.opportunityId;
       // D-017: an ask begun on a referrer's personal link stays with that
       // referrer (the server routes it to the link's owner), never the company.
       const fastTrack = fastTrackAskFields(window.location.search);
@@ -198,7 +208,7 @@ export default function Ask() {
   }
 
   if (sent) {
-    return <AskSent sent={sent} onWriteAnother={() => { setSent(null); setUrl(""); setNote(""); setCompensation(""); setPickedFunction(null); removeResume(); setComposeError(""); setSendError(""); }} />;
+    return <AskSent sent={sent} onWriteAnother={() => { setSent(null); setUrl(""); setNote(""); setCompensation(""); setPickedFunction(null); removeResume(); setComposeError(""); setSendError(""); setPostSelection(null); }} />;
   }
 
   const busy = drafting || uploading;
@@ -233,6 +243,7 @@ export default function Ask() {
         </Panel>
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <AskStrength checks={locationFit === "unknown" ? checks : [...checks, { ok: locationFit === "fits", label: "Location works for you", hint: "See the note under Role location." }]} />
+          {postSelection ? <Panel tone="muted"><Clock3 className="mb-2 size-5" /><p className="text-sm">The employee who posted this role sees your ask first, for 48 hours. After that, other verified referrers at the company can pick it up.</p></Panel> : null}
           <Panel tone="muted"><Lightbulb className="mb-2 size-5" /><p className="text-sm">The referrer sees your role and note — not your name or resume — until they accept.</p></Panel>
           {slotCap ? <SlotCapNudge slots={slotCap} onWait={() => { dismissNudge("slot_cap", nudgeAccount); setSlotCap(null); }} /> : null}
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}

@@ -12,7 +12,7 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/ask", go],
 }));
 
-beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; go.mockReset(); sessionStorage.clear(); });
+beforeEach(() => { authState.isLoaded = true; authState.isSignedIn = true; go.mockReset(); sessionStorage.clear(); window.history.replaceState(null, "", "/ask"); });
 const fetchCalls = () => (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.length;
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
@@ -337,6 +337,35 @@ describe("Ask composer", () => {
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ fastTrackCode: "abcdefghijklmnop1234", confirmedCompanyDomain: "tcs.com", compensation: "₹18–22 LPA" });
     window.history.replaceState(null, "", "/ask");
     localStorage.removeItem("bridge-company-confirmation");
+  });
+
+  it("composes an ask from a posted role with the post id and the 48-hour first look", async () => {
+    stubCrypto();
+    const fetchMock = vi.fn();
+    stubUploadThen(fetchMock, { requestId: 41, companyDomain: "wipro.com" });
+    vi.stubGlobal("fetch", fetchMock);
+    window.history.replaceState(null, "", "/ask?post=55&job=https%3A%2F%2Fcareers.wipro.com%2Fjob%2Fproduct-designer-123");
+    render(<Ask />);
+    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("https://careers.wipro.com/job/product-designer-123");
+    expect(screen.getByText(/sees your ask first, for 48 hours/)).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText(/Name the role/), { target: { value: STRONG_NOTE } });
+    const picker = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
+    fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
+    await screen.findByText("Ask sent to wipro.com.");
+    const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
+    expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ opportunityId: 55, targetRoleUrl: "https://careers.wipro.com/job/product-designer-123" });
+    // "Write another" drops the post selection so the next ask is a plain one.
+    fireEvent.click(screen.getByRole("button", { name: "Write another" }));
+    expect(screen.queryByText(/sees your ask first, for 48 hours/)).toBeNull();
+  });
+
+  it("asks for the official job link when the post is a walk-in", () => {
+    vi.stubGlobal("fetch", vi.fn());
+    window.history.replaceState(null, "", "/ask?post=92");
+    render(<Ask />);
+    expect((screen.getByLabelText(/Official job link/) as HTMLInputElement).value).toBe("");
+    expect(screen.getByText(/sees your ask first, for 48 hours/)).toBeTruthy();
   });
 
   it("surfaces server credit enforcement without inventing slot math", async () => {
