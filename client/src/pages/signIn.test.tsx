@@ -53,9 +53,10 @@ describe("SignIn", () => {
     render(<SignIn />);
     expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(document.querySelector("input[type=password]")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Continue with LinkedIn/ }));
-    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=linkedin");
-    for (const name of ["Google", "Microsoft", "GitHub", "Slack"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Continue with GitHub/ }));
+    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=github");
+    expect(screen.getByRole("button", { name: /Continue with Google/ })).toBeTruthy();
+    for (const name of ["Microsoft", "LinkedIn", "Slack"]) expect(screen.queryByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeNull();
   });
 
   it("ships no design-preview scaffolding", () => {
