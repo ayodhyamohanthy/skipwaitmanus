@@ -2,7 +2,7 @@
 
 Founder instruction, Oct 14 2026 (relayed): record the payments testing setup and rules in the repo docs.
 This runbook supersedes the "test site only" framing in `docs/QA_PAYMENTS.md` where they differ. Keep both.
-Card numbers are NOT stored here. They rotate; always read them from the Razorpay docs below.
+Razorpay can rotate test cards, so section 2a lists only the recurring cards that were read from the Razorpay page on Oct 16 2026. Re-read the docs below before relying on them.
 
 ## 1. The two Chargebee sites
 
@@ -23,6 +23,27 @@ Card numbers are NOT stored here. They rotate; always read them from the Razorpa
 - Chargebee side (founder: "if anything is needed on chargebee side you can check this website"): https://www.chargebee.com/docs/
 - Chargebee + Razorpay card/UPI testing: https://www.chargebee.com/docs/payments/2.0/kb/billing/how-to-test-card-upi-payments-via-razorpay-with-chargebee-integration
 - Success UPI handle: `test@razorpay` (confirm in the UPI doc before use)
+
+## 2a. INR recurring card tests (subscriptions): use the recurring test cards
+
+Why: a plain test card such as 4111 1111 1111 1111 is not a recurring card. Razorpay returns "not eligible for recurring payments" and the Chargebee card leg fails. That is a wrong test card, not an app bug. Do not retry with the same card.
+
+Sources: https://razorpay.com/docs/payments/recurring-payments/cards/test-cards and https://www.chargebee.com/docs/payments/2.0/payment-gateways-and-configuration/razorpay-cards
+
+Domestic cards (read from the Razorpay page, Oct 16 2026): any future expiry, any 3-digit CVV.
+- Visa 4100 2800 0000 1007 (the older Visa 4718 6091 0820 4366 still works for mandate registration)
+- Mastercard 5305 6200 0006 0000
+- RuPay 6527 6589 0000 1005
+Steps: enter the card, tick the tokenisation / recurring consent, then click Success on the mock 3DS (AFA) page. A mandate is not created without a successful 3DS step.
+Caution: the Razorpay page also lists 5305 6200 0006 0000 in its `payment_timed_out` failure table, so if that Mastercard times out, use the Visa or RuPay card above and tell QA.
+
+International / Export presentment (Chargebee page, only when international payments are enabled on the Razorpay account): Visa 4012 8888 8888 1881; Mastercard 5555 5555 5555 4444 or 5105 1051 0510 5100. Not yet run by QA. Domestic and Import use different Razorpay test accounts and different cards; do not mix them.
+
+Browser: Chargebee support says to use a regular headed browser with pop-ups allowed. The hCaptcha is passive and headless automation can trigger it; a captcha frame on the page is not by itself a blocked payment. There is no TEST-only switch to turn it off.
+
+Unverified until QA confirms: the Chargebee page lists a Rs 15,000 maximum amount for this flow, and Razorpay says an auto-debit reaches Success or Failure about 5 minutes after it is created. Treat both as unverified here.
+
+Live INR payments stay blocked until Razorpay approves skipwait.chargebee.com (BUGFREE_GATE 4.14).
 
 ## 3. Provider matrix (run on BOTH sites)
 
