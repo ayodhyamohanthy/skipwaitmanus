@@ -135,7 +135,7 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
   it("global callers see USD prices only, each with its availability and auto-extend rails", () => {
     const catalog = planCatalogResponse({ ...base, region: "INTL" });
     expect(catalog).toMatchObject({ region: "INTL", currency: "USD", priceNote: null, fairness: { maxOpenAsksPerCompany: 2, planVisibleToReferrers: false } });
-    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 3, welcomeCredits: 3, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } });
+    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 3, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } });
     expect(catalog.plans.map(plan => [plan.id, plan.terms.map(term => [term.interval, term.amount, term.available])])).toEqual([
       ["keep_warm", [["yearly", 2_900, false]]],
       ["start", [["30d", 800, true], ["90d", 1_900, false]]],
@@ -146,7 +146,9 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
     ]);
     expect(catalog.plans.find(plan => plan.id === "start")?.terms[0]).toEqual({ interval: "30d", days: 30, amount: 800, available: true, autoExtend: [] });
     expect(catalog.plans.find(plan => plan.id === "keep_warm")?.terms[0].days).toBeNull();
-    expect(catalog.plans.find(plan => plan.id === "momentum")).toMatchObject({ displayName: "Momentum", recommended: true, openRequests: 15, creditsPerMonth: 30, carryover: 3 });
+    expect(catalog.plans.find(plan => plan.id === "momentum")).toMatchObject({ displayName: "Momentum", recommended: true, openRequests: 15, creditsPerMonth: 36, carryover: 3 });
+    // D-041: Focus/Sprint human time reads as "coming later" until reviewers are staffed; everything else is offered.
+    expect(catalog.plans.map(plan => [plan.id, plan.humanTimeOffered])).toEqual([["keep_warm", true], ["start", true], ["momentum", true], ["land_focus", false], ["land_sprint", false], ["land_concierge", true]]);
     expect(catalog.plans.find(plan => plan.id === "land_concierge")).toMatchObject({ byApplication: true, openRequests: 75 });
     expect(catalog.packs.map(pack => [pack.id, pack.credits, pack.amount, pack.available, pack.firstPack, pack.recommended])).toEqual([["pack_5", 5, 500, true, true, false], ["pack_25", 25, 2_200, false, false, true], ["pack_60", 60, 4_800, false, false, false], ["pack_150", 150, 10_500, false, false, false]]);
     expect(catalog.sessions).toEqual([{ id: "written_review", label: "Written expert review", detail: "Returned within 48 hours", amount: 4_900, available: false }, { id: "live_session", label: "Live 45-minute session", detail: "Mock interview or search strategy", amount: 9_900, available: false }]);

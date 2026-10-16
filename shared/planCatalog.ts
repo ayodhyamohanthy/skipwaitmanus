@@ -1,14 +1,22 @@
 /**
  * SkipWait plan catalog: the pricing model the owner decided on Oct 14 2026
- * (docs/PRICING_RECOMMENDATION.md, "Owner decisions" and sections 3 to 5). It
+ * (docs/PRICING_RECOMMENDATION.md, "Owner decisions" and sections 3 to 5),
+ * amended Oct 16 2026 (D-036–D-042 in docs/DECISIONS.md). It
  * overrides PRICING.md, UPGRADE_NUDGES.md and the kit PNG numbers wherever
  * they differ; those files now repeat these numbers.
  *
  *  - Paid plans are 30-day and 90-day passes paid once. Keep warm is the only
  *    yearly plan. A 90-day pass grants credits in three cycles of about 30 days.
- *  - Prices: one global USD price and an India price in INR including GST.
- *  - Free: 3 open asks, 3 credits every month (no carryover), 3 welcome credits
- *    and a one-time 14-day Momentum reverse trial after the first ask.
+ *    Passes switch on only once 3 outside companies each have 3+ available
+ *    referrers (D-037); until then packs are the paid product.
+ *  - Prices: one global USD price and an India price in INR, no GST
+ *    (D-007: Indian sole proprietorship, not GST-registered).
+ *  - Free: 3 open asks, 3 credits every UTC calendar month (no carryover).
+ *    No welcome credits (D-039). The one-time 14-day Momentum reverse trial
+ *    stays in code; its start timing is an open owner question.
+ *  - Keep warm carries 4 credits a month, Momentum 36 per 30 days (D-041).
+ *  - Land Focus/Sprint human review and live sessions read as "coming later"
+ *    until reviewers are staffed (D-041); Concierge is by application.
  *  - Land Concierge holds 75 open asks and is sold by application.
  *  - Human time is sold as sessions, never for credits.
  *  - Every plan holds at most 2 open asks per company; referrers never see a plan.
@@ -72,12 +80,11 @@ const pass = (usd30: number, inr30: number, usd90: number, inr90: number): Catal
 export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 
 /**
- * Credit PACKS (the one-off $1 / INR 99 per credit purchase on /premium) were off
- * sale until credits had a spend verified end to end (reopened once it was): a credit charged
- * when an ask is sent, returned on withdraw or expiry. Flip to true to reopen the
- * client purchase entry points. Pro/Max are unaffected (they sell open-ask slots
- * and assistant access). This only hides client entry points: the server checkout
- * route, pricing and the payment-recovery screen are untouched.
+ * Credit PACKS (the D-005/D-036 ladder: first pack ₹99 for 2 / $5 for 5, then
+ * 25 / 60 / 150) are the paid product until passes switch on (D-037). The flag
+ * below only hides client entry points: the server checkout route, pricing and
+ * the payment-recovery screen are untouched. Pro/Max are unaffected (they sell
+ * open-ask slots and assistant access, and stay off sale per D-027).
  */
 export const CREDIT_PACKS_ON_SALE = true;
 
@@ -87,9 +94,9 @@ export const FREE_PLAN: CatalogPlan & { id: "free" } = {
 };
 
 export const CATALOG_PLANS: readonly PaidCatalogPlan[] = [
-  { id: "keep_warm", tier: "keep_warm", level: 1, label: "Keep warm", levelLabel: null, creditsPerMonth: 1, openRequests: 5, carryover: 1, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: { yearly: { USD: usd(29), INR: inr(999) } } },
+  { id: "keep_warm", tier: "keep_warm", level: 1, label: "Keep warm", levelLabel: null, creditsPerMonth: 4, openRequests: 5, carryover: 1, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: { yearly: { USD: usd(29), INR: inr(999) } } },
   { id: "start", tier: "start", level: 1, label: "Start", levelLabel: null, creditsPerMonth: 10, openRequests: 8, carryover: 1, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: pass(8, 299, 19, 699) },
-  { id: "momentum", tier: "momentum", level: 1, label: "Momentum", levelLabel: null, creditsPerMonth: 30, openRequests: 15, carryover: 3, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: true, prices: pass(24, 999, 59, 2_499) },
+  { id: "momentum", tier: "momentum", level: 1, label: "Momentum", levelLabel: null, creditsPerMonth: 36, openRequests: 15, carryover: 3, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: true, prices: pass(24, 999, 59, 2_499) },
   { id: "land_focus", tier: "land", level: 1, label: "Land", levelLabel: "Focus", creditsPerMonth: 120, openRequests: 30, carryover: "subscribed", humanTime: { writtenReviews: 1, liveSessions: 0, hours: 0 }, byApplication: false, recommended: false, prices: pass(100, 5_999, 249, 13_999) },
   { id: "land_sprint", tier: "land", level: 2, label: "Land", levelLabel: "Sprint", creditsPerMonth: 300, openRequests: 50, carryover: "subscribed", humanTime: { writtenReviews: 1, liveSessions: 1, hours: 0 }, byApplication: false, recommended: false, prices: pass(200, 11_999, 499, 27_999) },
   { id: "land_concierge", tier: "land", level: 3, label: "Land", levelLabel: "Concierge", creditsPerMonth: 1_000, openRequests: 75, carryover: "subscribed", humanTime: { writtenReviews: 0, liveSessions: 0, hours: 6 }, byApplication: true, recommended: false, prices: pass(750, 34_999, 1_990, 84_999) },

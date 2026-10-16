@@ -4,7 +4,7 @@
 1. **Billing shape:** 30-day and 90-day passes paid once; auto-extend is opt-in at checkout (same price, reminder before each renewal) and offered only where the payment method can renew without extra authentication (INR UPI AutoPay up to ₹5,000; INR card/netbanking mandates up to ₹15,000; USD only after PayPal reference transactions or a card route are confirmed). Yearly exists only for **Keep warm**. The Plans screen's Monthly/Yearly toggle becomes **30 days / 90 days** (owner-approved deviation from the kit PNG).
 2. **Prices:** the recommended prices in section 3 below (India INR incl. GST and global USD), Concierge by application.
 3. **Regions:** **India (INR) + one global USD price first.** Regional tiers T2–T4 and EUR/GBP come later, after the first prices are proven (and EU/UK VAT registration or a merchant of record).
-4. **Free plan:** 3 open asks, 3 welcome credits + 2 credits every month (no carryover), a free ask quality check, and a one-time 14-day Momentum reverse trial after the first ask (15 open asks, 5 trial credits), never asking for a card.
+4. **Free plan:** 3 open asks, 3 credits every UTC calendar month (no carryover), no welcome credits (D-039), a free ask quality check, and a one-time 14-day Momentum reverse trial (15 open asks, 5 trial credits; start timing is an open owner question), never asking for a card.
 
 5. **Tax status (owner, Oct 14 2026):** SkipWait is an Indian **sole proprietorship with Udyam (MSME) registration, NOT GST-registered yet.** So: charge **no GST** on any sale (INR or USD); show INR prices as **"India price"** with no "incl. GST" wording; invoices carry no tax lines or GSTIN. Build this behind ONE server-side setting (e.g. `indiaGstRegistered: false` in the catalog contract) that switches labels, Chargebee tax handling and invoice details to GST mode the day a GSTIN exists. GST registration becomes mandatory once aggregate service turnover (including USD/export sales) nears ₹20 lakh a year — add an admin-visible trailing-12-month turnover figure vs that threshold. Sole proprietorship => no DPIIT Startup India benefits.
 
@@ -61,12 +61,12 @@ People pay this much because referrals work. Referred applicants reach interview
 
 | Plan | Open asks | Credits per 30 days | Carryover | Human time included |
 |---|---|---|---|---|
-| Free | 3 (15 during the 14-day trial) | 3 welcome + **2 each month** (no carryover) | — | — |
-| Keep warm (yearly) | 5 | 1 | 1 month | — |
+| Free | 3 (15 during the 14-day trial) | **3 each UTC month** (no carryover), no welcome credits (D-039) | — | — |
+| Keep warm (yearly) | 5 | 4 | 1 month | — |
 | Start | 8 | 10 | 1 month | — |
-| Momentum | 15 | 30 | 3 months | — |
-| Land Focus | 30 | 120 | While any Land pass is active | 1 written review |
-| Land Sprint | 50 | 300 | Same | 1 written review + 1 live session |
+| Momentum | 15 | 36 | 3 months | — |
+| Land Focus | 30 | 120 | While any Land pass is active | 1 written review (coming later, D-041) |
+| Land Sprint | 50 | 300 | Same | 1 written review + 1 live session (coming later, D-041) |
 | Land Concierge (by application) | **75** (was unlimited) | 1,000 | Same | **6 human hours** (18 per 90 days) |
 
 **What credits buy (AI-made finished work, current costs kept):**

@@ -61,7 +61,7 @@ describe("a plan cycle is granted once", () => {
   });
 
   it("the yearly safety net and an in-term webhook never open the same month twice", async () => {
-    fixture.reset({ wallets: [wallet({ plan: "max", subscriptionId: "sub_max", monthlyAllowance: 30, monthlyCreditsRemaining: 25, subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2027-09-01T00:00:00Z") })], txns: [purchase(1, SEEKER, 2)], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
+    fixture.reset({ wallets: [wallet({ plan: "max", subscriptionId: "sub_max", monthlyAllowance: 36, monthlyCreditsRemaining: 25, subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2027-09-01T00:00:00Z") })], txns: [purchase(1, SEEKER, 2)], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
     vi.setSystemTime(at("2026-10-02T00:00:00Z"));
     expect(await reconcileSeekerCredits(SEEKER, at("2026-10-02T00:00:00Z"))).toEqual({ changed: true });
     const inTerm = { eventId: "ev_max_changed", eventType: "subscription_changed", subscriptionId: "sub_max", plan: "max" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-09-01T00:00:00Z"), currentTermEnd: at("2027-09-01T00:00:00Z"), resourceVersion: 30 };
@@ -69,7 +69,7 @@ describe("a plan cycle is granted once", () => {
     await getTokenWallet(SEEKER, "job_seeker");
     expect(await reconcileSeekerCredits(SEEKER, at("2026-10-02T01:00:00Z"))).toEqual({ changed: false });
     expect(kinds("plan_grant").map(row => row.sourceCycleKey)).toEqual(["2026-10"]);
-    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-10", monthlyCreditsRemaining: 30 });
+    expect(db.wallets[0]).toMatchObject({ monthlyCycleKey: "2026-10", monthlyCreditsRemaining: 36 });
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 });
