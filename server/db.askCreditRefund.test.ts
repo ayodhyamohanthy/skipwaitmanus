@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { refundLedgerSpendTx, spendCredits } from "./db";
+import { grantWelcomeCredits, refundLedgerSpendTx, spendCredits } from "./db";
 import { createLedgerFixture, type Row } from "./ledgerFixtureDb";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -76,10 +76,9 @@ describe("ledger-spent ask credit refund", () => {
     expect(db.txns.filter(row => row.kind === "credit_spend")).toHaveLength(0);
   });
 
-  it("a grant credit goes back to its own grant, and a grant that expired meanwhile takes nothing back", async () => {
+  it("a welcome-grant credit goes back to its own grant, and a grant that expired meanwhile takes nothing back", async () => {
     Object.assign(db.wallets[0], { monthlyCreditsRemaining: 0, balance: 0 });
-    // A historic pre-D-039 welcome grant row: the refund plumbing is source-agnostic, so it covers every grant source.
-    db.grants = [{ id: 1, userId: SEEKER, role: "job_seeker", source: "welcome", grantKey: "welcome:person:1", tokenCount: 3, creditsRemaining: 3, status: "active", grantedAt: at("2026-10-01T00:00:00Z"), expiresAt: null }];
+    await grantWelcomeCredits(SEEKER);
     await spendCredits(SEEKER, "job_seeker", ask(7));
     expect(db.grants[0]).toMatchObject({ creditsRemaining: 2 });
     const back = await refund(507);
