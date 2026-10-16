@@ -67,6 +67,30 @@ cutover-copy)
     | MYSQL_PWD="$NEW_PWD" mysql --host="$NEW_HOST" --port="$NEW_PORT" --user="$NEW_USER" --ssl-mode=REQUIRED --default-character-set=utf8mb4 skipwait
   echo "Cutover copy finished into skipwait (run verify with target skipwait next)"
   ;;
+inspect-late)
+  [ "$TARGET_DB" = skipwait ] || { echo "requires TARGET_DB=skipwait"; exit 2; }
+  for t in subscriptionCheckoutIntents operationalActivityLogs paymentFulfillments employerPaymentFulfillments; do
+    m=$(newq -D "$TARGET_DB" -e "SELECT IFNULL(MAX(id),0) FROM \`$t\`")
+    echo "== $t: rows on OLD with id > NEW max ($m)"
+    if [ "$t" = subscriptionCheckoutIntents ]; then
+      oldq -D "$OLD_NAME" -e "SELECT i.id, i.userId, IFNULL(u.email,'-'), i.status, i.plan, i.amount, i.createdAt FROM \`$t\` i LEFT JOIN users u ON u.id=i.userId WHERE i.id > $m ORDER BY i.id"
+    else
+      oldq -D "$OLD_NAME" -e "SELECT COUNT(*), MIN(createdAt), MAX(createdAt) FROM \`$t\` WHERE id > $m"
+    fi
+  done
+  ;;
+delta-sync)
+  [ "$TARGET_DB" = skipwait ] || { echo "requires TARGET_DB=skipwait"; exit 2; }
+  : "${DELTA_TABLES:?space separated table names}"
+  for t in $DELTA_TABLES; do
+    case "$t" in *[!A-Za-z0-9_]*) echo "bad table $t"; exit 2;; esac
+    echo "REPLACE-sync $t (old -> new, never deletes, never writes old)"
+    MYSQL_PWD="$OLD_PWD" mysqldump --host="$OLD_HOST" --port="$OLD_PORT" --user="$OLD_USER" --ssl-mode=REQUIRED \
+      --single-transaction --no-create-info --replace --skip-triggers --set-gtid-purged=OFF --no-tablespaces \
+      --default-character-set=utf8mb4 --hex-blob "$OLD_NAME" "$t" \
+      | MYSQL_PWD="$NEW_PWD" mysql --host="$NEW_HOST" --port="$NEW_PORT" --user="$NEW_USER" --ssl-mode=REQUIRED --default-character-set=utf8mb4 skipwait
+  done
+  ;;
 verify)
   fail=0
   S_OLD=$(sig oldq "$OLD_NAME" | tr '\n' ' '); S_NEW=$(sig newq "$TARGET_DB" | tr '\n' ' ')

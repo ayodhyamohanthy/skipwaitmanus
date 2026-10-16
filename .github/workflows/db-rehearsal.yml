@@ -8,7 +8,12 @@ on:
         required: true
         default: 'inventory'
         type: choice
-        options: [inventory, rehearse, verify, inflight, cutover-copy]
+        options: [inventory, rehearse, verify, inflight, cutover-copy, inspect-late, delta-sync]
+      delta_tables:
+        description: 'delta-sync only: space separated table names'
+        required: false
+        default: ''
+        type: string
       target_db:
         description: 'skipwait_rehearsal (default) or skipwait (cutover-copy and verify after it)'
         required: false
@@ -44,4 +49,5 @@ jobs:
           NEW_USER: ${{ vars.SKIPWAIT_NEWDB_USER }}
           NEW_PWD: ${{ secrets.SKIPWAIT_NEWDB_PASSWORD }}
           TARGET_DB: ${{ inputs.target_db }}
+          DELTA_TABLES: ${{ inputs.delta_tables }}
         run: bash scripts/db-copy.sh "${{ inputs.mode }}"
