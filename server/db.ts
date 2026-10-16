@@ -35,6 +35,7 @@ import {
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { isBillablePlanId, type BillablePlanId, type BillingPeriod, type WalletPlanId } from "../shared/billingCatalog";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { opportunityExpiresAtFrom } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
@@ -1488,13 +1489,16 @@ export async function saveProfile(userId: number, input: { accountType: "job_see
 
 export type PublishCompanyOpportunityInput = { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date };
 
-const liveOpportunityCondition = () => {
-  const ttl = opportunityLimits().hiringNowTtlDays;
-  return and(eq(companyOpportunities.isActive, true), or(
-    and(eq(companyOpportunities.kind, "hiring_now"), gt(companyOpportunities.createdAt, new Date(Date.now() - ttl * 86_400_000))),
-    and(eq(companyOpportunities.kind, "walk_in"), gt(companyOpportunities.walkInEndsAt, new Date())),
-  ));
-};
+// One liveness clock for every read and the posting caps: the D-022 expiresAt
+// column (a walk-in ends with its event, a hiring post with its window). Rows
+// from before 0093 (null) stay live — the schemaReconcile fail-open rule.
+const liveOpportunityCondition = () => and(
+  eq(companyOpportunities.isActive, true),
+  or(isNull(companyOpportunities.expiresAt), gt(companyOpportunities.expiresAt, new Date())),
+);
+
+/** When a fresh hiring window opened now lapses (env TTL, default 30 days). */
+const opportunityWindowEnd = (nowMs: number) => new Date(nowMs + opportunityLimits().hiringNowTtlDays * 86_400_000);
 
 export async function publishCompanyOpportunity(userId: number, input: PublishCompanyOpportunityInput) {
   const profile = await getProfileByUserId(userId);
@@ -1514,7 +1518,10 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
   const [dayRow] = await db.select({ n: count() }).from(companyOpportunities).where(and(eq(companyOpportunities.ownerId, userId), gt(companyOpportunities.createdAt, new Date(Date.now() - 86_400_000))));
   const blocked = checkPostingAllowance({ openCount: Number(openRow?.n ?? 0), lastDayCount: Number(dayRow?.n ?? 0) });
   if (blocked) throw new Error(blocked);
-  const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl, location, compensation: input.compensation?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true });
+  // D-022: the post lands with its own expiry on the one column every read uses —
+  // a walk-in ends with its event, a hiring post opens the TTL window.
+  const expiresAt = input.kind === "walk_in" && input.walkInEndsAt ? input.walkInEndsAt : opportunityWindowEnd(Date.now());
+  const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl, location, compensation: input.compensation?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true, expiresAt });
   return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, compensation: input.compensation?.trim() || null };
 }
 
