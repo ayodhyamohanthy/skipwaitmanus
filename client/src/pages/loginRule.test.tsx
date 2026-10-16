@@ -49,7 +49,7 @@ describe("login rule: referrer", () => {
   });
 
   it("the OTP send call goes to the work-domain OTP route, never to WorkOS", () => {
-    const fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ sent: false }) }));
+    const fetchMock = vi.fn(async (..._args: unknown[]) => ({ ok: true, json: async () => ({ sent: false }) }));
     vi.stubGlobal("fetch", fetchMock);
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign, search: "?intent=referrer" });
