@@ -1,6 +1,6 @@
 import { WorkOS } from "@workos-inc/node";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
-import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS, readHostedLink, revokeHostedSessionOnAccountSwitch, signHostedLink } from "./hostedAccountSwitch";
+import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS, readHostedLink, revokeHostedSessionOnAccountSwitch, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
 import { safeAuthReturnTo } from "@shared/authReturnTo";
@@ -245,6 +245,11 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
           if (authProvider === "authkit" && loginHint) {
             const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
             if (await revokeHostedSessionOnAccountSwitch(workos.userManagement as never, linked, loginHint, { log: message => console.warn("[workos-switch]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
+          }
+          // The /sign-in page's explicit Continue button asks for a fresh AuthKit screen (fresh=1): drop the hosted session this browser is linked to.
+          if (authProvider === "authkit" && screenHint === "sign-in" && req.query.fresh === "1") {
+            const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
+            if (await revokeLinkedHostedSession(workos.userManagement as never, linked, { log: message => console.warn("[workos-fresh]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
           }
           res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
         } catch {
