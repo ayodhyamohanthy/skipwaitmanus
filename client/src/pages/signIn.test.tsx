@@ -27,23 +27,19 @@ describe("SignIn", () => {
     expect(screen.getByAltText(/open blue door/)).toBeTruthy();
     expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
+    // FOUNDER-LOCKED login rule (Oct 16 2026): Give a referral = work-email OTP only, no personal or social options.
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/Choose who you help/)).toBeTruthy();
-    // The intent decides where AuthKit returns: referrer setup for givers.
-    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
-    expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-in?returnTo=%2Freferrer-setup&provider=google");
-    fireEvent.click(screen.getByRole("button", { name: /Continue with Microsoft/ }));
-    expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-in?returnTo=%2Freferrer-setup&provider=microsoft");
-    fireEvent.click(screen.getByRole("button", { name: /Continue with GitHub/ }));
-    expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-in?returnTo=%2Freferrer-setup&provider=github");
-    // Create a free account opens AuthKit on its sign-up screen, not sign-in.
-    fireEvent.click(screen.getByRole("button", { name: /Create a free account/ }));
-    expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-up?returnTo=%2Freferrer-setup");
+    expect(screen.queryByRole("button", { name: /Continue with (Google|Microsoft|GitHub)/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continue with email/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Create a free account/ })).toBeNull();
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Send sign-in code" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Find a referral/ }));
     fireEvent.click(screen.getByRole("button", { name: /Create a free account/ }));
     expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-up?returnTo=%2Fexplore");
-    expect(assign).toHaveBeenCalledTimes(5);
+    expect(assign).toHaveBeenCalledTimes(1);
   });
 
   it("keeps Terms and Privacy Policy reachable as plain-text links, underlined only on hover or focus", () => {
