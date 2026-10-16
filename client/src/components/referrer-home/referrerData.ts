@@ -117,10 +117,26 @@ const bundleSchema = z.object({
   failed: z.array(z.string()),
 });
 
+type PrefetchedBundle = { at: number; response: Promise<Response> };
+
+/** The request index.html started at page load, used once and only while fresh. Any problem means "ask again". */
+async function takePrefetchedBundle(): Promise<z.infer<typeof bundleSchema> | null> {
+  const holder = globalThis as unknown as { __swHomeBundle?: PrefetchedBundle };
+  const prefetched = holder.__swHomeBundle;
+  holder.__swHomeBundle = undefined;
+  if (!prefetched || Date.now() - prefetched.at > 15_000) return null;
+  try {
+    const response = await prefetched.response;
+    if (!response.ok) return null;
+    const parsed = bundleSchema.safeParse(await response.json());
+    return parsed.success ? parsed.data : null;
+  } catch { return null; }
+}
+
 /** One request for the whole page. Returns null on any problem so the caller uses the separate endpoints instead. */
 async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData | null> {
   try {
-    const bundle = await getJson("/api/referrer/home-bundle", getToken, bundleSchema, "bundle unavailable");
+    const bundle = (await takePrefetchedBundle()) ?? await getJson("/api/referrer/home-bundle", getToken, bundleSchema, "bundle unavailable");
     const access: CompanyAccess = (() => { const a = bundle.access; return { verified: isVerifiedReferrer(a), domain: a.workEmailDomain ?? "", companyName: a.companyName, companyInitials: a.companyInitials }; })();
     if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
     // The page needs preferences and both lists; profile and impact are optional extras.

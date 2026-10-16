@@ -57,3 +57,27 @@ describe("fetchReferrerHome", () => {
     expect(data.fresh).toHaveLength(1);
   });
 });
+
+describe("fetchReferrerHome with a prefetched bundle", () => {
+  it("uses the page-load request once, without asking again", async () => {
+    const fetchMock = vi.fn(async () => json(bundle()));
+    vi.stubGlobal("fetch", fetchMock);
+    (globalThis as unknown as { __swHomeBundle?: unknown }).__swHomeBundle = { at: Date.now(), response: Promise.resolve(json(bundle())) };
+    const data = await fetchReferrerHome(async () => null);
+    expect(data.fresh).toHaveLength(1);
+    expect(fetchMock).not.toHaveBeenCalled();
+    await fetchReferrerHome(async () => null);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores a stale or failed prefetch and asks again", async () => {
+    const fetchMock = vi.fn(async () => json(bundle()));
+    vi.stubGlobal("fetch", fetchMock);
+    (globalThis as unknown as { __swHomeBundle?: unknown }).__swHomeBundle = { at: Date.now() - 60_000, response: Promise.resolve(json(bundle())) };
+    await fetchReferrerHome(async () => null);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    (globalThis as unknown as { __swHomeBundle?: unknown }).__swHomeBundle = { at: Date.now(), response: Promise.resolve(json({ error: "Sign in" }, 401)) };
+    await fetchReferrerHome(async () => null);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
