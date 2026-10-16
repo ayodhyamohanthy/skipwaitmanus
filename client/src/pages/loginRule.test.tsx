@@ -22,7 +22,7 @@ describe("login rule: job seeker", () => {
     vi.stubGlobal("location", { ...window.location, assign, search: "" });
     render(<SignIn />);
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
-    for (const provider of ["Google", "GitHub"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${provider}`) })).toBeTruthy();
+    for (const provider of ["Google", "Microsoft", "GitHub"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${provider}`) })).toBeTruthy();
     expect(screen.getByRole("button", { name: /Continue with email/ })).toBeTruthy();
     expect(screen.queryByLabelText("Company email")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
