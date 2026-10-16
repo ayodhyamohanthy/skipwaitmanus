@@ -267,12 +267,12 @@ body {font-family:var(--font-ui);letter-spacing:0;} h1,h2,h3,p{letter-spacing:0;
 /* Sign-in role choice (founder Oct 16 2026: Find a referral / Give a referral must be obvious and switchable). Two big selectable cards, strong selected state. */
 .intent-prompt{font:11px var(--font-label);letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground);margin:0 0 8px;}
 .intent-switch.intent-cards{gap:12px;padding:0;background:transparent;border-radius:0;}
-.intent-switch.intent-cards>.brand-button{position:relative;display:grid;grid-template-columns:auto 1fr;align-items:center;justify-items:start;column-gap:10px;row-gap:2px;text-align:left;min-height:84px;padding:14px 38px 14px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--background);color:var(--foreground);box-shadow:none;cursor:pointer;white-space:normal;}
-.intent-switch.intent-cards>.brand-button>svg:first-child{grid-row:1 / span 2;width:22px;height:22px;color:var(--muted-foreground);}
+.intent-switch.intent-cards>button{position:relative;display:grid!important;height:auto!important;width:100%;grid-template-columns:auto 1fr;align-items:center;justify-items:start;column-gap:10px;row-gap:2px;text-align:left;min-height:84px;padding:14px 38px 14px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--background);color:var(--foreground);box-shadow:none;cursor:pointer;white-space:normal;}
+.intent-switch.intent-cards>button>svg:first-child{grid-row:1 / span 2;width:22px;height:22px;color:var(--muted-foreground);}
 .intent-switch.intent-cards .intent-title{font-size:15px;font-weight:700;line-height:1.2;}
 .intent-switch.intent-cards .intent-sub{font-size:12px;font-weight:400;color:var(--muted-foreground);line-height:1.3;}
-.intent-switch.intent-cards>.brand-button:hover{border-color:var(--foreground);}
-.intent-switch.intent-cards>.brand-button.selected{border:2px solid var(--foreground);background:color-mix(in oklch,var(--secondary) 45%,var(--background));box-shadow:var(--shadow-offset);}
-.intent-switch.intent-cards>.brand-button.selected>svg:first-child{color:var(--primary);}
+.intent-switch.intent-cards>button:hover{border-color:var(--foreground);}
+.intent-switch.intent-cards>button.selected{border:2px solid var(--foreground);background:color-mix(in oklch,var(--secondary) 45%,var(--background));box-shadow:var(--shadow-offset);}
+.intent-switch.intent-cards>button.selected>svg:first-child{color:var(--primary);}
 .intent-switch.intent-cards .intent-check{position:absolute;top:10px;right:10px;width:18px;height:18px;padding:2px;border-radius:50%;background:var(--foreground);color:var(--background);}
-@media(max-width:480px){.intent-switch.intent-cards{gap:8px;}.intent-switch.intent-cards>.brand-button{grid-template-columns:1fr;min-height:96px;padding:12px 30px 12px 12px;row-gap:4px;align-content:start;}.intent-switch.intent-cards>.brand-button>svg:first-child{grid-row:auto;}.intent-switch.intent-cards .intent-title{font-size:14px;}.intent-switch.intent-cards .intent-sub{font-size:11px;}}
+@media(max-width:480px){.intent-switch.intent-cards{gap:8px;}.intent-switch.intent-cards>button{grid-template-columns:1fr;min-height:96px;padding:12px 30px 12px 12px;row-gap:4px;align-content:start;}.intent-switch.intent-cards>button>svg:first-child{grid-row:auto;}.intent-switch.intent-cards .intent-title{font-size:14px;}.intent-switch.intent-cards .intent-sub{font-size:11px;}}
