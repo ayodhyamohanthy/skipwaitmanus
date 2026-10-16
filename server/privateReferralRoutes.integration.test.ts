@@ -327,3 +327,73 @@ describe("private referral HTTP routes", () => {
     expect(activityQuery).toMatchObject({ action: "document", query: "avery", outcome: "denied" });
   });
 });
+
+describe("withdrawal activity reports only authoritative credit movement", () => {
+  function setup(creditRefunded?: boolean, failure?: string) {
+    const app = express(); app.use(express.json());
+    const wireResult = { withdrawn: true, requestId: 501, status: "withdrawn", revision: 4, creditSummary: { totalAvailable: 2 } };
+    const withdrawCompanyReferralRequest = vi.fn(async (userId: number, requestId: number) => {
+      if (userId !== 7) throw new Error("This referral request is not in your account");
+      if (failure) throw new Error(failure);
+      return { ...wireResult, requestId, ...(creditRefunded === undefined ? {} : { creditRefunded }) };
+    });
+    const recordActivity = vi.fn<NonNullable<PrivateReferralRouteDeps["recordActivity"]>>(async () => {});
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: req.header("x-test-user") === "seeker" ? 7 : 8, openId: "test-user" } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async key => ({ key }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
+      createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }),
+      getAccessibleReferralAttachment: async () => undefined, saveVerifiedWorkEmail: async () => undefined,
+      createCompanyReferralRequest: async () => ({ requestId: 501, companyDomain: "acme.com", notifiedEmployees: 0 }),
+      listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 501, claimed: true }),
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({}),
+      withdrawCompanyReferralRequest, recordActivity,
+    });
+    const withdrawalEvents = () => recordActivity.mock.calls.map(([event]) => event).filter(event => event.action === "referral_request.withdrawn");
+    return { app, wireResult, withdrawCompanyReferralRequest, withdrawalEvents };
+  }
+
+  it.each([
+    ["free ask", false], ["previous pickup", false], ["replay", false], ["eligible refund", true],
+  ] as const)("records the operation's refund outcome for %s without changing the wire response", async (_scenario, creditRefunded) => {
+    const { app, wireResult, withdrawCompanyReferralRequest, withdrawalEvents } = setup(creditRefunded);
+    const response = await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.body).toEqual(wireResult);
+    expect(withdrawCompanyReferralRequest).toHaveBeenCalledWith(7, 501);
+    expect(withdrawalEvents()).toEqual([{ actorUserId: 7, action: "referral_request.withdrawn", outcome: "success", resourceType: "referral_request", resourceId: 501, metadata: { creditRefunded } }]);
+  });
+
+  it("omits unknown refund metadata for an older dependency instead of inventing a boolean", async () => {
+    const { app, wireResult, withdrawalEvents } = setup();
+    const response = await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker");
+    expect(response.status).toBe(200); expect(response.body).toEqual(wireResult);
+    expect(withdrawalEvents()).toHaveLength(1);
+    expect(withdrawalEvents()[0].metadata).toBeUndefined();
+  });
+
+  it.each([[undefined, 401], ["outsider", 404]] as const)("never records a successful withdrawal for identity %s", async (identity, status) => {
+    const { app, withdrawCompanyReferralRequest, withdrawalEvents } = setup(false);
+    const call = request(app).post("/api/company-referrals/501/withdraw");
+    if (identity) call.set("x-test-user", identity);
+    expect((await call).status).toBe(status);
+    expect(withdrawalEvents()).toEqual([]);
+    if (!identity) expect(withdrawCompanyReferralRequest).not.toHaveBeenCalled();
+  });
+
+  it.each([["not-a-number", 400], ["0", 400]] as const)("rejects invalid reference %s before the operation", async (reference, status) => {
+    const { app, withdrawCompanyReferralRequest, withdrawalEvents } = setup(false);
+    expect((await request(app).post(`/api/company-referrals/${reference}/withdraw`).set("x-test-user", "seeker")).status).toBe(status);
+    expect(withdrawCompanyReferralRequest).not.toHaveBeenCalled(); expect(withdrawalEvents()).toEqual([]);
+  });
+
+  it.each([
+    ["This request was already claimed by a verified employee and can no longer be withdrawn", 409],
+    ["Database unavailable", 500],
+  ] as const)("does not emit a successful refund claim when the operation fails with %s", async (failure, status) => {
+    const { app, withdrawalEvents } = setup(false, failure);
+    expect((await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker")).status).toBe(status);
+    expect(withdrawalEvents()).toEqual([]);
+  });
+});

@@ -93,7 +93,7 @@ export type PrivateReferralRouteDeps = {
   /** The caller's own open-ask slots against the plan cap (shared/openAskSlots.ts). */
   getOpenAskSlots?: (userId: number, nowMs?: number) => Promise<OpenAskSlots>;
   saveCompanyReferralRequest?: (userId: number, requestId: number, saved: boolean) => Promise<{ requestId: number; saved: boolean }>;
-  withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown }>;
+  withdrawCompanyReferralRequest?: (userId: number, requestId: number) => Promise<{ withdrawn: boolean; requestId: number; status: string; creditSummary: unknown; creditRefunded?: boolean }>;
   claimCompanyReferralRequest: (userId: number, requestId: number) => Promise<{ requestId: number; claimed: boolean; jobSeekerId?: number; companyDomain?: string; revision?: number; replayed?: boolean }>;
   getClaimedCompanyReferralDetail: (userId: number, requestId: number) => Promise<({ attachments: Attachment[] } & Record<string, unknown>) | undefined>;
   reviewReferralRequest?: (userId: number, input: { requestId: number; decision: "approved" | "declined"; message?: string }) => Promise<{ status: string }>;
@@ -1014,8 +1014,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in to withdraw a referral request" });
       if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral reference" });
       if (!deps.withdrawCompanyReferralRequest) return res.status(501).json({ error: "Withdrawing requests is not available yet" });
-      const result = await deps.withdrawCompanyReferralRequest(identity.account.id, requestId);
-      record({ actorUserId: identity.account.id, action: "referral_request.withdrawn", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { creditRefunded: true } });
+      // Internal operation metadata must not expand the public withdrawal response.
+      const { creditRefunded, ...result } = await deps.withdrawCompanyReferralRequest(identity.account.id, requestId);
+      record({ actorUserId: identity.account.id, action: "referral_request.withdrawn", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: typeof creditRefunded === "boolean" ? { creditRefunded } : undefined });
       res.set("Cache-Control", "private, no-store"); res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not withdraw this referral request";
