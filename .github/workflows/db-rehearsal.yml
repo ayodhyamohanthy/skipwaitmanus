@@ -8,7 +8,7 @@ on:
         required: true
         default: 'inventory'
         type: choice
-        options: [inventory, rehearse, verify, inflight, cutover-copy, inspect-late, delta-sync]
+        options: [inventory, rehearse, verify, inflight, cutover-copy, inspect-late, delta-sync, oldstats]
       delta_tables:
         description: 'delta-sync only: space separated table names'
         required: false
