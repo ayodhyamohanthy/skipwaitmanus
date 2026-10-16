@@ -93,7 +93,7 @@ delta-sync)
   ;;
 oldstats)
   echo "== OLD read-only stats at $(date -u +%FT%TZ)"
-  oldq -D "$OLD_NAME" -e "SELECT 'oal_count_max_id_max_createdAt', COUNT(*), MAX(id), MAX(createdAt) FROM operationalActivityLogs; SELECT 'jobruns_count_max_id', COUNT(*), MAX(id) FROM jobRuns; SELECT 'checkoutintents_count_max_id_max_createdAt', COUNT(*), MAX(id), MAX(createdAt) FROM subscriptionCheckoutIntents; SELECT 'balances_count', COUNT(*) FROM balances; SELECT 'users_count_max_createdAt', COUNT(*), MAX(createdAt) FROM users;"
+  oldq -D "$OLD_NAME" -e "SELECT 'oal_count_max_id_max_createdAt', COUNT(*), MAX(id), MAX(createdAt) FROM operationalActivityLogs; SELECT 'jobruns_count_max_id', COUNT(*), MAX(id) FROM jobRuns; SELECT 'checkoutintents_count_max_id_max_createdAt', COUNT(*), MAX(id), MAX(createdAt) FROM subscriptionCheckoutIntents; SELECT 'users_count_max_createdAt', COUNT(*), MAX(createdAt) FROM users;"
   echo "== paymentFulfillments breakdown (no personal data)"
   oldq -D "$OLD_NAME" -e "SELECT provider, status, role, IFNULL(reconciliationReason,'-'), COUNT(*), COUNT(DISTINCT userId), MIN(createdAt), MAX(createdAt), SUM(amount), MIN(currency), SUM(creditedAt IS NOT NULL), SUM(lastCheckedAt IS NOT NULL), SUM(tokenCount) FROM paymentFulfillments GROUP BY 1,2,3,4 ORDER BY 5 DESC LIMIT 40;"
   echo "== sample providerEventId prefixes"
