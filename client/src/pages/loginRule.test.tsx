@@ -17,11 +17,13 @@ vi.mock("wouter", () => ({
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState({}, "", "/"); });
 
 describe("login rule: job seeker", () => {
-  it("offers personal email and every social login", () => {
+  it("hands off to the hosted AuthKit screen, which offers personal email and every social login", () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign, search: "" });
     render(<SignIn />);
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
-    for (const provider of ["Google", "Microsoft", "GitHub"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${provider}`) })).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Continue with email/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Continue to sign in/ }));
+    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore");
     expect(screen.getByRole("button", { name: /Create a free account/ })).toBeTruthy();
     expect(screen.queryByLabelText("Company email")).toBeNull();
   });
@@ -34,7 +36,7 @@ describe("login rule: referrer", () => {
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue with (Google|Microsoft|GitHub)/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Continue with email/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continue to sign in/ })).toBeNull();
     expect(screen.queryByLabelText("Email address")).toBeNull();
     expect(screen.queryByRole("button", { name: /Create a free account/ })).toBeNull();
   });

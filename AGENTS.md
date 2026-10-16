@@ -10,7 +10,7 @@ You are an expert senior software engineer acting as an autonomous implementatio
 Test for every decision: does this make seekers more referral-worthy or referrers more confident, without risking anyone's money?
 
 ## Login rule (FOUNDER-LOCKED, owner, Oct 16 2026 - do not change without his explicit say-so)
-- **Job seeker login = personal emails + social logins** (the full WorkOS sign-in: email, Google, Microsoft, GitHub).
+- **Job seeker login = personal emails + social logins** (the hosted WorkOS AuthKit sign-in screen itself: email, Google, Microsoft, GitHub, LinkedIn, Slack; /sign-in hands off to it, founder screenshot Oct 16).
 - **Referrer login = work email org verification ONLY** (work-email OTP). No personal email, no social logins, on any referrer-facing sign-in (`/sign-in` with "Give a referral", `/referrer` dialog, `/referrer-setup`, `/referrer-home`, `/referrer/impact`, `/verify`). Use `referrerSignInHref()` (`client/src/lib/referrerSignIn.ts`), never `SignInButton` or `openSignIn` on a referrer surface.
 - Pinned by `client/src/pages/loginRule.test.tsx` and `client/src/pages/signIn.test.tsx`; a failing pin means the rule drifted. Decision register: D-030.
 

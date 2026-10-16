@@ -32,7 +32,7 @@ describe("SignIn", () => {
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByText(/Choose who you help/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue with (Google|Microsoft|GitHub)/ })).toBeNull();
-    expect(screen.queryByRole("button", { name: /Continue with email/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Continue to sign in/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /Create a free account/ })).toBeNull();
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Send sign-in code" })).toBeTruthy();
@@ -52,24 +52,13 @@ describe("SignIn", () => {
     }
   });
 
-  it("continue with email collects only the address and hands off to the hosted WorkOS screen", () => {
+  it("job seeker continues straight to the hosted WorkOS AuthKit screen (email + all socials)", () => {
     const assign = stubAssign();
     render(<SignIn />);
-    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
-    expect(assign).not.toHaveBeenCalled();
-    const email = screen.getByLabelText("Email address");
-    // The password is typed on WorkOS's own screen, never on this page.
-    expect(screen.queryByLabelText(/^Password/)).toBeNull();
+    expect(screen.queryByLabelText(/Password/)).toBeNull();
     expect(document.querySelector("input[type=password]")).toBeNull();
-    expect(screen.getByText(/finish signing in on the next, secure screen/)).toBeTruthy();
-    // No password credential exists (WorkOS AuthKit owns sign-in), so no reset path is offered.
-    expect(screen.queryByRole("link", { name: "Forgot password?" })).toBeNull();
-    fireEvent.change(email, { target: { value: " Asha@Wipro.com " } });
-    fireEvent.click(screen.getByRole("button", { name: /Sign in/ }));
-    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&login_hint=asha%40wipro.com");
-    fireEvent.click(screen.getByRole("button", { name: "Use another method" }));
-    expect(screen.getByRole("button", { name: /Continue with Google/ })).toBeTruthy();
-    expect(screen.queryByLabelText("Email address")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Continue to sign in/ }));
+    expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore");
   });
 
   it("ships no design-preview scaffolding", () => {
