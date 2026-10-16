@@ -1,7 +1,7 @@
 // Ask-sent confirmation, ported from the kit's /ask sent state. Company,
 // coverage and the open-slot count all come from the live send response; the
 // expiry window is the shared ASK_TTL_DAYS (an unclaimed ask expires and its
-// open slot frees; asks reserve no credit).
+// reserved credit is returned).
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "wouter";
 import type { OpenAskSlots } from "@shared/openAskSlots";
@@ -19,7 +19,7 @@ export function AskSent({ sent, onWriteAnother }: { sent: SentAsk; onWriteAnothe
   const company = sent.companyDomain ?? "the company";
   const detail = sent.waitingForCoverage
     ? "No verified referrers there yet — we'll route it privately the moment coverage opens."
-    : `Verified ${sent.companyDomain ? `${sent.companyDomain} ` : ""}referrers will see it. It expires in ${ASK_TTL_DAYS} days if nobody accepts, and your slot returns.`;
+    : `Verified ${sent.companyDomain ? `${sent.companyDomain} ` : ""}referrers will see it. It expires in ${ASK_TTL_DAYS} days if nobody accepts, and your credit returns.`;
   return (
     <main data-skipwait-screen="ask-sent" className="page-content mx-auto max-w-xl text-center">
       <span className="mx-auto grid size-20 place-items-center rounded-full bg-accent"><Check className="size-10 text-primary" /></span>

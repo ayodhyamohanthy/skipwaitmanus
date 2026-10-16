@@ -8,7 +8,7 @@ const price = (id: string, interval: CatalogInterval, currency: CatalogCurrency)
 describe("plan catalog follows the Oct 14 2026 pricing decision", () => {
   it("plan contents: open asks 3/5/8/15/30/50/75, credits per cycle and carryover", () => {
     expect([FREE_PLAN, ...CATALOG_PLANS].map(p => [p.id, p.openRequests, p.creditsPerMonth, p.carryover])).toEqual([
-      ["free", 3, 2, 0],
+      ["free", 3, 3, 0],
       ["keep_warm", 5, 1, 1],
       ["start", 8, 10, 1],
       ["momentum", 15, 30, 3],
@@ -131,8 +131,8 @@ describe("structure", () => {
     const ladder = [FREE_PLAN, ...CATALOG_PLANS];
     for (let i = 1; i < ladder.length; i++) expect(ladder[i].openRequests).toBeGreaterThan(ladder[i - 1].openRequests);
     for (let i = 1; i < CATALOG_PLANS.length; i++) expect(CATALOG_PLANS[i].creditsPerMonth).toBeGreaterThan(CATALOG_PLANS[i - 1].creditsPerMonth);
-    // Free's 2 a month beat Keep warm's 1 by decision: Keep warm sells open asks and alerts, not credits.
-    expect(FREE_PLAN.creditsPerMonth).toBe(2);
+    // Free's 3 a month beat Keep warm's 1 by decision: Keep warm sells open asks and alerts, not credits.
+    expect(FREE_PLAN.creditsPerMonth).toBe(3);
     const paid = CATALOG_PLANS.filter(p => p.id !== "keep_warm");
     for (let i = 1; i < paid.length; i++) expect(price(paid[i].id, "30d", "USD")!).toBeGreaterThan(price(paid[i - 1].id, "30d", "USD")!);
   });

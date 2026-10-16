@@ -7,6 +7,7 @@ import { Link } from "wouter";
 import type { SubscriptionCurrency } from "@shared/subscriptionPlans";
 import { Button } from "@/components/kit/button";
 import { kitDate } from "./format";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { CREDIT_PRICE, hasActivePaidPlan, type CreditSummary } from "./planCatalog";
 
 function creditCount(count: number): string {
@@ -15,10 +16,13 @@ function creditCount(count: number): string {
 
 /** Heading aside: the kit "credits · ADD CREDITS" pill with the real balance once signed in, the price of a credit before. */
 export function CreditCta({ summary, currency, href }: { summary: CreditSummary | null; currency: SubscriptionCurrency; href: string }) {
+  // Packs are off sale: show the real balance, no purchase link.
+  if (!CREDIT_PACKS_ON_SALE) return summary ? <div className="heading-aside"><span className="credit-cta"><Coins /><b>{creditCount(summary.totalAvailable)}</b></span></div> : null;
   return <div className="heading-aside"><Link href={href} className="credit-cta"><Coins /><b>{summary ? creditCount(summary.totalAvailable) : `${CREDIT_PRICE[currency]} a credit`}</b><span>Add credits</span></Link></div>;
 }
 
 export function CreditsSection({ summary, currency, creditsHref }: { summary: CreditSummary | null; currency: SubscriptionCurrency; creditsHref: string }) {
+  if (!CREDIT_PACKS_ON_SALE) return null;
   const costs = [["Free", "Every referral request"], [CREDIT_PRICE[currency], "Each credit you buy"], ["Never", "Bought credits expire"]] as const;
   return <section className="plans-section credits-section" id="credits">
     <span className="eyebrow">NO SUBSCRIPTION NEEDED</span>
@@ -28,7 +32,7 @@ export function CreditsSection({ summary, currency, creditsHref }: { summary: Cr
         <ul className="cost-strip" aria-label="Credit costs">{costs.map(([badge, label]) => <li key={label}><span className="cost-badge">{badge}</span>{label}</li>)}</ul>
         <Button asChild className="brand-button"><Link href={creditsHref}>Add credits<ArrowRight /></Link></Button>
       </div>
-      <p className="credits-fine"><Check />Referral requests never cost credits. Credits you buy <b>never expire</b> and never affect referral access or queue position.</p>
+      <p className="credits-fine"><Check />Each referral request uses 1 credit, returned if you withdraw before pickup or it expires. Credits you buy <b>never expire</b> and never affect referral access or queue position.</p>
     </div>
   </section>;
 }

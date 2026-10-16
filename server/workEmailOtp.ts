@@ -32,7 +32,7 @@ export async function hasDeliverableMailDomain(domain: string): Promise<boolean>
   domainCache.set(normalized, { valid, until: Date.now() + (valid ? 300_000 : 60_000) });
   return valid;
 }
-function limiterKey(kind: string, value: string) { return `${kind}:${createHash("sha256").update(value).digest("hex")}`; }
+export function limiterKey(kind: string, value: string) { return `${kind}:${createHash("sha256").update(value).digest("hex")}`; }
 export function isValidWorkEmailOtpEmail(value: string): boolean {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value) || value.length > 320) return false;
   return isWorkEmailDomain(value.slice(value.lastIndexOf("@") + 1).toLowerCase());
@@ -41,7 +41,7 @@ export function hashCode(email: string, code: string): string { return createHas
 
 type Limit = { key: string; windowMs: number; limit: number };
 function fixedWindow(timestamp: number, windowMs: number) { return Math.floor(timestamp / windowMs) * windowMs; }
-async function consumeLimits(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, limits: Limit[], timestamp: number) {
+export async function consumeLimits(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, limits: Limit[], timestamp: number) {
   return db.transaction(async tx => {
     await tx.delete(workEmailOtpRateLimits).where(lt(workEmailOtpRateLimits.expiresAt, new Date(timestamp)));
     for (const limit of limits) {
@@ -58,7 +58,7 @@ type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 const lockKeys = (email: string, ip: string) => ({ pair: limiterKey("vlock-pair", `${email}|${ip}`), ip: limiterKey("vlock-ip", ip) });
 const failKeys = (email: string, ip: string) => ({ pair: limiterKey("vfail-pair", `${email}|${ip}`), ip: limiterKey("vfail-ip", ip) });
 
-async function activeLockUntil(db: Db, email: string, ip: string, timestamp: number): Promise<Date | null> {
+export async function activeLockUntil(db: Db, email: string, ip: string, timestamp: number): Promise<Date | null> {
   const keys = lockKeys(email, ip);
   const result = await db.execute(sql`SELECT MAX(expiresAt) AS until FROM workEmailOtpRateLimits WHERE limiterKey IN (${keys.pair}, ${keys.ip}) AND expiresAt > ${new Date(timestamp)}`);
   const row = (result as unknown as Array<Array<{ until: Date | string | null }>>)[0]?.[0];
@@ -66,7 +66,7 @@ async function activeLockUntil(db: Db, email: string, ip: string, timestamp: num
 }
 
 /** Counts a wrong code against the (email, IP) pair and the IP; locks either once its threshold is reached. */
-async function recordVerifyFailure(db: Db, email: string, ip: string, timestamp: number) {
+export async function recordVerifyFailure(db: Db, email: string, ip: string, timestamp: number) {
   const fails = failKeys(email, ip), locks = lockKeys(email, ip);
   await db.transaction(async tx => {
     const start = fixedWindow(timestamp, OTP_LOCK_MS);
@@ -83,7 +83,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
   const now = dependencies.now ?? (() => Date.now());
   const sendEmail = dependencies.sendEmail;
   return {
-    async sendCode(rawEmail: string, context: { ip?: string } = {}): Promise<WorkEmailOtpSendResult> {
+    async sendCode(rawEmail: string, context: { ip?: string; seeker?: boolean } = {}): Promise<WorkEmailOtpSendResult> {
       const email = rawEmail.trim().toLowerCase();
       if (!isValidWorkEmailOtpEmail(email)) return { sent: false, reason: "invalid_email" };
       const domain = email.slice(email.lastIndexOf("@") + 1);
@@ -93,8 +93,9 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const timestamp = now();
       const limits: Limit[] = [
         { key: limiterKey("ip10m", context.ip || "unknown"), windowMs: 600_000, limit: 5 },
-        { key: limiterKey("domain10m", domain), windowMs: 600_000, limit: 8 },
-        { key: limiterKey("global1h", "all"), windowMs: 3_600_000, limit: 200 },
+        // Seeker codes go to shared mailbox domains (gmail.com), so the per-domain cap would throttle everyone.
+        context.seeker ? { key: limiterKey("seeker-global1h", "all"), windowMs: 3_600_000, limit: 500 } : { key: limiterKey("domain10m", domain), windowMs: 600_000, limit: 8 },
+        { key: limiterKey("global1h", "all"), windowMs: 3_600_000, limit: context.seeker ? 700 : 200 },
         { key: limiterKey("email10m", email), windowMs: 600_000, limit: 3 },
         { key: limiterKey("email30s", email), windowMs: OTP_RESEND_COOLDOWN_SECONDS * 1000, limit: 1 },
       ];

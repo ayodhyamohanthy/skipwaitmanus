@@ -37,6 +37,7 @@ const storagePut = r2Configured() ? r2StoragePut : process.env.BUILT_IN_FORGE_AP
 // Forge presigned GET, or DB blobs — matching the storagePut selection above.
 const storageGetBytes = r2Configured() ? r2StorageGetBytes : process.env.BUILT_IN_FORGE_API_URL && process.env.BUILT_IN_FORGE_API_KEY ? forgeStorageGetBytes : dbStorageGetBytes;
 import * as db from "../db";
+import { sql } from "drizzle-orm";
 import { createContext } from "./context";
 import { registerDevAuthRoutes, resolveDevIdentity } from "./devAuth";
 import { serveStatic, setupVite } from "./vite";
@@ -73,6 +74,7 @@ import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
+import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
@@ -157,7 +159,7 @@ async function startServer() {
 
 // Liveness is process-only; readiness gates on schema reconciliation. The
 // legacy endpoint stays 200-compatible for existing SHA verification clients.
-registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError});
+registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-sha.txt","utf8")).trim()}catch{return""}},isReady:isSchemaReconciled,lastError:getLastReconcileError,dbPing:async()=>{const d=await db.getDb();if(!d)throw new Error("no db");const r=await d.execute(sql`SELECT @@lower_case_table_names AS v`);const row=(r as unknown as Array<Array<{v:number|string}>>)[0]?.[0];return row?Number(row.v):undefined}});
 
   registerAdminSmokeFixture(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   let sessionsApi: WorkOS | undefined;
@@ -174,6 +176,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Dev session routes read JSON bodies, so they register after the parsers.
   // WorkOS AuthKit takes precedence over the dev fallback when configured.
   // Referrer OTP-first login is a public surface, always registered.
+  app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
   registerPasswordResetRoutes(app);
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);

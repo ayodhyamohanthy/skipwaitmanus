@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, getTableColumns, getTableName, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import {
+  tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants,
   jobs,
   notifications,
   profiles,
@@ -14,7 +15,7 @@ import {
   referralTransitionEvents,
   referrerReviewEmailLinks,
 } from "../drizzle/schema";
-import { getUnclaimedCompanyReferralPreview, oneClickReviewReferralRequest, reviewReferralRequest } from "./db";
+import { claimCompanyReferralRequest, withdrawCompanyReferralRequest, expireStalePendingReferralRequest, getAccessibleReferralAttachment, getUnclaimedCompanyReferralPreview, oneClickReviewReferralRequest, reviewReferralRequest } from "./db";
 
 /*
  * D-021: a decline by a verified employee reopens the ask for the rest of that
@@ -36,12 +37,13 @@ const NOW = new Date("2026-10-15T12:00:00.000Z");
 const LATER = new Date("2026-10-15T12:00:01.000Z");
 
 type Row = Record<string, unknown>;
-const TABLES = [jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralTransitionEvents, referrerReviewEmailLinks];
+const TABLES = [tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants, jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralTransitionEvents, referrerReviewEmailLinks];
 const TABLE_BY_NAME = new Map(TABLES.map(table => [getTableName(table), table]));
 const COLUMNS_BY_NAME = new Map(TABLES.map(table => [getTableName(table), Object.keys(getTableColumns(table))]));
 
 let rows: Record<string, Row[]>;
 let sequence: Record<string, number>;
+let historyUnavailable = false;
 
 const tableNameOf = (table: unknown) => getTableName(table as never);
 const bucket = (table: unknown) => (rows[tableNameOf(table)] ??= []);
@@ -101,6 +103,13 @@ function matches(condition: unknown, flat: Record<string, unknown>): boolean {
     if (orParts.length > 1) return orParts.map(evaluate).some(Boolean);
     const andParts = splitTopLevel(trimmed, " and ");
     if (andParts.length > 1) return andParts.map(evaluate).every(Boolean);
+    const inMatch = /^`([^`]+)`\.`([^`]+)` in \((.+)\)$/.exec(trimmed);
+    if (inMatch) {
+      const count = (inMatch[3].match(/\?/g) ?? []).length;
+      const values = query.params.slice(cursor.index, cursor.index + count);
+      cursor.index += count;
+      return values.includes(flat[`${inMatch[1]}.${inMatch[2]}`]);
+    }
     const atom = trimmed;
     const match = ATOM.exec(atom);
     if (!match) throw new Error(`fixture cannot evaluate: ${atom}`);
@@ -132,6 +141,7 @@ function fixtureDatabase() {
       return out;
     };
     const run = (): Row[] => {
+      if (historyUnavailable && state.from === referralTransitionEvents) throw new Error("history unavailable");
       let combos = bucket(state.from).map(row => [{ table: tableNameOf(state.from), row }]);
       for (const join of state.joins) {
         const name = tableNameOf(join.table);
@@ -153,6 +163,7 @@ function fixtureDatabase() {
       leftJoin: (table: unknown, on: unknown) => { state.joins.push({ table, on, kind: "left" }); return chain; },
       where: (condition: unknown) => { state.where = condition; return chain; },
       limit: (n: number) => ({ for: async (_mode: string) => slice(n), then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(slice(n)).then(resolve, reject) }),
+      orderBy: (..._order: unknown[]) => chain,
       for: async (_mode: string) => run(),
       then: (resolve: (v: unknown) => unknown, reject?: (e: unknown) => unknown) => Promise.resolve(run()).then(resolve, reject),
     };
@@ -216,6 +227,7 @@ function seed() {
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   seed();
+  historyUnavailable = false;
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(fixtureDatabase());
 });
@@ -311,4 +323,137 @@ describe("the claimed-review decline is the same pass (D-021)", () => {
     expect(rows.referralRequestPasses).toHaveLength(1);
     expect(rows.notifications).toHaveLength(1);
   });
+});
+
+
+describe("attachment lookup scopes the requested file before limiting", () => {
+  beforeEach(() => {
+    rows.referralAttachments = [
+      { id: 71, ownerId: 7, referralRequestId: null, fileName: "first.pdf", fileKey: "private/first", mimeType: "application/pdf", fileSize: 3 },
+      { id: 72, ownerId: 7, referralRequestId: 501, fileName: "second.pdf", fileKey: "private/second", mimeType: "application/pdf", fileSize: 3 },
+    ];
+  });
+
+  it("returns each owned upload even when another upload was stored first", async () => {
+    expect(await getAccessibleReferralAttachment(7, 71)).toMatchObject({ id: 71 });
+    expect(await getAccessibleReferralAttachment(7, 72)).toMatchObject({ id: 72 });
+  });
+
+  it("returns nothing for a missing id or another user's file", async () => {
+    expect(await getAccessibleReferralAttachment(7, 99)).toBeUndefined();
+    expect(await getAccessibleReferralAttachment(10, 72)).toBeUndefined();
+  });
+
+  it("keeps owner access even if the owner has a historical pass record", async () => {
+    rows.referralRequestPasses.push({ id: 2, referralRequestId: 501, referrerId: 7 });
+    expect(await getAccessibleReferralAttachment(7, 72)).toMatchObject({ id: 72 });
+  });
+
+  it("preserves assigned-referrer grant, expiry and pass checks", async () => {
+    expect(await getAccessibleReferralAttachment(9, 72)).toMatchObject({ id: 72 });
+    rows.referralDocumentAccessGrants[0].expiresAt = new Date(0);
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+    rows.referralDocumentAccessGrants[0].expiresAt = new Date("2099-01-01");
+    rows.referralDocumentAccessGrants[0].revokedAt = new Date();
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+    rows.referralDocumentAccessGrants[0].revokedAt = null;
+    rows.referralRequestPasses.push({ id: 1, referralRequestId: 501, referrerId: 9 });
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+  });
+});
+
+
+// Monetary-policy regressions run real claim/pass/terminal functions, not mocked transitions.
+// A seeded debit is the persisted output of send, not an assertion that send was exercised.
+describe("pickup permanently spends the ask credit", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
+    ask().referrerId = null;
+    rows.referralDocumentAccessGrants = [];
+    rows.referralAvailabilitySlots = [];
+    rows.referrerReviewEmailLinks = [];
+    rows.tokenBalances = [{ id: 1, userId: 7, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "free" }];
+    rows.tokenTransactions = [{ id: 11, userId: 7, role: "job_seeker", kind: "credit_spend", tokenCount: -1, source: "monthly_allowance", sourceCycleKey: "2026-10", referenceType: "referral_request", referenceId: "501#1", reversesTransactionId: null }];
+    rows.planCreditGrants = [];
+    rows.promoCreditGrants = [];
+    sequence.tokenTransactions = 11;
+  });
+
+  async function finish(terminal: "withdraw" | "expiry") {
+    if (terminal === "withdraw") {
+      const result = await withdrawCompanyReferralRequest(7, 501);
+      expect(result).toMatchObject({ withdrawn: true, status: "withdrawn" });
+      expect(ask().status).toBe("withdrawn");
+    } else {
+      const later = new Date("2026-10-23T12:00:00Z");
+      vi.setSystemTime(later);
+      await expireStalePendingReferralRequest(7, 501, later.getTime());
+    }
+  }
+
+  for (const terminal of ["withdraw", "expiry"] as const) {
+    it(`never refunds after actual claim then declined review then ${terminal}`, async () => {
+      await claimCompanyReferralRequest(9, 501);
+      expect(ask().referrerId).toBe(9);
+      expect(rows.referralTransitionEvents.some(event => event.action === "claim")).toBe(true);
+      await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
+      expect(ask()).toMatchObject({ status: "pending", referrerId: null });
+      expect(rows.referralTransitionEvents.some(event => event.action === "pass")).toBe(true);
+      await finish(terminal);
+      await finish(terminal);
+      if (terminal === "withdraw") {
+        expect(String(rows.notifications.at(-1)?.body)).toContain("credit stays spent");
+        expect(rows.referralTransitionEvents.filter(event => event.action === "withdraw")).toHaveLength(1);
+      }
+      if (terminal === "expiry") {
+        expect(ask().status).toBe("closed");
+        expect(String(rows.notifications.at(-1)?.body)).not.toContain("No verified employee claimed");
+        expect(String(rows.notifications.at(-1)?.body)).toContain("stays spent");
+      }
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+      expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
+    });
+
+    it(`returns a never-claimed credit once on ${terminal}`, async () => {
+      await finish(terminal);
+      await finish(terminal);
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+      expect(rows.tokenTransactions.filter(row => row.reversesTransactionId === 11)).toHaveLength(1);
+    });
+
+    it(`does not claim a free historical ask spent a credit on ${terminal}`, async () => {
+      ask().debitTransactionId = null;
+      rows.tokenTransactions = [];
+      await claimCompanyReferralRequest(9, 501);
+      await reviewReferralRequest(9, { requestId: 501, decision: "declined" });
+      await finish(terminal);
+      expect(String(rows.notifications.at(-1)?.body)).not.toContain("credit");
+      expect(String(rows.notifications.at(-1)?.body)).toContain("open slot is free");
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+      expect(rows.tokenTransactions).toEqual([]);
+    });
+
+    it(`fails closed when claim history is unavailable on ${terminal}`, async () => {
+      historyUnavailable = true;
+      await expect(finish(terminal)).rejects.toThrow("history unavailable");
+      expect(ask().status).toBe("pending");
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+      expect(rows.tokenTransactions).toHaveLength(1);
+    });
+
+    it(`still refunds after an unclaimed pass on ${terminal}`, async () => {
+      await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "timing", passReason: "at_capacity" });
+      expect(rows.referralTransitionEvents.every(event => event.action !== "claim")).toBe(true);
+      await finish(terminal);
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(3);
+    });
+
+    it(`honors historical claim evidence on ${terminal} without pretending a claim was executed`, async () => {
+      rows.referralTransitionEvents.push({ id: 101, referralRequestId: 501, operationKey: "claim:9", actorUserId: 9, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 3 });
+      await finish(terminal);
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+      expect(rows.tokenTransactions.filter(row => row.reversesTransactionId != null)).toEqual([]);
+    });
+  }
 });

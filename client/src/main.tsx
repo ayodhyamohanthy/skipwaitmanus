@@ -144,4 +144,13 @@ const mount=()=>createRoot(document.getElementById("root")!).render(
   </QueryClientProvider>
 );;
 const nativeFetch=globalThis.fetch.bind(globalThis);
-void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount()});
+// Reveal the app only once the brand font is ready (index.html hides it until then; a 2.5s timer there is the failsafe).
+function revealWhenFontsReady() {
+  const reveal = (window as unknown as { __swReveal?: () => void }).__swReveal;
+  if (!reveal) return;
+  const fonts = document.fonts;
+  if (!fonts || typeof fonts.load !== "function") { reveal(); return; }
+  const loads = ["400", "500", "600", "700"].map(weight => fonts.load(`${weight} 1em "Instrument Sans"`, "Abc 123 SkipWait").catch(() => []));
+  void Promise.race([Promise.all(loads), new Promise(resolve => setTimeout(resolve, 1800))]).then(() => requestAnimationFrame(() => requestAnimationFrame(reveal)));
+}
+void bootstrapSmoke(nativeFetch).finally(()=>{globalThis.fetch=smokeFetch as typeof fetch;mount();revealWhenFontsReady()});

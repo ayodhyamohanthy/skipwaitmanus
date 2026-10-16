@@ -103,10 +103,19 @@ export function askDaysLeft(input: { createdAt: Date | string | number | null | 
   return Math.floor((expiresAt - nowMs) / (24 * 60 * 60 * 1000));
 }
 
+/** Days to show in "Expires in N days": rounds a partial day up so a fresh 7-day ask reads 7, not 6. Today/tomorrow bands still use the floor above. */
+export function askDaysShown(input: { createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): number | null {
+  const expiresAt = getAskExpiresAtMs(input.createdAt);
+  if (expiresAt === null) return null;
+  const day = 24 * 60 * 60 * 1000;
+  const floor = Math.floor((expiresAt - nowMs) / day);
+  return floor >= 2 ? Math.ceil((expiresAt - nowMs) / day) : floor;
+}
+
 /** Row countdown copy. Returns null when no expiry applies. */
 export function formatAskExpiry(input: { status: ReferralStatus; referrerId?: number | null; createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): string | null {
   if (input.status !== "pending" || input.referrerId != null) return null;
-  const days = askDaysLeft(input, nowMs);
+  const days = askDaysShown(input, nowMs);
   if (days === null) return null;
   if (days < 0) return "Expired";
   if (days === 0) return "Expires today";

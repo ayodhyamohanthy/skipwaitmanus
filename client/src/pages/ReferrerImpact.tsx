@@ -36,7 +36,7 @@ function Stat({ value, label }: { value: number; label: string }) {
 
 export default function ReferrerImpact() {
   const [, go] = useLocation();
-  const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
   const [summary, setSummary] = useState<ReferrerImpactSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -62,8 +62,7 @@ export default function ReferrerImpact() {
   if (!isLoaded) return frame("referrer-impact-loading", loadingState);
 
   if (!isSignedIn) return frame("referrer-impact-sign-in", <ImpactState icon={HeartHandshake} eyebrow="PRIVATE BY DEFAULT" title="Sign in with your work email to see your referral impact" text="Accepted referrals, pending decisions, and private messages — all in one private view.">
-    {/* The kit Button is not a bare <button>, so it calls openSignIn itself instead of nesting inside SignInButton. */}
-    <Button type="button" className="mt-8" onClick={() => openSignIn?.()}>Secure sign in</Button>
+    <Button type="button" className="mt-8" onClick={() => go(REFERRER_SIGN_IN_HREF)}>Sign in with work email</Button>
   </ImpactState>);
 
   if (access.status === "checking") return frame("referrer-impact-loading", loadingState);

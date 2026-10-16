@@ -10,7 +10,7 @@ import { FREE_PLAN } from "@shared/planCatalog";
 // the kit copy would misstate live plans, limits or tooling.
 const CATS = [["Asking", MessageSquare], ["Referring", BadgeCheck], ["Plans & credits", CreditCard], ["Account & privacy", UserRound], ["Safety", ShieldCheck]] as const;
 const FAQS: ReadonlyArray<readonly [string, string, string]> = [
-  ["Asking", "Is asking for a referral really free?", "Yes. Asking and referring are free forever. Paid plans only add more open asks at once and monthly credits."],
+  ["Asking", "Does asking for a referral cost anything?", "Each ask uses 1 credit, and free accounts get 3 credits every month. The credit comes back if you withdraw before a verified employee picks it up, or if the ask expires after 7 days. Once an employee picks it up it stays spent, even if they pass. Referrers are never charged."],
   ["Asking", "How many asks can I have open?", `Free: ${FREE_PLAN.openRequests} at a time; paid plans allow more. An answered, withdrawn or expired ask frees its slot.`],
   ["Asking", "Why did my ask expire?", "If no referrer accepts within 7 days it closes automatically and your slot returns. Try refreshing your note."],
   ["Asking", "Does a referral guarantee an interview?", "No. Referrers recommend; companies decide. We never promise outcomes."],

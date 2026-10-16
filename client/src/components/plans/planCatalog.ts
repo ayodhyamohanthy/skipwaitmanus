@@ -4,7 +4,7 @@
 // from shared/planEntitlements.ts (legacy Pro/Max grandfathered), the rules the
 // server enforces. Kit tier names and example prices are not used here: live
 // checkout still sells Free / Pro / Max.
-import type { Carryover } from "@shared/planCatalog";
+import { CREDIT_PACKS_ON_SALE, type Carryover } from "@shared/planCatalog";
 import { planEntitlementsFor } from "@shared/planEntitlements";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionCurrency } from "@shared/subscriptionPlans";
 import type { CreditSummary } from "./billingApi";
@@ -82,7 +82,7 @@ export function planCards(currency: SubscriptionCurrency): PlanCardCopy[] {
       id: "free",
       name: "Free",
       tagline: "For getting started: a few private asks at a time.",
-      features: [`${openRequestsLabel(free.openRequests)} referral requests open at once`, "Track every request in one place", `Add credits anytime, ${CREDIT_PRICE[currency]} each`, "Same referrer queue as every plan"],
+      features: [`${openRequestsLabel(free.openRequests)} referral requests open at once`, "Track every request in one place", ...(CREDIT_PACKS_ON_SALE ? [`Add credits anytime, ${CREDIT_PRICE[currency]} each`] : []), "Same referrer queue as every plan"],
       cta: "Ask for a referral",
     },
     {
@@ -121,7 +121,7 @@ export function compareRows(currency: SubscriptionCurrency): Array<readonly [str
 }
 
 export const fairnessRules = [
-  "Asking for a referral is free, forever.",
+  "Every account gets free referral credits each month.",
   "Paying never moves you up a referrer's queue.",
   "Referrers never pay to review requests.",
   "No commissions on hires. No paid priority.",
@@ -135,7 +135,7 @@ export function planFaqs(): Array<readonly [string, string]> {
   return [
     ["Does paying help me get referred?", "No. Referrers see the same queue whatever plan you are on. Paid plans add more open requests at once and monthly credits; the decision stays human."],
     ["How many referral requests can I have open?", `Free includes ${openRequestsLabel(free.openRequests)} open requests at a time. ${pro.label} raises it to ${openRequestsLabel(proLimits.openRequests)} and ${max.label} to ${openRequestsLabel(maxLimits.openRequests)}. A request that's answered, passed, withdrawn or expired frees its slot. Every plan shares the same queue.`],
-    ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from SkipWait's tools. Referral requests never cost credits. ${pro.label} includes ${proLimits.creditsPerMonth} credits a month and ${max.label} ${maxLimits.creditsPerMonth}; extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
+    ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from SkipWait's tools. Each referral request uses 1 credit, returned if you withdraw before pickup or it expires. ${pro.label} includes ${proLimits.creditsPerMonth} credits a month and ${max.label} ${maxLimits.creditsPerMonth}; extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
     ["Do unused credits expire?", `Credits you buy never expire — even if you cancel. Monthly plan credits carry over ${carry(proLimits.carryover)} on ${pro.label} and ${carry(maxLimits.carryover)} on ${max.label}, and end when the paid plan ends.`],
     ["Can I cancel?", "Anytime, from Manage plan. Paid access stays through the current cycle, then your account returns to Free."],
     ["Do referrers pay?", "Never to review requests. Referrers are always free."],

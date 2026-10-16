@@ -18,10 +18,10 @@ describe("plan entitlement resolver (Oct 14 2026 pricing decision, 19_plans comp
     expect(planEntitlementsSchema.safeParse({ ...resolve(null), extra: true }).success).toBe(false);
   });
 
-  it("Free: 3 open requests, 2 credits a month with no carryover, 3 alerts, 3 pieces, 1 pin, no assistants", () => {
+  it("Free: 3 open requests, 3 credits a month with no carryover, 3 alerts, 3 pieces, 1 pin, no assistants", () => {
     expect(resolve(null)).toEqual({
       plan: "free", planLabel: "Free", tier: "free", level: 1, legacy: false,
-      openRequests: 3, creditsPerMonth: 2, carryover: 0, savedAlerts: 3,
+      openRequests: 3, creditsPerMonth: 3, carryover: 0, savedAlerts: 3,
       showcase: { pieces: 3, pins: 1 }, customLink: false, privateInsights: false, guidedWorkflows: false, assistants: false,
       tools: { preparation: "limited", uploads: "limited", research: "basic", included: [] },
       humanTime: NO_HUMAN, paidThrough: null, trialEndsAt: null,
@@ -108,7 +108,7 @@ describe("reverse trial (one-time, 14 days, Momentum's open asks)", () => {
   it("lifts a Free seeker to 15 open asks while it runs, and nothing else", () => {
     const end = new Date(NOW.getTime() + 10 * DAY);
     const trial = resolve(free(end));
-    expect(trial).toMatchObject({ plan: "free", planLabel: "Momentum trial", tier: "free", openRequests: 15, creditsPerMonth: 2, savedAlerts: 3, assistants: false, paidThrough: null, trialEndsAt: end.toISOString() });
+    expect(trial).toMatchObject({ plan: "free", planLabel: "Momentum trial", tier: "free", openRequests: 15, creditsPerMonth: 3, savedAlerts: 3, assistants: false, paidThrough: null, trialEndsAt: end.toISOString() });
     expect(trial.tools.included).toEqual([]);
     expect(planEntitlementsSchema.parse(trial).trialEndsAt).toBe(end.toISOString());
     expect(isTrialActive(free(end), NOW)).toBe(true);

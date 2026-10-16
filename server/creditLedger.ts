@@ -58,7 +58,7 @@ export function cycleRulesFor(plan: string, role: WalletRole): CycleRules {
 
 /**
  * A new seeker wallet's cycle key: not a month, so the first reconcile opens
- * the current Free month with its 2 credits and a plan_grant row (no credit
+ * the current Free month with its 3 credits and a plan_grant row (no credit
  * ever appears without its ledger row).
  */
 export const FRESH_SEEKER_CYCLE_KEY = "new";

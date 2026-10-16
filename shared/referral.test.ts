@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ASK_EXPIRING_SOON_MS, ASK_TTL_MS, askDaysLeft, canReviewReferral, formatAskExpiry, getAskExpiresAtMs, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, isAskExpired, isPostApprovalReferralStatus, isReferralProgressUpdateStatus, referralStatusLabels } from "./referral";
+import { ASK_EXPIRING_SOON_MS, ASK_TTL_MS, askDaysLeft, askDaysShown, canReviewReferral, formatAskExpiry, getAskExpiresAtMs, getJobSeekerReferralState, getReferralProgress, getReferrerInboxState, isAskExpired, isPostApprovalReferralStatus, isReferralProgressUpdateStatus, referralStatusLabels } from "./referral";
 
 describe("Referral Request state helpers", () => {
   it("provides the prescribed request state labels", () => {
@@ -67,6 +67,9 @@ describe("Referral Request state helpers", () => {
     expect(formatAskExpiry({ status: "pending", referrerId: 9, createdAt: new Date("2026-09-01T00:00:00.000Z") }, now)).toBeNull();
     expect(formatAskExpiry({ status: "approved", referrerId: 9, createdAt: new Date("2026-10-03T12:00:00.000Z") }, now)).toBeNull();
     expect(askDaysLeft({ createdAt: undefined }, now)).toBeNull();
+    // A fresh ask (just created) shows 7 days, not 6; today/tomorrow bands are unchanged.
+    expect(formatAskExpiry({ status: "pending", referrerId: null, createdAt: new Date(now - 60_000) }, now)).toBe("Expires in 7 days");
+    expect(askDaysShown({ createdAt: new Date(now - 60_000) }, now)).toBe(7);
     expect(ASK_EXPIRING_SOON_MS).toBe(2 * 24 * 60 * 60 * 1000);
   });
 });

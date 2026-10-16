@@ -65,14 +65,14 @@ describe("plan cycles from webhook-confirmed renewals", () => {
   it("a seeker's own subscription ending by webhook ends its plan credits; purchased credits stay; Free's month opens", async () => {
     db.grants.push({ id: 1, userId: SEEKER, role: "job_seeker", source: "carryover", grantKey: "carry:x", planId: "pro", subscriptionId: "sub_pro", cycleKey: "2026-08", tokenCount: 3, creditsRemaining: 3, status: "active", grantedAt: at("2026-09-06T00:00:00Z"), expiresAt: at("2026-10-06T00:00:00Z"), closedAt: null });
     await applyChargebeeSubscriptionEvent(renewal({ eventId: "ev_cancel", eventType: "subscription_cancelled", status: "cancelled", currentTermStart: at("2026-09-06T00:00:00Z"), currentTermEnd: at("2026-10-06T00:00:00Z") }));
-    // Back on Free: the paid cycle's leftover expires and Free's 2 credits for October are granted, once.
-    expect(db.wallets[0]).toMatchObject({ plan: "free", balance: 2, monthlyAllowance: 2, monthlyCreditsRemaining: 2, monthlyCycleKey: "2026-10" });
+    // Back on Free: the paid cycle's leftover expires and Free's 3 credits for October are granted, once.
+    expect(db.wallets[0]).toMatchObject({ plan: "free", balance: 2, monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10" });
     expect(txns({ kind: "plan_credit_expiry" })).toEqual([expect.objectContaining({ tokenCount: -4, source: "monthly_allowance", sourceCycleKey: "2026-09" })]);
-    expect(txns({ kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 2, source: "monthly_allowance", sourceCycleKey: "2026-10" })]);
+    expect(txns({ kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 3, source: "monthly_allowance", sourceCycleKey: "2026-10" })]);
     const summary = await getTokenWallet(SEEKER, "job_seeker");
     expect(db.grants[0]).toMatchObject({ status: "expired", creditsRemaining: 0 });
     expect(txns({ kind: "plan_credit_expiry", creditGrantId: 1 })).toEqual([expect.objectContaining({ tokenCount: -3 })]);
-    expect(summary).toMatchObject({ plan: "free", totalAvailable: 4, ledger: { creditsPerMonth: 2, carryover: 0, buckets: { cycle: 2, carriedOver: 0, purchased: 2 } } });
+    expect(summary).toMatchObject({ plan: "free", totalAvailable: 5, ledger: { creditsPerMonth: 3, carryover: 0, buckets: { cycle: 3, carriedOver: 0, purchased: 2 } } });
     // The cycle bucket reconciles with its rows (the injected grant above has no carry-in row by construction).
     expect((await getCreditLedgerAudit()).mismatches.filter(row => row.bucket === "cycle")).toEqual([]);
   });
@@ -153,9 +153,9 @@ describe("reconcile and the scheduled safety net", () => {
     Object.assign(db.wallets[0], { subscriptionStatus: "non_renewing" });
     vi.setSystemTime(at("2026-10-06T01:00:00Z"));
     const summary = await getTokenWallet(SEEKER, "job_seeker");
-    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled", monthlyCreditsRemaining: 2, monthlyAllowance: 2, balance: 2 });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled", monthlyCreditsRemaining: 3, monthlyAllowance: 3, balance: 2 });
     expect(txns({ kind: "plan_credit_expiry" })).toEqual([expect.objectContaining({ tokenCount: -4 })]);
-    expect(summary.totalAvailable).toBe(4);
+    expect(summary.totalAvailable).toBe(5);
   });
 
   it("a pass that ends and a second return to Free in the same month grant Free's month once", async () => {
@@ -171,7 +171,7 @@ describe("reconcile and the scheduled safety net", () => {
     expect(txns({ kind: "plan_grant", sourceCycleKey: "2026-10" })).toHaveLength(1);
   });
 
-  it("Free: a legacy mid-month wallet keeps its credits; at the month boundary they expire and Free's 2 are granted, once", async () => {
+  it("Free: a legacy mid-month wallet keeps its credits; at the month boundary they expire and Free's 3 are granted, once", async () => {
     db.txns = [];
     db.wallets[0] = wallet({ plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, monthlyAllowance: 3, monthlyCreditsRemaining: 2, monthlyCycleKey: "2026-10", balance: 4 });
     expect((await getTokenWallet(SEEKER, "job_seeker")).totalAvailable).toBe(6);
@@ -179,10 +179,10 @@ describe("reconcile and the scheduled safety net", () => {
     vi.setSystemTime(at("2026-11-01T00:10:00Z"));
     expect(await listWalletsDueForCreditCycle(at("2026-11-01T00:10:00Z"), 50)).toEqual([SEEKER]);
     const summary = await getTokenWallet(SEEKER, "job_seeker");
-    expect(db.wallets[0]).toMatchObject({ monthlyAllowance: 2, monthlyCreditsRemaining: 2, monthlyCycleKey: "2026-11", balance: 4 });
+    expect(db.wallets[0]).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-11", balance: 4 });
     expect(txns({ kind: "plan_credit_expiry" })).toEqual([expect.objectContaining({ tokenCount: -2, sourceCycleKey: "2026-10" })]);
-    expect(txns({ kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 2, sourceCycleKey: "2026-11", source: "monthly_allowance" })]);
-    expect(summary).toMatchObject({ totalAvailable: 6, ledger: { creditsPerMonth: 2, carryover: 0, buckets: { cycle: 2, purchased: 4 }, cycle: { key: "2026-11", granted: 2, endsAt: "2026-12-01T00:00:00.000Z" } } });
+    expect(txns({ kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 3, sourceCycleKey: "2026-11", source: "monthly_allowance" })]);
+    expect(summary).toMatchObject({ totalAvailable: 7, ledger: { creditsPerMonth: 3, carryover: 0, buckets: { cycle: 3, purchased: 4 }, cycle: { key: "2026-11", granted: 3, endsAt: "2026-12-01T00:00:00.000Z" } } });
     await getTokenWallet(SEEKER, "job_seeker");
     await reconcileSeekerCredits(SEEKER, at("2026-11-01T00:20:00Z"));
     expect(db.txns).toHaveLength(2);
@@ -190,12 +190,12 @@ describe("reconcile and the scheduled safety net", () => {
     expect(await listWalletsDueForCreditCycle(at("2026-11-01T01:10:00Z"), 50)).toEqual([]);
   });
 
-  it("new seeker wallets open Free's month with 2 credits and a ledger row; referrer wallets keep 3 a month", async () => {
+  it("new seeker wallets open Free's month with 3 credits and a ledger row; referrer wallets keep 3 a month", async () => {
     db.wallets = [];
     db.txns = [];
-    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ plan: "free", monthlyAllowance: 2, monthlyCreditsRemaining: 2, monthlyCycleKey: "2026-10", balance: 0 });
-    expect(txns({ userId: 9, kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 2, source: "monthly_allowance", sourceCycleKey: "2026-10", role: "job_seeker" })]);
-    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10", balance: 0 });
+    expect(txns({ userId: 9, kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 3, source: "monthly_allowance", sourceCycleKey: "2026-10", role: "job_seeker" })]);
+    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ monthlyCreditsRemaining: 3 });
     expect(txns({ userId: 9 })).toHaveLength(1);
     expect(await ensureTokenWallet(9, "referrer")).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
     expect(txns({ userId: 9 })).toHaveLength(1);
@@ -231,7 +231,7 @@ describe("welcome credits and the ledger read", () => {
 });
 
 describe("reverse trial credits", () => {
-  const freeWallet = () => wallet({ plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, monthlyAllowance: 2, monthlyCreditsRemaining: 2, monthlyCycleKey: "2026-10", balance: 0 });
+  const freeWallet = () => wallet({ plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10", balance: 0 });
   // The fixture database stands in for drizzle's transaction handle.
   const grantTrial = (userId: number, canonicalPersonId: number | null, endsAt: Date) => fixture.database.transaction(tx => grantTrialCreditsTx(tx as unknown as LedgerTx, { userId, canonicalPersonId, now: new Date(), endsAt }));
 
@@ -245,7 +245,7 @@ describe("reverse trial credits", () => {
     expect(db.grants).toEqual([expect.objectContaining({ userId: SEEKER, role: "job_seeker", source: "trial", grantKey: "trial:person:1", planId: "momentum", tokenCount: 5, creditsRemaining: 5, status: "active" })]);
     expect(iso(db.grants[0].expiresAt)).toBe("2026-10-20T00:05:00.000Z");
     expect(txns({ kind: "trial_grant" })).toEqual([expect.objectContaining({ userId: SEEKER, tokenCount: 5, source: "trial_grant", creditGrantId: db.grants[0].id })]);
-    expect((await getTokenWallet(SEEKER, "job_seeker")).ledger).toMatchObject({ balance: 7, buckets: { trial: 5, cycle: 2 }, nextExpiry: { credits: 5, expiresAt: "2026-10-20T00:05:00.000Z" } });
+    expect((await getTokenWallet(SEEKER, "job_seeker")).ledger).toMatchObject({ balance: 8, buckets: { trial: 5, cycle: 3 }, nextExpiry: { credits: 5, expiresAt: "2026-10-20T00:05:00.000Z" } });
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 
@@ -255,14 +255,14 @@ describe("reverse trial credits", () => {
     await grantTrial(SEEKER, 1, at("2026-10-20T00:05:00Z"));
     await spendCredits(SEEKER, "job_seeker", { credits: 3, idempotencyKey: "tool-run-0001", referenceType: "tool_run", referenceId: "run-1" });
     expect(db.grants[0]).toMatchObject({ creditsRemaining: 2, status: "active" });
-    expect(db.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(db.wallets[0]).toMatchObject({ monthlyCreditsRemaining: 3 });
     expect(txns({ kind: "credit_spend" })).toEqual([expect.objectContaining({ tokenCount: -3, source: "trial_grant", creditGrantId: db.grants[0].id })]);
     vi.setSystemTime(at("2026-10-20T00:06:00Z"));
     expect(await listWalletsDueForCreditCycle(at("2026-10-20T00:06:00Z"), 50)).toEqual([SEEKER]);
     await reconcileSeekerCredits(SEEKER, at("2026-10-20T00:06:00Z"));
     expect(db.grants[0]).toMatchObject({ status: "expired", creditsRemaining: 0 });
     expect(txns({ kind: "plan_credit_expiry", creditGrantId: db.grants[0].id })).toEqual([expect.objectContaining({ tokenCount: -2, source: "trial_grant" })]);
-    expect((await getTokenWallet(SEEKER, "job_seeker")).ledger).toMatchObject({ balance: 2, buckets: { trial: 0, cycle: 2 } });
+    expect((await getTokenWallet(SEEKER, "job_seeker")).ledger).toMatchObject({ balance: 3, buckets: { trial: 0, cycle: 3 } });
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
   });
 });

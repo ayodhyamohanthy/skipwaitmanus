@@ -47,11 +47,26 @@ export type SlotCapReached = z.infer<typeof slotCapReachedSchema>;
  */
 export const SLOT_NUDGE_FLOOR_TIER: CatalogTier = "start";
 
+/**
+ * Catalog plans a person can actually buy today. The nudge only ever names a
+ * plan on this list, so it never points at a pass /plans does not sell yet
+ * (until the pass item prices exist /plans sells Pro and Max only). Add an id
+ * here in the same change that puts that plan on sale; empty means the nudge
+ * names no plan and shows no CTA.
+ */
+export const SLOT_NUDGE_SELLABLE_PLAN_IDS: readonly string[] = [];
+
 export function nextSlotPlan(entitlements: PlanEntitlements): NextSlotPlan | null {
+  return nextSlotPlanAmong(entitlements, SLOT_NUDGE_SELLABLE_PLAN_IDS);
+}
+
+/** The catalog walk behind nextSlotPlan, over an explicit set of sellable plan ids. */
+export function nextSlotPlanAmong(entitlements: PlanEntitlements, sellable: readonly string[]): NextSlotPlan | null {
   const cap = entitlements.openRequests;
   const floor = Math.max(tierRank(SLOT_NUDGE_FLOOR_TIER), tierRank(entitlements.tier));
   for (const plan of CATALOG_PLANS) {
     if (plan.byApplication || tierRank(plan.tier) < floor) continue;
+    if (!sellable.includes(plan.id)) continue;
     if (plan.openRequests > cap) return { id: plan.id, label: planDisplayName(plan), openRequests: plan.openRequests };
   }
   return null;

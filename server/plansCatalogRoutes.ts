@@ -1,7 +1,7 @@
 import type { Express, Request } from "express";
 import { EDGE_COUNTRY_HEADER, regionFromHeader } from "../shared/billingRegion";
 import { planCatalogResponse, sellableItemPrices } from "../shared/billingCatalog";
-import { availablePriceIds, type AvailabilityDeps } from "./billingAvailability";
+import { priceAvailability, type AvailabilityDeps } from "./billingAvailability";
 import { indiaGstRegistered, humanReviewersStaffed, usdRecurringConfirmed } from "./billingSettings";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 
@@ -24,6 +24,10 @@ export type PlansCatalogDeps = {
   credentials?: (req: Request) => AvailabilityDeps["credentials"];
   /** Overridable for tests: which item price ids are live. */
   availableFor?: (req: Request) => Promise<(itemPriceId: string) => boolean> | ((itemPriceId: string) => boolean);
+  /** Overridable for tests: how the provider is asked about one item price. */
+  lookup?: AvailabilityDeps["lookup"];
+  /** Overridable for tests: the budget for one probe. */
+  probeTimeoutMs?: number;
   indiaGstRegistered?: () => boolean;
   usdRecurringConfirmed?: () => boolean;
   humanReviewersStaffed?: () => boolean;
@@ -32,11 +36,14 @@ export type PlansCatalogDeps = {
 };
 
 const DEFAULT_MAX_AGE_SECONDS = 300;
+const UNREACHABLE_BODY = { error: "Prices are unavailable right now. Try again in a moment." } as const;
 
-async function resolveAvailable(req: Request, deps: PlansCatalogDeps): Promise<(itemPriceId: string) => boolean> {
+type ResolvedAvailability = { available: (itemPriceId: string) => boolean; unreachable: boolean };
+
+async function resolveAvailable(req: Request, deps: PlansCatalogDeps): Promise<ResolvedAvailability> {
   if (deps.availableFor) {
     const answer = await deps.availableFor(req);
-    return typeof answer === "function" ? answer : () => false;
+    return { available: typeof answer === "function" ? answer : () => false, unreachable: false };
   }
   let credentials: AvailabilityDeps["credentials"] = null;
   try {
@@ -44,15 +51,24 @@ async function resolveAvailable(req: Request, deps: PlansCatalogDeps): Promise<(
   } catch {
     credentials = null;
   }
-  const live = await availablePriceIds(sellableItemPrices(), { credentials });
-  return itemPriceId => live.has(itemPriceId);
+  const prices = sellableItemPrices();
+  const verdicts = await priceAvailability(prices, { credentials, lookup: deps.lookup, probeTimeoutMs: deps.probeTimeoutMs });
+  // Every price unanswerable while billing is configured means the provider could
+  // not be reached. Saying "not on sale yet" would be a false claim about the
+  // owner's catalog, so the route says it cannot read prices right now instead.
+  if (credentials && prices.length > 0 && verdicts.unknown.size === prices.length) return { available: () => false, unreachable: true };
+  return { available: itemPriceId => verdicts.available.has(itemPriceId), unreachable: false };
 }
 
 export function registerPlansCatalogRoutes(app: Express, deps: PlansCatalogDeps = {}): void {
   app.get("/api/plans/catalog", async (req, res) => {
     try {
       const region = regionFromHeader(req.headers[EDGE_COUNTRY_HEADER]);
-      const available = await resolveAvailable(req, deps);
+      const { available, unreachable } = await resolveAvailable(req, deps);
+      if (unreachable) {
+        res.set("Cache-Control", "no-store").status(503).json(UNREACHABLE_BODY);
+        return;
+      }
       const catalog = planCatalogResponse({
         region,
         available,
@@ -61,11 +77,11 @@ export function registerPlansCatalogRoutes(app: Express, deps: PlansCatalogDeps 
         indiaGstRegistered: (deps.indiaGstRegistered ?? indiaGstRegistered)(),
       });
       // Public prices, no personal data: shareable and cheap to cache. Availability
-      // itself is cached in-process for five minutes (server/billingAvailability.ts).
+      // itself is cached in-process (server/billingAvailability.ts).
       res.set("Cache-Control", `public, max-age=${deps.maxAgeSeconds ?? DEFAULT_MAX_AGE_SECONDS}`);
       res.json(catalog);
     } catch {
-      res.status(503).json({ error: "Prices are unavailable right now. Try again in a moment." });
+      res.set("Cache-Control", "no-store").status(503).json(UNREACHABLE_BODY);
     }
   });
 }

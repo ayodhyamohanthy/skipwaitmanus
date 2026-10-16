@@ -55,7 +55,7 @@ describe("My Requests pending states", () => {
     expect(screen.getByText("EXPIRING SOON").parentElement?.textContent).toContain("2");
     const urgentNote = await screen.findByText("acme.com · Expires today");
     expect(urgentNote.className).toContain("text-destructive");
-    expect(screen.getByText(/acme\.com · Expires in 5 days/).className).toContain("text-muted-foreground");
+    expect(screen.getByText(/acme\.com · Expires in 6 days/).className).toContain("text-muted-foreground");
   });
 
   it("counts down from createdAt even when the server also sends expiresAt", async () => {
@@ -65,7 +65,7 @@ describe("My Requests pending states", () => {
     const ask = { ...pendingRequest, id: 41, referrerId: null, createdAt: iso(now - 4.5 * day), updatedAt: iso(now - 4.5 * day), expiresAt: iso(now + 2.5 * day) };
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [ask] }) })));
     renderPage();
-    expect(await screen.findByText("acme.com · Expires in 2 days")).toBeTruthy();
+    expect(await screen.findByText("acme.com · Expires in 3 days")).toBeTruthy();
   });
 
   it("labels a lapsed ask Expired instead of hiding it", async () => {

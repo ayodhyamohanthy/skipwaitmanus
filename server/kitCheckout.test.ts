@@ -32,6 +32,21 @@ describe("kit plan checkout decision", () => {
     expect(createPlanCheckout).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ itemPriceId: "skipwait_momentum_90d-INR", checkoutIntentId: "intent_kit", redirectUrl: urls.redirectUrl, email: "member@example.com", billingCountry: "IN" }));
   });
 
+  it("refuses a by-application plan (Land Concierge) with 403 before any availability or provider call", async () => {
+    const createPlanCheckout = vi.fn();
+    const isAvailable = vi.fn(() => true);
+    for (const [interval, currency] of [["30d", "USD"], ["30d", "INR"], ["90d", "USD"], ["90d", "INR"]] as const) {
+      const started = await startKitPlanCheckout({
+        req,
+        request: { planId: "land_concierge", interval, currency, billingCountry: currency === "INR" ? "IN" : "INTL", role: "job_seeker" },
+        customer: {}, urls, deps: { isAvailable, createPlanCheckout },
+      });
+      expect(started).toMatchObject({ ok: false, status: 403, code: "application_required" });
+    }
+    expect(isAvailable).not.toHaveBeenCalled();
+    expect(createPlanCheckout).not.toHaveBeenCalled();
+  });
+
   it("refuses an item price that is not live yet with the code the UI branches on, before any provider call", async () => {
     const createPlanCheckout = vi.fn();
     const started = await startKitPlanCheckout({
@@ -59,6 +74,25 @@ describe("kit plan checkout decision", () => {
       customer: {}, urls, deps: { isAvailable: () => true },
     });
     expect(started).toMatchObject({ ok: false, status: 503 });
+  });
+
+  it("says payments are unavailable, not 'not on sale yet', when the provider cannot be asked", async () => {
+    const createPlanCheckout = vi.fn();
+    const failed = await startKitPlanCheckout({
+      req, request: { planId: "momentum", interval: "90d", currency: "INR", billingCountry: "IN", role: "job_seeker" },
+      customer: {}, urls,
+      deps: { lookup: async () => { throw new Error("Chargebee down"); }, createPlanCheckout },
+    });
+    expect(failed).toEqual({ ok: false, status: 503, error: "Payments are not available right now. Please try again in a moment." });
+
+    // A provider that never answers is bounded too, and charges nothing.
+    const hung = await startKitPlanCheckout({
+      req, request: { planId: "momentum", interval: "90d", currency: "INR", billingCountry: "IN", role: "job_seeker" },
+      customer: {}, urls,
+      deps: { probeTimeoutMs: 40, lookup: () => new Promise(() => {}), createPlanCheckout },
+    });
+    expect(hung).toMatchObject({ ok: false, status: 503 });
+    expect(createPlanCheckout).not.toHaveBeenCalled();
   });
 });
 

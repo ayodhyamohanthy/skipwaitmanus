@@ -7,7 +7,7 @@
  *  - Paid plans are 30-day and 90-day passes paid once. Keep warm is the only
  *    yearly plan. A 90-day pass grants credits in three cycles of about 30 days.
  *  - Prices: one global USD price and an India price in INR including GST.
- *  - Free: 3 open asks, 2 credits every month (no carryover), 3 welcome credits
+ *  - Free: 3 open asks, 3 credits every month (no carryover), 3 welcome credits
  *    and a one-time 14-day Momentum reverse trial after the first ask.
  *  - Land Concierge holds 75 open asks and is sold by application.
  *  - Human time is sold as sessions, never for credits.
@@ -71,9 +71,19 @@ const pass = (usd30: number, inr30: number, usd90: number, inr90: number): Catal
 /** A sold plan: every catalog plan except Free. */
 export type PaidCatalogPlan = CatalogPlan & { id: CatalogPlanId };
 
+/**
+ * Credit PACKS (the one-off $1 / INR 99 per credit purchase on /premium) were off
+ * sale until credits had a spend verified end to end (reopened once it was): a credit charged
+ * when an ask is sent, returned on withdraw or expiry. Flip to true to reopen the
+ * client purchase entry points. Pro/Max are unaffected (they sell open-ask slots
+ * and assistant access). This only hides client entry points: the server checkout
+ * route, pricing and the payment-recovery screen are untouched.
+ */
+export const CREDIT_PACKS_ON_SALE = true;
+
 export const FREE_PLAN: CatalogPlan & { id: "free" } = {
   id: "free", tier: "free", level: 1, label: "Free", levelLabel: null,
-  creditsPerMonth: 2, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
+  creditsPerMonth: 3, openRequests: 3, carryover: 0, humanTime: NO_HUMAN_TIME, byApplication: false, recommended: false, prices: {},
 };
 
 export const CATALOG_PLANS: readonly PaidCatalogPlan[] = [

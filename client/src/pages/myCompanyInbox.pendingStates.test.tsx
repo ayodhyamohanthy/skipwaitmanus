@@ -114,7 +114,7 @@ describe("My Company Inbox pending states", () => {
       return {};
     });
     render(<MyCompanyInbox />);
-    expect(await screen.findByText(/Expires in 2 days/)).toBeTruthy();
+    expect(await screen.findByText(/Expires in 3 days/)).toBeTruthy();
   });
 
   it("tells the Referrer honestly when the queue is taking longer than 15 seconds", async () => {
