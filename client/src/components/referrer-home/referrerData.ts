@@ -119,6 +119,10 @@ const bundleSchema = z.object({
 
 type PrefetchedBundle = { at: number; response: Promise<Response> };
 
+/** index.html only starts the home-bundle prefetch when this browser has loaded the bundle before, so signed-out visitors never trigger a 401 (the session cookie is httpOnly, so the page cannot see it directly). */
+export const HOME_PREFETCH_HINT_KEY = "sw-home-prefetch-ok";
+function setPrefetchHint(on: boolean) { try { if (on) localStorage.setItem(HOME_PREFETCH_HINT_KEY, "1"); else localStorage.removeItem(HOME_PREFETCH_HINT_KEY); } catch { /* storage unavailable */ } }
+
 /** The request index.html started at page load, used once and only while fresh. Any problem means "ask again". */
 async function takePrefetchedBundle(): Promise<z.infer<typeof bundleSchema> | null> {
   const holder = globalThis as unknown as { __swHomeBundle?: PrefetchedBundle };
@@ -127,8 +131,10 @@ async function takePrefetchedBundle(): Promise<z.infer<typeof bundleSchema> | nu
   if (!prefetched || Date.now() - prefetched.at > 15_000) return null;
   try {
     const response = await prefetched.response;
+    if (response.status === 401) setPrefetchHint(false);
     if (!response.ok) return null;
     const parsed = bundleSchema.safeParse(await response.json());
+    if (parsed.success) setPrefetchHint(true);
     return parsed.success ? parsed.data : null;
   } catch { return null; }
 }
@@ -137,6 +143,7 @@ async function takePrefetchedBundle(): Promise<z.infer<typeof bundleSchema> | nu
 async function fetchHomeBundle(getToken: TokenSource): Promise<ReferrerHomeData | null> {
   try {
     const bundle = (await takePrefetchedBundle()) ?? await getJson("/api/referrer/home-bundle", getToken, bundleSchema, "bundle unavailable");
+    setPrefetchHint(true);
     const access: CompanyAccess = (() => { const a = bundle.access; return { verified: isVerifiedReferrer(a), domain: a.workEmailDomain ?? "", companyName: a.companyName, companyInitials: a.companyInitials }; })();
     if (!access.verified) return { access, preferences: null, verifiedAt: null, profileCapacity: null, impact: null, fresh: [], completed: [] };
     // The page needs preferences and both lists; profile and impact are optional extras.

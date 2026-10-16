@@ -39,9 +39,9 @@
       window.__swReveal = function () { document.documentElement.classList.remove("sw-boot"); };
       setTimeout(window.__swReveal, 2500);
       // Start the referrer home data request now, in parallel with the app and sign-in loading (the session cookie
-      // authenticates it). The page uses it once if it is fresh, and otherwise asks again. Signed-out visitors get a 401 and ignore it.
+      // authenticates it). The page uses it once if it is fresh, and otherwise asks again. Only started when this browser loaded the bundle before (hint set by the app), so signed-out visitors do not log a 401.
       try {
-        if (location.pathname === "/referrer-home") {
+        if (location.pathname === "/referrer-home" && localStorage.getItem("sw-home-prefetch-ok") === "1") {
           window.__swHomeBundle = { at: Date.now(), response: fetch("/api/referrer/home-bundle", { credentials: "include" }) };
         }
       } catch (e) {}
