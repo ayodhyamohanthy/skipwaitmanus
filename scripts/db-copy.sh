@@ -53,7 +53,7 @@ rehearse)
   ;;
 inflight)
   echo "== payments in flight on OLD (read-only); anything listed here must settle before the switch"
-  oldq -e "SELECT 'paymentFulfillments pending/requires_review', COUNT(*) FROM paymentFulfillments WHERE status IN ('pending','requires_review'); SELECT 'paymentFulfillments created last 30m', COUNT(*) FROM paymentFulfillments WHERE createdAt > NOW() - INTERVAL 30 MINUTE; SELECT 'employerPaymentFulfillments not final (creating/provider_create_in_progress/pending/processing)', COUNT(*) FROM employerPaymentFulfillments WHERE status IN ('creating','provider_create_in_progress','pending','processing'); SELECT 'employerPaymentFulfillments created last 30m', COUNT(*) FROM employerPaymentFulfillments WHERE createdAt > NOW() - INTERVAL 30 MINUTE;"
+  oldq -D "$OLD_NAME" -e "SELECT 'paymentFulfillments pending/requires_review', COUNT(*) FROM paymentFulfillments WHERE status IN ('pending','requires_review'); SELECT 'paymentFulfillments created last 30m', COUNT(*) FROM paymentFulfillments WHERE createdAt > NOW() - INTERVAL 30 MINUTE; SELECT 'employerPaymentFulfillments not final (creating/provider_create_in_progress/pending/processing)', COUNT(*) FROM employerPaymentFulfillments WHERE status IN ('creating','provider_create_in_progress','pending','processing'); SELECT 'employerPaymentFulfillments created last 30m', COUNT(*) FROM employerPaymentFulfillments WHERE createdAt > NOW() - INTERVAL 30 MINUTE;"
   ;;
 cutover-copy)
   [ "$TARGET_DB" = skipwait ] || { echo "cutover-copy requires TARGET_DB=skipwait"; exit 2; }
