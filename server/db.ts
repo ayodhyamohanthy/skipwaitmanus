@@ -2,6 +2,7 @@ import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
 import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
+import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { passReasonSeekerLabel } from "../shared/passReasons";
@@ -1487,6 +1488,14 @@ export async function saveProfile(userId: number, input: { accountType: "job_see
 
 export type PublishCompanyOpportunityInput = { kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl?: string; location?: string; compensation?: string; walkInAt?: Date; walkInEndsAt?: Date };
 
+const liveOpportunityCondition = () => {
+  const ttl = opportunityLimits().hiringNowTtlDays;
+  return and(eq(companyOpportunities.isActive, true), or(
+    and(eq(companyOpportunities.kind, "hiring_now"), gt(companyOpportunities.createdAt, new Date(Date.now() - ttl * 86_400_000))),
+    and(eq(companyOpportunities.kind, "walk_in"), gt(companyOpportunities.walkInEndsAt, new Date())),
+  ));
+};
+
 export async function publishCompanyOpportunity(userId: number, input: PublishCompanyOpportunityInput) {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before publishing an opportunity");
@@ -1501,6 +1510,10 @@ export async function publishCompanyOpportunity(userId: number, input: PublishCo
   }
   if (input.compensation && input.compensation.trim().length > 80) throw new Error("Keep compensation under 80 characters");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const [openRow] = await db.select({ n: count() }).from(companyOpportunities).where(and(eq(companyOpportunities.ownerId, userId), liveOpportunityCondition()));
+  const [dayRow] = await db.select({ n: count() }).from(companyOpportunities).where(and(eq(companyOpportunities.ownerId, userId), gt(companyOpportunities.createdAt, new Date(Date.now() - 86_400_000))));
+  const blocked = checkPostingAllowance({ openCount: Number(openRow?.n ?? 0), lastDayCount: Number(dayRow?.n ?? 0) });
+  if (blocked) throw new Error(blocked);
   const result = await db.insert(companyOpportunities).values({ ownerId: userId, companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, targetRoleUrl, location, compensation: input.compensation?.trim() || null, walkInAt: input.walkInAt ?? null, walkInEndsAt: input.walkInEndsAt ?? null, isActive: true });
   return { id: Number(result[0].insertId), companyDomain: profile.workEmailDomain, kind: input.kind, roleTitle, compensation: input.compensation?.trim() || null };
 }
@@ -1511,9 +1524,9 @@ export async function listPublicCompanyOpportunities() {
   // compensation is a newer optional column; degrade gracefully if the live
   // DB has not yet been migrated, so the wall never 500s.
   try {
-    return await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+    return await db.select({ ...base, compensation: companyOpportunities.compensation }).from(companyOpportunities).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   } catch {
-    return await db.select(base).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+    return await db.select(base).from(companyOpportunities).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   }
 }
 
@@ -3993,7 +4006,7 @@ export function orderOpportunitiesOrganicFirst<T extends { createdAt?: Date | st
 export async function listPublicCompanyOpportunitiesWithSponsorship() {
   const db = await getDb(); if (!db) return [];
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
-  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(eq(companyOpportunities.isActive, true)).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   try {
     const rows = await attempt();
     const now = Date.now();
