@@ -1,7 +1,7 @@
 import { useAuth } from "@/_core/auth";
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { ArrowLeft, ArrowRight, BadgeCheck, BriefcaseBusiness, CalendarDays, CheckCircle2, Clock3, LockKeyhole, MapPin } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useLocation } from "wouter";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
 import { Brand } from "@/components/Brand";
@@ -11,18 +11,6 @@ import { readApiJson } from "@/lib/apiResponse";
 
 type OpportunityMode = "hiring_now" | "walk_in";
 function localInputToIso(value: string) { if (!value) return undefined; const date = new Date(value); return Number.isNaN(date.getTime()) ? undefined : date.toISOString(); }
-
-
-type MyOpening = { id: number; companyDomain: string; kind: "hiring_now" | "walk_in"; roleTitle: string };
-function MyOpenings({ onBack, getToken }: { onBack: () => void; getToken: () => Promise<string | null | undefined> }) {
-  const [rows, setRows] = useState<MyOpening[] | null>(null);
-  const [error, setError] = useState("");
-  const [closing, setClosing] = useState<number | null>(null);
-  const headers = async (): Promise<Record<string, string>> => { const token = await getToken(); return token ? { Authorization: `Bearer ${token}` } : {}; };
-  useEffect(() => { let active = true; void (async () => { try { const response = await fetch("/api/opportunities/mine", { credentials: "include", headers: await headers() }); const payload = await readApiJson<{ opportunities?: MyOpening[]; error?: string }>(response, "Your openings are temporarily unavailable."); if (!response.ok) throw new Error(payload.error || "We could not load your openings"); if (active) setRows(payload.opportunities || []); } catch (reason) { if (active) setError((reason as Error).message); } })(); return () => { active = false; }; }, []);
-  const close = async (id: number) => { setClosing(id); setError(""); try { const response = await fetch(`/api/opportunities/${id}/close`, { method: "POST", credentials: "include", headers: await headers() }); const payload = await readApiJson<{ error?: string }>(response, "We could not close that opening. Please try again."); if (!response.ok) throw new Error(payload.error || "We could not close that opening"); setRows(current => (current || []).filter(row => row.id !== id)); } catch (reason) { setError((reason as Error).message); } finally { setClosing(null); } };
-  return <main data-skipwait-screen="my-openings" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center justify-between"><Brand /><button type="button" onClick={onBack} className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</button></header><section className="min-h-0 flex-1 overflow-y-auto pt-6"><p className="text-xs font-bold uppercase tracking-[.16em] text-black">Your live openings</p><h1 className="mt-3 text-[2.35rem] font-semibold leading-[.96] tracking-[-.02em]">Close what is filled.</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Closing removes an opening from the wall right away. Openings also close on their own: hiring-now after 30 days, walk-ins when they end.</p>{error ? <p role="alert" className="mt-4 text-sm font-semibold text-[#b91c1c]">{error}</p> : null}{rows === null && !error ? <p className="mt-6 text-sm text-[#505050]">Loading your openings…</p> : null}{rows && rows.length === 0 ? <p className="mt-6 text-sm text-[#505050]">You have no live openings.</p> : null}<ul className="mt-6 space-y-3">{(rows || []).map(row => <li key={row.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] p-4"><span className="min-w-0"><span className="block truncate text-sm font-bold">{row.roleTitle}</span><span className="block text-[11px] font-semibold text-[#505050]">{row.kind === "walk_in" ? "Walk-in" : "Hiring now"} · {row.companyDomain}</span></span><button type="button" disabled={closing === row.id} onClick={() => void close(row.id)} aria-label={`Close ${row.roleTitle}`} className="shrink-0 rounded-lg border border-[#141414] px-3 py-2 text-xs font-bold disabled:opacity-50">{closing === row.id ? "Closing…" : "Close"}</button></li>)}</ul></section></div></main>;
-}
 
 export default function PostOpportunity() {
   const [, go] = useLocation();
@@ -35,7 +23,6 @@ export default function PostOpportunity() {
   const [walkInAt, setWalkInAt] = useState("");
   const [walkInEndsAt, setWalkInEndsAt] = useState("");
   const [step, setStep] = useState(1);
-  const [showMine, setShowMine] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
   const [published, setPublished] = useState<{ companyDomain: string; roleTitle: string } | null>(null);

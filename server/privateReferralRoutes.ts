@@ -391,27 +391,6 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       res.json({ success: true });
     } catch { res.status(500).json({ error: "We could not update that notification" }); }
   });
-  app.get("/api/opportunities/mine", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to see your openings" });
-      if (!deps.listMyCompanyOpportunities) return res.status(503).json({ error: "Your openings are temporarily unavailable" });
-      res.json({ opportunities: await deps.listMyCompanyOpportunities(identity.account.id) });
-    } catch { res.status(500).json({ error: "We could not load your openings right now" }); }
-  });
-  app.post("/api/opportunities/:id/close", async (req, res) => {
-    try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in to close an opening" });
-      const id = Number(req.params.id);
-      if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: "That opening link is not valid" });
-      if (!deps.closeCompanyOpportunity) return res.status(503).json({ error: "Closing openings is temporarily unavailable" });
-      const closed = await deps.closeCompanyOpportunity(identity.account.id, id);
-      if (!closed) return res.status(404).json({ error: "We could not find that opening on your account" });
-      record({ actorUserId: identity.account.id, action: "opportunity.closed", outcome: "success", resourceType: "opportunity", resourceId: id });
-      res.json({ closed: true });
-    } catch { res.status(500).json({ error: "We could not close that opening. Please try again." }); }
-  });
   app.post("/api/opportunities", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);

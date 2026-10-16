@@ -144,20 +144,6 @@ describe("verified employee opportunity post", () => {
     expect(screen.queryByText("Verify your work email first.")).toBeNull();
   });
 
-  it("lets the poster close one of their own openings and removes it from the list", async () => {
-    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url === "/api/company-referrals/access") return { ok: true, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" }) };
-      if (url === "/api/opportunities/mine") return { ok: true, json: async () => ({ opportunities: [{ id: 7, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer" }] }) };
-      if (url === "/api/opportunities/7/close" && init?.method === "POST") return { ok: true, json: async () => ({ closed: true }) };
-      return { ok: false, status: 404, json: async () => ({}) };
-    });
-    vi.stubGlobal("fetch", fetchMock);
-    renderPost();
-    fireEvent.click(await screen.findByRole("button", { name: "Your openings" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Close Product Designer" }));
-    await waitFor(() => expect(screen.getByText("You have no live openings.")).toBeTruthy());
-    expect(fetchMock.mock.calls.some(call => call[0] === "/api/opportunities/7/close")).toBe(true);
-  });
 });
 
 describe("poster's openings list", () => {
