@@ -25,7 +25,7 @@ describe("ReferrerImpact dashboard", () => {
   it("asks unauthenticated visitors to sign in with their work email before showing any impact", () => {
     renderImpact();
     expect(screen.getByText("Sign in with your work email to see your referral impact")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Secure sign in" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Sign in with work email" })).toBeTruthy();
     expect(document.querySelector('[data-skipwait-screen="referrer-impact-sign-in"]')).toBeTruthy();
     // One interactive control: the kit Button is not nested inside another button.
     expect(document.querySelector("button button")).toBeNull();

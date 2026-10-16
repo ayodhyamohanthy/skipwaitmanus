@@ -73,7 +73,7 @@ describe("Verify work email", () => {
     renderVerify();
     expect(screen.getByText(/Prove you're inside/)).toBeTruthy();
     expect(screen.getByText("Sign in to verify")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /Sign in/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Sign in with work email/ })).toBeTruthy();
     expect(screen.queryByText("Where do you work?")).toBeNull();
     expect(screen.queryByText(/123456/)).toBeNull();
   });

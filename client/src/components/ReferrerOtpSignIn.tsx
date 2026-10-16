@@ -5,7 +5,7 @@ import { useState } from "react";
  * receive code via ZeptoMail, verify -> signed in and enrolled for the
  * company's private referral inbox. No separate provider step.
  */
-export function ReferrerOtpSignIn() {
+export function ReferrerOtpSignIn({ onSignedIn }: { onSignedIn?: () => void } = {}) {
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [stage, setStage] = useState<"email" | "code">("email");
@@ -30,7 +30,7 @@ export function ReferrerOtpSignIn() {
       const res = await fetch("/api/auth/otp/verify", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }) });
       const body = await res.json().catch(() => ({}));
       if (!res.ok || !body.signedIn) { setError(body.error || "That code could not be verified."); return; }
-      window.location.reload();
+      if (onSignedIn) onSignedIn(); else window.location.reload();
     } catch { setError("That code could not be verified."); } finally { setBusy(false); }
   };
 

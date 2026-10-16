@@ -173,7 +173,7 @@ describe("ReferrerHome", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     renderWithQuery(<ReferrerHome />);
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sign in with work email" })).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,8 @@
 import { ArrowRight, BadgeCheck, CalendarClock, Clock3, Inbox, Pause, Play, ShieldCheck } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
@@ -26,7 +27,7 @@ export default function ReferrerHome() {
     return (
       <main data-skipwait-screen="referrer-home-sign-in" className="page-content">
         <Heading eyebrow="REFERRER HOME" title="Your daily referrer view" text="New asks, capacity, and your private record — after you verify a work email." />
-        <SignInButton className={buttonVariants()}>Sign in</SignInButton>
+        <Link href={referrerSignInHref("/referrer-home")} className={buttonVariants()}>Sign in with work email</Link>
       </main>
     );
   }

@@ -1,7 +1,8 @@
 import { ArrowRight, BadgeCheck } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
@@ -28,7 +29,7 @@ export default function ReferrerSetup() {
     return (
       <main data-skipwait-screen="referrer-setup-sign-in" className="page-content mx-auto max-w-2xl">
         <Heading eyebrow="REFERRER SETUP" title="Set up referring" text="Sign in, verify a work email, then choose what you can judge." />
-        <SignInButton className={buttonVariants()}>Sign in</SignInButton>
+        <Link href={referrerSignInHref("/referrer-setup")} className={buttonVariants()}>Sign in with work email</Link>
       </main>
     );
   }

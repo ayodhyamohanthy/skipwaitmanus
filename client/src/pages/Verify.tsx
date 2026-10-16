@@ -1,7 +1,8 @@
 import { AlertTriangle, ArrowLeft, ArrowRight, Building2, Check, Clock3, LoaderCircle, LockKeyhole, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { useEffect, useRef, useState, type ClipboardEvent } from "react";
 import { Link } from "wouter";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { VerifiedPanel, VerifyLayout, VerifyProgress } from "@/components/verify/VerifyPanels";
 import { VerifyRequestError, checkWorkEmailCode, enrollWorkEmail, sendWorkEmailCode } from "@/components/verify/verifyApi";
@@ -144,7 +145,7 @@ export default function Verify() {
         <VerifyProgress stepIndex={0} />
         <LockKeyhole className="mb-3 text-primary" /><h2 className="text-2xl font-semibold">Sign in to verify</h2>
         <p className="mt-1 text-muted-foreground">Sign in first — then a one-time code to your work email confirms your company.</p>
-        <div className="mt-8 flex justify-end"><SignInButton><button type="button" className={buttonVariants()}>Sign in <ArrowRight /></button></SignInButton></div>
+        <div className="mt-8 flex justify-end"><Link href={referrerSignInHref(typeof window !== "undefined" ? `${window.location.pathname}${window.location.search}` : "/verify")} className={buttonVariants()}>Sign in with work email <ArrowRight /></Link></div>
       </VerifyLayout>
     );
   }
