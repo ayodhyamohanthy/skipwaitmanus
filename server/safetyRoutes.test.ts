@@ -2,6 +2,7 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { jobFunctionSchema, type JobFunction } from "../shared/jobFunctions";
+import { countCompanyDemand } from "./db";
 import { registerSafetyRoutes, type SafetyRouteDeps } from "./safetyRoutes";
 
 function buildApp() {
@@ -33,7 +34,10 @@ function buildApp() {
       current.status = String(input.status);
       return { id, status: current.status, reviewerId: 1 };
     },
-    listCompanySuggestionsAdmin: async () => suggestions.map(item => ({ ...item, website: null, votes: suggestions.filter(vote => vote.companyName.toLowerCase() === item.companyName.toLowerCase()).length, role: "seeker", createdAt: new Date().toISOString() })),
+    listCompanySuggestionsAdmin: async () => {
+      const votes = countCompanyDemand(suggestions);
+      return suggestions.map(item => ({ ...item, website: null, votes: votes.get(item.companyName.trim().toLowerCase()) ?? 0, role: "seeker", createdAt: new Date().toISOString() }));
+    },
     reviewCompanySuggestion: async (_adminId, id, input) => {
       const current = suggestions.find(s => s.id === id);
       if (!current) throw new Error("This suggestion could not be found");
@@ -49,7 +53,7 @@ function buildApp() {
       const parsedFunction = jobFunctionSchema.nullish().safeParse(input.jobFunction);
       if (!parsedFunction.success) throw new Error("Choose a work function from the list");
       const name = input.companyName.trim();
-      const mine = suggestions.find(item => item.submitterUserId === userId && item.status === "open" && item.companyName.toLowerCase() === name.toLowerCase());
+      const mine = suggestions.find(item => item.submitterUserId === userId && item.status !== "dismissed" && item.companyName.toLowerCase() === name.toLowerCase());
       if (mine) return { id: mine.id, companyName: mine.companyName, jobFunction: mine.jobFunction, alreadyRecorded: true };
       if (suggestions.filter(s => s.submitterUserId === userId).length >= 3) throw new Error("You can suggest up to 3 companies a day");
       const suggestion = { id: suggestions.length + 1, submitterUserId: userId, companyName: name, jobFunction: parsedFunction.data ?? null, status: "open" };

@@ -3,7 +3,7 @@ import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
 import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
 import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, ne, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
@@ -954,9 +954,10 @@ export type CompanyDemandVote = { id: number; companyName: string; jobFunction: 
 
 /**
  * One seeker's vote for one company they want on SkipWait. Votes are per person:
- * a second seeker naming the same company adds their own row, and that row count
- * is the demand signal. The same seeker asking twice gets their existing row
- * back, not an error, and spends none of the three-a-day allowance.
+ * a second seeker naming the same company adds their own row, and the distinct
+ * seekers behind a name are the demand signal. The same seeker asking twice gets
+ * their live row back, not an error, and spends none of the three-a-day
+ * allowance; only a suggestion a reviewer dismissed can be voted on again.
  */
 export async function createCompanySuggestion(userId: number, input: { companyName?: unknown; website?: unknown; role?: unknown; jobFunction?: unknown }): Promise<CompanyDemandVote> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -971,7 +972,7 @@ export async function createCompanySuggestion(userId: number, input: { companyNa
     website = String(input.website).trim();
     if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(website) || website.length > 512) throw new Error("Company websites must start with http:// or https://");
   }
-  const mine = (await db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, jobFunction: companySuggestions.jobFunction }).from(companySuggestions).where(and(eq(companySuggestions.submitterUserId, userId), eq(companySuggestions.status, "open"), sql`LOWER(${companySuggestions.companyName}) = ${name.toLowerCase()}`)).limit(1))[0];
+  const mine = (await db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, jobFunction: companySuggestions.jobFunction }).from(companySuggestions).where(and(eq(companySuggestions.submitterUserId, userId), ne(companySuggestions.status, "dismissed"), sql`LOWER(${companySuggestions.companyName}) = ${name.toLowerCase()}`)).limit(1))[0];
   if (mine) {
     // A later vote can still add the function the first one left unset.
     if (jobFunction && !parseJobFunction(mine.jobFunction)) await db.update(companySuggestions).set({ jobFunction }).where(eq(companySuggestions.id, mine.id));
@@ -1016,24 +1017,30 @@ export async function reviewSafetyReport(adminId: number, reportId: number, inpu
 }
 
 /**
- * Votes per company, keyed by the trimmed lower-cased name. One row is one
- * seeker's vote, so this count is the demand signal reviewers triage by.
+ * Demand per company, keyed by the trimmed lower-cased name: how many distinct
+ * seekers asked. Rows are per seeker, but a seeker whose suggestion a reviewer
+ * dismissed may vote again, so rows are counted by person, not by row.
  */
-export function countCompanyDemand(rows: ReadonlyArray<{ companyName: string }>): Map<string, number> {
-  const counts = new Map<string, number>();
+export function countCompanyDemand(rows: ReadonlyArray<{ companyName: string; submitterUserId: number }>): Map<string, number> {
+  const counted = new Set<string>();
+  const votes = new Map<string, number>();
   for (const row of rows) {
     const key = row.companyName.trim().toLowerCase();
-    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    if (!key) continue;
+    const seeker = `${key} ${row.submitterUserId}`;
+    if (counted.has(seeker)) continue;
+    counted.add(seeker);
+    votes.set(key, (votes.get(key) ?? 0) + 1);
   }
-  return counts;
+  return votes;
 }
 
 export async function listCompanySuggestionsAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ id: companySuggestions.id, submitterUserId: companySuggestions.submitterUserId, companyName: companySuggestions.companyName, website: companySuggestions.website, jobFunction: companySuggestions.jobFunction, role: companySuggestions.role, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).orderBy(desc(companySuggestions.createdAt)).limit(Math.min(250, Math.max(1, limit)));
-  // Demand counts every vote, including ones older than this page, so the names
+  // Demand counts every seeker, including ones older than this page, so the rows
   // are read again unbounded; the table is reviewer-sized, not user-sized.
-  const votes = countCompanyDemand(await db.select({ companyName: companySuggestions.companyName }).from(companySuggestions));
+  const votes = countCompanyDemand(await db.select({ companyName: companySuggestions.companyName, submitterUserId: companySuggestions.submitterUserId }).from(companySuggestions));
   return rows.map(row => ({ ...row, jobFunction: parseJobFunction(row.jobFunction), votes: votes.get(row.companyName.trim().toLowerCase()) ?? 0 }));
 }
 

@@ -30,14 +30,17 @@ const asMs = (value: unknown) => (value instanceof Date ? value.getTime() : type
 /** The equalities, LOWER() comparisons and bounds this code path renders, applied row by row. */
 function matches(condition: SQLQuery, row: Row): boolean {
   const query = dialect.sqlToQuery(condition);
-  const predicates = [...query.sql.matchAll(/(?:LOWER\()?`([^`]+)`\.`([^`]+)`(?:\))?\s*(=|>|<)\s*\?/g)];
+  const predicates = [...query.sql.matchAll(/(?:LOWER\()?`([^`]+)`\.`([^`]+)`(?:\))?\s*(=|<>|>|<)\s*\?/g)];
   if (predicates.length !== query.params.length) throw new Error(`Unparsed SQL: ${query.sql}`);
   return predicates.every((match, index) => {
     const [, table, column, operator] = match;
     if (table !== TABLE || !COLUMNS.includes(column)) throw new Error(`Unexpected predicate: ${match[0]}`);
     const value = row[column];
     const param = query.params[index];
-    if (operator === "=") return (match[0].startsWith("LOWER(") ? String(value).toLowerCase() : value) === param;
+    if (operator === "=" || operator === "<>") {
+      const equal = (match[0].startsWith("LOWER(") ? String(value).toLowerCase() : value) === param;
+      return operator === "=" ? equal : !equal;
+    }
     const left = asMs(value); const right = asMs(param);
     return operator === ">" ? left > right : left < right;
   });
@@ -108,6 +111,22 @@ describe("seeker company demand votes", () => {
     expect(queue.map(row => row.jobFunction).sort()).toEqual(["Design", "Engineering"]);
   });
 
+  it("keeps a seeker who was dismissed to one vote, and re-opens their ask", async () => {
+    rows.push({ id: 1, submitterUserId: SEEKER, companyName: "Wipro", jobFunction: null, role: "seeker", status: "dismissed", createdAt: new Date(Date.now() - DAY) });
+    const again = await createCompanySuggestion(SEEKER, { companyName: "Wipro" });
+    expect(again.alreadyRecorded).toBe(false);
+    expect(rows).toHaveLength(2);
+    const queue = await listCompanySuggestionsAdmin(50);
+    // Two rows, one person: demand counts seekers, so the number stays honest.
+    expect(queue.map(row => row.votes)).toEqual([1, 1]);
+  });
+
+  it("returns a suggestion that is with a reviewer instead of counting it twice", async () => {
+    rows.push({ id: 1, submitterUserId: SEEKER, companyName: "Wipro", jobFunction: "Design", role: "seeker", status: "under_review", createdAt: new Date(Date.now() - DAY) });
+    expect(await createCompanySuggestion(SEEKER, { companyName: "wipro" })).toMatchObject({ id: 1, jobFunction: "Design", alreadyRecorded: true });
+    expect(rows).toHaveLength(1);
+  });
+
   it("caps a seeker at three new companies and rejects an unknown function", async () => {
     await createCompanySuggestion(SEEKER, { companyName: "Wipro" });
     await createCompanySuggestion(SEEKER, { companyName: "TCS" });
@@ -119,12 +138,18 @@ describe("seeker company demand votes", () => {
     expect(rows).toHaveLength(3);
   });
 
-  it("counts votes by trimmed name and ignores blank names", () => {
-    const counts = countCompanyDemand([{ companyName: " Wipro " }, { companyName: "wipro" }, { companyName: "TCS" }, { companyName: "  " }]);
+  it("counts distinct seekers per trimmed name and ignores blank names", () => {
+    const counts = countCompanyDemand([
+      { companyName: " Wipro ", submitterUserId: 1 },
+      { companyName: "wipro", submitterUserId: 1 },
+      { companyName: "WIPRO", submitterUserId: 2 },
+      { companyName: "TCS", submitterUserId: 3 },
+      { companyName: "  ", submitterUserId: 4 },
+    ]);
     expect([...counts.entries()]).toEqual([["wipro", 2], ["tcs", 1]]);
   });
 
-  it("only counts votes inside the last day against the allowance", async () => {
+  it("only counts requests inside the last day against the allowance", async () => {
     rows.push({ id: 1, submitterUserId: SEEKER, companyName: "Old Co", jobFunction: null, role: "seeker", status: "open", createdAt: new Date(Date.now() - 2 * DAY) });
     await createCompanySuggestion(SEEKER, { companyName: "Wipro" });
     await createCompanySuggestion(SEEKER, { companyName: "TCS" });
