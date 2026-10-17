@@ -34,6 +34,15 @@ describe("buildRequestTimeline (seeker-visible status history)", () => {
     const interview = buildRequestTimeline({ ...base, status: "interview", referrerId: 77 });
     expect(interview.map(entry => entry.label)).toEqual(["Request sent", "Claimed by a verified employee", "Referral accepted", "Interview recorded"]);
     const withdrawn = buildRequestTimeline({ ...base, status: "withdrawn", referrerId: null });
-    expect(withdrawn.map(entry => entry.label)).toEqual(["Request sent", "Withdrawn — credit returned"]);
+    expect(withdrawn.map(entry => entry.label)).toEqual(["Request sent", "Withdrawn — slot freed"]);
+  });
+
+  it("never states a credit movement, which the timeline cannot know", () => {
+    // A withdrawal returns the credit only while no employee has picked the ask
+    // up, so a timeline built from status alone must not claim either outcome.
+    for (const status of ["pending", "approved", "declined", "withdrawn", "closed"] as const) {
+      const labels = buildRequestTimeline({ ...base, status, referrerId: status === "withdrawn" ? null : 77 }).map(entry => entry.label).join(" ");
+      expect(labels.toLowerCase()).not.toMatch(/credit|token/);
+    }
   });
 });

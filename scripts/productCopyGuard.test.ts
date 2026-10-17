@@ -27,14 +27,23 @@ describe("product copy guard", () => {
       "employer-action-claimed": 'const copy = "Your referral was submitted to the employer.";',
       "unverified-milestone-stated-as-fact": 'const copy = "An offer was confirmed."; ',
       "outcome-statistics-claim": 'const copy = "A 42% hire rate across all referrals.";',
+      "unconditional-credit-return": 'const copy = "Decline it and their credit is returned.";',
     };
     expect(Object.keys(fixtures).sort()).toEqual(RULES.map((rule: { id: string }) => rule.id).sort());
     for (const [ruleId, source] of Object.entries(fixtures)) {
-      const findings = findingsForContent("fixture.tsx", source);
+      const findings = findingsForContent("client/src/fixture.tsx", source);
       expect(findings.map((finding: { ruleId: string }) => finding.ruleId), ruleId).toEqual([ruleId]);
-      expect(findings[0]).toMatchObject({ file: "fixture.tsx", line: 1 });
+      expect(findings[0]).toMatchObject({ file: "client/src/fixture.tsx", line: 1 });
       expect(findings[0].why).toBe(ruleById(ruleId)?.summary);
     }
+  });
+
+  it("holds a static screen to a higher bar than the server that just checked", () => {
+    const claim = 'const copy = "Your credit is back on your balance.";';
+    expect(findingsForContent("client/src/pages/MyRequests.tsx", claim).length).toBe(1);
+    // server/db.ts builds this sentence inside the branch where the refund moved,
+    // so it can honestly say it; the path scoping is the rule, not the wording.
+    expect(findingsForContent("server/db.ts", claim)).toEqual([]);
   });
 
   it("treats a disclaimer as honest copy, except unmeasured outcome statistics", () => {
@@ -43,6 +52,8 @@ describe("product copy guard", () => {
       'const copy = "This does not bypass the employer application process or guarantee a referral.";',
       'const copy = "Their acceptance does not confirm that a referral was submitted to the employer.";',
       'const copy = "An offer was reported, not confirmed by the employer.";',
+      'const copy = "The credit comes back if you withdraw before a verified employee picks it up.";',
+      'const copy = "Its open slot is free again, and any credit still held is back on your balance.";',
     ];
     for (const source of disclaimers) expect(findingsForContent("fixture.tsx", source)).toEqual([]);
     expect(findingsForContent("fixture.tsx", 'const copy = "A 42% hire rate is not a promise.";').length).toBe(1);
