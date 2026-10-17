@@ -20,6 +20,10 @@ import { join, relative, sep } from "node:path";
  * Every RULES pattern carries the `g` flag because findingsForContent() iterates
  * exec() until it returns null. Without `g`, exec() always restarts at index 0,
  * so any file containing one match sends the scanner into an infinite loop.
+ *
+ * Optional per-rule fields: `onlyIn` limits a rule to repo-relative paths (a
+ * promise a server branch can honestly make is not one a static screen can), and
+ * `allowWhenConditioned` excuses a sentence that names its own condition.
  */
 export const RULES = [
   {
@@ -45,6 +49,18 @@ export const RULES = [
     summary: "Publishing a hiring or response rate. Needs measured evidence and founder approval (§0.3).",
     pattern: /\b(?:\d{1,3}%\s*(?:hire|hiring|offer|interview|success|response|placement)[-\s]*(?:rate|rate:)?|placement rate|offer-to-hire ratio|\d+(?:\.\d+)?x more likely to be (?:hired|interviewed))\b/gi,
     allowWhenNegated: false,
+  },
+  {
+    // Static screens cannot know whether a credit moved: a pass keeps it spent,
+    // and a withdrawal after an employee picked the ask up never refunds it. The
+    // server can say it because it builds the sentence inside the branch that
+    // just checked, so this rule is scoped to the client and shared copy.
+    id: "unconditional-credit-return",
+    summary: "Promising a credit back without naming its condition. State what is certain (the open slot) or state the condition.",
+    pattern: /\bcredits?\s+(?:is|are|was|were|will be|gets|got|came|comes)\s+(?:back|returned|refunded)\b/gi,
+    allowWhenNegated: true,
+    allowWhenConditioned: /\b(?:if|when|unless|before|after|only|still held)\b/i,
+    onlyIn: /^(?:client\/src|shared)\//,
   },
 ];
 
@@ -127,11 +143,13 @@ export function findingsForContent(file, rawContent) {
   const lineStarts = [0];
   for (let i = 0; i < content.length; i += 1) if (content[i] === "\n") lineStarts.push(i + 1);
   for (const rule of RULES) {
+    if (rule.onlyIn && !rule.onlyIn.test(file)) continue;
     rule.pattern.lastIndex = 0;
     let match = rule.pattern.exec(content);
     while (match) {
       const sentence = sentenceAround(content, match.index);
-      if (!(rule.allowWhenNegated && NEGATION.test(sentence))) {
+      const excused = (rule.allowWhenNegated && NEGATION.test(sentence)) || (rule.allowWhenConditioned && rule.allowWhenConditioned.test(sentence));
+      if (!excused) {
         const line = lineStarts.filter(start => start <= match.index).length;
         findings.push({ file, line, ruleId: rule.id, excerpt: sentence.trim().replace(/\s+/g, " ").slice(0, 240), why: rule.summary });
       }
