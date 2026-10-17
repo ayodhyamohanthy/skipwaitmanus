@@ -1,9 +1,12 @@
-// Candidate preview inside the kit v4 queue card: the seeker's note, role link
-// and documents, then the one-click decision (accept, or decline with one
-// reason after a confirmation). Behavior matches the pre-kit company inbox.
-import { CheckCircle2, FileText } from "lucide-react";
+// Candidate preview inside the kit v4 queue card: the seeker's note, role link,
+// the work they pinned to this ask, then their documents, then the one-click
+// decision (accept, or decline with one reason after a confirmation). Behavior
+// matches the pre-kit company inbox.
+import { CheckCircle2, FileText, Pin } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
+import { workKindLabel } from "@/components/profile/workItems";
+import { ASK_WORK_SECTION_TITLE, safeAskWorkUrl, type AskWorkItem } from "@shared/askWorkItems";
 import { companyInitial } from "./ClaimedReview";
 import { RoleLink, displayRef } from "./QueueParts";
 
@@ -15,7 +18,10 @@ export const declineReasonOptions: ReadonlyArray<{ readonly value: DeclineReason
 ];
 
 export type PreviewAttachment = { id: number; fileName: string; mimeType: string; fileSize: number; url: string };
-export type CandidatePreview = { id: number; candidateName: string | null; candidateMessage: string; targetRoleUrl: string | null; companyDomain: string; attachments: PreviewAttachment[] };
+// `workItems` is the send-time snapshot (queue task 13): what the seeker pinned
+// when they sent, copied before this card shows it, so a later showcase edit
+// cannot rewrite the evidence the referrer is deciding on.
+export type CandidatePreview = { id: number; candidateName: string | null; candidateMessage: string; targetRoleUrl: string | null; companyDomain: string; attachments: PreviewAttachment[]; workItems: readonly AskWorkItem[] };
 
 export function CandidatePreviewCard({ preview, working, error, raceError, pendingDecline, onAccept, onDecline, onConfirmDecline, onCancelDecline, onRetry, onBackToQueue }: {
   preview: CandidatePreview;
@@ -40,6 +46,29 @@ export function CandidatePreviewCard({ preview, working, error, raceError, pendi
       <RoleLink url={preview.targetRoleUrl} />
       <span className="eyebrow mt-6 block">Job Seeker’s note</span>
       <blockquote className="!mt-2 whitespace-pre-wrap">{preview.candidateMessage}</blockquote>
+      {preview.workItems.length > 0 ? (
+        <section aria-label={ASK_WORK_SECTION_TITLE} className="border-t border-border pt-5">
+          <div className="flex items-center justify-between gap-3"><span className="eyebrow">{ASK_WORK_SECTION_TITLE}</span><span className="text-xs font-semibold">{preview.workItems.length} attached</span></div>
+          <p className="mt-2 text-xs text-muted-foreground">Work the Job Seeker chose to show with this ask, from their own portfolio.</p>
+          <ul className="mt-3 space-y-3">
+            {preview.workItems.map((item, index) => {
+              const href = safeAskWorkUrl(item.url);
+              return (
+                <li key={`${index}-${item.title}`} className="flex items-start justify-between gap-3">
+                  <span className="flex min-w-0 items-start gap-2">
+                    <Pin className="mt-0.5 size-4 shrink-0 text-primary" />
+                    <span className="min-w-0">
+                      {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="block truncate text-sm font-semibold hover:underline">{item.title}</a> : <span className="block truncate text-sm font-semibold">{item.title}</span>}
+                      <span className="text-xs text-muted-foreground">{workKindLabel(item.kind)}{item.source ? ` · ${item.source}` : ""}</span>
+                    </span>
+                  </span>
+                  {href ? <a href={href} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs font-semibold text-primary">Open</a> : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
       <section aria-label="Resume and documents" className="border-t border-border pt-5">
         <div className="flex items-center justify-between gap-3"><span className="eyebrow">Resume & documents</span><span className="text-xs font-semibold">{preview.attachments.length} attached</span></div>
         {preview.attachments.map(attachment => (

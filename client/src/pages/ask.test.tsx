@@ -29,12 +29,15 @@ function stubCrypto() {
   vi.stubGlobal("crypto", { getRandomValues: (arr: Uint8Array) => arr, randomUUID: () => "12345678-1234-4123-8123-123456789012", subtle });
 }
 
-function stubUploadThen(fetchMock: ReturnType<typeof vi.fn>, sendJson: unknown) {
+// The composer reads the seeker's showcase for the pinned-work picker. Default:
+// an empty showcase, which keeps these specs on the ask path itself.
+function stubUploadThen(fetchMock: ReturnType<typeof vi.fn>, sendJson: unknown, workItems: unknown[] = []) {
   fetchMock.mockImplementation(async (url: string) => {
     if (String(url).endsWith("/api/documents/uploads")) return ok({ sessionId: "sess-1", chunkBytes: 1024 * 1024 });
     if (String(url).includes("/chunks")) return ok({});
     if (String(url).includes("/complete")) return ok({ id: 77, fileName: "resume.pdf" });
     if (String(url).endsWith("/api/smart-pitch")) return ok({ draft: STRONG_NOTE });
+    if (String(url).endsWith("/api/work-items")) return ok({ items: workItems });
     if (String(url).endsWith("/api/company-referrals")) return ok(sendJson);
     if (String(url).endsWith("/mine")) return ok({ requests: [] });
     return ok({});
@@ -64,12 +67,14 @@ describe("Ask composer", () => {
     render(<Ask />);
     expect(screen.getByRole("heading", { name: "Write a great ask." })).toBeTruthy();
     expect(screen.getByText("ASK STRENGTH")).toBeTruthy();
-    expect(screen.getAllByRole("listitem").map(item => item.querySelector("strong")?.textContent)).toEqual(["Official job link", "30–120 words", "One specific proof of fit", "Resume attached"]);
+    expect(screen.getAllByRole("listitem").map(item => item.querySelector("strong")?.textContent)).toEqual(["Official job link", "30–120 words", "One specific proof of fit", "Resume attached", "Relevant work attached"]);
     expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
-    expect(screen.getByText("The referrer sees your role and note — not your name or resume — until they accept.")).toBeTruthy();
+    expect(screen.getByText("The referrer sees your role, note, and pinned work — not your name or resume — until they accept.")).toBeTruthy();
     expect(screen.getByText("Uses 1 credit and 1 open slot · the credit comes back if you withdraw before pickup or it expires")).toBeTruthy();
     const page = document.body.textContent ?? "";
-    for (const preview of ["DESIGN PREVIEW", "Fill example", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
+    // Kit-preview artifacts and sample data stay banned. "pinned" left this list with
+    // queue task 13: pinned work is a live feature now, so the word is product copy.
+    for (const preview of ["DESIGN PREVIEW", "Fill example", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
     expect(fetchCalls()).toBe(0);
   });
 
@@ -110,7 +115,8 @@ describe("Ask composer", () => {
   it("drafts from an uploaded resume through the free starting-draft endpoint", async () => {
     stubCrypto();
     const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, {});
+    // A pinned showcase piece completes the kit's check list, so a strong ask reads "Strong".
+    stubUploadThen(fetchMock, {}, [{ id: 11, title: "Approvals redesign", kind: "case_study", source: null, url: null, pinned: true, visibleOnProfile: true }]);
     vi.stubGlobal("fetch", fetchMock);
     render(<Ask />);
     fireEvent.change(screen.getByPlaceholderText(/careers.company/), { target: { value: "https://careers.wipro.com/job/product-designer-123" } });

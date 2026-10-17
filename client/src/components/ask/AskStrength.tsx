@@ -1,7 +1,8 @@
 // Ask strength panel, ported from the kit's /ask aside (app/src/routes/ask.tsx).
-// Checks are computed only from what the seeker actually entered; the kit's
-// pinned-work and role-location checks have no live primitive behind them, so
-// the live checks are the four the send path can honour.
+// Checks are computed only from what the seeker actually entered. The caller
+// (client/src/pages/Ask.tsx) assembles them in the kit's order: the four checks
+// the send path honours, plus the kit's pinned-work check (real since queue task
+// 13) and the role-location check (real since task 10).
 import { Check, Circle } from "lucide-react";
 import { Panel } from "@/components/kit/preview-kit";
 
