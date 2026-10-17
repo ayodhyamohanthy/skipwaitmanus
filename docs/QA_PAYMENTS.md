@@ -37,6 +37,10 @@ Notes:
   company address you control.
 - Test emails use `.example` domains: they can never receive real mail and
   can never collide with real users.
+- Work-email OTP sign-in (`/api/auth/otp/verify`) verifies the login email and
+  enrolls a referrer profile on first login for ANY accepted domain. Never sign
+  an unverified-seeker fixture in through that endpoint, or it stops being
+  unverified. Keep seeker fixtures on the seeker sign-in path.
 
 ## 3. Card payment loop (credit pack)
 
