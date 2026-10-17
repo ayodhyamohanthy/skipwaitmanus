@@ -57,6 +57,54 @@ jobs:
         # (policyPages). Re-adding an --exclude here hides a red main.
         run: pnpm vitest run
 
+  mysql-concurrency:
+    name: real-InnoDB concurrency harness
+    runs-on: ubuntu-latest
+    # A throwaway server that dies with the runner, so these credentials are not
+    # secrets. MySQL rather than MariaDB because the specs reason about InnoDB
+    # next-key locking, which MariaDB does not reproduce.
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: SandboxRoot1
+          MYSQL_DATABASE: skipwait_test
+          MYSQL_USER: skipwait
+          MYSQL_PASSWORD: SandboxTest1
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pSandboxRoot1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      MYSQL_TEST_URL: "mysql://skipwait:SandboxTest1@127.0.0.1:3306/skipwait_test"
+      MYSQL_CONCURRENCY_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Rebuild sandbox schema from drizzle/schema.ts
+        run: node scripts/prepare-mysql-test-schema.mjs
+      - name: Concurrency invariants
+        # Sequential on purpose: every spec file rebuilds its own view of the
+        # sandbox, and parallel files would truncate each other's fixtures.
+        run: pnpm vitest run --no-file-parallelism server/mysqlTest
+      - name: Known-open race probes (non-blocking until the fixes land)
+        # Red is expected while audit B1/B2 are open: the specs assert the
+        # invariant production should have. Flipping this step to blocking is
+        # the evidence that a race fix actually closed the race.
+        continue-on-error: true
+        env:
+          MYSQL_RACE_PROBE: "1"
+        run: pnpm vitest run --no-file-parallelism server/mysqlTest/coverageRewardRace.test.ts
+
   build:
     name: production build
     runs-on: ubuntu-latest
