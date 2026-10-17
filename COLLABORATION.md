@@ -1,5 +1,7 @@
 # Multi-agent collaboration protocol
 
+> `docs/OPERATIONS.md` is binding and overrides this file where they differ. In particular: no direct pushes to `main`, ever.
+
 Applies to every model, IDE, CLI, automation agent, and human working on this repository. Read this file and AGENTS.md before editing. Configure tools that do not discover AGENTS.md automatically to read both files at session start. Instructions are a shared convention, not an enforced lock or a direct communication channel between models.
 
 ## 1. Establish the baseline
