@@ -38,7 +38,7 @@ import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStat
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
-import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
+import { JOB_LEVELS, REFERRER_AREAS, jobFunctionSchema, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
@@ -950,28 +950,43 @@ export async function listMySafetyReports(userId: number) {
   return db.select({ id: safetyReports.id, reason: safetyReports.reason, status: safetyReports.status, urgent: safetyReports.urgent, createdAt: safetyReports.createdAt }).from(safetyReports).where(eq(safetyReports.reporterUserId, userId)).orderBy(desc(safetyReports.createdAt)).limit(50);
 }
 
-export async function createCompanySuggestion(userId: number, input: { companyName?: unknown; website?: unknown; role?: unknown }) {
+export type CompanyDemandVote = { id: number; companyName: string; jobFunction: JobFunction | null; alreadyRecorded: boolean };
+
+/**
+ * One seeker's vote for one company they want on SkipWait. Votes are per person:
+ * a second seeker naming the same company adds their own row, and that row count
+ * is the demand signal. The same seeker asking twice gets their existing row
+ * back, not an error, and spends none of the three-a-day allowance.
+ */
+export async function createCompanySuggestion(userId: number, input: { companyName?: unknown; website?: unknown; role?: unknown; jobFunction?: unknown }): Promise<CompanyDemandVote> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   if (typeof input.companyName !== "string" || input.companyName.trim().length < 2 || input.companyName.trim().length > 160) throw new Error("Name the company you want to see");
   const name = input.companyName.trim();
   const role = input.role === "employee" ? "employee" : "seeker";
+  const parsedFunction = jobFunctionSchema.nullish().safeParse(input.jobFunction);
+  if (!parsedFunction.success) throw new Error("Choose a work function from the list");
+  const jobFunction = parsedFunction.data ?? null;
   let website: string | null = null;
   if (input.website !== undefined && input.website !== null && String(input.website).trim() !== "") {
     website = String(input.website).trim();
     if (!/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(website) || website.length > 512) throw new Error("Company websites must start with http:// or https://");
   }
+  const mine = (await db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, jobFunction: companySuggestions.jobFunction }).from(companySuggestions).where(and(eq(companySuggestions.submitterUserId, userId), eq(companySuggestions.status, "open"), sql`LOWER(${companySuggestions.companyName}) = ${name.toLowerCase()}`)).limit(1))[0];
+  if (mine) {
+    // A later vote can still add the function the first one left unset.
+    if (jobFunction && !parseJobFunction(mine.jobFunction)) await db.update(companySuggestions).set({ jobFunction }).where(eq(companySuggestions.id, mine.id));
+    return { id: mine.id, companyName: mine.companyName, jobFunction: jobFunction ?? parseJobFunction(mine.jobFunction), alreadyRecorded: true };
+  }
   const dayAgo = new Date(Date.now() - 86400000);
   const today = (await db.select({ id: companySuggestions.id }).from(companySuggestions).where(and(eq(companySuggestions.submitterUserId, userId), gt(companySuggestions.createdAt, dayAgo))).limit(4)).length;
   if (today >= 3) throw new Error("You can suggest up to 3 companies a day");
-  const dupe = (await db.select({ id: companySuggestions.id }).from(companySuggestions).where(and(eq(companySuggestions.status, "open"), sql`LOWER(${companySuggestions.companyName}) = ${name.toLowerCase()}`)).limit(1))[0];
-  if (dupe) throw new Error("This company was already suggested and is under review");
-  const inserted = await db.insert(companySuggestions).values({ submitterUserId: userId, companyName: name, website, role });
-  return { id: Number(inserted[0].insertId), companyName: name };
+  const inserted = await db.insert(companySuggestions).values({ submitterUserId: userId, companyName: name, website, role, jobFunction });
+  return { id: Number(inserted[0].insertId), companyName: name, jobFunction, alreadyRecorded: false };
 }
 
 export async function listMyCompanySuggestions(userId: number) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).where(eq(companySuggestions.submitterUserId, userId)).orderBy(desc(companySuggestions.createdAt)).limit(50);
+  return db.select({ id: companySuggestions.id, companyName: companySuggestions.companyName, jobFunction: companySuggestions.jobFunction, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).where(eq(companySuggestions.submitterUserId, userId)).orderBy(desc(companySuggestions.createdAt)).limit(50);
 }
 
 export async function listSafetyReportsAdmin(limit = 100) {
@@ -1000,9 +1015,26 @@ export async function reviewSafetyReport(adminId: number, reportId: number, inpu
   return { id: reportId, status: input.status, reviewerId: adminId };
 }
 
+/**
+ * Votes per company, keyed by the trimmed lower-cased name. One row is one
+ * seeker's vote, so this count is the demand signal reviewers triage by.
+ */
+export function countCompanyDemand(rows: ReadonlyArray<{ companyName: string }>): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const key = row.companyName.trim().toLowerCase();
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export async function listCompanySuggestionsAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
-  return db.select({ id: companySuggestions.id, submitterUserId: companySuggestions.submitterUserId, companyName: companySuggestions.companyName, website: companySuggestions.website, role: companySuggestions.role, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).orderBy(desc(companySuggestions.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  const rows = await db.select({ id: companySuggestions.id, submitterUserId: companySuggestions.submitterUserId, companyName: companySuggestions.companyName, website: companySuggestions.website, jobFunction: companySuggestions.jobFunction, role: companySuggestions.role, status: companySuggestions.status, createdAt: companySuggestions.createdAt }).from(companySuggestions).orderBy(desc(companySuggestions.createdAt)).limit(Math.min(250, Math.max(1, limit)));
+  // Demand counts every vote, including ones older than this page, so the names
+  // are read again unbounded; the table is reviewer-sized, not user-sized.
+  const votes = countCompanyDemand(await db.select({ companyName: companySuggestions.companyName }).from(companySuggestions));
+  return rows.map(row => ({ ...row, jobFunction: parseJobFunction(row.jobFunction), votes: votes.get(row.companyName.trim().toLowerCase()) ?? 0 }));
 }
 
 export async function reviewCompanySuggestion(adminId: number, suggestionId: number, input: { status?: unknown; note?: unknown }, notify?: (userId: number, title: string, body: string) => Promise<unknown>) {

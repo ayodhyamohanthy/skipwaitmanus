@@ -21,7 +21,7 @@ type Reply = { ok: boolean; status: number; url: string; json: () => Promise<unk
 const reply = (body: unknown, status = 200): Reply => ({ ok: status < 400, status, url: "http://localhost/api", json: async () => body });
 
 const REPORTS = [{ id: 48, reason: "Spam or repeated asks", details: "Same note 14 times", referralRequestId: 12, reportedUserId: null, urgent: true, status: "open", createdAt: "2026-09-02T08:00:00Z" }];
-const COMPANIES = [{ id: 5, companyName: "Acme Corp", website: "https://acme.example", role: "seeker", status: "open", createdAt: "2026-09-01T08:00:00Z" }];
+const COMPANIES = [{ id: 5, companyName: "Acme Corp", website: "https://acme.example", jobFunction: "Design", votes: 3, role: "seeker", status: "open", createdAt: "2026-09-01T08:00:00Z" }];
 const QUEUE = [
   { kind: "referrer_enrollment", id: 31, status: "pending", companyDomain: "wipro.co.in", createdAt: "2026-09-02T06:00:00Z", updatedAt: "2026-09-02T06:00:00Z", summary: "", meta: { otpTime: "2026-09-02T05:59:00Z", referrerEmail: "kiran@wipro.co.in" } },
   { kind: "referral_request", id: 501, status: "pending", companyDomain: "tcs.com", createdAt: "2026-09-02T06:00:00Z", updatedAt: "2026-09-02T06:00:00Z", summary: "", meta: {} },
@@ -143,6 +143,18 @@ describe("AdminReview console", () => {
     fireEvent.change(screen.getByPlaceholderText(/Why this decision/), { target: { value: "Real employer, domain checked." } });
     fireEvent.click(screen.getByRole("button", { name: /Approve for listing/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/admin/company-suggestions/5/decision", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("shows the seeker demand a company suggestion carries", async () => {
+    stubQueue();
+    search.value = "tab=companies";
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "New company: Acme Corp" })).toBeTruthy();
+    // One row per seeker who asked, so the count is the signal reviewers triage by.
+    // The queue row and the open detail both show it, so assert it appears rather than a single node.
+    expect(screen.getAllByText(/3 seeker votes · Submitted by a seeker/).length).toBeGreaterThan(1);
+    expect(screen.getByText("Votes recorded: 3 seeker votes")).toBeTruthy();
+    expect(screen.getByText("Work function: Design")).toBeTruthy();
   });
 
   it("surfaces a rejected decision and keeps the note for another try", async () => {

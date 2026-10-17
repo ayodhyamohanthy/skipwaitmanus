@@ -7,7 +7,7 @@ import { z } from "zod";
 import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
 import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
 import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
-import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
+import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
 export type TokenSource = () => Promise<string | null | undefined>;
@@ -269,9 +269,24 @@ export async function fetchPersonalInviteCode(getToken: TokenSource): Promise<st
   return (await getJson("/api/personal-invites/me", getToken, inviteSchema, "Your personal invite link is temporarily unavailable. Please try again.")).invite.inviteCode;
 }
 
-const suggestionSchema = z.object({ suggestion: z.object({ id: z.number().int().positive(), companyName: z.string() }) });
+const suggestionSchema = z.object({
+  suggestion: z.object({
+    id: z.number().int().positive(),
+    companyName: z.string(),
+    jobFunction: jobFunctionFieldSchema,
+    alreadyRecorded: z.boolean().optional(),
+  }),
+});
 
-/** Seeker demand signal: files a company suggestion (role "seeker"). It never creates a referral request. */
-export async function requestCompany(getToken: TokenSource, companyName: string): Promise<{ id: number; companyName: string }> {
-  return (await sendJson("/api/company-suggestions", "POST", { companyName, role: "seeker" }, getToken, suggestionSchema, "We could not save this request. Try again.")).suggestion;
+export type CompanyDemandVote = { id: number; companyName: string; jobFunction: JobFunction | null; alreadyRecorded: boolean };
+
+/**
+ * Seeker demand signal: files a company suggestion (role "seeker"). It never
+ * creates a referral request. The function is the kit's optional "Work function"
+ * choice, and `alreadyRecorded` tells the panel whether this added a new vote or
+ * returned the one this seeker already filed, so the thank-you copy stays true.
+ */
+export async function requestCompany(getToken: TokenSource, companyName: string, jobFunction: JobFunction | null): Promise<CompanyDemandVote> {
+  const { suggestion } = await sendJson("/api/company-suggestions", "POST", { companyName, role: "seeker", jobFunction: jobFunction ?? undefined }, getToken, suggestionSchema, "We could not save this request. Try again.");
+  return { ...suggestion, alreadyRecorded: suggestion.alreadyRecorded ?? false };
 }

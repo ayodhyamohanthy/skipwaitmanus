@@ -1,13 +1,14 @@
 import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
+import { jobFunctionSchema, type JobFunction } from "../shared/jobFunctions";
 import { registerSafetyRoutes, type SafetyRouteDeps } from "./safetyRoutes";
 
 function buildApp() {
   const app = express();
   app.use(express.json());
   const reports: Array<{ id: number; reporterUserId: number; reason: string; status: string; urgent: boolean }> = [];
-  const suggestions: Array<{ id: number; submitterUserId: number; companyName: string; status: string }> = [];
+  const suggestions: Array<{ id: number; submitterUserId: number; companyName: string; jobFunction: JobFunction | null; status: string }> = [];
   const deps: SafetyRouteDeps = {
     resolveIdentity: async req => {
       const id = req.header("x-test-user");
@@ -32,7 +33,7 @@ function buildApp() {
       current.status = String(input.status);
       return { id, status: current.status, reviewerId: 1 };
     },
-    listCompanySuggestionsAdmin: async () => suggestions.map(s => ({ ...s, website: null, role: "seeker", createdAt: new Date().toISOString() })),
+    listCompanySuggestionsAdmin: async () => suggestions.map(item => ({ ...item, website: null, votes: suggestions.filter(vote => vote.companyName.toLowerCase() === item.companyName.toLowerCase()).length, role: "seeker", createdAt: new Date().toISOString() })),
     reviewCompanySuggestion: async (_adminId, id, input) => {
       const current = suggestions.find(s => s.id === id);
       if (!current) throw new Error("This suggestion could not be found");
@@ -45,11 +46,15 @@ function buildApp() {
     createCompanySuggestion: async (userId, input) => {
       if (typeof input.companyName !== "string" || input.companyName.trim().length < 2) throw new Error("Name the company you want to see");
       if (input.website !== undefined && input.website !== null && String(input.website).trim() !== "" && !/^https?:\/\//i.test(String(input.website))) throw new Error("Company websites must start with http:// or https://");
+      const parsedFunction = jobFunctionSchema.nullish().safeParse(input.jobFunction);
+      if (!parsedFunction.success) throw new Error("Choose a work function from the list");
+      const name = input.companyName.trim();
+      const mine = suggestions.find(item => item.submitterUserId === userId && item.status === "open" && item.companyName.toLowerCase() === name.toLowerCase());
+      if (mine) return { id: mine.id, companyName: mine.companyName, jobFunction: mine.jobFunction, alreadyRecorded: true };
       if (suggestions.filter(s => s.submitterUserId === userId).length >= 3) throw new Error("You can suggest up to 3 companies a day");
-      if (suggestions.some(s => s.companyName.toLowerCase() === String(input.companyName).toLowerCase())) throw new Error("This company was already suggested and is under review");
-      const suggestion = { id: suggestions.length + 1, submitterUserId: userId, companyName: String(input.companyName).trim(), status: "open" };
+      const suggestion = { id: suggestions.length + 1, submitterUserId: userId, companyName: name, jobFunction: parsedFunction.data ?? null, status: "open" };
       suggestions.push(suggestion);
-      return { id: suggestion.id, companyName: suggestion.companyName };
+      return { id: suggestion.id, companyName: suggestion.companyName, jobFunction: suggestion.jobFunction, alreadyRecorded: false };
     },
     listMyCompanySuggestions: async userId => suggestions.filter(s => s.submitterUserId === userId),
   };
@@ -93,15 +98,28 @@ describe("admin safety review", () => {
     expect((await request(app).get("/api/safety-reports/mine").set("x-test-user", "22")).body.reports).toHaveLength(0);
   });
 
-  it("suggests companies with daily limits and duplicate protection", async () => {
+  it("files one demand vote per seeker, keeps one per person, and counts demand for reviewers", async () => {
     const app = buildApp();
     expect((await request(app).post("/api/company-suggestions")).status).toBe(401);
     expect((await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "X" })).status).toBe(400);
     expect((await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "Acme", website: "notaurl" })).status).toBe(400);
-    expect((await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "Acme Corp", website: "https://acme.example" })).status).toBe(201);
-    expect((await request(app).post("/api/company-suggestions").set("x-test-user", "22").send({ companyName: "acme corp" })).status).toBe(400);
+    expect((await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "Acme Corp", jobFunction: "Astronomy" })).status).toBe(400);
+    const first = await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "Acme Corp", website: "https://acme.example", jobFunction: "Design" });
+    expect(first.status).toBe(201);
+    expect(first.body.suggestion).toMatchObject({ companyName: "Acme Corp", jobFunction: "Design", alreadyRecorded: false });
+    // The same seeker asking again gets their own row back, not an error and not a second vote.
+    const repeat = await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "acme corp" });
+    expect(repeat.status).toBe(201);
+    expect(repeat.body.suggestion).toMatchObject({ id: first.body.suggestion.id, jobFunction: "Design", alreadyRecorded: true });
+    // Another seeker is new demand, so the company is not rejected as a duplicate.
+    const other = await request(app).post("/api/company-suggestions").set("x-test-user", "22").send({ companyName: "ACME CORP", jobFunction: "Engineering" });
+    expect(other.status).toBe(201);
+    expect(other.body.suggestion).toMatchObject({ jobFunction: "Engineering", alreadyRecorded: false });
     await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "Beta" });
     await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "Gamma" });
     expect((await request(app).post("/api/company-suggestions").set("x-test-user", "11").send({ companyName: "Delta" })).status).toBe(400);
     expect((await request(app).get("/api/company-suggestions/mine").set("x-test-user", "11")).body.suggestions).toHaveLength(3);
+    const queue = await request(app).get("/api/admin/company-suggestions").set("x-test-user", "1");
+    expect(queue.body.suggestions).toHaveLength(4);
+    expect(queue.body.suggestions.filter((item: { votes: number }) => item.votes === 2)).toHaveLength(2);
   });

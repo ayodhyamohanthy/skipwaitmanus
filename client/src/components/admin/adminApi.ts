@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { flowBaselineSchema } from "@shared/flowBaseline";
+import { jobFunctionFieldSchema } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
 /** Thrown for 401/403 so admin screens can show the access gate instead of retrying. */
@@ -66,6 +67,9 @@ export const companySuggestionSchema = z.object({
   id: z.number(),
   companyName: z.string(),
   website: z.string().nullable(),
+  jobFunction: jobFunctionFieldSchema,
+  /** Seeker votes recorded for the same company name; the demand signal (§3b row 20). */
+  votes: z.number().int().nonnegative(),
   role: z.string(),
   status: z.string(),
   createdAt: z.string(),
