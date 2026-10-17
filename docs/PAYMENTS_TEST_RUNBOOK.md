@@ -45,6 +45,8 @@ Unverified until QA confirms: the Chargebee page lists a Rs 15,000 maximum amoun
 
 Live INR payments stay blocked until Razorpay approves skipwait.chargebee.com (BUGFREE_GATE 4.14).
 
+Merchant eligibility (Razorpay, recorded Oct 17 2026): SBI credit-card EMI (rejected Oct 16) and HDFC credit-card EMI (rejected Oct 17) are not allowed for the skipwait.me business. Ordinary cards, UPI and recurring are not shown to be affected. Keep both EMI banks out of any availability or marketing claim; if EMI is ever offered, re-verify the eligible banks on the Razorpay dashboard first.
+
 ## 3. Provider matrix (run on BOTH sites)
 
 Every row runs on `skipwait-test` and on the live `skipwait` site. Record result, transaction id and refund id per cell.
