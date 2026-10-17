@@ -52,10 +52,19 @@ export function dedupeAskWorkItemIds(ids: readonly number[]): number[] {
  * The only links a referrer may open: the showcase write path stores http(s)
  * (server/db.ts validateWorkItemInput), but the snapshot is read straight into an
  * anchor, so anything else renders as text rather than as a clickable scheme.
+ * Parsed with URL rules, not a scheme-prefix regex, and a host is required: the
+ * parsers disagree on an empty-host "https:///…", and a dead address is not a
+ * proof of fit worth showing a referrer.
  */
 export function safeAskWorkUrl(url: string | null): string | null {
   const trimmed = url?.trim() ?? "";
-  return /^https?:\/\/\S+$/i.test(trimmed) ? trimmed : null;
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    return (parsed.protocol === "https:" || parsed.protocol === "http:") && parsed.host ? trimmed : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Headline for the pinned-work block, on the ask composer and the referrer preview. */
