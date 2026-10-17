@@ -3,7 +3,7 @@ import { resolveMx } from "node:dns/promises";
 import { drizzle } from "drizzle-orm/mysql2";
 import type { Pool } from "mysql2/promise";
 import { getDb } from "./db";
-import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError, createWorkEmailOtpService, hashCode, isValidWorkEmailOtpEmail } from "./workEmailOtp";
+import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError, createWorkEmailOtpService, hashCode, isValidOtpLoginEmail, isValidWorkEmailOtpEmail } from "./workEmailOtp";
 
 vi.mock("./db", async () => {
   const { isCorporateEmailDomain } = await import("../shared/const");
@@ -34,6 +34,18 @@ describe("work email OTP validation", () => {
     expect(isValidWorkEmailOtpEmail("not-an-email")).toBe(false);
     expect(isValidWorkEmailOtpEmail("")).toBe(false);
     expect(isValidWorkEmailOtpEmail("a@b")).toBe(false);
+  });
+
+  it("seeker plane accepts consumer mailboxes while the referrer plane stays work-email-only", () => {
+    // FOUNDER-LOCKED login rule: job seekers sign in with personal email, referrers with work email only.
+    expect(isValidOtpLoginEmail("asha@gmail.com", { seeker: true })).toBe(true);
+    expect(isValidOtpLoginEmail("a.sha+jobs@gmail.com", { seeker: true })).toBe(true);
+    expect(isValidOtpLoginEmail("person@outlook.com", { seeker: true })).toBe(true);
+    expect(isValidOtpLoginEmail("ref@acme.com", { seeker: true })).toBe(true);
+    expect(isValidOtpLoginEmail("not-an-email", { seeker: true })).toBe(false);
+    expect(isValidOtpLoginEmail("", { seeker: true })).toBe(false);
+    expect(isValidOtpLoginEmail("asha@gmail.com")).toBe(false);
+    expect(isValidOtpLoginEmail("ref@acme.com")).toBe(true);
   });
 
   it("hashes codes with the email salt so identical codes differ per address", () => {
@@ -92,6 +104,32 @@ describe("work email OTP delivery", () => {
     const sendEmail = vi.fn(async () => { throw new Error("network unavailable"); });
     await expect(createWorkEmailOtpService({ sendEmail }).sendCode("ref@acme.com")).resolves.toEqual({ sent: false, reason: "delivery_failed" });
     expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("seeker send accepts a gmail address and stores the code, while the referrer plane still refuses it", async () => {
+    const { db } = connectedDatabase();
+    const insert = vi.spyOn(db, "insert");
+    const sendEmail = vi.fn(async () => ({ sent: true, reason: "sent" }));
+    const service = createWorkEmailOtpService({ sendEmail });
+    await expect(service.sendCode("asha@gmail.com", { ip: "1.2.3.4", seeker: true })).resolves.toEqual({ sent: true, reason: "sent" });
+    expect(sendEmail).toHaveBeenCalledWith({ to: "asha@gmail.com", code: expect.stringMatching(/^\d{6}$/) });
+    expect(insert).toHaveBeenCalledOnce();
+    sendEmail.mockClear(); insert.mockClear();
+    await expect(service.sendCode("asha@gmail.com", { ip: "1.2.3.4" })).resolves.toEqual({ sent: false, reason: "invalid_email" });
+    expect(sendEmail).not.toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("seeker verify reaches the code store for a gmail address, referrer plane short-circuits it", async () => {
+    const { query } = connectedDatabase();
+    const service = createWorkEmailOtpService({ now: () => 5_000_000 });
+    expect(await service.verifyCode("asha@gmail.com", "123456", { ip: "1.2.3.4", seeker: true })).toBe(false);
+    const seekerLookedUp = query.mock.calls.some(([q]) => (q as { sql: string }).sql.includes("FROM workEmailOtpCodes"));
+    expect(seekerLookedUp).toBe(true);
+    query.mockClear();
+    expect(await service.verifyCode("asha@gmail.com", "123456", { ip: "1.2.3.4" })).toBe(false);
+    const referrerLookedUp = query.mock.calls.some(([q]) => (q as { sql: string }).sql.includes("FROM workEmailOtpCodes"));
+    expect(referrerLookedUp).toBe(false);
   });
 
   it("does not leave a timeout running after immediate delivery", async () => {
