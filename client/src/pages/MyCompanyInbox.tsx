@@ -12,6 +12,7 @@ import { REFERRER_SIGN_IN_HREF, ReferrerWorkspace } from "@/components/referrer/
 import { QueueGuidance, QueuePanel, QueueRequestCard } from "@/components/referrer/QueueParts";
 import { PassPrivatelyPanel } from "@/components/referrer/PassPrivatelyPanel";
 import { CandidatePreviewCard, type CandidatePreview, type DeclineReason } from "@/components/referrer/CandidatePreviewCard";
+import { askWorkItemsListSchema } from "@shared/askWorkItems";
 import { askDaysLeft, formatAskExpiry, type ReferralStatus } from "@shared/referral";
 import { parseJobFunction, type JobFunction } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
@@ -79,7 +80,9 @@ export default function MyCompanyInbox() {
   // The queue loads once the server confirms the verification, so a retried check that
   // succeeds also brings the queue in, and an unverified account never requests it.
   useEffect(() => { if (verified) void loadInbox(); }, [isSignedIn, verified]);
-  const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
+  // Pinned work is parsed at this boundary: a preview response without the list
+  // reads as "no pinned work" instead of crashing the card (web can lead API).
+  const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); const request = payload.request; setPreview(request ? { ...request, workItems: askWorkItemsListSchema.parse(request.workItems) } : null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
   // /referrer-home rows link here as /queue?request=:id and open that request directly.
   useEffect(() => { if (isSignedIn && verified && Number.isInteger(requestedId) && requestedId > 0) void reviewCandidate(requestedId); }, [isSignedIn, verified, requestedId]);
   const oneClickReview = async (requestId: number, decision: "approved" | "declined", declineReason?: DeclineReason) => {

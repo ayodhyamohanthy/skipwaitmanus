@@ -1280,7 +1280,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // Privacy: the seeker's name is never part of the unclaimed preview (revealed only after accept).
       const { candidateName: _withheld, ...anonymousRequest } = request as typeof request & { candidateName?: unknown }; void _withheld;
       const [named] = await attachCompanyIdentities([anonymousRequest], row => row.companyDomain, lookupCompanies);
-      record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only" } });
+      const pinnedWorkCount = Array.isArray(request.workItems) ? request.workItems.length : 0;
+      record({ actorUserId: identity.account.id, action: "company_referral.preview_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length, resumeAccess: "metadata_only", pinnedWorkCount } });
       res.set("Cache-Control", "private, no-store");
       res.json({ request: { ...withParsedJobFunction(anonymousRequest), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
     } catch { res.status(500).json({ error: "We could not load this private candidate preview" }); }
