@@ -48,7 +48,7 @@ export function registerSeekerEmailCodeRoutes(app: Express, deps: Deps = {}) {
     const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
     if (!EMAIL.test(email) || email.length > 320 || !/^\d{6}$/.test(code)) return res.status(400).json({ error: "Enter the six-digit code from your email" });
     try {
-      const verified = await service.verifyCode(email, code, { ip: resolveTrustedClientIp(req) || "unknown" });
+      const verified = await service.verifyCode(email, code, { ip: resolveTrustedClientIp(req) || "unknown", seeker: true });
       if (!verified) return res.status(400).json({ error: "That code could not be verified. Check the latest code and try again." });
       const openId = `emailcode_${email}`;
       const account = await resolveLoginIdentity({ provider: "email_code", subject: email, openId, email, emailVerified: true, name: email.split("@")[0], loginMethod: "email_code" });
