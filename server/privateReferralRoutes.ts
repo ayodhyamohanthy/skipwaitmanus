@@ -9,6 +9,7 @@ import express, { type Express, type Request, type Response as ExpressResponse }
 import { validatePrivateDocument } from "./documentValidation";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, reconcileSchema } from "./schemaReconcile";
 import { getOrCreateReferralShareCard, getOwnedResumeAttachmentForPitch, getPrivateReferrerImpactSummary, getPublicReferralShareCard, listMyPaymentReceipts, listSeekerAlerts, createSeekerAlert, setSeekerAlertPaused, deleteSeekerAlert, revokeReferralShareCard, listCreditLedger, getMyProfile, getReferrerPreferences } from "./db";
+import type { ReferrerImpactSummary } from "./db";
 import { draftSmartReferralPitch } from "./ai";
 import { sendReferrerReviewEmail } from "./referrerReviewEmail";
 import { createReferrerSlackDeliverySender, isValidSlackIncomingWebhookUrl, sendReferrerSlackDelivery } from "./referrerSlackDelivery";
@@ -56,7 +57,7 @@ export type PrivateReferralRouteDeps = {
   getMyProfile?: typeof getMyProfile;
   getReferrerPreferences?: typeof getReferrerPreferences;
   getPrivateReferrerImpactSummary?: (userId: number) => Promise<{ reviewed: number; approved: number; introductions: number; interviews: number; offers: number }>;
-  getReferrerImpactSummary?: (userId: number) => Promise<{ acceptedReferrals: number; pendingRequests: number; declinedRequests: number; unreadMessages: number; creditsRemaining: number; recentAccepted: Array<{ id: number; companyDomain: string; acceptedAt: string }> }>;
+  getReferrerImpactSummary?: (userId: number) => Promise<ReferrerImpactSummary>;
   getOwnedResumeAttachmentForPitch?: (userId: number, attachmentId: number) => Promise<{ id: number; fileKey: string; mimeType: string }>;
   draftSmartReferralPitch?: (input: { companyDomain: string; targetRoleUrl: string; resumeUrl?: string; resumeMimeType?: string }) => Promise<string>;
   getOrCreateReferralShareCard?: (userId: number, requestId: number) => Promise<{ shareToken: string; companyDomain: string; status: ReferralStatus; isActive: boolean }>;
@@ -873,7 +874,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!identity) return res.status(401).json({ error: "Sign in with your work email to see your referral impact" });
       if (!deps.getReferrerImpactSummary) return res.status(503).json({ error: "Your referral impact is unavailable right now" });
       const summary = await deps.getReferrerImpactSummary(identity.account.id);
-      record({ actorUserId: identity.account.id, action: "referrer_impact.viewed", outcome: "success", resourceType: "referrer_impact", metadata: { acceptedReferrals: summary.acceptedReferrals, pendingRequests: summary.pendingRequests } });
+      record({ actorUserId: identity.account.id, action: "referrer_impact.viewed", outcome: "success", resourceType: "referrer_impact", metadata: { acceptedReferrals: summary.acceptedReferrals, introductions: summary.introductions, activeConversations: summary.activeConversations, outcomesShared: summary.outcomesShared, pendingRequests: summary.pendingRequests } });
       res.set("Cache-Control", "private, no-store");
       res.json(summary);
     } catch (error) { res.status(500).json({ error: error instanceof Error ? error.message : "We could not load your referral impact" }); }
