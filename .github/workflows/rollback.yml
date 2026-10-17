@@ -15,7 +15,7 @@ on:
 jobs:
   rollback-api:
     if: inputs.target == 'api' || inputs.target == 'all'
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, skipwait-mac]
     steps:
       - uses: actions/checkout@v4
         with:
