@@ -2,6 +2,8 @@ import { setRetryAfter } from "./retryAfter";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
 import { isOpenAskAttachment, toLockedAskAttachment } from "../shared/referrerAskView";
 import { captureServerError } from "./sentry";
+import { isPaymentReviewRefusal } from "./paymentRefundReview";
+import { paymentReviewRequestSchema, type PaymentReviewDecision, type PaymentReviewOutcome } from "../shared/paymentReview";
 import { normalizeReferenceId, REFERENCE_ID_ERROR } from "../shared/referenceId";
 import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "./otpPolicy";
 import { isPassReasonCode, passReasonSeekerLabel } from "../shared/passReasons";
@@ -161,7 +163,7 @@ export type PrivateReferralRouteDeps = {
   listNotifications?: (userId: number) => Promise<PrivateNotification[]>;
   markNotificationRead?: (userId: number, notificationId: number) => Promise<{ success: boolean }>;
   listRequiresReviewPayments?: (limit?: number) => Promise<unknown[]>;
-  resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) => Promise<{ paymentId: number; decision: string; tokenCount: number; userId: number; role: string }>;
+  resolveRequiresReviewPayment?: (adminUserId: number, paymentId: number, decision: PaymentReviewDecision, note?: string, credits?: number) => Promise<PaymentReviewOutcome>;
   listRecentPayments?: (limit?: number) => Promise<unknown[]>;
   revokeCreditedPaymentCredits?: (adminUserId: number, paymentId: number, note?: string) => Promise<{ paymentId: number; creditsRevoked: boolean; tokenCount: number; userId: number; role: string; provider: string; amount: number; currency: string }>;
   getRevenueSummary?: () => Promise<{ byProvider: Array<{ provider: string; currency: string; totalAmount: number; count: number }>; totalsByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; refundedTotalByCurrency: Array<{ currency: string; totalAmount: number; count: number }>; recordedAt: Date }>;
@@ -1368,7 +1370,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not record this approval decision";
       const claimedByEmployee = error instanceof Error && error.name === "AdminCannotAcceptClaimedReferralError";
-      res.status(claimedByEmployee || /already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
+      // A payment the webhook already credited and the provider refunded is never credited again (P0-refund-review).
+      res.status(claimedByEmployee || isPaymentReviewRefusal(error) || /already resolved|already reviewed|already been reviewed/i.test(message) ? 409 : /could not be found|does not exist/i.test(message) ? 404 : 500).json({ error: message });
     }
   });
   app.get("/api/admin/users", async (req, res) => {
@@ -1426,12 +1429,23 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const paymentId = Number(req.params.paymentId);
       if (!identity || identity.account.role !== "admin") return res.status(403).json({ error: "Administrator access is required" });
       if (!Number.isInteger(paymentId) || paymentId <= 0) return res.status(400).json({ error: "Invalid payment reference" });
-      const decision = req.body?.decision;
-      if (decision !== "credited" && decision !== "rejected") return res.status(400).json({ error: "Choose credited or rejected for this payment" });
+      // The shared contract (shared/paymentReview.ts) is checked before anything runs; only a take-back may carry a credit cap.
+      const body = paymentReviewRequestSchema.safeParse(req.body ?? {});
+      if (!body.success) return res.status(400).json({ error: body.error.issues.some(issue => issue.path[0] === "credits") ? "Enter the credits to take back as a whole number of at least 1" : "Choose a valid decision for this payment" });
       if (!deps.resolveRequiresReviewPayment) return res.status(501).json({ error: "Payment review is not available yet" });
-      const note = typeof req.body?.note === "string" ? req.body.note.slice(0, 500) : undefined;
-      const payment = await deps.resolveRequiresReviewPayment(identity.account.id, paymentId, decision, note);
-      record({ actorUserId: identity.account.id, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, note: typeof note === "string" ? note : null } });
+      const { decision, note } = body.data;
+      const credits = body.data.decision === "revoke_unused" ? body.data.credits : undefined;
+      let payment: PaymentReviewOutcome;
+      try {
+        payment = await deps.resolveRequiresReviewPayment(identity.account.id, paymentId, decision, note, credits);
+      } catch (error) {
+        // Why the payment is parked forbids this decision (a refunded pack cannot be credited again): nothing was written.
+        if (!isPaymentReviewRefusal(error)) throw error;
+        record({ actorUserId: identity.account.id, action: "payment.review_refused", outcome: "denied", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, reason: error.message } });
+        return res.status(409).json({ error: error.message });
+      }
+      const takeBack = payment.decision === "revoke_unused" ? { requested: payment.requested, revoked: payment.revoked, unrecovered: payment.unrecovered } : {};
+      record({ actorUserId: identity.account.id, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, note: note ?? null, ...takeBack } });
       res.json({ payment });
     } catch (error) {
       const message = error instanceof Error ? error.message : "We could not record this payment decision";
