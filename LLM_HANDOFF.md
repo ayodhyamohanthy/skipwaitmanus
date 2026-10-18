@@ -73,7 +73,7 @@ Create `app/.env` with your own backend keys (VITE_SUPABASE_URL, VITE_SUPABASE_P
 
 ## 9. Monetization (current — `docs/DECISIONS.md`; prices in `PRICING.md` and `shared/planCatalog.ts`)
 - Passes: Start, Momentum, Land Focus and Land Sprint for 30 or 90 days, Keep warm yearly, Land Concierge by application (D-005, D-046; on sale once D-063, D-067 and D-051 land, D-059); human review and sessions stay off until staffed (D-041). Free is not shown as a card.
-- Credits: Free gets 3 a month and 3 open asks, no welcome credits; the reverse trial comes off the public catalog until its trigger is built (D-039, D-051; not done yet). Packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); purchased credits never expire. All sold through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069).
+- Credits: Free gets 3 a month and 3 open asks, no welcome credits; the reverse trial comes off the public catalog until its trigger is built (D-039, D-051; off the catalog since `1376dfa3`). Packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); purchased credits never expire. All sold through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069).
 - Usage panel + upgrade moments: `UPGRADE_NUDGES.md`.
 
 ## 10. Doc index

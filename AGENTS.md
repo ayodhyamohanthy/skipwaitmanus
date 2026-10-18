@@ -49,7 +49,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
   - **Passes:** 30/90-day passes with opt-in auto-extend (yearly only for Keep warm). All payment options go live before referrers onboard, with no supply gate (D-046, supersedes D-045 and D-037's gate), once D-063, D-067 and D-051 land (D-059): packs, every pass and Keep warm sold from `/plans`, coverage shown before payment; Concierge by application; human sessions off until deliverable; the legacy plans and their perks are removed (D-067; code pending). Chargebee stays the only payment system (Razorpay for INR, PayPal for USD); an admin catalog sync (not built yet: dry run first, then an apply step the owner triggers) will bring its item prices in line with the catalog (D-069).
   - **Packs:** credit packs on the D-005 ladder (D-036).
   - **Regions:** India INR + global USD first.
-  - **Free:** 3 open asks + 3 credits a month, with no welcome credits (D-039). The reverse trial stays off the public catalog until its trigger is built (D-051; removal pending — the live catalog still lists it). Referrers stay unpaid; recognition only (D-055). No price or plan-content changes until two weeks of baseline data exist (D-056).
+  - **Free:** 3 open asks + 3 credits a month, with no welcome credits (D-039). The reverse trial stays off the public catalog until its trigger is built (D-051; off the public catalog since `1376dfa3`, `REVERSE_TRIAL_ON_OFFER` is false). Referrers stay unpaid; recognition only (D-055). No price or plan-content changes until two weeks of baseline data exist (D-056).
   - **Plan contents:** Keep warm 4 credits a month, Momentum 36 (D-041).
   - **Fairness:** never sell referrals, ranking of people, priority, visibility, or payments to referrers. Employers may buy only labeled job ads and tooling (D-040). Max 2 open asks per company on every plan.
 - Tax: Indian sole proprietorship (Udyam MSME), **not GST-registered** — charge no GST, label INR "India price", keep the GST switch (`indiaGstRegistered`) off until a GSTIN exists.
@@ -291,8 +291,8 @@ fixtures beside each feature instead of relying on this list alone.
 2. `JWT_SECRET` rotation invalidates all sessions at once. Rotate deliberately.
 3. Credits: `spendToken` reserves a credit per referral; approvals grant the
    pending invite rewards (`invite_reward_pending` → `granted`) — except the referrer role:
-   accepting an ask never grants a referrer reward (D-055; code pending — the approve
-   transition in `server/db.ts` still calls the referrer reward until that change ships).
+   accepting an ask never grants a referrer reward (D-055; switched off by
+   `REFERRER_ACCEPT_REWARDS_ENABLED = false` in `server/db.ts` since `1376dfa3`).
 4. Employer resolution is deliberately strict: job-board links must map to a
    verified referrer company domain (URL candidates → page evidence → handle
    prefix match). Unresolvable links are rejected with a clear error.
