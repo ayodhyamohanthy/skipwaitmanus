@@ -14,8 +14,9 @@ const INTENT_RETURN_TO: Readonly<Record<Intent, string>> = { seeker: "/explore",
 
 /**
  * Kit v4 sign-in (app/src/components/sign-in-page.tsx), all on skipwait.me. Job seekers: SeekerSignIn (social
- * straight to the provider, email by six-digit code). Referrers: work-email OTP only. The intent switch picks
- * where the person lands afterwards; every app "Sign in" arrives here with a validated ?returnTo (signInPagePath).
+ * straight to the provider, or email + password checked by WorkOS, D-049). Referrers: work-email OTP only, never
+ * a password. The intent switch picks where the person lands afterwards; every app "Sign in" arrives here with a
+ * validated ?returnTo (signInPagePath).
  */
 /** Kit draws the legal names as plain muted text; they stay links, underlined only on hover or keyboard focus. */
 const legalLink = "hover:underline focus-visible:underline";
@@ -43,11 +44,12 @@ export default function SignIn() {
       </div>
       <div className="auth-context"><span>{intent === "seeker" ? "Explore companies and send a thoughtful request." : "Choose who you help and keep your identity private."}</span><Check /></div>
       {intent === "referrer"
-        // FOUNDER-LOCKED (Oct 16 2026): referrers sign in with a work-email OTP only. No social, no personal email.
+        // FOUNDER-LOCKED (Oct 16 2026, D-049): referrers sign in with a work-email OTP only. No social, no personal email, no password.
         ? <div className="auth-form" data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
-        // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a six-digit code.
+        // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a password
+        // (D-049). SeekerSignIn renders its own "New to SkipWait? Create a free account" line under the form.
         : <SeekerSignIn returnTo={seekerReturnTo} />}
-      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to SkipWait? Enter your email and we’ll create your account.</p>}
+      {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email, passwords or social logins for referrers.</p> : null}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. Referrals are free and never guarantee an interview.</p>
     </div></section>
   </main>;

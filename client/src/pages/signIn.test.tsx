@@ -48,7 +48,7 @@ describe("SignIn", () => {
     }
   });
 
-  it("job seeker signs in on skipwait.me: five socials go straight to the provider, email uses a code", () => {
+  it("job seeker signs in on skipwait.me: five socials go straight to the provider, email uses a password", () => {
     const assign = stubAssign();
     render(<SignIn />);
     expect(screen.queryByLabelText(/Password/)).toBeNull();
@@ -57,6 +57,19 @@ describe("SignIn", () => {
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=github");
     expect(screen.getByRole("button", { name: /Continue with Google/ })).toBeTruthy();
     for (const name of ["LinkedIn", "Slack", "Microsoft"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeTruthy();
+  });
+
+  // D-049 (owner, Oct 18 2026): the seeker email method is a password; the password field is for seekers only.
+  it("the password field is for seekers only", () => {
+    render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    expect(screen.getByLabelText("Password")).toBeTruthy();
+    expect(document.querySelector("input[type=password]")).toBeTruthy();
+    expect(screen.queryByLabelText("Six-digit code")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
   });
 
   it("honours a validated seeker returnTo and keeps the referrer returnTo handling", () => {

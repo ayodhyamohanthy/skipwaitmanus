@@ -34,7 +34,8 @@ describe("System galleries", () => {
     // The kit gallery ends at the card: no explanatory paragraph or link below it.
     expect(screen.queryByText(/Thirteen templates, each fired by exactly one real event/)).toBeNull();
     const nav = screen.getByRole("navigation", { name: "Templates" });
-    expect(nav.querySelectorAll("button")).toHaveLength(13);
+    // Fourteen since D-049 added the WorkOS-sent seeker sign-up verification code.
+    expect(nav.querySelectorAll("button")).toHaveLength(14);
     // The first template is selected and previewed as an email, with the code masked.
     expect(screen.getByRole("button", { name: "Work-email code" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("article", { name: "Work-email code" }).textContent).toContain("SkipWait <noreply@skipwait.me>");

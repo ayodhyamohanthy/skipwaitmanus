@@ -1,13 +1,16 @@
-import { ArrowRight, Mail } from "lucide-react";
-import { type FormEvent, useState } from "react";
+import { Mail } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/components/kit/button";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
+import { PasswordForm, type PasswordMode } from "./seeker-sign-in/PasswordForm";
+import { VerifyEmailStep } from "./seeker-sign-in/VerifyEmailStep";
 
 /**
- * Job-seeker sign-in, fully on skipwait.me (never the hosted WorkOS page). FOUNDER-LOCKED login rule, Oct 16 2026:
- * job seekers get personal email + every social login. Referrers never render this (see ReferrerOtpSignIn).
- * Social buttons go straight to the provider (seekerSocialUrl always names it); email uses a
- * six-digit code (/api/auth/workos/email-code/*), which also creates the account for a new person.
+ * Job-seeker sign-in, fully on skipwait.me (never the hosted WorkOS page). FOUNDER-LOCKED login rule, Oct 16 2026,
+ * amended by D-049 (owner, Oct 18 2026): job seekers get every social login plus personal email with a password,
+ * checked server-side by WorkOS (/api/auth/password/*); a new account confirms its email with the six-digit code
+ * WorkOS sends. The emailed sign-in code is no longer offered. Referrers never render this (see ReferrerOtpSignIn).
+ * Social buttons go straight to the provider (seekerSocialUrl always names it).
  */
 /**
  * Providers offered to seekers. All five render (re-verified Oct 16 2026: WorkOS redirects each one to the
@@ -28,64 +31,28 @@ export function seekerSocialUrl(provider: string, returnTo: string): string {
   return `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo, provider })}`;
 }
 
+type Stage = { readonly kind: "options" } | { readonly kind: "password"; readonly mode: PasswordMode } | { readonly kind: "verify"; readonly email: string; readonly origin: PasswordMode };
+
 export function SeekerSignIn({ returnTo: requestedReturnTo = "/explore" }: { returnTo?: string }) {
   // Re-validated here so no caller can turn sign-in into an open redirect or a loop back to an auth page.
   const returnTo = safeSignInReturnTo(requestedReturnTo, typeof window === "undefined" ? "https://skipwait.me" : window.location.origin) ?? "/explore";
-  const [emailMode, setEmailMode] = useState(false);
-  const [stage, setStage] = useState<"email" | "code">("email");
+  const [stage, setStage] = useState<Stage>({ kind: "options" });
   const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
 
-  async function post(path: string, body: unknown): Promise<{ ok: boolean; data: Record<string, unknown> }> {
-    const res = await fetch(path, { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    return { ok: res.ok, data: await res.json().catch(() => ({})) };
+  if (stage.kind === "verify") {
+    return <VerifyEmailStep email={stage.email} origin={stage.origin} onBack={() => setStage({ kind: "password", mode: stage.origin })} />;
   }
-
-  async function send(event?: FormEvent) {
-    event?.preventDefault();
-    setBusy(true); setError("");
-    try {
-      const { ok, data } = await post("/api/auth/workos/email-code/send", { email: email.trim().toLowerCase() });
-      if (!ok || !data.sent) { setError(String(data.error || "We could not send the code. Try again shortly.")); return; }
-      setStage("code");
-    } catch { setError("We could not send the code. Try again shortly."); } finally { setBusy(false); }
-  }
-
-  async function verify(event?: FormEvent) {
-    event?.preventDefault();
-    setBusy(true); setError("");
-    try {
-      const { ok, data } = await post("/api/auth/workos/email-code/verify", { email: email.trim().toLowerCase(), code: code.trim() });
-      if (!ok || !data.signedIn) { setError(String(data.error || "That code could not be verified.")); return; }
-      window.location.assign(returnTo);
-    } catch { setError("That code could not be verified."); } finally { setBusy(false); }
-  }
-
-  if (!emailMode) {
-    return <div className="auth-options" data-testid="seeker-sign-in">
-      {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
-      <div className="auth-divider"><span>or</span></div>
-      <Button type="button" onClick={() => setEmailMode(true)}><Mail />Continue with email</Button>
-    </div>;
-  }
-  if (stage === "email") {
-    return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={send}>
-      <label htmlFor="seeker-email">Email address</label>
-      <div className="auth-input"><Mail /><input id="seeker-email" name="email" type="email" placeholder="you@example.com" autoComplete="email" required value={email} onChange={e => { setEmail(e.target.value); setError(""); }} /></div>
-      <p className="text-xs leading-relaxed text-muted-foreground">We’ll email you a six-digit code. New here? That creates your account.</p>
-      {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
-      <Button type="submit" disabled={busy || !email.trim()}>{busy ? "Sending code…" : "Send sign-in code"} <ArrowRight /></Button>
-      <Button type="button" variant="ghost" onClick={() => { setEmailMode(false); setError(""); }}>Use another method</Button>
-    </form>;
-  }
-  return <form className="auth-form" data-testid="seeker-sign-in" onSubmit={verify}>
-    <p className="text-sm font-semibold">Code sent to {email.trim().toLowerCase()}</p>
-    <label htmlFor="seeker-code">Six-digit code</label>
-    <div className="auth-input"><input id="seeker-code" name="code" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" value={code} onChange={e => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setError(""); }} /></div>
-    {error && <p role="alert" className="text-sm text-[#B91C1C]">{error}</p>}
-    <Button type="submit" disabled={busy || code.length !== 6}>{busy ? "Checking…" : "Sign in"} <ArrowRight /></Button>
-    <Button type="button" variant="ghost" onClick={() => { setStage("email"); setCode(""); setError(""); }}>Use a different email</Button>
-  </form>;
+  const creating = stage.kind === "password" && stage.mode === "sign_up";
+  return <>
+    {stage.kind === "password"
+      ? <PasswordForm key={stage.mode} mode={stage.mode} email={email} onEmailChange={setEmail} returnTo={returnTo} onVerify={(verifiedEmail, origin) => setStage({ kind: "verify", email: verifiedEmail, origin })} onBack={() => setStage({ kind: "options" })} />
+      : <div className="auth-options" data-testid="seeker-sign-in">
+          {SEEKER_SOCIAL.map(item => <Button key={item.id} type="button" variant="outline" className="google-button" onClick={() => window.location.assign(seekerSocialUrl(item.id, returnTo))}><span className="google-g" aria-hidden="true">{item.mark}</span>Continue with {item.label}</Button>)}
+          <div className="auth-divider"><span>or</span></div>
+          <Button type="button" onClick={() => setStage({ kind: "password", mode: "sign_in" })}><Mail />Continue with email</Button>
+        </div>}
+    <p className="auth-new">{creating
+      ? <>Already have an account? <Button type="button" variant="link" onClick={() => setStage({ kind: "password", mode: "sign_in" })}>Sign in</Button></>
+      : <>New to SkipWait? <Button type="button" variant="link" onClick={() => setStage({ kind: "password", mode: "sign_up" })}>Create a free account</Button></>}</p>
+  </>;
 }

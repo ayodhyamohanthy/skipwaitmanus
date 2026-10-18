@@ -15,6 +15,8 @@ import { resolveDevIdentity, type DevIdentity, type DevEmailAddress } from "./de
 import { getSessionCookieOptions } from "./cookies";
 import { ENV } from "./env";
 import { completeWorkosLogin, resolveWorkosOpenId } from "./workosSession";
+import { registerPasswordAuthRoutes, type PasswordRouteOptions } from "./passwordAuthRoutes";
+import { createPasswordWorkosClient } from "./passwordWorkosClient";
 
 export { resolveWorkosOpenId };
 
@@ -212,11 +214,13 @@ async function resolveWorkosIdentityUncached(req: Request, dependencies: Identit
 /** Social sign-ins verified live against the WorkOS authorize endpoint on Oct 14 2026 (LinkedIn and Slack re-verified Oct 16 2026: both 302 to the provider). Apple is not enabled in the dashboard (404), so it is not offered. */
 export const SOCIAL_PROVIDERS: Record<string, "GoogleOAuth" | "MicrosoftOAuth" | "GitHubOAuth" | "LinkedInOAuth" | "SlackOAuth"> = { google: "GoogleOAuth", microsoft: "MicrosoftOAuth", github: "GitHubOAuth", linkedin: "LinkedInOAuth", slack: "SlackOAuth" };
 
-export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) {
+export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; password?: PasswordRouteOptions } = {}) {
   return function registerWorkosAuthRoutes(app: Express) {
     if (!workosConfigured()) return;
     const clientId = configuredWorkosClientId();
     const workos = deps.workos ?? new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
+    // Seeker email + password (D-049) uses its own WorkOS client: no SDK retries, a 10 s timeout.
+    const passwordClient = deps.password?.client !== undefined ? deps.password.client : createPasswordWorkosClient({ apiKey: process.env.WORKOS_API_KEY ?? "", clientId });
     const configuredRedirectUri = process.env.WORKOS_REDIRECT_URI;
     // In production the canonical URI is fixed (skipwait.me). In dev, derive it
     // from the request host so any local port works without env edits.
@@ -326,7 +330,9 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
         res.status(502).send(`Authentication could not be completed${bootstrapDiagnostic}`);
       }
     });
+    // Retired from the seeker UI by D-049 (it costs a paid email per code); kept unchanged for cached app versions.
     registerSeekerEmailCodeRoutes(app);
+    registerPasswordAuthRoutes(app, { ...deps.password, client: passwordClient });
     app.get("/api/auth/workos/admin-diagnostic/:id",(req,res)=>{
       if(process.env.ENABLE_ADMIN_BOOTSTRAP!=="true"||req.header("x-admin-secret")!==process.env.ADMIN_SMOKE_SECRET)return res.status(404).send("Not found");
       const diagnostic=authDiagnostics.get(req.params.id);return diagnostic?res.set("Cache-Control","no-store").json(diagnostic):res.status(404).send("Not found");

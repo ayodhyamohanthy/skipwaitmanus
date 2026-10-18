@@ -1,186 +1,116 @@
-import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
-import type { Express, Request } from "express";
-import { SignJWT, jwtVerify } from "jose";
-import * as db from "./db";
+import type { Express, Response } from "express";
+import { passwordForgotRequestSchema, passwordPolicyError, passwordResetConfirmRequestSchema } from "@shared/passwordAuth";
+import { configuredPublicOrigin } from "./_core/authPostGuard";
+import { forgotLimits, requestIp, resetConfirmLimits } from "./_core/passwordLimits";
+import {
+  failUnexpectedly, guardPasswordPost, passLimits, recordPasswordActivity, reportPasswordFailure, sendPasswordError, type PasswordRouteContext,
+} from "./_core/passwordResponses";
+import { finishPasswordLogin } from "./_core/passwordSession";
+import type { PasswordUser, PasswordWorkosClient } from "./_core/passwordWorkosClient";
+import { classifyWorkosPasswordError } from "./_core/workosPasswordErrors";
+import { captureServerError } from "./sentry";
 
-const RESET_AUDIENCE = "skipwait-password-reset";
-const RESET_TTL = "1h";
-const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-
-type Identity = { account: { id: number; openId: string } };
-
-export type PasswordResetDeps = {
-  resolveIdentity?: (req: Request) => Promise<Identity | undefined>;
-  findUserByEmail?: (email: string) => Promise<{ id: number; openId: string } | undefined>;
-  revokeSessions?: (openId: string) => Promise<void>;
-  sendResetEmail?: (to: string, link: string) => Promise<void>;
-};
-
-function secret(): Uint8Array {
-  const raw = process.env.JWT_SECRET ?? "";
-  if (!raw) throw new Error("JWT_SECRET is not configured");
-  return new TextEncoder().encode(raw);
-}
-
-// Simple abuse throttle (not an identity decision): 5 requests/hour per key.
-const hits = new Map<string, number[]>();
-export function passwordResetAllowed(key: string, now = Date.now()): boolean {
-  const windowStart = now - 60 * 60 * 1000;
-  const list = (hits.get(key) ?? []).filter(t => t > windowStart);
-  if (list.length >= 5) {
-    hits.set(key, list);
-    return false;
-  }
-  list.push(now);
-  hits.set(key, list);
-  return true;
-}
-export function clearPasswordResetThrottleForTests() {
-  hits.clear();
-}
-
-function clientIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded) return forwarded.split(",")[0].trim().slice(0, 64);
-  return (req.ip ?? "unknown").slice(0, 64);
-}
-
-function emailHash(email: string): string {
-  return createHmac("sha256", process.env.JWT_SECRET ?? "skipwait-test-secret")
-    .update(email.trim().toLowerCase())
-    .digest("hex")
-    .slice(0, 16);
-}
-
-async function defaultFindUserByEmail(email: string) {
-  const normalized = email.trim().toLowerCase();
-  const { getDb } = await import("./db");
-  const handle = await getDb();
-  if (!handle) return undefined;
-  const { users } = await import("../drizzle/schema");
-  const { eq, sql } = await import("drizzle-orm");
-  const rows = await handle
-    .select({ id: users.id, openId: users.openId })
-    .from(users)
-    .where(sql`LOWER(${users.email}) = ${normalized}`)
-    .limit(1)
-    .catch(() => [] as { id: number; openId: string }[]);
-  void eq;
-  return rows[0];
-}
-
-export async function mintPasswordResetToken(email: string): Promise<string> {
-  const normalized = email.trim().toLowerCase();
-  return new SignJWT({ purpose: "password-reset", emailHash: emailHash(normalized), jti: randomUUID() })
-    .setProtectedHeader({ alg: "HS256" })
-    .setAudience(RESET_AUDIENCE)
-    .setSubject(normalized)
-    .setIssuedAt()
-    .setExpirationTime(RESET_TTL)
-    .sign(secret());
-}
-
-export async function checkPasswordResetToken(token: string): Promise<{ email: string } | undefined> {
+/**
+ * Seeker forgot / reset password through WorkOS (D-049). WorkOS creates the reset token and sends the email
+ * (free for SkipWait; nothing goes through our paid ZeptoMail sender), linking to the dashboard's "Password
+ * reset URL", which must be https://skipwait.me/reset-password; a mismatch is reported to Sentry. SkipWait
+ * never sees or returns the token, and /forgot answers before any WorkOS work, so neither the body nor the
+ * timing says whether an account exists. Referrers never get a password (their work email is skipped).
+ * Reset sets the password in WorkOS (which also verifies the email and ends WorkOS sessions), then signs this
+ * browser in and every other SkipWait session out.
+ */
+function resetUrlPointsHome(url: string): boolean {
+  const origin = configuredPublicOrigin();
+  if (!origin) return true;
   try {
-    const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"], audience: RESET_AUDIENCE });
-    if (payload.purpose !== "password-reset" || typeof payload.sub !== "string" || !EMAIL_RE.test(payload.sub)) return undefined;
-    return { email: payload.sub };
-  } catch {
-    return undefined;
+    const parsed = new URL(url);
+    return parsed.origin === origin && parsed.pathname === "/reset-password";
+  } catch { return false; }
+}
+
+/** Asks WorkOS to email a reset link and checks where that link points. Never logs the token or the email. */
+export async function requestWorkosPasswordReset(client: PasswordWorkosClient, email: string): Promise<void> {
+  try {
+    const reset = await client.createPasswordReset({ email });
+    if (!resetUrlPointsHome(reset.passwordResetUrl)) captureServerError(new Error("WorkOS password reset URL is not skipwait.me/reset-password"), { operation: "forgot", kind: "reset_url_misconfigured" });
+  } catch (error) {
+    const failure = classifyWorkosPasswordError(error, "forgot");
+    if (failure.kind === "rate_limited") console.warn("[password-auth]", { operation: "forgot", kind: "rate_limited" });
+    else reportPasswordFailure("forgot", failure.kind, error);
   }
 }
 
-export function passwordMeetsPolicy(password: string, confirm: string): string | undefined {
-  if (password.length < 10) return "Use at least 10 characters";
-  if (!/[\d\W]/.test(password)) return "Add a number or symbol";
-  if (password !== confirm) return "Passwords do not match";
-  return undefined;
+/** The WorkOS side of /forgot, run after the response. */
+async function startWorkosReset(ctx: PasswordRouteContext, client: PasswordWorkosClient, email: string): Promise<void> {
+  try {
+    const standing = await ctx.emailStanding(email);
+    if (standing === "referrer_work_email") return;
+    const found = await client.listUsers({ email, limit: 1 });
+    if (!found.data.some(user => user.email.trim().toLowerCase() === email)) {
+      // A seeker who only ever signed in with an emailed code has no WorkOS user yet: create one without a
+      // password (WorkOS marks the email verified when the reset succeeds), then send the reset.
+      if (standing !== "verified_seeker") return;
+      await client.createUser({ email });
+    }
+    await requestWorkosPasswordReset(client, email);
+  } catch (error) {
+    reportPasswordFailure("forgot", classifyWorkosPasswordError(error, "forgot").kind, error);
+  }
 }
 
-export function registerPasswordResetRoutes(app: Express, deps: PasswordResetDeps = {}) {
-  const findUser = deps.findUserByEmail ?? defaultFindUserByEmail;
-  const revoke = deps.revokeSessions ?? db.revokeUserSessions;
-  const sendEmail =
-    deps.sendResetEmail ??
-    (async (to: string, link: string) => {
-      const { sendTransactionalEmail } = await import("./emailDelivery");
-      await sendTransactionalEmail({
-        to,
-        subject: "Reset your SkipWait password",
-        text: `You asked to reset your SkipWait password. This link works for 1 hour, once:\n\n${link}\n\nIf you did not ask for this, ignore this email — nothing changes. Passwords are managed through secure sign-in; you can also continue with email from the sign-in page.`,
-      });
-    });
+function sendResetDone(res: Response, signedIn: boolean): void {
+  res.set("Cache-Control", "no-store").status(200).json({ ok: true, signedIn, redirectTo: signedIn ? "/explore" : "/sign-in" });
+}
 
-  const baseUrl = () =>
-    process.env.PUBLIC_BASE_URL?.replace(/\/$/, "") ?? process.env.WORKOS_REDIRECT_URI?.replace(/\/api\/auth\/workos\/callback$/, "") ?? "";
-
-  // Neutral by design: always 200, never reveals whether the email has an account.
+export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteContext): void {
   app.post("/api/auth/password/forgot", async (req, res) => {
     try {
-      const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
-      if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "Enter a valid email address" });
-      const key = `forgot:${emailHash(email)}:${clientIp(req)}`;
-      if (!passwordResetAllowed(key)) return res.status(429).json({ error: "Too many requests. Try again later." });
-      const user = await findUser(email).catch(() => undefined);
-      if (user) {
-        const token = await mintPasswordResetToken(email);
-        const link = `${baseUrl()}/reset-password?token=${encodeURIComponent(token)}`;
-        // Best-effort: a failed send must not reveal account existence.
-        await sendEmail(email, link).catch(error => console.warn("[password-reset] send failed", (error as Error).message?.slice(0, 120)));
-        if (process.env.NODE_ENV === "test") {
-          res.set("Cache-Control", "no-store");
-          return res.json({ ok: true, debugToken: token });
-        }
-      }
-      res.set("Cache-Control", "no-store");
-      return res.json({ ok: true });
-    } catch {
-      return res.status(500).json({ error: "We could not start the reset. Try again." });
+      const body = guardPasswordPost(req, res, passwordForgotRequestSchema);
+      if (!body) return;
+      const client = ctx.client;
+      if (!client) return sendPasswordError(res, "password_sign_in_unavailable");
+      if (!(await passLimits(ctx, res, forgotLimits(body.email, requestIp(req))))) return;
+      res.set("Cache-Control", "no-store").status(200).json({ ok: true });
+      recordPasswordActivity("auth.password_forgot", "success", {});
+      ctx.defer(() => startWorkosReset(ctx, client, body.email));
+    } catch (error) {
+      failUnexpectedly(res, "forgot", error);
     }
-  });
-
-  app.get("/api/auth/password/reset/verify", async (req, res) => {
-    const token = typeof req.query.token === "string" ? req.query.token : "";
-    if (!token) return res.json({ valid: false });
-    const parsed = await checkPasswordResetToken(token);
-    if (!parsed) return res.json({ valid: false });
-    // A token whose user already rotated sessions (reset consumed) is expired:
-    // iat < sessionsValidAfter is enforced at confirm time; verify stays light.
-    res.set("Cache-Control", "no-store");
-    return res.json({ valid: true });
   });
 
   app.post("/api/auth/password/reset/confirm", async (req, res) => {
     try {
-      const token = typeof req.body?.token === "string" ? req.body.token : "";
-      const password = typeof req.body?.password === "string" ? req.body.password : "";
-      const confirm = typeof req.body?.confirm === "string" ? req.body.confirm : "";
-      const policyError = passwordMeetsPolicy(password, confirm);
-      if (policyError) return res.status(400).json({ error: policyError });
-      const parsed = await checkPasswordResetToken(token);
-      if (!parsed) return res.status(400).json({ error: "This link has expired. Request a new one.", code: "expired" });
-      const key = `confirm:${emailHash(parsed.email)}:${clientIp(req)}`;
-      if (!passwordResetAllowed(key)) return res.status(429).json({ error: "Too many requests. Try again later." });
-      const user = await findUser(parsed.email).catch(() => undefined);
-      // Neutral expiry for unknown accounts (no enumeration); known accounts get
-      // durable session rotation so other devices sign out.
-      if (!user) return res.status(400).json({ error: "This link has expired. Request a new one.", code: "expired" });
-      const live = await db.getUserByOpenId(user.openId).catch(() => undefined);
-      const { payload } = await jwtVerify(token, secret(), { algorithms: ["HS256"], audience: RESET_AUDIENCE }).catch(() => ({ payload: undefined as unknown as Record<string, unknown> }));
-      const issuedAtMs = typeof payload?.iat === "number" ? payload.iat * 1000 : 0;
-      if (live?.sessionsValidAfter && issuedAtMs && live.sessionsValidAfter.getTime() > issuedAtMs) {
-        return res.status(400).json({ error: "This link was already used. Request a new one.", code: "consumed" });
+      const body = guardPasswordPost(req, res, passwordResetConfirmRequestSchema);
+      if (!body) return;
+      const policy = passwordPolicyError(body.password, body.confirm);
+      if (policy) return sendPasswordError(res, "weak_password", { message: `${policy}.` });
+      const client = ctx.client;
+      if (!client) return sendPasswordError(res, "password_sign_in_unavailable");
+      if (!(await passLimits(ctx, res, resetConfirmLimits(requestIp(req))))) return;
+      let user: PasswordUser;
+      try {
+        ({ user } = await client.resetPassword({ token: body.token, newPassword: body.password }));
+      } catch (error) {
+        const failure = classifyWorkosPasswordError(error, "reset");
+        recordPasswordActivity("auth.password_reset", "failure", { code: failure.kind });
+        if (failure.kind === "expired") return sendPasswordError(res, "expired");
+        if (failure.kind === "weak_password") return sendPasswordError(res, "weak_password");
+        if (failure.kind === "rate_limited") return sendPasswordError(res, "rate_limited", { retryAfterSeconds: failure.retryAfterSeconds });
+        reportPasswordFailure("reset", failure.kind, error);
+        return sendPasswordError(res, "temporarily_unavailable");
       }
-      // Single-use: advancing sessionsValidAfter invalidates this and every
-      // older reset token durably (verified against DB on every request).
-      await revoke(user.openId);
-      // Timing-safe no-op over the new secret shape keeps confirm latency
-      // independent of account existence beyond the branch above.
-      void timingSafeEqual(Buffer.from(emailHash(parsed.email)), Buffer.from(emailHash(parsed.email)));
-      res.set("Cache-Control", "no-store");
-      return res.json({ ok: true });
-    } catch {
-      return res.status(500).json({ error: "We could not update the password. Try again." });
+      // The password is set. Sign this browser in only when every session rule allows it; otherwise say so plainly.
+      try {
+        const outcome = user.emailVerified === true ? await finishPasswordLogin(req, res, { authentication: { user }, mode: "reset" }) : undefined;
+        const signedIn = outcome?.status === "signed_in";
+        recordPasswordActivity("auth.password_reset", "success", { signedIn: signedIn ? "yes" : "no" }, outcome?.status === "signed_in" ? outcome.userId : undefined);
+        return sendResetDone(res, signedIn);
+      } catch (error) {
+        reportPasswordFailure("reset", "session_not_issued", error);
+        return sendResetDone(res, false);
+      }
+    } catch (error) {
+      failUnexpectedly(res, "reset", error);
     }
   });
 }

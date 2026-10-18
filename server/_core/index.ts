@@ -80,7 +80,7 @@ import { sessionRenewal } from "./sessionRenewal";
 import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, razorpayConfigured, razorpayOrderInPaise } from "../payments";
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
-import { registerPasswordResetRoutes } from "../passwordResetRoutes";
+import { registerPasswordAuthRoutes } from "./passwordAuthRoutes";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, startSchemaReconcileRecovery } from "../schemaReconcile";
 import { registerHealthRoutes } from "../healthRoutes";
 import { AssistantPlanRequiredError } from "../planGates";
@@ -194,9 +194,9 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Referrer OTP-first login is a public surface, always registered.
   app.use("/api", sessionRenewal);
   registerReferrerOtpLoginRoutes(app);
-  registerPasswordResetRoutes(app);
+  // Seeker email + password (D-049) registers with the WorkOS routes; without WorkOS keys it answers 503.
   if (workosConfigured()) createWorkosAuthRoutesRegistrar()(app);
-  else registerDevAuthRoutes(app);
+  else { registerDevAuthRoutes(app); registerPasswordAuthRoutes(app, { client: null }); }
   app.use(materialErrorAlertMiddleware);
   registerStorageProxy(app);
   registerDbDocumentRoute(app, { resolveIdentity });

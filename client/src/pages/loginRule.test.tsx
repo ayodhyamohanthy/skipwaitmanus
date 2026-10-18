@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-// FOUNDER-LOCKED login rule (owner, Oct 16 2026; AGENTS.md "Login rule", docs/DECISIONS.md D-030):
-//   job seeker login = personal emails + social logins; referrer login = work email OTP verification ONLY.
+// FOUNDER-LOCKED login rule (owner, Oct 16 2026; AGENTS.md "Login rule", docs/DECISIONS.md D-030, amended by
+// D-049 on Oct 18 2026 with the owner's explicit say-so):
+//   job seeker login = social logins + personal email with a password (no emailed sign-in code);
+//   referrer login = work email OTP verification ONLY (never personal email, social or password).
 // If this file fails, the rule drifted. Do not edit these expectations without the owner's explicit say-so.
 import React from "react";
 import { readdirSync, readFileSync } from "node:fs";
@@ -54,20 +56,23 @@ describe("login rule: job seeker", () => {
     for (const item of SEEKER_SOCIAL) expect(seekerSocialUrl(item.id, "/explore")).toContain(`provider=${item.id}`);
   });
 
-  it("email sign-in sends a code and verifies it against the email-code routes", async () => {
+  // D-049 (owner, Oct 18 2026) replaced the emailed six-digit sign-in code with email + password for seekers.
+  it("the seeker email path is email + password against /api/auth/password/* and never calls /api/auth/workos/email-code/*", async () => {
     const calls: Array<[string, unknown]> = [];
-    vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string }) => { calls.push([url, JSON.parse(init.body)]); return { ok: true, json: async () => (url.endsWith("/send") ? { sent: true } : { signedIn: true }) }; }));
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string }) => { calls.push([url, JSON.parse(init.body)]); return { ok: true, status: 200, json: async () => ({ ok: true, step: "signed_in", redirectTo: "/explore" }) }; }));
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign, search: "" });
     render(<SignIn />);
     fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    expect(screen.queryByRole("button", { name: /Send sign-in code/ })).toBeNull();
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Asha@Gmail.com " } });
-    fireEvent.click(screen.getByRole("button", { name: /Send sign-in code/ }));
-    const codeInput = await screen.findByLabelText("Six-digit code");
-    fireEvent.change(codeInput, { target: { value: "123456" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct horse 1" } });
     fireEvent.click(screen.getByRole("button", { name: /^Sign in/ }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("/explore"));
-    expect(calls).toEqual([["/api/auth/workos/email-code/send", { email: "asha@gmail.com" }], ["/api/auth/workos/email-code/verify", { email: "asha@gmail.com", code: "123456" }]]);
+    expect(calls).toEqual([["/api/auth/password/sign-in", { email: "asha@gmail.com", password: "correct horse 1", returnTo: "/explore" }]]);
+    expect(calls.every(([url]) => !url.startsWith("/api/auth/workos/email-code/"))).toBe(true);
+    const seekerSource = readFileSync("client/src/components/SeekerSignIn.tsx", "utf8") + readdirSync("client/src/components/seeker-sign-in").map(file => readFileSync(`client/src/components/seeker-sign-in/${file}`, "utf8")).join("\n");
+    expect(seekerSource).not.toContain("/api/auth/workos/email-code/");
   });
 });
 
@@ -107,6 +112,18 @@ describe("login rule: referrer", () => {
     expect(safeReturnTo("//evil.example")).toBe("/referrer-setup");
     expect(safeReturnTo("https://evil.example")).toBe("/referrer-setup");
     expect(safeReturnTo("/verify?company=wipro")).toBe("/verify?company=wipro");
+  });
+
+  // D-049 (owner, Oct 18 2026): referrers never get a password; every referrer sign-in is a work-email code.
+  it("the referrer intent never shows a password field, and no referrer surface names the password routes", () => {
+    window.history.replaceState({}, "", "/sign-in?intent=referrer");
+    render(<SignIn />);
+    expect(document.querySelector("input[type=password]")).toBeNull();
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Forgot password/ })).toBeNull();
+    for (const file of ["pages/ReferrerSetup.tsx", "pages/ReferrerHome.tsx", "pages/ReferrerImpact.tsx", "pages/Verify.tsx", "pages/Referrer.tsx", "pages/MyCompanyInbox.tsx", "components/referrer/ReferrerSignInDialog.tsx", "components/referrer/ReferrerWorkspace.tsx", "components/referrer/CapacitySettingsPanel.tsx", "components/ReferrerOtpSignIn.tsx", "lib/referrerSignIn.ts"]) {
+      expect(readFileSync(`client/src/${file}`, "utf8"), file).not.toMatch(/\/api\/auth\/password|type="password"|forgot-password/);
+    }
   });
 
   it("no referrer-facing page opens the full AuthKit sign-in (SignInButton / openSignIn)", () => {

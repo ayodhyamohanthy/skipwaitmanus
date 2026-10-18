@@ -71,7 +71,8 @@ describe("Trust cluster", () => {
     expect(screen.queryByText(/thank-you wall/)).toBeNull();
   });
 
-  it("offers intent choice on the split design, never a password form", () => {
+  // D-049: seekers get a password form only after choosing "Continue with email"; the first screen has none.
+  it("offers intent choice on the split design, with no password form on the first screen", () => {
     render(<SignIn />);
     expect(screen.getByText(/Welcome to SkipWait/)).toBeTruthy();
     expect(screen.queryByLabelText(/Password/)).toBeNull();

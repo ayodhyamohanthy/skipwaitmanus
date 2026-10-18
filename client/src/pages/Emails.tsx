@@ -10,6 +10,8 @@ import { Link } from "wouter";
  * Dynamic parts render in ⟨angle brackets⟩ and the code block is always
  * masked — this page never shows a real code, person, company, or price.
  * Entries without a verified sender keep their trigger description only.
+ * Emails WorkOS sends for us (seeker password reset and sign-up code, D-049)
+ * name WorkOS as the sender and quote no subject or body we do not own.
  */
 type Template = {
   name: string;
@@ -21,10 +23,12 @@ type Template = {
   body?: string[];
   /** Button label the real email carries, when it has one. */
   cta?: string;
-  /** The work-email code arrives as a six-digit code block (always masked here). */
+  /** A code email (work-email code, seeker sign-up code) arrives as a six-digit code block (always masked here). */
   code?: true;
   /** In-app title the real notification carries, when it has one. */
   push?: string;
+  /** Who sends it when that is not SkipWait's own sender. */
+  sender?: string;
 };
 
 const TEMPLATES = [
@@ -39,10 +43,15 @@ const TEMPLATES = [
   {
     name: "Password reset",
     channel: "Email",
-    trigger: "Sent when someone asks to reset a password. Neutral reply: always “check your email”, whether the account exists or not. 1-hour single-use link.",
-    subject: "Reset your SkipWait password",
-    body: ["You asked to reset your SkipWait password. This link works for 1 hour, once: ⟨reset link⟩", "If you did not ask for this, ignore this email — nothing changes. Passwords are managed through secure sign-in; you can also continue with email from the sign-in page."],
-    cta: "Reset link (in the email body)",
+    trigger: "Sent by WorkOS, our sign-in provider, when a job seeker asks to reset a password. SkipWait always answers “check your email”, whether the account exists or not. The link works once and leads back to skipwait.me; WorkOS sets how long it lasts.",
+    sender: "WorkOS (our sign-in provider), for SkipWait",
+  },
+  {
+    name: "Sign-up verification code",
+    channel: "Email",
+    trigger: "Sent by WorkOS, our sign-in provider, when a job seeker creates a password account or signs in before confirming their email. The six-digit code finishes sign-in on skipwait.me.",
+    code: true,
+    sender: "WorkOS (our sign-in provider), for SkipWait",
   },
   { name: "Welcome", channel: "Email", trigger: "Sent after first sign-in with the honest next step for the account type." },
   {
@@ -113,7 +122,7 @@ export default function Emails() {
         {template.push && <div className="mx-auto max-w-sm rounded-2xl bg-background p-3 shadow-md"><div className="flex items-center gap-2 text-xs text-muted-foreground"><span className="grid size-5 place-items-center rounded bg-primary text-[10px] font-bold text-primary-foreground">S</span>SKIPWAIT · now</div><p className="mt-1 text-sm font-semibold">{template.push}</p></div>}
         <article aria-label={template.name} className="mx-auto max-w-xl overflow-hidden rounded-3xl bg-background">
           <div className="border-b border-border p-4 text-sm">
-            <p>{emailed ? <><span className="text-muted-foreground">From:</span> {SENDER}</> : <><span className="text-muted-foreground">In-app:</span> SkipWait notifications</>}</p>
+            <p>{emailed ? <><span className="text-muted-foreground">From:</span> {template.sender ?? SENDER}</> : <><span className="text-muted-foreground">In-app:</span> SkipWait notifications</>}</p>
             {template.subject ? <p className="font-semibold">{template.subject}</p> : <p className="font-semibold">{template.name}</p>}
           </div>
           <div className="p-8">
