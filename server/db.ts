@@ -3363,7 +3363,9 @@ function normalizedWalletState(wallet: typeof tokenBalances.$inferSelect, now: D
     patch: {
       plan: "free" as const,
       monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
-      monthlyCreditsRemaining: wallet.monthlyCycleKey === cycleKey ? wallet.monthlyCreditsRemaining : FREE_MONTHLY_ALLOWANCE,
+      // Referrer wallets only (seekers reconcile through the kit ledger): leaving a paid plan never leaves more of
+      // this month's credits than Free grants, so a retired Max wallet cannot read Free with 30 of 3 (D-067, D-055).
+      monthlyCreditsRemaining: wallet.monthlyCycleKey === cycleKey ? Math.min(wallet.monthlyCreditsRemaining, FREE_MONTHLY_ALLOWANCE) : FREE_MONTHLY_ALLOWANCE,
       monthlyCycleKey: cycleKey,
       subscriptionStatus: "cancelled",
     },

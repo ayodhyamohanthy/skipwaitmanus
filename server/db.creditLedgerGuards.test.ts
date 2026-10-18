@@ -154,4 +154,15 @@ describe("a referrer wallet still marked with a retired plan", () => {
     vi.setSystemTime(at("2026-11-02T00:00:00Z"));
     expect(await getTokenWallet(21, "referrer")).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 6 });
   });
+
+  // D-067 packet 5b.2: the raw pre-kit reset kept a Max referrer's whole month, so the wallet read Free with 30 of 3.
+  // Leaving a paid plan never leaves more monthly credits than the Free allowance (referrers are never paid, D-055).
+  it.each(["pro", "max"] as const)("a referrer %s wallet holding more than Free's allowance this month is clamped to 3", async plan => {
+    vi.setSystemTime(at("2026-10-14T12:00:00Z"));
+    const referrer = wallet({ id: 5, userId: 21, role: "referrer", plan, monthlyAllowance: 30, monthlyCreditsRemaining: 30, monthlyCycleKey: "2026-10", balance: 6, subscriptionId: `sub_ref_${plan}`, subscriptionStatus: "active", subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z") });
+    fixture.reset({ wallets: [referrer], txns: [purchase(1, 21, 6, "referrer")], users: [{ id: 21, canonicalPersonId: 3 }] });
+    expect(await getTokenWallet(21, "referrer")).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 6 });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, balance: 6 });
+    expect(db.txns).toEqual([purchase(1, 21, 6, "referrer")]);
+  });
 });
