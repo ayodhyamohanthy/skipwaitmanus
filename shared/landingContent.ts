@@ -10,7 +10,7 @@
  * Nothing here may state an outcome, count, or identity that the product does
  * not produce itself.
  */
-import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT } from "./moneyCopy";
+import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE } from "./moneyCopy";
 
 export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
@@ -52,7 +52,7 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
   { href: "/premium", label: "Buy credits", summary: "Extra referral credits cost $1 each and never expire." },
   { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and monthly plans." },
-  { href: "/plans", label: "Monthly plans", summary: "Pro and Max add credits every month on top of the free allowance." },
+  { href: "/plans", label: "Monthly plans", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },
   { href: "/contact", label: "Contact us", summary: "Reach the team about your account, a payment, or privacy." },
   { href: "/support", label: "Support", summary: "A person answers, usually within one business day." },

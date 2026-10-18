@@ -11,7 +11,7 @@ import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/mo
 import CookieConsent from "@/components/CookieConsent";
 
 const QUESTIONS = [
-  ["Are job referrals really free?", `${MONEY_SENTENCE} There is no referral commission and no paid priority: a referral is a voluntary introduction, not a purchase.`],
+  ["What does asking for a referral cost?", `${MONEY_SENTENCE} There is no referral commission and no paid priority: a referral is a voluntary introduction, not a purchase.`],
   ["Do I need to know someone at the company?", "No existing connection is required. Explore companies with available referrers, find a relevant role, and send a thoughtful request. Each referrer chooses which requests to accept."],
   ["What does verification mean?", "Work-email verification confirms ownership of an address on an approved company domain. It does not prove current employment or imply an employer’s endorsement."],
   ["Does a referral guarantee an interview?", "No. A referral is an introduction, not a promise. Employers independently decide who to interview and hire."],

@@ -47,5 +47,11 @@ export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID
  */
 export const CREDIT_RULE = `An ask spends 1 credit when you send it. The credit comes back once if you withdraw before a verified employee picks the ask up, or if the ask expires unclaimed after ${ASK_TTL_DAYS} days, as long as the credit itself has not expired by then. Once the ask is picked up, the credit stays spent, even if they pass.`;
 
+/** A credit goes back to the bucket it came from, so one whose month or plan cycle ended cannot come back (refundLedgerSpendTx logs 0). */
+export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
+
 /** The same rule as a footnote clause, after "Uses 1 credit". */
-export const CREDIT_RULE_SHORT = "the credit comes back once if you withdraw before pickup or the ask expires unclaimed";
+export const CREDIT_RULE_SHORT = `the credit comes back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
+
+/** What a paid plan does to the monthly allowance: it replaces the free asks, it does not add to them (planEntitlementsFor). */
+export const PAID_PLANS_SENTENCE = `Passes and Keep warm replace the ${FREE_ASKS_PER_MONTH} free asks with more credits each month.`;

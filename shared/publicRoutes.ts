@@ -13,7 +13,7 @@
  * renders: no count, price, or outcome the product does not itself produce.
  */
 import { LANDING_SUMMARY, LANDING_TITLE } from "./landingContent";
-import { ASK_COST_SENTENCE } from "./moneyCopy";
+import { ASK_COST_SENTENCE, PAID_PLANS_SENTENCE } from "./moneyCopy";
 
 export type ChangeFreq = "hourly" | "daily" | "weekly" | "monthly";
 
@@ -37,7 +37,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   { route: "/wall", title: "Internal openings shared by verified employees", description: "Hiring-now roles and walk-in events published privately by verified employees, with the company domain and the role details.", changefreq: "hourly", priority: "0.9" },
   { route: "/referrer", title: "Verify a work email to review private referrals", description: "Employees verify a company email once, then review private referral requests for their own company and choose whether to help.", changefreq: "weekly", priority: "0.6" },
   { route: "/premium", title: "Buy referral credits for $1 each", description: `${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire.`, changefreq: "weekly", priority: "0.7" },
-  { route: "/plans", title: "Monthly referral plans", description: "Pro and Max monthly plans add referral credits each month on top of the free allowance. Cancel any time.", changefreq: "weekly", priority: "0.6" },
+  { route: "/plans", title: "Monthly referral plans", description: PAID_PLANS_SENTENCE, changefreq: "weekly", priority: "0.6" },
   { route: "/pricing", title: "Pricing", description: "Prices are in Indian rupees (INR) for India and US dollars (USD) everywhere else. The price you pay is shown before checkout.", changefreq: "weekly", priority: "0.6" },
   { route: "/employer", title: "Hire on skipwait.me", description: "Sponsor roles to opt-in job seekers, unlock anonymized opt-in talent, and manage a self-serve promotion budget.", changefreq: "monthly", priority: "0.4" },
   { route: "/job-referral-platforms", title: "Job referral platforms", description: "What a job referral platform is: the three models behind it, who each one suits, how they charge, and what a referral does and does not change.", changefreq: "monthly", priority: "0.6" },

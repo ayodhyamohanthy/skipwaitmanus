@@ -7,6 +7,7 @@
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "wouter";
 import type { OpenAskSlots } from "@shared/openAskSlots";
+import { CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
 import { ASK_TTL_DAYS } from "@shared/referral";
 import { Button } from "@/components/kit/button";
 
@@ -22,10 +23,10 @@ export function AskSent({ sent, onWriteAnother }: { sent: SentAsk; onWriteAnothe
   const companyPrefix = sent.companyDomain ? `${sent.companyDomain} ` : "";
   // A personal-link ask is never routed to anyone else, so it gets its own line even while the company waits for coverage.
   const detail = sent.fastTrack
-    ? `Only the ${companyPrefix}employee whose link you used will see it. If they don't pick it up within ${ASK_TTL_DAYS} days, it expires and the credit comes back.`
+    ? `Only the ${companyPrefix}employee whose link you used will see it. If they don't pick it up within ${ASK_TTL_DAYS} days, it expires and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
     : sent.waitingForCoverage
-      ? `No verified referrers there yet. If one verifies within ${ASK_TTL_DAYS} days, they can see it privately; if nobody picks it up by then, it expires unclaimed and the credit comes back.`
-      : `Verified ${companyPrefix}referrers will see it. It expires after ${ASK_TTL_DAYS} days if nobody accepts; the credit comes back only if no verified employee picked it up.`;
+      ? `No verified referrers there yet. If one verifies within ${ASK_TTL_DAYS} days, they can see it privately; if nobody picks it up by then, it expires and the credit comes back, ${CREDIT_ENDED_CAVEAT}.`
+      : `Verified ${companyPrefix}referrers will see it. If nobody picks it up within ${ASK_TTL_DAYS} days, it expires and the credit comes back, ${CREDIT_ENDED_CAVEAT}; once someone picks it up, the credit stays spent.`;
   return (
     <main data-skipwait-screen="ask-sent" className="page-content mx-auto max-w-xl text-center">
       <span className="mx-auto grid size-20 place-items-center rounded-full bg-accent"><Check className="size-10 text-primary" /></span>

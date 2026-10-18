@@ -2,6 +2,7 @@ import { AlertTriangle, ArrowRight, Clock3, FileText, Globe2, Lightbulb, LoaderC
 import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState, type ReactNode } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
+import { CREDIT_RULE_SHORT } from "@shared/moneyCopy";
 import { isValidTargetRoleUrl } from "@shared/referralUrl";
 import { parseOpportunityAskSearch } from "@shared/companyOpportunities";
 import { inferAskJobFunction } from "@shared/jobFunctionClassifier";
@@ -249,7 +250,7 @@ export default function Ask() {
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
           <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
           <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
-          <p className="text-center text-xs text-muted-foreground">Uses 1 credit and 1 open slot · the credit comes back once if you withdraw before pickup or the ask expires unclaimed</p>
+          <p className="text-center text-xs text-muted-foreground">Uses 1 credit and 1 open slot · {CREDIT_RULE_SHORT}</p>
         </aside>
       </div>
     </main>

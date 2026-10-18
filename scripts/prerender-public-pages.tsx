@@ -125,7 +125,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/employer",
-      markup: `<main data-skipwait-snapshot="employer"><h1>Hire without the noise.</h1><p>Employer accounts sponsor open roles to the top of seeker feeds, unlock anonymized opt-in talent with credits, and manage a self-serve promotion budget. Employers never buy referrals: seekers get ${FREE_ASKS_CHIP} and use credits for more, and referrers are never paid.</p><p><a href="/employer">Open the employer workspace</a> · <a href="/jobs">See the seeker side of the product</a> · <a href="/pricing">See prices</a> · <a href="/contact">Contact us</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="employer"><h1>Hire without the noise.</h1><p>Employer accounts feature open roles as a clearly labeled listing, unlock anonymized opt-in talent with credits, and manage a self-serve promotion budget. Employers never buy referrals: seekers get ${FREE_ASKS_CHIP} and use credits for more, and referrers are never paid.</p><p><a href="/employer">Open the employer workspace</a> · <a href="/jobs">See the seeker side of the product</a> · <a href="/pricing">See prices</a> · <a href="/contact">Contact us</a></p></main>`,
     },
   ].map(snapshot => {
     const route = publicRoute(snapshot.route);

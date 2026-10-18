@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { ArrowRight, Check } from "lucide-react";
-import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, CREDIT_RULE, PAID_PLANS_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import type { PaidSubscriptionPlan } from "@shared/subscriptionPlans";
 import { Button } from "@/components/kit/button";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
@@ -49,7 +49,7 @@ export default function Plans() {
   const creditsHref = `/premium?role=${role}`;
 
   useEffect(() => {
-    applySeo({ title: "Monthly referral plans", description: "Pro and Max monthly plans add referral credits each month on top of the free allowance. Cancel any time.", path: "/plans" });
+    applySeo({ title: "Monthly referral plans", description: PAID_PLANS_SENTENCE, path: "/plans" });
   }, []);
 
   useEffect(() => {
