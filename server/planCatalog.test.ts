@@ -148,10 +148,14 @@ describe("structure", () => {
   });
 
   // D-067: Pro and Max are removed completely, so nothing maps them to a kit tier any more.
-  it("has no legacy Pro/Max map and no item-price lookup for them", () => {
+  it("has no legacy Pro/Max map, plan table or item-price lookup for them", () => {
     expect(planCatalog).not.toHaveProperty("LEGACY_PLAN_MAP");
     expect(planCatalog).not.toHaveProperty("legacyPlanTarget");
     expect(subscriptionPlans).not.toHaveProperty("subscriptionPlanFromItemPrice");
+    // The Pro/Max plan table and its paid-plan predicate went with their last callers (the /plans cards and checkout).
+    expect(subscriptionPlans).not.toHaveProperty("SUBSCRIPTION_PLANS");
+    expect(subscriptionPlans).not.toHaveProperty("isPaidSubscriptionPlan");
+    expect(Object.keys(subscriptionPlans).sort()).toEqual(["FREE_MONTHLY_ALLOWANCE", "currentMonthlyCycleKey"]);
     expect(subscriptionPlans.FREE_MONTHLY_ALLOWANCE).toBe(3);
     expect(subscriptionPlans.currentMonthlyCycleKey(new Date("2026-10-18T00:00:00.000Z"))).toBe("2026-10");
   });
