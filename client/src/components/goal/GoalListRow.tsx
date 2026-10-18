@@ -40,7 +40,7 @@ const META: Readonly<Record<GoalRowDensity, string>> = {
   ask: "min-w-0 text-g-meta text-g-ink-2",
 };
 
-/** A selectable list row: the #f4f4f5 selected tile and the only stripe, a 2px ink bar inside the left edge.
+/** A selectable list row: the surface-selected tile and the only stripe, a 2px ink bar inside the left edge.
  * Selection is instant (no transition) and rows never carry hover actions, filled badges or coloured backgrounds. */
 export function GoalListRow({ density, href, onSelect, selected = false, selectable = true, leading, title, trailing, meta, metaTrailing, footer, testId, ...aria }: GoalListRowProps) {
   const isSelected = selectable && selected;
