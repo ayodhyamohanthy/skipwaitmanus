@@ -111,7 +111,9 @@ describe("unmatched paid invoice safety net (#77)", () => {
   it("calls a retired item price retired even when the handler answers with another reason", async () => {
     const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
     const { app } = appWith({ applySubscriptionEvent: vi.fn(async () => ({ status: "ignored", reason: "unsupported_plan" })), alertRetiredPlanEvent });
-    await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_max_old", event_type: "subscription_renewed", content: { subscription: { id: "sub_max_legacy", status: "active", subscription_items: [{ item_price_id: "skipwait_max_monthly-USD" }] } } });
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_max_old", event_type: "subscription_renewed", content: { subscription: { id: "sub_max_legacy", status: "active", subscription_items: [{ item_price_id: "skipwait_max_monthly-USD" }] } } });
+    expect({ status: response.status, body: response.body }).toMatchObject({ status: 200, body: { obligations: { subscription: { status: "ignored" } } } });
+    expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
     expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_max_old", reason: "plan_retired" }));
   });
 
