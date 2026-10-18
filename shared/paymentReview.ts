@@ -75,6 +75,8 @@ export const paymentReviewRequestSchema = z.discriminatedUnion("decision", [
   z.strictObject({ decision: z.literal("keep_credits"), note }),
 ]);
 export type PaymentReviewRequest = z.infer<typeof paymentReviewRequestSchema>;
+/** The body the admin page sends (before the server trims the note). */
+export type PaymentReviewRequestBody = z.input<typeof paymentReviewRequestSchema>;
 
 const outcomeBase = { paymentId: z.number().int().positive(), tokenCount: z.number().int().nonnegative(), userId: z.number().int().positive(), role: z.enum(["job_seeker", "referrer"]) };
 
