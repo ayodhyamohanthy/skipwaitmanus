@@ -3,7 +3,7 @@
 > Read START_HERE.md first. The platform is already live: update it, do not rebuild it.
 
 
-You are turning the SkipWait **design preview** into a working product. The designs in `app/src/routes` are a reference, no longer the spec: Kit v4 is not binding, the UI is designed for the goal, and key-screen designs go to the owner before any rollout (D-048). Where this file conflicts with `docs/DECISIONS.md` or `AGENTS.md`, they win. Everything below is what the designs do NOT do, and what you must build or decide.
+You are turning the SkipWait **design preview** into a working product. The designs in `app/src/routes` are a reference, no longer the spec: Kit v4 is not binding, the UI is designed for the goal, and the owner approved the goal-UI key screens on Oct 18 (D-048, D-071; comps in `design/goal-ui/pick/`), rolled out in phases. Where this file conflicts with `docs/DECISIONS.md` or `AGENTS.md`, they win. Everything below is what the designs do NOT do, and what you must build or decide.
 
 Read in this order: `AGENTS.md` and `docs/DECISIONS.md` (D-026) → this file → `LLM_HANDOFF.md` → `SCREENS.md` → `PRICING.md` → `UPGRADE_NUDGES.md` → `CHECKLIST.md` → `CHANGELOG.md`.
 
@@ -47,7 +47,7 @@ Installable manifest, icons, offline fallback page, offline draft saving, Web Pu
 i18n with RTL support (Arabic) — language preferences only until supply exists (D-059). Times in the user's time zone. **USD is the global display currency; India sees the INR "India price"** (D-005, D-007; Razorpay for INR, PayPal for USD, D-069).
 
 ## 6. Design system
-- **D-048 (Oct 18 2026):** Kit v4 is no longer binding. Key-screen designs for the goal go to the owner before any rollout; until then the live tokens and components stay and nobody re-skins a surface.
+- **D-048 (Oct 18 2026):** Kit v4 is no longer binding. The goal-UI key screens were approved on Oct 18 (D-071, `design/goal-ui/pick/`, no compensation row); rollout is phase 2 (DESIGN.md, tokens, primitives) then surface by surface. Until a surface is moved over, its live tokens and components stay and nobody re-skins it ad hoc.
 - Tokens in `src/styles.css` (light + dark). Never hardcode colors; use semantic tokens.
 - Fonts: Instrument Sans (UI), IBM Plex Mono (labels).
 - Brand: white, ink #141414, electric blue #0000FF, invitation yellow #FFFC52.

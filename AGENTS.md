@@ -43,7 +43,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 - **Analytics is part of every feature:** define the funnel events/metrics it affects, instrument them (consent-respecting), and record before/after numbers when reporting. A claim without data or a cited principle is not a reason to change the product.
 - **Docs first (owner rule, Oct 14 2026):** before ANY code change, update `docs/KIT_V4_BUILD_PLAN.md` (claim the step, its scope, decisions, migrations, owner actions) and this summary, and get them onto `main`, so any AI coding platform can finish the work if a session stops (for the program D-058 covers, in the same push as the code, never later — D-068). Update status after every commit/push.
 - Living plan and handoff: `docs/KIT_V4_BUILD_PLAN.md`. Per-PNG audit and feature catalog: `docs/KIT_V4_AUDIT.md`. Pricing decisions and sources: `docs/PRICING_RECOMMENDATION.md`.
-- **D-048 (owner, Oct 18): Kit v4 is no longer binding.** The UI is designed for the goal; key-screen designs go to the owner before any rollout, and until approval nobody re-skins a surface (existing tokens and components stay).
+- **D-048 (owner, Oct 18): Kit v4 is no longer binding.** The UI is designed for the goal. **D-071 (Oct 18):** the owner approved the D-070 comps (`design/goal-ui/pick/`, no compensation row); rollout is phase 2 (goal-focused `DESIGN.md`, tokens, primitives) then phase 3 surface by surface through the full gate. Until a surface is moved over in phase 3 it keeps its live tokens and components; nobody re-skins a surface ad hoc.
 - Still binding: never ship kit preview chips or sample data; Terms/Privacy keep live legal text (the lasting D-001 rules — D-001 itself is retired, D-059); ship verified groups to `main` after the gate (D-003).
 - Pricing (Oct 14, amended Oct 16–18; D-number on each line):
   - **Passes:** 30/90-day passes with opt-in auto-extend (yearly only for Keep warm). All payment options go live before referrers onboard, with no supply gate (D-046, supersedes D-045 and D-037's gate), once D-063, D-067 and D-051 land (D-059): packs, every pass and Keep warm sold from `/plans`, coverage shown before payment; Concierge by application; human sessions off until deliverable; the legacy plans and their perks are removed (D-067; code pending). Chargebee stays the only payment system (Razorpay for INR, PayPal for USD); an admin catalog sync (not built yet: dry run first, then an apply step the owner triggers) will bring its item prices in line with the catalog (D-069).
@@ -432,7 +432,7 @@ which rules were adopted or rejected when this section changes.
   desktop/mobile visual verification when layout or appearance is at stake.
 
 ## Styling and dependency boundary
-- **Superseded in part by D-048 (Oct 18):** Kit v4 is no longer the contract; a goal-focused `DESIGN.md` replaces it after the owner approves the designs. Until then the rules below still describe the live tokens: keep using them and do not re-skin.
+- **Superseded in part by D-048 (Oct 18):** Kit v4 is no longer the contract; a goal-focused `DESIGN.md` replaces it in D-048 phase 2 (designs approved by D-071, comps in `design/goal-ui/pick/`). Until then the rules below still describe the live tokens: keep using them and do not re-skin.
 - `DESIGN.md` is the product visual contract: Kit v4 (white canvas, ink
   `#141414`, electric blue `#0000FF`, invitation yellow `#FFFC52`; Instrument
   Sans UI, IBM Plex Mono labels; oklch tokens in `client/src/index.css`). It

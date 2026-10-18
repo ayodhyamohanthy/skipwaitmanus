@@ -1,6 +1,6 @@
 # DESIGN.md — skipwait.me design context (Kit v4 contract, Oct 2026)
 
-> **SUPERSEDED BY D-048 (owner, Oct 18 2026): Kit v4 is no longer binding.** A goal-focused contract replaces this file once the owner approves the new designs (see `docs/KIT_V4_BUILD_PLAN.md` row D-048). Until then, keep using the tokens and components described below, do not re-skin any surface, and build new UI from what already exists.
+> **SUPERSEDED BY D-048 (owner, Oct 18 2026): Kit v4 is no longer binding.** The owner approved the goal-UI designs on Oct 18 (D-071; comps in `design/goal-ui/pick/`, no compensation row); a goal-focused contract replaces this file in D-048 phase 2 (see `docs/KIT_V4_BUILD_PLAN.md` row D-048). Until then, keep using the tokens and components described below, do not re-skin any surface, and build new UI from what already exists.
 
 > OWNER OVERRIDE (Oct 2026; superseded by D-048 above): Kit v4 (`START_HERE.md`, `app/src/styles.css`) is
 > the visual contract and supersedes the "Moving Parts" system below where
