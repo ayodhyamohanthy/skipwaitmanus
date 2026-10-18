@@ -249,7 +249,7 @@ export default function Ask() {
           {sendError ? <p role="alert" className="flex gap-2 text-sm text-destructive"><AlertTriangle className="size-4 shrink-0" />{sendError}</p> : null}
           <Button className="w-full" disabled={!officialUrl || words < 10 || sending || uploading} onClick={() => { void send(); }}>{sending || uploading ? (sending && sendStage === "ask" ? "Sending your ask…" : "Uploading your resume…") : <>Send ask <ArrowRight /></>}</Button>
           <p role="status" aria-live="polite" className="sr-only">{sending ? (sendStage === "ask" ? "Sending your ask" : "Uploading your resume") : ""}</p>
-          <p className="text-center text-xs text-muted-foreground">Uses 1 credit and 1 open slot · the credit comes back if you withdraw before pickup or it expires</p>
+          <p className="text-center text-xs text-muted-foreground">Uses 1 credit and 1 open slot · the credit comes back once if you withdraw before pickup or the ask expires unclaimed</p>
         </aside>
       </div>
     </main>

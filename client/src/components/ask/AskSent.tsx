@@ -1,8 +1,9 @@
 // Ask-sent confirmation, ported from the kit's /ask sent state. Company,
 // coverage, the personal-link flag and the open-slot count all come from the
-// live send response; the expiry window is the shared ASK_TTL_DAYS (an
-// unclaimed ask, including a personal-link ask its employee never acts on
-// (D-050), expires and its credit is returned).
+// live send response; the expiry window is the shared ASK_TTL_DAYS. The credit
+// lines say only what the ledger does (shared/moneyCopy.ts): an ask nobody picked
+// up by then, including a personal-link ask its employee never acted on (D-050),
+// expires with its credit back; a picked-up ask keeps it spent.
 import { ArrowRight, Check } from "lucide-react";
 import { Link } from "wouter";
 import type { OpenAskSlots } from "@shared/openAskSlots";
@@ -21,10 +22,10 @@ export function AskSent({ sent, onWriteAnother }: { sent: SentAsk; onWriteAnothe
   const companyPrefix = sent.companyDomain ? `${sent.companyDomain} ` : "";
   // A personal-link ask is never routed to anyone else, so it gets its own line even while the company waits for coverage.
   const detail = sent.fastTrack
-    ? `Only the ${companyPrefix}employee whose link you used will see it. It expires in ${ASK_TTL_DAYS} days if they don't respond, and your credit returns.`
+    ? `Only the ${companyPrefix}employee whose link you used will see it. If they don't pick it up within ${ASK_TTL_DAYS} days, it expires and the credit comes back.`
     : sent.waitingForCoverage
-      ? "No verified referrers there yet — we'll route it privately the moment coverage opens."
-      : `Verified ${companyPrefix}referrers will see it. It expires in ${ASK_TTL_DAYS} days if nobody accepts, and your credit returns.`;
+      ? `No verified referrers there yet. If one verifies within ${ASK_TTL_DAYS} days, they can see it privately; if nobody picks it up by then, it expires unclaimed and the credit comes back.`
+      : `Verified ${companyPrefix}referrers will see it. It expires after ${ASK_TTL_DAYS} days if nobody accepts; the credit comes back only if no verified employee picked it up.`;
   return (
     <main data-skipwait-screen="ask-sent" className="page-content mx-auto max-w-xl text-center">
       <span className="mx-auto grid size-20 place-items-center rounded-full bg-accent"><Check className="size-10 text-primary" /></span>

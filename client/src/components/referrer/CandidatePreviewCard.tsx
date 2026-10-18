@@ -63,7 +63,7 @@ export function CandidatePreviewCard({ preview, working, error, raceError, pendi
         {pendingDecline && pendingOption ? (
           <div role="group" aria-label="Confirm decline" className="rounded-[7px] bg-muted p-4">
             <p className="text-sm font-semibold">Decline as “{pendingOption.label}”?</p>
-            <p className="mt-1 text-[13px] leading-[1.7] text-muted-foreground">{pendingOption.hint} The Job Seeker sees a short private note — never your name — and their credit is returned.</p>
+            <p className="mt-1 text-[13px] leading-[1.7] text-muted-foreground">{pendingOption.hint} The Job Seeker sees a short private note — never your name. The ask stays with your company, so a colleague can still pick it up.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="flex-1 text-destructive" disabled={working} onClick={() => onConfirmDecline(pendingDecline)}>{working ? "Recording…" : "Confirm decline"}</Button>
               <Button type="button" variant="ghost" className="min-h-11 flex-1" disabled={working} onClick={onCancelDecline}>Cancel</Button>

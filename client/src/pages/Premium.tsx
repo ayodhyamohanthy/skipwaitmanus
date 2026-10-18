@@ -7,6 +7,7 @@ import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type P
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
 import { applySeo } from "@/lib/seo";
+import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
 
 type Pack = { id: "skipwait_token_1-INR" | "skipwait_token_1-USD"; price: number; currency: PaymentRoute };
 type PendingCheckout = { hostedPageId: string; role: TokenRole };
@@ -43,7 +44,7 @@ export default function Premium() {
   const updateQuantity = (next: number) => setQuantity(Math.max(1, Math.min(1000, Number.isFinite(next) ? Math.round(next) : 1)));
 
   useEffect(() => {
-    applySeo({ title: "Buy referral credits for $1 each", description: "Every account gets free referral requests each month. Extra credits cost $1 each (₹99 in India), never expire, and are spent once an employee picks up your ask.", path: "/premium" });
+    applySeo({ title: "Buy referral credits for $1 each", description: `${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire.`, path: "/premium" });
   }, []);
 
   useEffect(() => {

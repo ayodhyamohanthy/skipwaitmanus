@@ -8,6 +8,7 @@ import type { SubscriptionCurrency } from "@shared/subscriptionPlans";
 import { Button } from "@/components/kit/button";
 import { kitDate } from "./format";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
+import { CREDIT_RULE_SHORT } from "@shared/moneyCopy";
 import { CREDIT_PRICE, hasActivePaidPlan, type CreditSummary } from "./planCatalog";
 
 function creditCount(count: number): string {
@@ -32,7 +33,7 @@ export function CreditsSection({ summary, currency, creditsHref }: { summary: Cr
         <ul className="cost-strip" aria-label="Credit costs">{costs.map(([badge, label]) => <li key={label}><span className="cost-badge">{badge}</span>{label}</li>)}</ul>
         <Button asChild className="brand-button"><Link href={creditsHref}>Add credits<ArrowRight /></Link></Button>
       </div>
-      <p className="credits-fine"><Check />Each referral request uses 1 credit, returned if you withdraw before pickup or it expires. Credits you buy <b>never expire</b> and never affect referral access or queue position.</p>
+      <p className="credits-fine"><Check />Each referral request uses 1 credit; {CREDIT_RULE_SHORT}. Credits you buy <b>never expire</b> and never affect referral access or queue position.</p>
     </div>
   </section>;
 }

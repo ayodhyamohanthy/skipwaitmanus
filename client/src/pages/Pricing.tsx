@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { Tag } from "lucide-react";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
-import { ASK_COST_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
@@ -22,7 +22,7 @@ export default function Pricing() {
     <PolicySection number="02" title="Extra credits (one-time)">
       <ul>
         <li><strong>₹99 per credit</strong> (India) or <strong>$1 per credit</strong> (rest of the world). Buy 1 or more.</li>
-        <li>Purchased credits never expire. A credit is only used when a Referrer accepts your request.</li>
+        <li>Purchased credits never expire. {CREDIT_RULE}</li>
       </ul>
     </PolicySection>
     <PolicySection number="03" title="Monthly plans">

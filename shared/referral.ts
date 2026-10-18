@@ -52,7 +52,9 @@ export function getJobSeekerReferralState(input: { status: ReferralStatus; refer
   if (input.status === "offer") return { label: "Offer recorded", title: "An offer milestone was recorded.", detail: "This is a factual private progress update, not a public success claim.", tone: "emerald" };
   if (input.status === "closed") return { label: "Request closed", title: "This referral request is closed.", detail: "Your private request history and documents remain protected.", tone: "slate" };
   if (input.status === "declined") return { label: "Request closed", title: "This referral request was declined.", detail: "Your documents stay private. You can reuse your packet for another opportunity.", tone: "slate" };
-  if (input.status === "withdrawn") return { label: "Withdrawn", title: "You withdrew this request.", detail: "Your credit was returned to your balance. You can request another referral anytime.", tone: "slate" };
+  // Truthful in every withdrawal: the slot always frees; the credit comes back only
+  // while no employee had picked the ask up (server/db.ts withdrawCompanyReferralRequest).
+  if (input.status === "withdrawn") return { label: "Withdrawn", title: "You withdrew this request.", detail: "Its open slot is free again. The credit came back only if no verified employee had picked it up. You can request another referral anytime.", tone: "slate" };
   return { label: referralStatusLabels[input.status], title: referralStatusLabels[input.status], detail: "This request has a verified status update.", tone: input.status === "offer" ? "emerald" : "blue" };
 }
 

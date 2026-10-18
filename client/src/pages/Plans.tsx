@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { ArrowRight, Check } from "lucide-react";
-import { ASK_COST_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { ASK_COST_SENTENCE, CREDIT_RULE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import type { PaidSubscriptionPlan } from "@shared/subscriptionPlans";
 import { Button } from "@/components/kit/button";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
@@ -205,7 +205,7 @@ export default function Plans() {
       cancelRenewal={{ confirming: confirmingCancel, cancelling, onAsk: () => setConfirmingCancel(true), onConfirm: () => { void scheduleCancellation(); setConfirmingCancel(false); }, onKeep: () => setConfirmingCancel(false) }}
       gift={{ enabled: giftCheckoutEnabled(), opening: giftStatus === "opening", isLoaded, onGift: plan => { void startGiftCheckout(plan); } }}
     />
-    <p className="plan-grid-note">Every account starts on the free tier — you get monthly referral credits, and tracking every request is free. Each request uses 1 credit, which comes back if you withdraw before a verified employee picks it up or it expires. Upgrading adds more open requests at once and monthly credits.</p>
+    <p className="plan-grid-note">Every account starts on the free tier, and tracking every request is free. {CREDIT_RULE} Upgrading adds more open requests at once and monthly credits.</p>
     <p className="plan-grid-note">{routeDetails.gateway} · {routeDetails.gatewayDescriptor}. <button type="button" onClick={() => setRoute(current => alternatePaymentRoute(current))} className="font-semibold text-foreground underline underline-offset-4">Different billing country? {routeDetails.alternateLabel}</button></p>
     {cancelError ? <p role="alert" className="plan-grid-note font-semibold text-destructive">{cancelError}</p> : null}
     <SentGifts sent={sentGifts} error={giftError} />

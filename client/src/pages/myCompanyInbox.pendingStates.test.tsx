@@ -48,7 +48,11 @@ describe("My Company Inbox pending states", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Not a fit" }));
 
     // Confirm step: nothing has been posted yet and the accept CTA is out of the way.
-    expect(screen.getByRole("group", { name: "Confirm decline" })).toBeTruthy();
+    const confirm = screen.getByRole("group", { name: "Confirm decline" });
+    // A decline reopens the ask to colleagues (D-021) and moves no credit, so the
+    // referrer is told that, never promised a refund for the seeker (D-063, D-066).
+    expect(confirm.textContent).toContain("never your name. The ask stays with your company, so a colleague can still pick it up.");
+    expect((confirm.textContent ?? "").toLowerCase()).not.toMatch(/credit|token|refund/);
     expect(screen.queryByRole("button", { name: "Accept & submit referral" })).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
 

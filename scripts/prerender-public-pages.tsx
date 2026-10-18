@@ -20,7 +20,7 @@ import path from "node:path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
-import { FREE_ASKS_CHIP, REFERRER_MONEY_SENTENCE } from "../shared/moneyCopy";
+import { ASK_COST_SENTENCE, CREDIT_RULE, FREE_ASKS_CHIP, REFERRER_MONEY_SENTENCE } from "../shared/moneyCopy";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
 import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_HERO_LEAD, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
@@ -113,7 +113,7 @@ export function publicSnapshots(): PublicSnapshot[] {
     },
     {
       route: "/premium",
-      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>Every account gets ${FREE_MONTHLY_ALLOWANCE} free referral requests every month. Extra credits cost $1 each (₹99 in India), never expire, and are only used when an employee accepts your request. ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See monthly plans</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See monthly plans</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
     },
     {
       route: "/plans",

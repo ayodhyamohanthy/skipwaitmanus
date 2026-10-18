@@ -169,7 +169,11 @@ describe("public credit copy matches the decline rule", () => {
     const { LANDING_FAQ } = await import("@shared/landingContent").then(m => ({ LANDING_FAQ: Object.values(m).flat().map(v => JSON.stringify(v)).join(" ") }));
     const routes = await import("@shared/publicRoutes").then(m => JSON.stringify(Object.values(m)));
     const guides = await import("@/content/guides").then(m => JSON.stringify(Object.values(m)));
-    for (const blob of [LANDING_FAQ, routes, guides]) expect(blob).not.toMatch(/only when an employee accepts|only spent when an employee accepts|consumed on acceptance/);
-    expect(LANDING_FAQ).toContain("spent once a verified employee picks up your request");
+    for (const blob of [LANDING_FAQ, routes, guides]) expect(blob).not.toMatch(/only when an employee accepts|only spent when an employee accepts|consumed on acceptance|spent on acceptance/);
+    // D-063: the cost answer is the credit rule exactly as the ledger keeps it,
+    // never "spent once picked up" with an unconditional credit back.
+    const { CREDIT_RULE } = await import("@shared/moneyCopy");
+    expect(LANDING_FAQ).toContain(CREDIT_RULE);
+    expect(LANDING_FAQ).not.toMatch(/withdrawn or expired asks get the credit back|spent once a verified employee picks up/);
   });
 });
