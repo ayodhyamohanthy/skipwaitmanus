@@ -8,18 +8,22 @@ import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
 import { SLOT_CAP_REACHED, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
 import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlements";
 import { ASK_TTL_MS } from "../shared/referral";
+import { assignedAskNotHeldCondition } from "./heldAsk";
 
 /**
- * The caller's open asks: pending and unexpired. Mirrors isAskExpired: only an
+ * The caller's open asks: pending and unexpired. Mirrors the expiry rule: only an
  * unclaimed pending ask expires, at createdAt + ASK_TTL_MS, computed from the JS
- * clock (never DB NOW()). Always scoped to the one seeker it is called for.
+ * clock (never DB NOW()). Unclaimed means no referrer, or a personal-link ask
+ * still held for its employee (D-050, server/heldAsk.ts); a claimed,
+ * queue-allocated or pre-history assigned ask keeps its slot however old it is.
+ * Always scoped to the one seeker it is called for.
  */
 export function openAskCondition(userId: number, nowMs: number): SQL {
   const cutoff = new Date(nowMs - ASK_TTL_MS);
   const condition = and(
     eq(referralRequests.jobSeekerId, userId),
     eq(referralRequests.status, "pending"),
-    or(isNotNull(referralRequests.referrerId), gt(referralRequests.createdAt, cutoff)),
+    or(and(isNotNull(referralRequests.referrerId), assignedAskNotHeldCondition()), gt(referralRequests.createdAt, cutoff)),
   );
   if (!condition) throw new Error("Open-ask condition could not be built");
   return condition;

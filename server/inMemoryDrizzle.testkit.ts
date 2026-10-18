@@ -4,10 +4,11 @@
  * server/db.ts runs its real queries: joins, where clauses, limits, unique keys
  * (read from drizzle/schema.ts) and upserts are evaluated against plain rows
  * instead of canned answers. It understands the operators the referral store
- * uses (eq, ne, and, or, gt/gte/lt/lte, isNull, isNotNull, inArray, `col + n`)
- * and throws on anything else, so an unsupported query fails loudly rather than
- * passing by accident. Rows come back in insertion order (ORDER BY is ignored),
- * which is what makes a query that relies on row order observable in a test.
+ * uses (eq, ne, and, or, gt/gte/lt/lte, isNull, isNotNull, inArray, `col + n`),
+ * GROUP BY columns with count(col)/count(*) fields, and throws on anything else,
+ * so an unsupported query fails loudly rather than passing by accident. Rows
+ * come back in insertion order (ORDER BY is ignored), which is what makes a
+ * query that relies on row order observable in a test.
  */
 import { Column, Param, SQL, StringChunk, Table, getTableColumns, getTableName, is, type SQLChunk } from "drizzle-orm";
 import { getTableConfig, type MySqlTable } from "drizzle-orm/mysql-core";
@@ -110,6 +111,36 @@ function setValue(value: Cell | Column | SQL, row: Row, table: string): Cell {
   return /^\s*-?\d+\s*$/.test(expression) ? Number(expression) : fail(`set expression ${expression}`);
 }
 
+/** The target of a `count(col)` or `count(*)` field as drizzle renders it; undefined for any other SQL. */
+function countTarget(field: SQL): Column | "*" | undefined {
+  const chunks = significant(field);
+  const [open, target, close] = chunks;
+  if (chunks.length !== 3 || textOf(open) !== "count(" || textOf(close) !== ")") return undefined;
+  if (is(target, Column)) return target;
+  return is(target, SQL) && significant(target).map(textOf).join("") === "*" ? "*" : undefined;
+}
+
+/** One output row per GROUP BY group (one group over every row for a bare count, as MySQL does). */
+function aggregate(projection: Projection, groups: readonly Column[] | undefined, kept: readonly Joined[]): Selected[] {
+  const fields = Object.entries(projection);
+  if (!groups && fields.some(([, field]) => !is(field, SQL) || !countTarget(field))) return fail("plain field in an aggregate without GROUP BY");
+  const grouped = new Map<string, Joined[]>(groups ? [] : [["", []]]);
+  for (const candidate of kept) {
+    const key = groups ? JSON.stringify(groups.map(column => comparable(cellOf(column, candidate)))) : "";
+    grouped.set(key, [...(grouped.get(key) ?? []), candidate]);
+  }
+  return Array.from(grouped.values()).map((members: readonly Joined[]) => {
+    const out: Selected = {};
+    for (const [key, field] of fields) {
+      const target = is(field, SQL) ? countTarget(field) : undefined;
+      if (target) out[key] = target === "*" ? members.length : members.filter((member: Joined) => cellOf(target, member) !== null).length;
+      else if (is(field, Column)) out[key] = members[0] ? structuredClone(cellOf(field, members[0])) : null;
+      else return fail(`computed projection ${key}`);
+    }
+    return out;
+  });
+}
+
 function uniqueKeysOf(table: MySqlTable): string[][] {
   const config = getTableConfig(table);
   const names = (columns: readonly SQLChunk[]) => columns.map(column => (is(column, Column) ? keyOf(column).key : fail("index expression")));
@@ -129,7 +160,7 @@ export function createInMemoryDrizzle(seed: Seed = []) {
   const rowsOf = (name: string) => { const rows = tables.get(name) ?? []; tables.set(name, rows); return rows; };
 
   function select(projection?: Projection) {
-    let source: MySqlTable | undefined; let condition: SQL | undefined; let max: number | undefined;
+    let source: MySqlTable | undefined; let condition: SQL | undefined; let max: number | undefined; let groups: Column[] | undefined;
     const joins: Array<{ inner: boolean; table: MySqlTable; on: SQL | undefined }> = [];
     const run = (): Selected[] => {
       if (!source) return fail("select without from");
@@ -143,7 +174,9 @@ export function createInMemoryDrizzle(seed: Seed = []) {
           return hits.length ? hits : join.inner ? [] : [extend(base, null)];
         });
       }
-      const kept = joined.filter(candidate => matches(condition, candidate)).slice(0, max);
+      const filtered = joined.filter(candidate => matches(condition, candidate));
+      if (projection && (groups || Object.values(projection).some(field => is(field, SQL) && countTarget(field)))) return aggregate(projection, groups, filtered).slice(0, max);
+      const kept = filtered.slice(0, max);
       return kept.map(candidate => {
         if (!projection) return joins.length ? fail("select() without fields across a join") : structuredClone(candidate.get(from) ?? {});
         const out: Selected = {};
@@ -160,6 +193,7 @@ export function createInMemoryDrizzle(seed: Seed = []) {
       innerJoin: (table: MySqlTable, on?: SQL) => { joins.push({ inner: true, table, on }); return query; },
       leftJoin: (table: MySqlTable, on?: SQL) => { joins.push({ inner: false, table, on }); return query; },
       where: (where?: SQL) => { condition = where; return query; },
+      groupBy: (...columns: ReadonlyArray<Column | SQL>) => { groups = columns.map(column => (is(column, Column) ? column : fail("GROUP BY expression"))); return query; },
       orderBy: () => query,
       limit: (limit: number) => { max = limit; return query; },
       for: async () => run(),

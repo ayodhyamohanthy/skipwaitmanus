@@ -17,7 +17,8 @@ const OTHER = 8;
 const URL_ = "https://careers.acme.com/jobs/123";
 
 type Row = Record<string, unknown>;
-let tables: { wallets: Row[]; requests: Row[] };
+/** events: referralTransitionEvents (claims); slots: referralAvailabilitySlots (queue allocations). */
+let tables: { wallets: Row[]; requests: Row[]; events: Row[]; slots: Row[] };
 let sideEffects: string[];
 let lockedReads: string[];
 
@@ -30,12 +31,19 @@ function matchesEq(condition: SQLQuery, row: Row): boolean {
   return columns.every((column, index) => row[column] === query.params[index]);
 }
 
-/** The open-ask predicate (server/planGates.ts openAskCondition), evaluated row by row. */
+/**
+ * The open-ask predicate (server/planGates.ts openAskCondition, exact SQL pinned in openAskSlots.test.ts), evaluated row
+ * by row: a fresh ask counts; an older assigned ask keeps its slot only while it predates recorded claims, was claimed or
+ * holds a queue allocation. A held personal-link ask (D-050) and an unassigned ask stop counting at day 7.
+ */
 function isOpenAsk(condition: SQLQuery, row: Row): boolean {
   const { sql, params } = dialect.sqlToQuery(condition);
-  if (!sql.includes("`referrerId` is not null or `referralRequests`.`createdAt` > ?")) throw new Error(`Unexpected open-ask SQL: ${sql}`);
-  const [seeker, status, cutoff] = params;
-  return row.jobSeekerId === seeker && row.status === status && (row.referrerId != null || asMs(row.createdAt) > asMs(cutoff));
+  if (!sql.includes("((`referralRequests`.`referrerId` is not null and (`referralRequests`.`createdAt` < ? or exists (select 1 from `referralTransitionEvents` where") || !sql.endsWith(" or `referralRequests`.`createdAt` > ?))")) throw new Error(`Unexpected open-ask SQL: ${sql}`);
+  const [seeker, status, since, claimAction, allocatedStatus, cutoff] = params;
+  const claimed = tables.events.some(event => event.referralRequestId === row.id && event.action === claimAction);
+  const allocated = tables.slots.some(slot => slot.referralRequestId === row.id && slot.status === allocatedStatus);
+  const keepsSlot = row.referrerId != null && (asMs(row.createdAt) < asMs(since) || claimed || allocated);
+  return row.jobSeekerId === seeker && row.status === status && (keepsSlot || asMs(row.createdAt) > asMs(cutoff));
 }
 
 function rowsOf(table: unknown): Row[] {
@@ -89,7 +97,7 @@ const PAST_CAP = /resume documents are unavailable/;
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  tables = { wallets: [wallet(SEEKER), wallet(OTHER, "max")], requests: [] };
+  tables = { wallets: [wallet(SEEKER), wallet(OTHER, "max")], requests: [], events: [], slots: [] };
   sideEffects = [];
   lockedReads = [];
   mocks.createPool.mockResolvedValue({});
@@ -115,8 +123,29 @@ describe("open-ask slot cap at ask creation", () => {
   });
 
   it("a claimed pending ask keeps its slot however old it is", async () => {
-    tables.requests = [ask(), ask(), ask({ referrerId: 501, createdAt: new Date(Date.now() - 30 * DAY) })];
+    const claimed = ask({ referrerId: 501, createdAt: new Date(Date.now() - 30 * DAY) });
+    tables.requests = [ask(), ask(), claimed];
+    // Every claim has written this event since migration 0058.
+    tables.events = [{ referralRequestId: claimed.id, action: "claim" }];
     await expect(send()).rejects.toBeInstanceOf(OpenAskSlotCapError);
+  });
+
+  it("a personal-link ask its employee never acted on frees its slot at day 7, like an unclaimed one (D-050)", async () => {
+    tables.requests = [ask(), ask(), ask({ referrerId: 501, createdAt: new Date(Date.now() - 8 * DAY) })];
+    await expect(send()).rejects.toThrow(PAST_CAP);
+    expect(sideEffects).toEqual([]);
+    expect((await getOpenAskSlots(SEEKER)).open).toBe(2);
+  });
+
+  it.each<[string, Row, Partial<typeof tables>]>([
+    ["queue-allocated", { referrerId: 501, createdAt: new Date(Date.now() - 8 * DAY) }, { slots: [{ referralRequestId: 0, status: "allocated" }] }],
+    ["from before claims were recorded", { referrerId: 501, createdAt: new Date("2026-09-15T00:00:00Z") }, {}],
+  ])("an assigned ask that is %s keeps its slot however old it is", async (_label, patch, history) => {
+    const kept = ask(patch);
+    tables.requests = [ask(), ask(), kept];
+    tables.slots = (history.slots ?? []).map(slot => ({ ...slot, referralRequestId: kept.id }));
+    await expect(send()).rejects.toBeInstanceOf(OpenAskSlotCapError);
+    expect((await getOpenAskSlots(SEEKER)).open).toBe(3);
   });
 
   it("counts only the caller's own asks (cross-user)", async () => {

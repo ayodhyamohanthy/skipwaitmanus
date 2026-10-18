@@ -19,13 +19,16 @@ const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 
+// Claims read the clock (a held ask's 7-day shelf life binds them too), so every call runs on the fixtures' clock.
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(NOW);
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   mocks.createPool.mockResolvedValue({});
   mocks.drizzle.mockReturnValue(store.db);
   seedHeldAsks();
 });
-afterEach(() => { vi.unstubAllEnvs(); });
+afterEach(() => { vi.unstubAllEnvs(); vi.useRealTimers(); });
 
 const withdraw = () => withdrawCompanyReferralRequest(SEEKER, REQUEST_ID);
 const expire = (nowMs = NOW) => expireStalePendingReferralRequest(SEEKER, REQUEST_ID, nowMs);

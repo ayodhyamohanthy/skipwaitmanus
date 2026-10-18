@@ -4,6 +4,7 @@ import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { COMPANY_CAP_REACHED, companyCapCopy, companyCapReachedSchema, nextSlotPlan, nextSlotPlanAmong, openAskSlots, openAskSlotsSchema, slotCapNudgeCopy, slotCapReachedSchema, slotsFullCopy } from "../shared/openAskSlots";
 import { resolvePlanEntitlements, type EntitlementWallet } from "../shared/planEntitlements";
 import { ASK_TTL_MS } from "../shared/referral";
+import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { OpenAskSlotCapError, openAskCondition } from "./planGates";
 
 const NOW = new Date("2026-10-14T12:00:00.000Z");
@@ -79,11 +80,12 @@ describe("per-company cap contract (every plan)", () => {
 });
 
 describe("open-ask predicate", () => {
-  it("counts only the one seeker's pending, unexpired asks; claimed asks never expire", () => {
+  it("counts only the one seeker's pending, unexpired asks; claimed, queue-allocated and pre-history assigned asks never expire, a held personal-link ask does (D-050)", () => {
     const query = new MySqlDialect().sqlToQuery(openAskCondition(7, NOW.getTime()));
-    expect(query.sql).toBe("(`referralRequests`.`jobSeekerId` = ? and `referralRequests`.`status` = ? and (`referralRequests`.`referrerId` is not null or `referralRequests`.`createdAt` > ?))");
-    expect(query.params).toEqual([7, "pending", "2026-10-07 12:00:00.000"]);
-    expect(Date.parse(`${String(query.params[2]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
+    expect(query.sql).toBe("(`referralRequests`.`jobSeekerId` = ? and `referralRequests`.`status` = ? and ((`referralRequests`.`referrerId` is not null and (`referralRequests`.`createdAt` < ? or exists (select 1 from `referralTransitionEvents` where `referralTransitionEvents`.`referralRequestId` = `referralRequests`.`id` and `referralTransitionEvents`.`action` = ?) or exists (select 1 from `referralAvailabilitySlots` where `referralAvailabilitySlots`.`referralRequestId` = `referralRequests`.`id` and `referralAvailabilitySlots`.`status` = ?))) or `referralRequests`.`createdAt` > ?))");
+    expect(query.params).toEqual([7, "pending", "2026-09-21 00:00:00.000", "claim", "allocated", "2026-10-07 12:00:00.000"]);
+    expect(Date.parse(`${String(query.params[2]).replace(" ", "T")}Z`)).toBe(HELD_ASK_HISTORY_SINCE.getTime());
+    expect(Date.parse(`${String(query.params[5]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
     expect(new MySqlDialect().sqlToQuery(openAskCondition(8, NOW.getTime())).params[0]).toBe(8);
   });
 });

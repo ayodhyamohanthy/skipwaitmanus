@@ -7,12 +7,16 @@
 //   - an accept (one-click or review) moves the status out of "pending";
 //   - a pass clears referrerId, reopening the ask to the company (D-021).
 // A queue allocation (openCompanyReferralAvailability) also assigns an ask with
-// no event; its "allocated" slot keeps that ask out of D-050.
+// no event; its "allocated" slot keeps that ask out of D-050. Past its 7 days a
+// held ask is a stale unclaimed ask on both sides: the seeker's withdraw/expiry
+// return the credit, and the link owner can no longer claim it, it leaves their
+// inbox and it stops taking one of the seeker's open slots.
 //
-// No db.ts import, so db.ts can use these inside its transactions without an
-// import cycle (the planGates.ts pattern).
-import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, type SQL } from "drizzle-orm";
+// No db.ts import, so db.ts and planGates.ts can use these inside their queries
+// and transactions without an import cycle (the planGates.ts pattern).
+import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { operationalActivityLogs, referralAvailabilitySlots, referralRequests, referralTransitionEvents } from "../drizzle/schema";
+import { getAskExpiresAtMs } from "../shared/referral";
 import type { LedgerTx } from "./creditLedger";
 
 /**
@@ -29,6 +33,27 @@ export const HELD_ASK_RECONCILE_LIMIT = 100;
 export type HeldCandidate = { readonly status: string; readonly referrerId: number | null; readonly createdAt: Date };
 export function isHeldCandidate<T extends HeldCandidate>(row: T): row is T & { readonly referrerId: number } {
   return row.status === "pending" && row.referrerId !== null && row.createdAt.getTime() >= HELD_ASK_HISTORY_SINCE.getTime();
+}
+
+/** Past the 7-day shelf life at `nowMs` (JS clock, never DB NOW()): the age half of isAskExpired, for asks the held rule may count as unclaimed. */
+export function isPastAskShelfLife(createdAt: Date, nowMs: number): boolean {
+  const expiresAt = getAskExpiresAtMs(createdAt);
+  return expiresAt !== null && nowMs >= expiresAt;
+}
+
+/**
+ * SQL for an assigned ask that is not held: its employee claimed it, a queue allocation assigned it, or it predates
+ * recorded claims. Correlated on referralRequests.id, so it belongs inside a query over referralRequests. The open-ask
+ * count (planGates.openAskCondition) keeps these asks' slots however old they are; a stale held ask frees its slot.
+ */
+export function assignedAskNotHeldCondition(): SQL {
+  const condition = or(
+    lt(referralRequests.createdAt, HELD_ASK_HISTORY_SINCE),
+    sql`exists (select 1 from ${referralTransitionEvents} where ${referralTransitionEvents.referralRequestId} = ${referralRequests.id} and ${referralTransitionEvents.action} = ${"claim"})`,
+    sql`exists (select 1 from ${referralAvailabilitySlots} where ${referralAvailabilitySlots.referralRequestId} = ${referralRequests.id} and ${referralAvailabilitySlots.status} = ${"allocated"})`,
+  );
+  if (!condition) throw new Error("Held-ask condition could not be built");
+  return condition;
 }
 
 /** Caller holds the request row lock; the locking read sees an allocation committed before that lock. */
@@ -76,6 +101,14 @@ export async function listHeldForReferrerIds(db: Pick<LedgerTx, "select">, rows:
     .where(and(inArray(referralAvailabilitySlots.referralRequestId, ids), eq(referralAvailabilitySlots.status, "allocated")));
   const acted = new Set([...claimed, ...allocated].map(row => row.id));
   return new Set(ids.filter(id => !acted.has(id)));
+}
+
+/**
+ * The link owner's inbox: which of the viewer's assigned rows are held asks past their 7 days. They
+ * leave the inbox like a stale unclaimed ask. Read-only: claim re-decides under the row lock.
+ */
+export async function listStaleHeldForViewer(db: Pick<LedgerTx, "select">, rows: ReadonlyArray<HeldCandidate & { readonly id: number }>, viewerId: number, nowMs: number): Promise<Set<number>> {
+  return listHeldForReferrerIds(db, rows.filter(row => row.referrerId === viewerId && isPastAskShelfLife(row.createdAt, nowMs)));
 }
 
 /**
