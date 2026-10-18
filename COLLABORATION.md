@@ -1,6 +1,6 @@
 # Multi-agent collaboration protocol
 
-Applies to every model, IDE, CLI, automation agent, and human working on this repository. Read this file and AGENTS.md before editing. Configure tools that do not discover AGENTS.md automatically to read both files at session start. Instructions are a shared convention, not an enforced lock or a direct communication channel between models.
+Applies to every model, IDE, CLI, automation agent, and human working on this repository. Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then this file and AGENTS.md, before editing. Configure tools that do not discover AGENTS.md automatically to read both files at session start. Instructions are a shared convention, not an enforced lock or a direct communication channel between models.
 
 ## 1. Establish the baseline
 
