@@ -54,12 +54,16 @@ describe("Assistants page", () => {
     expect(await screen.findByText("Connected ChatGPT")).toBeTruthy();
   });
 
-  it("shows the Land upgrade gate when the server denies access", async () => {
+  // Review round 2 (D-067): /plans sells no Land until the passes go on sale, so the gate
+  // says so plainly instead of offering an upgrade that leads nowhere.
+  it("shows the Land gate when the server denies access, with no upgrade link while Land is not on sale", async () => {
     stubFetch(() => ({ ok: true, json: async () => ({ plan: "free", hasAccess: false }) }));
     render(<Assistants />);
     expect(await screen.findByText("Assistants and API tokens come with Land")).toBeTruthy();
     expect(screen.getByText("Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Upgrade to Land" }).getAttribute("href")).toBe("/plans");
+    expect(screen.getByText("Land is not on sale yet. It arrives with the 30 and 90-day passes.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
+    expect(document.querySelector('a[href="/plans"]')).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "API tokens" }));
     expect(screen.getByText("Assistants and API tokens come with Land")).toBeTruthy();
     expect(screen.queryByText("Your tokens")).toBeNull();

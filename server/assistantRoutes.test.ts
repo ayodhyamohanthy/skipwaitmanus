@@ -104,7 +104,7 @@ describe("assistant access routes", () => {
     const plan = setup({ connectAssistant: async () => { throw new AssistantPlanRequiredError(); } });
     const gated = await authed(plan).post("/api/assistants/connections").send({ provider: "chatgpt" });
     expect(gated.status).toBe(402);
-    expect(gated.body.error).toBe("Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools.");
+    expect(gated.body.error).toBe("Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.");
     const tokens = setup({ createAssistantToken: async () => { throw new AssistantPlanRequiredError(); } });
     expect((await authed(tokens).post("/api/assistants/tokens").send({ name: "Tracker" })).status).toBe(402);
   });

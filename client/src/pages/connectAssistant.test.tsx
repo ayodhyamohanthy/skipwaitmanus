@@ -122,7 +122,10 @@ describe("ConnectAssistant", () => {
     render(<ConnectAssistant />);
     expect(await screen.findByText("Assistants need Land")).toBeTruthy();
     expect(screen.getByText("Signing in, connecting and applying through ChatGPT, Claude, bots or your own tools is part of Land and Concierge.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Upgrade to Land" }).getAttribute("href")).toBe("/plans");
+    // Review round 2 (D-067): no upgrade link while /plans sells no Land.
+    expect(screen.getByText("Land is not on sale yet. It arrives with the 30 and 90-day passes.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
+    expect(document.querySelector('a[href="/plans"]')).toBeNull();
     expect(screen.getByRole("link", { name: "Keep using SkipWait yourself" }).getAttribute("href")).toBe("/explore");
   });
 

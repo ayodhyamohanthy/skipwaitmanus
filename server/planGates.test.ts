@@ -28,6 +28,8 @@ describe("server plan gates", () => {
 
   it("assistant refusals carry the kit copy and a stable code", () => {
     const error = new AssistantPlanRequiredError();
-    expect(error).toMatchObject({ code: "assistant_plan_required", message: "Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools." });
+    expect(error).toMatchObject({ code: "assistant_plan_required", message: "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account." });
+    // Review round 2 (D-067): nothing sells Land yet, so the refusal (shown by MCP and OAuth clients) never says to upgrade.
+    expect(error.message).not.toMatch(/upgrade/i);
   });
 });

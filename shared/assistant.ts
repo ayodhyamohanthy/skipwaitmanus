@@ -8,8 +8,14 @@
 import { z } from "zod";
 import { CATALOG_TIERS, ENTITLED_PLAN_IDS, type PlanEntitlements } from "./planEntitlements";
 
-/** Kit copy (22 / 24): every server refusal of an assistant action without the entitlement. */
-export const ASSISTANT_PLAN_REQUIRED_MESSAGE = "Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools.";
+/**
+ * Every server refusal of an assistant action without the entitlement (MCP and OAuth clients show
+ * it too). Nothing sells Land until the 30/90-day passes go on sale (D-046), so it names no upgrade.
+ */
+export const ASSISTANT_PLAN_REQUIRED_MESSAGE = "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.";
+
+/** The assistant gates' line while /plans sells no Land (D-067 removed Max; the passes are not on sale yet). */
+export const LAND_NOT_ON_SALE_LINE = "Land is not on sale yet. It arrives with the 30 and 90-day passes.";
 
 /** GET /api/assistants/access. */
 export const assistantAccessSchema = z.object({
