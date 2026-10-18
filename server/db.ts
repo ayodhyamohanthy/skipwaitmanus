@@ -118,7 +118,8 @@ export async function listWorkosSubjectsForUser(userId: number): Promise<string[
   return rows.map(row => row.subject).filter(subject => /^user_[A-Za-z0-9]+$/.test(subject));
 }
 
-export async function resolveLoginIdentity(input: { provider: string; subject: string; openId: string; email: string; emailVerified: boolean; name: string; loginMethod: string }) {
+/** `name` is stored only when a new account is created; null leaves it unnamed (never derived from the email). */
+export async function resolveLoginIdentity(input: { provider: string; subject: string; openId: string; email: string; emailVerified: boolean; name: string | null; loginMethod: string }) {
   const email = normalizeVerifiedEmail(input.email);
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -2788,10 +2789,9 @@ export async function getDashboardStats(userId: number) {
 }
 
 export async function getAiWorkspaceContext(userId: number) {
-  const [profile, availableJobs, availableReferrers, saved, referrals, memberMessages, stats] = await Promise.all([
+  const [profile, availableJobs, saved, referrals, memberMessages, stats] = await Promise.all([
     getProfileByUserId(userId),
     listJobs({}),
-    listReferrers({}),
     listSavedRoles(userId),
     listReferralRequests(userId),
     listMessages(userId),
@@ -2800,7 +2800,9 @@ export async function getAiWorkspaceContext(userId: number) {
   return {
     profile,
     jobs: availableJobs.slice(0, 12).map(job => ({ id: job.id, title: job.title, company: job.company, location: job.location, seniority: job.seniority, workMode: job.workMode, description: job.description })),
-    referrers: availableReferrers.slice(0, 12).map(referrer => ({ userId: referrer.userId, name: referrer.name, company: referrer.company, title: referrer.title, expertise: referrer.expertise, capacity: referrer.capacity })),
+    // No referrer row ever enters an AI context: referrers are never listed or ranked and
+    // stay anonymous until they accept, the model is a third party, and a reply could repeat it.
+    referrers: [],
     savedRoles: saved.slice(0, 8).map(role => ({ title: role.title, company: role.company, seniority: role.seniority })),
     referrals: referrals.slice(0, 8).map(referral => ({ jobTitle: referral.jobTitle, company: referral.company, status: referral.status, updatedAt: referral.updatedAt })),
     recentMessageCount: memberMessages.length,
