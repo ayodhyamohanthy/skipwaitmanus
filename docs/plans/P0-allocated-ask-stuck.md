@@ -25,7 +25,12 @@ A waiting ask that D-034 delivers to one referrer (or an ask a referrer received
 - Pickup means a recorded `claim` transition event (plan row P0-personal-link-asks; AGENTS.md refund repair notes). An allocation is not a pickup.
 
 ## 3. Current behaviour (verified at `e6b87f8`)
-1. `server/heldAsk.ts` `heldForReferrerTx`'s helper chain: `isHeldCandidate` (pending, `referrerId` set, `createdAt >= HELD_ASK_HISTORY_SINCE` = 2026-09-21) → `referralWasClaimedTx` → `readQueueAllocationTx`. In `server/db.ts` `heldForReferrerTx` (about line 2136) returns `null` when an `allocated` slot exists (`if (await readQueueAllocationTx(tx, row.id)) return null;`).
+1. `heldForReferrerTx` (`server/db.ts`, about line 2136) runs three checks in order:
+   - `isHeldCandidate` (`server/heldAsk.ts`: pending, `referrerId` set, `createdAt >= HELD_ASK_HISTORY_SINCE` = 2026-09-21);
+   - `referralWasClaimedTx` (`server/db.ts`: a locking read of `claim` events);
+   - `readQueueAllocationTx` (`server/heldAsk.ts`: a locking read of an `allocated` slot).
+
+   It returns `null` when an `allocated` slot exists (`if (await readQueueAllocationTx(tx, row.id)) return null;`).
 2. `withdrawCompanyReferralRequest` (`server/db.ts` about 2145): `if (current.referrerId !== null && heldFor === null) throw new Error(WITHDRAW_REFUSED)`. So an allocated ask is refused with "This request was already claimed by a verified employee and can no longer be withdrawn".
 3. `expireStalePendingReferralRequest` (about 2287) returns `{ expired: false }` for the same reason. Its clock is already right: `getAskShelfLifeEndsAtMs(current)` (`shared/referral.ts` about 116) counts 7 days from `coverageVisibleAt`, or from `createdAt` for rows without it.
 4. `server/askExpirySweep.ts` `listStalePendingAsks`: its unassigned query needs `referrerId IS NULL`; its held query `selectStaleHeldAsks` (`server/heldAsk.ts`) anti-joins away allocated asks (`isNull(referralAvailabilitySlots.id)`) and cuts off on `createdAt` only. The seeker-read reconcile in `server/db.ts` (about 2407) calls the same `selectStaleHeldAsks`.
