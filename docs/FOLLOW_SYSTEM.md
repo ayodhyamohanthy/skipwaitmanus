@@ -26,7 +26,7 @@ Referral *requests* through fast-track links and the wall follow the ask credit 
 `userFollows` (migration `drizzle/0038_user_follows.sql`): followerUserId, followingUserId (both FK → users, cascade), createdAt; unique pair index. Auto-created by the boot-time schema reconciler (also in `server/schemaReconcile.ts` DESIRED_TABLES). Verified live: follow endpoints return 200 on skipwait.me.
 
 ## UI
-- Fast-track pages (`/fast/:code`, `/refer/:slug/:alias`): follower count + "Joined {month}" + Follow button next to the Message composer; no paywall card (D-067 removed it with the paid member-message perk).
+- Fast-track pages (`/fast/:code`, `/refer/:slug/:alias`): only the private-request start (the heading "Request a referral at {domain}." and a "Start private request" button); no follower count, "Joined" line, Follow button, Message composer or paywall card (`client/src/pages/fastTrack.dm.test.tsx` pins that no Message field renders; D-067 removed the paywall card with the paid member-message perk). `FollowButton` renders only on `/messages`.
 - `/messages`: a refused member send shows the "Follow each other to message" card, with no upgrade link, and keeps the draft (D-067).
 
 ## Tests
