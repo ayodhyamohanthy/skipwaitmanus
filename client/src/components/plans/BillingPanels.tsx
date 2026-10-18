@@ -24,7 +24,7 @@ export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary
       <span className="eyebrow">CURRENT PLAN</span>
       <h2 className="mt-1 text-2xl font-semibold">Free</h2>
       <p className="text-sm text-muted-foreground">{CREDIT_PACKS_ON_SALE ? (openAsks(summary) ? `${openAsks(summary)} · buy credits anytime` : "Buy credits anytime") : (openAsks(summary) || "Free plan")}</p>
-      <Button asChild className="mt-4"><Link href="/premium?role=job_seeker">Add credits</Link></Button>
+      {CREDIT_PACKS_ON_SALE ? <Button asChild className="mt-4"><Link href="/premium?role=job_seeker">Add credits</Link></Button> : null}
     </Panel>;
   }
   const cancelling = summary.subscriptionStatus === "non_renewing";

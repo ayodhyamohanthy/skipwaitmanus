@@ -4,15 +4,19 @@
 // the signed-in account's own credit summary; nothing renders when no limit applies.
 //
 // D-067 removed the Pro/Max plans and the compare table, so no moment pitches a
-// plan: a full slot set points at the asks, and credits point at /premium.
+// plan: a full slot set points at the asks, and credits point at /premium only
+// while credit packs are on sale (CREDIT_PACKS_ON_SALE, D-042); off sale the
+// credits moment is dismiss-only, never a link to the paused screen.
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Link } from "wouter";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { kitDate } from "./format";
 import type { CreditSummary } from "./planCatalog";
 
 type Action = { label: string; href: string };
-export type Moment = { id: string; trigger: string; title: string; copy: string; cta: Action; alt: Action | "dismiss" };
+/** cta is null when the moment has nothing to offer but a dismiss (credits while packs are off sale). */
+export type Moment = { id: string; trigger: string; title: string; copy: string; cta: Action | null; alt: Action | "dismiss" };
 
 const DAY_MS = 86_400_000;
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
@@ -36,8 +40,10 @@ export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: s
       id: "credits",
       trigger: "Credit balance reaches 0",
       title: "You're out of credits",
-      copy: "One credit buys one finished piece of work, including the next referral request. Purchased credits never expire.",
-      cta: { label: "Add credits", href: creditsHref },
+      copy: CREDIT_PACKS_ON_SALE
+        ? "One credit buys one finished piece of work, including the next referral request. Purchased credits never expire."
+        : "One credit buys one finished piece of work, including the next referral request.",
+      cta: CREDIT_PACKS_ON_SALE ? { label: "Add credits", href: creditsHref } : null,
       alt: "dismiss",
     });
   }
@@ -68,7 +74,7 @@ export function UpgradeMoments({ moments }: { moments: Moment[] }) {
     <span className="eyebrow">SHOWN ONLY WHEN A LIMIT IS HIT</span>
     <h2>Upgrade moments</h2>
     <div className="moment-grid">{visible.map(moment => <article key={moment.id} className="moment-card"><Bell /><span className="mini-ghost">{moment.trigger}</span><h3>{moment.title}</h3><p>{moment.copy}</p><div className="moment-actions">
-      <ActionLink action={moment.cta} className="mini-btn" />
+      {moment.cta ? <ActionLink action={moment.cta} className="mini-btn" /> : null}
       {moment.alt === "dismiss"
         ? <button type="button" className="mini-ghost" onClick={() => setDismissed(current => [...current, moment.id])}>{moment.id === "slots" ? "I'll wait" : "Dismiss"}</button>
         : <ActionLink action={moment.alt} className="mini-ghost" />}

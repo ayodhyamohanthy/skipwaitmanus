@@ -10,7 +10,7 @@ import type { CreditsLedger } from "@shared/creditLedger";
 import Plans from "./Plans";
 
 const { openedCheckout, authState, getToken } = vi.hoisted(() => ({ openedCheckout: vi.fn(), authState: { isSignedIn: true }, getToken: vi.fn(async () => "test-token") }));
-// Packs-on-sale paths: the flag is mocked on here; creditPacksOffSale.test.tsx pins the shipped (off) state.
+// Packs-on-sale paths: the flag is mocked on here; creditPacksOnSale.test.tsx pins the shipped (on) state and creditPacksOffSale.test.tsx the switched-off path.
 vi.mock("@shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("@shared/planCatalog")>()), CREDIT_PACKS_ON_SALE: true }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, getToken, openSignIn: vi.fn() }) }));
 vi.mock("wouter", () => ({ Link: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => <a href={href} className={className}>{children}</a> }));
@@ -134,6 +134,18 @@ describe("Plans on live data", () => {
     expect(await screen.findByText("Renewal is off")).toBeTruthy();
     expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.objectContaining({ method: "POST" }));
     expect(openedCheckout).not.toHaveBeenCalled();
+  });
+
+  // Review round 2: a cancel request that never reaches SkipWait shows the plain network
+  // message, never the browser's raw "Failed to fetch".
+  it("says plainly when cancel renewal cannot reach SkipWait", async () => {
+    stub(start, url => { if (url.includes("/subscription-cancel")) throw new TypeError("Failed to fetch"); return undefined; });
+    render(<Plans />);
+    const card = (await screen.findByRole("heading", { name: "Start", level: 2 })).closest("article") as HTMLElement;
+    fireEvent.click(within(card).getByRole("button", { name: "Cancel renewal" }));
+    fireEvent.click(within(card).getByRole("button", { name: "Yes, cancel renewal" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("We couldn’t reach SkipWait. Check your connection and try again.");
+    expect(within(card).getByText("Your current plan is active")).toBeTruthy();
   });
 
   it("reads a stale Pro or Max summary as Free: no plan card, no cancel, no retired name", async () => {

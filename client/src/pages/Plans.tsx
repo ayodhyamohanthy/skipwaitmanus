@@ -9,7 +9,7 @@ import { Button } from "@/components/kit/button";
 import { alternatePaymentRoute, browserPaymentRoute, paymentRouteDetails, type PaymentRoute } from "@/lib/paymentRoute";
 import { readApiJson } from "@/lib/apiResponse";
 import { applySeo } from "@/lib/seo";
-import { parseSummary, type CreditSummary } from "@/components/plans/billingApi";
+import { failureMessage, parseSummary, type CreditSummary } from "@/components/plans/billingApi";
 import { CreditCta, CreditsSection, UsagePanel } from "@/components/plans/PlansCredits";
 import { FairBand, PlansReference } from "@/components/plans/PlansReference";
 import { PlanCards } from "@/components/plans/PlanCards";
@@ -75,7 +75,7 @@ export default function Plans() {
       if (!response.ok) throw new Error(payload.error || "We could not schedule your cancellation");
       setSummary(current => current ? { ...current, subscriptionStatus: "non_renewing", subscriptionCurrentTermEnd: payload.currentTermEnd ?? current.subscriptionCurrentTermEnd } : current);
     } catch (reason) {
-      setCancelError(reason instanceof Error && reason.message ? reason.message : "We could not schedule your cancellation");
+      setCancelError(failureMessage(reason, "We could not schedule your cancellation"));
     } finally {
       setCancelling(false);
     }
