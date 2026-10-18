@@ -88,6 +88,8 @@ IDs are unique and never reused: immediately before committing a new entry, fetc
 Standing constraints recorded earlier in `AGENTS.md` (identity/canonical person, no real-money QA, Kit v4 visual contract in `DESIGN.md`, Azure MySQL ownership checks, deploy gates) remain active decisions.
 
 ## Open owner questions (nothing is built until answered here)
+**Level-based referral pricing and seniority matching (owner idea, Oct 18 — research in progress).** Owner, verbatim: "higher referral fee to reach out to higher executives in same level as job level ... plans for these levels junior to mid, mid to senior, senior to c suite ... rightly priced as they earn high and will be matched high. we should handle this matching". Under evaluation by a cited price-intelligence study (India and global market prices, salary bands, matching feasibility, unit economics). Constraints it must meet: price follows the job, never a better place for the same job (D-006/D-040); referrers stay unpaid (D-055); D-056's pricing freeze applies unless the owner lifts it. Nothing is built until the owner rules on the proposal.
+
 D-012 amendment check: answered Oct 15 — see D-021.
 
 Goal-alignment proposal (Oct 14, `docs/GOAL_ALIGNMENT_AUDIT_2026-10-14.md`; answered: D-012..D-015). Still open: uncovered asks reserving credits (B1.5) — answered by D-034 · launch-company commitments · amend AGENTS invariants 3 and 4 · retire the AGENTS.md:35 autonomy clause · D-006 scope for employer placement and talent unlocks — answered by D-040 · analytics tool — answered by D-054 · referrer sign-in model · closing PRs #115/#47 after recording Playbook §0.3/§1.1/§4.9 · closing stale PRs #129/#130/#131.
