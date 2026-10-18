@@ -2126,16 +2126,18 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
  * Returns a reserved referral credit to its bucket. Identical math to a
  * withdraw (purchased balance +1; same-cycle monthly allowance +1 capped;
  * old-cycle monthly converts to nothing) — only the ledger kind differs so
- * the cause stays auditable. Throws when the wallet is missing while a debit
- * exists, exactly like a withdraw.
+ * the cause stays auditable. The reversal row records the credits that
+ * actually came back, so a full allowance logs 0 like an ended cycle. Throws
+ * when the wallet is missing while a debit exists, exactly like a withdraw.
  */
 async function refundReferralDebitTx(tx: any, input: { userId: number; requestId: number; debit: { id: number; source: string | null; sourceCycleKey: string | null }; wallet: { id: number; balance: number; monthlyCreditsRemaining: number; monthlyAllowance: number; monthlyCycleKey: string | null }; kind: "withdrawal_refund" | "expiry_refund" }) {
   const { userId, requestId, debit, wallet, kind } = input;
   const patch: { balance: number; monthlyCreditsRemaining: number } = { balance: wallet.balance, monthlyCreditsRemaining: wallet.monthlyCreditsRemaining };
   if (debit.source === "purchased_balance") patch.balance += 1;
   else if (debit.source === "monthly_allowance" && debit.sourceCycleKey === wallet.monthlyCycleKey) patch.monthlyCreditsRemaining = Math.min(wallet.monthlyAllowance, patch.monthlyCreditsRemaining + 1);
+  const returned = patch.balance - wallet.balance + (patch.monthlyCreditsRemaining - wallet.monthlyCreditsRemaining);
   await tx.update(tokenBalances).set(patch).where(eq(tokenBalances.id, wallet.id));
-  await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: debit.source === "monthly_allowance" && debit.sourceCycleKey !== wallet.monthlyCycleKey ? 0 : 1, kind, source: debit.source, sourceCycleKey: debit.sourceCycleKey, referenceType: "referral_request", referenceId: String(requestId), reversesTransactionId: debit.id, balanceAfter: patch.balance, monthlyCreditsAfter: patch.monthlyCreditsRemaining });
+  await tx.insert(tokenTransactions).values({ userId, role: "job_seeker", tokenCount: returned, kind, source: debit.source, sourceCycleKey: debit.sourceCycleKey, referenceType: "referral_request", referenceId: String(requestId), reversesTransactionId: debit.id, balanceAfter: patch.balance, monthlyCreditsAfter: patch.monthlyCreditsRemaining });
   return patch;
 }
 
@@ -2193,6 +2195,19 @@ async function creditSummaryAfterRefundTx(tx: any, wallet: WalletRow, now: Date)
   return creditSummaryTx(tx, { wallet, grants, promo, now });
 }
 
+/** What a pre-ledger reserved credit did on expiry: nothing to settle now (a free ask, or a debit already reversed), back on the balance, or kept out by an ended monthly cycle or a full monthly allowance. */
+type LegacyExpiryRefund = "none" | "returned" | "cycle_ended" | "allowance_full";
+
+/** The seeker's notice for an expired ask on the pre-ledger path. It names only what moved; every expired ask frees its slot. */
+function legacyExpiryNotice(lead: string, refund: LegacyExpiryRefund): { title: string; body: string } {
+  switch (refund) {
+    case "returned": return { title: "Your ask expired — credit returned", body: `${lead} Your reserved credit is back on your balance; send a fresh ask anytime.` };
+    case "cycle_ended": return { title: "Your ask expired", body: `${lead} The credit came from a bucket that has since ended, so it could not be returned; send a fresh ask anytime.` };
+    case "allowance_full": return { title: "Your ask expired", body: `${lead} Your monthly credits are already full, so this one could not be added back; send a fresh ask anytime.` };
+    case "none": return { title: "Your ask expired — slot freed", body: `${lead} Its open slot is free again; send a fresh ask anytime.` };
+  }
+}
+
 /**
  * Expires one stale ask: unclaimed pending past ASK_TTL_DAYS transitions to
  * "closed", freeing its open slot; an ask that reserved a credit before asks
@@ -2241,16 +2256,15 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
     if (debit?.source && !wallet) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
     const existing = debit ? (await tx.select({ id: tokenTransactions.id }).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId, debit.id)).limit(1))[0] : undefined;
     let creditSummary;
-    let creditReturned = false;
+    let refund: LegacyExpiryRefund = "none";
     if (debit?.source && wallet && !existing) {
       const patch = await refundReferralDebitTx(tx, { userId, requestId, debit, wallet, kind: "expiry_refund" });
       creditSummary = creditSummaryFromWallet({ ...wallet, ...patch });
-      creditReturned = patch.balance > wallet.balance || patch.monthlyCreditsRemaining > wallet.monthlyCreditsRemaining;
+      refund = patch.balance > wallet.balance || patch.monthlyCreditsRemaining > wallet.monthlyCreditsRemaining ? "returned" : debit.source === "monthly_allowance" && debit.sourceCycleKey === wallet.monthlyCycleKey ? "allowance_full" : "cycle_ended";
     } else if (wallet) creditSummary = creditSummaryFromWallet(wallet);
-    // Only an ask that reserved a credit (before asks became free) has one to return; every expired ask frees its slot.
-    const notification = debit?.source ? { userId, title: "Your ask expired — credit returned", body: `${lead} Your reserved credit is back on your balance; send a fresh ask anytime.` } : { userId, title: "Your ask expired — slot freed", body: `${lead} Its open slot is free again; send a fresh ask anytime.` };
+    const notification = { userId, ...legacyExpiryNotice(lead, refund) };
     const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize, patch: release, notification });
-    return released({ expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary }, creditReturned);
+    return released({ expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary }, refund === "returned");
   });
 }
 
