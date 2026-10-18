@@ -81,6 +81,11 @@ export function summariseRecordedRefunds(records: ReadonlyArray<{ id: number; re
   return new Map(Array.from(byPayment, ([paymentId, entry]) => [paymentId, { count: entry.events.size, latestAmount: entry.amount, latestCurrency: entry.currency }]));
 }
 
+/** Whether this refund event was already handled for this payment: a replay of a refund recorded before the payment was credited must not count again. */
+export async function refundEventRecordedTx(tx: LedgerTx, paymentId: number, eventId: string): Promise<boolean> {
+  return (await readPaymentRefundHistoryTx(tx, paymentId)).refunds.some(refund => refund.eventId === eventId);
+}
+
 /** How much of these refunds provably went back in this currency (an unreadable or other-currency refund counts for nothing). */
 function refundedIn(currency: string, refunds: readonly RecordedRefund[]): number {
   return refunds.reduce((total, refund) => total + (refund.refundAmount && refund.refundCurrency === currency ? refund.refundAmount : 0), 0);

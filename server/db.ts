@@ -53,7 +53,7 @@ import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
 import { PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome, type RefundReviewReason } from "../shared/paymentReview";
-import { settleRefundOfNonCreditedPaymentTx, summariseRecordedRefunds } from "./paymentRefundEvents";
+import { refundEventRecordedTx, settleRefundOfNonCreditedPaymentTx, summariseRecordedRefunds } from "./paymentRefundEvents";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
@@ -3593,6 +3593,8 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
     if (!row) return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
     // Not credited: the refund is recorded once per event and decides what the review may do next; no credit moves there.
     if (row.status !== "credited") return settleRefundOfNonCreditedPaymentTx(tx, row, { eventId: input.eventId, invoiceId, refundAmount: input.refundAmount, currency: input.currency });
+    // A replay of a refund recorded while the payment waited for its credit (the admin then added the pack) is not a new refund.
+    if (await refundEventRecordedTx(tx, row.id, input.eventId)) return { status: "duplicate" as const, paymentId: row.id };
     const park = async (reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_amount_unreadable") => {
       await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
       await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: "billing.refund_needs_review", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ reason, eventId: input.eventId, invoiceId, refundAmount: input.refundAmount ?? null, refundCurrency: input.currency ?? null, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount }) });

@@ -87,6 +87,9 @@ describe("applyChargebeePaymentRefund invariants (source contract, like the othe
     expect(handoff).toBeGreaterThan(body.indexOf('.for("update")'));
     expect(handoff).toBeLessThan(body.indexOf("tx.select().from(tokenBalances)"));
     expect(events).toContain('if (history.refunds.some(refund => refund.eventId === event.eventId)) return { status: "duplicate", paymentId: row.id };');
+    // A credited payment checks the same record first, so a replayed refund from before its credit never counts again.
+    expect(body.indexOf("if (await refundEventRecordedTx(tx, row.id, input.eventId)) return")).toBeGreaterThan(handoff);
+    expect(body.indexOf("if (await refundEventRecordedTx(tx, row.id, input.eventId)) return")).toBeLessThan(body.indexOf("tx.select().from(tokenBalances)"));
     // Nothing on that path moves a credit: it never touches the wallet or the ledger.
     expect(events).not.toMatch(/tokenBalances|tokenTransactions/);
   });

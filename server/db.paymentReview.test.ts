@@ -270,6 +270,18 @@ describe("a refund of a payment still waiting for its credit", () => {
     await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "credited")).rejects.toMatchObject(REFUSED);
   });
 
+  it("a refund recorded before the credit and replayed after the admin added the pack is a duplicate, not a new refund", async () => {
+    awaitingRefund();
+    expect(await refund({ refundAmount: PAID - CHECKOUT })).toMatchObject({ reason: "refund_not_full_before_credit" });
+    await creditsOnce();
+    const credited = structuredClone(db);
+    expect(await refund({ refundAmount: PAID - CHECKOUT })).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(db).toEqual(credited);
+    // A refund Chargebee makes after the credit is new, and the credited payment's policy applies.
+    expect(await refund({ eventId: "evt_refund_2", refundAmount: 1000 })).toMatchObject({ status: "review", reason: "refund_partial" });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_partial" });
+  });
+
   it("without a record of what was paid, no refund is treated as full", async () => {
     awaitingRefund([]);
     expect(await refund({ refundAmount: 50000 })).toMatchObject({ status: "review", reason: "refund_not_full_before_credit" });
