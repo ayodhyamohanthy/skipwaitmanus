@@ -45,6 +45,7 @@ import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } f
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskShelfLife, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks } from "./heldAsk";
+import { blockedCounterpartsFailOpen } from "./blockedPairs";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
@@ -1485,8 +1486,10 @@ export async function saveVerifiedWorkEmail(userId: number, email: string) {
   await db.insert(profiles).values({ userId, accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true } });
   const newlyVerifiedForDomain = previous[0]?.workEmailDomain !== domain || !previous[0]?.workEmailVerifiedAt;
   if (newlyVerifiedForDomain) {
-    const waitingRequests = await db.select({ requestId: referralRequests.id }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, domain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
-    for (const request of waitingRequests) await db.insert(notifications).values({ kind: "ask_new", userId, category: "referral", title: "A private referral request is waiting", body: `A candidate has asked for help at ${domain}. Review it only if you choose to help.` });
+    const waitingRequests = await db.select({ requestId: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, domain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
+    // P0-block-delivery: no notice for an ask from a seeker blocked with this employee (either way); fail-open (server/blockedPairs.ts).
+    const blockedSeekers = await blockedCounterpartsFailOpen(db, userId, waitingRequests.map(request => request.jobSeekerId), "work_email_waiting_asks");
+    for (const request of waitingRequests.filter(row => !blockedSeekers.has(row.jobSeekerId))) await db.insert(notifications).values({ kind: "ask_new", userId, category: "referral", title: "A private referral request is waiting", body: `A candidate has asked for help at ${domain}. Review it only if you choose to help.` });
   }
   return getProfileByUserId(userId);
 }
@@ -1802,10 +1805,15 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
     const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
     const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));const coverageStatus=companyCoverageStatus(eligible.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    // P0-block-delivery: one lookup over everyone this ask could reach (fail-open, server/blockedPairs.ts). Anyone
+    // blocked with the seeker (either way) is never told and gets no review link; a blocked poster gets no first look.
+    // Coverage still counts every eligible employee, so the ask's status never reveals a block.
+    const blockedWithSeeker=await blockedCounterpartsFailOpen(tx,userId,eligible.map(employee=>employee.userId),"ask_create_delivery");
+    const reachable=eligible.filter(employee=>!blockedWithSeeker.has(employee.userId));
     // D-022: an ask written from a post goes to the poster alone for 48 hours
     // while they still count as an open referrer; otherwise it opens to the team.
     const firstLookCandidate=opportunity?await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs}):null;
-    const firstLook=firstLookCandidate?eligible.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
+    const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
     const firstLookUntil=firstLook&&firstLookCandidate?firstLookCandidate.until:null;
     const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
     const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint,opportunityId:opportunity?.id??null,firstLookReferrerId:firstLook?.userId??null,firstLookUntil});const requestId=Number(requestResult[0].insertId);
@@ -1822,7 +1830,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     // D-022 first look: only the poster is told while their 48 hours run; every
     // other eligible employee is told when the first look lapses (the sweep).
-    const notified=firstLook?[firstLook]:eligible;
+    const notified=firstLook?[firstLook]:reachable;
     for(const employee of notified){
       await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
@@ -1914,7 +1922,7 @@ export async function getActiveReferrerSlackWebhooks(referrerIds: number[]) {
 
 export async function prepareReferrerReviewEmailNotifications(requestId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
+  const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
   const current = request[0]; if (!current || current.status !== "pending") return [];
   const recipients = await db.select({ userId: profiles.userId, email: users.email, workEmailDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, notifyNewAsk: profiles.notifyNewAsk }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const passes = await db.select({ referrerId: referralRequestPasses.referrerId }).from(referralRequestPasses).where(eq(referralRequestPasses.referralRequestId, requestId));
@@ -1922,7 +1930,9 @@ export async function prepareReferrerReviewEmailNotifications(requestId: number)
   // D-022: while the poster's 48-hour first look runs, no one else is emailed or Slacked.
   const prepNowMs = Date.now();
   const eligible = recipients.filter(recipient => !recipient.paused && recipient.notifyNewAsk !== false && !passed.has(recipient.userId) && !firstLookExcludesViewer(current, recipient.userId, prepNowMs) && (!current.referrerId || recipient.userId === current.referrerId) && recipient.workEmailDomain === current.companyDomain && isVerifiedEmployeeOfCompany(recipient, current.companyDomain));
-  const links=await createReferrerReviewEmailLinks(requestId, eligible.map(recipient => ({ userId: recipient.userId, email: recipient.email, companyDomain: current.companyDomain })));
+  // P0-block-delivery: no link, delivery row, email or Slack for an employee blocked with the seeker (either way); fail-open (server/blockedPairs.ts).
+  const blockedWithSeeker = await blockedCounterpartsFailOpen(db, current.jobSeekerId, eligible.map(recipient => recipient.userId), "review_email_delivery");
+  const links=await createReferrerReviewEmailLinks(requestId, eligible.filter(recipient => !blockedWithSeeker.has(recipient.userId)).map(recipient => ({ userId: recipient.userId, email: recipient.email, companyDomain: current.companyDomain })));
   const pending=await db.select({referrerId:referralReviewDeliveries.referrerId,status:referralReviewDeliveries.status}).from(referralReviewDeliveries).where(and(eq(referralReviewDeliveries.referralRequestId,requestId),eq(referralReviewDeliveries.channel,"email"),eq(referralReviewDeliveries.grantVersion,1)));
   const deliverable=new Set(pending.filter(row=>row.status!=="sent"&&row.status!=="revoked").map(row=>row.referrerId));return links.filter(link=>deliverable.has(link.referrerId));
 }
@@ -2299,7 +2309,10 @@ export async function releaseFirstLookForRequest(requestId: number, nowMs: numbe
     if (Number(cleared[0]?.affectedRows ?? 0) !== 1) throw new Error("The first look could not be released");
     // Mirror creation's eligible set minus the poster and anyone who already passed on the ask.
     const employees = await tx.select({ userId: profiles.userId, email: users.email, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, passedByYou: referralRequestPasses.id }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, requestId), eq(referralRequestPasses.referrerId, profiles.userId))).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
-    const recipients = employees.filter(employee => isVerifiedEmployeeOfCompany(employee, current.companyDomain) && employee.userId !== posterId && !employee.passedByYou);
+    const colleagues = employees.filter(employee => isVerifiedEmployeeOfCompany(employee, current.companyDomain) && employee.userId !== posterId && !employee.passedByYou);
+    // P0-block-delivery: nobody blocked with the seeker (either way) is told; fail-open (server/blockedPairs.ts).
+    const blockedWithSeeker = await blockedCounterpartsFailOpen(tx, request.jobSeekerId, colleagues.map(employee => employee.userId), "first_look_release");
+    const recipients = colleagues.filter(employee => !blockedWithSeeker.has(employee.userId));
     for (const employee of recipients) {
       const eventKey = `first_look_released:${requestId}:${employee.userId}`.slice(0, 120);
       await tx.insert(notifications).values({ kind: "ask_new", userId: employee.userId, category: "referral", title: `A referral request is open at ${current.companyDomain}`, body: "The poster's 48-hour head start on this request lapsed. Review it only if you choose to help.", eventKey }).onDuplicateKeyUpdate({ set: { eventKey } });
@@ -2361,6 +2374,9 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   return rows.map(row => ({ ...row, heldForReferrer: held.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? "waiting_for_coverage" as const : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
+/** Blocked asks one opening may step past before it stops; the rest wait for the next opening or another employee. */
+const MAX_BLOCKED_QUEUE_SKIPS = 50;
+
 export async function openCompanyReferralAvailability(userId: number, input: { slotCount?: number }) {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before opening referral capacity");
@@ -2369,11 +2385,17 @@ export async function openCompanyReferralAvailability(userId: number, input: { s
   const companyDomain = profile.workEmailDomain;
   return db.transaction(async tx => {
     const allocatedRequestIds: number[] = [];
+    // P0-block-delivery: an ask whose seeker is blocked with this referrer (either way) is skipped. It stays waiting
+    // for other employees, and neither a slot nor an attempt is spent on it. Fail-open (server/blockedPairs.ts).
+    const skipped = new Set<number>();
     let attempts = 0;
-    while (allocatedRequestIds.length < slotCount && attempts < slotCount * 4) {
-      attempts += 1;
-      const candidate = await tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, companyDomain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), eq(referralRequests.waitingForCoverage, true))).orderBy(asc(referralRequests.coverageQueuedAt), asc(referralRequests.id)).limit(1);
+    while (allocatedRequestIds.length < slotCount && attempts < slotCount * 4 && skipped.size < MAX_BLOCKED_QUEUE_SKIPS) {
+      // Skipped asks keep their place at the head of the queue, so one more row than were skipped always reaches the next one.
+      const queued = await tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, companyDomain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), eq(referralRequests.waitingForCoverage, true))).orderBy(asc(referralRequests.coverageQueuedAt), asc(referralRequests.id)).limit(skipped.size + 1);
+      const candidate = queued.filter(row => !skipped.has(row.id)).slice(0, 1);
       if (!candidate[0]) break;
+      if ((await blockedCounterpartsFailOpen(tx, userId, [candidate[0].jobSeekerId], "queue_allocation")).has(candidate[0].jobSeekerId)) { skipped.add(candidate[0].id); continue; }
+      attempts += 1;
       const allocation = await tx.update(referralRequests).set({ referrerId: userId, waitingForCoverage: false, coverageQueuedAt: null }).where(and(eq(referralRequests.id, candidate[0].id), isNull(referralRequests.referrerId), eq(referralRequests.waitingForCoverage, true)));
       if (Number(allocation[0].affectedRows) !== 1) continue;
       await tx.insert(referralAvailabilitySlots).values({ referrerId: userId, companyDomain, referralRequestId: candidate[0].id, status: "allocated", activeRequestKey: `request:${candidate[0].id}` });

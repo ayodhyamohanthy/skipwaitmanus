@@ -6,7 +6,7 @@ import {
   promoCreditGrants, planCreditGrants, referralAttachments, referralAvailabilitySlots,
   referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves,
   referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks,
-  tokenBalances, tokenTransactions, users,
+  tokenBalances, tokenTransactions, userBlocks, users,
 } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { OPPORTUNITY_FIRST_LOOK_MS, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
@@ -31,9 +31,10 @@ import { listLapsedFirstLooks } from "./firstLookRelease";
  * onDuplicateKeyUpdate, transaction).
  */
 
-const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
+const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn(), capture: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
+vi.mock("./sentry", async importOriginal => ({ ...(await importOriginal<typeof import("./sentry")>()), captureServerError: mocks.capture }));
 
 const dialect = new MySqlDialect();
 const NOW = Date.parse("2026-10-16T12:00:00.000Z");
@@ -45,12 +46,14 @@ const COLLEAGUE = 10;
 const URL_ = "https://careers.acme.com/jobs/123";
 
 type Row = Record<string, unknown>;
-const TABLES = [tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants, jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, companyOpportunities, users, canonicalPeople, operationalActivityLogs];
+const TABLES = [tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants, jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, companyOpportunities, users, canonicalPeople, operationalActivityLogs, userBlocks];
 const TABLE_BY_NAME = new Map(TABLES.map(table => [getTableName(table), table]));
 const COLUMNS_BY_NAME = new Map(TABLES.map(table => [getTableName(table), Object.keys(getTableColumns(table))]));
 
 let rows: Record<string, Row[]>;
 let sequence: Record<string, number>;
+/** When true, every read of userBlocks throws like a missing table (the fail-open case). */
+let failBlockReads = false;
 
 const tableNameOf = (table: unknown) => getTableName(table as never);
 const bucket = (table: unknown) => (rows[tableNameOf(table)] ??= []);
@@ -234,7 +237,7 @@ function fixtureDatabase() {
     };
     const slice = (n: number) => run().slice(0, n);
     const chain = {
-      from: (table: unknown) => { state.from = table; return chain; },
+      from: (table: unknown) => { if (failBlockReads && table === userBlocks) throw Object.assign(new Error("Table 'userBlocks' doesn't exist"), { code: "ER_NO_SUCH_TABLE" }); state.from = table; return chain; },
       innerJoin: (table: unknown, on: unknown) => { state.joins.push({ table, on, kind: "inner" }); return chain; },
       leftJoin: (table: unknown, on: unknown) => { state.joins.push({ table, on, kind: "left" }); return chain; },
       where: (condition: unknown) => { state.where = condition; return chain; },
@@ -318,8 +321,10 @@ function seed() {
     referralReviewDeliveries: [],
     notifications: [],
     operationalActivityLogs: [],
+    userBlocks: [],
   };
   sequence = {};
+  failBlockReads = false;
 }
 
 beforeEach(() => {
@@ -400,6 +405,63 @@ describe("an ask written from a post", () => {
     expect(replay).toMatchObject({ replayed: true, fromPost: true, firstLook: true, notifiedEmployees: 0 });
     expect(rows.jobs).toHaveLength(1);
     expect(rows.notifications).toEqual([]);
+  });
+});
+
+describe("P0-block-delivery: a block on the create path", () => {
+  const blockPair = (blocker: number, blocked: number) => { rows.userBlocks.push({ id: rows.userBlocks.length + 1, blockerUserId: blocker, blockedUserId: blocked, reason: null, createdAt: new Date(NOW) }); };
+  const sendPlain = () => createCompanyReferralRequest(SEEKER, { targetRoleUrl: URL_, personalPitch: "I shipped the approvals redesign this role describes.", attachmentIds: [41], idempotencyKey: "plain-ask-key-0001" });
+  const recipients = (table: Row[]) => table.map(row => row.userId ?? row.referrerId).sort((a, b) => Number(a) - Number(b));
+  const DIRECTIONS = [
+    ["the poster blocked the seeker", POSTER, SEEKER],
+    ["the seeker blocked the poster", SEEKER, POSTER],
+  ] as const;
+  beforeEach(() => { mocks.capture.mockClear(); vi.spyOn(console, "warn").mockImplementation(() => undefined); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it.each(DIRECTIONS)("tells only the unblocked colleague about a plain ask when %s, and the ask still costs its one credit", async (_label, blocker, blocked) => {
+    blockPair(blocker, blocked);
+    const result = await sendPlain();
+    expect(result).toMatchObject({ coverageStatus: "covered", notifiedEmployees: 1, firstLook: false, fastTrack: false, replayed: false });
+    expect(recipients(rows.notifications)).toEqual([COLLEAGUE]);
+    expect(recipients(rows.referrerReviewEmailLinks)).toEqual([COLLEAGUE]);
+    expect(recipients(rows.referralReviewDeliveries)).toEqual([COLLEAGUE]);
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+  });
+
+  it.each(DIRECTIONS)("gives a blocked poster no first look when %s: the ask opens to the colleagues at once", async (_label, blocker, blocked) => {
+    blockPair(blocker, blocked);
+    const result = await sendWithPost();
+    expect(result).toMatchObject({ fromPost: true, firstLook: false, notifiedEmployees: 1 });
+    expect(insertedRequest()).toMatchObject({ opportunityId: 55, firstLookReferrerId: null, firstLookUntil: null });
+    expect(recipients(rows.notifications)).toEqual([COLLEAGUE]);
+    expect(String(rows.notifications[0].body)).toContain("A Job Seeker shared a role at acme.com");
+    expect(recipients(rows.referrerReviewEmailLinks)).toEqual([COLLEAGUE]);
+  });
+
+  it("keeps the ask covered when every employee is blocked, so its status never reveals a block", async () => {
+    blockPair(POSTER, SEEKER);
+    blockPair(SEEKER, COLLEAGUE);
+    const result = await sendPlain();
+    expect(result).toMatchObject({ coverageStatus: "covered", notifiedEmployees: 0 });
+    expect(rows.notifications).toEqual([]);
+    expect(rows.referrerReviewEmailLinks).toEqual([]);
+    expect(rows.referralRequests[0]).toMatchObject({ waitingForCoverage: false, referrerId: null });
+  });
+
+  it("ignores blocks with other people", async () => {
+    blockPair(POSTER, 99);
+    blockPair(98, COLLEAGUE);
+    expect(await sendPlain()).toMatchObject({ notifiedEmployees: 2 });
+    expect(recipients(rows.notifications)).toEqual([POSTER, COLLEAGUE]);
+  });
+
+  it("fails open when the block lookup fails: the ask goes out as before and the failure is reported", async () => {
+    blockPair(POSTER, SEEKER);
+    failBlockReads = true;
+    expect(await sendWithPost()).toMatchObject({ firstLook: true, notifiedEmployees: 1 });
+    expect(recipients(rows.notifications)).toEqual([POSTER]);
+    expect(mocks.capture).toHaveBeenCalledWith(expect.objectContaining({ code: "ER_NO_SUCH_TABLE" }), expect.objectContaining({ area: "ask_create_delivery" }));
   });
 });
 
