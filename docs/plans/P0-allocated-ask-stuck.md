@@ -37,7 +37,7 @@ A waiting ask that D-034 delivers to one referrer (or an ask a referrer received
 5. `server/planGates.ts` `openAskCondition`: an assigned ask holds its slot while `assignedAskNotHeldCondition()` is true, and that SQL treats "an `allocated` slot exists" as not held. So an allocated ask holds the seeker's open slot forever.
 6. `claimCompanyReferralRequest` (about 2745): the late-claim guard for an assigned ask is `isPastAskShelfLife(current.request.createdAt, …) && heldForReferrerTx(…) !== null`. That is creation-based, and allocated asks never pass it, so the allocated referrer can claim at any age.
 7. `listCompanyReferralInboxByState` (about 2053): `listStaleHeldForViewer` (`server/heldAsk.ts`) decides which assigned rows are stale. It uses `isPastAskShelfLife(row.createdAt)` and excludes allocated asks, so a stale allocated ask stays in the referrer's "new" tab (`isQueueAllocationForYou`).
-8. `listJobSeekerCompanyReferrals` (about 2443) sets `heldForReferrer` from `listHeldForReferrerIds`, which excludes allocated asks. The client shows Withdraw only when `referrerId === null || heldForReferrer === true`: `client/src/components/requests/requestModel.ts:18` `canWithdrawRequest`, and `client/src/components/thread/ThreadDecisionPanels.tsx:50`.
+8. `listJobSeekerCompanyReferrals` (about 2443) sets `heldForReferrer` from `listHeldForReferrerIds`, which excludes allocated asks. The client shows Withdraw only when `referrerId === null || heldForReferrer === true`: the thread's `client/src/components/thread/ThreadDecisionPanels.tsx:50` (My asks moved to `client/src/pages/goal/myAsksModel.ts` under D-079 and already honours `unclaimedAssignment`).
 9. A withdraw or expiry already frees every slot the ask holds: `transitionReferralRequestTx` calls `releaseAvailabilitySlotsTx` for `withdrawn` and `closed`. The refund paths already exist and are idempotent: `refundLedgerSpendTx` for ledger spends (D-034 delivery spends under `ask-delivery:<id>`) and `refundReferralDebitTx` for legacy debits.
 10. The expiry notice lead is `heldFor === null ? "No verified employee claimed it within 7 days." : "The employee whose link you used didn't respond within 7 days."`, and every release writes `personal_link_ask.released` (`recordHeldAskReleaseTx`).
 
@@ -69,7 +69,7 @@ A waiting ask that D-034 delivers to one referrer (or an ask a referrer received
   - `server/db.ts`, only these functions: `heldForReferrerTx`, `withdrawCompanyReferralRequest`, `expireStalePendingReferralRequest`, `claimCompanyReferralRequest` (the late-claim guard only), `listCompanyReferralInboxByState` (the stale-held call only), the seeker reconcile that calls `selectStaleHeldAsks`, and `listJobSeekerCompanyReferrals` (the held flag only);
   - `server/askExpirySweep.ts`;
   - `server/planGates.ts` (only via `assignedAskNotHeldCondition` in `server/heldAsk.ts`; edit `planGates.ts` only if its comment must change);
-  - `client/src/components/requests/requestModel.ts`, `client/src/components/requests/requestsApi.ts`, `client/src/lib/threadApi.ts`, `client/src/components/thread/ThreadDecisionPanels.tsx`;
+  - `client/src/lib/threadApi.ts`, `client/src/components/thread/ThreadDecisionPanels.tsx`. **Moved (D-079):** My asks is now `client/src/pages/goal/MyAsks.tsx`; `requestModel.ts` and `requestsApi.ts` are gone. The My asks half of §4.8 is already in place: `client/src/pages/goal/myAsksApi.ts` accepts `unclaimedAssignment` and `toAskView` in `client/src/pages/goal/myAsksModel.ts` treats it as withdrawable (test "an ask handed to one referrer who has not claimed it stays withdrawable" in `myAsksModel.test.ts`). On a modify/delete conflict for the two removed files, keep the deletion;
   - tests named in §7;
   - docs named in §9.
 - **Read only:** `shared/referral.ts` (`getAskShelfLifeEndsAtMs`, `isAskExpired`), `server/coverageDelivery.ts`, `transitionReferralRequestTx` and `releaseAvailabilitySlotsTx` in `server/db.ts`, `server/heldAsk.testkit.ts`, `server/inMemoryDrizzle.testkit.ts`.
@@ -96,8 +96,8 @@ A waiting ask that D-034 delivers to one referrer (or an ask a referrer received
    - `listJobSeekerCompanyReferrals`: set `heldForReferrer` from `personalLink`, and `unclaimedAssignment` from both sets.
 4. **Sweep.** `server/askExpirySweep.ts` passes `windows.visibleBefore` and `windows.heldBefore` to `selectStaleHeldAsks`. Keep `mergeHeldStaleAsks` fail-open, and keep the `listStale` argument shape `{ visibleBefore, waitingBefore, heldBefore }`, which `server/askExpirySweep.test.ts:11` pins.
 5. **Client.**
-   - `requestsApi.ts` and `threadApi.ts` schemas accept `unclaimedAssignment: z.boolean().optional()`.
-   - `canWithdrawRequest` and the `ThreadDecisionPanels.tsx` withdraw condition use §4.8.
+   - `threadApi.ts` accepts `unclaimedAssignment: z.boolean().optional()` (My asks' `myAsksApi.ts` already does, D-079).
+   - The `ThreadDecisionPanels.tsx` withdraw condition uses §4.8 (My asks' `toAskView` already does, D-079).
    - Copy is unchanged. Confirm with a test that the withdraw dialog for a delivered ask shows "It leaves the referrer's queue and frees your slot." and never "It never reached a verified employee".
 6. **Docs (same push, D-068).**
    - The §3b row: status and evidence.

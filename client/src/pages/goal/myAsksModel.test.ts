@@ -7,7 +7,7 @@ const fmt = (iso: string) => iso.slice(0, 10);
 const ask = (over: Partial<MyAsk>): MyAsk => ({
   id: 7, displayRef: "R-AAAAA", title: "Role from shared job link", targetRoleUrl: "https://example.com/careers/data-analyst", companyDomain: "example.com",
   companyName: "Example Co", companyInitials: "EC", jobFunction: "Data", status: "pending", referrerId: null, queueStatus: null, waitingForCoverage: false,
-  coverageVisibleAt: "2026-10-01T00:00:00.000Z", coverageHeldAt: null, heldForReferrer: false, unreadMessageCount: 0,
+  coverageVisibleAt: "2026-10-01T00:00:00.000Z", coverageHeldAt: null, heldForReferrer: false, unclaimedAssignment: false, unreadMessageCount: 0,
   createdAt: "2026-10-01T00:00:00.000Z", updatedAt: "2026-10-02T00:00:00.000Z", expiresAt: "2026-10-08T00:00:00.000Z", ...over,
 });
 const entry = (id: number, credits: number, refId: string): CreditLedgerEntry => ({ id, kind: credits < 0 ? "credit_spend" : "withdrawal_refund", credits, bucket: "cycle", reference: { type: "referral_request", id: refId }, createdAt: "2026-10-01T00:00:00.000Z" });
@@ -50,6 +50,10 @@ describe("toAskView: statuses, steps and honest money lines", () => {
 
   it("a personal-link ask its employee has not acted on stays withdrawable (D-050)", () => {
     expect(toAskView(ask({ referrerId: 9, heldForReferrer: true }), undefined, fmt).canWithdraw).toBe(true);
+  });
+
+  it("an ask handed to one referrer who has not claimed it stays withdrawable (P0-allocated-ask-stuck)", () => {
+    expect(toAskView(ask({ referrerId: 9, unclaimedAssignment: true }), undefined, fmt)).toMatchObject({ status: "waiting", canWithdraw: true });
   });
 
   it("accepted is neutral and referred is the only emerald status", () => {

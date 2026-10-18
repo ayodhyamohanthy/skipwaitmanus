@@ -72,7 +72,9 @@ export function toAskView(ask: MyAsk, ledger: AskLedger | undefined, formatDate:
   const changed = (label: string): AskView["date"] => ({ label, at: ask.updatedAt });
 
   if (ask.status === "pending") {
-    const unclaimed = !ask.referrerId || ask.heldForReferrer;
+    // Withdrawable while nobody has picked it up: no referrer, a personal-link ask its employee has not acted on
+    // (D-050), or an ask handed to one referrer who has not claimed it (P0-allocated-ask-stuck).
+    const unclaimed = !ask.referrerId || ask.heldForReferrer || ask.unclaimedAssignment;
     if (ask.queueStatus === "held_for_credit" || ask.coverageHeldAt) {
       return { ...base, status: "waiting", label: "Waiting", statusLine: "Waiting for a credit", stage: 0, terminal: null, section: "active", date: { label: "Sent", at: ask.createdAt }, canWithdraw: unclaimed, needsCredit: true,
         next: `A verified employee at ${company} can now see asks. Add a credit to send yours.`,

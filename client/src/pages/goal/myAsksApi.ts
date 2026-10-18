@@ -29,6 +29,9 @@ const askSchema = z.object({
   coverageVisibleAt: z.string().nullish().transform(value => value ?? null),
   coverageHeldAt: z.string().nullish().catch(null).transform(value => value ?? null),
   heldForReferrer: z.boolean().nullish().catch(null).transform(value => value === true),
+  // P0-allocated-ask-stuck: an ask handed to one referrer who has not claimed it stays withdrawable. Optional until
+  // the server sends it; absent or malformed reads as false (the server still decides every withdrawal).
+  unclaimedAssignment: z.boolean().nullish().catch(null).transform(value => value === true),
   unreadMessageCount: z.coerce.number().int().min(0).catch(0),
   createdAt: z.string(),
   updatedAt: z.string(),
