@@ -23,8 +23,8 @@ import { getAskShelfLifeEndsAtMs, isReferralProgressUpdateStatus, type ReferralP
 import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDirectoryEntry, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
-import type { OpenAskSlots } from "../shared/openAskSlots";
-import { OpenAskSlotCapError } from "./planGates";
+import { companyCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
+import { CompanyCapReachedError, OpenAskSlotCapError } from "./planGates";
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
@@ -761,6 +761,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (error instanceof OpenAskSlotCapError) {
         record({ actorUserId, action: "company_referral.slot_cap_reached", outcome: "denied", resourceType: "referral_request", metadata: { open: error.slots.open, cap: error.slots.cap, plan: error.slots.plan } });
         return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
+      }
+      // D-006 per-company fairness cap: refused before any side effect, same body shape on every plan.
+      if (error instanceof CompanyCapReachedError) {
+        record({ actorUserId, action: "company_referral.company_cap_reached", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain, metadata: { open: error.open, cap: error.cap } });
+        return res.status(409).json(companyCapReachedSchema.parse({ error: error.message, code: error.code, companyDomain: error.companyDomain, open: error.open, cap: error.cap }));
       }
       // P0-block-delivery: a personal link whose owner is blocked with the seeker answers exactly like an inactive link
       // (same 400 and words, so the block is not revealed); the denial is recorded like every other blocked request.

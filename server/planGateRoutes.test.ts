@@ -3,7 +3,8 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { openAskSlots, openAskSlotsSchema, slotCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
 import { resolvePlanEntitlements } from "../shared/planEntitlements";
-import { OpenAskSlotCapError } from "./planGates";
+import { companyCapReachedSchema } from "../shared/openAskSlots";
+import { CompanyCapReachedError, OpenAskSlotCapError } from "./planGates";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
 
 // Open-ask slots ride on the seeker's own requests and credits payloads, and the
@@ -47,6 +48,15 @@ describe("open-ask slot routes", () => {
     const body = slotCapReachedSchema.parse(response.body);
     expect(body).toEqual({ error: "All 3 slots are in use. Wait for an answer or withdraw an ask.", code: "slot_cap_reached", slots: full });
     expect(activity).toContainEqual(expect.objectContaining({ actorUserId: 11, action: "company_referral.slot_cap_reached", outcome: "denied", metadata: { open: 3, cap: 3, plan: "free" } }));
+  });
+
+  it("answers a send at the per-company cap with 409 and the typed body, and logs the refusal (D-006)", async () => {
+    const { app, activity } = setup({ createCompanyReferralRequest: async () => { throw new CompanyCapReachedError("wipro.com", 2); } });
+    const response = await send(app);
+    expect(response.status).toBe(409);
+    const body = companyCapReachedSchema.parse(response.body);
+    expect(body).toEqual({ error: "You already have 2 open asks at wipro.com. Wait for an answer or withdraw one before asking there again. This limit is the same on every plan.", code: "company_cap_reached", companyDomain: "wipro.com", open: 2, cap: 2 });
+    expect(activity).toContainEqual(expect.objectContaining({ actorUserId: 11, action: "company_referral.company_cap_reached", outcome: "denied", companyDomain: "wipro.com", metadata: { open: 2, cap: 2 } }));
   });
 
   it("returns the caller's slots with a created ask", async () => {
