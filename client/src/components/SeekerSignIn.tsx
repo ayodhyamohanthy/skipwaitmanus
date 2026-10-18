@@ -1,17 +1,18 @@
 import { ArrowRight, Mail } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Button } from "@/components/kit/button";
+import { safeSignInReturnTo } from "@shared/authReturnTo";
 
 /**
- * Job-seeker sign-in, fully on skipwait.me (no authkit.app screen). FOUNDER-LOCKED login rule, Oct 16 2026:
+ * Job-seeker sign-in, fully on skipwait.me (never the hosted WorkOS page). FOUNDER-LOCKED login rule, Oct 16 2026:
  * job seekers get personal email + every social login. Referrers never render this (see ReferrerOtpSignIn).
- * Social buttons go straight to the provider through /api/auth/workos/sign-in?provider=...; email uses a
+ * Social buttons go straight to the provider (seekerSocialUrl always names it); email uses a
  * six-digit code (/api/auth/workos/email-code/*), which also creates the account for a new person.
  */
 /**
- * Providers whose WorkOS connection completes sign-in in production. Microsoft, LinkedIn and Slack are hidden
- * (Oct 16 2026) because each provider app rejects WorkOS's callback URL (redirect_uri mismatch), so a click
- * ends on a provider error page. Re-add the id here once the provider app has the WorkOS redirect URI registered.
+ * Providers offered to seekers. All five render (re-verified Oct 16 2026: WorkOS redirects each one to the
+ * provider's own authorize page). Drop an id from WORKING_SOCIAL_IDS if a provider app stops accepting
+ * WorkOS's callback URL, so a click never ends on a provider error page.
  */
 const ALL_SOCIAL = [
   { id: "google", label: "Google", mark: "G" },
@@ -27,7 +28,9 @@ export function seekerSocialUrl(provider: string, returnTo: string): string {
   return `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo, provider })}`;
 }
 
-export function SeekerSignIn({ returnTo = "/explore" }: { returnTo?: string }) {
+export function SeekerSignIn({ returnTo: requestedReturnTo = "/explore" }: { returnTo?: string }) {
+  // Re-validated here so no caller can turn sign-in into an open redirect or a loop back to an auth page.
+  const returnTo = safeSignInReturnTo(requestedReturnTo, typeof window === "undefined" ? "https://skipwait.me" : window.location.origin) ?? "/explore";
   const [emailMode, setEmailMode] = useState(false);
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState("");

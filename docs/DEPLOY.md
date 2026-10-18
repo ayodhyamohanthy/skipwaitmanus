@@ -48,7 +48,7 @@ referrerSlackWebhooks.
 ## Post-deploy verification checklist
 
 - GET / → 200 with skipwait.me title
-- GET /api/auth/workos/sign-in → 302 to api.workos.com authorize
+- GET /api/auth/workos/sign-in → 302 to `/sign-in` (no provider: seekers never see the hosted WorkOS page, D-030/D-049); GET /api/auth/workos/sign-in?provider=google → 302 to api.workos.com authorize
 - GET /api/auth/workos/admin?email=<admin> → 302; other emails → 403
 - POST /api/work-email/otp/send with a session → 200/429/400 per state
 - Sign in end-to-end in a browser; verify /start renders the signed-in state

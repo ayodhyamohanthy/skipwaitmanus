@@ -5,16 +5,17 @@ import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
+import { safeSignInReturnTo } from "@shared/authReturnTo";
 
 type Intent = "seeker" | "referrer";
 
-/** Where each intent lands after AuthKit: the job search, or referrer setup (work-email verification). */
+/** Where each intent lands after signing in: the job search, or referrer setup (work-email verification). */
 const INTENT_RETURN_TO: Readonly<Record<Intent, string>> = { seeker: "/explore", referrer: "/referrer-setup" };
 
 /**
  * Kit v4 sign-in (app/src/components/sign-in-page.tsx), all on skipwait.me. Job seekers: SeekerSignIn (social
  * straight to the provider, email by six-digit code). Referrers: work-email OTP only. The intent switch picks
- * where the person lands afterwards.
+ * where the person lands afterwards; every app "Sign in" arrives here with a validated ?returnTo (signInPagePath).
  */
 /** Kit draws the legal names as plain muted text; they stay links, underlined only on hover or keyboard focus. */
 const legalLink = "hover:underline focus-visible:underline";
@@ -23,6 +24,8 @@ export default function SignIn() {
   const [intent, setIntent] = useState<Intent>(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("intent") === "referrer" ? "referrer" : "seeker"));
   // Where the work-email OTP lands the referrer (same-origin path only).
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
+  // Where a seeker lands: the page that sent them here when it is same-site and not an auth page, else the job search.
+  const seekerReturnTo = typeof window !== "undefined" ? safeSignInReturnTo(new URLSearchParams(window.location.search).get("returnTo"), window.location.origin) ?? INTENT_RETURN_TO.seeker : INTENT_RETURN_TO.seeker;
   return <main data-skipwait-screen="sign-in" className="auth-page">
     <section className="auth-story" aria-label="SkipWait introduction">
       <Link className="wordmark auth-wordmark" href="/">SkipWait<span className="brand-dot">.</span></Link>
@@ -43,7 +46,7 @@ export default function SignIn() {
         // FOUNDER-LOCKED (Oct 16 2026): referrers sign in with a work-email OTP only. No social, no personal email.
         ? <div className="auth-form" data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
         // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a six-digit code.
-        : <SeekerSignIn returnTo={INTENT_RETURN_TO.seeker} />}
+        : <SeekerSignIn returnTo={seekerReturnTo} />}
       {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to SkipWait? Enter your email and we’ll create your account.</p>}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. Referrals are free and never guarantee an interview.</p>
     </div></section>

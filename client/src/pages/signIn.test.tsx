@@ -59,6 +59,27 @@ describe("SignIn", () => {
     for (const name of ["LinkedIn", "Slack", "Microsoft"]) expect(screen.getByRole("button", { name: new RegExp(`Continue with ${name}`) })).toBeTruthy();
   });
 
+  it("honours a validated seeker returnTo and keeps the referrer returnTo handling", () => {
+    const assign = vi.fn();
+    vi.stubGlobal("location", { ...window.location, assign, search: "?returnTo=%2Fplans" });
+    render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+    expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-in?returnTo=%2Fplans&provider=google");
+    cleanup();
+    for (const unsafe of ["//evil.example", "https://evil.example", "/api/x", "/sign-in"]) {
+      vi.stubGlobal("location", { ...window.location, assign, search: `?${new URLSearchParams({ returnTo: unsafe })}` });
+      render(<SignIn />);
+      fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
+      expect(assign).toHaveBeenLastCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=google");
+      cleanup();
+    }
+    // The referrer branch still lands on its own safe path (work-email OTP only, no social).
+    vi.stubGlobal("location", { ...window.location, assign, search: "?intent=referrer&returnTo=%2Freferrer-home" });
+    render(<SignIn />);
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+  });
+
   it("ships no design-preview scaffolding", () => {
     render(<SignIn />);
     expect(screen.queryByText(/whole flow|design preview|preview/i)).toBeNull();

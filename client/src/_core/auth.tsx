@@ -4,7 +4,7 @@ import { setGlobalAccessToken } from "./accessToken";
 import { trpc } from "@/lib/trpc";
 import { identifyClarity } from "@/lib/clarity";
 import { smokeState } from "@/contexts/smokeRuntime";
-import { safeAuthReturnTo } from "@shared/authReturnTo";
+import { safeAuthReturnTo, signInPagePath } from "@shared/authReturnTo";
 
 /**
  * WorkOS AuthKit provider exposing the app's auth hook surface.
@@ -15,7 +15,9 @@ import { safeAuthReturnTo } from "@shared/authReturnTo";
  *
  * - useAuth()  -> { isLoaded, isSignedIn, userId, getToken, signOut, openSignIn }
  * - useUser()  -> { isLoaded, isSignedIn, user } (compat user shape)
- * - openSignIn routes to AuthKit; SignInButton navigates to AuthKit.
+ * - openSignIn and SignInButton open skipwait.me's own /sign-in page with a
+ *   validated returnTo (signInPagePath, D-030/D-049), never the hosted WorkOS
+ *   page. Referrer surfaces use referrerSignInHref instead.
  * - getToken() resolves null: server routes authenticate via the
  *   app_session_id cookie (AuthKit fetch sends credentials: include).
  */
@@ -79,8 +81,7 @@ function CompatShell({ children, sdkAuth }: { children: React.ReactNode; sdkAuth
 
   const openSignIn = useCallback((options?: { returnTo?: string }) => {
     if (!isLoaded || signedIn) return;
-    const returnTo = safeAuthReturnTo(options?.returnTo ?? window.location.href, window.location.origin) ?? "/";
-    window.location.href = `/api/auth/workos/sign-in?${new URLSearchParams({ returnTo })}`;
+    window.location.href = signInPagePath(options?.returnTo ?? window.location.href, window.location.origin);
   }, [isLoaded, signedIn]);
 
   // Publish the SDK access token for non-React API clients (tRPC link).
@@ -144,7 +145,7 @@ function ServerSessionCompatProvider({ children }: { children: React.ReactNode }
   const neutral = useMemo(() => ({
     isLoading: false,
     user: null,
-    signIn: async () => { window.location.href = "/api/auth/workos/sign-in"; },
+    signIn: async () => { window.location.href = signInPagePath(window.location.href, window.location.origin); },
     getAccessToken: async () => null,
     signOut: async () => { /* handled by the compat signOut */ },
   }), []);

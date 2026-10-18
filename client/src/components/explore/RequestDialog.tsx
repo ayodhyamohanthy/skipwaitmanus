@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { isValidTargetRoleUrl, jobLinkFitsCompany, TARGET_ROLE_URL_ERROR } from "@shared/referralUrl";
+import { signInPagePath } from "@shared/authReturnTo";
 import { Button } from "@/components/kit/button";
 import { ASK_NOTE_LIMIT, saveAskPrefill } from "@/lib/askPrefill";
 import { saveAskDraftRemote } from "@/lib/askDraftApi";
@@ -41,8 +42,8 @@ export function RequestDialog({ company, open, step, onStepChange, onOpenChange 
     saveAskPrefill({ companySlug: company.slug, targetRoleUrl: url, note });
     if (!isSignedIn) {
       onOpenChange(false);
-      // Signed-out seekers go through job-seeker login first and land back in the ask composer.
-      window.location.assign(`/api/auth/workos/sign-in?${new URLSearchParams({ returnTo: "/ask" })}`);
+      // Signed-out seekers sign in on skipwait.me first (D-030, D-049) and land back in the ask composer.
+      window.location.assign(signInPagePath("/ask", window.location.origin));
       return;
     }
     void saveDraft();

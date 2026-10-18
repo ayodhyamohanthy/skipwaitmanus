@@ -99,25 +99,38 @@ describe("role-aware WorkOS sign-in entries", () => {
     restore();
   });
 
-  it("keeps general sign-in and sign-up open without a login hint", { timeout: 20000 }, async () => {
+  it("a provider-less or unknown-provider start never reaches hosted AuthKit (D-030, D-049)", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
-    const signIn = await request(app).get("/api/auth/workos/sign-in");
-    expect(signIn.status).toBe(302);
-    const signInCall = authUrl.mock.calls.at(-1)?.[0] as { screenHint?: string; loginHint?: string };
-    expect(signInCall.screenHint).toBe("sign-in");
-    expect(signInCall.loginHint).toBeUndefined();
-    const signUp = await request(app).get("/api/auth/workos/sign-up");
-    expect(signUp.status).toBe(302);
-    expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ screenHint: "sign-up" }));
-    restore();
+    try {
+      for (const route of ["sign-in", "sign-up"]) {
+        for (const provider of [undefined, "AppleOAuth", "apple", "authkit", "constructor", "__proto__", "toString"]) {
+          authUrl.mockClear();
+          const response = await request(app).get(`/api/auth/workos/${route}`).query(provider === undefined ? { returnTo: "/plans" } : { returnTo: "/plans", provider });
+          expect(response.status, `${route} provider=${String(provider)}`).toBe(302);
+          expect(response.headers.location).toBe("/sign-in?returnTo=%2Fplans");
+          expect(response.headers["cache-control"]).toBe("no-store");
+          expect(response.headers["set-cookie"]).toBeUndefined();
+          expect(authUrl).not.toHaveBeenCalled();
+        }
+      }
+      expect((await request(app).get("/api/auth/workos/sign-in")).headers.location).toBe("/sign-in");
+      for (const unsafe of ["https://evil.example/plans", "//evil.example", "/api/auth/workos/sign-in", "/sign-in"]) {
+        expect((await request(app).get("/api/auth/workos/sign-in").query({ returnTo: unsafe })).headers.location).toBe("/sign-in");
+      }
+      const google = await request(app).get("/api/auth/workos/sign-in").query({ returnTo: "/plans", provider: "google" });
+      expect(google.status).toBe(302);
+      expect(google.headers.location).toContain("https://api.workos.com/user_management/authorize");
+      expect(authUrl).toHaveBeenCalledTimes(1);
+      expect(authUrl).toHaveBeenLastCalledWith(expect.objectContaining({ provider: "GoogleOAuth" }));
+    } finally { restore(); }
   });
 
-  it("forwards a valid typed email as the AuthKit login hint and drops anything else", { timeout: 20000 }, async () => {
+  it("forwards a valid typed email as the provider login hint and drops anything else", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
-    await request(app).get("/api/auth/workos/sign-in").query({ login_hint: "  Asha@Example.com " });
+    await request(app).get("/api/auth/workos/sign-in").query({ provider: "google", login_hint: "  Asha@Example.com " });
     expect((authUrl.mock.calls.at(-1)?.[0] as { loginHint?: string }).loginHint).toBe("asha@example.com");
     for (const bad of ["not-an-email", `${"a".repeat(320)}@example.com`, "a b@example.com"]) {
-      await request(app).get("/api/auth/workos/sign-in").query({ login_hint: bad });
+      await request(app).get("/api/auth/workos/sign-in").query({ provider: "google", login_hint: bad });
       expect((authUrl.mock.calls.at(-1)?.[0] as { loginHint?: string }).loginHint).toBeUndefined();
     }
     restore();
@@ -131,7 +144,7 @@ describe("state-bound authentication return", () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
       const agent = request.agent(app);
-      const entry = await agent.get("/api/auth/workos/sign-in").set("Cookie", "app_session_id=existing-session").query({ returnTo });
+      const entry = await agent.get("/api/auth/workos/sign-in").set("Cookie", "app_session_id=existing-session").query({ returnTo, provider: "google" });
       const state = authUrl.mock.calls.at(-1)![0].state;
       expect(entry.headers["set-cookie"][0]).toContain("HttpOnly");
       expect(entry.headers["set-cookie"][0]).toContain("SameSite=Lax");
@@ -155,7 +168,7 @@ describe("state-bound authentication return", () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
       const agent = request.agent(app);
-      await agent.get("/api/auth/workos/sign-up").query({ returnTo });
+      await agent.get("/api/auth/workos/sign-up").query({ returnTo, provider: "google" });
       const state = authUrl.mock.calls.at(-1)![0].state;
       const callback = await agent.get("/api/auth/workos/callback").query({ code: "provider-code", state });
       expect(callback.status).toBe(302);
@@ -166,7 +179,7 @@ describe("state-bound authentication return", () => {
   it.each(["missing", "mismatched", "tampered", "expired", "raw-return"]) ("rejects %s state binding before contacting the provider", async failure => {
     const { app, restore } = await buildApp(baseEnv);
     try {
-      const entry = await request(app).get("/api/auth/workos/sign-in").query({ returnTo: "/premium?role=referrer" });
+      const entry = await request(app).get("/api/auth/workos/sign-in").query({ returnTo: "/premium?role=referrer", provider: "google" });
       let state = authUrl.mock.calls.at(-1)![0].state;
       let cookie = entry.headers["set-cookie"][0].split(";")[0];
       if (failure === "mismatched") state = "wrong-state";
@@ -200,7 +213,7 @@ describe("canonical WorkOS callback session", () => {
 
   async function signIn(app: import("express").Express) {
     const agent = request.agent(app);
-    await agent.get("/api/auth/workos/sign-in").query({ returnTo: "/premium" });
+    await agent.get("/api/auth/workos/sign-in").query({ returnTo: "/premium", provider: "google" });
     const state = authUrl.mock.calls.at(-1)![0].state;
     return agent.get("/api/auth/workos/callback").query({ code: "provider-code", state });
   }
@@ -319,14 +332,21 @@ describe("canonical WorkOS callback session", () => {
     } finally { restore(); }
   });
 
-  it("starts a listed social provider and falls back to AuthKit for anything else", { timeout: 20000 }, async () => {
+  it("starts a listed social provider and sends anything else to the skipwait.me sign-in", { timeout: 20000 }, async () => {
     const { app, restore } = await buildApp({ ...baseEnv });
+    authUrl.mockClear();
     const providerFor = async (provider: string) => { await request(app).get("/api/auth/workos/sign-in").query({ provider }); return (authUrl.mock.calls.at(-1)?.[0] as { provider?: string; screenHint?: string }); };
     expect((await providerFor("google")).provider).toBe("GoogleOAuth");
     expect((await providerFor("microsoft")).provider).toBe("MicrosoftOAuth");
     expect((await providerFor("github")).provider).toBe("GitHubOAuth");
-    const unknown = await providerFor("AppleOAuth");
-    expect(unknown.provider).toBe("authkit"); expect(unknown.screenHint).toBe("sign-in");
+    expect((await providerFor("linkedin")).provider).toBe("LinkedInOAuth");
+    expect((await providerFor("slack")).provider).toBe("SlackOAuth");
+    expect(authUrl.mock.calls.every(([options]) => (options as { screenHint?: string }).screenHint === undefined)).toBe(true);
+    const callsBefore = authUrl.mock.calls.length;
+    const unknown = await request(app).get("/api/auth/workos/sign-in").query({ provider: "AppleOAuth" });
+    expect(unknown.status).toBe(302);
+    expect(unknown.headers.location).toBe("/sign-in");
+    expect(authUrl.mock.calls.length).toBe(callsBefore);
     restore();
   });
 });

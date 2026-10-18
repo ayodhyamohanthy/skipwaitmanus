@@ -1,10 +1,10 @@
 import { WorkOS } from "@workos-inc/node";
 import { revokeHostedSessions } from "./hostedSessionRevoke";
 import { registerSeekerEmailCodeRoutes } from "./seekerEmailCode";
-import { HOSTED_LINK_COOKIE, HOSTED_LINK_MAX_AGE_MS, readHostedLink, revokeHostedSessionOnAccountSwitch, revokeLinkedHostedSession, signHostedLink } from "./hostedAccountSwitch";
+import { HOSTED_LINK_COOKIE, signHostedLink } from "./hostedAccountSwitch";
 import { COOKIE_NAME } from "@shared/const";
 import { createRemoteJWKSet, jwtVerify, SignJWT } from "jose";
-import { safeAuthReturnTo } from "@shared/authReturnTo";
+import { safeAuthReturnTo, signInPagePath } from "@shared/authReturnTo";
 import type { Express, Request } from "express";
 import { parse as parseCookieHeader } from "cookie";
 import * as db from "../db";
@@ -28,9 +28,10 @@ export { resolveWorkosOpenId };
  * on first sight. The resulting identity has the same shape resolveDevIdentity
  * produces, so every route works unchanged.
  *
- * The server redirect routes (/api/auth/workos/sign-in, /callback, /logout)
- * remain for the admin plane and legacy flows; they issue the same
- * app_session_id cookie the dev-auth path uses.
+ * The server redirect routes issue the same app_session_id cookie the dev-auth
+ * path uses: /api/auth/workos/sign-in|sign-up start a listed social provider
+ * (anything else 302s to skipwait.me's own /sign-in, D-030/D-049), /admin starts
+ * the administrator flow, and /callback and /logout finish and end sessions.
  *
  * Registered only when WORKOS_CLIENT_ID, WORKOS_API_KEY, and
  * WORKOS_COOKIE_PASSWORD are configured.
@@ -228,31 +229,24 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS } = {}) 
     const hostedLinkCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos" });
     const returnCookieOptions = (req: Request) => ({ ...getSessionCookieOptions(req), path: "/api/auth/workos/callback" });
 
-    for (const screenHint of ["sign-in", "sign-up"] as const) {
-      app.get(`/api/auth/workos/${screenHint}`, async (req, res) => {
+    for (const route of ["sign-in", "sign-up"] as const) {
+      app.get(`/api/auth/workos/${route}`, async (req, res) => {
         try {
           const redirectUri = redirectUriFor(req);
+          // D-030 / D-049: seekers never see the hosted WorkOS (authkit.app) page. Only a listed social provider
+          // starts a WorkOS flow; anything else (no provider, an unknown one, cached old links) goes to the
+          // skipwait.me sign-in with the same validated destination, and no return cookie is set.
+          const requested = typeof req.query.provider === "string" ? req.query.provider : "";
+          const authProvider = Object.hasOwn(SOCIAL_PROVIDERS, requested) ? SOCIAL_PROVIDERS[requested] : undefined;
+          if (!authProvider) return res.set("Cache-Control", "no-store").redirect(302, signInPagePath(req.query.returnTo, redirectUri));
           const returnTo = safeAuthReturnTo(req.query.returnTo, redirectUri) ?? safeAuthReturnTo(process.env.WORKOS_POST_SIGNIN_PATH, redirectUri) ?? "/";
-          // The kit sign-in email step passes the typed address so AuthKit pre-fills it.
+          // A caller may pass the typed address so the provider pre-fills its account chooser.
           const hint = typeof req.query.login_hint === "string" ? req.query.login_hint.trim().toLowerCase() : "";
           const loginHint = hint.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hint) ? hint : "";
-          // Social buttons on the kit sign-in pick a WorkOS provider. Only providers enabled in the WorkOS dashboard are listed here; anything else falls back to AuthKit.
-          const authProvider = typeof req.query.provider === "string" ? SOCIAL_PROVIDERS[req.query.provider] ?? "authkit" : "authkit";
           const state = randomUUID();
           const token = await new SignJWT({ returnTo }).setProtectedHeader({ alg: "HS256" }).setAudience(returnAudience).setSubject(state).setIssuedAt().setExpirationTime("10m").sign(returnKey);
           res.cookie(returnCookie, token, { ...returnCookieOptions(req), maxAge: 10 * 60_000 });
-          // Typed email differs from the account this browser last signed in with: end that hosted session first,
-          // so AuthKit asks for the code instead of silently signing the previous account back in. Fail-soft.
-          if (authProvider === "authkit" && loginHint) {
-            const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
-            if (await revokeHostedSessionOnAccountSwitch(workos.userManagement as never, linked, loginHint, { log: message => console.warn("[workos-switch]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
-          }
-          // The /sign-in page's explicit Continue button asks for a fresh AuthKit screen (fresh=1): drop the hosted session this browser is linked to.
-          if (authProvider === "authkit" && screenHint === "sign-in" && req.query.fresh === "1") {
-            const linked = await readHostedLink(parseCookieHeader(req.headers.cookie ?? "")[HOSTED_LINK_COOKIE], returnKey);
-            if (await revokeLinkedHostedSession(workos.userManagement as never, linked, { log: message => console.warn("[workos-fresh]", message) })) res.clearCookie(HOSTED_LINK_COOKIE, hostedLinkCookieOptions(req));
-          }
-          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(authProvider === "authkit" ? { screenHint } : {}), ...(loginHint ? { loginHint } : {}) }));
+          res.set("Cache-Control", "no-store").redirect(302, workos.userManagement.getAuthorizationUrl({ provider: authProvider, redirectUri, state, ...(loginHint ? { loginHint } : {}) }));
         } catch {
           res.status(502).send("Authentication could not be started");
         }

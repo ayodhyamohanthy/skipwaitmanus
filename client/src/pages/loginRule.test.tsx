@@ -3,10 +3,11 @@
 //   job seeker login = personal emails + social logins; referrer login = work email OTP verification ONLY.
 // If this file fails, the rule drifted. Do not edit these expectations without the owner's explicit say-so.
 import React from "react";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SignIn from "./SignIn";
+import { SEEKER_SOCIAL, seekerSocialUrl } from "@/components/SeekerSignIn";
 import { referrerSignInHref, safeReturnTo } from "@/lib/referrerSignIn";
 
 vi.mock("wouter", () => ({
@@ -28,6 +29,29 @@ describe("login rule: job seeker", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue with Google/ }));
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=google");
     expect(assign).not.toHaveBeenCalledWith(expect.stringContaining("authkit.app"));
+  });
+
+  it("no seeker entry point links to a provider-less WorkOS sign-in, and the client never names the hosted AuthKit page", () => {
+    // Added Oct 18 2026 (Drift-D030-seeker-signin): openSignIn, SignInButton, startLogin and the ask hand-off
+    // linked to /api/auth/workos/sign-in with no provider, which opened the hosted authkit.app page.
+    const sources = (readdirSync("client/src", { recursive: true }) as string[])
+      .filter(file => /\.(ts|tsx)$/.test(file) && !/\.test\.(ts|tsx)$/.test(file))
+      .map(file => ({ file: file.split("\\").join("/"), source: readFileSync(`client/src/${file}`, "utf8") }));
+    expect(sources.length).toBeGreaterThan(100);
+    for (const { file, source } of sources) {
+      expect(source, `${file} must not name the hosted AuthKit page`).not.toMatch(/provider=authkit|provider:\s*["']authkit["']|authkit\.app/i);
+      const workosStarts = source.match(/\/api\/auth\/workos\/sign-(?:in|up)/g) ?? [];
+      if (file !== "components/SeekerSignIn.tsx") {
+        expect(workosStarts, `${file} must send people to /sign-in, never to the WorkOS start route`).toEqual([]);
+        continue;
+      }
+      // The only builder of a WorkOS start URL is seekerSocialUrl, and it always names the provider.
+      expect(workosStarts).toHaveLength(1);
+      const builder = source.slice(source.indexOf("export function seekerSocialUrl"), source.indexOf("export function seekerSocialUrl") + 220);
+      expect(builder).toContain("/api/auth/workos/sign-in?");
+      expect(builder).toContain("provider");
+    }
+    for (const item of SEEKER_SOCIAL) expect(seekerSocialUrl(item.id, "/explore")).toContain(`provider=${item.id}`);
   });
 
   it("email sign-in sends a code and verifies it against the email-code routes", async () => {
