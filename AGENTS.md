@@ -40,6 +40,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 - **Analytics is part of every feature:** define the funnel events/metrics it affects, instrument them (consent-respecting), and record before/after numbers when reporting. A claim without data or a cited principle is not a reason to change the product.
 - **Docs first (owner rule, Oct 14 2026):** before ANY code change, update `docs/KIT_V4_BUILD_PLAN.md` (claim the step, its scope, decisions, migrations, owner actions) and this summary, and get them onto `main`, so any AI coding platform can finish the work if a session stops. Update status after every commit/push.
 - Living plan and handoff: `docs/KIT_V4_BUILD_PLAN.md`. Per-PNG audit and feature catalog: `docs/KIT_V4_AUDIT.md`. Pricing decisions and sources: `docs/PRICING_RECOMMENDATION.md`.
+- **D-048 (owner, Oct 18): Kit v4 is no longer binding.** The UI is designed for the goal; key-screen designs go to the owner before any rollout, and until approval nobody re-skins a surface (existing tokens and components stay). The PNG-fidelity part of the next line is superseded.
 - Binding owner decisions: implement every `screens/` PNG fullstack; the PNGs win over earlier founder calls (newer founder edits on `main` after Oct 9 stay); never ship kit preview chips or sample data; Terms/Privacy keep live legal text; ship verified groups to `main`.
 - Pricing (Oct 14, amended Oct 16 by D-034–D-042):
   - **Passes:** 30/90-day passes with opt-in auto-extend (yearly only for Keep warm). All payment options go live now, before referrers onboard (D-046, supersedes D-045 and D-037's gate): packs, every pass and Keep warm sold from `/plans`, coverage shown before payment; Concierge by application; human sessions off until deliverable; Pro/Max stay retired.
@@ -421,6 +422,7 @@ which rules were adopted or rejected when this section changes.
   desktop/mobile visual verification when layout or appearance is at stake.
 
 ## Styling and dependency boundary
+- **Superseded in part by D-048 (Oct 18):** Kit v4 is no longer the contract; a goal-focused `DESIGN.md` replaces it after the owner approves the designs. Until then the rules below still describe the live tokens: keep using them and do not re-skin.
 - `DESIGN.md` is the product visual contract: Kit v4 (white canvas, ink
   `#141414`, electric blue `#0000FF`, invitation yellow `#FFFC52`; Instrument
   Sans UI, IBM Plex Mono labels; oklch tokens in `client/src/index.css`). It
