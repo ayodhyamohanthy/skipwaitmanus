@@ -162,7 +162,7 @@ describe("crawlable landing and public snapshots", () => {
     const explore = publicSnapshots().find(snapshot => snapshot.route === "/explore")!;
     const names = new Intl.ListFormat("en-US", { type: "conjunction" }).format(LAUNCH_COMPANY_SEED.map(company => company.name));
     expect(explore.description).toBe(`Find people open to referral requests at ${names}.`);
-    expect(explore.markup).toContain("<h1>Where would you love to work next?</h1>");
+    expect(explore.markup).toContain("<h1>Where do you want a referral?</h1>");
     for (const company of LAUNCH_COMPANY_SEED) expect(explore.markup).toContain(`href="/explore/${company.slug}"`);
     expect(landingSnapshot(policyLinks)).toContain('href="/explore"');
   });

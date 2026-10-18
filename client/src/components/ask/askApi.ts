@@ -3,8 +3,7 @@
 // before they drive the screen, and transport failures get plain copy instead
 // of a raw browser error string.
 import { z } from "zod";
-import { SLOT_CAP_REACHED, openAskSlotsSchema, slotCapReachedSchema, type SlotCapReached } from "@shared/openAskSlots";
-import type { SentAsk } from "@/components/ask/AskSent";
+import { SLOT_CAP_REACHED, openAskSlotsSchema, slotCapReachedSchema, type OpenAskSlots, type SlotCapReached } from "@shared/openAskSlots";
 
 const sendAskResponseSchema = z.object({
   requestId: z.number().int().positive(),
@@ -18,6 +17,9 @@ const sendAskResponseSchema = z.object({
 
 // Written by the job-link company confirmation step; browser storage is untrusted.
 const companyConfirmationSchema = z.object({ canonicalUrl: z.string(), confirmedDomain: z.string().min(1) });
+
+/** The created (or idempotently replayed) ask as the composer's sent state reads it. */
+export type SentAsk = { readonly requestId: number; readonly companyDomain: string | null; readonly waitingForCoverage: boolean; readonly fastTrack: boolean; readonly slots: OpenAskSlots | null };
 
 export const ASK_NETWORK_ERROR = "We couldn't reach SkipWait. Check your connection and try again.";
 

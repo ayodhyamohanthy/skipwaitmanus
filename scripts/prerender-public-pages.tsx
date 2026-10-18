@@ -105,7 +105,7 @@ export function publicSnapshots(): PublicSnapshot[] {
       // inserts): no count, no availability, no role, no person, no address.
       // The live page then renders the server directory.
       route: "/explore",
-      markup: `<main data-skipwait-snapshot="explore"><h1>Where would you love to work next?</h1><p>Start with a company. We’ll help you make a thoughtful ask.</p><ul>${LAUNCH_COMPANY_SEED.map(company => `<li><a href="/explore/${company.slug}">${escapeHtml(company.name)}</a> — ${escapeHtml(company.blurb)}</li>`).join("")}</ul><h2>Work at one of these companies?</h2><p>Open another door. You control every request you accept. <a href="/referrer">I can refer</a></p><p><a href="/jobs">Browse roles worth a referral</a> · <a href="/start">Request a referral for a role link you already have</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="explore"><h1>Where do you want a referral?</h1><p>Ask a verified employee. Your name and resume stay private until they accept.</p><ul>${LAUNCH_COMPANY_SEED.map(company => `<li><a href="/explore/${company.slug}">${escapeHtml(company.name)}</a> — ${escapeHtml(company.blurb)}</li>`).join("")}</ul><h2>Work at one of these companies?</h2><p>Open another door. You control every request you accept. <a href="/referrer">I can refer</a></p><p><a href="/jobs">Browse roles worth a referral</a> · <a href="/start">Request a referral for a role link you already have</a></p></main>`,
     },
     {
       route: "/wall",

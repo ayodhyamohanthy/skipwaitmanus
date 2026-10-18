@@ -1,0 +1,231 @@
+{
+ "signedIn": {
+  "id": 4106,
+  "name": "Asha Rao",
+  "email": "asha.rao@example.com",
+  "role": "user"
+ },
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/api/companies",
+   "body": {
+    "companies": [
+     {
+      "slug": "bluefin-systems",
+      "name": "Bluefin Systems",
+      "initials": "BS",
+      "industry": "Software",
+      "location": "Global",
+      "functions": [
+       "Engineering",
+       "Product",
+       "Data"
+      ],
+      "blurb": "Bluefin Systems hires across engineering, product, data.",
+      "domains": [
+       "bluefin.example"
+      ],
+      "openToReferrals": false
+     },
+     {
+      "slug": "cobalt-health",
+      "name": "Cobalt Health",
+      "initials": "CH",
+      "industry": "Healthcare",
+      "location": "Global",
+      "functions": [
+       "Engineering",
+       "Design",
+       "Operations"
+      ],
+      "blurb": "Cobalt Health hires across engineering, design, operations.",
+      "domains": [
+       "cobalthealth.example"
+      ],
+      "openToReferrals": false
+     },
+     {
+      "slug": "kestrel-freight",
+      "name": "Kestrel Freight",
+      "initials": "KF",
+      "industry": "Logistics",
+      "location": "Global",
+      "functions": [
+       "Operations",
+       "Data",
+       "Engineering"
+      ],
+      "blurb": "Kestrel Freight hires across operations, data, engineering.",
+      "domains": [
+       "kestrelfreight.example"
+      ],
+      "openToReferrals": false
+     },
+     {
+      "slug": "larkfield-bank",
+      "name": "Larkfield Bank",
+      "initials": "LB",
+      "industry": "Banking",
+      "location": "Global",
+      "functions": [
+       "Finance",
+       "Operations",
+       "HR"
+      ],
+      "blurb": "Larkfield Bank hires across finance, operations, hr.",
+      "domains": [
+       "larkfield.example"
+      ],
+      "openToReferrals": false
+     },
+     {
+      "slug": "northwind-labs",
+      "name": "Northwind Labs",
+      "initials": "NL",
+      "industry": "Fintech",
+      "location": "Global",
+      "functions": [
+       "Engineering",
+       "Product",
+       "Data"
+      ],
+      "blurb": "Northwind Labs hires across engineering, product, data.",
+      "domains": [
+       "northwindlabs.example"
+      ],
+      "openToReferrals": true
+     },
+     {
+      "slug": "orchid-analytics",
+      "name": "Orchid Analytics",
+      "initials": "OA",
+      "industry": "Analytics",
+      "location": "Global",
+      "functions": [
+       "Data",
+       "Engineering",
+       "Sales"
+      ],
+      "blurb": "Orchid Analytics hires across data, engineering, sales.",
+      "domains": [
+       "orchid.example"
+      ],
+      "openToReferrals": false
+     },
+     {
+      "slug": "saffron-retail",
+      "name": "Saffron Retail",
+      "initials": "SR",
+      "industry": "Retail",
+      "location": "Global",
+      "functions": [
+       "Marketing",
+       "Design",
+       "Operations"
+      ],
+      "blurb": "Saffron Retail hires across marketing, design, operations.",
+      "domains": [
+       "saffronretail.example"
+      ],
+      "openToReferrals": true
+     }
+    ],
+    "openCount": 2
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/credits/summary",
+   "body": {
+    "summary": {
+     "plan": "free",
+     "monthlyAllowance": 3,
+     "monthlyCreditsRemaining": 0,
+     "purchasedCreditsRemaining": 2,
+     "promoCreditsRemaining": 0,
+     "promoExpiresAt": null,
+     "promoStatus": null,
+     "promoOfferActive": false,
+     "totalAvailable": 2,
+     "cycleKey": "2026-10",
+     "subscriptionStatus": null,
+     "subscriptionCurrentTermEnd": null
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/profile/setup",
+   "body": {
+    "goal": "Actively looking",
+    "roles": [],
+    "level": "",
+    "links": [],
+    "city": "",
+    "countries": "",
+    "remote": true,
+    "visa": "Need sponsorship for some countries",
+    "resume": {
+     "id": 3101,
+     "fileName": "Asha_Rao_Resume.pdf"
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/ask-drafts",
+   "body": {
+    "draft": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/notifications",
+   "body": {
+    "notifications": []
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/company-referrals/access",
+   "body": {
+    "verifiedCompanyAccess": false,
+    "workEmailDomain": null,
+    "companyName": null,
+    "companyInitials": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/account/preferences",
+   "body": {
+    "preferences": {}
+   }
+  }
+ ],
+ "actionsWeb": [
+  {
+   "fill": [
+    "input[type=url]",
+    "https://careers.northwindlabs.example/jobs/senior-backend-engineer-payments"
+   ]
+  },
+  {
+   "fill": [
+    "textarea >> nth=0",
+    "Built the payouts reconciliation service at a lender; settlement mismatches fell from 1.2% to 0.3% in 6 months."
+   ]
+  },
+  {
+   "fill": [
+    "textarea >> nth=1",
+    "Ran on-call for 14 Go services; cut p99 latency by 41% with connection pooling."
+   ]
+  },
+  {
+   "wait": 200
+  }
+ ],
+ "actionsMobile": []
+}

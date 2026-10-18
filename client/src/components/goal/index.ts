@@ -12,7 +12,8 @@ export { GOAL_STATUS_TONE, GoalAvailability, GoalClock, GoalMiniStepper, GoalSta
 export { GoalChipGroup, GoalFilterChip } from "./GoalFilterChip";
 export { GoalCheckbox } from "./GoalCheckbox";
 export { GoalSearchInput } from "./GoalSearchInput";
-export { GoalField, GoalTextInput, type GoalFieldHint } from "./GoalField";
+export { GoalField, GoalFieldError, GoalTextInput, type GoalFieldHint } from "./GoalField";
+export { GoalReasonInput } from "./GoalReasonInput";
 export { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "./GoalStates";
 export { GoalCompanyMark, GoalListRow, GoalListSection, goalInitials, type GoalRowDensity } from "./GoalListRow";
 export { GoalCheckList, GoalDetailHeader, GoalDetailPane, GoalExternalLink, GoalLockedPanel, GoalPhoneSubheader, GoalProps, GoalReasonList, GoalSection } from "./GoalDetail";

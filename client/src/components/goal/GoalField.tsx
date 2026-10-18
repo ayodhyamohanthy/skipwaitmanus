@@ -53,3 +53,13 @@ export const GoalTextInput = forwardRef<HTMLInputElement, GoalTextInputProps>(fu
     />
   );
 });
+
+/** A standalone input error line (crimson: an input error, seeker side only; never in the referrer queue). */
+export function GoalFieldError({ children }: { children: ReactNode }) {
+  return (
+    <p className="flex items-start gap-2 text-g-meta text-g-crimson">
+      <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} />
+      <span>{children}</span>
+    </p>
+  );
+}

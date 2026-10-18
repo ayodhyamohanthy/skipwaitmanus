@@ -42,6 +42,7 @@ import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
 import { displayJobLink } from "@shared/roleTitle";
 import { whyMeForReader } from "@shared/whyMe";
+import { possessive } from "./copy";
 import { PersonalLinkPanel } from "./PersonalLinkPanel";
 import { acceptAsk, fetchPreview, fetchQueue, openOneSlot, passAsk, QueueRequestError, type QueueRow } from "./queueApi";
 import { clockText, qualityChecks, readOpened, sortQueue, toQueueItem, writeOpened, type QueueItem } from "./queueModel";
@@ -103,7 +104,7 @@ export default function ReferralQueue() {
   const requestedItem = Number.isInteger(requested) && requested > 0 ? items.find(item => item.id === requested) ?? null : null;
   const selected: QueueItem | null = requestedItem ?? (desktop ? items[0] ?? null : null);
   const index = selected ? items.findIndex(item => item.id === selected.id) : -1;
-  const previewQuery = useQuery({ queryKey: ["queue", "preview", selected?.id ?? null], enabled: verified && selected !== null, retry: false, queryFn: () => fetchPreview(selected!.id, fetchToken) });
+  const previewQuery = useQuery({ queryKey: ["queue", "preview", selected?.id ?? null], enabled: verified && selected !== null, retry: false, queryFn: () => (selected ? fetchPreview(selected.id, fetchToken) : Promise.reject(new Error("No ask selected"))) });
 
   useEffect(() => { setDecisionError(""); setPassOpen(false); }, [selected?.id]);
 
@@ -127,14 +128,14 @@ export default function ReferralQueue() {
   };
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["queue"] });
 
-  const decide = async (kind: "accept" | "pass", run: () => Promise<void>, done: ReactNode) => {
+  const decide = async (kind: "accept" | "pass", run: (id: number) => Promise<void>, done: (id: number) => ReactNode) => {
     if (!selected || busy) return;
     const id = selected.id;
     setBusy(kind);
     setDecisionError("");
     try {
-      await run();
-      setNotice(done);
+      await run(id);
+      setNotice(done(id));
       setAcceptOpen(false);
       setPassOpen(false);
       setEthics(false);
@@ -152,16 +153,16 @@ export default function ReferralQueue() {
     }
   };
   const accept = () =>
-    decide("accept", () => acceptAsk(selected!.id, fetchToken), (
+    decide("accept", id => acceptAsk(id, fetchToken), id => (
       <>
         Accepted. You can message them privately now.{" "}
-        <Link href={`/conversation/${selected!.id}?from=inbox`} className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Open conversation</Link>
+        <Link href={`/conversation/${id}?from=inbox`} className="underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Open conversation</Link>
       </>
     ));
   const pass = (code: PassReasonCode) => {
     const option = PASS_REASON_OPTIONS.find(item => item.code === code);
     if (!option) return;
-    void decide("pass", () => passAsk(selected!.id, option, fetchToken), "You passed privately. The ask stays open for other verified employees. Your identity was never revealed.");
+    void decide("pass", id => passAsk(id, option, fetchToken), () => "You passed privately. The ask stays open for other verified employees. Your identity was never revealed.");
   };
   const openSlot = async () => {
     setOpening(true);
@@ -200,7 +201,9 @@ export default function ReferralQueue() {
   const showDetailOnPhone = !desktop && selected !== null;
   const unavailable = online ? undefined : OFFLINE;
   const documents = preview ? preview.attachments.length : row?.attachmentCount ?? 0;
-  const position = selected ? { index: index + 1, total: items.length, onPrev: neighbour(-1) ? () => select(neighbour(-1)!.id) : undefined, onNext: neighbour(1) ? () => select(neighbour(1)!.id) : undefined } : undefined;
+  const previous = neighbour(-1);
+  const next = neighbour(1);
+  const position = selected ? { index: index + 1, total: items.length, onPrev: previous ? () => select(previous.id) : undefined, onNext: next ? () => select(next.id) : undefined } : undefined;
 
   const list = (
     <section aria-label="Asks for your company" className={showDetailOnPhone ? "hidden" : "flex min-w-0 flex-col gdesk:h-full gdesk:overflow-y-auto gdesk:border-r gdesk:border-g-hairline"}>
@@ -275,7 +278,7 @@ export default function ReferralQueue() {
         <>
           <div className="max-w-[calc(var(--g-detail-max)+80px)] px-10 max-gdesk:px-4">
             <GoalLockedPanel title="Identity and resume are shared after you accept" documents={documents ? `${documents} ${documents === 1 ? "document" : "documents"}` : undefined} />
-            <p className="mb-4 mt-3 text-pretty text-g-meta text-g-ink-2">Accepting shares names both ways and their resume. Referring comes later, through {selected.company}’s own process.</p>
+            <p className="mb-4 mt-3 text-pretty text-g-meta text-g-ink-2">Accepting shares names both ways and their resume. Referring comes later, through {possessive(selected.company)} own process.</p>
           </div>
           <GoalDecisionBar
             position={position}
@@ -333,7 +336,7 @@ export default function ReferralQueue() {
           </>
         }
       >
-        <GoalCheckbox checked={ethics} onCheckedChange={setEthics}>I’ll refer only through {selected?.company ?? "the company"}’s official process and won’t accept anything in return.</GoalCheckbox>
+        <GoalCheckbox checked={ethics} onCheckedChange={setEthics}>I’ll refer only through {selected ? possessive(selected.company) : "the company’s"} official process and won’t accept anything in return.</GoalCheckbox>
         {decisionError ? <p role="alert" className="mt-3 text-g-meta text-g-ink">{decisionError}</p> : null}
       </GoalConfirmDialog>
     </AppShell>

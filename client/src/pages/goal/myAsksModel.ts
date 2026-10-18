@@ -6,6 +6,7 @@ import type { CreditLedgerEntry } from "@shared/creditLedger";
 import { CREDIT_ENDED_CAVEAT } from "@shared/moneyCopy";
 import { COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { displayRoleTitle } from "@shared/roleTitle";
+import { possessive } from "./copy";
 import type { MyAsk } from "./myAsksApi";
 
 export type AskStatusKind = "waiting" | "under_review" | "accepted" | "referred" | "expired" | "withdrawn";
@@ -101,13 +102,13 @@ export function toAskView(ask: MyAsk, ledger: AskLedger | undefined, formatDate:
 
   if (ask.status === "approved") {
     return { ...base, status: "accepted", label: "Accepted", statusLine: "Names are shared both ways", stage: 2, terminal: null, section: "active", date: changed("Accepted"), hasConversation: true,
-      next: `Your referrer submits it through ${company}’s process, then marks it Referred.`,
+      next: `Your referrer submits it through ${possessive(company)} process, then marks it Referred.`,
       credit: fromLedger, history: [sent, { at: ask.updatedAt, text: "Accepted by a verified employee", credit: null, tense: "current" }] };
   }
   if (ask.status === "intro_made" || ask.status === "interview" || ask.status === "offer") {
     const label = ask.status === "intro_made" ? "Referred" : ask.status === "interview" ? "Interview" : "Offer";
-    return { ...base, status: "referred", label, statusLine: ask.status === "intro_made" ? `Submitted through ${company}’s process` : "A milestone was recorded", stage: 3, terminal: null, section: "active", date: changed(ask.status === "intro_made" ? "Referred" : "Updated"), hasConversation: true,
-      next: `Watch your email for ${company}’s recruiters. Companies decide hiring; add an update when you hear.`,
+    return { ...base, status: "referred", label, statusLine: ask.status === "intro_made" ? `Submitted through ${possessive(company)} process` : "A milestone was recorded", stage: 3, terminal: null, section: "active", date: changed(ask.status === "intro_made" ? "Referred" : "Updated"), hasConversation: true,
+      next: `Watch your email for ${possessive(company)} recruiters. Companies decide hiring; add an update when you hear.`,
       credit: fromLedger, history: [sent, { at: ask.updatedAt, text: ask.status === "intro_made" ? "Referred" : `${label} recorded`, credit: null, tense: "current" }] };
   }
   if (ask.status === "withdrawn") {
