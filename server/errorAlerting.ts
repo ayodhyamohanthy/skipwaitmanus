@@ -248,30 +248,44 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
   };
 }
 
-export type RetiredPlanAlertInput = { eventId?: string; eventType?: string; reason: string; subscriptionId?: string; giftId?: string; itemPriceId?: string };
+/**
+ * Why a plan event reached a human: plan_retired (a Pro/Max subscription, D-067), gift_claimed /
+ * gift_claim_refused (a gift of one), or unsupported_plan (an item price SkipWait cannot place).
+ */
+export type RetiredPlanAlertReason = "plan_retired" | "gift_claimed" | "gift_claim_refused" | "unsupported_plan";
+export type RetiredPlanAlertInput = { eventId?: string; eventType?: string; reason: RetiredPlanAlertReason; subscriptionId?: string; giftId?: string; itemPriceId?: string };
 
 /**
  * D-067: emails the administrator when Chargebee sends anything for the retired
  * Pro/Max plans (a renewal, a change, a claimed gift) or a recipient tries to
  * claim such a gift. Nothing is granted for these, so a human must cancel the
- * subscription and refund the customer in the Chargebee dashboard. Never
- * deduplicated. Provider ids only.
+ * subscription and refund the customer in the Chargebee dashboard. An event on
+ * an item price SkipWait cannot place (unsupported_plan) is not called Pro/Max
+ * and carries no refund instruction: it may be a paying kit customer, so it asks
+ * for a review. Never deduplicated here (callers alert once per transition).
+ * Provider ids only.
  */
 export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
   const fetchImpl = dependencies.fetchImpl ?? fetch;
   const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
   return async function alertRetiredPlanEvent(input: RetiredPlanAlertInput) {
     const ref = input.subscriptionId ?? input.giftId ?? input.eventId ?? "unknown";
-    const subject = `skipwait.me retired plan event needs review · ${ref}`;
+    const unsupported = input.reason === "unsupported_plan";
+    const subject = `skipwait.me ${unsupported ? "unrecognised" : "retired"} plan event needs review · ${ref}`;
     const text = [
-      "Chargebee sent an event for a plan SkipWait no longer sells (Pro/Max, or a gift of one; D-067). Nothing was granted.",
+      unsupported
+        ? "Chargebee sent a subscription event for an item price SkipWait could not match to a plan it sells. Nothing was granted."
+        : "Chargebee sent an event for a plan SkipWait no longer sells (Pro/Max, or a gift of one; D-067). Nothing was granted.",
       `Reason: ${input.reason}`,
       `Event: ${input.eventId ?? "none"}${input.eventType ? ` (${input.eventType})` : ""}`,
       `Subscription: ${input.subscriptionId ?? "unknown"}`,
       `Gift: ${input.giftId ?? "none"}`,
       `Item price: ${input.itemPriceId ?? "unknown"}`,
-      "In the Chargebee dashboard, cancel the subscription and refund the customer for any payment it took.",
+      unsupported
+        ? "In the Chargebee dashboard, check which plan this subscription is on and whether the item price was renamed. Do not cancel or refund until you know; if it is a current plan, fix the price book so its next event applies."
+        : "In the Chargebee dashboard, cancel the subscription and refund the customer for any payment it took.",
     ].join("\n");
+    const action = unsupported ? "system.unsupported_plan_alert_sent" : "system.retired_plan_alert_sent";
     const metadata = { eventId: input.eventId, reason: input.reason, subscriptionId: input.subscriptionId, giftId: input.giftId };
     try {
       const apiKey = process.env.RESEND_API_KEY;
@@ -284,11 +298,11 @@ export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
         signal: AbortSignal.timeout(10_000),
       });
       if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
-      await recordActivity({ action: "system.retired_plan_alert_sent", outcome: "success", resourceType: "chargebee_subscription", resourceId: ref, metadata });
+      await recordActivity({ action, outcome: "success", resourceType: "chargebee_subscription", resourceId: ref, metadata });
       return { alerted: true as const };
     } catch (error) {
       console.warn("[RetiredPlanAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
-      await recordActivity({ action: "system.retired_plan_alert_sent", outcome: "failure", resourceType: "chargebee_subscription", resourceId: ref, metadata }).catch(() => undefined);
+      await recordActivity({ action, outcome: "failure", resourceType: "chargebee_subscription", resourceId: ref, metadata }).catch(() => undefined);
       return { alerted: false as const };
     }
   };

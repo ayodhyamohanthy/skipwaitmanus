@@ -64,7 +64,7 @@ describe("unmatched paid invoice safety net (#77)", () => {
   // D-067: a late renewal of a retired Pro/Max subscription grants nothing: the subscription
   // handler gets no plan, the paid invoice is parked and alerted, and the retired plan is alerted too.
   it("parks and alerts a retired Pro/Max renewal invoice; the subscription handler receives no plan", async () => {
-    const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored", reason: "unsupported_plan" }));
+    const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored", reason: "plan_retired" }));
     const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
     const fulfillPayment = vi.fn(async () => ({ status: "ignored", reason: "missing_hosted_page" }));
     const { app, alertUnmatchedPayment, recordActivity } = appWith({ applySubscriptionEvent, alertRetiredPlanEvent, fulfillPayment });
@@ -73,24 +73,46 @@ describe("unmatched paid invoice safety net (#77)", () => {
     expect(response.status).toBe(200);
     expect(applySubscriptionEvent).toHaveBeenCalledTimes(1);
     expect(applySubscriptionEvent).toHaveBeenCalledWith(expect.objectContaining({ subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD", plan: undefined, interval: undefined }));
-    expect(response.body.obligations.subscription).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expect(response.body.obligations.subscription).toEqual({ status: "ignored", reason: "plan_retired" });
     expect(response.body.obligations.payment).toMatchObject({ status: "requires_review" });
     expect(alertUnmatchedPayment).toHaveBeenCalledTimes(1);
     expect(alertUnmatchedPayment).toHaveBeenCalledWith(expect.objectContaining({ invoiceId: "inv_max_renewal", paidAmount: 1_500, paidCurrency: "USD" }));
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.payment_unmatched", outcome: "failure" }));
     expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
-    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_max_renewal", subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD" }));
+    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_max_renewal", subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD", reason: "plan_retired" }));
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.retired_plan_event", outcome: "failure", resourceId: "sub_max_legacy" }));
   });
 
   it("alerts a retired-plan subscription event that carries no payment, and still acknowledges it", async () => {
-    const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored", reason: "unsupported_plan" }));
+    const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored", reason: "plan_retired" }));
     const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
     const { app, alertUnmatchedPayment } = appWith({ applySubscriptionEvent, alertRetiredPlanEvent });
     const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_pro_changed", event_type: "subscription_changed", content: { subscription: { id: "sub_pro_legacy", status: "active", subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] } } });
     expect(response.status).toBe(200);
-    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_pro_changed", eventType: "subscription_changed", subscriptionId: "sub_pro_legacy", reason: "unsupported_plan" }));
+    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_pro_changed", eventType: "subscription_changed", subscriptionId: "sub_pro_legacy", reason: "plan_retired" }));
     expect(alertUnmatchedPayment).not.toHaveBeenCalled();
+  });
+
+  // Review round 2: an event SkipWait cannot place (an item price outside the price book on a
+  // subscription a wallet still holds) is not called Pro/Max: it is alerted as "unrecognised,
+  // review", with its own activity, so nobody refunds a kit customer on a wrong label.
+  it("alerts an unrecognised item price as unsupported, never as a retired Pro/Max plan", async () => {
+    const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored", reason: "unsupported_plan" }));
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const { app, recordActivity } = appWith({ applySubscriptionEvent, alertRetiredPlanEvent });
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_unknown_price", event_type: "subscription_changed", content: { subscription: { id: "sub_start", status: "cancelled", subscription_items: [{ item_price_id: "skipwait_start_30d_v2-USD" }] } } });
+    expect(response.status).toBe(200);
+    expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
+    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_unknown_price", subscriptionId: "sub_start", itemPriceId: "skipwait_start_30d_v2-USD", reason: "unsupported_plan" }));
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.unsupported_plan_event", outcome: "failure", resourceId: "sub_start" }));
+    expect(recordActivity).not.toHaveBeenCalledWith(expect.objectContaining({ action: "billing.retired_plan_event" }));
+  });
+
+  it("calls a retired item price retired even when the handler answers with another reason", async () => {
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const { app } = appWith({ applySubscriptionEvent: vi.fn(async () => ({ status: "ignored", reason: "unsupported_plan" })), alertRetiredPlanEvent });
+    await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_max_old", event_type: "subscription_renewed", content: { subscription: { id: "sub_max_legacy", status: "active", subscription_items: [{ item_price_id: "skipwait_max_monthly-USD" }] } } });
+    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_max_old", reason: "plan_retired" }));
   });
 
   it("does not alert again for a redelivered retired-plan event already recorded", async () => {

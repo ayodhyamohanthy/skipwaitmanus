@@ -71,7 +71,7 @@ describe("retired-plan event alert", () => {
     const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
     const recordActivity = vi.fn(async () => undefined);
     const alert = createRetiredPlanAlerter({ fetchImpl, recordActivity });
-    const input = { eventId: "ev_max_renewal", eventType: "subscription_renewed", reason: "unsupported_plan", subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD" };
+    const input = { eventId: "ev_max_renewal", eventType: "subscription_renewed", reason: "plan_retired" as const, subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD" };
     await expect(alert(input)).resolves.toEqual({ alerted: true });
     await expect(alert(input)).resolves.toEqual({ alerted: true });
     expect(fetchImpl).toHaveBeenCalledTimes(2);
@@ -80,8 +80,27 @@ describe("retired-plan event alert", () => {
     expect(payload.text).toContain("Nothing was granted");
     expect(payload.text).toContain("sub_max_legacy");
     expect(payload.text).toContain("skipwait_max_monthly-USD");
-    expect(payload.text).toContain("cancel");
-    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.retired_plan_alert_sent", outcome: "success", resourceId: "sub_max_legacy", metadata: expect.objectContaining({ eventId: "ev_max_renewal", reason: "unsupported_plan" }) }));
+    expect(payload.text).toContain("Pro/Max");
+    expect(payload.text).toContain("cancel the subscription and refund the customer");
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.retired_plan_alert_sent", outcome: "success", resourceId: "sub_max_legacy", metadata: expect.objectContaining({ eventId: "ev_max_renewal", reason: "plan_retired" }) }));
+  });
+
+  // Review round 2: an item price SkipWait cannot place is not a Pro/Max plan. The email says so
+  // neutrally and asks for a review, never for a cancel-and-refund of a possibly paying customer.
+  it("words an unrecognised item price neutrally, with no Pro/Max label and no refund instruction", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createRetiredPlanAlerter({ fetchImpl, recordActivity });
+    await expect(alert({ eventId: "ev_unknown", eventType: "subscription_changed", reason: "unsupported_plan", subscriptionId: "sub_start", itemPriceId: "skipwait_start_30d_v2-USD" })).resolves.toEqual({ alerted: true });
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload.subject).toBe("skipwait.me unrecognised plan event needs review · sub_start");
+    expect(payload.text).toContain("Nothing was granted");
+    expect(payload.text).toContain("skipwait_start_30d_v2-USD");
+    expect(payload.text).not.toContain("Pro/Max");
+    expect(payload.text.toLowerCase()).not.toContain("refund the customer");
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.unsupported_plan_alert_sent", outcome: "success", resourceId: "sub_start" }));
   });
 
   it("names a gift when there is no subscription, and records a failed delivery without throwing", async () => {

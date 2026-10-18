@@ -216,7 +216,7 @@ describe("applyChargebeeSubscriptionEvent for a retired Pro/Max subscription", (
     wallets[0].role = role;
     Object.assign(intents[0], { role, plan, itemPriceId: `skipwait_${plan}_monthly-INR`, amount: plan === "pro" ? 59_900 : 129_900 });
     const before = structuredClone({ wallets, intents });
-    expect(await applyChargebeeSubscriptionEvent(legacyEvent(plan))).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expect(await applyChargebeeSubscriptionEvent(legacyEvent(plan))).toEqual({ status: "ignored", reason: "plan_retired" });
     expectUnchanged(before);
     expect(intents[0].status).toBe("pending");
     expect(events).toHaveLength(1);
@@ -231,7 +231,7 @@ describe("applyChargebeeSubscriptionEvent for a retired Pro/Max subscription", (
     Object.assign(wallets[0], { plan, subscriptionId: "sub_legacy", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: 10 });
     const before = structuredClone({ wallets, intents });
     const event = legacyEvent(plan, { eventId: `event_${eventType}`, eventType, status, subscriptionId: "sub_legacy", hostedPageId: undefined, passThruContent: undefined, resourceVersion: 20, currentTermStart: termEnd, currentTermEnd: new Date("2026-11-01T00:00:00.000Z") });
-    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "plan_retired" });
     expectUnchanged(before);
     expect(events).toHaveLength(1);
     expect(promoGrants).toEqual([]);
@@ -242,10 +242,30 @@ describe("applyChargebeeSubscriptionEvent for a retired Pro/Max subscription", (
     Object.assign(wallets[0], { plan: "start", subscriptionId: "sub_kit", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: 10 });
     const before = structuredClone({ wallets, intents });
     const event = legacyEvent(plan, { eventId: "event_moved", eventType: "subscription_renewed", subscriptionId: "sub_kit", hostedPageId: undefined, passThruContent: undefined, resourceVersion: 20, currentTermStart: termEnd, currentTermEnd: new Date("2026-10-31T00:00:00.000Z") });
-    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "plan_retired" });
     expectUnchanged(before);
     expect(events).toHaveLength(1);
     expect(promoTxns).toEqual([]);
+  });
+  // Review round 2: the webhook tells "a retired Pro/Max subscription, cancel and refund" apart from
+  // "an item price SkipWait cannot place, review". A wallet still stored as pro/max whose event
+  // names no item price is the first kind; a Free-bound wallet getting an unknown price is the second.
+  it.each(["pro", "max"] as const)("a wallet still stored as %s gets nothing from an event that names no item price, as a retired plan", async plan => {
+    Object.assign(wallets[0], { plan, subscriptionId: "sub_legacy", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: 10 });
+    const before = structuredClone({ wallets, intents });
+    const event = { ...input, plan: undefined, itemPriceId: undefined, interval: undefined, eventId: "event_cancel", eventType: "subscription_cancelled", status: "cancelled", subscriptionId: "sub_legacy", hostedPageId: undefined, passThruContent: undefined, resourceVersion: 20 };
+    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "plan_retired" });
+    expectUnchanged(before);
+    expect(events).toHaveLength(1);
+  });
+
+  it("a Free wallet still bound to an ended kit pass gets nothing from an unknown item price, and it is not called retired", async () => {
+    Object.assign(wallets[0], { plan: "free", subscriptionId: "sub_start", subscriptionStatus: "cancelled", subscriptionCurrency: "USD", subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: 10 });
+    const before = structuredClone({ wallets, intents });
+    const event = { ...input, plan: undefined, itemPriceId: "skipwait_start_30d_v2-USD", interval: undefined, currency: "USD" as const, eventId: "event_unknown", eventType: "subscription_changed", status: "cancelled", subscriptionId: "sub_start", hostedPageId: undefined, passThruContent: undefined, resourceVersion: 20 };
+    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expectUnchanged(before);
+    expect(events).toHaveLength(1);
   });
 });
 

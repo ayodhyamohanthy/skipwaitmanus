@@ -33,7 +33,8 @@ import {
   type DeveloperApp,
 } from "../shared/assistant";
 import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
-import { isBillablePlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId, type WalletPlanId } from "../shared/billingCatalog";
+import { isBillablePlanId, isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId, type WalletPlanId } from "../shared/billingCatalog";
+import { PLAN_RETIRED_CODE } from "../shared/subscriptionManagement";
 import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
@@ -3984,10 +3985,10 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (duplicate[0]) return { status: "duplicate" as const };
     // D-067: an event naming a retired Pro/Max item price grants nothing, whatever wallet or intent it
     // names (even a kit wallet whose subscription was moved to one). Recorded once so a redelivery is a
-    // duplicate; the webhook alerts it so a human cancels and refunds it in Chargebee.
+    // duplicate; the webhook alerts it (plan_retired) so a human cancels and refunds it in Chargebee.
     if (isRetiredPlanItemPrice(input.itemPriceId)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
-      return { status: "ignored" as const, reason: "unsupported_plan" };
+      return { status: "ignored" as const, reason: PLAN_RETIRED_CODE };
     }
 
     const intent = input.hostedPageId && input.passThruContent
@@ -4018,7 +4019,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     }
     if (!expectedPlan || !isBillablePlanId(expectedPlan)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
-      return { status: "ignored" as const, reason: "unsupported_plan" };
+      // A wallet or intent still stored as Pro/Max is a retired plan (cancel and refund); anything
+      // else is a price SkipWait cannot place, reviewed without a Pro/Max label.
+      return { status: "ignored" as const, reason: isRetiredPlanId(expectedPlan) ? PLAN_RETIRED_CODE : "unsupported_plan" };
     }
     const currentSubscription = sameSubscription ? wallet : undefined;
     if (currentSubscription?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentSubscription.subscriptionResourceVersion) {
@@ -4028,7 +4031,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
 
     // Plan credits a cycle: the kit plan's own creditsPerMonth. expectedPlan is a
     // catalog plan here: a retired Pro/Max intent or wallet (D-067) stopped above
-    // as unsupported_plan, recorded once and granting nothing.
+    // as plan_retired, recorded once and granting nothing.
     const allowance = planEntitlementsFor(expectedPlan).creditsPerMonth;
     const retainsAccess = input.status === "active" || input.status === "non_renewing";
     const startsNewTerm = !currentSubscription?.subscriptionCurrentTermStart || (input.currentTermStart && currentSubscription.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());

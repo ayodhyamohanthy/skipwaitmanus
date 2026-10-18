@@ -7,6 +7,7 @@ import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSch
 import { isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
 import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
+import type { RetiredPlanAlertInput } from "./errorAlerting";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -38,8 +39,8 @@ type Deps = {
   listClaimableGifts?: (userId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; subscriptionId: string | null; receiverEmail: string | null; createdAt: Date }>>;
   /** Never credits (D-067): "retired" for a gift not credited (`parked` when this call parked it), "duplicate" for one credited before D-067. */
   claimGift?: (userId: number, giftId: string) => Promise<{ status: "retired"; giftId: string; parked: boolean } | { status: "duplicate" }>;
-  /** D-067: anything Chargebee sends for the retired Pro/Max plans, or a claim of such a gift; a human cancels and refunds it. */
-  alertRetiredPlanEvent?: (input: { eventId?: string; eventType?: string; reason: string; subscriptionId?: string; giftId?: string; itemPriceId?: string }) => Promise<unknown>;
+  /** D-067: anything Chargebee sends for the retired Pro/Max plans, or a claim of such a gift (a human cancels and refunds it), or an item price SkipWait cannot place (unsupported_plan: reviewed, worded neutrally). */
+  alertRetiredPlanEvent?: (input: RetiredPlanAlertInput) => Promise<unknown>;
 };
 
 /** What a recipient reads when a gift (always a retired Pro/Max gift) is claimed. */
@@ -288,15 +289,19 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         console.error("[Chargebee] subscription entitlement error", error);
         return res.status(500).json({ error: "Subscription synchronization retry required" });
       }
-      // D-067: a subscription on a retired Pro/Max item price, or one the wallet can no longer bill,
-      // was recorded and granted nothing. A human must cancel it (and refund any payment) in Chargebee.
+      // D-067: an event that was recorded and granted nothing because of its plan reaches a human.
+      // A retired Pro/Max item price, or a wallet/intent still stored as Pro/Max (plan_retired), is
+      // cancelled and refunded in Chargebee. Any other price SkipWait cannot place (unsupported_plan,
+      // e.g. a renamed item price on a kit subscription) is reviewed under its own neutral label,
+      // never called Pro/Max, so nobody refunds a paying kit customer on a wrong label.
       const applied = obligations.subscription as { status?: string; reason?: string } | undefined;
-      const retiredItemPrice = isRetiredPlanItemPrice(subscription.itemPriceId);
+      const retired = isRetiredPlanItemPrice(subscription.itemPriceId) || applied?.reason === PLAN_RETIRED_CODE;
+      const unsupported = !retired && applied?.status === "ignored" && applied.reason === "unsupported_plan";
       // A redelivery of an event already recorded (duplicate) was alerted on its first delivery.
-      if (applied?.status !== "duplicate" && (retiredItemPrice || (applied?.status === "ignored" && applied.reason === "unsupported_plan"))) {
-        const reason = applied?.reason ?? "retired_item_price";
-        console.error("[Chargebee] retired plan event needs review", { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason });
-        record({ action: "billing.retired_plan_event", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason, itemPriceId: subscription.itemPriceId } });
+      if (applied?.status !== "duplicate" && (retired || unsupported)) {
+        const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";
+        console.error(`[Chargebee] ${retired ? "retired" : "unrecognised"} plan event needs review`, { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason });
+        record({ action: retired ? "billing.retired_plan_event" : "billing.unsupported_plan_event", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason, itemPriceId: subscription.itemPriceId } });
         void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason, subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
       }
     }
