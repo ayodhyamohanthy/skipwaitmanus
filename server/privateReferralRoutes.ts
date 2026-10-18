@@ -47,7 +47,7 @@ export type PrivateReferralRouteDeps = {
   // existing injected-dependency callers keep working via the fetch fallback.
   storageGetBytes?: (key: string) => Promise<Buffer | Uint8Array | undefined>;
   createReferralAttachment: (ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) => Promise<Attachment>;
-  getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null }) | undefined>;
+  getAccessibleReferralAttachment: (userId: number, attachmentId: number) => Promise<(Attachment & { ownerId: number; referrerId?: number | null; referralRequestId?: number | null }) | undefined>;
   createResumeUploadSession?: (ownerId: number, input: { sessionId?: string; fileName: string; mimeType: string; expectedSize: number }) => Promise<{ id: string }>;
   getResumeUploadSession?: (ownerId: number, sessionId: string) => Promise<{ id: string; fileName: string; mimeType: string; expectedSize: number; receivedSize: number; nextChunkIndex: number; status: "active" | "finalizing" | "completed" | "failed"; attachmentId: number | null; chunks: Array<{ chunkIndex: number; storageKey: string; byteSize: number }> } | undefined>;
   appendResumeUploadChunk?: (ownerId: number, input: { sessionId: string; chunkIndex: number; storageKey: string; byteSize: number }) => Promise<{ nextChunkIndex: number; receivedSize: number; alreadyStored: boolean }>;
@@ -538,6 +538,13 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const attachmentId = Number(req.params.attachmentId);
       if (!identity) return res.status(401).send("Sign in to view this document"); if (!Number.isInteger(attachmentId) || attachmentId <= 0) return res.status(400).send("Invalid document reference");
       const attachment = await deps.getAccessibleReferralAttachment(identity.account.id, attachmentId); if (!attachment) return res.status(404).send("Document not found");
+      // A referrer blocked with the seeker, either way, gets the same 404 as no access (blocks stay unenumerable); the seeker
+      // always keeps their own file. Fail-open like every referral surface: a failed check never hides a file.
+      const askId = attachment.ownerId === identity.account.id ? null : attachment.referralRequestId ?? null;
+      if (askId !== null && await isRequestBlocked(identity.account.id, askId)) {
+        record({ actorUserId: identity.account.id, action: "company_referral.blocked_denied", outcome: "denied", resourceType: "referral_request", resourceId: askId, metadata: { surface: "document" } });
+        return res.status(404).send("Document not found");
+      }
       record({ actorUserId: identity.account.id, action: "document.accessed", outcome: "success", resourceType: "attachment", resourceId: attachmentId, metadata: { access: "authorized" } });
       res.set("Cache-Control", "private, no-store");
       res.set("X-Content-Type-Options", "nosniff");

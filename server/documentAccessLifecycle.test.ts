@@ -2,15 +2,15 @@ import request from "supertest";
 import type express from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { notifications, referralDocumentAccessGrants, referralTransitionEvents, referrerReviewEmailLinks } from "../drizzle/schema";
-import { COLLEAGUE, DAY_MS, OUTSIDER, REFERRER, REQUEST_ID, RESUME_ID, REVIEW_LINK_TOKEN, SEEKER, documentAccessApp, resetStore, store, type RecordedActivity } from "./documentAccess.testkit";
+import { COLLEAGUE, DAY_MS, OUTSIDER, REFERRER, REQUEST_ID, RESUME_ID, REVIEW_LINK_TOKEN, SEEKER, blockPair, documentAccessApp, resetStore, store, type RecordedActivity } from "./documentAccess.testkit";
 import { claimCompanyReferralRequest, getAccessibleReferralAttachment, oneClickReviewReferralRequest } from "./db";
 
 /*
  * D-019(e) privacy promise (Terms: "Before acceptance, a Referrer sees neither
  * the Job Seeker's name nor resume. On acceptance ... the Referrer receives the
  * resume"). The real store (server/db.ts) runs against an in-memory database
- * through the real routes, so the where clauses and the grant written at
- * acceptance are under test, not a stub's opinion of them.
+ * through the real routes, so the where clauses, the grant written at
+ * acceptance and the block lookup are under test, not a stub's opinion of them.
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -165,5 +165,40 @@ describe("acceptance opens the resume to the accepting referrer only", () => {
     expect((await getDocument(server, SEEKER)).status).toBe(307);
     expect((await oneClickAccept(server, REFERRER)).status).toBe(200);
     expect((await getDocument(server, SEEKER)).status).toBe(307);
+  });
+});
+
+describe("a block between the seeker and the referrer closes the resume to the referrer, never to the seeker", () => {
+  it("a referrer the seeker blocks after accepting gets the same 404 as no access; the seeker keeps the file", async () => {
+    const activity: RecordedActivity[] = [];
+    const server = documentAccessApp(activity);
+    expect((await oneClickAccept(server, REFERRER)).status).toBe(200);
+    expect((await getDocument(server, REFERRER)).status).toBe(307);
+    const noAccess = await getDocument(server, COLLEAGUE);
+    await blockPair(SEEKER, REFERRER);
+
+    const blocked = await getDocument(server, REFERRER);
+    expect(blocked.status).toBe(404);
+    // Neutral: the same body and type as a file the caller may not open, so a block cannot be told apart.
+    expect([blocked.text, blocked.headers["content-type"]]).toEqual([noAccess.text, noAccess.headers["content-type"]]);
+    expect(blocked.headers.location).toBeUndefined();
+    expect(blocked.headers["content-disposition"]).toBeUndefined();
+    expect((await getDocument(server, SEEKER)).status).toBe(307);
+    expect(activity.filter(entry => entry.action === "company_referral.blocked_denied")).toEqual([expect.objectContaining({ actorUserId: REFERRER, outcome: "denied", resourceType: "referral_request", resourceId: REQUEST_ID })]);
+    expect(activity.filter(entry => entry.action === "document.accessed").map(entry => entry.actorUserId)).toEqual([REFERRER, SEEKER]);
+  });
+
+  it("a referrer who blocked the seeker is refused the same way; the blocked seeker keeps their own file", async () => {
+    const server = documentAccessApp();
+    expect((await oneClickAccept(server, REFERRER)).status).toBe(200);
+    await blockPair(REFERRER, SEEKER);
+    expect((await getDocument(server, REFERRER)).status).toBe(404);
+    expect((await getDocument(server, SEEKER)).status).toBe(307);
+  });
+
+  it("an accepted referrer still opens the file when the block check itself fails (fail-open, like every referral surface)", async () => {
+    const server = documentAccessApp([], { getBlockedReferralRequestIds: async () => { throw new Error("userBlocks missing"); } });
+    expect((await oneClickAccept(server, REFERRER)).status).toBe(200);
+    expect((await getDocument(server, REFERRER)).status).toBe(307);
   });
 });

@@ -11,7 +11,7 @@
  * or `claim`.
  */
 import express from "express";
-import { jobs, profiles, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
+import { jobs, profiles, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { claimCompanyReferralRequest, getAccessibleReferralAttachment, getClaimedCompanyReferralDetail, oneClickReviewReferralRequest, reviewReferralRequest } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
@@ -60,6 +60,7 @@ export function seedRows(options: StoreSeed = {}) {
     [referrerReviewEmailLinks, reviewLinkFor === undefined ? [] : [{ id: 51, referralRequestId: REQUEST_ID, referrerId: reviewLinkFor, linkToken: REVIEW_LINK_TOKEN, expiresAt: new Date(Date.now() + DAY_MS), consumedAt: null, grantVersion: 1, rotatedAt: null }]],
     [tokenBalances, [{ id: 81, userId: SEEKER, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "free" }]],
     [tokenTransactions, [{ id: 61, userId: SEEKER, role: "job_seeker", tokenCount: -1, kind: "direct_request", source: "monthly_allowance", sourceCycleKey: "2026-10", reversesTransactionId: null }]],
+    [userBlocks, []],
   ] as const;
 }
 
@@ -70,6 +71,8 @@ export function claimEraGrant(expiresAt: Date, referrerId = REFERRER): Row {
 
 export const store = createInMemoryDrizzle();
 export const resetStore = (options?: StoreSeed) => store.reset(seedRows(options));
+/** `blocker` blocks `blocked`; the routes' real block lookup (server/blocksRoutes.ts) reads it in both directions. */
+export const blockPair = async (blocker: number, blocked: number) => { await store.db.insert(userBlocks).values({ blockerUserId: blocker, blockedUserId: blocked, reason: null, createdAt: new Date() }); };
 
 type RequiredDepName = { [K in keyof PrivateReferralRouteDeps]-?: undefined extends PrivateReferralRouteDeps[K] ? never : K }[keyof PrivateReferralRouteDeps];
 const unusedDep = (name: RequiredDepName) => (): never => { throw new Error(`document access testkit: the route reached ${name}, which these tests do not provide`); };
@@ -77,8 +80,11 @@ const unusedDep = (name: RequiredDepName) => (): never => { throw new Error(`doc
 /** What the routes recorded (operational activity), for assertions on the analytics they emit. */
 export type RecordedActivity = Parameters<NonNullable<PrivateReferralRouteDeps["recordActivity"]>>[0];
 
-/** The real routes over the real store; `x-test-user` picks the signed-in person. No email or notification is sent. */
-export function documentAccessApp(activity: RecordedActivity[] = []) {
+/**
+ * The real routes over the real store; `x-test-user` picks the signed-in person. No email or notification is sent.
+ * Blocks go through the real lookup over the store (seed them with `blockPair`) unless a test replaces it.
+ */
+export function documentAccessApp(activity: RecordedActivity[] = [], options: { getBlockedReferralRequestIds?: PrivateReferralRouteDeps["getBlockedReferralRequestIds"] } = {}) {
   const server = express();
   server.use(express.json());
   const people = new Set([SEEKER, REFERRER, COLLEAGUE, OUTSIDER]);
@@ -88,7 +94,7 @@ export function documentAccessApp(activity: RecordedActivity[] = []) {
     createCompanyReferralRequest: unusedDep("createCompanyReferralRequest"), listCompanyReferralInbox: unusedDep("listCompanyReferralInbox"),
     listPublicCompanyOpportunities: unusedDep("listPublicCompanyOpportunities"), publishCompanyOpportunity: unusedDep("publishCompanyOpportunity"),
     resolveIdentity: async req => { const id = Number(req.header("x-test-user")); return people.has(id) ? { account: { id, openId: `user-${id}` } } : undefined; },
-    getBlockedReferralRequestIds: async () => new Set<number>(),
+    getBlockedReferralRequestIds: options.getBlockedReferralRequestIds,
     resolveCompanyIdentities: async () => new Map(),
     recordActivity: async entry => { activity.push(entry); },
     storageGetSignedUrl: async key => `https://signed.example/${key}`,
