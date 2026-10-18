@@ -4,13 +4,15 @@
 // does not reconcile: every wallet against its ledger rows (the same bucket
 // rules as the admin audit, but all wallets, not the 200 latest), one
 // purchase credit per credited payment, payments parked for review, refunds
-// no payment explains, and checkouts still pending after a day. It never
+// no payment explains, checkouts still pending after a day, and any wallet
+// still marked with a retired Pro/Max plan and an active term (D-067: each one
+// is a missed normalization to Free). It never
 // writes to a wallet, payment, or ledger row; the only writes are the job's
 // own run record (the runner) and one operational-activity row when an alert
 // email goes out. The email carries ids, amounts, currencies and reasons —
 // never names, emails, or request content.
 import { and, asc, count, eq, gt, inArray, lt, sql } from "drizzle-orm";
-import { operationalActivityLogs, paymentFulfillments, tokenTransactions } from "../drizzle/schema";
+import { operationalActivityLogs, paymentFulfillments, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
@@ -30,6 +32,7 @@ export type PaymentCreditCount = { paymentId: number; creditRows: number; credit
 export type ParkedPaymentRow = { id: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: Date };
 export type UnmatchedRefundRow = { logId: number; resourceId: string | null; createdAt: Date };
 export type StaleCheckoutRow = { id: number; amount: number; currency: string; createdAt: Date };
+export type LegacyPlanWalletRow = { id: number; role: string; plan: string; termEnd: Date | null };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -38,6 +41,7 @@ export type DailyMoneyCheckDeps = {
   listParkedPayments: (limit: number) => Promise<ParkedPaymentRow[]>;
   listUnmatchedRefunds: (limit: number) => Promise<UnmatchedRefundRow[]>;
   listStaleCheckouts: (olderThan: Date, limit: number) => Promise<StaleCheckoutRow[]>;
+  listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -92,6 +96,18 @@ async function listStaleCheckouts(olderThan: Date, limit: number): Promise<Stale
     .orderBy(asc(paymentFulfillments.id)).limit(limit);
 }
 
+/**
+ * D-067: a wallet still marked pro or max reads as Free and is rolled to Free by the next read or the hourly
+ * plan-credit-cycles job. One that still holds an active term was missed. The term end is compared with the
+ * app clock (never MySQL NOW()); the plan values stay in the enum as storage-only.
+ */
+async function listLegacyPlanWallets(now: Date, limit: number): Promise<LegacyPlanWalletRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  return db.select({ id: tokenBalances.id, role: tokenBalances.role, plan: tokenBalances.plan, termEnd: tokenBalances.subscriptionCurrentTermEnd })
+    .from(tokenBalances).where(and(inArray(tokenBalances.plan, ["pro", "max"]), gt(tokenBalances.subscriptionCurrentTermEnd, now)))
+    .orderBy(asc(tokenBalances.id)).limit(limit);
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -118,6 +134,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listParkedPayments,
   listUnmatchedRefunds,
   listStaleCheckouts,
+  listLegacyPlanWallets,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 }) {
@@ -157,6 +174,9 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
 
     const stale = await deps.listStaleCheckouts(new Date(nowMs - STALE_CHECKOUT_AGE_MS), FINDINGS_PREVIEW_LIMIT);
     for (const checkout of stale) findings.push(`stale checkout: payment #${checkout.id} ${checkout.amount} ${checkout.currency} pending since ${checkout.createdAt.toISOString()}`);
+
+    const legacy = await deps.listLegacyPlanWallets(new Date(nowMs), FINDINGS_PREVIEW_LIMIT);
+    for (const wallet of legacy) findings.push(`legacy plan wallet: wallet #${wallet.id} (${wallet.role}, ${wallet.plan}) still holds an active term until ${wallet.termEnd?.toISOString() ?? "an unknown date"}`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;
