@@ -57,6 +57,14 @@ describe("refund webhook handling", () => {
     expect(alertPaymentRefund).toHaveBeenCalledWith(expect.objectContaining({ paymentId: 4, invoiceId: "inv_1", reason: "refund_credits_spent", refundAmount: 9900, currency: "INR" }));
     expect(record).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.refund_needs_review", outcome: "failure" }));
   });
+  it("alerts when a refund arrives after the admin already closed the payment, or before its credit", async () => {
+    for (const reason of ["refund_repeated", "refund_not_full_before_credit", "refund_of_uncredited_payment"]) {
+      const { app, alertPaymentRefund, record } = appWith(async () => ({ status: "review", paymentId: 4, reason }));
+      expect((await post(app, refundEvent())).status).toBe(200);
+      expect(alertPaymentRefund).toHaveBeenCalledWith(expect.objectContaining({ paymentId: 4, reason, refundAmount: 9900, currency: "INR" }));
+      expect(record).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.refund_needs_review", outcome: "failure" }));
+    }
+  });
   it("alerts when a refund maps to no credit purchase", async () => {
     const { app, alertPaymentRefund } = appWith(async () => ({ status: "unmatched", reason: "refund_invoice_unknown" }));
     await post(app, refundEvent());
