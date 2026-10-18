@@ -2,7 +2,7 @@
 // the open-ask predicate every slot count uses, and the typed errors routes map
 // to 409 (slot cap, showcase limits) or 402 (assistants). No db.ts import, so
 // db.ts can use these inside its transactions without an import cycle.
-import { and, eq, gt, isNotNull, or, type SQL } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, or, type SQL } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
 import { SLOT_CAP_REACHED, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
@@ -11,19 +11,25 @@ import { ASK_TTL_MS } from "../shared/referral";
 import { assignedAskNotHeldCondition } from "./heldAsk";
 
 /**
- * The caller's open asks: pending and unexpired. Mirrors the expiry rule: only an
- * unclaimed pending ask expires, at createdAt + ASK_TTL_MS, computed from the JS
- * clock (never DB NOW()). Unclaimed means no referrer, or a personal-link ask
- * still held for its employee (D-050, server/heldAsk.ts); a claimed,
- * queue-allocated or pre-history assigned ask keeps its slot however old it is.
- * Always scoped to the one seeker it is called for.
+ * The caller's open asks: pending and unexpired. Mirrors the expiry rules (D-061):
+ * a waiting or held ask has reached no referrer and holds no slot; a visible
+ * unclaimed ask holds one until 7 days after its first visibility
+ * (coverageVisibleAt; pre-0095 rows: creation, computed from the JS clock, never
+ * DB NOW()); an assigned ask holds its slot while it is not held — claimed,
+ * queue-allocated or pre-history (D-050, server/heldAsk.ts). Always scoped to
+ * the one seeker it is called for.
  */
 export function openAskCondition(userId: number, nowMs: number): SQL {
   const cutoff = new Date(nowMs - ASK_TTL_MS);
   const condition = and(
     eq(referralRequests.jobSeekerId, userId),
     eq(referralRequests.status, "pending"),
-    or(and(isNotNull(referralRequests.referrerId), assignedAskNotHeldCondition()), gt(referralRequests.createdAt, cutoff)),
+    eq(referralRequests.waitingForCoverage, false),
+    or(
+      and(isNotNull(referralRequests.referrerId), assignedAskNotHeldCondition()),
+      and(isNotNull(referralRequests.coverageVisibleAt), gt(referralRequests.coverageVisibleAt, cutoff)),
+      and(isNull(referralRequests.coverageVisibleAt), gt(referralRequests.createdAt, cutoff)),
+    ),
   );
   if (!condition) throw new Error("Open-ask condition could not be built");
   return condition;

@@ -2,7 +2,7 @@ import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
-import { referralAttachments, tokenBalances } from "../drizzle/schema";
+import { profiles, referralAttachments, tokenBalances } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { createCompanyReferralRequest } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
@@ -59,6 +59,8 @@ describe("an ask sent with no credit left", () => {
   it("is refused with copy that points to credit packs and plans, never to retired Pro/Max", async () => {
     // A Free wallet in the current cycle with every monthly credit used and nothing bought.
     rowsByTable.set(tokenBalances, [{ id: 1, userId: SEEKER, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 0, monthlyAllowance: 3, monthlyCycleKey: currentMonthlyCycleKey(), plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: new Date() }]);
+    // One available acme.com employee: the ask is covered, so it must pay its credit now (D-034).
+    rowsByTable.set(profiles, [{ id: 91, userId: 501, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(), paused: false, referralCapacity: 3 }]);
     rowsByTable.set(referralAttachments, [{ id: 77 }]);
     const refusal = await createCompanyReferralRequest(SEEKER, { targetRoleUrl: ROLE_URL, personalPitch: "I led the approvals redesign this role describes.", attachmentIds: [77], idempotencyKey: "ask-out-of-credits-0001" }).then(
       () => { throw new Error("the ask was accepted without a credit"); },
@@ -66,6 +68,15 @@ describe("an ask sent with no credit left", () => {
     );
     expect(refusal.message).toBe(OUT_OF_CREDITS);
     expect(refusal.message).not.toMatch(/\bPro\b|\bMax\b/);
+  });
+
+  it("accepts a waiting ask with no credit and spends nothing: the credit is due only at first visibility (D-034/D-047)", async () => {
+    rowsByTable.set(tokenBalances, [{ id: 1, userId: SEEKER, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 0, monthlyAllowance: 3, monthlyCycleKey: currentMonthlyCycleKey(), plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: new Date() }]);
+    rowsByTable.set(referralAttachments, [{ id: 77 }]);
+    // No verified acme.com referrer rows: the ask waits for free instead of being refused.
+    const result = await createCompanyReferralRequest(SEEKER, { targetRoleUrl: ROLE_URL, personalPitch: "I led the approvals redesign this role describes.", attachmentIds: [77], idempotencyKey: "ask-waiting-0001" });
+    expect(result).toMatchObject({ coverageStatus: "waiting_for_company_coverage", notifiedEmployees: 0 });
+    expect(rowsByTable.get(tokenBalances)?.[0]).toMatchObject({ monthlyCreditsRemaining: 0, balance: 0 });
   });
 
   it("answers the refusal as the seeker's 400 with the same copy", async () => {

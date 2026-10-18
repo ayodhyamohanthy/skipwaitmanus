@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ASK_TTL_MS } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
 import { createAskExpirySweep, listStalePendingAsks } from "./askExpirySweep";
 import { reconcileExpiredPendingReferrals } from "./db";
 import { BEFORE_CLAIM_HISTORY, LINK_OWNER, NOW, OTHER_SEEKER, SEEKER, allocatedSlot, askById, askRow, claimEvent, daysAgo, legacyDebitRow, noticesFor, reversalsOf, seedHeldAsks, spendRow, store, walletOf, walletRow } from "./heldAsk.testkit";
@@ -27,6 +27,8 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); });
 
 const cutoff = new Date(NOW - ASK_TTL_MS);
+/** D-061: harmless-while-waiting is 90 days; the held personal-link ask keeps its creation-based 7 (D-050). */
+const windows = { visibleBefore: cutoff, waitingBefore: new Date(NOW - COVERAGE_WAIT_MS), heldBefore: cutoff };
 const context = { nowMs: NOW, windowKey: "2026-10-18T12:00Z" };
 
 describe("the ask-expiry sweep lists personal-link asks its employee never acted on (D-050)", () => {
@@ -44,8 +46,8 @@ describe("the ask-expiry sweep lists personal-link asks its employee never acted
       events: [claimEvent(503)],
       slots: [allocatedSlot(504)],
     });
-    expect(await listStalePendingAsks(cutoff, 10)).toEqual([{ id: 502, jobSeekerId: SEEKER }, { id: 501, jobSeekerId: SEEKER }]);
-    expect(await listStalePendingAsks(cutoff, 1)).toEqual([{ id: 502, jobSeekerId: SEEKER }]);
+    expect(await listStalePendingAsks(windows, 10)).toEqual([{ id: 502, jobSeekerId: SEEKER }, { id: 501, jobSeekerId: SEEKER }]);
+    expect(await listStalePendingAsks(windows, 1)).toEqual([{ id: 502, jobSeekerId: SEEKER }]);
   });
 
   it("never lets claimed assigned asks fill a batch ahead of a held one", async () => {
@@ -53,7 +55,7 @@ describe("the ask-expiry sweep lists personal-link asks its employee never acted
       asks: [askRow({ id: 511, createdAt: daysAgo(20) }), askRow({ id: 512, createdAt: daysAgo(19) }), askRow({ id: 501, createdAt: daysAgo(8) })],
       events: [claimEvent(511, 40), claimEvent(512, 41)],
     });
-    expect(await listStalePendingAsks(cutoff, 2)).toEqual([{ id: 501, jobSeekerId: SEEKER }]);
+    expect(await listStalePendingAsks(windows, 2)).toEqual([{ id: 501, jobSeekerId: SEEKER }]);
   });
 
   it("expires each held ask once through the real job; a second run processes nothing", async () => {

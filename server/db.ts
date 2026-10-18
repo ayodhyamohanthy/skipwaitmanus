@@ -34,7 +34,7 @@ import {
 } from "../shared/assistant";
 import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
 import { isBillablePlanId, type BillablePlanId, type BillingPeriod, type WalletPlanId } from "../shared/billingCatalog";
-import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
@@ -47,6 +47,7 @@ import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, show
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskShelfLife, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
 import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
+import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDRAWN_NOTICE, askDeliveryKey, coverageDeliveredEventKey, coverageDeliveredNotice, coverageHeldEventKey, coverageHeldNotice, coverageReferrerEventKey, coverageReferrerNotice, coverageWaitExpiredNotice, isAwaitingCoverageActionAllowed, type CoverageDeliveryOutcome, type CoverageHandoffSummary } from "./coverageDelivery";
 // Re-exported for every existing caller (tests and companyDirectory.ts import
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
@@ -1441,7 +1442,7 @@ export async function completeWorkEmailOtpEnrollment(input: { receipt: string; e
   const email = input.email.trim().toLowerCase(); const domain = email.split("@")[1];
   if (!domain || !isWorkEmailDomain(domain) || !Number.isInteger(input.userId) || input.userId <= 0) throw new Error("A verified work email is required");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
+  const result = await db.transaction(async tx => {
     const receiptHash = createHash("sha256").update(input.receipt).digest("hex");
     const receipts = await tx.select().from(workEmailOtpReceipts).where(and(eq(workEmailOtpReceipts.receiptHash, receiptHash), inArray(workEmailOtpReceipts.email, workEmailStorageKeys(email).read), eq(workEmailOtpReceipts.userId, input.userId), eq(workEmailOtpReceipts.purpose, "work_email_enrollment"), gt(workEmailOtpReceipts.expiresAt, new Date()))).limit(1).for("update");
     const receipt = receipts[0];
@@ -1475,6 +1476,17 @@ export async function completeWorkEmailOtpEnrollment(input: { receipt: string; e
     }
     return { workEmailDomain: domain, reward, replayed: false };
   });
+  if (!result.replayed) {
+    // D-062: the freshly verified employee takes over their company's waiting and held asks, oldest first,
+    // up to their remaining capacity; each delivery spends its seeker's credit at first visibility (D-034)
+    // and a creditless ask stays held (D-047). Runs after this enrollment's own transaction commits and is
+    // fail-soft: the hourly coverage-delivery-retry sweep recovers whatever this attempt misses, and a
+    // replay after a lost response must not hand the same asks over twice (the delivery re-checks under
+    // the ask's row lock, so it is idempotent even then).
+    try { await deliverWaitingAsksToReferrer(input.userId, result.workEmailDomain); }
+    catch (error) { console.warn("[coverage] enrollment hand-off skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "coverage_enrollment_handoff" }); }
+  }
+  return result;
 }
 
 export async function saveVerifiedWorkEmail(userId: number, email: string) {
@@ -1486,10 +1498,12 @@ export async function saveVerifiedWorkEmail(userId: number, email: string) {
   await db.insert(profiles).values({ userId, accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true }).onDuplicateKeyUpdate({ set: { accountType: "referrer", company: domain, workEmailDomain: domain, workEmailVerifiedAt: new Date(), isOnboarded: true } });
   const newlyVerifiedForDomain = previous[0]?.workEmailDomain !== domain || !previous[0]?.workEmailVerifiedAt;
   if (newlyVerifiedForDomain) {
-    const waitingRequests = await db.select({ requestId: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, domain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId)));
-    // P0-block-delivery: no notice for an ask from a seeker blocked with this employee (either way); fail-open (server/blockedPairs.ts).
-    const blockedSeekers = await blockedCounterpartsFailOpen(db, userId, waitingRequests.map(request => request.jobSeekerId), "work_email_waiting_asks");
-    for (const request of waitingRequests.filter(row => !blockedSeekers.has(row.jobSeekerId))) await db.insert(notifications).values({ kind: "ask_new", userId, category: "referral", title: "A private referral request is waiting", body: `A candidate has asked for help at ${domain}. Review it only if you choose to help.` });
+    // D-062: a newly verified employee takes over their company's waiting and held asks, oldest first, up to
+    // their remaining capacity; each delivery spends its seeker's credit at first visibility (D-034) under the
+    // ask's row lock, and a creditless ask stays held (D-047). Fail-soft: the verification itself must never
+    // fail on this, and the hourly coverage-delivery-retry sweep recovers whatever this attempt misses.
+    try { await deliverWaitingAsksToReferrer(userId, domain); }
+    catch (error) { console.warn("[coverage] enrollment hand-off skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "coverage_enrollment_handoff" }); }
   }
   return getProfileByUserId(userId);
 }
@@ -1795,12 +1809,20 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       opportunity=(await tx.select({id:companyOpportunities.id,ownerId:companyOpportunities.ownerId,companyDomain:companyOpportunities.companyDomain,isActive:companyOpportunities.isActive,expiresAt:companyOpportunities.expiresAt}).from(companyOpportunities).where(eq(companyOpportunities.id,input.opportunityId)).limit(1).for("update"))[0];
       if(!opportunity||!opportunity.isActive||isOpportunityExpired(opportunity.expiresAt,nowMs)||opportunity.companyDomain.trim().toLowerCase()!==companyDomain.trim().toLowerCase())throw new Error("This opening is no longer available. Refresh the company page and choose again.");
     }
-    if(entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
+    const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
+    const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));
+    // D-034/D-062: coverage means an *available* referrer (verified, unpaused, under monthly
+    // capacity — the directory's own predicate), never merely a verified employee. A personal
+    // link is covered by its owner alone and keeps today's single-step lifecycle.
+    const allocatedByReferrer=fastTrackLink?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
+    const available=fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
+    const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    // D-061: a waiting ask uses no open slot and bypasses the cap until it can reach a referrer.
+    // The cap refusal stays ahead of the attachment read, as before, so it needs no document lock.
+    if(!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
     const uniqueAttachmentIds=Array.from(new Set(input.attachmentIds));
     const owned=await tx.select({id:referralAttachments.id}).from(referralAttachments).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId))).for("update");
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
-    const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
-    const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));const coverageStatus=companyCoverageStatus(eligible.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
     // P0-block-delivery: one lookup over everyone this ask could reach (fail-open, server/blockedPairs.ts). A personal
     // link whose owner is blocked with the seeker (either way) is refused here, before any write or credit, with the
     // inactive-link words. Anyone else blocked is never told and gets no review link; a blocked poster gets no first
@@ -1814,27 +1836,42 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
     const firstLookUntil=firstLook&&firstLookCandidate?firstLookCandidate.until:null;
     const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
-    const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint,opportunityId:opportunity?.id??null,firstLookReferrerId:firstLook?.userId??null,firstLookUntil});const requestId=Number(requestResult[0].insertId);
-    // 1 credit = 1 request. The credit is spent here, in this transaction and under the wallet lock, through the
-    // credit ledger (soonest-expiring bucket first, whole spend or nothing). Withdraw before pickup and the 7-day
-    // expiry return it to the same bucket (refundLedgerSpendTx); pickup and decline never do. An insufficient
-    // balance throws here, which rolls the whole ask back, so no ask exists without its credit.
-    const spendNow=new Date(nowMs);const reconciled=await reconcileWalletTx(tx,lockedWallet,spendNow);const promoState=await promoStateForTx(tx,userId,"job_seeker",spendNow);
-    const spent=await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:1,meta:{idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)},now:spendNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error("You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
-    const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
-    await tx.update(referralRequests).set({debitTransactionId:debitRow.id}).where(eq(referralRequests.id,requestId));
+    const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,coverageVisibleAt:isWaiting?null:new Date(nowMs),coverageHeldAt:null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint,opportunityId:opportunity?.id??null,firstLookReferrerId:firstLook?.userId??null,firstLookUntil});const requestId=Number(requestResult[0].insertId);
+    // 1 credit = 1 request, spent when the ask first reaches an available referrer (D-034): a covered ask pays
+    // here, in this transaction and under the wallet lock, through the credit ledger (soonest-expiring bucket
+    // first, whole spend or nothing). A waiting ask pays nothing now — the delivery transaction spends it at
+    // first visibility (D-047; one idempotent key per ask, the hourly retry as backstop). Withdraw before
+    // pickup and the 7-day expiry from first visibility return it to the same bucket (refundLedgerSpendTx);
+    // pickup and decline never do. An insufficient balance for a covered ask throws here, which rolls the
+    // whole ask back, so no ask exists without its credit.
+    const summaryNow=new Date(nowMs);const reconciled=await reconcileWalletTx(tx,lockedWallet,summaryNow);const promoState=await promoStateForTx(tx,userId,"job_seeker",summaryNow);
+    let remaining:CreditSummary;
+    if(isWaiting){
+      remaining=await creditSummaryTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoState,now:summaryNow});
+    }else{
+      const spent=await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:1,meta:{idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)},now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error("You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
+      const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
+      await tx.update(referralRequests).set({debitTransactionId:debitRow.id}).where(eq(referralRequests.id,requestId));
+      const promoAfter=promoState.grant&&spent.promoRemaining!==null?{grant:{...promoState.grant,creditsRemaining:spent.promoRemaining},status:spent.promoRemaining>0?promoState.status:"exhausted" as const}:promoState;
+      remaining=await creditSummaryTx(tx,{wallet:spent.wallet,grants:spent.grants,promo:promoAfter,now:summaryNow});
+    }
     const bound=await tx.update(referralAttachments).set({referralRequestId:requestId}).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId)));if(Number(bound[0]?.affectedRows??0)!==uniqueAttachmentIds.length)throw new Error("One or more resume documents changed during submission");
-    // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is complete inside this transaction.
-    await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
+    // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is
+    // complete inside this transaction; a waiting ask has not gone out yet, so its rewards unlock at delivery (see
+    // deliverWaitingAskTx).
+    if(!isWaiting)await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     // D-022 first look: only the poster is told while their 48 hours run; every
     // other eligible employee is told when the first look lapses (the sweep).
-    const notified=firstLook?[firstLook]:reachable;
+    // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them).
+    const notified=isWaiting?[]:firstLook?[firstLook]:reachable;
     for(const employee of notified){
       await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A Fast-Track referral request is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
       const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
-    const promoAfter=promoState.grant&&spent.promoRemaining!==null?{grant:{...promoState.grant,creditsRemaining:spent.promoRemaining},status:spent.promoRemaining>0?promoState.status:"exhausted" as const}:promoState;const remaining=await creditSummaryTx(tx,{wallet:spent.wallet,grants:spent.grants,promo:promoAfter,now:spendNow});return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),replayed:false as const};
+    // A waiting ask has not gone out and holds no open slot (D-061): the count stays as read. A covered ask
+    // adds one. `remaining` was computed in the matching branch above, under the same wallet lock.
+    return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,isWaiting?openAsks:openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),replayed:false as const};
   });
 }
 
@@ -1920,8 +1957,11 @@ export async function getActiveReferrerSlackWebhooks(referrerIds: number[]) {
 
 export async function prepareReferrerReviewEmailNotifications(requestId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
+  const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, waitingForCoverage: referralRequests.waitingForCoverage, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
   const current = request[0]; if (!current || current.status !== "pending") return [];
+  // D-061: a waiting or held ask has reached no referrer, so it has no email, Slack or review link to prepare;
+  // delivery (deliverWaitingAskTx) writes the referrer notice and the links the day the ask becomes visible.
+  if (current.waitingForCoverage) return [];
   const recipients = await db.select({ userId: profiles.userId, email: users.email, workEmailDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, notifyNewAsk: profiles.notifyNewAsk }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const passes = await db.select({ referrerId: referralRequestPasses.referrerId }).from(referralRequestPasses).where(eq(referralRequestPasses.referralRequestId, requestId));
   const passed = new Set(passes.map(row => row.referrerId));
@@ -2008,7 +2048,7 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return [];
   const db = await getDb(); if (!db) return [];
-  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
+  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
   const scopeNowMs = Date.now();
   // D-050: a personal-link ask its employee never acted on is unclaimed, so past its 7 days it leaves the link owner's inbox like
   // any stale unclaimed ask. Fail-soft and reported: the list never depends on it, and claim re-decides under the row lock.
@@ -2016,8 +2056,10 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   try { staleHeld = await listStaleHeldForViewer(db, rows, userId, scopeNowMs); }
   catch (error) { console.warn("[inbox] stale held check skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "referrer_inbox_stale_held" }); }
   const scopedRows = rows.filter(row => {
+    // D-061: a waiting or held ask has reached no referrer; it never appears in any referrer inbox state.
+    if (row.waitingForCoverage) return false;
     const isQueueAllocationForYou = row.queueAllocationId !== null && row.referrerId === userId;
-    const staleUnclaimed = row.status === "pending" && (isAskExpired({ status: "pending", referrerId: row.referrerId, createdAt: row.createdAt }) || staleHeld.has(row.id));
+    const staleUnclaimed = row.status === "pending" && (isAskExpired({ status: "pending", referrerId: row.referrerId, createdAt: row.createdAt, coverageVisibleAt: row.coverageVisibleAt, waitingForCoverage: row.waitingForCoverage }, scopeNowMs) || staleHeld.has(row.id));
     // D-022: while the poster's first look runs, the ask is theirs alone in the inbox.
     const firstLookHides = firstLookExcludesViewer(row, userId, scopeNowMs);
     if (state === "new") return row.status === "pending" && !row.savedByYouAt && !staleUnclaimed && !firstLookHides && (!row.referrerId || row.referrerId === userId || isQueueAllocationForYou);
@@ -2035,7 +2077,8 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
     } catch (error) { console.warn("[inbox] enrichment skipped", { name: error instanceof Error ? error.name : "unknown" }); }
   }
   return scopedRows.map(({ firstLookReferrerId: _firstLookReferrerId, firstLookUntil: _firstLookUntil, ...row }) => {
-    const expiresAtMs = getAskExpiresAtMs(row.createdAt);
+    // D-061: the shown deadline follows the ask's own window (7 days from first visibility).
+    const expiresAtMs = getAskShelfLifeEndsAtMs(row);
     const detail = extra.get(row.id);
     const enrichment = detail ? enrichInboxRow({ title: detail.title, pitch: detail.pitch, targetRoleUrl: row.targetRoleUrl, attachmentCount: row.attachmentCount }) : {};
     return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
@@ -2048,7 +2091,7 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
   const db = await getDb(); if (!db) return undefined;
   // One captured instant for both sides of the lapsed check below.
   const freshNow = new Date();
-  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id),
+  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, false), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id),
     // D-022 first look: only the poster may preview during their 48 hours (or anyone after it lapses).
     // Lapsed = firstLookUntil <= now, kept as lt-or-eq so every row-lock fixture in this repo can evaluate it.
     or(isNull(referralRequests.firstLookReferrerId), isNull(referralRequests.firstLookUntil), lt(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookReferrerId, userId)))).limit(1);
@@ -2062,9 +2105,9 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before saving referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const request = await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, companyDomain: jobs.company, passedByYou: referralRequestPasses.id, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).where(eq(referralRequests.id, requestId)).limit(1).for("update");
+    const request = await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, companyDomain: jobs.company, passedByYou: referralRequestPasses.id, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).where(eq(referralRequests.id, requestId)).limit(1).for("update");
     const current = request[0];
-    if (!current || current.companyDomain !== profile.workEmailDomain || current.status !== "pending" || (current.referrerId !== null && current.referrerId !== userId) || current.passedByYou || firstLookExcludesViewer(current, userId, Date.now())) throw new Error("This private referral request is no longer available to save");
+    if (!current || current.companyDomain !== profile.workEmailDomain || current.status !== "pending" || current.waitingForCoverage || (current.referrerId !== null && current.referrerId !== userId) || current.passedByYou || firstLookExcludesViewer(current, userId, Date.now())) throw new Error("This private referral request is no longer available to save");
     if (saved) await tx.insert(referralRequestSaves).values({ referralRequestId: requestId, referrerId: userId }).onDuplicateKeyUpdate({ set: { referrerId: userId } });
     else await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, userId)));
     return { requestId, saved };
@@ -2096,7 +2139,7 @@ const WITHDRAW_REFUSED = "This request was already claimed by a verified employe
 export async function withdrawCompanyReferralRequest(userId: number, requestId: number) {
   const db=await getDb();if(!db)throw new Error("Database unavailable");
   return db.transaction(async tx=>{
-    const current=(await tx.select({id:referralRequests.id,status:referralRequests.status,referrerId:referralRequests.referrerId,debitTransactionId:referralRequests.debitTransactionId,createdAt:referralRequests.createdAt}).from(referralRequests).where(and(eq(referralRequests.id,requestId),eq(referralRequests.jobSeekerId,userId))).limit(1).for("update"))[0];
+    const current=(await tx.select({id:referralRequests.id,status:referralRequests.status,referrerId:referralRequests.referrerId,debitTransactionId:referralRequests.debitTransactionId,waitingForCoverage:referralRequests.waitingForCoverage,coverageHeldAt:referralRequests.coverageHeldAt,createdAt:referralRequests.createdAt}).from(referralRequests).where(and(eq(referralRequests.id,requestId),eq(referralRequests.jobSeekerId,userId))).limit(1).for("update"))[0];
     if(!current)throw new Error("This referral request is not in your account");if(current.status==="withdrawn"){const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return{withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};}
     if(current.status!=="pending")throw new Error(current.status==="closed"?"This ask has already closed, so it can no longer be withdrawn":WITHDRAW_REFUSED);
     // D-050: an assigned ask its employee has not acted on (a personal-link ask) is still unclaimed; any other assigned ask was picked up.
@@ -2118,7 +2161,9 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
       return{withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};
     }
     // A free ask (no reserved credit) only frees its slot; an ask that reserved a credit before asks became free refunds it below.
-    if(current.debitTransactionId===null){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize,patch:release});const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return released({withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined});}
+    // D-061: an ask still awaiting coverage never reached an employee — its withdraw clears the waiting/held flags (so no surface
+    // ever reads it as waiting again) and its notice says plainly that no credit was used.
+    if(current.debitTransactionId===null){const awaiting=current.waitingForCoverage===true;const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize,patch:awaiting?{...(release??{}),waitingForCoverage:false,coverageQueuedAt:null,coverageHeldAt:null}:release,notification:awaiting?{userId,...COVERAGE_WITHDRAWN_NOTICE}:undefined});const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return released({withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined});}
     const spendRow=(await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.id,current.debitTransactionId),eq(tokenTransactions.userId,userId))).limit(1).for("update"))[0];
     if(spendRow&&spendRow.kind!=="direct_request"){
       // Ledger-spent ask (credit spent at send): hand back exactly what it took, once, then withdraw.
@@ -2236,26 +2281,35 @@ function legacyExpiryNotice(lead: string, refund: LegacyExpiryRefund): { title: 
 export async function expireStalePendingReferralRequest(userId: number, requestId: number, nowMs: number = Date.now()) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, debitTransactionId: referralRequests.debitTransactionId, createdAt: referralRequests.createdAt }).from(referralRequests).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
+    const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, debitTransactionId: referralRequests.debitTransactionId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, createdAt: referralRequests.createdAt, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
     if (!current) throw new Error("This referral request is not in your account");
     if (current.status !== "pending") return { expired: false as const, requestId, status: current.status };
-    const expiresAt = getAskExpiresAtMs(current.createdAt);
+    // D-061: the shelf life is window-aware — waiting asks close 90 days after creation at no cost, every other
+    // ask 7 days after its first visibility (coverageVisibleAt; pre-0095 rows: creation).
+    const expiresAt = getAskShelfLifeEndsAtMs(current);
     if (expiresAt === null || nowMs < expiresAt) return { expired: false as const, requestId, status: current.status };
     // D-050: an assigned ask its employee never acted on (a personal-link ask) expires like an unclaimed one; any other assigned ask is left alone.
     const heldFor = current.referrerId === null ? null : await heldForReferrerTx(tx, current);
     if (current.referrerId !== null && heldFor === null) return { expired: false as const, requestId, status: current.status };
     const authorize: ReferralTransitionInput["authorize"] = row => { if (row.jobSeekerId !== userId || row.referrerId !== heldFor) throw new Error("This request is already in conversation and cannot expire"); };
     const release = heldFor === null ? undefined : { referrerId: null };
-    const lead = heldFor === null ? "No verified employee claimed it within 7 days." : "The employee whose link you used didn't respond within 7 days.";
+    const lead = current.waitingForCoverage ? `No verified employee at ${current.companyDomain} became available within ${COVERAGE_WAIT_DAYS} days.` : heldFor === null ? "No verified employee claimed it within 7 days." : "The employee whose link you used didn't respond within 7 days.";
     const released = async <T,>(result: T, creditReturned: boolean): Promise<T> => { if (heldFor !== null) await recordHeldAskReleaseTx(tx, { requestId, referrerId: heldFor, reason: "expired", creditReturned }); return result; };
     if (heldFor === null && await referralWasClaimedTx(tx, requestId)) {
       const transition = await transitionReferralRequestTx(tx, {
         requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`,
         toStatus: "closed", allowedFrom: ["pending"],
         authorize,
-        notification: { userId, title: "Your ask expired", body: current.debitTransactionId !== null ? "Your ask expired after 7 days. A verified employee previously picked it up, so its credit stays spent; its open slot is free again." : "Your ask expired after 7 days and its open slot is free again." },
+        notification: { userId, title: "Your ask expired", body: current.debitTransactionId !== null ? `Your ask expired. A verified employee previously picked it up, so its credit stays spent; its open slot is free again.` : `Your ask expired and its open slot is free again.` },
       });
       return { expired: true as const, requestId, status: transition.status, revision: transition.revision };
+    }
+    // D-061: an ask that waited out its 90 days without ever being charged simply closes — nothing was ever
+    // reserved, so no money moves; its waiting flags clear and the notice says no credit was used.
+    if (current.waitingForCoverage && current.debitTransactionId === null) {
+      const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize, patch: { waitingForCoverage: false, coverageQueuedAt: null, coverageHeldAt: null }, notification: { userId, ...coverageWaitExpiredNotice(current.companyDomain) } });
+      const wallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1))[0];
+      return { expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary: wallet ? creditSummaryFromWallet(wallet) : undefined };
     }
     const spendRow = current.debitTransactionId ? (await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.id, current.debitTransactionId), eq(tokenTransactions.userId, userId))).limit(1).for("update"))[0] : undefined;
     if (spendRow && (spendRow.kind === "credit_spend" || spendRow.kind === "promo_spend")) {
@@ -2301,7 +2355,7 @@ export async function releaseFirstLookForRequest(requestId: number, nowMs: numbe
     const request = current?.request;
     if (!current || !request || request.status !== "pending" || request.referrerId !== null || request.firstLookReferrerId === null || !request.firstLookUntil
       || request.firstLookUntil.getTime() > nowMs
-      || isAskExpired({ status: request.status, referrerId: request.referrerId, createdAt: request.createdAt }, nowMs)) return { released: false as const, notified: 0 };
+      || isAskExpired({ status: request.status, referrerId: request.referrerId, createdAt: request.createdAt, coverageVisibleAt: request.coverageVisibleAt, waitingForCoverage: request.waitingForCoverage }, nowMs)) return { released: false as const, notified: 0 };
     const posterId = request.firstLookReferrerId;
     const cleared = await tx.update(referralRequests).set({ firstLookReferrerId: null, firstLookUntil: null }).where(eq(referralRequests.id, requestId));
     if (Number(cleared[0]?.affectedRows ?? 0) !== 1) throw new Error("The first look could not be released");
@@ -2330,7 +2384,20 @@ export async function releaseFirstLookForRequest(requestId: number, nowMs: numbe
 export async function reconcileExpiredPendingReferrals(userId: number, nowMs: number = Date.now()) {
   const db = await getDb(); if (!db) return { expiredRequestIds: [] as number[] };
   const cutoff = new Date(nowMs - ASK_TTL_MS);
-  const stale = await db.select({ id: referralRequests.id }).from(referralRequests).where(and(eq(referralRequests.jobSeekerId, userId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), lt(referralRequests.createdAt, cutoff)));
+  const waitingCutoff = new Date(nowMs - COVERAGE_WAIT_MS);
+  // D-061: two windows — a visible ask is stale 7 days after first visibility (pre-0095 rows: creation), a waiting or
+  // held ask 90 days after creation. An ask is only handed to the expiry transaction once it is past its own window,
+  // so a young waiting ask is never locked or retried on every read.
+  const stale = await db.select({ id: referralRequests.id }).from(referralRequests).where(and(
+    eq(referralRequests.jobSeekerId, userId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId),
+    or(
+      and(eq(referralRequests.waitingForCoverage, true), lt(referralRequests.createdAt, waitingCutoff)),
+      and(eq(referralRequests.waitingForCoverage, false), or(
+        and(isNotNull(referralRequests.coverageVisibleAt), lt(referralRequests.coverageVisibleAt, cutoff)),
+        and(isNull(referralRequests.coverageVisibleAt), lt(referralRequests.createdAt, cutoff)),
+      )),
+    ),
+  ));
   const held = await selectStaleHeldAsks(db, { cutoff, limit: HELD_ASK_RECONCILE_LIMIT, jobSeekerId: userId });
   const expiredRequestIds: number[] = [];
   for (const row of [...stale, ...held]) {
@@ -2354,7 +2421,7 @@ const REFERRER_REVEALED_STATUSES: string[] = ["approved", "intro_made", "intervi
 
 export async function listJobSeekerCompanyReferrals(userId: number) {
   const db = await getDb(); if (!db) return [];
-  const rows = await db.select({ id: referralRequests.id, title: jobs.title, pitch: referralRequests.personalPitch, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralRequests.jobSeekerId, userId)).groupBy(referralRequests.id, jobs.title, referralRequests.personalPitch, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.referrerMessage, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
+  const rows = await db.select({ id: referralRequests.id, title: jobs.title, pitch: referralRequests.personalPitch, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, referrerMessage: referralRequests.referrerMessage, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id) }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).where(eq(referralRequests.jobSeekerId, userId)).groupBy(referralRequests.id, jobs.title, referralRequests.personalPitch, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.referrerMessage, referralRequests.createdAt, referralRequests.updatedAt).orderBy(desc(referralRequests.updatedAt));
   const unreadRows = await db.select({ requestId: messages.referralRequestId, unreadMessageCount: count(messages.id) }).from(messages).where(and(eq(messages.recipientId, userId), isNull(messages.readAt))).groupBy(messages.referralRequestId);
   const unreadByRequestId = new Map(unreadRows.map(row => [row.requestId, Number(row.unreadMessageCount)]));
   // Identity reveal (queue task 14): once a referrer has accepted, the seeker sees their name and title.
@@ -2369,11 +2436,200 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   let held = new Set<number>();
   try { held = await listHeldForReferrerIds(db, rows); }
   catch (error) { console.warn("[requests] held flag skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "seeker_requests_held_flag" }); }
-  return rows.map(row => ({ ...row, heldForReferrer: held.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? "waiting_for_coverage" as const : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+  return rows.map(row => ({ ...row, heldForReferrer: held.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
-/** Blocked asks one opening may step past before it stops; the rest wait for the next opening or another employee. */
-const MAX_BLOCKED_QUEUE_SKIPS = 50;
+/**
+ * D-034/D-047/D-061/D-062 coverage delivery. A waiting ask (created while no
+ * available referrer existed) gets its first visibility here: the credit is
+ * spent under one idempotent key per ask (ask-delivery:<id>), the ask is
+ * assigned to a specific referrer, its availability slot is allocated, its
+ * 7-day clock starts (coverageVisibleAt) and both sides get their in-app
+ * notice — all in the caller's transaction, under the ask row lock and the
+ * target's profile lock. With no credit the ask stays held (D-047): nothing
+ * allocated, hidden from every referrer, the seeker told once. A legacy
+ * waiting ask (pre-0095, its credit was already spent at create) is flipped
+ * without a second spend.
+ */
+
+/** Allocated (unreleased) availability slots per referrer. Plain advisory read for create-time coverage and candidate ranking; delivery re-counts under its own locking read. */
+async function readAllocatedSlotCountsTx(tx: LedgerTx, referrerIds: readonly number[]): Promise<Map<number, number>> {
+  const ids = Array.from(new Set(referrerIds.filter(id => Number.isInteger(id) && id > 0)));
+  const counts = new Map<number, number>();
+  if (!ids.length) return counts;
+  const rows = await tx.select({ referrerId: referralAvailabilitySlots.referrerId }).from(referralAvailabilitySlots).where(and(inArray(referralAvailabilitySlots.referrerId, ids), eq(referralAvailabilitySlots.status, "allocated")));
+  for (const row of rows) counts.set(row.referrerId, (counts.get(row.referrerId) ?? 0) + 1);
+  return counts;
+}
+
+/**
+ * The capacity half of the delivery lock: the target's allocated slot rows,
+ * locked, counted in JS (never a SQL count, so a concurrent delivery to the
+ * same referrer cannot make this read miss its own lock's rows).
+ */
+async function readAllocatedSlotsForUpdateTx(tx: LedgerTx, referrerId: number): Promise<number> {
+  const rows = await tx.select({ id: referralAvailabilitySlots.id }).from(referralAvailabilitySlots)
+    .where(and(eq(referralAvailabilitySlots.referrerId, referrerId), eq(referralAvailabilitySlots.status, "allocated"))).for("update");
+  return rows.length;
+}
+
+type DeliveryCandidate = { userId: number; accountType: string | null; workEmailDomain: string | null; workEmailVerifiedAt: Date | null; paused: boolean | null; referralCapacity: number | null; userSuspended: boolean | null; personSuspended: boolean | null };
+
+/**
+ * D-062: employees of `companyDomain` who can take an ask right now, most
+ * remaining capacity first (then lowest id). The ask's own seeker is never a
+ * candidate, and only the top COVERAGE_TARGET_SCAN_LIMIT are considered — a
+ * blocked or full race falls through to the next candidate.
+ */
+async function selectDeliveryCandidatesTx(tx: LedgerTx, input: { companyDomain: string; seekerUserId: number }): Promise<DeliveryCandidate[]> {
+  const rows = await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
+    .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId))
+    .where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, input.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+  const available = rows.filter(row => row.userId !== input.seekerUserId && isVerifiedEmployeeOfCompany(row, input.companyDomain) && !row.paused && !row.userSuspended && row.personSuspended !== true);
+  const allocated = await readAllocatedSlotCountsTx(tx, available.map(row => row.userId));
+  return available
+    .map(row => ({ row, remaining: referralCapacityRemaining(row, allocated.get(row.userId) ?? 0) }))
+    .filter(item => item.remaining > 0)
+    .sort((a, b) => b.remaining - a.remaining || a.row.userId - b.row.userId)
+    .slice(0, COVERAGE_TARGET_SCAN_LIMIT)
+    .map(item => item.row);
+}
+
+/**
+ * One deliver-or-hold attempt: the asks's row lock, then the target's profile
+ * lock, then the target's slot rows, then the seeker's wallet — the same lock
+ * order every credit path uses. Outcomes: delivered (flip + slot + notices,
+ * `creditSpent` false only for a legacy pre-0095 ask), held (D-047, once-only
+ * notice, nothing allocated), blocked (this pair is blocked; the caller tries
+ * the next referrer), waiting (the target cannot take it right now) or settled
+ * (the ask is no longer waiting: claimed, withdrawn, closed or already
+ * delivered).
+ */
+async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; referrerId: number; nowMs: number }): Promise<CoverageDeliveryOutcome> {
+  const locked = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
+  const request = locked?.request;
+  if (!locked || !request || request.status !== "pending" || !request.waitingForCoverage) return { outcome: "settled", requestId: input.requestId };
+  if (request.jobSeekerId === input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  const companyDomain = locked.companyDomain;
+  const referrer = (await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
+    .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.userId, input.referrerId)).limit(1).for("update"))[0];
+  if (!referrer) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  if (!isOpenReferrer(referrer, companyDomain, await readAllocatedSlotsForUpdateTx(tx, input.referrerId))) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  // P0-block-delivery: a blocked pair never receives the ask, either way; fail-open and reported (server/blockedPairs.ts).
+  if ((await blockedCounterpartsFailOpen(tx, input.referrerId, [request.jobSeekerId], "coverage_delivery")).has(request.jobSeekerId)) return { outcome: "blocked", requestId: input.requestId };
+  const now = new Date(input.nowMs);
+  let debitTransactionId = request.debitTransactionId;
+  if (debitTransactionId === null) {
+    const lockedWallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, request.jobSeekerId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
+    if (!lockedWallet) return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
+    const reconciled = await reconcileWalletTx(tx, lockedWallet, now);
+    const promo = await promoStateForTx(tx, request.jobSeekerId, "job_seeker", now);
+    try {
+      await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: 1, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
+    } catch (error) {
+      if (!(error instanceof InsufficientCreditsError)) throw error;
+      // D-047: no credit at first visibility — hold the ask. Nothing is allocated, no referrer is told, and the
+      // seeker learns once that a credit will send it. Never delivered free, never billed later.
+      await tx.update(referralRequests).set({ coverageHeldAt: now }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.coverageHeldAt)));
+      const heldNotice = coverageHeldNotice(companyDomain);
+      await tx.insert(notifications).values({ userId: request.jobSeekerId, category: "status", kind: "coverage_held", refId: input.requestId, title: heldNotice.title, body: heldNotice.body, eventKey: coverageHeldEventKey(input.requestId) }).onDuplicateKeyUpdate({ set: { eventKey: coverageHeldEventKey(input.requestId) } });
+      return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
+    }
+    const debitRow = (await tx.select({ id: tokenTransactions.id }).from(tokenTransactions).where(and(eq(tokenTransactions.userId, request.jobSeekerId), eq(tokenTransactions.role, "job_seeker"), eq(tokenTransactions.idempotencyKey, `${askDeliveryKey(input.requestId)}#1`))).limit(1))[0];
+    if (!debitRow) throw new Error("The referral credit debit was not recorded");
+    debitTransactionId = debitRow.id;
+  }
+  // The credit is committed: flip the ask to visible and assigned, allocate the slot, and tell both sides, in this
+  // transaction. The conditional update re-checks the flip under the row lock already held above.
+  const flipped = await tx.update(referralRequests).set({ referrerId: input.referrerId, waitingForCoverage: false, coverageQueuedAt: null, coverageVisibleAt: now, coverageHeldAt: null, debitTransactionId }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.waitingForCoverage, true)));
+  if (Number(flipped[0]?.affectedRows ?? 0) !== 1) throw new Error("The coverage delivery lost a stale-write race");
+  await tx.insert(referralAvailabilitySlots).values({ referrerId: input.referrerId, companyDomain, referralRequestId: input.requestId, status: "allocated", activeRequestKey: `request:${input.requestId}` });
+  const deliveredNotice = coverageDeliveredNotice(companyDomain);
+  await tx.insert(notifications).values({ userId: request.jobSeekerId, category: "status", kind: "coverage_delivered", refId: input.requestId, title: deliveredNotice.title, body: deliveredNotice.body, eventKey: coverageDeliveredEventKey(input.requestId) }).onDuplicateKeyUpdate({ set: { eventKey: coverageDeliveredEventKey(input.requestId) } });
+  const referrerNotice = coverageReferrerNotice(companyDomain);
+  await tx.insert(notifications).values({ userId: input.referrerId, category: "referral", kind: "ask_new", refId: input.requestId, title: referrerNotice.title, body: referrerNotice.body, eventKey: coverageReferrerEventKey(input.requestId, input.referrerId) }).onDuplicateKeyUpdate({ set: { eventKey: coverageReferrerEventKey(input.requestId, input.referrerId) } });
+  const creditSpent = request.debitTransactionId === null;
+  // Invite rewards unlock the moment the ask is actually funded and sent, exactly like a covered create.
+  if (creditSpent) await grantPendingActionRewardsTx(tx, request.jobSeekerId, "job_seeker", "referral_request", String(input.requestId));
+  await tx.insert(operationalActivityLogs).values({ action: "coverage.delivered", outcome: "success", resourceType: "referral_request", resourceId: String(input.requestId).slice(0, 120), companyDomain: companyDomain.toLowerCase().slice(0, 255), metadata: JSON.stringify({ referrerId: input.referrerId, creditSpent }) });
+  return { outcome: "delivered", requestId: input.requestId, referrerId: input.referrerId, seekerUserId: request.jobSeekerId, companyDomain, creditSpent };
+}
+
+/** The company's waiting and held asks a hand-off may deliver, oldest queue position first. */
+async function listDeliverableWaitingAsksTx(tx: LedgerTx, input: { companyDomain: string; limit: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+  return tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId })
+    .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
+    .where(and(eq(jobs.company, input.companyDomain), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId)))
+    .orderBy(asc(referralRequests.coverageQueuedAt), asc(referralRequests.id))
+    .limit(input.limit);
+}
+
+/**
+ * D-062 hand-off: give `referrerId` their company's waiting asks, oldest
+ * first, until their remaining capacity or `maxDeliveries` is reached. Each
+ * open slot tries at most COVERAGE_ATTEMPTS_PER_SLOT candidates — blocked asks
+ * and asks held for want of a credit keep their queue place for the next
+ * opening, the sweep or the ask's own seeker. Returns the delivered ids (in
+ * delivery order) plus how many were held or stepped past.
+ */
+async function handOffWaitingAsksToReferrerTx(tx: LedgerTx, input: { referrerId: number; companyDomain: string; maxDeliveries?: number; nowMs: number }): Promise<{ deliveredRequestIds: number[]; held: number; skipped: number }> {
+  const referrer = (await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
+    .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.userId, input.referrerId)).limit(1).for("update"))[0];
+  const allocated = await readAllocatedSlotsForUpdateTx(tx, input.referrerId);
+  const remaining = referrer && isOpenReferrer(referrer, input.companyDomain, allocated) ? referralCapacityRemaining(referrer, allocated) : 0;
+  const target = Math.min(input.maxDeliveries ?? remaining, remaining);
+  const summary = { deliveredRequestIds: [] as number[], held: 0, skipped: 0 };
+  if (target <= 0) return summary;
+  const candidates = await listDeliverableWaitingAsksTx(tx, { companyDomain: input.companyDomain, limit: target * COVERAGE_ATTEMPTS_PER_SLOT });
+  for (const ask of candidates) {
+    if (summary.deliveredRequestIds.length >= target) break;
+    const outcome = await deliverWaitingAskTx(tx, { requestId: ask.id, referrerId: input.referrerId, nowMs: input.nowMs });
+    if (outcome.outcome === "delivered") summary.deliveredRequestIds.push(ask.id);
+    else if (outcome.outcome === "held") summary.held += 1;
+    else if (outcome.outcome === "waiting") break; // the target itself cannot take asks right now; nothing later in the queue can change that in this window
+    else summary.skipped += 1;
+  }
+  return summary;
+}
+
+/**
+ * D-062 enrollment hand-off, fail-soft for its callers: a freshly verified
+ * referrer receives their capacity of waiting asks oldest first; the hourly
+ * coverage-delivery-retry sweep recovers anything this attempt misses.
+ */
+export async function deliverWaitingAsksToReferrer(userId: number, companyDomain: string, nowMs: number = Date.now()): Promise<CoverageHandoffSummary> {
+  const db = await getDb(); if (!db) return { delivered: 0, held: 0, skipped: 0 };
+  const summary = await db.transaction(tx => handOffWaitingAsksToReferrerTx(tx, { referrerId: userId, companyDomain, nowMs }));
+  return { delivered: summary.deliveredRequestIds.length, held: summary.held, skipped: summary.skipped };
+}
+
+/**
+ * One delivery attempt for a waiting or held ask against the company's
+ * available referrers — the coverage-delivery-retry sweep's unit of work
+ * (server/coverageDeliverySweep.ts). A held ask whose company has no open
+ * referrer left goes back to plain waiting (`returnedToWaiting`), so the
+ * seeker's "add a credit" notice is only live while a referrer actually
+ * exists. The delivery re-checks everything under the row lock, so a
+ * concurrent read, claim or expiry can never deliver twice.
+ */
+export async function tryDeliverWaitingAsk(requestId: number, nowMs: number = Date.now()): Promise<CoverageDeliveryOutcome> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const current = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+    if (!current || current.request.status !== "pending" || !current.request.waitingForCoverage) return { outcome: "settled", requestId };
+    const wasHeld = current.request.coverageHeldAt !== null;
+    for (const candidate of await selectDeliveryCandidatesTx(tx, { companyDomain: current.companyDomain, seekerUserId: current.request.jobSeekerId })) {
+      const outcome = await deliverWaitingAskTx(tx, { requestId, referrerId: candidate.userId, nowMs });
+      if (outcome.outcome === "delivered" || outcome.outcome === "held" || outcome.outcome === "settled") return outcome;
+      // blocked or waiting: a block is per pair and a full referrer may free capacity; try the next candidate.
+    }
+    if (wasHeld) {
+      await tx.update(referralRequests).set({ coverageHeldAt: null }).where(and(eq(referralRequests.id, requestId), eq(referralRequests.waitingForCoverage, true)));
+      return { outcome: "waiting", requestId, returnedToWaiting: true };
+    }
+    return { outcome: "waiting", requestId, returnedToWaiting: false };
+  });
+}
 
 export async function openCompanyReferralAvailability(userId: number, input: { slotCount?: number }) {
   const profile = await getProfileByUserId(userId);
@@ -2381,26 +2637,14 @@ export async function openCompanyReferralAvailability(userId: number, input: { s
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const slotCount = Math.max(1, Math.min(3, Math.floor(input.slotCount ?? 1)));
   const companyDomain = profile.workEmailDomain;
+  const nowMs = Date.now();
   return db.transaction(async tx => {
-    const allocatedRequestIds: number[] = [];
-    // P0-block-delivery: an ask whose seeker is blocked with this referrer (either way) is skipped. It stays waiting
-    // for other employees, and neither a slot nor an attempt is spent on it. Fail-open (server/blockedPairs.ts).
-    const skipped = new Set<number>();
-    let attempts = 0;
-    while (allocatedRequestIds.length < slotCount && attempts < slotCount * 4 && skipped.size < MAX_BLOCKED_QUEUE_SKIPS) {
-      // Skipped asks keep their place at the head of the queue, so one more row than were skipped always reaches the next one.
-      const queued = await tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(jobs.company, companyDomain), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), eq(referralRequests.waitingForCoverage, true))).orderBy(asc(referralRequests.coverageQueuedAt), asc(referralRequests.id)).limit(skipped.size + 1);
-      const candidate = queued.filter(row => !skipped.has(row.id)).slice(0, 1);
-      if (!candidate[0]) break;
-      if ((await blockedCounterpartsFailOpen(tx, userId, [candidate[0].jobSeekerId], "queue_allocation")).has(candidate[0].jobSeekerId)) { skipped.add(candidate[0].id); continue; }
-      attempts += 1;
-      const allocation = await tx.update(referralRequests).set({ referrerId: userId, waitingForCoverage: false, coverageQueuedAt: null }).where(and(eq(referralRequests.id, candidate[0].id), isNull(referralRequests.referrerId), eq(referralRequests.waitingForCoverage, true)));
-      if (Number(allocation[0].affectedRows) !== 1) continue;
-      await tx.insert(referralAvailabilitySlots).values({ referrerId: userId, companyDomain, referralRequestId: candidate[0].id, status: "allocated", activeRequestKey: `request:${candidate[0].id}` });
-      await tx.insert(notifications).values({ userId: candidate[0].jobSeekerId, category: "status", title: "A referral review opened", body: `A verified employee at ${companyDomain} can now review your request.` });
-      allocatedRequestIds.push(candidate[0].id);
-    }
-    return { companyDomain, requestedSlotCount: slotCount, allocatedRequestIds, allocatedCount: allocatedRequestIds.length };
+    // D-062: an explicit opening hands over waiting asks oldest first, up to the
+    // slots asked for and the employee's remaining capacity. Each delivery
+    // spends the seeker's credit at first visibility (D-034); asks whose seeker
+    // has no credit stay held (D-047) and keep their place.
+    const summary = await handOffWaitingAsksToReferrerTx(tx, { referrerId: userId, companyDomain, maxDeliveries: slotCount, nowMs });
+    return { companyDomain, requestedSlotCount: slotCount, allocatedRequestIds: summary.deliveredRequestIds, allocatedCount: summary.deliveredRequestIds.length };
   });
 }
 
@@ -2498,13 +2742,17 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const current = (await tx.select({ request: referralRequests, company: jobs.company }).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
-    if (!current || current.request.status !== "pending" || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
-    // An unclaimed ask past its 7 days can no longer be claimed; the sweep closes it with its credit back. D-050: a personal-link
-    // ask its employee never acted on is unclaimed too (decided under this row lock), so a late claim cannot end its hold after
-    // the seeker's expiry was due and keep their credit spent.
-    if (current && isPastAskShelfLife(current.request.createdAt, Date.now()) && (current.request.referrerId === null || await heldForReferrerTx(tx, current.request) !== null)) throw new ReferralTransitionConflict("This referral request expired before it could be claimed", { status: current.request.status, revision: current.request.revision });
+    if (!current || current.request.status !== "pending" || current.request.waitingForCoverage || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    // D-061: a waiting or held ask has reached no referrer and cannot be claimed; the claim clock follows the ask's own
+    // shelf life (an unassigned ask: 7 days from first visibility). D-050: a personal-link ask its employee never acted
+    // on is unclaimed too (decided under this row lock; its hold keeps the creation-based 7 days), so a late claim cannot
+    // end its hold after the seeker's expiry was due and keep their credit spent.
+    const claimNowMs = Date.now();
+    if (current && (current.request.referrerId === null
+      ? isAskExpired({ status: current.request.status, referrerId: current.request.referrerId, createdAt: current.request.createdAt, coverageVisibleAt: current.request.coverageVisibleAt, waitingForCoverage: current.request.waitingForCoverage }, claimNowMs)
+      : isPastAskShelfLife(current.request.createdAt, claimNowMs) && await heldForReferrerTx(tx, current.request) !== null)) throw new ReferralTransitionConflict("This referral request expired before it could be claimed", { status: current.request.status, revision: current.request.revision });
     // D-022: during the poster's 48-hour first look, nobody else can claim.
-    if (current && firstLookExcludesViewer(current.request, userId, Date.now())) throw new ReferralTransitionConflict("This referral request is still in its poster's first look", { status: current.request.status, revision: current.request.revision });
+    if (current && firstLookExcludesViewer(current.request, userId, claimNowMs)) throw new ReferralTransitionConflict("This referral request is still in its poster's first look", { status: current.request.status, revision: current.request.revision });
     const passed = (await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
     if (passed) throw new Error("You already passed on this referral request");
     const result = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "claim", operationKey: `claim:${userId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId }, notification: { userId: current.request.jobSeekerId, title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." } });
@@ -2584,6 +2832,13 @@ type ReferralTransitionInput = {
   eventReferenceId?: string | null;
 };
 
+/** Frees the allocated availability slot(s) an ask holds: one referrer's when given, otherwise every slot on the ask. */
+async function releaseAvailabilitySlotsTx(tx: any, input: { requestId: number; referrerId?: number }) {
+  const conditions = [eq(referralAvailabilitySlots.referralRequestId, input.requestId), eq(referralAvailabilitySlots.status, "allocated")];
+  if (input.referrerId !== undefined) conditions.push(eq(referralAvailabilitySlots.referrerId, input.referrerId));
+  await tx.update(referralAvailabilitySlots).set({ status: "released", releasedAt: new Date() }).where(and(...conditions));
+}
+
 async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInput) {
   const replay = (await tx.select().from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, input.requestId), eq(referralTransitionEvents.operationKey, input.operationKey))).limit(1))[0];
   if (replay) return { status: replay.resultingStatus as ReferralStatus, revision: replay.resultingRevision, replayed: true as const };
@@ -2591,6 +2846,8 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
   if (!current) throw new Error("Referral Request not found");
   input.authorize(current);
   if (!input.allowedFrom.includes(current.status)) throw new ReferralTransitionConflict("This referral action conflicts with the current state", { status: current.status, revision: current.revision });
+  // D-061: an ask that has reached no referrer still accepts only the seeker's withdraw and the clock's expiry.
+  if (current.waitingForCoverage && !isAwaitingCoverageActionAllowed(input.action)) throw new ReferralTransitionConflict("This referral request has not reached a verified employee yet", { status: current.status, revision: current.revision });
   await input.beforeCommit?.(tx, current);
   const nextRevision = current.revision + 1;
   const updated = await tx.update(referralRequests).set({ ...input.patch, status: input.toStatus, revision: nextRevision }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.status, current.status), eq(referralRequests.revision, current.revision)));
@@ -2608,6 +2865,11 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
     const grant = await openAcceptanceDocumentGrantTx(tx, { requestId: input.requestId, referrerId: acceptedBy, revision: nextRevision, now });
     if (grant === "kept_revoked") captureServerError(new Error("Acceptance left a revoked document grant closed"), { requestId: input.requestId, referrerId: acceptedBy });
   }
+  // D-062 capacity: an accepted ask is no longer waiting in the distribution queue, so the accepting referrer's
+  // allocated slot frees with the acceptance; a terminal status frees every slot the ask still holds (a safety net
+  // for the paths that must always return capacity: withdraw and expiry).
+  if (acceptedBy !== null) await releaseAvailabilitySlotsTx(tx, { requestId: input.requestId, referrerId: acceptedBy });
+  if (["declined", "withdrawn", "closed"].includes(input.toStatus)) await releaseAvailabilitySlotsTx(tx, { requestId: input.requestId });
   await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision, referenceId: input.eventReferenceId ?? null, createdAt: now });
   if (input.notification) await tx.insert(notifications).values({ userId: input.notification.userId, category: "status", kind: transitionNotificationKind(input.action, input.toStatus), refId: input.requestId, title: input.notification.title, body: input.notification.body, eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` }).onDuplicateKeyUpdate({ set: { eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` } });
   return { status: input.toStatus, revision: nextRevision, replayed: false as const };

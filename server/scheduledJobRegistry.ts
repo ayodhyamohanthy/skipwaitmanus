@@ -3,6 +3,7 @@
 // is a whole number of cron periods so every period lands in exactly one.
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
+import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
@@ -62,5 +63,12 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createWorkEmailOtpPurgeJob(),
+  },
+  {
+    name: "coverage-delivery-retry",
+    description: "Offers waiting and held asks to their company's available referrers, oldest first: spends the credit at first visibility (D-034) and holds a creditless ask once (D-047)",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createCoverageDeliverySweep(),
   },
 ];

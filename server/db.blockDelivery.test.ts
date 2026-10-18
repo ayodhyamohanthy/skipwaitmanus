@@ -3,11 +3,13 @@ import request from "supertest";
 import { getTableColumns } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { jobs, notifications, operationalActivityLogs, profiles, referralAvailabilitySlots, referralRequestPasses, referralRequests, referralReviewDeliveries, referrerReviewEmailLinks, userBlocks, users } from "../drizzle/schema";
+import { jobs, notifications, operationalActivityLogs, profiles, referralAvailabilitySlots, referralRequestPasses, referralRequests, referralReviewDeliveries, referrerReviewEmailLinks, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
+import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { openCompanyReferralAvailability, prepareReferrerReviewEmailNotifications, releaseFirstLookForRequest, saveVerifiedWorkEmail } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE } from "./blockedPairs";
+import { coverageReferrerNotice } from "./coverageDelivery";
 
 /*
  * P0-block-delivery: a block (userBlocks, either direction) keeps a seeker's
@@ -42,8 +44,11 @@ const store = createInMemoryDrizzle();
 const full = (table: MySqlTable, values: Row): Row => ({ ...Object.fromEntries(Object.keys(getTableColumns(table)).map(key => [key, null])), ...values });
 const employee = (id: number, userId: number): Row => full(profiles, { id, userId, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date("2026-09-01T00:00:00Z"), paused: false, notifyNewAsk: true });
 const person = (id: number, name: string, email: string): Row => full(users, { id, name, email, suspended: false });
-const ask = (over: Row = {}): Row => full(referralRequests, { id: REQUEST_ID, jobId: 11, jobSeekerId: SEEKER, referrerId: null, personalPitch: "I led two launches.", status: "pending", revision: 0, waitingForCoverage: false, createdAt: new Date(Date.now() - HOUR_MS), updatedAt: new Date(Date.now() - HOUR_MS), ...over });
+const ask = (over: Row = {}): Row => full(referralRequests, { id: REQUEST_ID, jobId: 11, jobSeekerId: SEEKER, referrerId: null, personalPitch: "I led two launches.", status: "pending", revision: 0, waitingForCoverage: false, coverageVisibleAt: null, createdAt: new Date(Date.now() - HOUR_MS), updatedAt: new Date(Date.now() - HOUR_MS), ...over });
 const reviewGrant = (id: number, referrerId: number): Row => full(referrerReviewEmailLinks, { id, referralRequestId: REQUEST_ID, referrerId, linkToken: `${String(referrerId).repeat(40)}`.slice(0, 48), expiresAt: new Date(Date.now() + DAY_MS), consumedAt: null, grantVersion: 1 });
+/** A seeker wallet with credits: delivery spends its 1 credit at first visibility (D-034). */
+const seekerWallet = (id: number, userId: number): Row => full(tokenBalances, { id, userId, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: currentMonthlyCycleKey(), plan: "free" });
+const walletOf = (userId: number) => store.rows(tokenBalances).find(row => row.userId === userId);
 
 function seed(options: { asks?: readonly Row[]; grants?: readonly Row[] } = {}) {
   store.reset([
@@ -51,6 +56,8 @@ function seed(options: { asks?: readonly Row[]; grants?: readonly Row[] } = {}) 
     [profiles, [employee(31, REFERRER), employee(33, COLLEAGUE), employee(39, POSTER)]],
     [jobs, [full(jobs, { id: 11, company: "acme.com", title: "Role from shared job link", targetRoleUrl: "https://careers.acme.com/jobs/design" })]],
     [referralRequests, [...(options.asks ?? [ask()])]],
+    [tokenBalances, [seekerWallet(81, SEEKER), seekerWallet(82, OTHER_SEEKER)]],
+    [tokenTransactions, []],
     [referrerReviewEmailLinks, [...(options.grants ?? [])]],
     [referralReviewDeliveries, []],
     [referralRequestPasses, []],
@@ -170,21 +177,33 @@ describe("the ask route's answer to a blocked personal link", () => {
   });
 });
 
-describe("a newly verified employee's notice about waiting asks", () => {
-  beforeEach(() => seed({ asks: [ask(), ask({ id: 502, jobSeekerId: OTHER_SEEKER })] }));
+describe("a newly verified employee's delivery of waiting asks", () => {
+  const queued = (id: number, jobSeekerId: number): Row => ask({ id, jobSeekerId, waitingForCoverage: true, coverageQueuedAt: new Date(Date.now() - HOUR_MS) });
+  const askById = (id: number) => store.rows(referralRequests).find(row => row.id === id);
+  beforeEach(() => seed({ asks: [queued(REQUEST_ID, SEEKER), queued(502, OTHER_SEEKER)] }));
 
   it.each([
     ["the new employee blocked the seeker", NEW_EMPLOYEE, SEEKER],
     ["the seeker blocked the new employee", SEEKER, NEW_EMPLOYEE],
-  ])("leaves out the blocked seeker's ask when %s", async (_label, blocker, blocked) => {
+  ])("leaves out the blocked seeker's ask when %s, delivering the other", async (_label, blocker, blocked) => {
     await blockPair(blocker, blocked);
     await saveVerifiedWorkEmail(NEW_EMPLOYEE, "nina@acme.com");
     expect(noticesFor(NEW_EMPLOYEE)).toHaveLength(1);
+    expect(noticesFor(NEW_EMPLOYEE)[0]).toMatchObject(coverageReferrerNotice("acme.com"));
+    expect(askById(REQUEST_ID)).toMatchObject({ waitingForCoverage: true, referrerId: null });
+    expect(askById(502)).toMatchObject({ waitingForCoverage: false, referrerId: NEW_EMPLOYEE });
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(walletOf(OTHER_SEEKER)).toMatchObject({ monthlyCreditsRemaining: 1 });
   });
 
-  it("tells them about every waiting ask when nothing is blocked", async () => {
+  it("delivers every waiting ask and spends each seeker's credit once (D-034)", async () => {
     await saveVerifiedWorkEmail(NEW_EMPLOYEE, "nina@acme.com");
     expect(noticesFor(NEW_EMPLOYEE)).toHaveLength(2);
+    expect(askById(REQUEST_ID)).toMatchObject({ referrerId: NEW_EMPLOYEE, waitingForCoverage: false });
+    expect(askById(502)).toMatchObject({ referrerId: NEW_EMPLOYEE, waitingForCoverage: false });
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 1 });
+    expect(walletOf(OTHER_SEEKER)).toMatchObject({ monthlyCreditsRemaining: 1 });
+    expect(store.rows(tokenTransactions).filter(row => row.kind === "credit_spend").map(row => String(row.referenceId)).sort()).toEqual([`${REQUEST_ID}#1`, "502#1"].sort());
   });
 
   it("fails open when the block lookup fails, and reports it", async () => {
@@ -192,7 +211,7 @@ describe("a newly verified employee's notice about waiting asks", () => {
     store.failReads(userBlocks);
     await saveVerifiedWorkEmail(NEW_EMPLOYEE, "nina@acme.com");
     expect(noticesFor(NEW_EMPLOYEE)).toHaveLength(2);
-    expectReportedLookupFailure("work_email_waiting_asks");
+    expectReportedLookupFailure("coverage_delivery");
   });
 });
 
@@ -210,6 +229,9 @@ describe("opening referral capacity (queue allocation)", () => {
     expect(slotRequestIds()).toEqual([502]);
     expect(noticesFor(SEEKER)).toEqual([]);
     expect(noticesFor(OTHER_SEEKER)).toHaveLength(1);
+    // Only the delivered ask spends its seeker's credit (D-034); the blocked one costs nothing.
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(walletOf(OTHER_SEEKER)).toMatchObject({ monthlyCreditsRemaining: 1 });
   });
 
   it("does not spend the referrer's slots or attempts on blocked asks ahead in the queue", async () => {
@@ -218,19 +240,30 @@ describe("opening referral capacity (queue allocation)", () => {
     const result = await openCompanyReferralAvailability(REFERRER, { slotCount: 2 });
     expect(result).toMatchObject({ allocatedRequestIds: [502], allocatedCount: 1 });
     expect(store.rows(referralRequests).filter(row => row.jobSeekerId === SEEKER).every(row => row.referrerId === null && row.waitingForCoverage === true)).toBe(true);
+    expect(store.rows(referralAvailabilitySlots)).toHaveLength(1);
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(walletOf(OTHER_SEEKER)).toMatchObject({ monthlyCreditsRemaining: 1 });
   });
 
   it("leaves the blocked seeker's ask for an unblocked colleague", async () => {
     seed({ asks: [waiting(REQUEST_ID, SEEKER, 3)] });
     await blockPair(REFERRER, SEEKER);
     expect(await openCompanyReferralAvailability(REFERRER, { slotCount: 1 })).toMatchObject({ allocatedRequestIds: [] });
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
     expect(await openCompanyReferralAvailability(COLLEAGUE, { slotCount: 1 })).toMatchObject({ allocatedRequestIds: [REQUEST_ID] });
     expect(askById(REQUEST_ID)).toMatchObject({ referrerId: COLLEAGUE, waitingForCoverage: false });
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 1 });
   });
 
-  it("allocates the oldest ask as before when nothing is blocked", async () => {
+  it("allocates the oldest ask as before when nothing is blocked, spending one credit at first visibility", async () => {
     seed({ asks: [waiting(REQUEST_ID, SEEKER, 3), waiting(502, OTHER_SEEKER, 2)] });
     expect(await openCompanyReferralAvailability(REFERRER, { slotCount: 1 })).toMatchObject({ allocatedRequestIds: [REQUEST_ID] });
+    expect(askById(REQUEST_ID)).toMatchObject({ referrerId: REFERRER, waitingForCoverage: false });
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 1 });
+    expect(walletOf(OTHER_SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(store.rows(tokenTransactions).filter(row => row.kind === "credit_spend")).toEqual([
+      expect.objectContaining({ userId: SEEKER, tokenCount: -1, referenceId: `${REQUEST_ID}#1`, idempotencyKey: `ask-delivery:${REQUEST_ID}#1` }),
+    ]);
   });
 
   it("fails open when the block lookup fails, and reports it", async () => {
@@ -238,7 +271,7 @@ describe("opening referral capacity (queue allocation)", () => {
     await blockPair(REFERRER, SEEKER);
     store.failReads(userBlocks);
     expect(await openCompanyReferralAvailability(REFERRER, { slotCount: 1 })).toMatchObject({ allocatedRequestIds: [REQUEST_ID] });
-    expectReportedLookupFailure("queue_allocation");
+    expectReportedLookupFailure("coverage_delivery");
   });
 });
 
