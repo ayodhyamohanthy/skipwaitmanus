@@ -16,7 +16,7 @@ const rel = (file: string) => path.relative(ROOT, file).split(path.sep).join("/"
 
 /** Moved surfaces (DESIGN.md "Rollout") may import the goal primitives; nothing else may, so no live Kit v4
  * surface mixes systems by accident. Each phase-3 move adds its folder here. */
-const GOAL_IMPORT_ALLOWLIST = [/^client\/src\/components\/goal\//, /^client\/src\/pages\/goal\//, /^client\/src\/pages\/ComponentShowcase\.tsx$/, /\.test\.tsx?$/];
+const GOAL_IMPORT_ALLOWLIST = [/^client\/src\/components\/goal\//, /^client\/src\/pages\/goal\//, /^client\/src\/components\/AppShell\.tsx$/, /^client\/src\/pages\/ComponentShowcase\.tsx$/, /\.test\.tsx?$/];
 
 /** Comp review fixtures (design/goal-ui/content.json) that must never ship (DESIGN.md rule 9). */
 function compSampleNames(): string[] {

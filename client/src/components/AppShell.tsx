@@ -1,113 +1,110 @@
-import { useAuth } from "@/_core/auth";
-import { ArrowRight, ArrowUpRight, Bell, Bot, Briefcase, Building2, ChevronDown, Compass, Crown, Ellipsis, Globe2, Inbox, ListChecks, Menu, ShieldCheck, UserRound, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
-import { Link, useLocation } from "wouter";
-import { AccountMenu } from "./AccountMenu";
-import { Button } from "@/components/kit/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { FREE_ASKS_CHIP, FREE_ASKS_PER_MONTH, REFERRER_MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
+import { useEffect, type ReactNode } from "react";
+import { useLocation } from "wouter";
+import { useAuth, useUser } from "@/_core/auth";
+import { GoalShell, goalInitials, type GoalAccount, type GoalCredits, type GoalNavId } from "@/components/goal";
+import { useReferrerAccess } from "@/hooks/useReferrerAccess";
+import { useCreditBalance, useUnreadAlerts } from "@/lib/goalShellData";
+import { clearPrivateReferralBrowserData } from "@/lib/logoutPrivacy";
 
 /**
- * Kit-exact app shell (skipwait-shell.tsx): desktop sidebar + mobile bottom
- * tab bar, More menu, alerts bell, safe-area insets. Destinations are live
- * routes; kit-only destinations swap in with their batches (/help and
- * /for-companies are live). Signed-in users see account controls where the
- * kit (signed-out preview) shows Sign in.
+ * The signed-in app shell (D-048 phase 3; DESIGN.md "Layout"): one navigation for everyone (Find, My asks, Inbox),
+ * plus the Referral queue for a verified referrer (the server's verdict, useReferrerAccess), and a quiet "Give a
+ * referral" link for everyone else. Pages that have moved to the goal UI pass their own props; every other page
+ * keeps calling <AppShell> with children only, and the route decides the active place and the page title.
  */
-const navigation = [
-  { to: "/explore", label: "Explore", mobileLabel: "Explore", icon: Compass },
-  { to: "/requests", label: "Requests", mobileLabel: "Requests", icon: ListChecks },
-  { to: "/inbox", label: "Inbox", mobileLabel: "Inbox", icon: Inbox },
-  { to: "/referrer-home", label: "Refer", mobileLabel: "Refer", icon: ArrowUpRight },
-] as const;
+type RouteInfo = { active: GoalNavId | null; title: string; referrerSurface: boolean };
 
-const accountLinks = [
-  { to: "/profile", label: "Profile", mobileLabel: "Profile", icon: UserRound },
-  { to: "/work", label: "My work", mobileLabel: "Work", icon: Briefcase },
-  { to: "/plans", label: "Plans & credits", mobileLabel: "Plans", icon: Crown },
-] as const;
+const ROUTES: ReadonlyArray<{ test: (path: string) => boolean } & RouteInfo> = [
+  { test: path => path === "/explore" || path.startsWith("/explore/") || path === "/ask", active: "find", title: "Find a referral", referrerSurface: false },
+  { test: path => path === "/requests", active: "asks", title: "My asks", referrerSurface: false },
+  { test: path => path === "/queue", active: "queue", title: "Referral queue", referrerSurface: true },
+  { test: path => path === "/inbox" || path.startsWith("/thread") || path.startsWith("/conversation/"), active: "inbox", title: "Inbox", referrerSurface: false },
+  { test: path => path === "/referrer/impact", active: "queue", title: "Impact", referrerSurface: true },
+  { test: path => path === "/referrer-home", active: "queue", title: "Referrer home", referrerSurface: true },
+  { test: path => path === "/referrer-setup", active: "queue", title: "Referrer setup", referrerSurface: true },
+  { test: path => path === "/referrer" || path === "/verify", active: null, title: "Give a referral", referrerSurface: true },
+  { test: path => path === "/alerts", active: null, title: "Alerts", referrerSurface: false },
+  { test: path => path === "/settings", active: null, title: "Settings", referrerSurface: false },
+  { test: path => path === "/profile", active: null, title: "Profile", referrerSurface: false },
+  { test: path => path === "/work", active: null, title: "My work", referrerSurface: false },
+  { test: path => path === "/plans" || path === "/billing", active: null, title: "Plans and credits", referrerSurface: false },
+  { test: path => path === "/help" || path === "/safety", active: null, title: "Help", referrerSurface: false },
+  { test: path => path === "/assistants" || path === "/approve", active: null, title: "Assistants", referrerSurface: false },
+  { test: path => path === "/invite", active: null, title: "Invite", referrerSurface: false },
+  { test: path => path === "/onboarding", active: null, title: "Get started", referrerSurface: false },
+];
 
-export const SHELL_TABS = [...navigation, ...accountLinks].map(item => ({ to: item.to, label: item.label, shortLabel: item.mobileLabel, icon: item.icon }));
-
-function MoreMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate: () => void }) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" aria-label="More" className={mobile ? "!flex h-auto min-h-[45px] flex-col gap-[5px] rounded-none p-0 text-[9px] text-muted-foreground" : "nav-item h-auto min-h-12 w-full justify-start"}>
-          <Ellipsis size={20} /><span>More</span>{!mobile && <ChevronDown className="ml-auto" />}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align={mobile ? "end" : "start"} side={mobile ? "top" : "bottom"} sideOffset={8} className="w-56 max-w-[calc(100vw-2rem)]">
-        <DropdownMenuLabel>Help &amp; info</DropdownMenuLabel>
-        <DropdownMenuItem asChild className="min-h-11"><Link href="/help" onClick={onNavigate}><ShieldCheck />Help &amp; safety</Link></DropdownMenuItem>
-        <DropdownMenuItem asChild className="min-h-11"><Link href="/assistants" onClick={onNavigate}><Bot />Connected assistants</Link></DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuLabel>For teams</DropdownMenuLabel>
-        <DropdownMenuItem asChild className="min-h-11"><Link href="/for-companies" onClick={onNavigate}><Building2 />For companies</Link></DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
+export function shellRouteInfo(path: string): RouteInfo {
+  const found = ROUTES.find(route => route.test(path));
+  return found ? { active: found.active, title: found.title, referrerSurface: found.referrerSurface } : { active: null, title: "SkipWait", referrerSurface: false };
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+function accountItems(verifiedReferrer: boolean, signOut: () => void): GoalAccount["items"] {
+  return [
+    { label: "Profile", href: "/profile" },
+    { label: "My work", href: "/work" },
+    { label: "Plans and credits", href: "/plans" },
+    ...(verifiedReferrer ? [{ label: "Impact", href: "/referrer/impact" }, { label: "Referrer home", href: "/referrer-home" }] : []),
+    { label: "Direct messages", href: "/messages" },
+    { label: "Internal openings", href: "/wall" },
+    { label: "Connected assistants", href: "/assistants" },
+    { label: "Share SkipWait", href: "/share" },
+    { label: "Help and safety", href: "/help" },
+    { label: "Settings", href: "/settings" },
+    { label: "Sign out", onSelect: signOut },
+  ];
+}
+
+export type AppShellProps = {
+  children: ReactNode;
+  /** Moved screens set these; other pages get them from the route. */
+  active?: GoalNavId | null;
+  title?: string;
+  drawer?: ReactNode;
+  hideBottomBar?: boolean;
+};
+
+export function AppShell({ children, active, title, drawer, hideBottomBar }: AppShellProps) {
   const [path] = useLocation();
-  const { isSignedIn } = useAuth();
-  const [drawer, setDrawer] = useState(false);
-  const isActive = (to: string) => path === to || path.startsWith(`${to}/`);
-  const close = () => setDrawer(false);
+  const { isLoaded, isSignedIn, signOut } = useAuth();
+  const { user } = useUser();
+  const access = useReferrerAccess();
+  const verifiedReferrer = access.status === "verified";
+  const route = shellRouteInfo(path);
+  const showCredits = Boolean(isSignedIn) && !route.referrerSurface;
+  const balance = useCreditBalance(showCredits);
+  const unread = useUnreadAlerts(Boolean(isSignedIn));
+
+  // The document scrolls, so a new page starts at the top like the old shell.
+  useEffect(() => { if (typeof window !== "undefined") window.scrollTo?.({ top: 0 }); }, [path]);
+
+  const credits: GoalCredits | null = !showCredits
+    ? null
+    : balance.isSuccess
+      ? { state: "ready", count: balance.data, href: "/plans" }
+      : balance.isError
+        ? { state: "error", onRetry: () => { void balance.refetch(); } }
+        : { state: "loading" };
+
+  const name = user?.fullName?.trim() || user?.primaryEmailAddress?.emailAddress || "Your account";
+  const signOutEverywhere = () => { void clearPrivateReferralBrowserData().finally(() => { void signOut(); }); };
+  const account: GoalAccount | null = isLoaded && isSignedIn ? { initials: goalInitials(name), name, items: accountItems(verifiedReferrer, signOutEverywhere) } : null;
+  const navActive = active !== undefined ? active : route.active === "queue" && !verifiedReferrer ? null : route.active;
+  const returnTo = typeof window === "undefined" ? path : `${window.location.pathname}${window.location.search}`;
+
   return (
-    <div className="app-shell">
-      <aside className={`app-sidebar overflow-y-auto${drawer ? " is-open" : ""}`}>
-        <Link href="/" className="wordmark" onClick={close}><span className="brand-mark"><ArrowUpRight /></span>SkipWait<span className="brand-dot">.</span></Link>
-        <div className="sidebar-caption">A LITTLE CONNECTION.<br />A BIG NEXT STEP.</div>
-        <nav aria-label="Main navigation">
-          {navigation.map(item => (
-            <Link key={item.to} href={item.to} onClick={close} aria-current={isActive(item.to) ? "page" : undefined} className={`nav-item${isActive(item.to) ? " active" : ""}`}>
-              <item.icon size={20} />{item.label}{isActive(item.to) && <ArrowRight size={16} className="nav-arrow" />}
-            </Link>
-          ))}
-          <div className="nav-caption">Your space</div>
-          {accountLinks.map(item => (
-            <Link key={item.to} href={item.to} onClick={close} aria-current={isActive(item.to) ? "page" : undefined} className={`nav-item${isActive(item.to) ? " active" : ""}`}>
-              <item.icon size={20} />{item.label}{isActive(item.to) && <ArrowRight size={16} className="nav-arrow" />}
-            </Link>
-          ))}
-          <MoreMenu onNavigate={close} />
-        </nav>
-        <div className="sidebar-bottom !pt-6">
-          {/* D-063: the money sentence, split so the sidebar keeps its two short rows. */}
-          <div className="free-promise"><ShieldCheck size={21} /><strong>{FREE_ASKS_PER_MONTH} asks free a month.<br />More use credits.</strong></div>
-          <p>{REFERRER_MONEY_SENTENCE}</p>
-          {isSignedIn ? <AccountMenu /> : <Button variant="outline" asChild><Link href="/sign-in" onClick={close}>Sign in</Link></Button>}
-          <div className="global-note"><Globe2 size={14} />Built for your next move.</div>
-        </div>
-      </aside>
-      {drawer ? <div className="drawer-scrim" onClick={close} aria-hidden="true" /> : null}
-      <div className="app-main">
-        <header className="app-topbar">
-          <div className="mobile-brand">
-            <Button variant="ghost" size="icon" aria-label={drawer ? "Close menu" : "Open menu"} onClick={() => setDrawer(!drawer)}>{drawer ? <X /> : <Menu />}</Button>
-            <Link href="/" className="wordmark">SkipWait<span className="brand-dot">.</span></Link>
-            <Button variant="ghost" size="icon" asChild className="ml-auto md:hidden"><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
-          </div>
-          <span className="desktop-top-label">GOOD OPPORTUNITIES START WITH PEOPLE.</span>
-          <div className="topbar-actions">
-            <span className="private-note"><ShieldCheck size={15} />Private by default</span>
-            <Button variant="ghost" size="icon" asChild><Link href="/alerts" aria-label="Alerts"><Bell /></Link></Button>
-            {isSignedIn ? <AccountMenu /> : <Button variant="ghost" asChild><Link href="/sign-in">Sign in</Link></Button>}
-          </div>
-        </header>
-        {children}
-        <footer className="app-footer"><span>SkipWait · A warmer way in.</span><Link href="/safety">{FREE_ASKS_CHIP}. {REFERRERS_NEVER_PAID} <ArrowUpRight size={13} /></Link></footer>
-      </div>
-      <nav className="mobile-tabs" aria-label="Mobile navigation">
-        {[...navigation, ...accountLinks].map(item => (
-          <Link key={item.to} href={item.to} aria-current={isActive(item.to) ? "page" : undefined} className={isActive(item.to) ? "active" : ""}>
-            <item.icon size={20} /><span>{item.mobileLabel}</span>
-          </Link>
-        ))}
-        <MoreMenu mobile onNavigate={close} />
-      </nav>
-    </div>
+    <GoalShell
+      active={navActive}
+      verifiedReferrer={verifiedReferrer}
+      pageTitle={title ?? route.title}
+      credits={credits}
+      account={account}
+      signInHref={`/sign-in?${new URLSearchParams({ returnTo })}`}
+      alerts={isSignedIn ? { href: "/alerts", unread: unread.data ?? 0 } : null}
+      drawer={drawer}
+      hideBottomBar={hideBottomBar}
+    >
+      {children}
+    </GoalShell>
   );
 }

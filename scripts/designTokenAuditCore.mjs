@@ -8,7 +8,7 @@
  * The goal tokens in client/src/index.css must equal GOAL_TOKENS, which mirror design/goal-ui/pick/tokens.css.
  */
 
-export const GOAL_SCOPE = [/^client\/src\/components\/goal\//, /^client\/src\/pages\/goal\//];
+export const GOAL_SCOPE = [/^client\/src\/components\/goal\//, /^client\/src\/pages\/goal\//, /^client\/src\/components\/AppShell\.tsx$/];
 export const isGoalFile = file => GOAL_SCOPE.some(pattern => pattern.test(file));
 
 /** Kit v4 palette + legacy palette, accepted only in files that have not moved to the goal UI. */

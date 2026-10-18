@@ -51,21 +51,24 @@ function GiveReferralLink({ href, variant }: { href: string; variant: "rail" | "
 }
 
 function CreditsPill({ credits }: { credits: GoalCredits }) {
+  const pill = "inline-flex h-8 items-center gap-2 whitespace-nowrap rounded-g-control border border-g-control-edge pl-2.5 pr-3 text-g-meta text-g-ink max-gdesk:mr-1 max-gdesk:h-9";
   if (credits.state === "loading") {
     return (
-      <span aria-busy="true" className="inline-flex h-8 w-24 items-center rounded-g-control border border-g-control-edge max-gdesk:mr-1 max-gdesk:h-9 max-gdesk:w-14">
-        <span className="sr-only">Loading credits</span>
+      <span aria-busy="true" className={pill}>
+        <Coins aria-hidden="true" className="size-4 shrink-0 text-g-ink-2" strokeWidth={1.75} />
+        <span aria-hidden="true" className="block h-2 w-12 rounded-g-keycap bg-g-surface-hover max-gdesk:w-3" />
+        <span className="sr-only">Loading your credits</span>
       </span>
     );
   }
   if (credits.state === "error") {
+    // Never a 0 when the balance failed to load (DESIGN.md rule 13): say so, and offer a retry.
     return (
-      <span className="inline-flex items-center gap-2 whitespace-nowrap text-g-meta text-g-ink-2">
-        <span className="max-gdesk:sr-only">Balance didn’t load</span>
-        <button type="button" onClick={credits.onRetry} className="g-hit text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink max-gdesk:mr-2">
-          Retry<span className="sr-only gdesk:hidden"> loading your balance</span>
-        </button>
-      </span>
+      <button type="button" onClick={credits.onRetry} aria-label="Your balance didn’t load. Retry" className={gcn(pill, "transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover")}>
+        <Coins aria-hidden="true" className="size-4 shrink-0 text-g-ink-2" strokeWidth={1.75} />
+        <span className="text-g-ink-2 max-gdesk:hidden">Balance didn’t load ·</span>
+        <span className="underline decoration-g-control-edge underline-offset-[3px]">Retry</span>
+      </button>
     );
   }
   const noun = credits.count === 1 ? "credit" : "credits";
@@ -148,7 +151,9 @@ function SignInLink({ href }: { href: string }) {
 }
 
 /** The goal app shell (DESIGN.md Layout): a 104px rail with one navigation on desktop, a 56px top bar, and a phone
- * bottom bar. Every portalled goal surface carries `g-scope` itself; this root carries it for everything inside. */
+ * bottom bar. The document scrolls (the rail, top bar and drawer column stay sticky), so pages that rely on window
+ * scrolling keep working; list/detail screens size their own panes to the viewport. Every portalled goal surface
+ * carries `g-scope` itself; this root carries it for everything inside. */
 export function GoalShell({ active, verifiedReferrer, pageTitle, credits, account, signInHref = "/sign-in", alerts, giveReferralHref, hideBottomBar = false, drawer, children }: GoalShellProps) {
   const nav = goalNavFor(verifiedReferrer);
   const giveHref = giveReferralHref ?? referrerSignInHref();
@@ -157,13 +162,13 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       data-testid="goal-shell"
       className={gcn(
         "g-scope grid min-h-dvh grid-cols-1 grid-rows-[var(--g-topbar-h)_minmax(0,1fr)_auto] bg-g-canvas text-g-body text-g-ink",
-        "gdesk:h-dvh gdesk:min-h-0 gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)_auto] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] gdesk:overflow-hidden",
+        "gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)_auto] gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)]",
       )}
     >
       <a href="#goal-main" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded-g-control focus:bg-g-surface focus:px-3 focus:py-2">
         Skip to content
       </a>
-      <nav aria-label="Primary" className="hidden flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5 gdesk:col-start-1 gdesk:row-span-2 gdesk:row-start-1 gdesk:flex">
+      <nav aria-label="Primary" className="hidden flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5 gdesk:sticky gdesk:top-0 gdesk:col-start-1 gdesk:row-span-2 gdesk:row-start-1 gdesk:flex gdesk:h-dvh gdesk:self-start">
         <Link href="/" className="flex h-(--g-topbar-h) shrink-0 items-center text-[16px] font-bold leading-6 tracking-[-0.02em] text-g-ink">
           SkipWait
         </Link>
@@ -195,7 +200,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         </div>
       </nav>
 
-      <header className="sticky top-0 z-30 flex h-(--g-topbar-h) items-center gap-1 border-b border-g-hairline bg-g-surface pl-2.5 pr-1 gdesk:static gdesk:col-span-2 gdesk:col-start-2 gdesk:row-start-1 gdesk:gap-2 gdesk:pl-6 gdesk:pr-3">
+      <header className="sticky top-0 z-30 flex h-(--g-topbar-h) items-center gap-1 border-b border-g-hairline bg-g-surface pl-2.5 pr-1 gdesk:col-span-2 gdesk:col-start-2 gdesk:row-start-1 gdesk:gap-2 gdesk:pl-6 gdesk:pr-3">
         <div className="flex min-w-0 items-center gap-1 gdesk:hidden">
           {account ? <span className="ml-0.5 mr-1.5"><AccountMenu account={account} side="bottom" /></span> : null}
           {!verifiedReferrer ? <GiveReferralLink href={giveHref} variant="top" /> : null}
@@ -208,11 +213,11 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         </div>
       </header>
 
-      <main id="goal-main" tabIndex={-1} className="min-w-0 outline-none gdesk:col-start-2 gdesk:row-start-2 gdesk:min-h-0 gdesk:overflow-y-auto">
+      <main id="goal-main" tabIndex={-1} className="min-w-0 outline-none gdesk:col-start-2 gdesk:row-start-2">
         {children}
       </main>
 
-      {drawer ? <div className="hidden gdesk:col-start-3 gdesk:row-start-2 gdesk:block gdesk:min-h-0">{drawer}</div> : null}
+      {drawer ? <div className="hidden gdesk:sticky gdesk:top-(--g-topbar-h) gdesk:col-start-3 gdesk:row-start-2 gdesk:block gdesk:h-[calc(100dvh-var(--g-topbar-h))] gdesk:self-start">{drawer}</div> : null}
 
       {!hideBottomBar ? (
         <nav aria-label="Primary" className="sticky bottom-0 z-30 grid h-(--g-bottombar-h) auto-cols-fr grid-flow-col border-t border-g-hairline bg-g-surface gdesk:hidden">

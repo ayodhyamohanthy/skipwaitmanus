@@ -188,9 +188,9 @@ describe("GoalShell", () => {
     const user = userEvent.setup();
     const retry = vi.fn();
     render(<GoalShell {...base} active="asks" verifiedReferrer={false} credits={{ state: "error", onRetry: retry }}><p>content</p></GoalShell>);
-    expect(screen.getByText("Balance didn’t load")).toBeTruthy();
+    expect(screen.getByText(/Balance didn’t load/)).toBeTruthy();
     expect(screen.queryByText("0")).toBeNull();
-    await user.click(screen.getByRole("button", { name: /Retry/ }));
+    await user.click(screen.getByRole("button", { name: "Your balance didn’t load. Retry" }));
     expect(retry).toHaveBeenCalledOnce();
   });
 
