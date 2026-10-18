@@ -1,4 +1,4 @@
-import type { Express, Request } from "express";
+import type { Express, Request, Response } from "express";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
@@ -6,6 +6,7 @@ import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
 import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
+import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -64,10 +65,18 @@ function isChargebeeNotConfigured(error: unknown): boolean {
 
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  // D-055: referrers never pay (shared/referrerPurchases.ts, switched off, not deleted).
+  // Answered before any availability probe, provider call or intent row.
+  const refuseReferrerPurchase = (res: Response, actorUserId: number, action: "billing.credit_checkout_refused" | "billing.subscription_checkout_refused") => {
+    record({ actorUserId, action, outcome: "denied", resourceType: action === "billing.credit_checkout_refused" ? "payment_intent" : "subscription_intent", metadata: { reason: REFERRER_PURCHASE_REFUSED_CODE, role: "referrer" } });
+    return res.status(403).json({ error: REFERRER_PURCHASE_REFUSED_ERROR, code: REFERRER_PURCHASE_REFUSED_CODE });
+  };
   app.post("/api/chargebee/checkout", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before purchasing tokens" });
+      // Covers both arms below: a kit credit pack and the /premium per-credit token checkout.
+      if (isReferrerPurchaseRefused(req.body?.role)) return refuseReferrerPurchase(res, identity.account.id, "billing.credit_checkout_refused");
       const itemPriceId = req.body?.itemPriceId;
       // A kit credit pack names a pack, not a legacy token item price. Refuse
       // before anything else so a pack body never falls through to "unsupported".
@@ -123,6 +132,7 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before choosing a plan" });
+      if (isReferrerPurchaseRefused(req.body?.role)) return refuseReferrerPurchase(res, identity.account.id, "billing.subscription_checkout_refused");
       // A kit pass/Keep warm body names a plan term. The pre-kit monthly body
       // ({plan: "pro" | "max", ...}) is retired (D-067) and refused below.
       const kitPlan = kitPlanCheckoutRequestSchema.safeParse(req.body);
