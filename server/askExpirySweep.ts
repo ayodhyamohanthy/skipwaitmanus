@@ -16,6 +16,7 @@ import { ASK_TTL_MS } from "../shared/referral";
 import { expireStalePendingReferralRequest, getDb } from "./db";
 import { selectStaleHeldAsks } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
+import { captureServerError } from "./sentry";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
 export const ASK_EXPIRY_SWEEP_BATCH = 200;
@@ -37,8 +38,24 @@ export async function listStalePendingAsks(cutoff: Date, limit: number): Promise
     .where(and(eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), lt(referralRequests.createdAt, cutoff)))
     .orderBy(asc(referralRequests.createdAt), asc(referralRequests.id))
     .limit(limit);
-  // Each query is bounded on its own; merged oldest first, the batch keeps the same bound.
-  const held = await selectStaleHeldAsks(db, { cutoff, limit });
+  return mergeHeldStaleAsks(unassigned, () => selectStaleHeldAsks(db, { cutoff, limit }), limit);
+}
+
+type StaleRow = { id: number; jobSeekerId: number; createdAt: Date };
+
+/**
+ * Each query is bounded on its own; merged oldest first, the batch keeps the same bound.
+ * The held personal-link query (D-050) is newer than the unassigned one: if it fails, the
+ * ordinary asks still expire and refund this window, and the failure is reported, never silent.
+ */
+export async function mergeHeldStaleAsks(unassigned: StaleRow[], loadHeld: () => Promise<StaleRow[]>, limit: number): Promise<StaleAsk[]> {
+  let held: StaleRow[] = [];
+  try {
+    held = await loadHeld();
+  } catch (error) {
+    console.error("[ask-expiry-sweep] held personal-link asks skipped this window", { name: error instanceof Error ? error.name : "unknown" });
+    captureServerError(error, { job: "ask-expiry-sweep", step: "held-asks" });
+  }
   return [...unassigned, ...held].sort(oldestFirst).slice(0, limit).map(({ id, jobSeekerId }) => ({ id, jobSeekerId }));
 }
 
