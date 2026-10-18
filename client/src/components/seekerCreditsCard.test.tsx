@@ -27,10 +27,10 @@ describe("Seeker credits card after D-067", () => {
   });
 
   it("names a catalog pass by its catalog label and never calls its credits free", () => {
-    render(<SeekerCreditsCard credits={credits({ plan: "land_focus", monthlyAllowance: 60, monthlyCreditsRemaining: 45, totalAvailable: 45, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" })} />);
+    render(<SeekerCreditsCard credits={credits({ plan: "land_focus", monthlyAllowance: 120, monthlyCreditsRemaining: 105, totalAvailable: 105, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" })} />);
     expect(screen.getByText("Land Focus plan")).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/land_focus/);
-    expect(screen.getByText(/15 of 60 plan credits used this month/)).toBeTruthy();
+    expect(screen.getByText(/15 of 120 plan credits used this month/)).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/free credits/i);
     expect(screen.getByText(/Plan renews/)).toBeTruthy();
   });

@@ -33,7 +33,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe("Assistants page", () => {
   it("lists connections, tokens and activity when the server grants access", async () => {
     stubFetch(url => {
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: CONNECTIONS }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: TOKENS }) };
       if (url.includes("/api/assistants/activity")) return { ok: true, json: async () => ({ activity: ACTIVITY }) };
@@ -66,7 +66,7 @@ describe("Assistants page", () => {
   });
 
   it("follows the server's access answer, not the plan name", async () => {
-    stubFetch(url => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "max", hasAccess: false }) } : { ok: true, json: async () => ({}) }));
+    stubFetch(url => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "land_focus", hasAccess: false }) } : { ok: true, json: async () => ({}) }));
     render(<Assistants />);
     expect(await screen.findByText("Assistants and API tokens come with Land")).toBeTruthy();
     expect(screen.queryByText("Safety")).toBeNull();
@@ -74,7 +74,7 @@ describe("Assistants page", () => {
 
   it("shows the always-on safety rules as fixed switches a visitor cannot flip", async () => {
     stubFetch(url => {
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [] }) };
@@ -98,7 +98,7 @@ describe("Assistants page", () => {
 
   it("describes real MCP activity and blocked calls honestly", async () => {
     stubFetch(url => {
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [
@@ -116,7 +116,7 @@ describe("Assistants page", () => {
   it("keeps the token list visible when a revoke fails", async () => {
     stubFetch((url, init) => {
       if (url.includes("/api/assistants/tokens/2") && init?.method === "DELETE") return { ok: false, json: async () => ({ error: "We could not revoke this token" }) };
-      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (url.includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (url.includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (url.includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: TOKENS }) };
       return { ok: true, json: async () => ({ activity: [] }) };
@@ -133,7 +133,7 @@ describe("Assistants page", () => {
       if (String(url).includes("/api/assistants/tokens") && init?.method === "POST") {
         return { ok: true, json: async () => ({ token: { id: 9, name: "Script", prefix: "sw_XyZ", token: "sw_full-once-value" } }) };
       }
-      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (String(url).includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: [] }) };
       if (String(url).includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [] }) };
@@ -150,7 +150,7 @@ describe("Assistants page", () => {
   it("disconnects an assistant", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes("/api/assistants/connections/1") && init?.method === "DELETE") return { ok: true, json: async () => ({ revoked: true, id: 1 }) };
-      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "max", hasAccess: true }) };
+      if (String(url).includes("/api/assistants/access")) return { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) };
       if (String(url).includes("/api/assistants/connections")) return { ok: true, json: async () => ({ connections: CONNECTIONS }) };
       if (String(url).includes("/api/assistants/tokens")) return { ok: true, json: async () => ({ tokens: [] }) };
       return { ok: true, json: async () => ({ activity: [] }) };

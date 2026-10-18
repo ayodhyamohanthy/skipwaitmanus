@@ -32,7 +32,7 @@ const SPEND_APPROVAL = {
   createdAt: new Date(now - 60000).toISOString(),
   expiresAt: new Date(now + DAY).toISOString(),
 };
-const CREDITS = { summary: { plan: "max", totalAvailable: 112, monthlyCreditsRemaining: 112, monthlyAllowance: 112 } };
+const CREDITS = { summary: { plan: "land_focus", totalAvailable: 112, monthlyCreditsRemaining: 112, monthlyAllowance: 120 } };
 
 function stubFetch(handler: (url: string, init?: RequestInit) => { ok: boolean; json: () => Promise<unknown> }) {
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => handler(String(url), init)));
