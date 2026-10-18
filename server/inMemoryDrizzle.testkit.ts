@@ -157,6 +157,8 @@ const tablesFrom = (seed: Seed) => new Map<string, Row[]>(seed.map(([table, rows
 /** server/db.ts caches its client, so one instance serves a whole test file; `reset` reseeds it between tests. */
 export function createInMemoryDrizzle(seed: Seed = []) {
   let tables = tablesFrom(seed);
+  // Tables whose reads throw like a missing table (MySQL ER_NO_SUCH_TABLE), for fail-open tests.
+  let unreadable = new Set<string>();
   const rowsOf = (name: string) => { const rows = tables.get(name) ?? []; tables.set(name, rows); return rows; };
 
   function select(projection?: Projection) {
@@ -165,6 +167,9 @@ export function createInMemoryDrizzle(seed: Seed = []) {
     const run = (): Selected[] => {
       if (!source) return fail("select without from");
       const from = getTableName(source);
+      for (const name of [from, ...joins.map(join => getTableName(join.table))]) {
+        if (unreadable.has(name)) throw Object.assign(new Error(`Table '${name}' doesn't exist`), { code: "ER_NO_SUCH_TABLE", errno: 1146 });
+      }
       let joined: Joined[] = rowsOf(from).map((row): Joined => new Map([[from, row]]));
       for (const join of joins) {
         const name = getTableName(join.table);
@@ -255,7 +260,9 @@ export function createInMemoryDrizzle(seed: Seed = []) {
   };
   return {
     db: { ...api, transaction },
-    reset: (next: Seed) => { tables = tablesFrom(next); },
+    reset: (next: Seed) => { tables = tablesFrom(next); unreadable = new Set(); },
+    /** Every later read of `table` throws as if it were missing, until the next reset. */
+    failReads: (table: MySqlTable) => { unreadable.add(getTableName(table)); },
     /** A copy of a table's current rows, for assertions. */
     rows: (table: MySqlTable): Row[] => structuredClone(rowsOf(getTableName(table))),
   };
