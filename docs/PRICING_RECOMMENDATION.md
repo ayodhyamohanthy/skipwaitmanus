@@ -16,7 +16,7 @@ Still open (section 8): per-tool AI cost, students/campus pricing. Answered by D
 
 # SkipWait pricing recommendation: India (INR) and global (USD and regional prices)
 
-*Sources: the four research briefs, plus `PRICING.md`, `UPGRADE_NUDGES.md` and `shared/planCatalog.ts` in `/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-screens`. Every source was seen on 2026-10-14 unless another date is given. **[U]** marks a figure that is unverified or comes from a third party only. Exchange rates are the ECB reference rates for 2026-10-13: ₹95.28, €0.894 and £0.755 per US$ ([ECB](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml)). AED is pegged at 3.6725 per US$ ([World Bank FCRF](https://api.worldbank.org/v2/country/IND;BRA;IDN;PHL;NGA;ARE;GBR;DEU;USA;FRA/indicator/PA.NUS.FCRF)). All willingness-to-pay figures and recommended prices are my judgement, not research findings.*
+*Sources: the four research briefs, plus `PRICING.md`, `UPGRADE_NUDGES.md` and `shared/planCatalog.ts` in a local checkout of this repository. Every source was seen on 2026-10-14 unless another date is given. **[U]** marks a figure that is unverified or comes from a third party only. Exchange rates are the ECB reference rates for 2026-10-13: ₹95.28, €0.894 and £0.755 per US$ ([ECB](https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml)). AED is pegged at 3.6725 per US$ ([World Bank FCRF](https://api.worldbank.org/v2/country/IND;BRA;IDN;PHL;NGA;ARE;GBR;DEU;USA;FRA/indicator/PA.NUS.FCRF)). All willingness-to-pay figures and recommended prices are my judgement, not research findings.*
 
 ## 1. Executive summary
 
