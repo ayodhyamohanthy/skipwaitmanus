@@ -38,6 +38,8 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
   const hidden = role === "referrer-pending";
   const seeker = role === "seeker";
   const composer = canMessage(role, request);
+  // An accepted referrer's file without a link: their document access has ended (D-019(e)).
+  const accessEnded = role === "referrer-claimed" && accepted && request.attachments.some(file => !file.url);
 
   return (
     <section className="min-w-0 rounded-3xl border border-border bg-card">
@@ -70,13 +72,17 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
               {!accepted ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><EyeOff className="size-3.5" />Resume and profile shared after acceptance</span>
               ) : role === "referrer-claimed" ? (
-                request.attachments.map(file => (
-                  <a key={file.id} href={file.url ?? `/api/documents/${file.id}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
-                ))
+                // A file without a link is one whose document access has ended: named, never linked to a dead page.
+                request.attachments.map(file => (file.url ? (
+                  <a key={file.id} href={file.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
+                ) : (
+                  <span key={file.id} className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</span>
+                )))
               ) : request.attachmentCount > 0 ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{request.attachmentCount === 1 ? "1 file shared" : `${request.attachmentCount} files shared`}</span>
               ) : null}
             </div>
+            {accessEnded ? <p className="mt-2 text-xs text-muted-foreground">Resume access has ended. Message the Job Seeker here if you still need it.</p> : null}
           </div>
         </div>
 
