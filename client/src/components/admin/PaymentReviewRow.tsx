@@ -84,7 +84,7 @@ export default function PaymentReviewRow({ payment, submit, onReload }: Props) {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Keep the credits and close?</AlertDialogTitle>
-          <AlertDialogDescription>Chargebee already returned this payment's money. Nothing is taken back from {who}'s wallet, and this payment closes for good. Only a manual credit adjustment can change it later.</AlertDialogDescription>
+          <AlertDialogDescription>Chargebee already returned this payment's money. Nothing is taken back from {who}'s wallet, and this payment closes for good: there is no undo.</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>
