@@ -20,6 +20,25 @@ describe("payment and recovery wallet concurrency invariants", () => {
     expect(body).toContain('idempotencyKey: `payment-credit-${paymentId}`');
   });
 
+  it("refuses a review decision the parked reason does not allow before writing anything (P0-refund-review)", () => {
+    const body = fn("export async function resolveRequiresReviewPayment", "export async function listRecentPayments");
+    expect(body.indexOf("paymentReviewRefusal(paymentReviewKind(row), decision)")).toBeGreaterThan(body.indexOf('.for("update")'));
+    expect(body.indexOf("throw new PaymentReviewRefusedError(refusal)")).toBeLessThan(body.indexOf("status: decision"));
+    expect(body).toContain("if (!isDuplicateKeyError(error)) throw error;");
+  });
+
+  it("tags the webhook's pack credit with its payment, the shape the admin credit writes", () => {
+    const body = fn("export async function fulfillChargebeePayment", "export async function listRequiresReviewPayments");
+    expect(body).toContain('kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(intent[0].id), idempotencyKey: `payment-credit-${intent[0].id}`');
+    expect(body).not.toContain('kind: "purchase" });');
+  });
+
+  it("lists parked payments with their credit time and why they are parked", () => {
+    const body = fn("export async function listRequiresReviewPayments", "export async function resolveRequiresReviewPayment");
+    expect(body).toContain("creditedAt: paymentFulfillments.creditedAt");
+    expect(body).toContain("reviewKind: paymentReviewKind(row)");
+  });
+
   it("locks both fulfillment and wallet and subtracts atomically on revocation", () => {
     const body = fn("export async function revokeCreditedPaymentCredits", "export async function getRevenueSummary");
     expect(body.match(/\.for\("update"\)/g)).toHaveLength(2);

@@ -51,6 +51,8 @@ import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type Cred
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
+import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx, isDuplicateKeyError } from "./paymentRefundReview";
+import { REFUND_OF_UNCREDITED_PAYMENT, PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome } from "../shared/paymentReview";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
@@ -3401,13 +3403,26 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
   if (!input.hostedPageId) return { status: "ignored" as const, reason: "missing_hosted_page" };
   if (!input.passThruContent) return { status: "ignored" as const, reason: "missing_checkout_intent" };
   const checkoutIntentId = input.passThruContent;
+  const hostedPageId = input.hostedPageId;
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
     const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1);
-    if (!intent[0]) return { status: "ignored" as const, reason: "unknown_checkout" };
+    if (!intent[0]) {
+      // No pending row: credit recovery or the reconcile job may already have
+      // settled this checkout (event id hosted_page:<id>), or an earlier event
+      // parked it. That is the same payment, not an unknown one: reporting it as
+      // unmatched tells the admin to credit the customer by hand, a second credit.
+      // A different invoice on the same checkout is not this payment and stays unknown.
+      const settled = (await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerHostedPageId, hostedPageId), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1))[0];
+      if (settled && (!settled.providerInvoiceId || !input.invoiceId || settled.providerInvoiceId === input.invoiceId)) {
+        if (settled.status === "credited" || settled.status === "refunded") return { status: "duplicate" as const, tokenCount: settled.tokenCount };
+        if (settled.status === "requires_review" || settled.status === "rejected") return { status: "ignored" as const, reason: "payment_already_reconciled" };
+      }
+      return { status: "ignored" as const, reason: "unknown_checkout" };
+    }
     if (intent[0].amount !== input.amount || intent[0].currency !== input.currency) {
       // A paid invoice that disagrees with the checkout (tax, coupon, rounding,
       // catalog drift) must never be dropped quietly: the user has paid. Park
@@ -3429,7 +3444,9 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
     if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
     else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, ...freshWalletCycle(intent[0].role) });
-    await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase" });
+    // Tagged with its payment, the shape the admin credit writes: the unique ledger
+    // keys then refuse any second purchase row for this payment (P0-refund-review).
+    await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(intent[0].id), idempotencyKey: `payment-credit-${intent[0].id}` });
     // First bank-verified payment earns the promo grant. Idempotent by the
     // unique (userId, role) grant row: renewals and replays no-op inside the
     // same transaction, so fulfillment can never double-grant. A pending
@@ -3449,10 +3466,19 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
 export async function listRequiresReviewPayments(limit = 100) {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, createdAt: paymentFulfillments.createdAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(eq(paymentFulfillments.status, "requires_review")).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 250)));
+  const rows = await db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, creditedAt: paymentFulfillments.creditedAt, createdAt: paymentFulfillments.createdAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(eq(paymentFulfillments.status, "requires_review")).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 250)));
+  // Why each row is parked decides which decisions the review page offers (shared/paymentReview.ts).
+  return rows.map(row => ({ ...row, reviewKind: paymentReviewKind(row) }));
 }
 
-export async function resolveRequiresReviewPayment(adminUserId: number, paymentId: number, decision: "credited" | "rejected", note?: string) {
+/**
+ * The administrator's decision on a parked pack payment. Why the row is parked
+ * decides what may happen (shared/paymentReview.ts): a pack the webhook already
+ * added and the provider then refunded can never be credited again (only its
+ * unused credits taken back, or kept), and a pack never added has nothing to take
+ * back. A refused decision writes nothing and throws PaymentReviewRefusedError.
+ */
+export async function resolveRequiresReviewPayment(adminUserId: number, paymentId: number, decision: PaymentReviewDecision, note?: string, credits?: number): Promise<PaymentReviewOutcome> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
@@ -3463,6 +3489,11 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
     const row = rows[0];
     if (!row) throw new Error("This payment record does not exist");
     if (row.status !== "requires_review") throw new Error("This payment was already resolved");
+    const refusal = paymentReviewRefusal(paymentReviewKind(row), decision);
+    if (refusal) throw new PaymentReviewRefusedError(refusal);
+    if (credits !== undefined && (decision !== "revoke_unused" || !Number.isInteger(credits) || credits < 1)) throw new PaymentReviewRefusedError("A credit count only applies to taking back unused credits, as a whole number of at least 1.");
+    const cleanNote = typeof note === "string" && note.trim() ? note.trim().slice(0, PAYMENT_REVIEW_NOTE_MAX) : null;
+    if (decision === "revoke_unused" || decision === "keep_credits") return closeRefundedPaymentReviewTx(tx, { adminUserId, row, decision, note: cleanNote, credits, now: new Date() });
     const resolvedAt = new Date();
     const claimed = await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? resolvedAt : null, lastCheckedAt: resolvedAt }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
     if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment was already resolved");
@@ -3470,9 +3501,17 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
       await tx.insert(tokenBalances).values({ userId: row.userId, role: row.role, balance: row.tokenCount, ...freshWalletCycle(row.role) }).onDuplicateKeyUpdate({ set: { balance: sql`${tokenBalances.balance} + ${row.tokenCount}` } });
       const wallet = await tx.select({ balance: tokenBalances.balance }).from(tokenBalances).where(and(eq(tokenBalances.userId, row.userId), eq(tokenBalances.role, row.role))).limit(1).for("update");
       if (!wallet[0]) throw new Error("Payment credit wallet update failed");
-      await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-credit-${paymentId}`, balanceAfter: wallet[0].balance });
+      try {
+        await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-credit-${paymentId}`, balanceAfter: wallet[0].balance });
+      } catch (error) {
+        if (!isDuplicateKeyError(error)) throw error;
+        // This payment already has its purchase row (the webhook or an earlier
+        // review added the pack): roll back the claim and the wallet credit.
+        captureServerError(error, { source: "payment-review-second-credit", paymentId });
+        throw new PaymentReviewRefusedError("This payment's credits were already added once, so they cannot be added again. Nothing was changed.");
+      }
     }
-    const metadata = { provider: row.provider, tokenCount: row.tokenCount, amount: row.amount, currency: row.currency, note: typeof note === "string" && note.trim() ? note.trim().slice(0, 500) : null };
+    const metadata = { provider: row.provider, tokenCount: row.tokenCount, amount: row.amount, currency: row.currency, reason: row.reconciliationReason, note: cleanNote };
     await tx.insert(operationalActivityLogs).values({ actorUserId: adminUserId, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: String(paymentId), metadata: JSON.stringify(metadata) });
     return { paymentId, decision, tokenCount: row.tokenCount, userId: row.userId, role: row.role };
   });
@@ -3547,6 +3586,11 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
     const park = async (reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_of_uncredited_payment" | "refund_amount_unreadable") => {
       if (row.status === "credited") {
         await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
+      } else if (row.status === "requires_review") {
+        // Refunded while still waiting for its credit (an amount mismatch): the
+        // review may now only close it, never add a pack whose money went back,
+        // and a redelivered refund finds the refund reason and is a duplicate.
+        await tx.update(paymentFulfillments).set({ reconciliationReason: REFUND_OF_UNCREDITED_PAYMENT, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "requires_review")));
       }
       await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: "billing.refund_needs_review", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ reason, eventId: input.eventId, invoiceId, refundAmount: input.refundAmount ?? null, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount }) });
       return { status: "review" as const, paymentId: row.id, reason, expectedAmount: row.amount, currency: row.currency };
