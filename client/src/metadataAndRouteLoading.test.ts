@@ -16,7 +16,7 @@ describe("skipwait.me metadata and route loading", () => {
   });
 
   it("shows the kit loading skeleton while dashboard-heavy screens are imported on demand", () => {
-    expect(app).toContain('lazy(() => import("./pages/MyRequests")');
+    expect(app).toContain('lazy(() => import("./pages/goal/MyAsks")');
     expect(app).toContain('lazy(() => import("./pages/MyCompanyInbox")');
     expect(app).toContain('<Suspense fallback={<LoadingScreen/>}>');
     expect(app).toContain('RouteErrorBoundary');

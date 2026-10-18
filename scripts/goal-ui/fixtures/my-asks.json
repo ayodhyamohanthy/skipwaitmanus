@@ -1,0 +1,346 @@
+{
+ "signedIn": {
+  "id": 4106,
+  "name": "Asha Rao",
+  "email": "asha.rao@example.com",
+  "role": "user"
+ },
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/api/company-referrals/mine",
+   "body": {
+    "expiredRequestIds": [],
+    "requests": [
+     {
+      "id": 51,
+      "displayRef": "R-4Q8ZM",
+      "title": "Role from shared job link",
+      "targetRoleUrl": "https://careers.northwindlabs.example/jobs/backend-engineer-sync",
+      "companyDomain": "northwindlabs.example",
+      "companyName": "Northwind Labs",
+      "companyInitials": "NL",
+      "jobFunction": "Engineering",
+      "compensation": null,
+      "status": "pending",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-07T06:00:00.000Z",
+      "coverageHeldAt": null,
+      "queueStatus": null,
+      "heldForReferrer": false,
+      "referrerMessage": null,
+      "unreadMessageCount": 0,
+      "createdAt": "2026-10-07T06:00:00.000Z",
+      "updatedAt": "2026-10-07T06:00:00.000Z",
+      "attachmentCount": 1,
+      "expiresAt": "2026-10-14T06:00:00.000Z"
+     },
+     {
+      "id": 52,
+      "displayRef": "R-7HN2D",
+      "title": "Role from shared job link",
+      "targetRoleUrl": "https://bluefin.example/careers/platform-engineer-pipelines",
+      "companyDomain": "bluefin.example",
+      "companyName": "Bluefin Systems",
+      "companyInitials": "BS",
+      "jobFunction": "Engineering",
+      "compensation": null,
+      "status": "pending",
+      "referrerId": 901,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-05T06:00:00.000Z",
+      "coverageHeldAt": null,
+      "queueStatus": "available_for_review",
+      "heldForReferrer": false,
+      "referrerMessage": null,
+      "unreadMessageCount": 0,
+      "createdAt": "2026-10-05T06:00:00.000Z",
+      "updatedAt": "2026-10-06T06:00:00.000Z",
+      "attachmentCount": 1,
+      "expiresAt": "2026-10-12T06:00:00.000Z"
+     },
+     {
+      "id": 53,
+      "displayRef": "R-2VWQA",
+      "title": "Role from shared job link",
+      "targetRoleUrl": "https://cobalthealth.example/jobs/backend-engineer-claims",
+      "companyDomain": "cobalthealth.example",
+      "companyName": "Cobalt Health",
+      "companyInitials": "CH",
+      "jobFunction": "Engineering",
+      "compensation": null,
+      "status": "approved",
+      "referrerId": 902,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-01T06:00:00.000Z",
+      "coverageHeldAt": null,
+      "queueStatus": null,
+      "heldForReferrer": false,
+      "referrerMessage": null,
+      "unreadMessageCount": 0,
+      "createdAt": "2026-10-01T06:00:00.000Z",
+      "updatedAt": "2026-10-06T08:00:00.000Z",
+      "attachmentCount": 1,
+      "expiresAt": null
+     },
+     {
+      "id": 54,
+      "displayRef": "R-9DKT3",
+      "title": "Role from shared job link",
+      "targetRoleUrl": "https://kestrelfreight.example/careers/senior-software-engineer-routing",
+      "companyDomain": "kestrelfreight.example",
+      "companyName": "Kestrel Freight",
+      "companyInitials": "KF",
+      "jobFunction": "Engineering",
+      "compensation": null,
+      "status": "intro_made",
+      "referrerId": 903,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-09-20T06:00:00.000Z",
+      "coverageHeldAt": null,
+      "queueStatus": null,
+      "heldForReferrer": false,
+      "referrerMessage": null,
+      "unreadMessageCount": 0,
+      "createdAt": "2026-09-20T06:00:00.000Z",
+      "updatedAt": "2026-09-27T06:00:00.000Z",
+      "attachmentCount": 1,
+      "expiresAt": null
+     },
+     {
+      "id": 55,
+      "displayRef": "R-3MPXR",
+      "title": "Role from shared job link",
+      "targetRoleUrl": "https://saffronretail.example/jobs/data-analyst-checkout",
+      "companyDomain": "saffronretail.example",
+      "companyName": "Saffron Retail",
+      "companyInitials": "SR",
+      "jobFunction": "Data",
+      "compensation": null,
+      "status": "pending",
+      "referrerId": null,
+      "waitingForCoverage": true,
+      "coverageVisibleAt": null,
+      "coverageHeldAt": null,
+      "queueStatus": "waiting_for_coverage",
+      "heldForReferrer": false,
+      "referrerMessage": null,
+      "unreadMessageCount": 0,
+      "createdAt": "2026-10-06T06:00:00.000Z",
+      "updatedAt": "2026-10-06T06:00:00.000Z",
+      "attachmentCount": 1,
+      "expiresAt": "2027-01-04T06:00:00.000Z"
+     },
+     {
+      "id": 56,
+      "displayRef": "R-6TJ8C",
+      "title": "Role from shared job link",
+      "targetRoleUrl": "https://larkfield.example/careers/software-engineer-core-banking",
+      "companyDomain": "larkfield.example",
+      "companyName": "Larkfield Bank",
+      "companyInitials": "LB",
+      "jobFunction": "Engineering",
+      "compensation": null,
+      "status": "withdrawn",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-09-28T06:00:00.000Z",
+      "coverageHeldAt": null,
+      "queueStatus": null,
+      "heldForReferrer": false,
+      "referrerMessage": null,
+      "unreadMessageCount": 0,
+      "createdAt": "2026-09-28T06:00:00.000Z",
+      "updatedAt": "2026-09-29T06:00:00.000Z",
+      "attachmentCount": 1,
+      "expiresAt": null
+     },
+     {
+      "id": 57,
+      "displayRef": "R-8BQ4W",
+      "title": "Role from shared job link",
+      "targetRoleUrl": "https://boards.greenhouse.io/orchid/jobs/4567890",
+      "companyDomain": "orchid.example",
+      "companyName": "Orchid Analytics",
+      "companyInitials": "OA",
+      "jobFunction": "Data",
+      "compensation": null,
+      "status": "closed",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-09-22T06:00:00.000Z",
+      "coverageHeldAt": null,
+      "queueStatus": null,
+      "heldForReferrer": false,
+      "referrerMessage": null,
+      "unreadMessageCount": 0,
+      "createdAt": "2026-09-22T06:00:00.000Z",
+      "updatedAt": "2026-09-29T06:00:00.000Z",
+      "attachmentCount": 1,
+      "expiresAt": null
+     }
+    ],
+    "slots": {
+     "plan": "free",
+     "planLabel": "Free",
+     "open": 3,
+     "cap": 3,
+     "full": true,
+     "nextPlan": null
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/credits/ledger",
+   "body": {
+    "entries": [
+     {
+      "id": 9001,
+      "kind": "credit_spend",
+      "credits": -1,
+      "bucket": "cycle",
+      "reference": {
+       "type": "referral_request",
+       "id": "51"
+      },
+      "createdAt": "2026-10-07T06:00:00.000Z"
+     },
+     {
+      "id": 9002,
+      "kind": "credit_spend",
+      "credits": -1,
+      "bucket": "cycle",
+      "reference": {
+       "type": "referral_request",
+       "id": "52"
+      },
+      "createdAt": "2026-10-05T06:00:00.000Z"
+     },
+     {
+      "id": 9003,
+      "kind": "credit_spend",
+      "credits": -1,
+      "bucket": "purchased",
+      "reference": {
+       "type": "referral_request",
+       "id": "53"
+      },
+      "createdAt": "2026-10-01T06:00:00.000Z"
+     },
+     {
+      "id": 9004,
+      "kind": "credit_spend",
+      "credits": -1,
+      "bucket": "purchased",
+      "reference": {
+       "type": "referral_request",
+       "id": "54"
+      },
+      "createdAt": "2026-09-20T06:00:00.000Z"
+     },
+     {
+      "id": 9005,
+      "kind": "credit_spend",
+      "credits": -1,
+      "bucket": "cycle",
+      "reference": {
+       "type": "referral_request",
+       "id": "56"
+      },
+      "createdAt": "2026-09-28T06:00:00.000Z"
+     },
+     {
+      "id": 9006,
+      "kind": "withdrawal_refund",
+      "credits": 1,
+      "bucket": "cycle",
+      "reference": {
+       "type": "referral_request",
+       "id": "56"
+      },
+      "createdAt": "2026-09-29T06:00:00.000Z"
+     },
+     {
+      "id": 9007,
+      "kind": "credit_spend",
+      "credits": -1,
+      "bucket": "cycle",
+      "reference": {
+       "type": "referral_request",
+       "id": "57"
+      },
+      "createdAt": "2026-09-22T06:00:00.000Z"
+     },
+     {
+      "id": 9008,
+      "kind": "expiry_refund",
+      "credits": 1,
+      "bucket": "cycle",
+      "reference": {
+       "type": "referral_request",
+       "id": "57#refund"
+      },
+      "createdAt": "2026-09-29T06:00:00.000Z"
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/credits/summary",
+   "body": {
+    "summary": {
+     "plan": "free",
+     "monthlyAllowance": 3,
+     "monthlyCreditsRemaining": 0,
+     "purchasedCreditsRemaining": 2,
+     "promoCreditsRemaining": 0,
+     "promoExpiresAt": null,
+     "promoStatus": null,
+     "promoOfferActive": false,
+     "totalAvailable": 2,
+     "cycleKey": "2026-10",
+     "subscriptionStatus": null,
+     "subscriptionCurrentTermEnd": null
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/notifications",
+   "body": {
+    "notifications": [
+     {
+      "id": 1,
+      "category": "referral",
+      "title": "x",
+      "body": "y",
+      "readAt": null,
+      "createdAt": "2026-10-08T03:00:00.000Z",
+      "kind": "referral_accepted",
+      "refId": 53
+     }
+    ]
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/company-referrals/access",
+   "body": {
+    "verifiedCompanyAccess": false,
+    "workEmailDomain": null,
+    "companyName": null,
+    "companyInitials": null
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/account/preferences",
+   "body": {
+    "preferences": {}
+   }
+  }
+ ]
+}
