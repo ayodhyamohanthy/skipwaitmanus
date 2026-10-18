@@ -17,6 +17,7 @@ import {
   type CatalogPlan,
   type PaidCatalogPlan,
 } from "@shared/planCatalog";
+import { money } from "./format";
 import type { CreditSummary } from "./billingApi";
 
 export type PlanId = "free" | PaidCatalogPlan["id"];
@@ -45,20 +46,10 @@ function priceTerm(plan: PaidCatalogPlan): { minor: Record<CatalogCurrency, numb
 }
 
 function amount(plan: CatalogPlan, currency: CatalogCurrency): string {
-  if (plan.id === "free") return formatAmount(0, currency);
+  if (plan.id === "free") return money(0, currency);
   const paid = paidPlan(plan.id);
   const term = paid ? priceTerm(paid) : null;
-  return formatAmount(term?.minor[currency] ?? 0, currency);
-}
-
-/** Minor units → "$8" / "₹299"; a zero is written without a symbol-less "0". */
-function formatAmount(minor: number, currency: CatalogCurrency): string {
-  const whole = minor % 100 === 0;
-  const value = minor / 100;
-  const text = currency === "INR"
-    ? `₹${whole ? value.toLocaleString("en-IN") : value.toFixed(2)}`
-    : `$${whole ? value.toLocaleString("en-US") : value.toFixed(2)}`;
-  return text;
+  return money(term?.minor[currency] ?? 0, currency);
 }
 
 export function planAmount(plan: PlanId, currency: CatalogCurrency): string {
