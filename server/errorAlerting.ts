@@ -247,3 +247,49 @@ export function createPaymentRefundAlerter(dependencies: AlertDependencies = {})
     }
   };
 }
+
+export type RetiredPlanAlertInput = { eventId?: string; eventType?: string; reason: string; subscriptionId?: string; giftId?: string; itemPriceId?: string };
+
+/**
+ * D-067: emails the administrator when Chargebee sends anything for the retired
+ * Pro/Max plans (a renewal, a change, a claimed gift) or a recipient tries to
+ * claim such a gift. Nothing is granted for these, so a human must cancel the
+ * subscription and refund the customer in the Chargebee dashboard. Never
+ * deduplicated. Provider ids only.
+ */
+export function createRetiredPlanAlerter(dependencies: AlertDependencies = {}) {
+  const fetchImpl = dependencies.fetchImpl ?? fetch;
+  const recordActivity = dependencies.recordActivity ?? recordOperationalActivity;
+  return async function alertRetiredPlanEvent(input: RetiredPlanAlertInput) {
+    const ref = input.subscriptionId ?? input.giftId ?? input.eventId ?? "unknown";
+    const subject = `skipwait.me retired plan event needs review · ${ref}`;
+    const text = [
+      "Chargebee sent an event for a plan SkipWait no longer sells (Pro/Max, or a gift of one; D-067). Nothing was granted.",
+      `Reason: ${input.reason}`,
+      `Event: ${input.eventId ?? "none"}${input.eventType ? ` (${input.eventType})` : ""}`,
+      `Subscription: ${input.subscriptionId ?? "unknown"}`,
+      `Gift: ${input.giftId ?? "none"}`,
+      `Item price: ${input.itemPriceId ?? "unknown"}`,
+      "In the Chargebee dashboard, cancel the subscription and refund the customer for any payment it took.",
+    ].join("\n");
+    const metadata = { eventId: input.eventId, reason: input.reason, subscriptionId: input.subscriptionId, giftId: input.giftId };
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      const sender = process.env.ERROR_ALERT_FROM_EMAIL;
+      if (!apiKey || !sender) throw new Error("Error alert delivery is not configured");
+      const response = await fetchImpl("https://api.resend.com/emails", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from: sender, to: [ADMIN_ERROR_RECIPIENT], subject, text }),
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!response.ok) throw new Error(`Resend responded with ${response.status}`);
+      await recordActivity({ action: "system.retired_plan_alert_sent", outcome: "success", resourceType: "chargebee_subscription", resourceId: ref, metadata });
+      return { alerted: true as const };
+    } catch (error) {
+      console.warn("[RetiredPlanAlert] Unable to send administrator alert", error instanceof Error ? error.message : error);
+      await recordActivity({ action: "system.retired_plan_alert_sent", outcome: "failure", resourceType: "chargebee_subscription", resourceId: ref, metadata }).catch(() => undefined);
+      return { alerted: false as const };
+    }
+  };
+}

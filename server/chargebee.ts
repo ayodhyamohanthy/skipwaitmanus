@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { subscriptionPlanFromItemPrice, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 import { resolvePlanItemPrice, type BillablePlanId, type BillingPeriod } from "../shared/billingCatalog";
 import { buyerUserIdFromGifter, normalizeGiftEmail } from "../shared/giftSubscriptions";
 
@@ -41,9 +40,9 @@ export type ParsedSubscriptionEvent = {
   hostedPageId?: string;
   passThruContent?: string;
   subscriptionId: string;
-  /** The plan the subscription's item price sells: a kit pass/Keep warm plan or grandfathered Pro/Max. */
+  /** The plan the subscription's item price sells (a kit pass or Keep warm); undefined for any other item price, including the retired Pro/Max (D-067). */
   plan?: BillablePlanId;
-  /** The term that item price sells ("monthly" legacy, "30d"/"90d" pass, "yearly" Keep warm). */
+  /** The term that item price sells ("30d"/"90d" pass, "yearly" Keep warm). */
   interval?: BillingPeriod;
   /** The item price itself, so a webhook can be tied to the term the checkout intent named. */
   itemPriceId?: string;
@@ -143,10 +142,10 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
   if (!eventId || !subscriptionId) return undefined;
   const itemPriceId = subscription?.subscription_items?.find?.((item: any) => typeof item?.item_price_id === "string")?.item_price_id;
   // One price book decides which plan and term an item price sells: the kit
-  // catalog (30/90-day passes, Keep warm yearly) and grandfathered Pro/Max
-  // monthly all resolve here, so a live kit pass can never arrive unmatched.
+  // catalog (30/90-day passes, Keep warm yearly) resolves here, so a live kit
+  // pass can never arrive unmatched. A retired Pro/Max item price (D-067)
+  // resolves to no plan, so the wallet records the event and grants nothing.
   const resolvedPrice = resolvePlanItemPrice(itemPriceId);
-  const parsedPlan = resolvedPrice ?? subscriptionPlanFromItemPrice(itemPriceId);
   const currency = typeof subscription?.currency_code === "string" ? subscription.currency_code.toUpperCase() : undefined;
   const hostedPage = payload?.content?.hosted_page;
   const resourceVersion = Number(subscription?.resource_version);
@@ -156,11 +155,11 @@ export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | 
     hostedPageId: typeof hostedPage?.id === "string" ? hostedPage.id : undefined,
     passThruContent: typeof hostedPage?.pass_thru_content === "string" ? hostedPage.pass_thru_content : undefined,
     subscriptionId,
-    plan: parsedPlan?.plan,
+    plan: resolvedPrice?.plan,
     interval: resolvedPrice?.interval,
     itemPriceId: typeof itemPriceId === "string" ? itemPriceId : undefined,
     status: typeof subscription?.status === "string" ? subscription.status : "cancelled",
-    currency: currency === "INR" || currency === "USD" ? currency : parsedPlan?.currency,
+    currency: currency === "INR" || currency === "USD" ? currency : resolvedPrice?.currency,
     currentTermStart: dateFromChargebeeSeconds(subscription?.current_term_start),
     currentTermEnd: dateFromChargebeeSeconds(subscription?.current_term_end),
     resourceVersion: Number.isSafeInteger(resourceVersion) && resourceVersion > 0 ? resourceVersion : undefined,
@@ -205,35 +204,6 @@ export function parseGiftEvent(payload: any): ParsedGiftEvent | undefined {
     buyerUserId: buyerUserIdFromGifter(gifter?.customer_id),
     gifterSignature: typeof gifter?.signature === "string" ? gifter.signature.slice(0, 50) : undefined,
     resourceVersion: Number.isSafeInteger(resourceVersion) && resourceVersion > 0 ? resourceVersion : undefined,
-  };
-}
-
-export type RetrievedGiftSubscription = {
-  subscriptionId: string;
-  plan?: PaidSubscriptionPlan;
-  currency?: "INR" | "USD";
-  status?: string;
-};
-
-export async function retrieveGiftSubscriptionPlan(subscriptionId: string, input: { site?: string; apiKey?: string } = {}): Promise<RetrievedGiftSubscription | undefined> {
-  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
-  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
-  if (!apiKey) throw new Error("Chargebee API key is not configured");
-  const response = await fetch(`https://${site}.chargebee.com/api/v2/subscriptions/${encodeURIComponent(subscriptionId)}`, {
-    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}` },
-    signal: AbortSignal.timeout(8_000),
-  });
-  if (!response.ok) return undefined;
-  const subscription = (await response.json().catch(() => ({})))?.subscription;
-  if (!subscription || subscription.id !== subscriptionId) return undefined;
-  const itemPriceId = subscription?.subscription_items?.find?.((item: any) => typeof item?.item_price_id === "string")?.item_price_id;
-  const parsed = subscriptionPlanFromItemPrice(itemPriceId);
-  const currency = typeof subscription?.currency_code === "string" ? subscription.currency_code.toUpperCase() : undefined;
-  return {
-    subscriptionId,
-    plan: parsed?.plan,
-    currency: currency === "INR" || currency === "USD" ? currency : parsed?.currency,
-    status: typeof subscription?.status === "string" ? subscription.status : undefined,
   };
 }
 

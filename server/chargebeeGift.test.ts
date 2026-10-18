@@ -60,11 +60,12 @@ describe("parseGiftEvent", () => {
   });
 });
 
-// D-067: the Pro/Max hosted pages (monthly checkout and gift checkout) are
-// deleted; gift events are still parsed so every delivery is recorded as a receipt.
+// D-067: the Pro/Max hosted pages (monthly checkout and gift checkout) and the
+// provider plan lookup for gifts are deleted; gift events are still parsed so
+// every delivery is recorded as a receipt.
 describe("retired Pro/Max hosted pages", () => {
-  it("exports no Pro/Max or gift checkout builder", () => {
-    for (const name of ["buildGiftSubscriptionCheckoutForm", "createGiftSubscriptionCheckout", "buildSubscriptionCheckoutForm", "createChargebeeSubscriptionCheckout"]) {
+  it("exports no Pro/Max or gift checkout builder and no gift plan lookup", () => {
+    for (const name of ["buildGiftSubscriptionCheckoutForm", "createGiftSubscriptionCheckout", "retrieveGiftSubscriptionPlan", "buildSubscriptionCheckoutForm", "createChargebeeSubscriptionCheckout"]) {
       expect(chargebee).not.toHaveProperty(name);
     }
   });

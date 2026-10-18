@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createMaterialErrorEscalator } from "./errorAlerting";
+import { createMaterialErrorEscalator, createRetiredPlanAlerter } from "./errorAlerting";
 
 const originalApiKey = process.env.RESEND_API_KEY;
 const originalSender = process.env.ERROR_ALERT_FROM_EMAIL;
@@ -60,4 +60,35 @@ describe("material API error escalation", () => {
     const escalate = createMaterialErrorEscalator({ recordActivity: async () => undefined });
     await expect(escalate({ method: "POST", path: "/api/_alert-delivery-verification", statusCode: 500, durationMs: 1 })).resolves.toEqual({ alerted: true, reason: "sent" });
   }, 15_000);
+});
+
+// D-067: a late provider event for the retired Pro/Max plans (or a gift of one) grants nothing,
+// so it must reach a human who cancels and refunds it in Chargebee. Never deduplicated.
+describe("retired-plan event alert", () => {
+  it("emails provider ids only, every time, and records the delivery", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createRetiredPlanAlerter({ fetchImpl, recordActivity });
+    const input = { eventId: "ev_max_renewal", eventType: "subscription_renewed", reason: "unsupported_plan", subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD" };
+    await expect(alert(input)).resolves.toEqual({ alerted: true });
+    await expect(alert(input)).resolves.toEqual({ alerted: true });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me"], subject: "skipwait.me retired plan event needs review · sub_max_legacy" });
+    expect(payload.text).toContain("Nothing was granted");
+    expect(payload.text).toContain("sub_max_legacy");
+    expect(payload.text).toContain("skipwait_max_monthly-USD");
+    expect(payload.text).toContain("cancel");
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.retired_plan_alert_sent", outcome: "success", resourceId: "sub_max_legacy", metadata: expect.objectContaining({ eventId: "ev_max_renewal", reason: "unsupported_plan" }) }));
+  });
+
+  it("names a gift when there is no subscription, and records a failed delivery without throwing", async () => {
+    process.env.RESEND_API_KEY = "";
+    const recordActivity = vi.fn(async () => undefined);
+    const alert = createRetiredPlanAlerter({ fetchImpl: vi.fn(), recordActivity });
+    await expect(alert({ reason: "gift_claim_refused", giftId: "gift_1" })).resolves.toEqual({ alerted: false });
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.retired_plan_alert_sent", outcome: "failure", resourceId: "gift_1" }));
+  });
 });

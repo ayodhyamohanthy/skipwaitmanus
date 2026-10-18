@@ -2,7 +2,7 @@
  * Assistant access (kit screens 22 / 23 / 24 / 26).
  * Assistants, API tokens, developer apps and assistant approvals.
  * Access follows the plan entitlement (shared/planEntitlements.ts): the Land
- * tier (Focus, Sprint, Concierge) plus grandfathered legacy Max subscribers.
+ * tier (Focus, Sprint, Concierge) only; the retired Max no longer carries it (D-067).
  * Timestamps and expiries are computed in JavaScript, never DB NOW().
  */
 import { z } from "zod";

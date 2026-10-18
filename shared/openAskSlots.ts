@@ -50,7 +50,7 @@ export const SLOT_NUDGE_FLOOR_TIER: CatalogTier = "start";
 /**
  * Catalog plans a person can actually buy today. The nudge only ever names a
  * plan on this list, so it never points at a pass /plans does not sell yet
- * (until the pass item prices exist /plans sells Pro and Max only). Add an id
+ * (until the pass item prices exist /plans sells no plan). Add an id
  * here in the same change that puts that plan on sale; empty means the nudge
  * names no plan and shows no CTA.
  */

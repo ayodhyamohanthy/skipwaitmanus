@@ -58,17 +58,19 @@ describe("assistant access routes", () => {
   });
 
   it("reports the plan entitlement honestly and never caches it", async () => {
-    const app = setup({ getAssistantAccess: async () => ({ plan: "pro", planLabel: "Pro", tier: "start", hasAccess: false }) });
-    const pro = await authed(app).get("/api/assistants/access");
-    expect(pro.body).toEqual({ plan: "pro", planLabel: "Pro", tier: "start", hasAccess: false });
-    expect(pro.headers["cache-control"]).toBe("private, no-store");
-    expect(assistantAccessSchema.safeParse(pro.body).success).toBe(true);
+    const app = setup({ getAssistantAccess: async () => ({ plan: "start", planLabel: "Start", tier: "start", hasAccess: false }) });
+    const start = await authed(app).get("/api/assistants/access");
+    expect(start.body).toEqual({ plan: "start", planLabel: "Start", tier: "start", hasAccess: false });
+    expect(start.headers["cache-control"]).toBe("private, no-store");
+    expect(assistantAccessSchema.safeParse(start.body).success).toBe(true);
+    // D-067: a retired plan id is not an entitled plan, so it can never be reported as one.
+    expect(assistantAccessSchema.safeParse({ ...start.body, plan: "max" }).success).toBe(false);
     const paid = setup({ getAssistantAccess: async () => ({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true }) });
     expect((await authed(paid).get("/api/assistants/access")).body).toEqual({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true });
   });
 
   it("asks the access check about the signed-in caller only", async () => {
-    const access = vi.fn(async (userId: number) => ({ plan: "max" as const, planLabel: "Max", tier: "momentum" as const, hasAccess: userId === 7 }));
+    const access = vi.fn(async (userId: number) => ({ plan: "land_focus" as const, planLabel: "Land Focus", tier: "land" as const, hasAccess: userId === 7 }));
     const app = setup({ getAssistantAccess: access });
     expect((await authed(app).get("/api/assistants/access?userId=8")).body.hasAccess).toBe(true);
     expect(access).toHaveBeenCalledWith(7);

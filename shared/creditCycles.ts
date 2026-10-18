@@ -1,7 +1,7 @@
 // Kit credit cycles (contract: shared/creditLedger.ts). Monthly plan cycles,
 // carryover windows, the renewal grace and when a grant ends. Pure: callers
 // pass the JS clock (invariant 5).
-import type { Carryover } from "./planCatalog";
+import { CATALOG_PLAN_IDS, type Carryover } from "./planCatalog";
 import { isPaidPlanActive } from "./planEntitlements";
 import { currentMonthlyCycleKey } from "./subscriptionPlans";
 import { RENEWAL_GRACE_MS, type LedgerGrant, type LedgerWallet } from "./creditLedger";
@@ -125,10 +125,15 @@ export function grantIsSpendable(grant: LedgerGrant, wallet: LedgerWallet, now: 
 
 /**
  * The paid plan has ended for credit purposes: cancelled or non-renewing past
- * its term end at once, a renewing plan only after RENEWAL_GRACE_MS.
+ * its term end at once, a renewing plan only after RENEWAL_GRACE_MS. A stored
+ * plan outside the catalog (the retired Pro/Max of D-067, the reserved Land
+ * ids) has lapsed now, whatever its status or term, so the ledger roll moves
+ * the wallet to Free with one row for every credit that ends.
  */
 export function paidPlanLapsed(wallet: LedgerWallet, now: Date): boolean {
-  if (wallet.plan === "free" || isPaidPlanActive(wallet, now)) return false;
+  if (wallet.plan === "free") return false;
+  if (!(CATALOG_PLAN_IDS as readonly string[]).includes(wallet.plan)) return true;
+  if (isPaidPlanActive(wallet, now)) return false;
   const end = wallet.subscriptionCurrentTermEnd;
   if (wallet.subscriptionStatus !== "active" || !end) return true;
   return end.getTime() + RENEWAL_GRACE_MS <= now.getTime();

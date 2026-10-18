@@ -1,8 +1,22 @@
-export type SubscriptionPlan = "free" | "pro" | "max";
-export type PaidSubscriptionPlan = Exclude<SubscriptionPlan, "free">;
 export type SubscriptionCurrency = "INR" | "USD";
 
 export const FREE_MONTHLY_ALLOWANCE = 3;
+
+export function currentMonthlyCycleKey(now: Date = new Date()) {
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+/*
+ * D-067 (owner, Oct 18 2026): the monthly Pro and Max plans are removed
+ * completely. No subscription, entitlement or credit path reads the exports
+ * below any more: no checkout sells them (410 plan_retired), no item price
+ * resolves to them (shared/billingCatalog.ts), and a wallet still marked pro or
+ * max reads as Free (shared/planEntitlements.ts). They remain only for the
+ * callers the rest of D-067 deletes: the /plans and /pricing display code, the
+ * public prerender snapshot, and the member-message "premium" check in
+ * server/db.ts sendDirectMessage. Do not add a new caller.
+ */
+export type PaidSubscriptionPlan = "pro" | "max";
 
 export const SUBSCRIPTION_PLANS = {
   pro: {
@@ -23,21 +37,6 @@ export const SUBSCRIPTION_PLANS = {
   },
 } as const;
 
-export function currentMonthlyCycleKey(now: Date = new Date()) {
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
 export function isPaidSubscriptionPlan(value: unknown): value is PaidSubscriptionPlan {
   return value === "pro" || value === "max";
-}
-
-export function subscriptionPlanFromItemPrice(itemPriceId: unknown): { plan: PaidSubscriptionPlan; currency: SubscriptionCurrency; amount: number } | undefined {
-  if (typeof itemPriceId !== "string") return undefined;
-  for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-    for (const currency of ["INR", "USD"] as SubscriptionCurrency[]) {
-      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-      if (price.itemPriceId === itemPriceId) return { plan, currency, amount: price.amount };
-    }
-  }
-  return undefined;
 }

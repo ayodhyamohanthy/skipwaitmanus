@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
-import { ENTITLED_PLAN_IDS, LEGACY_SHOWCASE_PIECES, isPaidPlanActive, isTrialActive, planEntitlementsFor, planEntitlementsSchema, resolvePlanEntitlements, type EntitlementWallet } from "../shared/planEntitlements";
+import * as planEntitlements from "../shared/planEntitlements";
+import { ENTITLED_PLAN_IDS, isPaidPlanActive, isTrialActive, planEntitlementsFor, planEntitlementsSchema, resolvePlanEntitlements, type EntitlementWallet } from "../shared/planEntitlements";
 
 const NOW = new Date("2026-10-14T12:00:00.000Z");
 const DAY = 24 * 60 * 60 * 1000;
@@ -49,34 +50,32 @@ describe("plan entitlement resolver (Oct 14 2026 pricing decision, 19_plans comp
     for (const reserved of ["land_100", "land_200", "land_500"]) expect(resolve(paid(reserved))).toMatchObject({ plan: "free", assistants: false, paidThrough: null });
   });
 
-  it("grandfathers legacy Pro at least to Start and never below what Pro gives today", () => {
-    expect(resolve(paid("pro"))).toMatchObject({ plan: "pro", planLabel: "Pro", tier: "start", legacy: true, openRequests: 10, creditsPerMonth: 10, savedAlerts: null, showcase: { pieces: LEGACY_SHOWCASE_PIECES, pins: 3 }, assistants: false });
-  });
-
-  it("grandfathers legacy Max at least to Momentum and keeps its assistant access", () => {
-    expect(resolve(paid("max"))).toMatchObject({ plan: "max", planLabel: "Max", tier: "momentum", legacy: true, openRequests: 30, creditsPerMonth: 36, showcase: { pieces: null, pins: 6 }, customLink: true, assistants: true });
-  });
-
-  it("legacy plans are never weaker than the tier they map to", () => {
-    const pairs = [["pro", "start"], ["max", "momentum"]] as const;
-    for (const [legacy, tier] of pairs) {
-      const a = resolve(paid(legacy));
-      const b = resolve(paid(tier));
-      expect(a.openRequests).toBeGreaterThanOrEqual(b.openRequests);
-      expect(a.creditsPerMonth).toBeGreaterThanOrEqual(b.creditsPerMonth);
-      expect(a.showcase.pins).toBeGreaterThanOrEqual(b.showcase.pins);
-      expect(a.showcase.pieces === null || (b.showcase.pieces !== null && a.showcase.pieces >= b.showcase.pieces)).toBe(true);
-      expect(a.assistants || !b.assistants).toBe(true);
+  // D-067: Pro and Max are removed completely. A wallet still marked pro or max
+  // (any status, any term end) reads as Free everywhere, with no grandfathering.
+  it.each(["pro", "max"])("a wallet still marked %s reads as Free, active or non-renewing", plan => {
+    for (const subscriptionStatus of ["active", "non_renewing"]) {
+      const wallet = paid(plan, { subscriptionStatus });
+      expect(resolve(wallet)).toEqual(resolve(null));
+      expect(resolve(wallet)).toMatchObject({ plan: "free", planLabel: "Free", legacy: false, openRequests: 3, creditsPerMonth: 3, assistants: false, showcase: { pieces: 3, pins: 1 }, paidThrough: null });
+      expect(isPaidPlanActive(wallet, NOW)).toBe(false);
     }
+    expect(planEntitlementsFor(plan)).toEqual(planEntitlementsFor("free"));
+    expect(planEntitlementsFor(plan).assistants).toBe(false);
+  });
+
+  it("no longer lists or grandfathers the retired plans", () => {
+    expect(ENTITLED_PLAN_IDS).toEqual(["free", ...CATALOG_PLAN_IDS]);
+    expect(planEntitlements).not.toHaveProperty("LEGACY_SHOWCASE_PIECES");
+    for (const plan of ENTITLED_PLAN_IDS) expect(planEntitlementsFor(plan).legacy).toBe(false);
   });
 
   it("a paid plan counts only while billing inside its term (JS clock)", () => {
-    expect(isPaidPlanActive(paid("max"), NOW)).toBe(true);
-    expect(resolve(paid("max", { subscriptionStatus: "non_renewing" })).plan).toBe("max");
-    expect(resolve(paid("max", { subscriptionStatus: "cancelled" })).plan).toBe("free");
-    expect(resolve(paid("max", { subscriptionStatus: null })).plan).toBe("free");
-    expect(resolve(paid("max", { subscriptionCurrentTermEnd: null })).plan).toBe("free");
-    expect(resolve(paid("max", { subscriptionCurrentTermEnd: NOW })).plan).toBe("free");
+    expect(isPaidPlanActive(paid("momentum"), NOW)).toBe(true);
+    expect(resolve(paid("momentum", { subscriptionStatus: "non_renewing" })).plan).toBe("momentum");
+    expect(resolve(paid("momentum", { subscriptionStatus: "cancelled" })).plan).toBe("free");
+    expect(resolve(paid("momentum", { subscriptionStatus: null })).plan).toBe("free");
+    expect(resolve(paid("momentum", { subscriptionCurrentTermEnd: null })).plan).toBe("free");
+    expect(resolve(paid("momentum", { subscriptionCurrentTermEnd: NOW })).plan).toBe("free");
     expect(resolve(paid("land_sprint", { subscriptionCurrentTermEnd: new Date(NOW.getTime() - 1) })).assistants).toBe(false);
   });
 

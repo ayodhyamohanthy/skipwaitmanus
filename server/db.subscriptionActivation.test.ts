@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
-import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
+import { FREE_MONTHLY_ALLOWANCE } from "../shared/subscriptionPlans";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import { applyChargebeeSubscriptionEvent } from "./db";
 
@@ -15,10 +15,10 @@ type Intent = typeof subscriptionCheckoutIntents.$inferSelect;
 type Event = typeof subscriptionEvents.$inferInsert;
 const dialect = new MySqlDialect();
 const termStart = new Date("2026-09-01T00:00:00.000Z");
-const termEnd = new Date("2026-10-01T00:00:00.000Z");
+const termEnd = new Date("2026-10-01T00:00:00.000Z"); // a Start 30-day pass
 const input = {
   eventId: "event_new", eventType: "subscription_created", hostedPageId: "page_new", passThruContent: "intent_new",
-  subscriptionId: "subscription_new", plan: "pro" as const, currency: "INR" as const, status: "active",
+  subscriptionId: "subscription_new", plan: "start" as const, currency: "INR" as const, status: "active",
   currentTermStart: termStart, currentTermEnd: termEnd, resourceVersion: 10,
 };
 let wallets: Wallet[];
@@ -92,7 +92,7 @@ beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   vi.stubEnv("PROMO_GRANTS_ENABLED", "true");
   wallets = [{ id: 1, userId: 7, role: "job_seeker", balance: 12, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-09", plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: termStart }];
-  intents = [{ id: 1, userId: 7, role: "job_seeker", hostedPageId: "page_new", checkoutIntentId: "intent_new", plan: "pro", itemPriceId: "skipwait_pro_monthly-INR", amount: 59900, currency: "INR", status: "pending", createdAt: termStart, updatedAt: termStart }];
+  intents = [{ id: 1, userId: 7, role: "job_seeker", hostedPageId: "page_new", checkoutIntentId: "intent_new", plan: "start", itemPriceId: "skipwait_start_30d-INR", amount: 29900, currency: "INR", status: "pending", createdAt: termStart, updatedAt: termStart }];
   events = [];
   promoGrants = [];
   promoTxns = [];
@@ -119,9 +119,12 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
     const otherWallet = { ...wallets[0], id: 2, role: role === "job_seeker" ? "referrer" as const : "job_seeker" as const, balance: 50 };
     wallets.push(otherWallet);
     const result = await applyChargebeeSubscriptionEvent(input);
-    expect(result).toMatchObject({ status: "applied", userId: 7, role, creditSummary: { purchasedCreditsRemaining: 12, monthlyCreditsRemaining: SUBSCRIPTION_PLANS.pro.monthlyAllowance, totalAvailable: 12 + SUBSCRIPTION_PLANS.pro.monthlyAllowance } });
+    // Seekers get Start's 10 credits a cycle; referrer wallets keep the pre-kit rule, Free's 3 a month (cycleRulesFor).
+    const cycleCredits = role === "job_seeker" ? planEntitlementsFor("start").creditsPerMonth : FREE_MONTHLY_ALLOWANCE;
+    expect(cycleCredits).toBe(role === "job_seeker" ? 10 : 3);
+    expect(result).toMatchObject({ status: "applied", userId: 7, role, creditSummary: { purchasedCreditsRemaining: 12, monthlyCreditsRemaining: cycleCredits, totalAvailable: 12 + cycleCredits } });
     expect(wallets).toHaveLength(2);
-    expect(wallets[0]).toMatchObject({ id: 1, userId: 7, role, plan: "pro", balance: 12, subscriptionId: input.subscriptionId });
+    expect(wallets[0]).toMatchObject({ id: 1, userId: 7, role, plan: "start", balance: 12, subscriptionId: input.subscriptionId });
     expect(wallets[1]).toEqual(otherWallet);
     expect(walletInserts).not.toHaveBeenCalled();
     expect(walletUpdates).toHaveBeenCalledOnce();
@@ -146,7 +149,7 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
   it("checks resource versions only for the same subscription", async () => {
     Object.assign(wallets[0], { subscriptionId: "subscription_cancelled", subscriptionStatus: "cancelled", subscriptionResourceVersion: 999, subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd });
     expect(await applyChargebeeSubscriptionEvent(input)).toMatchObject({ status: "applied" });
-    expect(wallets[0]).toMatchObject({ balance: 12, subscriptionId: input.subscriptionId, subscriptionResourceVersion: 10, monthlyCreditsRemaining: SUBSCRIPTION_PLANS.pro.monthlyAllowance });
+    expect(wallets[0]).toMatchObject({ balance: 12, subscriptionId: input.subscriptionId, subscriptionResourceVersion: 10, monthlyCreditsRemaining: planEntitlementsFor("start").creditsPerMonth });
     expect(await applyChargebeeSubscriptionEvent({ ...input, eventId: "event_stale", resourceVersion: 9 })).toEqual({ status: "stale" });
     expect(walletUpdates).toHaveBeenCalledOnce();
   });
@@ -158,7 +161,7 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
   });
 
   it.each(["active", "non_renewing", "in_trial"])("does not replace another %s paid subscription", async status => {
-    Object.assign(wallets[0], { plan: "max", subscriptionId: "subscription_other", subscriptionStatus: status });
+    Object.assign(wallets[0], { plan: "momentum", subscriptionId: "subscription_other", subscriptionStatus: status });
     const before = structuredClone({ wallets, intents });
     expect(await applyChargebeeSubscriptionEvent(input)).toMatchObject({ status: "ignored", reason: "subscription_conflict" });
     expectUnchanged(before);
@@ -175,7 +178,7 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
 
   it.each([
     { hostedPageId: "wrong_page" }, { passThruContent: "wrong_intent" },
-    { plan: "max" as const }, { currency: "USD" as const },
+    { plan: "momentum" as const }, { currency: "USD" as const },
   ])("leaves balances and intent unchanged for mismatched checkout data %j", async mismatch => {
     const before = structuredClone({ wallets, intents });
     expect(await applyChargebeeSubscriptionEvent({ ...input, ...mismatch })).toMatchObject({ status: "ignored" });
@@ -199,7 +202,50 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
     wallets = [];
     expect(await applyChargebeeSubscriptionEvent(input)).toMatchObject({ status: "applied", userId: 7, role: "job_seeker" });
     expect(walletInserts).toHaveBeenCalledOnce();
-    expect(wallets[0]).toMatchObject({ balance: 0, plan: "pro", subscriptionId: input.subscriptionId });
+    expect(wallets[0]).toMatchObject({ balance: 0, plan: "start", subscriptionId: input.subscriptionId });
+  });
+});
+
+// D-067: Pro and Max are removed completely. A late provider event for one is recorded
+// once as a receipt (so a redelivery is a duplicate and Chargebee stops retrying) and
+// grants nothing: no wallet change, no plan cycle, no promo grant, the intent stays pending.
+describe("applyChargebeeSubscriptionEvent for a retired Pro/Max subscription", () => {
+  const legacyEvent = (plan: "pro" | "max", patch: Record<string, unknown> = {}) => ({ ...input, plan: undefined, itemPriceId: `skipwait_${plan}_monthly-INR`, interval: undefined, ...patch });
+
+  it.each([["pro", "job_seeker"], ["max", "job_seeker"], ["pro", "referrer"], ["max", "referrer"]] as const)("a pending %s intent (%s) is never activated: recorded, ignored, nothing granted", async (plan, role) => {
+    wallets[0].role = role;
+    Object.assign(intents[0], { role, plan, itemPriceId: `skipwait_${plan}_monthly-INR`, amount: plan === "pro" ? 59_900 : 129_900 });
+    const before = structuredClone({ wallets, intents });
+    expect(await applyChargebeeSubscriptionEvent(legacyEvent(plan))).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expectUnchanged(before);
+    expect(intents[0].status).toBe("pending");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId });
+    expect(promoGrants).toEqual([]);
+    expect(promoTxns.filter(row => row.kind === "plan_grant")).toEqual([]);
+    expect(await applyChargebeeSubscriptionEvent(legacyEvent(plan))).toEqual({ status: "duplicate" });
+    expect(events).toHaveLength(1);
+  });
+
+  it.each([["pro", "subscription_renewed", "active"], ["max", "subscription_renewed", "active"], ["pro", "subscription_cancelled", "cancelled"], ["max", "subscription_changed", "non_renewing"]] as const)("a wallet already bound to a %s subscription gets nothing from %s", async (plan, eventType, status) => {
+    Object.assign(wallets[0], { plan, subscriptionId: "sub_legacy", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: 10 });
+    const before = structuredClone({ wallets, intents });
+    const event = legacyEvent(plan, { eventId: `event_${eventType}`, eventType, status, subscriptionId: "sub_legacy", hostedPageId: undefined, passThruContent: undefined, resourceVersion: 20, currentTermStart: termEnd, currentTermEnd: new Date("2026-11-01T00:00:00.000Z") });
+    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expectUnchanged(before);
+    expect(events).toHaveLength(1);
+    expect(promoGrants).toEqual([]);
+    expect(promoTxns).toEqual([]);
+  });
+
+  it.each(["pro", "max"] as const)("a kit wallet whose subscription is moved to a retired %s item price is never renewed by it", async plan => {
+    Object.assign(wallets[0], { plan: "start", subscriptionId: "sub_kit", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd, subscriptionResourceVersion: 10 });
+    const before = structuredClone({ wallets, intents });
+    const event = legacyEvent(plan, { eventId: "event_moved", eventType: "subscription_renewed", subscriptionId: "sub_kit", hostedPageId: undefined, passThruContent: undefined, resourceVersion: 20, currentTermStart: termEnd, currentTermEnd: new Date("2026-10-31T00:00:00.000Z") });
+    expect(await applyChargebeeSubscriptionEvent(event)).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expectUnchanged(before);
+    expect(events).toHaveLength(1);
+    expect(promoTxns).toEqual([]);
   });
 });
 

@@ -45,13 +45,66 @@ describe("unmatched paid invoice safety net (#77)", () => {
 
   it("does not alert for a subscription renewal the subscription handler applied", async () => {
     const { app, alertUnmatchedPayment } = appWith({ applySubscriptionEvent: vi.fn(async () => ({ status: "applied" })) });
-    await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send(paid({ subscription: { id: "sub_1", status: "active", plan_id: "pro" } }));
+    await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send(paid({ subscription: { id: "sub_1", status: "active", subscription_items: [{ item_price_id: "skipwait_start_30d-USD" }] } }));
     expect(alertUnmatchedPayment).not.toHaveBeenCalled();
   });
 
-  it("does not alert for a gifted subscription invoice", async () => {
-    const { app, alertUnmatchedPayment } = appWith();
-    await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send(paid({ subscription: { id: "sub_g", gift_id: "gift_1" } }));
+  // D-067: no plan can be gifted any more (gifts only ever sold Pro/Max), so a paid gift
+  // invoice is a payment nothing explains: it is parked and alerted, never dropped silently.
+  it("parks and alerts a gifted subscription invoice", async () => {
+    const { app, alertUnmatchedPayment, recordActivity } = appWith();
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send(paid({ subscription: { id: "sub_g", gift_id: "gift_1" } }));
+    expect(response.status).toBe(200);
+    expect(response.body.obligations.payment).toMatchObject({ status: "requires_review" });
+    expect(alertUnmatchedPayment).toHaveBeenCalledTimes(1);
+    expect(alertUnmatchedPayment).toHaveBeenCalledWith(expect.objectContaining({ invoiceId: "inv_x", paidAmount: 700, paidCurrency: "USD" }));
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.payment_unmatched", outcome: "failure" }));
+  });
+
+  // D-067: a late renewal of a retired Pro/Max subscription grants nothing: the subscription
+  // handler gets no plan, the paid invoice is parked and alerted, and the retired plan is alerted too.
+  it("parks and alerts a retired Pro/Max renewal invoice; the subscription handler receives no plan", async () => {
+    const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored", reason: "unsupported_plan" }));
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const fulfillPayment = vi.fn(async () => ({ status: "ignored", reason: "missing_hosted_page" }));
+    const { app, alertUnmatchedPayment, recordActivity } = appWith({ applySubscriptionEvent, alertRetiredPlanEvent, fulfillPayment });
+    const body = { id: "ev_max_renewal", event_type: "payment_succeeded", content: { transaction: { amount: 1_500, currency_code: "USD" }, invoice: { id: "inv_max_renewal", total: 1_500, currency_code: "USD" }, subscription: { id: "sub_max_legacy", status: "active", currency_code: "USD", subscription_items: [{ item_price_id: "skipwait_max_monthly-USD" }] } } };
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send(body);
+    expect(response.status).toBe(200);
+    expect(applySubscriptionEvent).toHaveBeenCalledTimes(1);
+    expect(applySubscriptionEvent).toHaveBeenCalledWith(expect.objectContaining({ subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD", plan: undefined, interval: undefined }));
+    expect(response.body.obligations.subscription).toEqual({ status: "ignored", reason: "unsupported_plan" });
+    expect(response.body.obligations.payment).toMatchObject({ status: "requires_review" });
+    expect(alertUnmatchedPayment).toHaveBeenCalledTimes(1);
+    expect(alertUnmatchedPayment).toHaveBeenCalledWith(expect.objectContaining({ invoiceId: "inv_max_renewal", paidAmount: 1_500, paidCurrency: "USD" }));
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.payment_unmatched", outcome: "failure" }));
+    expect(alertRetiredPlanEvent).toHaveBeenCalledTimes(1);
+    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_max_renewal", subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD" }));
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "billing.retired_plan_event", outcome: "failure", resourceId: "sub_max_legacy" }));
+  });
+
+  it("alerts a retired-plan subscription event that carries no payment, and still acknowledges it", async () => {
+    const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored", reason: "unsupported_plan" }));
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const { app, alertUnmatchedPayment } = appWith({ applySubscriptionEvent, alertRetiredPlanEvent });
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_pro_changed", event_type: "subscription_changed", content: { subscription: { id: "sub_pro_legacy", status: "active", subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] } } });
+    expect(response.status).toBe(200);
+    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_pro_changed", eventType: "subscription_changed", subscriptionId: "sub_pro_legacy", reason: "unsupported_plan" }));
     expect(alertUnmatchedPayment).not.toHaveBeenCalled();
+  });
+
+  it("does not alert again for a redelivered retired-plan event already recorded", async () => {
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const { app } = appWith({ applySubscriptionEvent: vi.fn(async () => ({ status: "duplicate" })), alertRetiredPlanEvent });
+    const response = await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_pro_changed", event_type: "subscription_changed", content: { subscription: { id: "sub_pro_legacy", status: "active", subscription_items: [{ item_price_id: "skipwait_pro_monthly-INR" }] } } });
+    expect(response.status).toBe(200);
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
+  });
+
+  it("never raises the retired-plan alert for a kit subscription event", async () => {
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const { app } = appWith({ applySubscriptionEvent: vi.fn(async () => ({ status: "applied" })), alertRetiredPlanEvent });
+    await request(app).post("/api/chargebee/webhook").set("Authorization", auth()).send({ id: "ev_start", event_type: "subscription_renewed", content: { subscription: { id: "sub_start", status: "active", subscription_items: [{ item_price_id: "skipwait_start_30d-USD" }] } } });
+    expect(alertRetiredPlanEvent).not.toHaveBeenCalled();
   });
 });
