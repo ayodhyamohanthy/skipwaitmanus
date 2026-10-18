@@ -41,7 +41,7 @@ Files that nothing builds, routes or imports cost every model context, and some 
 - `client/src/pages/Notifications.tsx` is unrouted, but `server/notificationCenterUi.test.ts` reads it as text. Leave both.
 - `client/src/pages/ReferralRequest.tsx` is unrouted, but D-067 keeps and edits it, and `client/src/pages/referralRequest.auth.test.tsx` imports it.
 - `client/src/pages/ComponentShowcase.tsx` is DEV-only by design.
-- `app/`, `design/`, `research/` are references, not code (`screens/` was removed by the Oct 18 repo cleanup).
+- `design/` and `research/` are references, not code (`app/` and `screens/` were removed by the Oct 18 repo cleanup).
 
 ## 4. Docs (same push)
 `docs/ARCHITECTURE.md` §11 item 1 (remove what you deleted); the `AGENTS.md` living map, if any row names a deleted file.

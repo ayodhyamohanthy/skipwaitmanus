@@ -14,7 +14,7 @@ const BRIEF = "docs/BRIEF.md";
 const BRIEF_MAX_BYTES = 10 * 1024;
 const ENTRY_DOCS = [
   "CLAUDE.md", "AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md", "FOR_AI_BUILDERS.md", "LLM_HANDOFF.md",
-  "START_HERE.md", "SkipWait-START-HERE.md", "COLLABORATION.md", "README.md", "DESIGN.md", "PRICING.md", "app/docs/handoff/LLM_HANDOFF.md",
+  "COLLABORATION.md", "README.md", "DESIGN.md", "PRICING.md",
 ];
 
 describe("the one-page brief for AI models (D-073)", () => {
