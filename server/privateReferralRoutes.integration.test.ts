@@ -98,7 +98,7 @@ describe("private referral HTTP routes", () => {
     expect(lockedDetail.body.request).toMatchObject({ status: "pending", title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
     expect(lockedDetail.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 3, availability: "after_claim" }]);
     expect((await request(app).get("/api/documents/77").set("x-test-user", "employee")).status).toBe(404);
-    expect((await request(app).post("/api/company-referrals/501/one-click-review").set("x-test-user", "employee").send({ decision: "approved" })).status).toBe(200);
+    expect((await request(app).post("/api/company-referrals/501/one-click-review").set("x-test-user", "employee").send({ decision: "approved", ethicsConfirmed: true })).status).toBe(200);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
     expect(detail.status).toBe(200); expect(detail.body.request.candidateName).toBe("Avery"); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
     // D-019(d): the referrer who accepted the ask reads it with its role title and the seeker's note attached.
