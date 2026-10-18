@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-039, D-048, D-049, D-053, D-059, D-067).
+
 # Kit v4 screen audit — every PNG, fullstack
 
 Audited Oct 9 2026 on production `main` (1fc4214) at 1280 (web) and 390 @2x (mobile) with `scripts/kit-screens/capture.mjs`, against `screens/web` (105 PNGs) and `screens/mobile` (106 PNGs; `03_sign-in__step1-continue-with-email` is mobile-only).

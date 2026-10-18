@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-034, D-038, D-061, D-062).
+
 # Designs for queue tasks 17 and 18 (DESIGN ONLY, nothing built)
 
 Both touch money-adjacent state (asks and credits), so nothing ships until approved. Facts below are from code reads on main at 9c10748; real-DB behaviour not verified.

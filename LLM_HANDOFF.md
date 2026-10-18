@@ -5,20 +5,21 @@
 
 > **AI coding platforms: read `FOR_AI_BUILDERS.md` first.** It lists every rule, backend requirement and placeholder not visible in the designs.
 
-Give this whole folder to your LLM / developer. Start by reading this file, then `AGENTS.md`, then `reference/`.
+Give this whole folder to your LLM / developer. Start by reading `AGENTS.md` and `docs/DECISIONS.md` (the decision register wins over this file, D-026), then this file, then `reference/`.
 
 ## 1. Product
-SkipWait (skipwait.me) is a global platform for **free, private job referrals**. Seekers ask employees at a company for a referral; referrers accept, chat privately, and refer. Referrals are free forever — no commissions, no paid priority.
+SkipWait (skipwait.me) is a global platform for **private job referrals**. Seekers ask employees at a company for a referral; referrers accept, chat privately, and refer. 3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063). No commissions, no paid priority (D-006).
 
 Launch companies (real people open to referrals): **SkipWait, Wipro, Go Neutrinos, TCS, Merkle**.
-Hard rule: never invent user counts, testimonials, outcomes, or fake activity. Label demo data as preview.
+Hard rule: never invent user counts, testimonials, outcomes, or fake activity. Label demo data as preview in the prototype only; the product ships no preview labels or sample data (AGENTS.md §0a).
 
 ## 2. What is in this package
 - `app/` — the complete design prototype source (React 19 + TanStack Start + Vite 7 + Tailwind v4). Every screen is a working, clickable design. It is NOT connected to a backend.
-- `reference/` — original build kit, journey PDF, launch audit, growth & monetization audit. These are the source of truth for requirements.
+- `reference/` — original build kit, journey PDF, launch audit, growth & monetization audit. These were the source of truth for requirements; `docs/DECISIONS.md` now wins wherever they differ (D-048).
 - `app/AGENTS.md` — architecture rules. `app/roadmap.md` — what is designed.
 
 ## 3. Design system (do not change without approval)
+- Kit v4 is no longer binding (D-048): goal-focused key-screen designs go to the owner before any rollout; until then the live tokens stay and nobody re-skins a surface.
 - Colors: white #FFFFFF, ink #141414, electric blue #0000FF, invitation yellow #FFFC52.
 - Fonts: Instrument Sans (UI), IBM Plex Mono (labels/captions).
 - Signature motif: the "door" (opening a door = a referral). Keep it.
@@ -28,9 +29,9 @@ Hard rule: never invent user counts, testimonials, outcomes, or fake activity. L
 | Route | Purpose |
 |---|---|
 | `/` | Public launch homepage (no app nav) |
-| `/sign-in` | Seeker/referrer intent, Google + email |
+| `/sign-in` | Seeker/referrer intent; seekers use social logins or personal email + password (D-049), referrers the work-email code only (D-030) |
 | `/explore`, `/explore/:slug` | Company discovery + company detail + request flow |
-| `/requests` | Seeker request tracking (statuses: Draft→Requested→Accepted→Referred→Interviewing→Offer→Hired / Declined / Expired / Closed) |
+| `/requests` | Seeker request tracking (statuses: Draft→Requested→Accepted→Referred→Interviewing→Offer→Hired / Expired / Withdrawn / Closed; a pass reopens the ask to the company's other verified employees, D-021) |
 | `/inbox` | Private conversations (open only after acceptance) |
 | `/referrer` | Referrer onboarding, work-email verification, review queue, capacity, impact |
 | `/profile` | Profile & privacy controls |
@@ -44,14 +45,14 @@ Hard rule: never invent user counts, testimonials, outcomes, or fake activity. L
 App shell: desktop = left sidebar (Explore, Requests, Inbox, Refer + "Your space": Profile, My work, Plans & credits; More last = Help & safety, For companies; More never highlighted); mobile = bottom tab bar with the same items with safe-area insets and ≥44px touch targets.
 
 ## 5. Build instructions for the production app
-1. Keep the UI exactly as designed; replace demo data in `src/lib/marketplace-data.ts` with real data.
-2. Backend (suggested: Postgres/Supabase): tables — profiles, companies, referrer_verifications (work-email domain), referral_requests (status enum above), messages, reports, invites, user_roles (roles in a SEPARATE table; admin checked server-side only). Row-level security on every table.
-3. Auth: Google + email/password. Referrers verify via company work email OTP.
-4. Rules: requests capped per seeker per week; referrer sets monthly capacity; requests auto-expire (e.g. 14 days); chat opens only after acceptance; contact details hidden until both agree.
+1. Keep the live UI as it is until the owner approves the goal-focused designs (D-048); replace demo data in `src/lib/marketplace-data.ts` with real data.
+2. Backend: the live Express + Azure MySQL (Drizzle) app, schema in `drizzle/schema.ts`; admin checked server-side only. There is no Supabase row-level security, so every query applies explicit ownership and tenant checks (AGENTS.md §3).
+3. Auth: seekers use social logins (Google, Microsoft, GitHub, LinkedIn, Slack) or personal email + password; referrers sign in with a work-email code only (D-030 as amended by D-049/D-057).
+4. Rules: open asks capped per plan (Free 3, D-039) and at 2 per company (D-006); referrer sets monthly capacity; an ask expires 7 days after a verified referrer can first see it, and an uncovered ask waits up to 90 days (D-061); chat opens only after acceptance; contact details hidden until both agree.
 5. Notifications: email + web push for request accepted/declined/new message.
 6. Admin: approve companies, verify referrers, handle reports, suspend users — all actions audit-logged.
 7. Monetization: see section 9 and `PRICING.md`, `UPGRADE_NUDGES.md`. Never charge for referrals or queue priority.
-8. Growth: invite links, referrer impact badges, shareable company pages with SEO metadata per route.
+8. Growth: invite links, private referrer impact (no public per-referrer metrics, D-055, D-057), shareable company pages with SEO metadata per route.
 
 ## 6. PWA (web + mobile)
 - Add `manifest.webmanifest` (name SkipWait, display standalone, theme #0000FF, background #FFFFFF, 192/512 + maskable icons) and apple-touch-icon.
@@ -68,11 +69,11 @@ npm run dev
 Create `app/.env` with your own backend keys (VITE_SUPABASE_URL, VITE_SUPABASE_PUBLISHABLE_KEY) when connecting a backend.
 
 ## 8. Prompt to paste into your LLM
-> You are building SkipWait, a free global job-referral PWA. The attached `app/` folder is the approved UI design — preserve its visuals, routes, and copy. Read LLM_HANDOFF.md, AGENTS.md, and everything in reference/. Implement the backend, auth, referral request lifecycle, messaging, referrer verification, admin console, notifications, and PWA installability/offline support as described. Never fabricate activity or counts. Referrals must always be free. Work route by route and keep mobile and desktop both excellent.
+> You are updating SkipWait, a global job-referral PWA that is already live. Read AGENTS.md and docs/DECISIONS.md first (the decision register wins), then LLM_HANDOFF.md and everything in reference/. The attached `app/` folder is the kit v4 design reference, no longer binding (D-048): keep the live UI until the owner approves goal-focused designs. Pick work only from the priority queue in docs/KIT_V4_BUILD_PLAN.md §3b. Never fabricate activity or counts. Money follows the register: 3 asks free every month; more use credits; referrers are never paid (D-063). Keep mobile and desktop both excellent.
 
-## 9. Monetization (current, design values)
-- Plans: Start $8/mo ($80/yr), Momentum $20/mo ($200/yr, "Most chosen"), Land $100/$200/$500+ per month (Focus/Sprint/Concierge; yearly = 10x). Internal ids go/plus/pro. Free is not shown as a card.
-- Credits: $1 retail; 3 free credits for everyone after profile; purchased credits never expire. Full details in `PRICING.md`.
+## 9. Monetization (current — `docs/DECISIONS.md`; prices in `PRICING.md` and `shared/planCatalog.ts`)
+- Passes: Start, Momentum, Land Focus and Land Sprint for 30 or 90 days, Keep warm yearly, Land Concierge by application (D-005, D-046; on sale once D-063, D-067 and D-051 land, D-059); human review and sessions stay off until staffed (D-041). Free is not shown as a card.
+- Credits: Free gets 3 a month and 3 open asks, no welcome credits; the reverse trial comes off the public catalog until its trigger is built (D-039, D-051; not done yet). Packs ₹99/2, ₹1,199/25, ₹2,599/60, ₹5,999/150 and $5/5, $22/25, $48/60, $105/150 (D-036); purchased credits never expire. All sold through Chargebee, with Razorpay for INR and PayPal for USD (D-004, D-069).
 - Usage panel + upgrade moments: `UPGRADE_NUDGES.md`.
 
 ## 10. Doc index

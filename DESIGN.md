@@ -2,7 +2,7 @@
 
 > **SUPERSEDED BY D-048 (owner, Oct 18 2026): Kit v4 is no longer binding.** A goal-focused contract replaces this file once the owner approves the new designs (see `docs/KIT_V4_BUILD_PLAN.md` row D-048). Until then, keep using the tokens and components described below, do not re-skin any surface, and build new UI from what already exists.
 
-> OWNER OVERRIDE (Oct 2026): Kit v4 (`START_HERE.md`, `app/src/styles.css`) is
+> OWNER OVERRIDE (Oct 2026; superseded by D-048 above): Kit v4 (`START_HERE.md`, `app/src/styles.css`) is
 > the visual contract and supersedes the "Moving Parts" system below where
 > they differ. Type, palette, and shape sections are kit values. The token
 > audit carries a migration union until the last screen batch removes the
@@ -34,7 +34,7 @@
 - StatusBadge (dot + label; blue tone = pale-blue tint ground, black text, blue dot)
 - Blue primary CTA (one per screen section) · white/black outlined secondary actions
 - Pale-blue info/credit panels · yellow reserved for deliberate emphasis moments
-- SeekerCreditsCard / ReferrerCreditsCard (credit meter) · MetricCard · Brand (outlined mark + wordmark) · AccountMenu · OneTapShareActions
+- SeekerCreditsCard (credit meter; no meter on referrer surfaces: referrers are never charged — product compass in `AGENTS.md` — and never paid, D-055) · MetricCard · Brand (outlined mark + wordmark) · AccountMenu · OneTapShareActions
 - Toasts: top-center, 72px mobile/desktop offset (never over bottom CTAs)
 
 ## Motion

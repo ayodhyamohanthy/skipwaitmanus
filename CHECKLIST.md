@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-030, D-048, D-061, D-063).
+
 # SkipWait — Step-by-Step Build Checklist
 
 Hand this to your LLM together with `LLM_HANDOFF.md`, `SCREENS.md`, the `app/` source folder, and the screens PDF. Work through the steps in order. Do not skip ahead — each step depends on the one before it.

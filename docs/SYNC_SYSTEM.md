@@ -1,6 +1,6 @@
 # Skipwait Sync System — How It Works
 
-**One-way, push-driven sync:** every change on the Mac → GitHub → Cloudflare → live skipwait.me. The system self-verifies; no human audit needed.
+**One-way, push-driven sync:** every change on the Mac → GitHub → Cloudflare → live skipwait.me. The system self-verifies the deployed commit; after every deploy, D-019 still requires `scripts/verify-live-release.sh` plus the live basics checks.
 
 ## Flow
 

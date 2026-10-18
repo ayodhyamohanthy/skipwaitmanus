@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-046, D-067).
+
 # Chargebee Subscription API Notes
 
 ## Sources

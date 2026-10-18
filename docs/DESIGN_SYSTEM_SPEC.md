@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048; until the owner approves new designs the live tokens are the ones in `DESIGN.md` and `client/src/index.css`, not the "Scoreboard" values in the note below).
+
 # skipwait.me — Brand-Level Design System Specification
 ## Swiss Grid Clarity · Pentagram/Bierut Aesthetic
 

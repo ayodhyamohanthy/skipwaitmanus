@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-058).
+
 # Global Platform Standards Audit
 
 > **Working product and compliance analysis, not formal legal advice.** A qualified privacy, employment, and payments counsel should review the jurisdiction-specific implementation before a global launch.

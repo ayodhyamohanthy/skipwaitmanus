@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-053, D-056).
+
 # Global job-seeker tool pricing: comparables and takeaways for SkipWait (USD, with regional notes)
 
 **How I collected this.** I loaded the official pages on **2026-10-14** in a real browser and with a fetch tool. Both went out from an **Indian IP** (Cloudflare trace showed `loc=IN`, `colo=BOM`; https://www.cloudflare.com/cdn-cgi/trace). Prices are shown as served there. Two vendors change prices by location, Careerflow and Kickresume. For those, the US price comes from the vendor's own default page or help-center text, and both views are reported.

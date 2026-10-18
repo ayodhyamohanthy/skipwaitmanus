@@ -43,7 +43,7 @@ Browser: Chargebee support says to use a regular headed browser with pop-ups all
 
 Unverified until QA confirms: the Chargebee page lists a Rs 15,000 maximum amount for this flow, and Razorpay says an auto-debit reaches Success or Failure about 5 minutes after it is created. Treat both as unverified here.
 
-Live INR payments stay blocked until Razorpay approves skipwait.chargebee.com (BUGFREE_GATE 4.14).
+Razorpay approved skipwait.chargebee.com on Oct 16 (BUGFREE_GATE 4.14, cleared by the owner). Live payments stay the owner's own: one ₹99 UPI buy-and-refund (D-065); agents never pay.
 
 Merchant eligibility (Razorpay, recorded Oct 17 2026): SBI credit-card EMI (rejected Oct 16) and HDFC credit-card EMI (rejected Oct 17) are not allowed for the skipwait.me business. Ordinary cards, UPI and recurring are not shown to be affected. Keep both EMI banks out of any availability or marketing claim; if EMI is ever offered, re-verify the eligible banks on the Razorpay dashboard first.
 
@@ -65,9 +65,9 @@ Run one qty-1 INR credits pack (the smallest one-time purchase) as the unit of t
 1. Refund after every payment. No payment is left unrefunded at the end of a step.
 2. Wallet-verify between payments: read `/api/credits/summary` before and after each payment and after each refund; the balance must return to the starting value.
 3. Stop on a decline. Do not retry with a different card to get around it; report the decline and its message.
-4. No writes on the live site beyond the test transactions themselves (no catalog, plan, customer or subscription edits).
+4. No writes on the live site beyond the test transactions themselves (no catalog, plan, customer or subscription edits). Catalog item prices are created by the owner, or (once it is built) by the admin catalog sync's apply step that the owner triggers after reading its dry run (D-069).
 5. Keys live in the vault and are never printed, logged, committed or pasted into chat or docs.
-6. Real charges need the founder's go. `AGENTS.md` and `docs/QA_PAYMENTS.md` prohibit real-money QA by default. A run on the live site needs explicit founder approval for that run.
+6. Agents never make real payments (D-065; `AGENTS.md` and `docs/QA_PAYMENTS.md` prohibit real-money QA). Live-site cells are the owner's own: one ₹99 UPI buy-and-refund, and a USD test needs a buyer outside India (D-065).
 7. Credits move only through the in-app flow with the exact cost shown.
 8. Capture evidence for each cell: hosted page URL (site name visible), success redirect, wallet delta, Chargebee transaction, refund id and status.
 
@@ -115,6 +115,7 @@ Not covered: `credit_note_created` is not used (it also fires for non-refund cre
 Check the job: admin scheduled-jobs status (`/api/admin/jobs`) shows the last run of `chargebee-pending-reconcile`; a failed window means Chargebee could not be read or a row errored.
 
 ## Verified credit semantics for asks (QA, live, request 13, Oct 15 2026)
+The founder has since ruled changes to these rules (D-034, D-035 with D-052, D-038 with D-050, D-047, D-061, D-066); the code follows them as each slice ships, so re-verify then.
 Observed behaviour, not a new policy:
 - Closing an ask after `intro_made` does NOT refund the monthly credit. A closed (hired or otherwise) ask keeps its credit consumed.
 - The only credit-return path is withdrawing BEFORE acceptance.
@@ -128,6 +129,6 @@ Status: DEFERRED by the founder's relay (revisit early January 2027, or sooner i
 - Epoch 2026-10-16; window 90 days from max(workEmailVerifiedAt, epoch).
 - Kill switch REVERIFY_ENFORCE, default OFF, dry-run logging first.
 - When due, in one transaction: clear workEmailVerifiedAt (domain stays), release claimed-but-not-accepted pending asks (credit stays consumed, kind note to the seeker), notify the referrer. Accepted and in-progress asks are never touched.
-- Reminders at 14 and 5 days left, deduped via a guarded additive migration (next free number 0084).
+- Reminders at 14 and 5 days left, deduped via a guarded additive migration (take the next free number at build time; 0084 was free on Oct 15).
 - A released unclaimed ask waits and expires normally; the expiry path owns the credit.
-Enforcement ships only after QA verification and an explicit OK.
+Enforcement ships only after QA verification and an explicit OK. The credit lines above predate D-034 and D-038 (a claim that lapses spends no credit); re-check them against the register before building.

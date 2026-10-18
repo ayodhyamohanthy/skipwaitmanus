@@ -10,7 +10,7 @@
 
 | Participant | Value received | Required control |
 | --- | --- | --- |
-| Job Seeker | Their existing private request advances without re-submission or a public employee search. | One notification and one action: **View your request**. No sign-up prompt, sharing gate, or new payment step. |
+| Job Seeker | Their existing private request advances without re-submission or a public employee search. | One notification and one action: **View your request**. No sign-up prompt or sharing gate. Under D-034/D-047 (code pending), a waiting ask spends its one credit at this moment; a seeker with no credit is told plainly and the ask stays held, unseen, until a credit exists. |
 | Referrer | A deliberate way to help at their real capacity with a complete candidate packet. | Opens, pauses, or closes voluntary review capacity; no quota, fee, public ranking, or penalty for declining. |
 | Company corridor | Waiting demand is resolved fairly and privately as verified employee capacity becomes available. | Exact-company matching only, atomic allocation, privacy-safe operational logs, and no fabricated availability. |
 
@@ -18,9 +18,9 @@
 
 The server must process an availability opening inside one transaction. A slot is eligible only when it belongs to a currently verified Referrer whose work-email domain exactly matches the resolved company domain. A held request is eligible only when it is active, belongs to that same resolved company, is not claimed/approved/declined/closed, has not been allocated to another live slot, and remains authorized for manual follow-up.
 
-1. The Referrer opens an explicit number of slots that reflects real capacity.
+1. The Referrer opens an explicit number of slots that reflects real capacity (D-062: a referrer receives waiting asks, oldest first, only up to their own monthly capacity, default 3; the rest keep waiting at no cost).
 2. The server locks the availability record and selects the oldest eligible held request using a deterministic queue order (`held_at_utc`, then request ID).
-3. The server creates an immutable allocation record, transitions the request to a factual **`available_for_review`** or equivalent status, and grants the allocated Referrer access to the private packet only.
+3. The server creates an immutable allocation record, transitions the request to a factual **`available_for_review`** or equivalent status, and grants the allocated Referrer access to the private packet only: the role and note until that Referrer accepts, the seeker's name and resume only after (D-019(e)).
 4. The server creates one in-app Queue Open Alert for the affected Job Seeker and records a privacy-safe activity event.
 5. The alert deep-links only to the Job Seeker’s own request. The employee identity remains hidden until the existing approved-referral conversation rule permits contact.
 6. A repeated open, retry, webhook, browser refresh, or worker restart must not create another allocation or another alert for the same request/slot pair.
@@ -32,10 +32,11 @@ If no held request is eligible, the Referrer sees an honest empty state and no J
 | Event | Recipient | Private copy | Action | Delivery controls |
 | --- | --- | --- | --- | --- |
 | Slot allocated | Affected Job Seeker only | “A verified employee at **{company}** can now review your request.” | View your request | In-app notification immediately; one delivery per allocation ID. |
+| Ask held for a credit (D-047; code pending) | Affected Job Seeker only | “A verified employee at **{company}** can now see asks. Add a credit to send yours.” | Add a credit | In-app and email (D-060); the ask is delivered as soon as a credit exists. |
 | Review starts | Affected Job Seeker only | “Your request is being reviewed at **{company}**.” | View your request | Only after the Referrer actually opens the packet/review state. |
 | Slot released | Affected Job Seeker only | “Your request is still waiting for a verified employee at **{company}**.” | Invite one trusted employee | Return to truthful held status; no blame or hidden queue rank. |
 
-Email or push channels may be added only after an explicit notification-preference model, deliverability checks, opt-out controls, and a per-user/per-company frequency cap exist. The first implementation is in-app only so that a private referral request does not become an uncontrolled external alert.
+Email or push channels may be added only after an explicit notification-preference model, deliverability checks, opt-out controls, and a per-user/per-company frequency cap exist. The first implementation is in-app only so that a private referral request does not become an uncontrolled external alert. D-060 (Oct 18 2026) now requires one email whenever an action is pending on the seeker's side, such as adding a credit to release a held ask (at most one such email per person per day, a digest beyond that, preferences respected).
 
 ## Required data and authorization boundaries
 

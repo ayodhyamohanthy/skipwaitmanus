@@ -1,6 +1,6 @@
 # QA payments runbook (test gateway only)
 
-Real-money QA is prohibited by default (see docs/PAYMENTS_TEST_RUNBOOK.md for the two-site matrix and the live-site approval rule). Every payment below runs against the Chargebee
+Real-money QA is prohibited: agents never make real payments, and the live-site leg is the owner's own (D-065; see docs/PAYMENTS_TEST_RUNBOOK.md for the two-site matrix). Every payment below runs against the Chargebee
 TEST site. Nothing here touches production billing.
 
 ## 1. Environment
@@ -45,12 +45,16 @@ Notes:
 ## 3. Card payment loop (credit pack)
 
 1. Sign in as QA Seeker, open `/premium?role=job_seeker`.
-2. Start checkout (1 credit). Pay on the Chargebee hosted page with a
+2. Start checkout (1 credit; this legacy item retires in each currency once
+   its D-036 packs are buyable, and the first pack — ₹99 for 2 or $5 for 5 —
+   becomes the unit of test, D-046). Pay on the Chargebee hosted page with a
    **test card**: `4111 1111 1111 1111` (Visa, any future expiry/CVC).
    Full test-card list: Chargebee docs → test cards.
 3. Expect redirect to `/premium?role=job_seeker&payment=pending`, then
    "referral credits are ready" with balance +1.
-4. First verified payment also grants **5 promo credits** (30-day expiry):
+4. Promo grants are off until the #35 rebuild (`PROMO_GRANTS_ENABLED=false`,
+   `.env.example`): expect no promo credits. Only with the flag on does the
+   first verified payment grant **5 promo credits** (30-day expiry):
    check `promoCreditsRemaining: 5` in `/api/credits/summary`.
 
 ## 4. Webhooks without a public URL
@@ -71,30 +75,25 @@ Chargebee cannot reach localhost. Options, easiest first:
 
 ## 5. Subscriptions
 
-`/plans?role=job_seeker` → Pro/Max checkout with a test card → plan
-activates on webhook; cancel schedules end-of-term. First activation also
-earns the 5 promo credits (same rule as packs, granted once per account).
+A pass (Start, Momentum, Land Focus or Land Sprint, 30 or 90 days) or Keep
+warm yearly (D-046; Land Concierge is by application) with a test card → the
+pass becomes real only from the verified webhook. The server path exists:
+`POST /api/chargebee/subscription-checkout` with a kit body (`planId`,
+`interval`, `currency`, `billingCountry`, `role`; `server/kitCheckout.ts`). A
+plan whose Chargebee item price does not exist yet answers
+`409 not_available_yet` and opens no page. The `/plans` buttons for passes
+come with queue task 1 (D-046, D-053); today `/plans` still sends the legacy
+monthly-plan body, which D-067 removes (code pending) and which is not QA'd.
+Cancel schedules end-of-term. With
+`PROMO_GRANTS_ENABLED=true` only, first activation also earns the 5 promo
+credits (same rule as packs, granted once per account).
 
-## 5b. Gift subscriptions (test gateway only)
+## 5b. Gift subscriptions (retired)
 
-Requires Chargebee TEST site keys (founder-blocked until provided); until
-then the loop below runs against fixtures/mocks only.
-
-1. Buyer: `/plans` → "Gift Pro" → gift hosted checkout → pay with a test
-   card. Buyer wallet MUST NOT change; `/api/chargebee/gifts/mine` shows
-   the receipt under `sent` with `fulfillmentStatus: pending`.
-2. Recipient (no account yet): sign up with the receiver email, verify it,
-   open `/plans` → "You received a gift" → Claim → plan activates
-   (`subscriptionStatus: non_renewing`, monthly allowance credited).
-3. Recipient (existing verified account): auto-credited on the
-   `gift_claimed` webhook; claiming again returns `duplicate`.
-4. Negative: claim from a different signed-in account → 403 and no credit;
-   expired gift → `expired`, never credited.
-5. Local simulation without provider: POST `gift_scheduled` then
-   `gift_claimed` bodies (see `server/chargebeeGiftRoutes.test.ts`
-   fixtures) to `/api/chargebee/webhook` with the webhook secret; replay
-   each `eventId` twice. Gift activation MUST NOT grant promo credits
-   (promo interplay belongs to the #35 rebuild).
+Retired with the legacy monthly plans (D-067): the gift checkout sells only
+those removed plans, stays gated off (`GIFT_CHECKOUT_ENABLED` unset;
+`docs/BUGFREE_GATE.md` 4.9) and has no QA loop. No current plan or pack can
+be gifted.
 
 ## 6. Never do this
 

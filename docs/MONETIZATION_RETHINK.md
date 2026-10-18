@@ -2,6 +2,8 @@
 
 **Status: PROPOSALS, not decisions.** The owner asked on Oct 16 to "rethink and push to main the 10/10 monetizable for us, 100x value for users decisions". Each proposal below becomes binding only when the owner approves it. It is then recorded in `docs/DECISIONS.md` as the next free D-number (D-044 is taken by the #293 ruling). Until then agents must not build from this file (D-010). Read with D-034–D-043 and `docs/GROWTH_STRATEGY.md`.
 
+**Update Oct 18 2026:** the owner has since answered most proposals through D-044–D-069. Each answered proposal is marked below with its D-number; where a proposal and its decision differ, the register wins. Unmarked parts stay proposals.
+
 **How it was made:**
 - Six lenses proposed decisions: outcome-aligned pricing, packaging, coaching, other revenue sources, timing and trust, and a contrarian lens.
 - Three independent skeptics scored every proposal: evidence; user value, trust and legality; revenue against effort.
@@ -11,7 +13,7 @@
 ## The honest answer first
 **Nothing qualifies as 10/10.** The highest honest rating is **8**, and only for cheap, near-certain hygiene. The core revenue rule is a **7**. Five reasons:
 1. Every revenue figure depends on acceptance, decline and attach rates nobody has measured. About 14 asks have ever been sent, and the D-018 panel has no reading yet.
-2. Revenue is about ₹0 under *every* design until outside referrers exist: 0 outside companies are open, INR checkout fails at Razorpay review, and there are 0 subscribers. The real money lever is the supply sprint (`GROWTH_STRATEGY.md` move 1). No pricing rule can do that job.
+2. Revenue is about ₹0 under *every* design until outside referrers exist: 0 outside companies are open, INR checkout fails at Razorpay review (cleared Oct 16, BUGFREE 4.14), and there are 0 subscribers. The real money lever is the supply sprint (`GROWTH_STRATEGY.md` move 1). No pricing rule can do that job.
 3. Whether a per-ask fee counts as an employment-agency fee under NY GBL §171(2)(c) or Cal. Civ. Code §1812.501 is unresolved. Settling it needs counsel, which is a money-spending call for the owner (D-031).
 4. The approved credit rule (D-034/D-035/D-038) adds return paths to a ledger that had refund P0s this week.
 5. P-2's #293 question is resolved: the owner ruled Oct 16 2026 (D-044) that the register numbers win — Free 3/mo with no welcome credits, Keep warm 4/mo, Momentum 36/30d. The rest of P-2 stays a proposal.
@@ -27,20 +29,21 @@
 
 | # | Proposal | Action | Rating | Switches on |
 |---|---|---|---|---|
-| P-1 | Checkout opens one payment leg at a time, only once proven | change D-036/D-037 rollout | 8 | Now: Razorpay review cleared Oct 16 (BUGFREE 4.14), so INR opens after one owner-run ₹99 round trip; USD $5 pack after one owner round trip |
-| P-2 | The catalog equals the register; advertise only what code grants; resolve #293 | change | 8 | #293 resolved by D-044 (register numbers win, restore in progress); "on sale until the gate" approved as D-045 (Oct 17); remaining items await approval |
-| P-3 | Keep the outcome-aligned credit rule (D-034 + D-038 + D-035) as the only charge event; one outcome per ask | keep + refine | 7 | Build D-034, then D-038, then D-035 |
-| P-4 | Paywall only where a credit buys a deliverable ask: free waiting list, release at coverage, four honest paid moments | change (implements D-034) | 7 | With the D-034 build |
-| P-5 | Money-truth rule: every money sentence is generated from the catalog or ledger; banned phrases | change (makes D-043 move 3 binding) | 8 | Now |
-| P-6 | What SkipWait will never charge for; referrers stay unpaid | new (answers an open question) | 8 | Now |
+| P-1 | Checkout opens one payment leg at a time, only once proven | change D-036/D-037 rollout — **answered: D-046, D-065, D-069** | 8 | Now: Razorpay review cleared Oct 16 (BUGFREE 4.14), so INR opens after one owner-run ₹99 round trip; USD $5 pack after one owner round trip |
+| P-2 | The catalog equals the register; advertise only what code grants; resolve #293 | change — **answered in part: D-044, D-046, D-051, D-067** | 8 | #293 resolved by D-044 (register numbers win; restore landed Oct 17); "on sale until the gate" approved as D-045 (Oct 17), then superseded by D-046; remaining items await approval |
+| P-3 | Keep the outcome-aligned credit rule (D-034 + D-038 + D-035) as the only charge event; one outcome per ask | keep + refine — **answered: kept (D-059), refined by D-047, D-050, D-052, D-061, D-066** | 7 | Build D-034, then D-038, then D-035 |
+| P-4 | Paywall only where a credit buys a deliverable ask: free waiting list, release at coverage, four honest paid moments | change (implements D-034) — **answered in part: D-047, D-060, D-061, D-062** | 7 | With the D-034 build |
+| P-5 | Money-truth rule: every money sentence is generated from the catalog or ledger; banned phrases | change (makes D-043 move 3 binding) — **answered in part: D-063** | 8 | Now |
+| P-6 | What SkipWait will never charge for; referrers stay unpaid | new (answers an open question) — **answered in part: D-055, D-059** | 8 | Now |
 | P-7 | Free referral-ready check before a credit moves; no gate requires a paid tool; no paid badge | new | 7 | Objective check now; AI review after P-9 caps |
-| P-8 | Enforce the published 2-asks-per-company cap at ask creation | keep D-006 (drift fix) | 8 | Now |
+| P-8 | Enforce the published 2-asks-per-company cap at ask creation | keep D-006 (drift fix) — **answered: D-053** | 8 | Now |
 | P-9 | AI guard: list only built tools, cap every AI route, keep resumes off training tiers | new | 7 | (1)(2) now; (3) needs an owner D-031 ruling |
-| P-10 | Freeze prices until enough real data exists, not until a date passes | new (answers an open question) | 7 | Now |
-| P-11 | Reverse trial hidden now; on only with passes, as an A/B; clock starts when a referrer can first see an ask | new (answers an open question) | 5 | With passes at the D-037 gate |
+| P-10 | Freeze prices until enough real data exists, not until a date passes | new (answers an open question) — **answered: D-056** | 7 | Now |
+| P-11 | Reverse trial hidden now; on only with passes, as an A/B; clock starts when a referrer can first see an ask | new (answers an open question) — **answered: D-051** | 5 | With passes at the D-037 gate |
 | P-12 | Featured listings only where referrals get answered; inbound only | change D-040 timing | 5 | After a company meets the gate |
 
 ### P-1 — Checkout opens one payment leg at a time, only once proven (8/10)
+**Answered (Oct 17–18):** D-046 puts every payment option on sale with no supply gate (D-059: once D-063, D-067 and D-051 land); D-065 has the owner run one live ₹99 UPI buy-and-refund (agents never pay; a USD test needs a buyer outside India); D-069 brings every Chargebee item price in line with the catalog through an admin sync the owner applies. The register wins where the rule below differs.
 - **Rule:**
   1. One server check (`checkoutLiveFor(currency)`) gates every buy surface, and a test proves no surface bypasses it.
   2. **Update Oct 17:** the Razorpay review cleared on Oct 16 (BUGFREE 4.14), so INR no longer needs to be switched off. It opens, like USD, after the owner's one live round trip on the smallest item. Until then INR screens say "India checkout opens soon. Email me when it does" (opt-in, logged, no counts).
@@ -56,11 +59,12 @@
 
 ### P-2 — The catalog equals the register; resolve #293 (8/10)
 **Update Oct 16 2026: the owner ruled on the #293 conflict — the register numbers win. Recorded as D-044 (Free 3/mo with no welcome credits, Keep warm 4/mo, Momentum 36/30d; the restore is a code change in progress). The remaining items below (checkout gating until the D-037 gate, per-currency retirement of the single credit, hiding the trial and unbuilt tools from the public catalog, the register-pinning contract test) stay proposals awaiting approval.**
+**Answered further (Oct 17–18):** checkout gating was adopted as D-045, then replaced by D-046 (every option on sale with no supply gate, once D-063, D-067 and D-051 land — D-059); the ₹99/$1 single credit retires per currency once its packs are buyable (D-036, D-046); the trial comes off the public catalog (D-051); the legacy monthly plans are removed entirely, with no dry run (D-067). Still proposals: hiding unbuilt tools (P-9) and the register-pinning contract test.
 - **Rule (a recommendation; the owner's ruling decides):**
   - The kit governs layout and the register governs numbers. D-001 already exempts founder edits after Oct 9, and D-005 replaced the kit's prices.
   - So: Free 3 credits a month with no welcome credits; Keep warm 4 a month; Momentum 36 per 30 days.
   - If the owner wants welcome credits, record that and wire `grantWelcomeCredits` in the same change. **Advertising credits nothing grants is not allowed either way.**
-  - Until the D-037 gate the server refuses checkout for Pro/Max (after the D-027 dry run counts 0), every pass, Keep warm and Land.
+  - Checkout gating until the D-037 gate: answered — D-046 puts every pass, Keep warm and the packs on sale with no gate, and D-067 removes the legacy monthly plans.
   - The ₹99/$1 single credit retires per currency only once that currency's pack price is live.
   - The public catalog hides welcome credits, the trial and unbuilt tools (code kept).
   - A contract test pins catalog numbers to the register.
@@ -68,6 +72,7 @@
 - **Strongest counter:** the owner merged #293 himself after D-041, so "kit as-is" may be his newest intent. Welcome credits cost almost nothing at cold start.
 
 ### P-3 — Keep the outcome-aligned credit rule; one outcome per ask (7/10)
+**Answered (Oct 17–18):** the rule stands — D-034, D-035 and D-038 are kept (D-059) and built in the D-053 order, refined by D-047 (no credit: the ask is held), D-050 (personal-link asks count as unclaimed), D-052 (the pass-reason list), D-061 (waiting asks and the 7-day clock) and D-066 (a "Send again" replaces the reopened original, never two copies). The register wins where the rule below differs.
 - **Rule:** an ask's 1 credit leaves the balance when the ask first becomes visible to an available verified referrer (D-034).
   - **Kept** if the referrer marks it "Referred" (D-038) or declines with a fixable reason (D-035).
   - **Returned** for: no decision, a not-fixable decline, a lapsed claim, or an acceptance not marked Referred within 5 (+3) days.
@@ -81,21 +86,23 @@
 - **Becomes a 10 when:** data shows the paid-volume lift, with 0 ledger mismatches over the first 100 outcomes and fixable declines under half of all declines.
 
 ### P-4 — The paywall only where a credit buys a deliverable ask (7/10)
+**Answered in part (Oct 17–18):** D-061 (an uncovered ask waits up to 90 days at no cost, the seeker is emailed on day 30 to confirm, it uses no open slot until a referrer can see it, and a seeker who sent it more than 30 days earlier reconfirms before its credit is spent), D-047 (the credit is spent at first visibility; with no credit the ask is held), D-062 (a new referrer receives waiting asks oldest first, up to their monthly capacity) and D-060 (pending actions are emailed). The rest of P-4 stays a proposal.
 - **Rule:**
   1. An ask to a company with no available referrer is saved free on a waiting list. It does not use a live slot, is capped at 10 per seeker and 2 per company, and must pass P-7.
   2. Its cost is stated once at save. A check-in runs every 30 days, and the ask closes free at 90 days. This answers D-043's "wait past 7 days?".
   3. When a referrer appears, waiting asks are released oldest first within that referrer's capacity. A release spends 1 credit automatically only if the seeker kept "send automatically" and saved or reconfirmed the ask within 14 days. Otherwise the seeker gets a one-tap "Send now for 1 credit?". Each release is one keyed, idempotent ledger transaction.
   4. Only four moments may offer payment, each after the free fix: 0 credits on a covered ask (renewal date first, then the smallest pack); the live-slot cap (close a stale ask first); a fixable decline (free checklist first, then "Send again"); and once after a confirmed referral.
-  5. Never shown after sign-up, the first ask, an expiry, a not-fixable decline or on referrer surfaces. No countdowns, scarcity claims, confirmshaming or Pro/Max.
+  5. Never shown after sign-up, the first ask, an expiry, a not-fixable decline or on referrer surfaces. No countdowns, scarcity claims or confirmshaming.
 - **Why:** today a 0-credit seeker cannot even save a free waiting ask (`ReferralRequest.tsx:276`, `server/db.ts:1632`), and waiting asks fill Free's 3 slots (`planGates.ts:17`).
 - **Strongest counter:** free waiting asks invite spray. A new referrer's first inbox could be a pile of stale asks, and a delayed automatic spend can feel like a surprise charge.
 
 ### P-5 — Money-truth rule (8/10)
+**Answered in part (Oct 18):** D-063 — one truthful money sentence everywhere: "3 asks free every month; more use credits. Referrers are never paid and never ask you for money."; refund and credit-back lines must match the code; legal text goes to the owner separately. The rest of P-5 stays a proposal.
 - **Rule:** every per-ask money sentence renders from the ledger outcome, never a fixed string.
 - **Fix now:**
   - the always-"returned" withdrawn line (`shared/referral.ts:55`);
   - the referrer decline card (`CandidatePreviewCard.tsx:72`);
-  - every Pro/Max line;
+  - every legacy-plan line (answered: D-067 removes them entirely);
   - the FAQ, Refund Policy and Terms lines that contradict the code;
   - the $199 employer card (not on sale);
   - "Partner tip", which becomes "Partner offer · SkipWait may earn a fee".
@@ -104,6 +111,7 @@
 - **Strongest counter:** "pay only when referred" converts better, and RefOpen sells exactly that.
 
 ### P-6 — What SkipWait will never charge for; referrers stay unpaid (8/10)
+**Answered in part (Oct 18):** D-055 — referrers stay unpaid by SkipWait (recognition only); D-059 — no referrer tips, and no counsel spend for Concierge, which stays by application. The rest of P-6 stays a proposal.
 - **Never:**
   - pay referrers or move money between seekers and referrers;
   - take a hire-contingent fee (a percentage of salary, post-hire or pay-what-you-want);
@@ -126,6 +134,7 @@
 - **Strongest counter:** giving coaching away undercuts paid rewrites, and blocking costs ask volume.
 
 ### P-8 — Enforce the 2-asks-per-company cap (8/10)
+**Answered (Oct 18):** D-053 queues the D-006 per-company cap among the trust and truth fixes; D-006 is frozen (D-059).
 - **Rule:** refuse a third open ask (waiting or live) per seeker per company inside the ask transaction, with the existing 409 `company_cap_reached`. Tests come first: concurrency, replay, freed slots, ledger audit.
 - **Why:** it is published as enforced but has no server use (`shared/planCatalog.ts:178-179`). The live catalog advertises it.
 - **Strongest counter:** nobody hits it today, and it touches the money path.
@@ -139,6 +148,7 @@
 - **Why:** 11 unbuilt tools are advertised, and `ai.*` and `/api/smart-pitch` have no per-user limits in app code.
 
 ### P-10 — Freeze prices until there is data (7/10)
+**Answered (Oct 18):** D-056 — no price, plan-content or new credit-rule changes until two full weeks of baseline data exist (D-018 panel + D-054 analytics), counted from the day analytics goes live; selling the approved catalog (D-046), truth fixes and building the approved money rules are not frozen. The register wins where the rule below differs.
 - **Rule:** no price, pack or plan-content change (other than P-2's alignment) until all three hold:
   - 100 asks have been visible to an available referrer;
   - 30 paid purchases have completed;
@@ -147,6 +157,7 @@
 - **First experiment after the freeze:** a mid INR pack (e.g. ₹449 for 10), because ₹99 for 2 then ₹1,199 for 25 is a 12× jump for a 3% discount.
 
 ### P-11 — Reverse trial (5/10)
+**Answered (Oct 18):** D-051 — off the public catalog now, because nothing grants it; it switches back on together with its trigger, recommended: the seeker's first ask that reaches an available verified referrer. The register wins where the rule below differs.
 - **Rule:** hidden from the catalog now (nothing grants it). It switches on only with passes, as a 50/50 A/B.
 - **Clock:** starts the first time a seeker's ask becomes visible to an available referrer; once per person; no card.
 - **At the end:** back to Free with no charge, and live asks are never cut off. Switched off if the trial arm earns less per seeker at 30 and 90 days.
@@ -161,7 +172,7 @@
   - Inbound only, with no outreach to corridor companies (D-028).
 
 ## Keep as they are
-D-004, D-015, D-018, D-021, D-027 (enforcement is in P-2), D-030, D-031, D-036 (prices kept under P-10), D-037, D-039, D-040 (with P-12), D-041 (subject to the #293 ruling), D-042, D-043, and the still-valid parts of D-005: India at 0.4–0.6× the USD price, opt-in auto-extend, nothing under $2.99 in USD.
+D-004, D-015, D-018, D-021, D-030, D-031, D-036 (prices kept under the D-056 freeze), D-037 (since retired; its timing replaced by D-046), D-039, D-040 (with P-12), D-041 (confirmed by D-044), D-042, D-043, and the still-valid parts of D-005: India at 0.4–0.6× the USD price, opt-in auto-extend, nothing under $2.99 in USD.
 
 ## Rejected, with the reason
 - **Keep #249 permanently, or charge at send with no return:** it earns most when the product fails, which is the Upwork Connects / Thumbtack pattern.

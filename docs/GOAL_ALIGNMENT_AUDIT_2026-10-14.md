@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-035, D-046, D-053, D-064, D-067).
+
 # Goal-alignment audit and proposal — 2026-10-14 (revision 2, after red-team review)
 
 **Status: ANSWERED Oct 14 2026 (see section 9) — only the approved items are built.** Nothing below is built until the owner approves it and it is recorded in `docs/DECISIONS.md` (D-010). The owner's answers are recorded in section 9.
