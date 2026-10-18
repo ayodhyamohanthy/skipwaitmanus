@@ -53,6 +53,7 @@ import { captureServerError } from "./sentry";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
 import { decideAdminReferralApproval } from "./adminReferralApproval";
+import { REFERRER_DOCUMENT_ACCESS_STATUSES, actorAcceptanceEventOn, grantFromJoin, isAcceptingReferrer, isReferrerDocumentAccessActive, isReferrerDocumentAccessStatus, openAcceptanceDocumentGrantTx } from "./referrerDocumentAccess";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -2412,12 +2413,31 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     const passed = (await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
     if (passed) throw new Error("You already passed on this referral request");
     const result = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "claim", operationKey: `claim:${userId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId }, notification: { userId: current.request.jobSeekerId, title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." } });
-    if(!result.replayed)await tx.insert(referralDocumentAccessGrants).values({referralRequestId:requestId,referrerId:userId,requestRevision:result.revision,grantVersion:1,expiresAt:new Date(Date.now()+30*24*60*60*1000)}).onDuplicateKeyUpdate({set:{requestRevision:result.revision,grantVersion:sql`${referralDocumentAccessGrants.grantVersion}+1`,grantedAt:new Date(),expiresAt:new Date(Date.now()+30*24*60*60*1000),revokedAt:null,revokeReason:null}});
+    // A claim grants no document access (D-019(e)); acceptance does, in transitionReferralRequestTx.
     return { requestId, claimed: true as const, replayed: result.replayed, revision: result.revision, jobSeekerId: current.request.jobSeekerId, companyDomain: current.company };
   });
 }
 
-export async function getClaimedCompanyReferralDetail(userId:number,requestId:number){const db=await getDb();if(!db)return undefined;const now=new Date();const rows=await db.select({id:referralRequests.id,title:jobs.title,targetRoleUrl:jobs.targetRoleUrl,companyDomain:jobs.company,jobFunction:jobs.jobFunction,candidateName:users.name,candidateMessage:referralRequests.personalPitch,referrerId:referralRequests.referrerId,status:referralRequests.status,revision:referralRequests.revision,grantVersion:referralDocumentAccessGrants.grantVersion,grantRevision:referralDocumentAccessGrants.requestRevision,grantExpiresAt:referralDocumentAccessGrants.expiresAt}).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).innerJoin(users,eq(referralRequests.jobSeekerId,users.id)).innerJoin(referralDocumentAccessGrants,and(eq(referralDocumentAccessGrants.referralRequestId,referralRequests.id),eq(referralDocumentAccessGrants.referrerId,userId),isNull(referralDocumentAccessGrants.revokedAt),gt(referralDocumentAccessGrants.expiresAt,now))).where(and(eq(referralRequests.id,requestId),eq(referralRequests.referrerId,userId),inArray(referralRequests.status,["pending","approved","intro_made","interview","offer"]))).limit(1);const request=rows[0];if(!request)return undefined;const attachments=await db.select({id:referralAttachments.id,fileName:referralAttachments.fileName,mimeType:referralAttachments.mimeType,fileSize:referralAttachments.fileSize}).from(referralAttachments).where(eq(referralAttachments.referralRequestId,requestId));return{...request,attachments};}
+// The ask assigned to this referrer: claimed and still pending, or accepted by them. A claim writes no document grant
+// (D-019(e)), so a pending ask loads on its assignment alone; an accepted ask needs this referrer's own acceptance or
+// an unrevoked grant (isAcceptingReferrer). Only the accepting referrer gets the seeker's name, and
+// documentAccessActive is the same rule as GET /api/documents/:id. server/referrerAskView.ts builds the response.
+export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const rows = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch, referrerId: referralRequests.referrerId, status: referralRequests.status, revision: referralRequests.revision, grantId: referralDocumentAccessGrants.id, grantRevokedAt: referralDocumentAccessGrants.revokedAt, grantExpiresAt: referralDocumentAccessGrants.expiresAt, passId: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt })
+    .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id))
+    .leftJoin(referralDocumentAccessGrants, and(eq(referralDocumentAccessGrants.referralRequestId, referralRequests.id), eq(referralDocumentAccessGrants.referrerId, userId)))
+    .leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId)))
+    .leftJoin(referralTransitionEvents, actorAcceptanceEventOn(userId))
+    .where(and(eq(referralRequests.id, requestId), eq(referralRequests.referrerId, userId), inArray(referralRequests.status, ["pending", ...REFERRER_DOCUMENT_ACCESS_STATUSES]))).limit(1);
+  const row = rows[0];
+  if (!row || (row.passId ?? null) !== null) return undefined;
+  const access = { actorUserId: userId, referrerId: row.referrerId, requestStatus: row.status, passedByActor: false, grant: grantFromJoin(row), acceptedByActorAt: row.acceptedByActorAt, now: new Date() };
+  const accepted = isAcceptingReferrer(access);
+  if (row.status !== "pending" && !accepted) return undefined;
+  const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
+  return { id: row.id, title: row.title, targetRoleUrl: row.targetRoleUrl, companyDomain: row.companyDomain, jobFunction: row.jobFunction, candidateMessage: row.candidateMessage, referrerId: row.referrerId, status: row.status, revision: row.revision, candidateName: accepted ? row.candidateName : null, documentAccessActive: isReferrerDocumentAccessActive(access), attachments };
+}
 
 export async function createReferralAttachment(ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -2425,7 +2445,22 @@ export async function createReferralAttachment(ownerId: number, input: { fileNam
   return { id: Number(result[0].insertId), ...input };
 }
 
-export async function getAccessibleReferralAttachment(userId:number,attachmentId:number){const db=await getDb();if(!db)return undefined;const attachment=(await db.select({id:referralAttachments.id,ownerId:referralAttachments.ownerId,fileName:referralAttachments.fileName,fileKey:referralAttachments.fileKey,mimeType:referralAttachments.mimeType,fileSize:referralAttachments.fileSize,referralRequestId:referralAttachments.referralRequestId,referrerId:referralRequests.referrerId,requestStatus:referralRequests.status,requestRevision:referralRequests.revision,grantReferrerId:referralDocumentAccessGrants.referrerId,grantRevision:referralDocumentAccessGrants.requestRevision,grantExpiresAt:referralDocumentAccessGrants.expiresAt,grantRevokedAt:referralDocumentAccessGrants.revokedAt,passedByActor:referralRequestPasses.id}).from(referralAttachments).leftJoin(referralRequests,eq(referralAttachments.referralRequestId,referralRequests.id)).leftJoin(referralDocumentAccessGrants,and(eq(referralDocumentAccessGrants.referralRequestId,referralRequests.id),eq(referralDocumentAccessGrants.referrerId,userId))).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralAttachments.id,attachmentId),or(eq(referralAttachments.ownerId,userId),isNull(referralRequestPasses.id)))).limit(1))[0];if(!attachment||attachment.id!==attachmentId)return undefined;if(attachment.ownerId===userId)return attachment;const active=attachment.passedByActor===null&&attachment.referrerId===userId&&attachment.grantReferrerId===userId&&!attachment.grantRevokedAt&&Boolean(attachment.grantExpiresAt&&attachment.grantExpiresAt.getTime()>Date.now())&&Boolean(attachment.requestStatus&&DOCUMENT_REFERRER_ACCESS_STATUSES.has(attachment.requestStatus));return active?attachment:undefined;}
+// The resume bytes behind GET /api/documents/:id: its owner, or the referrer the ask is assigned to once they accepted
+// it (isReferrerDocumentAccessActive, server/referrerDocumentAccess.ts, D-019(e)); a referrer who passed never matches.
+export async function getAccessibleReferralAttachment(userId: number, attachmentId: number) {
+  const db = await getDb(); if (!db) return undefined;
+  const row = (await db.select({ id: referralAttachments.id, ownerId: referralAttachments.ownerId, fileName: referralAttachments.fileName, fileKey: referralAttachments.fileKey, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize, referralRequestId: referralAttachments.referralRequestId, referrerId: referralRequests.referrerId, requestStatus: referralRequests.status, grantId: referralDocumentAccessGrants.id, grantExpiresAt: referralDocumentAccessGrants.expiresAt, grantRevokedAt: referralDocumentAccessGrants.revokedAt, passedByActor: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt })
+    .from(referralAttachments).leftJoin(referralRequests, eq(referralAttachments.referralRequestId, referralRequests.id))
+    .leftJoin(referralDocumentAccessGrants, and(eq(referralDocumentAccessGrants.referralRequestId, referralRequests.id), eq(referralDocumentAccessGrants.referrerId, userId)))
+    .leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId)))
+    .leftJoin(referralTransitionEvents, actorAcceptanceEventOn(userId))
+    .where(and(eq(referralAttachments.id,attachmentId),or(eq(referralAttachments.ownerId,userId),isNull(referralRequestPasses.id)))).limit(1))[0];
+  if (!row || row.id !== attachmentId) return undefined;
+  const { grantId, grantExpiresAt, grantRevokedAt, passedByActor, acceptedByActorAt, requestStatus, ...attachment } = row;
+  if (attachment.ownerId === userId) return attachment;
+  const active = isReferrerDocumentAccessActive({ actorUserId: userId, referrerId: attachment.referrerId, requestStatus, passedByActor: (passedByActor ?? null) !== null, grant: grantFromJoin({ grantId, grantRevokedAt, grantExpiresAt }), acceptedByActorAt, now: new Date() });
+  return active ? attachment : undefined;
+}
 
 export async function getOwnedResumeAttachmentForPitch(userId: number, attachmentId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -2434,10 +2469,11 @@ export async function getOwnedResumeAttachmentForPitch(userId: number, attachmen
   return result[0];
 }
 
-const DOCUMENT_REFERRER_ACCESS_STATUSES = new Set(["pending", "approved", "intro_made", "interview", "offer"]);
+// The status half of the rule only (the owner, or the assigned referrer once accepted); the grant half is
+// isReferrerDocumentAccessActive. Before acceptance a referrer sees neither the seeker's name nor resume (D-019(e)).
 export function canAccessReferralAttachment(actorUserId: number, attachment: { ownerId: number; referrerId?: number | null; requestStatus?: string | null }): boolean {
   if (attachment.ownerId === actorUserId) return true;
-  return attachment.referrerId === actorUserId && Boolean(attachment.requestStatus && DOCUMENT_REFERRER_ACCESS_STATUSES.has(attachment.requestStatus));
+  return attachment.referrerId === actorUserId && isReferrerDocumentAccessStatus(attachment.requestStatus);
 }
 export class ReferralTransitionConflict extends Error {
   constructor(message: string, public currentState: { status: string; revision: number }) { super(message); this.name = "ReferralTransitionConflict"; }
@@ -2468,6 +2504,13 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
     throw new ReferralTransitionConflict("This referral action lost a stale-write race", latest ?? { status: current.status, revision: current.revision });
   }
   if (["declined","withdrawn","closed"].includes(input.toStatus)) await tx.update(referralDocumentAccessGrants).set({revokedAt:new Date(),revokeReason:`terminal:${input.toStatus}`}).where(and(eq(referralDocumentAccessGrants.referralRequestId,input.requestId),isNull(referralDocumentAccessGrants.revokedAt)));
+  // D-019(e): the referrer's own acceptance opens their document access, in this transaction (a replay returned above,
+  // so once per acceptance). Every accept path lands here: one-click (/queue, thread, email link, D-022 first look) and review.
+  const acceptedBy: number | null = input.toStatus === "approved" ? (input.patch?.referrerId !== undefined ? input.patch.referrerId : current.referrerId) : null;
+  if (acceptedBy !== null && acceptedBy === input.actorUserId) {
+    const grant = await openAcceptanceDocumentGrantTx(tx, { requestId: input.requestId, referrerId: acceptedBy, revision: nextRevision, now: new Date() });
+    if (grant === "kept_revoked") captureServerError(new Error("Acceptance left a revoked document grant closed"), { requestId: input.requestId, referrerId: acceptedBy });
+  }
   await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision, referenceId: input.eventReferenceId ?? null });
   if (input.notification) await tx.insert(notifications).values({ userId: input.notification.userId, category: "status", kind: transitionNotificationKind(input.action, input.toStatus), refId: input.requestId, title: input.notification.title, body: input.notification.body, eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` }).onDuplicateKeyUpdate({ set: { eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` } });
   return { status: input.toStatus, revision: nextRevision, replayed: false as const };

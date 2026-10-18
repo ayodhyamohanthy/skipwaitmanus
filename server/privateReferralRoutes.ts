@@ -1,4 +1,7 @@
 import { setRetryAfter } from "./retryAfter";
+import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
+import { isOpenAskAttachment } from "../shared/referrerAskView";
+import { captureServerError } from "./sentry";
 import { normalizeReferenceId, REFERENCE_ID_ERROR } from "../shared/referenceId";
 import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "./otpPolicy";
 import { isPassReasonCode, passReasonSeekerLabel } from "../shared/passReasons";
@@ -1280,10 +1283,15 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const request = await deps.getClaimedCompanyReferralDetail(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not assigned to your verified employee account" });
-      const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, url: `/api/documents/${attachment.id}` }));
-      const [named] = await attachCompanyIdentities([request], row => row.companyDomain, lookupCompanies);
-      record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: typeof request.companyDomain === "string" ? request.companyDomain : undefined, metadata: { attachmentCount: attachments.length } });
-      res.json({ request: { ...withParsedJobFunction(request), companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null, attachments } });
+      // D-019(e): an explicit allow-list; before acceptance no seeker name and no file names, ids or links.
+      const built = buildClaimedAskDetailView(request);
+      if (!built.ok) { captureServerError(built.error, { route: "GET /api/company-referrals/:requestId", requestId }); return res.status(500).json({ error: "We could not load this private referral request" }); }
+      const view = built.view;
+      const [named] = await attachCompanyIdentities([view], row => row.companyDomain, lookupCompanies);
+      const documentLinks = view.attachments.filter(file => isOpenAskAttachment(file) && Boolean(file.url)).length;
+      record({ actorUserId: identity.account.id, action: "company_referral.claimed_detail_viewed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: view.companyDomain ?? undefined, metadata: { attachmentCount: view.attachments.length, accepted: view.candidateName !== undefined, documentLinks } });
+      res.set("Cache-Control", "private, no-store");
+      res.json({ request: { ...view, companyName: named?.companyName ?? null, companyInitials: named?.companyInitials ?? null } });
     } catch {
       res.status(500).json({ error: "We could not load this private referral request" });
     }
@@ -1296,9 +1304,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const result = await deps.claimCompanyReferralRequest(identity.account.id, requestId);
       record({ actorUserId: identity.account.id, action: "company_referral.claimed", outcome: "success", resourceType: "referral_request", resourceId: requestId, companyDomain: result.companyDomain });
-      if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} accepted your private request.`);
+      if (result.revision === undefined && result.jobSeekerId) notifyInApp(result.jobSeekerId, "Your referral request was claimed", `A verified employee at ${result.companyDomain ?? "the company"} claimed your private request.`);
       if (!result.replayed && result.jobSeekerId) notifyEmail(result.jobSeekerId, `Your referral request was claimed — ${result.companyDomain ?? "your target company"}`, `<p>A verified employee at <strong>${escapeHtml(result.companyDomain ?? "the company")}</strong> claimed your private referral request.</p>`);
-      res.json(result);
+      res.json(claimResponseView(result));
     } catch (error) {
       const message = error instanceof Error ? error.message : "This referral request is no longer available";
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;

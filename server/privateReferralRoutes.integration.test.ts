@@ -50,6 +50,7 @@ describe("private referral HTTP routes", () => {
     const app = express();
     app.use(express.json());
     let claimedBy: number | undefined;
+    let acceptedBy: number | undefined;
     let submittedCandidateMessage = "";
     let submittedCompensation: string | undefined;
     const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
@@ -60,14 +61,17 @@ describe("private referral HTTP routes", () => {
       dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
       createReferralAttachment: async () => attachment,
-      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === claimedBy ? { ...attachment, referrerId: claimedBy } : undefined,
+      // db.getAccessibleReferralAttachment: the owner, or the referrer once they accepted (D-019(e)); never a claim alone.
+      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === acceptedBy ? { ...attachment, referrerId: acceptedBy } : undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }),
       createCompanyReferralRequest: async (_userId, input) => { submittedCandidateMessage = input.personalPitch; submittedCompensation = input.compensation; return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 }; },
       listJobSeekerCompanyReferrals: async () => [{ id: 501 }, { id: 500 }, { id: 499 }],
       listCompanyReferralInbox: async () => [{ id: 501, companyDomain: "acme.com" }],
       getUnclaimedCompanyReferralPreview: async (userId, requestId) => userId === 2 && requestId === 501 && !claimedBy ? { id: requestId, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
       claimCompanyReferralRequest: async (userId, requestId) => { claimedBy = userId; return { requestId, claimed: true }; },
-      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, title: "Product Designer", candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
+      // Hands the route MORE than db.ts returns before acceptance (the name, the storage key): the route's allow-list is under test.
+      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, title: "Product Designer", candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", referrerId: userId, status: acceptedBy === userId ? "approved" : "pending", revision: acceptedBy === userId ? 3 : 2, documentAccessActive: acceptedBy === userId, attachments: [attachment] } : undefined,
+      oneClickReviewReferralRequest: async (userId, input) => { if (input.decision === "approved") { claimedBy = userId; acceptedBy = userId; } return { status: input.decision, companyDomain: "acme.com" }; },
       listPublicCompanyOpportunities: async () => [{ id: 91, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer" }],
       publishCompanyOpportunity: async (_userId, input) => ({ id: 92, companyDomain: "acme.com", ...input }),
       recordActivity: async input => { activity.push(input); },
@@ -88,10 +92,17 @@ describe("private referral HTTP routes", () => {
     expect(preview.status).toBe(200); expect(preview.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(preview.body)).not.toContain("Avery"); expect(preview.body.request).toMatchObject({ candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0]).toMatchObject({ availability: "after_claim", fileName: "resume.pdf" }); expect(preview.body.request.attachments[0]).not.toHaveProperty("url"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
     expect((await request(app).post("/api/company-referrals/501/claim").set("x-test-user", "employee")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee")).status).toBe(404);
+    // D-019(e): a claim is not an acceptance. The claimed detail keeps the role and the note, but no name, file name or link.
+    const lockedDetail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
+    expect(lockedDetail.status).toBe(200); expect(lockedDetail.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(lockedDetail.body)).not.toMatch(/Avery|resume\.pdf|\/api\/documents|signed\.example|fileKey/);
+    expect(lockedDetail.body.request).toMatchObject({ status: "pending", title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
+    expect(lockedDetail.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 3, availability: "after_claim" }]);
+    expect((await request(app).get("/api/documents/77").set("x-test-user", "employee")).status).toBe(404);
+    expect((await request(app).post("/api/company-referrals/501/one-click-review").set("x-test-user", "employee").send({ decision: "approved" })).status).toBe(200);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
-    expect(detail.status).toBe(200); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    expect(detail.status).toBe(200); expect(detail.body.request.candidateName).toBe("Avery"); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
     // D-019(d): the referrer who accepted the ask reads it with its role title and the seeker's note attached.
-    expect(detail.body.request).toMatchObject({ title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
+    expect(detail.body.request).toMatchObject({ status: "approved", title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
     const securedDocument = await request(app).get("/api/documents/77").set("x-test-user", "employee");
     expect(securedDocument.status).toBe(307); expect(securedDocument.headers.location).toBe("https://signed.example/resume.pdf");
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));
