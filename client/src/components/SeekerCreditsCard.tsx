@@ -18,7 +18,8 @@ export type SeekerCredits = {
  *
  * Shows the monthly free allowance progress (3/month on the free plan), the
  * separate never-expiring purchased balance, and the primary action: ask
- * another referral while any credit remains, otherwise buy credits / upgrade.
+ * another referral while any credit remains, otherwise buy a credit. D-067
+ * (owner, Oct 18 2026) removed Pro/Max, so there is no plan to upgrade to.
  * Used by the requests dashboard and the request-success confirmation so the
  * "1 of 3 free credits used" context is always visible after a resume is
  * submitted.
@@ -85,7 +86,7 @@ export function SeekerCreditsCard({ credits, compact = false }: { credits: Seeke
               href="/plans?role=job_seeker"
               className="text-center text-sm font-semibold text-black"
             >
-              Or upgrade for more monthly referrals
+              See what a credit buys
             </Link>
           </>
         ) : (

@@ -22,9 +22,9 @@
       "status": 200,
       "body": {
         "summary": {
-          "plan": "pro",
-          "monthlyAllowance": 10,
-          "monthlyCreditsRemaining": 7,
+          "plan": "free",
+          "monthlyAllowance": 3,
+          "monthlyCreditsRemaining": 3,
           "purchasedCreditsRemaining": 2,
           "promoCreditsRemaining": 0,
           "promoExpiresAt": null,
@@ -66,16 +66,12 @@
             }
           },
           "slots": {
-            "plan": "pro",
-            "planLabel": "Pro",
-            "open": 4,
-            "cap": 10,
-            "full": false,
-            "nextPlan": {
-              "id": "momentum",
-              "label": "Momentum",
-              "openRequests": 15
-            }
+            "plan": "free",
+            "planLabel": "Free",
+            "open": 3,
+            "cap": 3,
+            "full": true,
+            "nextPlan": null
           }
         }
       }

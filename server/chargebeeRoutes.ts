@@ -1,9 +1,8 @@
 import type { Express, Request } from "express";
-import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, createGiftSubscriptionCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, retrieveGiftSubscriptionPlan, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
+import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
 import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
-import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
-import { giftCheckoutRequestSchema, giftClaimRequestSchema } from "../shared/giftSubscriptions";
+import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import type { BillablePlanId, BillingPeriod } from "../shared/billingCatalog";
 import { refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
@@ -16,7 +15,6 @@ type Deps = {
   createCheckout?: typeof createChargebeeCheckout;
   createPaymentIntent: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; tokenCount: number; amount: number; currency: string }) => Promise<unknown>;
   fulfillPayment: (input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) => Promise<unknown>;
-  createSubscriptionCheckout?: typeof createChargebeeSubscriptionCheckout;
   createSubscriptionIntent?: (input: { hostedPageId: string; checkoutIntentId: string; userId: number; role: TokenRole; plan: BillablePlanId; itemPriceId: string; amount: number; currency: "INR" | "USD"; billingPeriod?: BillingPeriod; kind?: "new" | "change" }) => Promise<unknown>;
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
@@ -33,14 +31,16 @@ type Deps = {
   applyPaymentRefund?: (input: { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string }) => Promise<{ status: string; paymentId?: number; reason?: string }>;
   alertPaymentRefund?: (input: { eventId: string; invoiceId?: string; paymentId?: number; reason: string; refundAmount?: number; currency?: string }) => Promise<unknown>;
   alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
-  createGiftCheckout?: typeof createGiftSubscriptionCheckout;
-  recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number; plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; amount?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; plan?: PaidSubscriptionPlan | null; currency?: string | null; subscriptionId?: string | null }>;
-  updateGiftPlan?: (giftId: string, input: { plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; subscriptionId?: string }) => Promise<unknown>;
+  /**
+   * D-067 (owner, Oct 18 2026): gifting a Pro/Max subscription is retired, so
+   * no checkout or provider re-read exists any more. These read and settle
+   * historic gift rows only, which is why a row's plan is a plain string.
+   */
+  recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number; plan?: string; currency?: "INR" | "USD"; amount?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; plan?: string | null; currency?: string | null; subscriptionId?: string | null }>;
   resolveGiftRecipient?: (normalizedEmail: string) => Promise<{ status: string; userId?: number }>;
-  fulfillGift?: (input: { giftId: string; subscriptionId: string; plan: PaidSubscriptionPlan; currency: "INR" | "USD"; status: string; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number; receiverEmail: string; recipientUserId: number; role: TokenRole }) => Promise<unknown>;
-  retrieveGiftPlan?: typeof retrieveGiftSubscriptionPlan;
-  listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: PaidSubscriptionPlan | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
-  listClaimableGifts?: (userId: number) => Promise<Array<{ giftId: string; plan: PaidSubscriptionPlan | null; currency: string | null; amount: number | null; subscriptionId: string | null; receiverEmail: string | null; createdAt: Date }>>;
+  fulfillGift?: (input: { giftId: string; subscriptionId: string; plan: string; currency: "INR" | "USD"; status: string; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number; receiverEmail: string; recipientUserId: number; role: TokenRole }) => Promise<unknown>;
+  listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: string | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
+  listClaimableGifts?: (userId: number) => Promise<Array<{ giftId: string; plan: string | null; currency: string | null; amount: number | null; subscriptionId: string | null; receiverEmail: string | null; createdAt: Date }>>;
   claimGift?: (userId: number, giftId: string) => Promise<unknown>;
 };
 
@@ -123,8 +123,10 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before choosing a plan" });
-      // A kit pass/Keep warm body names a plan term. The pre-kit Pro/Max body
-      // ({plan, currency, billingCountry}) keeps the legacy path below untouched.
+      // D-067 (owner, Oct 18 2026): Pro/Max are removed. The pre-kit
+      // ({plan, currency, billingCountry}) body is retired: it answers 410 with
+      // the plan catalog, and the kit pass/Keep warm body below is the only
+      // subscription checkout. Stored pro/max wallets read as Free.
       const kitPlan = kitPlanCheckoutRequestSchema.safeParse(req.body);
       if (kitPlan.success) {
         if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
@@ -144,29 +146,10 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       const plan = req.body?.plan;
       const currency = req.body?.currency;
       const billingCountry = req.body?.billingCountry;
-      const role = roleFromBody(req.body?.role);
-      if (!isPaidSubscriptionPlan(plan)) return res.status(400).json({ error: "Choose Pro or Max" });
-      if ((currency !== "INR" && currency !== "USD") || (billingCountry !== "IN" && billingCountry !== "INTL")) return res.status(400).json({ error: "Choose a supported billing route" });
-      if ((billingCountry === "IN" && currency !== "INR") || (billingCountry === "INTL" && currency !== "USD")) return res.status(400).json({ error: "That currency is not available for the selected billing route" });
-      if (!deps.createSubscriptionIntent) return res.status(503).json({ error: "Subscription checkout is not configured" });
-      const selectedCurrency = currency as "INR" | "USD";
-      const origin = `${req.protocol}://${req.get("host")}`;
-      const runtime = deps.createSubscriptionCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
-      const checkout = await (deps.createSubscriptionCheckout ?? createChargebeeSubscriptionCheckout)({
-        plan,
-        currency: selectedCurrency,
-        email: identity.primaryEmail?.emailAddress ?? identity.account.email ?? undefined,
-        firstName: identity.account.name?.split(" ")[0],
-        lastName: identity.account.name?.split(" ").slice(1).join(" "),
-        billingAddress: billingCountry === "IN" ? { country: "IN" } : undefined,
-        ...(runtime ? { site: runtime.site, apiKey: runtime.apiKey } : {}),
-        redirectUrl: `${origin}/plans?role=${role}&payment=pending`,
-        cancelUrl: `${origin}/plans?role=${role}&payment=cancelled`,
-      });
-      const price = SUBSCRIPTION_PLANS[plan].prices[selectedCurrency];
-      await deps.createSubscriptionIntent({ hostedPageId: checkout.hostedPageId, checkoutIntentId: checkout.checkoutIntentId, userId: identity.account.id, role, plan, itemPriceId: price.itemPriceId, amount: price.amount, currency: selectedCurrency });
-      record({ actorUserId: identity.account.id, action: "billing.subscription_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: checkout.hostedPageId, metadata: { role, plan, currency: selectedCurrency, amount: price.amount, billingCountry } });
-      return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
+      if (typeof plan === "string" || typeof currency === "string" || typeof billingCountry === "string") {
+        return res.status(410).json({ error: "Pro and Max are retired. Choose a plan in Plans & credits.", code: "legacy_plan_retired" });
+      }
+      return res.status(400).json({ error: "Choose a plan in Plans & credits" });
     } catch (error) {
       console.error("[Chargebee] subscription checkout error", error);
       if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Chargebee is not configured" });
@@ -174,34 +157,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     }
   });
 
-  app.post("/api/chargebee/gift-checkout", async (req, res) => {
-    // Hard server gate: no gift purchase can start until the flow is verified
-    // on the Chargebee TEST site (#77/#78) and this is set deliberately.
-    if (process.env.GIFT_CHECKOUT_ENABLED !== "true") return res.status(503).json({ error: "Gifting is not available yet" });
-    try {
-      const identity = await deps.resolveIdentity(req);
-      if (!identity) return res.status(401).json({ error: "Sign in before gifting a plan" });
-      const parsed = giftCheckoutRequestSchema.safeParse(req.body);
-      if (!parsed.success) return res.status(400).json({ error: "Choose Pro or Max on a supported billing route" });
-      const { plan, currency, billingCountry } = parsed.data;
-      const origin = `${req.protocol}://${req.get("host")}`;
-      const runtime = deps.createGiftCheckout ? undefined : resolveChargebeeRuntime(req.hostname);
-      const checkout = await (deps.createGiftCheckout ?? createGiftSubscriptionCheckout)({
-        plan,
-        currency,
-        buyerUserId: identity.account.id,
-        ...(runtime ? { site: runtime.site, apiKey: runtime.apiKey } : {}),
-        redirectUrl: `${origin}/plans?gift=done`,
-        cancelUrl: `${origin}/plans?gift=cancelled`,
-      });
-      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-      record({ actorUserId: identity.account.id, action: "billing.gift_checkout_started", outcome: "success", resourceType: "gift_checkout", resourceId: checkout.hostedPageId, metadata: { plan, currency, amount: price.amount, billingCountry } });
-      return res.json({ checkoutUrl: checkout.checkoutUrl, hostedPageId: checkout.hostedPageId });
-    } catch (error) {
-      console.error("[Chargebee] gift checkout error", error);
-      if (isChargebeeNotConfigured(error)) return res.status(503).json({ error: "Gift checkout is not configured" });
-      return res.status(502).json({ error: "Unable to start the gift checkout" });
-    }
+  app.post("/api/chargebee/gift-checkout", async (_req, res) => {
+    // D-067 (owner, Oct 18 2026): gifting a Pro/Max subscription is removed with
+    // the plans. Historic gift rows stay readable through the claim route below;
+    // no new gift checkout can start.
+    return res.status(410).json({ error: "Gifting is no longer available", code: "gift_retired" });
   });
 
   app.get("/api/chargebee/gifts/mine", async (req, res) => {
@@ -226,23 +186,21 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (!parsed.success) return res.status(400).json({ error: "That gift reference is not valid" });
       if (!deps.claimGift) return res.status(503).json({ error: "Gift claiming is temporarily unavailable" });
       const attempt = async () => deps.claimGift!(identity.account.id, parsed.data.giftId);
+      // D-067 (owner, Oct 18 2026): gifting is retired. A historic row with no
+      // plan recorded used to be resolved by re-reading the provider, which
+      // needed a Pro/Max item price that no longer exists. It answers the
+      // retired code now instead of a retry that could never succeed.
+      let result: unknown;
       try {
-        const result = await attempt();
-        record({ actorUserId: identity.account.id, action: "billing.gift_claimed", outcome: "success", resourceType: "gift", resourceId: parsed.data.giftId });
-        return res.json({ status: (result as { status?: string }).status ?? "credited" });
+        result = await attempt();
       } catch (error) {
-        if (!(error instanceof Error) || error.message !== "This gift is not ready to claim yet") throw error;
-        const claimables = deps.listClaimableGifts ? await deps.listClaimableGifts(identity.account.id) : [];
-        const row = claimables.find(candidate => candidate.giftId === parsed.data.giftId);
-        if (!row?.subscriptionId || row.plan) throw error;
-        const runtime = deps.retrieveGiftPlan ? undefined : resolveChargebeeRuntime(req.hostname);
-        const retrieved = await (deps.retrieveGiftPlan ?? retrieveGiftSubscriptionPlan)(row.subscriptionId, runtime ? { site: runtime.site, apiKey: runtime.apiKey } : undefined);
-        if (!retrieved?.plan || !retrieved.currency) throw error;
-        if (deps.updateGiftPlan) await deps.updateGiftPlan(parsed.data.giftId, { plan: retrieved.plan, currency: retrieved.currency, subscriptionId: row.subscriptionId });
-        const result = await attempt();
-        record({ actorUserId: identity.account.id, action: "billing.gift_claimed", outcome: "success", resourceType: "gift", resourceId: parsed.data.giftId });
-        return res.json({ status: (result as { status?: string }).status ?? "credited" });
+        if (error instanceof Error && error.message === "This gift is not ready to claim yet") {
+          return res.status(410).json({ error: "Gifting is retired. This gift can no longer be claimed.", code: "gift_retired" });
+        }
+        throw error;
       }
+      record({ actorUserId: identity.account.id, action: "billing.gift_claimed", outcome: "success", resourceType: "gift", resourceId: parsed.data.giftId });
+      return res.json({ status: (result as { status?: string }).status ?? "credited" });
     } catch (error) {
       if (error instanceof Error && error.message === "We could not find this gift") return res.status(404).json({ error: "We could not find this gift" });
       if (error instanceof Error && error.message === "This gift was sent to a different email address") return res.status(403).json({ error: "This gift was sent to a different email address" });
@@ -392,17 +350,12 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         // gift naming a receiver subscription is a credit obligation.
         if (gift.eventType === "gift_claimed" && gift.subscriptionId && gift.receiverEmail) {
           handled = true;
-          let plan = recorded.plan ?? undefined;
-          let currency = (recorded.currency === "INR" || recorded.currency === "USD" ? recorded.currency : undefined) as "INR" | "USD" | undefined;
-          if ((!plan || !currency)) {
-            const runtime = deps.retrieveGiftPlan ? undefined : resolveChargebeeRuntime(req.hostname);
-            const retrieved = await (deps.retrieveGiftPlan ?? retrieveGiftSubscriptionPlan)(gift.subscriptionId, runtime ? { site: runtime.site, apiKey: runtime.apiKey } : undefined);
-            if (retrieved?.plan && retrieved.currency && deps.updateGiftPlan) {
-              await deps.updateGiftPlan(gift.giftId, { plan: retrieved.plan, currency: retrieved.currency, subscriptionId: gift.subscriptionId });
-              plan = retrieved.plan;
-              currency = retrieved.currency;
-            }
-          }
+          // D-067 (owner, Oct 18 2026): gifting is retired, so a gift carries
+          // the plan its own row already recorded. The provider re-read that
+          // filled a missing plan needed a Pro/Max item price that no longer
+          // exists; a row without one is settled as history and moves no credit.
+          const plan = recorded.plan ?? undefined;
+          const currency = (recorded.currency === "INR" || recorded.currency === "USD" ? recorded.currency : undefined);
           if (plan && currency && deps.resolveGiftRecipient && deps.fulfillGift) {
             const recipient = await deps.resolveGiftRecipient(gift.receiverEmail);
             if (recipient.status === "resolved" && recipient.userId) {

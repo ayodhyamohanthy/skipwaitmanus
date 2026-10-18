@@ -1,43 +1,21 @@
-export type SubscriptionPlan = "free" | "pro" | "max";
-export type PaidSubscriptionPlan = Exclude<SubscriptionPlan, "free">;
+/**
+ * The monthly-plan contract, after D-067 (owner, Oct 18 2026).
+ *
+ * Pro/Max were removed completely — no users, no grandfathering, no sale, no
+ * notices — so nothing here prices a subscription any more. What stays is the
+ * free allowance and the cycle key the credit ledger needs, plus the currency
+ * type the billing contracts share.
+ *
+ * The DB ENUMs keep the `pro`/`max` members only because removing an ENUM member
+ * is not an additive migration. Nothing new is ever written with them, and a
+ * wallet still holding one reads as Free (see `planEntitlementsFor`). The kit
+ * plan catalog in `shared/planCatalog.ts` is the only plan set that can be sold.
+ */
+export type SubscriptionPlan = "free";
 export type SubscriptionCurrency = "INR" | "USD";
 
 export const FREE_MONTHLY_ALLOWANCE = 3;
 
-export const SUBSCRIPTION_PLANS = {
-  pro: {
-    label: "Pro",
-    monthlyAllowance: 10,
-    prices: {
-      INR: { amount: 59_900, display: "₹599/month", itemPriceId: "skipwait_pro_monthly-INR" },
-      USD: { amount: 700, display: "$7/month", itemPriceId: "skipwait_pro_monthly-USD" },
-    },
-  },
-  max: {
-    label: "Max",
-    monthlyAllowance: 30,
-    prices: {
-      INR: { amount: 129_900, display: "₹1,299/month", itemPriceId: "skipwait_max_monthly-INR" },
-      USD: { amount: 1_500, display: "$15/month", itemPriceId: "skipwait_max_monthly-USD" },
-    },
-  },
-} as const;
-
 export function currentMonthlyCycleKey(now: Date = new Date()) {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-export function isPaidSubscriptionPlan(value: unknown): value is PaidSubscriptionPlan {
-  return value === "pro" || value === "max";
-}
-
-export function subscriptionPlanFromItemPrice(itemPriceId: unknown): { plan: PaidSubscriptionPlan; currency: SubscriptionCurrency; amount: number } | undefined {
-  if (typeof itemPriceId !== "string") return undefined;
-  for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-    for (const currency of ["INR", "USD"] as SubscriptionCurrency[]) {
-      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-      if (price.itemPriceId === itemPriceId) return { plan, currency, amount: price.amount };
-    }
-  }
-  return undefined;
 }

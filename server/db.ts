@@ -32,7 +32,7 @@ import {
   type AssistantToken,
   type DeveloperApp,
 } from "../shared/assistant";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
+import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { isBillablePlanId, type BillablePlanId, type BillingPeriod, type WalletPlanId } from "../shared/billingCatalog";
 import { ASK_TTL_MS, getAskExpiresAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
@@ -2806,10 +2806,12 @@ export async function dmCounterpartLabel(counterpartUserId: number) {
   return rows[0] ? `Referrer · ${rows[0].companyDomain}` : "Member";
 }
 
-export async function hasActivePremiumSubscription(userId: number, now: Date = new Date()) {
-  const db = await getDb(); if (!db) return false;
-  const wallets = await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd }).from(tokenBalances).where(eq(tokenBalances.userId, userId));
-  return wallets.some(wallet => wallet.plan !== "free" && (wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing") && Boolean(wallet.subscriptionCurrentTermEnd && wallet.subscriptionCurrentTermEnd > now));
+/** D-067 (owner, Oct 18 2026): the Pro/Max member-message perk is removed with
+ * the plans. Kept as a never-true helper so older imports keep compiling;
+ * member DMs open on a thread or a mutual follow (server/dmRoutes.ts).
+ */
+export async function hasActivePremiumSubscription(_userId: number, _now: Date = new Date()) {
+  return false;
 }
 
 export async function dmThreadExists(userId: number, counterpartUserId: number) {
@@ -2851,7 +2853,7 @@ export async function listDmThread(userId: number, counterpartUserId: number): P
 
 export class DirectMessageConflictError extends Error{constructor(){super("This message key was already used for different content");this.name="DirectMessageConflictError";}}
 export class DirectMessageRateLimitError extends Error{constructor(public retryAt:Date){super("You're sending messages too quickly. Try again later.");this.name="DirectMessageRateLimitError";}}
-export async function sendDirectMessage(userId:number,recipientId:number,body:string,idempotencyKey:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const safeBody=body.slice(0,3000),fingerprint=createHash("sha256").update(JSON.stringify({senderId:userId,recipientId,body:safeBody})).digest("hex");return db.transaction(async tx=>{const duplicate=(await tx.select().from(messages).where(and(eq(messages.senderId,userId),eq(messages.idempotencyKey,idempotencyKey))).limit(1).for("update"))[0];if(duplicate){if(duplicate.requestFingerprint!==fingerprint)throw new DirectMessageConflictError();return{id:duplicate.id,replayed:true as const};}const pair=await tx.select({id:users.id,suspended:users.suspended}).from(users).where(inArray(users.id,[userId,recipientId])).for("update");const sender=pair.find(x=>x.id===userId),recipient=pair.find(x=>x.id===recipientId);if(!sender||!recipient||sender.suspended||recipient.suspended)throw new Error("This member is not available");const gate=await loadReferrerDmGate(tx,userId,recipientId);assertReferrerDmGateOpen(gate);const thread=(await tx.select({id:messages.id}).from(messages).where(and(isNull(messages.referralRequestId),or(and(eq(messages.senderId,userId),eq(messages.recipientId,recipientId)),and(eq(messages.senderId,recipientId),eq(messages.recipientId,userId))))).limit(1))[0];const follows=await tx.select().from(userFollows).where(and(inArray(userFollows.followerUserId,[userId,recipientId]),inArray(userFollows.followingUserId,[userId,recipientId]))).for("update");const mutual=follows.some(x=>x.followerUserId===userId&&x.followingUserId===recipientId)&&follows.some(x=>x.followerUserId===recipientId&&x.followingUserId===userId);const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];const premium=Boolean(wallet&&isPaidSubscriptionPlan(wallet.plan)&&wallet.subscriptionStatus==="active"&&(!wallet.subscriptionCurrentTermEnd||wallet.subscriptionCurrentTermEnd>new Date()));if(gate.kind==="not_referrer_pair"&&!thread&&!mutual&&!premium)throw new Error("Direct messaging is a premium feature");const now=new Date(),windowStart=new Date(now);windowStart.setMinutes(0,0,0);await tx.insert(directMessageQuotaWindows).values({senderId:userId,windowStart,sendCount:0}).onDuplicateKeyUpdate({set:{senderId:userId}});const quota=(await tx.select().from(directMessageQuotaWindows).where(and(eq(directMessageQuotaWindows.senderId,userId),eq(directMessageQuotaWindows.windowStart,windowStart))).limit(1).for("update"))[0];if(!quota||quota.sendCount>=30)throw new DirectMessageRateLimitError(new Date(windowStart.getTime()+3600_000));await tx.update(directMessageQuotaWindows).set({sendCount:quota.sendCount+1}).where(and(eq(directMessageQuotaWindows.id,quota.id),eq(directMessageQuotaWindows.sendCount,quota.sendCount)));const inserted=await tx.insert(messages).values({senderId:userId,recipientId,body:safeBody,referralRequestId:null,idempotencyKey,requestFingerprint:fingerprint});const id=Number(inserted[0].insertId);await tx.insert(notifications).values({ kind: "message_new",userId:recipientId,category:"message",title:"New direct message",body:"You have a new message from a member.",eventKey:`dm:${id}:notification`});await tx.insert(directMessageNotificationOutbox).values({messageId:id,recipientId,status:"pending"});return{id,replayed:false as const};});}
+export async function sendDirectMessage(userId:number,recipientId:number,body:string,idempotencyKey:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const safeBody=body.slice(0,3000),fingerprint=createHash("sha256").update(JSON.stringify({senderId:userId,recipientId,body:safeBody})).digest("hex");return db.transaction(async tx=>{const duplicate=(await tx.select().from(messages).where(and(eq(messages.senderId,userId),eq(messages.idempotencyKey,idempotencyKey))).limit(1).for("update"))[0];if(duplicate){if(duplicate.requestFingerprint!==fingerprint)throw new DirectMessageConflictError();return{id:duplicate.id,replayed:true as const};}const pair=await tx.select({id:users.id,suspended:users.suspended}).from(users).where(inArray(users.id,[userId,recipientId])).for("update");const sender=pair.find(x=>x.id===userId),recipient=pair.find(x=>x.id===recipientId);if(!sender||!recipient||sender.suspended||recipient.suspended)throw new Error("This member is not available");const gate=await loadReferrerDmGate(tx,userId,recipientId);assertReferrerDmGateOpen(gate);const thread=(await tx.select({id:messages.id}).from(messages).where(and(isNull(messages.referralRequestId),or(and(eq(messages.senderId,userId),eq(messages.recipientId,recipientId)),and(eq(messages.senderId,recipientId),eq(messages.recipientId,userId))))).limit(1))[0];const follows=await tx.select().from(userFollows).where(and(inArray(userFollows.followerUserId,[userId,recipientId]),inArray(userFollows.followingUserId,[userId,recipientId]))).for("update");const mutual=follows.some(x=>x.followerUserId===userId&&x.followingUserId===recipientId)&&follows.some(x=>x.followerUserId===recipientId&&x.followingUserId===userId);if(gate.kind==="not_referrer_pair"&&!thread&&!mutual)throw new Error("Direct messaging is not open yet. Follow each other to message this member.");const now=new Date(),windowStart=new Date(now);windowStart.setMinutes(0,0,0);await tx.insert(directMessageQuotaWindows).values({senderId:userId,windowStart,sendCount:0}).onDuplicateKeyUpdate({set:{senderId:userId}});const quota=(await tx.select().from(directMessageQuotaWindows).where(and(eq(directMessageQuotaWindows.senderId,userId),eq(directMessageQuotaWindows.windowStart,windowStart))).limit(1).for("update"))[0];if(!quota||quota.sendCount>=30)throw new DirectMessageRateLimitError(new Date(windowStart.getTime()+3600_000));await tx.update(directMessageQuotaWindows).set({sendCount:quota.sendCount+1}).where(and(eq(directMessageQuotaWindows.id,quota.id),eq(directMessageQuotaWindows.sendCount,quota.sendCount)));const inserted=await tx.insert(messages).values({senderId:userId,recipientId,body:safeBody,referralRequestId:null,idempotencyKey,requestFingerprint:fingerprint});const id=Number(inserted[0].insertId);await tx.insert(notifications).values({ kind: "message_new",userId:recipientId,category:"message",title:"New direct message",body:"You have a new message from a member.",eventKey:`dm:${id}:notification`});await tx.insert(directMessageNotificationOutbox).values({messageId:id,recipientId,status:"pending"});return{id,replayed:false as const};});}
 
 
 
@@ -3808,7 +3810,7 @@ export type RecordGiftEventInput = {
   receiverCustomerId?: string;
   subscriptionId?: string;
   buyerUserId?: number;
-  plan?: PaidSubscriptionPlan;
+  plan?: string;
   currency?: "INR" | "USD";
   amount?: number;
 };
@@ -3816,7 +3818,7 @@ export type RecordGiftEventInput = {
 export type FulfillGiftInput = {
   giftId: string;
   subscriptionId: string;
-  plan: PaidSubscriptionPlan;
+  plan: string;
   currency: "INR" | "USD";
   status: string;
   currentTermStart?: Date;
@@ -3856,14 +3858,21 @@ async function verifiedEmailsForUserTx(tx: any, userId: number): Promise<string[
   return Array.from(new Set(aliases.map((alias: { normalizedVerifiedEmail: string | null }) => alias.normalizedVerifiedEmail).filter((email: string | null): email is string => !!email)));
 }
 
-function giftWalletPatch(input: { plan: PaidSubscriptionPlan; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number; subscriptionId: string; current?: typeof tokenBalances.$inferSelect }) {
+/**
+ * D-067 (owner, Oct 18 2026): Pro/Max are removed, so a historic gift no longer
+ * grants a paid plan. A fulfilment that the provider still reports as active
+ * tops up the Free allowance and refreshes it at the term start; the wallet
+ * stays Free either way. The cycle it opens still records the gifted plan id,
+ * which is history, and `cycleRulesFor` reads it as Free like any unknown plan.
+ */
+function giftWalletPatch(input: { status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number; subscriptionId: string; current?: typeof tokenBalances.$inferSelect }) {
   const current = input.current;
-  const allowance = SUBSCRIPTION_PLANS[input.plan].monthlyAllowance;
+  const allowance = FREE_MONTHLY_ALLOWANCE;
   const retainsAccess = input.status === "active" || input.status === "non_renewing";
   const startsNewTerm = !current?.subscriptionCurrentTermStart || (input.currentTermStart && current.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
   const patch = retainsAccess
     ? {
-        plan: input.plan,
+        plan: "free" as const,
         monthlyAllowance: allowance,
         monthlyCreditsRemaining: startsNewTerm ? allowance : (current?.monthlyCreditsRemaining ?? allowance),
         monthlyCycleKey: input.currentTermStart ? currentMonthlyCycleKey(input.currentTermStart) : currentMonthlyCycleKey(),
@@ -3889,16 +3898,27 @@ function giftWalletPatch(input: { plan: PaidSubscriptionPlan; status: string; cu
   return { patch, retainsAccess, startsNewTerm: Boolean(startsNewTerm) };
 }
 
+/**
+ * D-067 (owner, Oct 18 2026): the gift row keeps its pro/max ENUM because
+ * removing an ENUM member is not an additive migration, and nothing new is
+ * sold. A provider event can still name any plan id, so the column stores only
+ * the two it can hold and stays null otherwise.
+ */
+function giftPlanColumnValue(plan: string | undefined): "pro" | "max" | null {
+  return plan === "pro" || plan === "max" ? plan : null;
+}
+
 export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const existing = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1).for("update"))[0];
     const terminal = giftTerminalStatus(input.status);
+    const planColumn = giftPlanColumnValue(input.plan);
     if (!existing) {
       await tx.insert(giftSubscriptionFulfillments).values({
         giftId: input.giftId, buyerUserId: input.buyerUserId ?? null, receiverEmail: input.receiverEmail ?? null,
-        plan: input.plan ?? null, currency: input.currency ?? null, amount: input.amount ?? null,
+        plan: planColumn, currency: input.currency ?? null, amount: input.amount ?? null,
         subscriptionId: input.subscriptionId ?? null, providerStatus: input.status,
         fulfillmentStatus: terminal ?? "pending",
         failureReason: terminal ? `provider_${terminal}` : null,
@@ -3909,7 +3929,7 @@ export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
     const patch: Record<string, unknown> = { providerStatus: input.status };
     if (!existing.subscriptionId && input.subscriptionId) patch.subscriptionId = input.subscriptionId;
     if (!existing.receiverEmail && input.receiverEmail) patch.receiverEmail = input.receiverEmail;
-    if (!existing.plan && input.plan) patch.plan = input.plan;
+    if (!existing.plan && planColumn) patch.plan = planColumn;
     if (!existing.currency && input.currency) patch.currency = input.currency;
     if ((existing.amount ?? null) === null && typeof input.amount === "number") patch.amount = input.amount;
     if (existing.buyerUserId === null && typeof input.buyerUserId === "number") patch.buyerUserId = input.buyerUserId;
@@ -3919,22 +3939,6 @@ export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
     }
     await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, existing.id));
     return { ...existing, ...patch };
-  });
-}
-
-export async function updateGiftPlan(giftId: string, input: { plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; subscriptionId?: string }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
-    const row = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, giftId)).limit(1).for("update"))[0];
-    if (!row || row.fulfillmentStatus !== "pending") return row ?? null;
-    const patch: Record<string, unknown> = {};
-    if (!row.plan && input.plan) patch.plan = input.plan;
-    if (!row.currency && input.currency) patch.currency = input.currency;
-    if (!row.subscriptionId && input.subscriptionId) patch.subscriptionId = input.subscriptionId;
-    if (!Object.keys(patch).length) return row;
-    await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, row.id));
-    return { ...row, ...patch };
   });
 }
 
@@ -3960,7 +3964,7 @@ async function fulfillGiftTx(tx: any, row: typeof giftSubscriptionFulfillments.$
     await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", subscriptionId: input.subscriptionId, failureReason: "subscription_conflict" }).where(eq(giftSubscriptionFulfillments.id, row.id));
     return { status: "conflict" as const, reason: "subscription_conflict" };
   }
-  const { patch, retainsAccess, startsNewTerm } = giftWalletPatch({ plan: input.plan, status: input.status, currency: input.currency, currentTermStart: input.currentTermStart, currentTermEnd: input.currentTermEnd, resourceVersion: input.resourceVersion, subscriptionId: input.subscriptionId, current: wallet });
+  const { patch, retainsAccess, startsNewTerm } = giftWalletPatch({ status: input.status, currency: input.currency, currentTermStart: input.currentTermStart, currentTermEnd: input.currentTermEnd, resourceVersion: input.resourceVersion, subscriptionId: input.subscriptionId, current: wallet });
   if (!retainsAccess) {
     await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "expired", subscriptionId: input.subscriptionId, failureReason: "subscription_cancelled" }).where(eq(giftSubscriptionFulfillments.id, row.id));
     return { status: "expired" as const, reason: "subscription_cancelled" };

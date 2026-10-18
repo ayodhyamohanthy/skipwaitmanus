@@ -5,7 +5,7 @@
  * catalog amount (shared/billingCatalog.ts).
  */
 import { z } from "zod";
-import { BILLING_CURRENCIES, BILLING_INTERVALS, LEGACY_PLAN_IDS, planSellsInterval } from "./billingCatalog";
+import { BILLING_CURRENCIES, BILLING_INTERVALS, planSellsInterval } from "./billingCatalog";
 import { BILLING_REGIONS, currencyForRegion } from "./billingRegion";
 import { CATALOG_PACK_IDS, CATALOG_PLAN_IDS, type CatalogInterval, type CatalogPlanId } from "./planCatalog";
 
@@ -33,9 +33,6 @@ export const kitPlanCheckoutRequestSchema = z.object({
 }).refine(currencyMatchesCountry, { message: "That currency is not available for the selected billing route", path: ["currency"] })
   .refine(soldForInterval, { message: INTERVAL_MESSAGE, path: ["interval"] });
 export type KitPlanCheckoutRequest = z.infer<typeof kitPlanCheckoutRequestSchema>;
-
-/** The pre-kit body (Pro/Max monthly), still accepted for grandfathered sales and the current /plans page. */
-export const legacyPlanCheckoutRequestSchema = z.object({ plan: z.enum(LEGACY_PLAN_IDS), currency: z.enum(BILLING_CURRENCIES), billingCountry, role });
 
 /** POST /api/chargebee/checkout for a kit credit pack. The /premium body ({itemPriceId, quantity}) stays as it is. */
 export const packCheckoutRequestSchema = z.object({ packId: z.enum(CATALOG_PACK_IDS), billingCountry, role });

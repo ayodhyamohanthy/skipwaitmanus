@@ -1,146 +1,93 @@
 // @vitest-environment jsdom
-// Kit v4 /plans on live data: usage and upgrade moments only from the account's
-// own summary, checkout dialog → hosted checkout, active-plan cancel renewal,
-// payment-pending return, and no preview scaffolding or kit sample tiers.
+// /plans after D-067 (owner, Oct 18 2026): Pro/Max are removed, so the page
+// states the free allowance and sells credits. It must never render a plan card
+// for a plan checkout cannot charge, never call a subscription or gift checkout,
+// and never show usage or moments the account has not really hit.
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import type { CreditsLedger } from "@shared/creditLedger";
 import Plans from "./Plans";
 
-const { openedCheckout, authState, getToken } = vi.hoisted(() => ({ openedCheckout: vi.fn(), authState: { isSignedIn: true }, getToken: vi.fn(async () => "test-token") }));
-// Packs-on-sale paths: the flag is mocked on here; creditPacksOffSale.test.tsx pins the shipped (off) state.
+const { authState, getToken } = vi.hoisted(() => ({ authState: { isSignedIn: true }, getToken: vi.fn(async () => "test-token") }));
+// Packs-on-sale paths: the flag is mocked on here.
 vi.mock("@shared/planCatalog", async importOriginal => ({ ...(await importOriginal<typeof import("@shared/planCatalog")>()), CREDIT_PACKS_ON_SALE: true }));
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, getToken, openSignIn: vi.fn() }) }));
 vi.mock("wouter", () => ({ Link: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => <a href={href} className={className}>{children}</a> }));
-vi.mock("@/lib/chargebeeCheckout", () => ({ openChargebeeCheckout: (url: string) => openedCheckout(url) }));
 vi.mock("@/lib/paymentRoute", async importOriginal => ({ ...(await importOriginal<typeof import("@/lib/paymentRoute")>()), browserPaymentRoute: () => "USD" as const }));
 
-type Handler = (url: string, init?: RequestInit) => { ok: boolean; status?: number; json: () => Promise<unknown> } | undefined;
-const ok = (json: unknown) => ({ ok: true, json: async () => json });
-// Summaries as GET /api/credits/summary sends them: the ledger block and the caller's open-ask slots.
 const ledger = (patch: Partial<CreditsLedger> = {}): CreditsLedger => ({ balance: 0, buckets: { cycle: 0, carriedOver: 0, trial: 0, welcome: 0, purchased: 0, promo: 0 }, creditsPerMonth: 0, carryover: 0, cycle: { key: "2026-10", startsAt: "2026-10-01T00:00:00.000Z", endsAt: "2026-11-01T00:00:00.000Z", granted: 0, used: 0 }, planCreditsRemaining: 0, nextExpiry: null, planCreditsExpiringSoon: null, welcome: { granted: false, credits: 0, remaining: 0 }, ...patch });
-const slots = (open: number, cap = 3, plan = "free") => ({ plan, planLabel: plan === "free" ? "Free" : "Pro", open, cap, full: open >= cap, nextPlan: { id: "momentum", label: "Momentum", openRequests: 15 } });
-const free = ({ open = 0, used = 0, purchased = 0 } = {}) => ({ plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, purchasedCreditsRemaining: purchased, totalAvailable: purchased, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots(open), ledger: ledger({ balance: purchased, buckets: { cycle: 0, carriedOver: 0, trial: 0, welcome: 0, purchased, promo: 0 }, cycle: { key: "2026-10", startsAt: "2026-10-01T00:00:00.000Z", endsAt: "2026-11-01T00:00:00.000Z", granted: 0, used } }) });
-const pro = { plan: "pro", monthlyAllowance: 10, monthlyCreditsRemaining: 7, purchasedCreditsRemaining: 2, totalAvailable: 9, subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z", slots: slots(2, 10, "pro"), ledger: ledger({ balance: 9, buckets: { cycle: 7, carriedOver: 0, trial: 0, welcome: 0, purchased: 2, promo: 0 }, creditsPerMonth: 10, carryover: 1, cycle: { key: "2026-10", startsAt: "2026-10-06T00:00:00.000Z", endsAt: "2026-11-06T00:00:00.000Z", granted: 10, used: 3 }, planCreditsRemaining: 7, nextExpiry: { credits: 7, expiresAt: "2026-12-06T00:00:00.000Z" } }) };
+const slots = (open: number, cap = 3, plan = "free") => ({ plan, planLabel: plan === "free" ? "Free" : "Free", open, cap, full: open >= cap, nextPlan: null });
+const summary = ({ open = 0, used = 0, purchased = 0 } = {}) => ({ plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, purchasedCreditsRemaining: purchased, totalAvailable: purchased, subscriptionStatus: null, subscriptionCurrentTermEnd: null, slots: slots(open), ledger: ledger({ balance: purchased, buckets: { cycle: 0, carriedOver: 0, trial: 0, welcome: 0, purchased, promo: 0 }, cycle: { key: "2026-10", startsAt: "2026-10-01T00:00:00.000Z", endsAt: "2026-11-01T00:00:00.000Z", granted: 0, used } }) });
 
-function stub(summary: unknown, extra?: Handler) {
-  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    const handled = extra?.(String(url), init);
-    if (handled) return handled;
-    if (String(url).includes("/api/credits/summary")) return ok({ summary });
-    if (String(url).includes("/api/chargebee/gifts/mine")) return ok({ sent: [], claimable: [] });
-    return ok({});
+function stub(payload: unknown) {
+  const fetchMock = vi.fn(async (url: string) => {
+    if (String(url).includes("/api/credits/summary")) return { ok: true, json: async () => ({ summary: payload }) };
+    return { ok: true, json: async () => ({}) };
   });
   vi.stubGlobal("fetch", fetchMock);
   return fetchMock;
 }
 
-beforeEach(() => { authState.isSignedIn = true; window.history.pushState({}, "", "/plans?role=job_seeker"); openedCheckout.mockClear(); });
+beforeEach(() => { authState.isSignedIn = true; window.history.pushState({}, "", "/plans?role=job_seeker"); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.pushState({}, "", "/"); });
 
-describe("Plans kit v4 on live data", () => {
-  it("renders the live Free / Pro / Max catalog with no preview scaffolding or kit sample tiers", async () => {
+describe("Plans after D-067", () => {
+  it("states the free allowance and the credit price, and never sells a retired plan", async () => {
     authState.isSignedIn = false;
-    stub(null);
+    const fetchMock = stub(null);
     render(<Plans />);
-    expect(screen.getByRole("heading", { name: "Choose how much help you need." })).toBeTruthy();
-    for (const name of ["Free", "Pro", "Max"]) expect(screen.getByRole("heading", { name, level: 2 })).toBeTruthy();
-    // Signed out: the price of a credit, never a balance or a welcome offer that is not live yet.
+    expect(screen.getByRole("heading", { name: "Everything starts free." })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Free", level: 2 })).toBeTruthy();
+    // Signed out: the price of a credit, never a balance.
     expect(screen.getByText("$1 a credit")).toBeTruthy();
     expect(screen.getByText("PAY AS YOU GO")).toBeTruthy();
+    // D-067: no retired plan, no retired price, no retired perk.
     const text = document.body.textContent ?? "";
-    for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request"]) expect(text).not.toContain(banned);
-    // Plan limits come from the enforced entitlements: open requests at once, monthly credits and their carryover.
+    for (const banned of ["Pro", "Max", "Pro/Max", "$7", "$15", "₹599", "₹1,299", "DESIGN PREVIEW", "EXAMPLE PRICING", "Most chosen", "Yearly", "checkout preview", "Gift", "Your plan is active"]) expect(text).not.toContain(banned);
+    // Limits come from the enforced entitlements, not from copy.
     expect(screen.getByText("3 referral requests open at once")).toBeTruthy();
-    expect(screen.getByText("Unused plan credits carry over 1 month")).toBeTruthy();
-    expect(screen.getByText("Unused plan credits carry over up to 3 months")).toBeTruthy();
-    const carryRow = screen.getByRole("rowheader", { name: "Monthly credit carryover" }).closest("tr");
-    expect(Array.from(carryRow?.querySelectorAll("td") ?? []).map(cell => cell.textContent)).toEqual(["—", "1 month", "3 months"]);
-    expect(screen.queryByLabelText("Your usage this cycle")).toBeNull();
-    expect(screen.queryByText("Upgrade moments")).toBeNull();
+    expect(screen.getByText("3 credits every month, then buy more as you need them")).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it("shows the account's own usage and only the upgrade moments it has really hit", async () => {
-    stub(free({ open: 3, used: 2 }));
+  it("never calls a subscription or gift checkout", async () => {
+    const fetchMock = stub(summary({ open: 1 }));
+    render(<Plans />);
+    await screen.findByText("1 of 3");
+    const urls = fetchMock.mock.calls.map(([url]) => String(url));
+    expect(urls).toEqual(["/api/credits/summary?role=job_seeker"]);
+    expect(urls.some(url => url.includes("chargebee"))).toBe(false);
+  });
+
+  it("shows the account's own usage and only the moments it has really hit", async () => {
+    stub(summary({ open: 3, used: 2 }));
     render(<Plans />);
     expect(await screen.findByText("3 of 3")).toBeTruthy();
     expect(screen.getByText("2 of 2")).toBeTruthy();
     expect(screen.getByRole("meter", { name: "Open referral slots used" }).getAttribute("aria-valuenow")).toBe("100");
-    expect(screen.getByRole("meter", { name: "Plan credits expiring" }).getAttribute("aria-valuenow")).toBe("0");
-    expect(screen.getByText("0 credits")).toBeTruthy();
-    expect(screen.getByText("Upgrade moments")).toBeTruthy();
     expect(screen.getByText("Your 3 requests are all open")).toBeTruthy();
-    expect(screen.getByText(/move to Pro for 10 open requests\. Queue position stays equal either way\./)).toBeTruthy();
     expect(screen.getByText("You're out of credits")).toBeTruthy();
+    // A moment points at what it unblocks, never at a plan to buy.
+    expect(screen.getAllByRole("link", { name: "Add credits" }).every(link => link.getAttribute("href") === "/premium?role=job_seeker")).toBe(true);
+    expect(screen.getAllByRole("link", { name: "View my requests" }).every(link => link.getAttribute("href") === "/requests")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "I'll wait" }));
     expect(screen.queryByText("Your 3 requests are all open")).toBeNull();
-    expect(screen.getAllByRole("link", { name: "Add credits" }).every(link => link.getAttribute("href") === "/premium?role=job_seeker")).toBe(true);
     cleanup();
 
     // Slots free and no credits ever spent: no limit was hit, so no moments.
-    stub(free({ open: 1 }));
+    stub(summary({ open: 1 }));
     render(<Plans />);
     expect(await screen.findByText("1 of 3")).toBeTruthy();
     expect(screen.queryByText("Upgrade moments")).toBeNull();
-    cleanup();
-
-    // Plan credits rolling off within 7 days: the expiry moment and the usage card, from the ledger.
-    const expiresAt = new Date(Date.now() + 6.5 * 86_400_000).toISOString();
-    stub({ ...pro, ledger: { ...pro.ledger, planCreditsExpiringSoon: { credits: 4, expiresAt } } });
-    render(<Plans />);
-    expect(await screen.findByText("4 credits expire in 7 days")).toBeTruthy();
-    expect(screen.getByRole("meter", { name: "Plan credits expiring" }).getAttribute("aria-valuenow")).toBe("57");
-    expect(screen.queryByText("You're out of credits")).toBeNull();
   });
 
-  it("opens the checkout dialog from an upgrade moment and hands off to the hosted checkout", async () => {
-    const fetchMock = stub(free({ open: 3 }), (url, init) => {
-      if (!url.includes("/api/chargebee/subscription-checkout")) return undefined;
-      expect(JSON.parse(String(init?.body))).toMatchObject({ plan: "pro", currency: "USD", billingCountry: "INTL", role: "job_seeker" });
-      return ok({ checkoutUrl: "https://checkout.example/pro" });
-    });
+  it("keeps the credits section and the balance out of the signed-out view", () => {
+    authState.isSignedIn = false;
+    stub(null);
     render(<Plans />);
-    fireEvent.click(await screen.findByRole("button", { name: "See Pro" }));
-    const dialog = screen.getByRole("dialog");
-    expect(within(dialog).getByRole("heading", { name: "Pro — secure checkout" })).toBeTruthy();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Pay $7/month" }));
-    await waitFor(() => expect(openedCheckout).toHaveBeenCalledWith("https://checkout.example/pro"));
-    expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-checkout", expect.objectContaining({ method: "POST" }));
-  });
-
-  it("announces a failed checkout inside the dialog and never opens a checkout", async () => {
-    stub(free(), url => url.includes("/subscription-checkout") ? { ok: false, status: 502, json: async () => ({ error: "Unable to open secure plan checkout" }) } : undefined);
-    render(<Plans />);
-    await screen.findByText("0 of 3");
-    fireEvent.click(screen.getByRole("button", { name: "Upgrade to Max" }));
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Pay $15/month" }));
-    expect((await within(screen.getByRole("dialog")).findByRole("alert")).textContent).toContain("Unable to open secure plan checkout");
-    expect(openedCheckout).not.toHaveBeenCalled();
-  });
-
-  it("marks the active plan, routes other plans to Manage plan and schedules cancel renewal", async () => {
-    const fetchMock = stub(pro, url => url.includes("/subscription-cancel") ? ok({ currentTermEnd: "2026-11-06T00:00:00.000Z" }) : undefined);
-    render(<Plans />);
-    expect(await screen.findByText("Your plan")).toBeTruthy();
-    expect(screen.getByText("Your current plan is active")).toBeTruthy();
-    expect(within(screen.getByRole("heading", { name: "Max", level: 2 }).closest("article") ?? document.body).getByRole("link", { name: "Manage plan" }).getAttribute("href")).toBe("/billing");
-    expect(screen.queryByRole("button", { name: /Upgrade to/ })).toBeNull();
-    expect(screen.getByText("9 credits")).toBeTruthy();
-    expect(screen.getByText("3 of 12")).toBeTruthy();
-    expect(screen.getByText(/Your plan adds 10 each cycle\./)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel renewal" }));
-    fireEvent.click(screen.getByRole("button", { name: "Yes, cancel renewal" }));
-    expect(await screen.findByText("Renewal is off")).toBeTruthy();
-    expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/subscription-cancel", expect.objectContaining({ method: "POST" }));
-  });
-
-  it("shows the payment-pending return without plan cards", () => {
-    window.history.pushState({}, "", "/plans?payment=pending");
-    stub(free());
-    render(<Plans />);
-    expect(screen.getByRole("heading", { name: "We’re activating your monthly credits." })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /View my requests/ }).getAttribute("href")).toBe("/requests");
-    expect(screen.queryByText("Choose how much help you need")).toBeNull();
+    expect(screen.getByText("NO SUBSCRIPTION NEEDED")).toBeTruthy();
+    expect(screen.queryByText("YOUR BALANCE")).toBeNull();
+    expect(screen.queryByLabelText("Your usage this cycle")).toBeNull();
   });
 });

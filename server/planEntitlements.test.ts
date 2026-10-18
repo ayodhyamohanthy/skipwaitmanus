@@ -49,34 +49,23 @@ describe("plan entitlement resolver (Oct 14 2026 pricing decision, 19_plans comp
     for (const reserved of ["land_100", "land_200", "land_500"]) expect(resolve(paid(reserved))).toMatchObject({ plan: "free", assistants: false, paidThrough: null });
   });
 
-  it("grandfathers legacy Pro at least to Start and never below what Pro gives today", () => {
-    expect(resolve(paid("pro"))).toMatchObject({ plan: "pro", planLabel: "Pro", tier: "start", legacy: true, openRequests: 10, creditsPerMonth: 10, savedAlerts: null, showcase: { pieces: LEGACY_SHOWCASE_PIECES, pins: 3 }, assistants: false });
-  });
-
-  it("grandfathers legacy Max at least to Momentum and keeps its assistant access", () => {
-    expect(resolve(paid("max"))).toMatchObject({ plan: "max", planLabel: "Max", tier: "momentum", legacy: true, openRequests: 30, creditsPerMonth: 36, showcase: { pieces: null, pins: 6 }, customLink: true, assistants: true });
-  });
-
-  it("legacy plans are never weaker than the tier they map to", () => {
-    const pairs = [["pro", "start"], ["max", "momentum"]] as const;
-    for (const [legacy, tier] of pairs) {
-      const a = resolve(paid(legacy));
-      const b = resolve(paid(tier));
-      expect(a.openRequests).toBeGreaterThanOrEqual(b.openRequests);
-      expect(a.creditsPerMonth).toBeGreaterThanOrEqual(b.creditsPerMonth);
-      expect(a.showcase.pins).toBeGreaterThanOrEqual(b.showcase.pins);
-      expect(a.showcase.pieces === null || (b.showcase.pieces !== null && a.showcase.pieces >= b.showcase.pieces)).toBe(true);
-      expect(a.assistants || !b.assistants).toBe(true);
+  // D-067 (owner, Oct 18 2026): Pro/Max are removed with no grandfathering. A
+  // wallet still marked pro/max reads as Free — no label, no perk, no term — even
+  // while the provider still reports it active, because nothing can bill it again.
+  it("a stored Pro or Max wallet reads as Free, with no grandfathering left", () => {
+    for (const legacy of ["pro", "max"]) {
+      expect(resolve(paid(legacy))).toMatchObject({ plan: "free", planLabel: "Free", tier: "free", legacy: false, openRequests: 3, creditsPerMonth: 3, assistants: false, paidThrough: null });
+      expect(resolve(paid(legacy, { subscriptionStatus: "non_renewing" })).plan).toBe("free");
     }
   });
 
   it("a paid plan counts only while billing inside its term (JS clock)", () => {
-    expect(isPaidPlanActive(paid("max"), NOW)).toBe(true);
-    expect(resolve(paid("max", { subscriptionStatus: "non_renewing" })).plan).toBe("max");
-    expect(resolve(paid("max", { subscriptionStatus: "cancelled" })).plan).toBe("free");
-    expect(resolve(paid("max", { subscriptionStatus: null })).plan).toBe("free");
-    expect(resolve(paid("max", { subscriptionCurrentTermEnd: null })).plan).toBe("free");
-    expect(resolve(paid("max", { subscriptionCurrentTermEnd: NOW })).plan).toBe("free");
+    expect(isPaidPlanActive(paid("momentum"), NOW)).toBe(true);
+    expect(resolve(paid("momentum", { subscriptionStatus: "non_renewing" })).plan).toBe("momentum");
+    expect(resolve(paid("momentum", { subscriptionStatus: "cancelled" })).plan).toBe("free");
+    expect(resolve(paid("momentum", { subscriptionStatus: null })).plan).toBe("free");
+    expect(resolve(paid("momentum", { subscriptionCurrentTermEnd: null })).plan).toBe("free");
+    expect(resolve(paid("momentum", { subscriptionCurrentTermEnd: NOW })).plan).toBe("free");
     expect(resolve(paid("land_sprint", { subscriptionCurrentTermEnd: new Date(NOW.getTime() - 1) })).assistants).toBe(false);
   });
 

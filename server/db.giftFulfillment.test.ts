@@ -110,7 +110,9 @@ describe("gift subscription fulfillment", () => {
     const credited = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker", currentTermStart: new Date("2026-10-01T00:00:00.000Z"), currentTermEnd: new Date("2026-11-01T00:00:00.000Z") });
     expect(credited.status).toBe("credited");
     expect(wallets).toHaveLength(1);
-    expect(wallets[0]).toMatchObject({ userId: 7, role: "job_seeker", plan: "pro", subscriptionId: "sub_gift_1", monthlyAllowance: 10, monthlyCreditsRemaining: 10 });
+    // D-067: a historic gift no longer grants a paid plan, so the wallet stays Free
+    // and is topped up with the Free allowance; the gift row keeps its own plan id.
+    expect(wallets[0]).toMatchObject({ userId: 7, role: "job_seeker", plan: "free", subscriptionId: "sub_gift_1", monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
     // The gifted term's credits are a ledger grant like a paid activation's (shared/creditLedger.ts).
     expect(ledgerRows).toEqual([expect.objectContaining({ userId: 7, role: "job_seeker", kind: "plan_grant", tokenCount: 10, source: "monthly_allowance", sourceCycleKey: "2026-10" })]);
     const replay = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker" });
@@ -147,7 +149,7 @@ describe("gift subscription fulfillment", () => {
   });
 
   it("parks a conflicting active plan instead of overwriting", async () => {
-    wallets.push({ id: 1, userId: 7, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 30, monthlyAllowance: 30, monthlyCycleKey: "2026-10", plan: "max", subscriptionId: "sub_self_max", subscriptionStatus: "active" });
+    wallets.push({ id: 1, userId: 7, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 30, monthlyAllowance: 30, monthlyCycleKey: "2026-10", plan: "land_focus", subscriptionId: "sub_self_land", subscriptionStatus: "active" });
     await recordGiftProviderEvent({ ...claimed, plan: "pro", currency: "USD", amount: 700 });
     const result = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker" });
     expect(result.status).toBe("conflict");

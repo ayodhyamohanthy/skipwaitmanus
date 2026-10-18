@@ -14,18 +14,15 @@
  * while it runs (trial credits are a ledger grant, not a plan cycle). It never
  * lowers what a paid plan gives.
  *
- * Legacy Pro and Max subscribers are grandfathered (owner decision, Oct 9 2026):
- * they keep their Pro/Max label and billing, receive at least the entitlements
- * of Start (Pro) / Momentum (Max), never fewer open asks than the monthly
- * requests they pay for, never fewer showcase pieces than the pre-kit cap, and
- * Max keeps assistant access.
+ * D-067 (owner, Oct 18 2026): Pro/Max are removed completely — no users, no
+ * grandfathering. History stays readable with no destructive migration: a
+ * stored pro/max wallet reads as Free, exactly like an unknown id.
  */
 import { z } from "zod";
 import { FREE_ALERT_LIMIT } from "./alerts";
-import { CATALOG_PLANS, CATALOG_PLAN_IDS, FREE_PLAN, LEGACY_PLAN_MAP, REVERSE_TRIAL, catalogPlanById, planDisplayName, tierAtLeast, type CatalogPlan, type CatalogTier } from "./planCatalog";
-import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan } from "./subscriptionPlans";
+import { CATALOG_PLANS, CATALOG_PLAN_IDS, FREE_PLAN, REVERSE_TRIAL, catalogPlanById, planDisplayName, tierAtLeast, type CatalogPlan, type CatalogTier } from "./planCatalog";
 
-export const ENTITLED_PLAN_IDS = ["free", ...CATALOG_PLAN_IDS, "pro", "max"] as const;
+export const ENTITLED_PLAN_IDS = ["free", ...CATALOG_PLAN_IDS] as const;
 export type EntitledPlanId = (typeof ENTITLED_PLAN_IDS)[number];
 
 export const CATALOG_TIERS = ["free", "keep_warm", "start", "momentum", "land"] as const satisfies readonly CatalogTier[];
@@ -52,8 +49,6 @@ export const SIGNATURE_TOOL_INCLUDED_FROM: Readonly<Record<SignatureToolId, Excl
 
 /** Abuse ceiling behind an "unlimited" showcase. Never shown as a plan number. */
 export const SHOWCASE_HARD_CAP = 200;
-/** The showcase cap every account had before the kit tiers; grandfathered Pro/Max never drop below it. */
-export const LEGACY_SHOWCASE_PIECES = 20;
 
 const isoTimestamp = z.iso.datetime();
 
@@ -150,31 +145,13 @@ function fromCatalog(plan: CatalogPlan): PlanEntitlements {
   };
 }
 
-/** Grandfathering: the mapped tier, but never below what the legacy plan gives today. */
-function fromLegacy(plan: PaidSubscriptionPlan): PlanEntitlements {
-  const sold = SUBSCRIPTION_PLANS[plan];
-  const mapped = CATALOG_PLANS.find(candidate => candidate.id === LEGACY_PLAN_MAP[plan]);
-  const base = fromCatalog(mapped ?? FREE_PLAN);
-  return {
-    ...base,
-    plan,
-    planLabel: sold.label,
-    legacy: true,
-    openRequests: Math.max(base.openRequests, sold.monthlyAllowance),
-    creditsPerMonth: Math.max(base.creditsPerMonth, sold.monthlyAllowance),
-    showcase: { pieces: base.showcase.pieces === null ? null : Math.max(base.showcase.pieces, LEGACY_SHOWCASE_PIECES), pins: base.showcase.pins },
-    // Connecting an assistant is part of what Max sells today, so Max keeps it.
-    assistants: base.assistants || plan === "max",
-  };
-}
-
 /**
  * What a plan id includes, without the billing check: the credit ledger reads
  * the rules of the plan that granted a cycle's credits after that plan's term
- * has ended. Unknown ids (and the reserved pre-decision Land ids) read as Free.
+ * has ended. D-067: stored pro/max wallets read as Free. Unknown ids (and the
+ * reserved pre-decision Land ids) read as Free.
  */
 export function planEntitlementsFor(plan: string): PlanEntitlements {
-  if (plan === "pro" || plan === "max") return fromLegacy(plan);
   const catalog = CATALOG_PLANS.find(candidate => candidate.id === plan);
   return fromCatalog(catalog ?? FREE_PLAN);
 }

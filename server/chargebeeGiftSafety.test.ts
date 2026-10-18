@@ -74,7 +74,10 @@ describe("gift event safety", () => {
       },
     });
     expect(response.status).toBe(200);
-    expect(applySubscriptionEvent).toHaveBeenCalledWith(expect.objectContaining({ subscriptionId: "sub_gifted_1", plan: "pro" }));
+    // D-067 retired the Pro price, so the event still reaches the durable layer
+    // but carries no plan; the wallet layer decides what a historic one means.
+    expect(applySubscriptionEvent).toHaveBeenCalledWith(expect.objectContaining({ subscriptionId: "sub_gifted_1", itemPriceId: "skipwait_pro_monthly-USD" }));
+    expect(applySubscriptionEvent.mock.calls[0][0].plan).toBeUndefined();
     expect(fulfillPayment).not.toHaveBeenCalled();
   });
 

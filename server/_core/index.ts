@@ -70,7 +70,6 @@ import { sendReferrerReviewEmail } from "../referrerReviewEmail";
 import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
 import { sendTransactionalEmail } from "../emailDelivery";
 import { workEmailOtpService } from "../workEmailOtp";
-import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { createWorkosAuthRoutesRegistrar, currentWorkosSessionId, configuredWorkosClientId, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
@@ -251,11 +250,11 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerPaymentRoutes(app, {
     resolveIdentity,
     record: db.recordOperationalActivity,
-    planPricing: (planId, tokens) => {
-      void tokens;
-      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-      if (!plan) return undefined;
-      return { inrAmount: plan.prices.INR.amount / 100, usdAmount: plan.prices.USD.amount / 100 };
+    planPricing: () => {
+      // D-067 (owner, Oct 18 2026): Pro/Max are removed, so no plan has a price
+      // to quote here. Both direct-provider routes are blocked before this is
+      // read (server/payments.ts); it stays as the required dep shape only.
+      return undefined;
     },
   });
   registerAdminBillingCatalogRoutes(app, { resolveIdentity });
@@ -269,7 +268,6 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,
     applySubscriptionEvent: db.applyChargebeeSubscriptionEvent,
     recordGiftEvent: db.recordGiftProviderEvent,
-    updateGiftPlan: db.updateGiftPlan,
     resolveGiftRecipient: db.resolveGiftRecipient,
     fulfillGift: db.fulfillGiftSubscription,
     listBuyerGifts: db.listBuyerGifts,

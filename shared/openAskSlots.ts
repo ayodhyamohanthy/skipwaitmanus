@@ -49,10 +49,10 @@ export const SLOT_NUDGE_FLOOR_TIER: CatalogTier = "start";
 
 /**
  * Catalog plans a person can actually buy today. The nudge only ever names a
- * plan on this list, so it never points at a pass /plans does not sell yet
- * (until the pass item prices exist /plans sells Pro and Max only). Add an id
- * here in the same change that puts that plan on sale; empty means the nudge
- * names no plan and shows no CTA.
+ * plan on this list, so it never points at a pass /plans does not sell yet.
+ * D-067 (owner, Oct 18 2026) removed Pro/Max, so /plans currently sells no plan
+ * at all — only credits — and this list is empty. Add an id here in the same
+ * change that puts that plan on sale.
  */
 export const SLOT_NUDGE_SELLABLE_PLAN_IDS: readonly string[] = [];
 

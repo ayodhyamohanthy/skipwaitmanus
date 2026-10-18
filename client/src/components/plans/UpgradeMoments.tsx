@@ -1,34 +1,29 @@
 // Kit v4 "Upgrade moments" (UPGRADE_NUDGES.md), shown only for a limit this
-// account has really hit: every open slot in use, a credit balance spent down
-// to 0, or plan credits rolling off within 7 days. Each card is derived from
-// the signed-in account's own credit summary; nothing renders when no limit applies.
+// account has really hit: every open slot in use, or a credit balance spent
+// down to 0. Each card is derived from the signed-in account's own credit
+// summary; nothing renders when no limit applies.
+//
+// D-067 (owner, Oct 18 2026) removed Pro/Max, so a moment can no longer point at
+// a plan to buy. It points at the ask it unblocks or at the credits on sale.
 import { useState } from "react";
 import { Bell } from "lucide-react";
 import { Link } from "wouter";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
-import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan } from "@shared/subscriptionPlans";
-import { kitDate } from "./format";
-import { hasActivePaidPlan, nextPlanUp, openRequestsLabel, planLimits, type CreditSummary } from "./planCatalog";
+import type { CreditSummary } from "./billingApi";
 
-type Action = { label: string; href: string } | { label: string; onClick: () => void };
+type Action = { label: string; href: string };
 export type Moment = { id: string; trigger: string; title: string; copy: string; cta: Action; alt: Action | "dismiss" };
 
-const DAY_MS = 86_400_000;
-const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
-
-export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: string, onSeePlan: (plan: PaidSubscriptionPlan) => void): Moment[] {
+export function upgradeMoments(summary: CreditSummary, creditsHref: string): Moment[] {
   const moments: Moment[] = [];
-  const next = nextPlanUp(summary.plan);
-  // Live checkout cannot switch an active subscription, so only Free accounts are pointed at a plan.
-  const nextPlan = next && !hasActivePaidPlan(summary) ? { id: next, label: SUBSCRIPTION_PLANS[next].label, ...planLimits(next) } : null;
   const { slots, ledger } = summary;
   if (slots?.full && slots.cap !== null) {
     moments.push({
       id: "slots",
       trigger: "All open slots in use",
       title: `Your ${slots.cap} requests are all open`,
-      copy: `Wait for an answer to free a slot${nextPlan ? `, or move to ${nextPlan.label} for ${openRequestsLabel(nextPlan.openRequests)} open requests` : ""}. Queue position stays equal either way.`,
-      cta: nextPlan ? { label: `See ${nextPlan.label}`, onClick: () => onSeePlan(nextPlan.id) } : { label: "View my requests", href: "/requests" },
+      copy: "Wait for an answer to free a slot. Queue position stays equal either way.",
+      cta: { label: "View my requests", href: "/requests" },
       alt: "dismiss",
     });
   }
@@ -38,20 +33,8 @@ export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: s
       id: "credits",
       trigger: "Credit balance reaches 0",
       title: "You're out of credits",
-      copy: nextPlan ? `Get ${nextPlan.creditsPerMonth} credits every month with ${nextPlan.label}.` : "Your credits renew with your plan each cycle.",
-      cta: CREDIT_PACKS_ON_SALE ? { label: "Add credits", href: creditsHref } : { label: "Compare plans", href: "#compare" },
-      alt: CREDIT_PACKS_ON_SALE ? { label: "Compare plans", href: "#compare" } : "dismiss",
-    });
-  }
-  const expiring = ledger?.planCreditsExpiringSoon;
-  const daysLeft = expiring ? Math.max(1, Math.ceil((Date.parse(expiring.expiresAt) - now.getTime()) / DAY_MS)) : Number.NaN;
-  if (expiring && Number.isFinite(daysLeft)) {
-    moments.push({
-      id: "expiring",
-      trigger: "Plan credits about to roll off",
-      title: `${plural(expiring.credits, "credit")} expire${expiring.credits === 1 ? "s" : ""} in ${plural(daysLeft, "day")}`,
-      copy: `Unused plan credits roll off on ${kitDate(expiring.expiresAt) ?? "that date"}. They are always spent before credits you buy.`,
-      cta: { label: "Compare plans", href: "#compare" },
+      copy: CREDIT_PACKS_ON_SALE ? "Buy credits one at a time; they never expire." : "Your free credits reset at the start of next month.",
+      cta: CREDIT_PACKS_ON_SALE ? { label: "Add credits", href: creditsHref } : { label: "View my requests", href: "/requests" },
       alt: "dismiss",
     });
   }
@@ -59,8 +42,7 @@ export function upgradeMoments(summary: CreditSummary, now: Date, creditsHref: s
 }
 
 function ActionLink({ action, className }: { action: Action; className: string }) {
-  if ("href" in action) return action.href.startsWith("#") ? <a href={action.href} className={className}>{action.label}</a> : <Link href={action.href} className={className}>{action.label}</Link>;
-  return <button type="button" className={className} onClick={action.onClick}>{action.label}</button>;
+  return action.href.startsWith("#") ? <a href={action.href} className={className}>{action.label}</a> : <Link href={action.href} className={className}>{action.label}</Link>;
 }
 
 export function UpgradeMoments({ moments }: { moments: Moment[] }) {

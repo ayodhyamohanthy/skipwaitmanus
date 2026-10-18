@@ -36,38 +36,22 @@ const giftClaimedPayload = (gift: Record<string, unknown>) => ({
   content: { gift },
 });
 
-describe("gift checkout endpoint", () => {
-  it("refuses every gift checkout while GIFT_CHECKOUT_ENABLED is not true", async () => {
-    vi.stubEnv("GIFT_CHECKOUT_ENABLED", "");
+// D-067 (owner, Oct 18 2026): gifting a Pro/Max subscription is retired. No new
+// gift checkout can start, and a historic gift only settles when its own row
+// already carries the plan it was sold with.
+describe("gift checkout is retired", () => {
+  it("answers 410 with the retired code and never calls a provider", async () => {
     const createGiftCheckout = vi.fn();
     const response = await request(appFor({ createGiftCheckout })).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
-    expect(response.status).toBe(503);
+    expect(response.status).toBe(410);
+    expect(response.body).toMatchObject({ code: "gift_retired" });
     expect(createGiftCheckout).not.toHaveBeenCalled();
   });
 
-  it("requires sign-in and a valid plan on a supported route", async () => {
-    const app = appFor({ resolveIdentity: async () => undefined });
-    expect((await request(app).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" })).status).toBe(401);
-    const authed = appFor();
-    expect((await request(authed).post("/api/chargebee/gift-checkout").send({ plan: "free", currency: "USD", billingCountry: "INTL" })).status).toBe(400);
-    expect((await request(authed).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "IN" })).status).toBe(400);
-  });
-
-  it("starts a gift checkout bound to the buyer and never to a receiver", async () => {
-    const createGiftCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/gift", hostedPageId: "hp_gift_7" }));
-    const app = appFor({ createGiftCheckout });
-    const response = await request(app).post("/api/chargebee/gift-checkout").send({ plan: "max", currency: "INR", billingCountry: "IN" });
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ checkoutUrl: "https://checkout.example/gift", hostedPageId: "hp_gift_7" });
-    expect(createGiftCheckout).toHaveBeenCalledWith(expect.objectContaining({ plan: "max", currency: "INR", buyerUserId: 7 }));
-    const form = createGiftCheckout.mock.calls[0][0] as Record<string, unknown>;
-    expect(form).not.toHaveProperty("receiverEmail");
-  });
-
-  it("fails closed when the provider is not configured", async () => {
-    const app = appFor({ createGiftCheckout: async () => { throw new Error("Chargebee API key is not configured"); } });
-    const response = await request(app).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
-    expect(response.status).toBe(503);
+  it("answers 410 before sign-in and whatever the body says", async () => {
+    const signedOut = appFor({ resolveIdentity: async () => undefined });
+    expect((await request(signedOut).post("/api/chargebee/gift-checkout").send({ plan: "max", currency: "INR", billingCountry: "IN" })).status).toBe(410);
+    expect((await request(signedOut).post("/api/chargebee/gift-checkout").send({})).status).toBe(410);
   });
 });
 
@@ -100,21 +84,15 @@ describe("gift mine and claim endpoints", () => {
     expect((await request(badBody).post("/api/chargebee/gifts/claim").send({})).status).toBe(400);
   });
 
-  it("enriches a plan-less gift from the provider before claiming", async () => {
-    let attempts = 0;
-    const claimGift = vi.fn(async () => {
-      attempts += 1;
-      if (attempts === 1) throw new Error("This gift is not ready to claim yet");
-      return { status: "credited" };
-    });
-    const listClaimableGifts = vi.fn(async () => [{ giftId: "gift_enrich", plan: null, subscriptionId: "sub_enrich" }]);
-    const retrieveGiftPlan = vi.fn(async () => ({ subscriptionId: "sub_enrich", plan: "pro" as const, currency: "USD" as const }));
-    const updateGiftPlan = vi.fn(async () => ({}));
-    const app = appFor({ claimGift, listClaimableGifts, retrieveGiftPlan, updateGiftPlan });
+  it("answers the retired code for a plan-less historic gift instead of retrying forever", async () => {
+    // The provider re-read that used to fill a missing plan needed a Pro/Max item
+    // price that D-067 deleted, so this can never become claimable.
+    const claimGift = vi.fn(async () => { throw new Error("This gift is not ready to claim yet"); });
+    const app = appFor({ claimGift });
     const response = await request(app).post("/api/chargebee/gifts/claim").send({ giftId: "gift_enrich" });
-    expect(response.status).toBe(200);
-    expect(updateGiftPlan).toHaveBeenCalledWith("gift_enrich", expect.objectContaining({ plan: "pro" }));
-    expect(attempts).toBe(2);
+    expect(response.status).toBe(410);
+    expect(response.body).toMatchObject({ code: "gift_retired" });
+    expect(claimGift).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -132,16 +110,25 @@ describe("gift webhook branch", () => {
     expect(fulfillGift).not.toHaveBeenCalled();
   });
 
-  it("credits a claimed gift to its resolved recipient", async () => {
-    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_1", fulfillmentStatus: "pending", plan: null, currency: null }));
-    const retrieveGiftPlan = vi.fn(async () => ({ subscriptionId: "sub_g1", plan: "pro" as const, currency: "USD" as const }));
-    const updateGiftPlan = vi.fn(async () => ({}));
+  it("credits a claimed gift whose own row already carries the plan", async () => {
+    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_1", fulfillmentStatus: "pending", plan: "pro", currency: "USD" }));
     const resolveGiftRecipient = vi.fn(async () => ({ status: "resolved", userId: 7 }));
     const fulfillGift = vi.fn(async () => ({ status: "credited" }));
-    const app = appFor({ recordGiftEvent, retrieveGiftPlan, updateGiftPlan, resolveGiftRecipient, fulfillGift });
+    const app = appFor({ recordGiftEvent, resolveGiftRecipient, fulfillGift });
     const response = await authed(app, giftClaimedPayload({ id: "gift_1", status: "claimed", gifter: { customer_id: "skipwait-u9" }, gift_receiver: { email: "james@user.com", subscription_id: "sub_g1" } }));
     expect(response.status).toBe(200);
     expect(fulfillGift).toHaveBeenCalledWith(expect.objectContaining({ giftId: "gift_1", subscriptionId: "sub_g1", plan: "pro", recipientUserId: 7, role: "job_seeker" }));
+  });
+
+  it("settles a claimed gift with no recorded plan as history and moves no credit", async () => {
+    const recordGiftEvent = vi.fn(async () => ({ giftId: "gift_1", fulfillmentStatus: "pending", plan: null, currency: null }));
+    const resolveGiftRecipient = vi.fn(async () => ({ status: "resolved", userId: 7 }));
+    const fulfillGift = vi.fn();
+    const app = appFor({ recordGiftEvent, resolveGiftRecipient, fulfillGift });
+    const response = await authed(app, giftClaimedPayload({ id: "gift_1", status: "claimed", gifter: { customer_id: "skipwait-u9" }, gift_receiver: { email: "james@user.com", subscription_id: "sub_g1" } }));
+    expect(response.status).toBe(200);
+    expect(fulfillGift).not.toHaveBeenCalled();
+    expect(resolveGiftRecipient).not.toHaveBeenCalled();
   });
 
   it("holds an unresolvable claim as pending without crediting", async () => {

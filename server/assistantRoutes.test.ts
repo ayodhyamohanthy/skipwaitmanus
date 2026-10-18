@@ -58,11 +58,12 @@ describe("assistant access routes", () => {
   });
 
   it("reports the plan entitlement honestly and never caches it", async () => {
-    const app = setup({ getAssistantAccess: async () => ({ plan: "pro", planLabel: "Pro", tier: "start", hasAccess: false }) });
-    const pro = await authed(app).get("/api/assistants/access");
-    expect(pro.body).toEqual({ plan: "pro", planLabel: "Pro", tier: "start", hasAccess: false });
-    expect(pro.headers["cache-control"]).toBe("private, no-store");
-    expect(assistantAccessSchema.safeParse(pro.body).success).toBe(true);
+    // D-067 removed Pro/Max, so the no-access case is a Free account.
+    const app = setup({ getAssistantAccess: async () => ({ plan: "free", planLabel: "Free", tier: "free", hasAccess: false }) });
+    const free = await authed(app).get("/api/assistants/access");
+    expect(free.body).toEqual({ plan: "free", planLabel: "Free", tier: "free", hasAccess: false });
+    expect(free.headers["cache-control"]).toBe("private, no-store");
+    expect(assistantAccessSchema.safeParse(free.body).success).toBe(true);
     const paid = setup({ getAssistantAccess: async () => ({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true }) });
     expect((await authed(paid).get("/api/assistants/access")).body).toEqual({ plan: "land_focus", planLabel: "Land Focus", tier: "land", hasAccess: true });
   });

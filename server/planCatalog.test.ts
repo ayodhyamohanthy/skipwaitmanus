@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CATALOG_PLANS, CATALOG_PLAN_IDS, CREDIT_PACKS, CREDIT_TOOLS, FREE_PLAN, HUMAN_SESSIONS, MAX_OPEN_ASKS_PER_COMPANY, REVERSE_TRIAL, catalogItemPriceId, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, creditToolCost, legacyPlanTarget, planDisplayName, planIntervals, tierAtLeast, type CatalogCurrency, type CatalogInterval } from "../shared/planCatalog";
+import { CATALOG_PLANS, CATALOG_PLAN_IDS, CREDIT_PACKS, CREDIT_TOOLS, FREE_PLAN, HUMAN_SESSIONS, MAX_OPEN_ASKS_PER_COMPANY, REVERSE_TRIAL, catalogItemPriceId, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, creditToolCost, planDisplayName, planIntervals, tierAtLeast, type CatalogCurrency, type CatalogInterval } from "../shared/planCatalog";
 
 const plan = (id: string) => catalogPlanById(id)!;
 const price = (id: string, interval: CatalogInterval, currency: CatalogCurrency) => plan(id).prices[interval]?.[currency];
@@ -145,9 +145,6 @@ describe("structure", () => {
     expect(tierAtLeast("keep_warm", "free")).toBe(true);
   });
 
-  it("legacy subscribers map by rank: Pro to Start, Max to Momentum", () => {
-    expect(legacyPlanTarget("pro")?.id).toBe("start");
-    expect(legacyPlanTarget("max")?.id).toBe("momentum");
-    expect(legacyPlanTarget("free")).toBeUndefined();
-  });
+  // D-067 (owner, Oct 18 2026) deleted the Pro/Max mapping outright, so there is
+  // no legacy target left to resolve: `legacyPlanTarget` is gone, not stubbed.
 });

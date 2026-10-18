@@ -2,7 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
-import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import { applyChargebeeSubscriptionEvent } from "./db";
 
@@ -119,7 +118,7 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
     const otherWallet = { ...wallets[0], id: 2, role: role === "job_seeker" ? "referrer" as const : "job_seeker" as const, balance: 50 };
     wallets.push(otherWallet);
     const result = await applyChargebeeSubscriptionEvent(input);
-    expect(result).toMatchObject({ status: "applied", userId: 7, role, creditSummary: { purchasedCreditsRemaining: 12, monthlyCreditsRemaining: SUBSCRIPTION_PLANS.pro.monthlyAllowance, totalAvailable: 12 + SUBSCRIPTION_PLANS.pro.monthlyAllowance } });
+    expect(result).toMatchObject({ status: "applied", userId: 7, role, creditSummary: { purchasedCreditsRemaining: 12, monthlyCreditsRemaining: planEntitlementsFor("pro").creditsPerMonth, totalAvailable: 12 + planEntitlementsFor("pro").creditsPerMonth } });
     expect(wallets).toHaveLength(2);
     expect(wallets[0]).toMatchObject({ id: 1, userId: 7, role, plan: "pro", balance: 12, subscriptionId: input.subscriptionId });
     expect(wallets[1]).toEqual(otherWallet);
@@ -146,7 +145,7 @@ describe("applyChargebeeSubscriptionEvent wallet binding", () => {
   it("checks resource versions only for the same subscription", async () => {
     Object.assign(wallets[0], { subscriptionId: "subscription_cancelled", subscriptionStatus: "cancelled", subscriptionResourceVersion: 999, subscriptionCurrentTermStart: termStart, subscriptionCurrentTermEnd: termEnd });
     expect(await applyChargebeeSubscriptionEvent(input)).toMatchObject({ status: "applied" });
-    expect(wallets[0]).toMatchObject({ balance: 12, subscriptionId: input.subscriptionId, subscriptionResourceVersion: 10, monthlyCreditsRemaining: SUBSCRIPTION_PLANS.pro.monthlyAllowance });
+    expect(wallets[0]).toMatchObject({ balance: 12, subscriptionId: input.subscriptionId, subscriptionResourceVersion: 10, monthlyCreditsRemaining: planEntitlementsFor("pro").creditsPerMonth });
     expect(await applyChargebeeSubscriptionEvent({ ...input, eventId: "event_stale", resourceVersion: 9 })).toEqual({ status: "stale" });
     expect(walletUpdates).toHaveBeenCalledOnce();
   });

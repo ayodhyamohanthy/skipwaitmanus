@@ -14,14 +14,15 @@ beforeEach(() => { auth.isLoaded = true; auth.isSignedIn = true; auth.openSignIn
 describe("Premium payment return recovery", () => {
   afterEach(() => { cleanup(); window.sessionStorage.clear(); vi.unstubAllGlobals(); });
 
-  // Plans keeps the same two guarantees in plans.paymentRecovery.test.tsx (kit v4 card + dialog markup).
-  it.each([{ name: "Premium", Page: Premium }])("waits for cookie auth before allowing checkout on $name", async ({ Page }) => {
+  // D-067 (owner, Oct 18 2026) removed Pro/Max, so /plans has no checkout left
+  // to recover: this file covers the credit-pack checkout on /premium only.
+  it("waits for cookie auth before allowing checkout on Premium", async () => {
     auth.isLoaded = false;
     auth.isSignedIn = false;
-    window.history.pushState({}, "", Page === Premium ? "/premium?role=referrer" : "/plans?role=referrer");
+    window.history.pushState({}, "", "/premium?role=referrer");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) });
     vi.stubGlobal("fetch", fetchMock);
-    const view = render(<Page />);
+    const view = render(<Premium />);
     const loading = screen.getByRole("button", { name: /checking sign-in/i }) as HTMLButtonElement;
     expect(loading.disabled).toBe(true);
     fireEvent.click(loading);
@@ -29,23 +30,21 @@ describe("Premium payment return recovery", () => {
     expect(fetchMock).not.toHaveBeenCalled();
     auth.isLoaded = true;
     auth.isSignedIn = true;
-    view.rerender(<Page />);
+    view.rerender(<Premium />);
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    // Plans also loads gift receipts/claimables alongside the summary.
-    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary") || String(url).includes("/api/chargebee/gifts/mine"))).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: Page === Premium ? /continue to pay/i : /choose pro/i }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(Page === Premium ? "/api/chargebee/checkout" : "/api/chargebee/subscription-checkout", expect.objectContaining({ method: "POST" })));
+    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary"))).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /continue to pay/i }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ method: "POST" })));
     expect(auth.openSignIn).not.toHaveBeenCalled();
   });
 
-  it.each([{ name: "Premium", Page: Premium }])("preserves role and selected purchase without auto-checkout on $name", async ({ Page }) => {
+  it("preserves role and selected purchase without auto-checkout on Premium", async () => {
     auth.isSignedIn = false;
-    window.history.pushState({}, "", Page === Premium ? "/premium?role=referrer&currency=USD&source=credits" : "/plans?role=referrer&currency=USD&source=credits");
+    window.history.pushState({}, "", "/premium?role=referrer&currency=USD&source=credits");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) });
     vi.stubGlobal("fetch", fetchMock);
-    const view = render(<Page />);
-    if (Page === Premium) fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "7" } });
-    else fireEvent.click(screen.getByRole("button", { name: /^Max 30/ }));
+    const view = render(<Premium />);
+    fireEvent.change(screen.getByRole("spinbutton"), { target: { value: "7" } });
     fireEvent.click(screen.getByRole("button", { name: /different billing country/i }));
     fireEvent.click(screen.getByRole("button", { name: /sign in to pay/i }));
     const destination = auth.openSignIn.mock.calls[0][0].returnTo;
@@ -53,18 +52,16 @@ describe("Premium payment return recovery", () => {
     expect(query.get("role")).toBe("referrer");
     expect(query.get("source")).toBe("credits");
     expect(query.get("currency")).toBe("INR");
-    expect(query.get(Page === Premium ? "quantity" : "plan")).toBe(Page === Premium ? "7" : "max");
+    expect(query.get("quantity")).toBe("7");
     expect(fetchMock).not.toHaveBeenCalled();
     view.unmount();
     auth.isSignedIn = true;
     window.history.pushState({}, "", destination);
-    render(<Page />);
-    if (Page === Premium) expect((screen.getByRole("spinbutton") as HTMLInputElement).value).toBe("7");
-    else expect(screen.getByRole("button", { name: /^Max 30/ }).getAttribute("aria-pressed")).toBe("true");
+    render(<Premium />);
+    expect((screen.getByRole("spinbutton") as HTMLInputElement).value).toBe("7");
     expect(screen.getByText(/Razorpay/)).toBeTruthy();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
-    // Plans also loads gift receipts/claimables alongside the summary.
-    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary") || String(url).includes("/api/chargebee/gifts/mine"))).toBe(true);
+    expect(fetchMock.mock.calls.every(([url]) => String(url).includes("/api/credits/summary"))).toBe(true);
   });
 
   it("shows credits only after the signed-in server recovery confirms a matching provider payment", async () => {
@@ -82,11 +79,12 @@ describe("Premium payment return recovery", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/chargebee/credit-recovery", expect.objectContaining({ method: "POST" }));
   });
 
-  it("uses the requested Pro and Max subscription microcopy while preserving the role-aware plans destination", async () => {
+  it("points at what a credit buys instead of a retired subscription plan", async () => {
     window.history.pushState({}, "", "/premium?role=job_seeker");
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ summary: { totalAvailable: 3 } }), { status: 200 })));
     render(<Premium />);
-    const subscriptions = await screen.findByRole("link", { name: "Or Checkout Pro and Max Subscriptions" });
-    expect(subscriptions.getAttribute("href")).toBe("/plans?role=job_seeker");
+    const plans = await screen.findByRole("link", { name: "See what a credit buys" });
+    expect(plans.getAttribute("href")).toBe("/plans?role=job_seeker");
+    expect(screen.queryByRole("link", { name: /Pro and Max/i })).toBeNull();
   });
 });

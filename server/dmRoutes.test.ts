@@ -7,11 +7,10 @@ import { decideReferrerDmGate } from "./dmReferrerGate";
 
 type TestUser = { id: number };
 
-function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiumUsers?: number[]; existingThreads?: Array<[number, number]>; recentSendCount?: number; recentRefusalCount?: number; mutualFollows?: Array<[number, number]>; verifiedReferrers?: number[]; acceptedPairs?: Array<[number, number]> } = {}) {
+function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; existingThreads?: Array<[number, number]>; recentSendCount?: number; recentRefusalCount?: number; mutualFollows?: Array<[number, number]>; verifiedReferrers?: number[]; acceptedPairs?: Array<[number, number]> } = {}) {
   const app = express();
   app.use(express.json());
   const users = overrides.users ?? [{ id: 11 }, { id: 22 }, { id: 33 }];
-  const premium = new Set(overrides.premiumUsers ?? []);
   const threads = new Set((overrides.existingThreads ?? []).map(([a, b]) => [a, b].sort((x, y) => x - y).join(":")));
   const referrers = new Set(overrides.verifiedReferrers ?? []);
   const accepted = new Set((overrides.acceptedPairs ?? []).map(([a, b]) => [a, b].sort((x, y) => x - y).join(":")));
@@ -25,7 +24,6 @@ function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiu
     sendDirectMessage: async (userId, recipientId) => ({ id: 900 + userId + recipientId, replayed:false as const }),
     dmThreadExists: async (userId, counterpartUserId) => threads.has([userId, counterpartUserId].sort((x, y) => x - y).join(":")),
     dmRecipientExists: async userId => users.some(user => user.id === userId),
-    hasActivePremiumSubscription: async userId => premium.has(userId),
     isMutualFollow: async (userA, userB) => (overrides.mutualFollows ?? []).some(([a, b]) => (a === userA && b === userB) || (a === userB && b === userA)),
     countRecentDmRefusals: async () => overrides.recentRefusalCount ?? 0,
     referrerDmGate: async (sender, recipient) => decideReferrerDmGate({ senderIsReferrer: referrers.has(sender), recipientIsReferrer: referrers.has(recipient), accepted: accepted.has([sender, recipient].sort((x, y) => x - y).join(":")) }),
@@ -34,16 +32,19 @@ function buildApp(overrides: Partial<DmRouteDeps> & { users?: TestUser[]; premiu
   return app;
 }
 
-describe("direct message paywall (X-style)", () => {
-  it("rejects a free user starting a new thread with 402 and an upgrade hint", async () => {
+// D-067 (owner, Oct 18 2026) removed the Pro/Max member-message perk, so the
+// only way into a new member conversation is a mutual follow. There is no plan
+// to buy and no 402/paywall answer left: every refusal is a rule refusal (403).
+describe("direct message member rule after D-067", () => {
+  it("refuses a new member thread with the follow rule, not a paywall", async () => {
     const response = await request(buildApp()).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hi, could you refer me?" });
-    expect(response.status).toBe(402);
-    expect(response.body.upgrade).toBe(true);
-    expect(response.body.error).toMatch(/premium feature/i);
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Direct messaging is not open yet. Follow each other to message this member." });
+    expect(response.body.upgrade).toBeUndefined();
   });
 
-  it("allows a premium member to start a thread", async () => {
-    const response = await request(buildApp({ premiumUsers: [11] })).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hi!" });
+  it("allows a member thread once both people follow each other", async () => {
+    const response = await request(buildApp({ mutualFollows: [[11, 22]] })).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "Hi!" });
     expect(response.status).toBe(201);
     expect(response.body.message.id).toBeTypeOf("number");
   });
@@ -54,28 +55,27 @@ describe("direct message paywall (X-style)", () => {
   });
 
   it("applies the gate on send for each pair the retired compose endpoint used to report", async () => {
-    const app = buildApp({ premiumUsers: [11], existingThreads: [[22, 33]] });
+    const app = buildApp({ mutualFollows: [[11, 22]], existingThreads: [[22, 33]] });
     expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000011").set("x-test-user", "11").send({ body: "Hi" })).status).toBe(201);
-    const paywalled = await request(app).post("/api/dms/threads/11").set("Idempotency-Key","dm-test-key-00000012").set("x-test-user", "33").send({ body: "Hi" });
-    expect(paywalled.status).toBe(402);
-    expect(paywalled.body.upgrade).toBe(true);
+    const refused = await request(app).post("/api/dms/threads/11").set("Idempotency-Key","dm-test-key-00000012").set("x-test-user", "33").send({ body: "Hi" });
+    expect(refused.status).toBe(403);
     expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000013").set("x-test-user", "33").send({ body: "Hi" })).status).toBe(201);
   });
 
   it("no longer serves the compose endpoint (it disclosed verified referrers without a send)", async () => {
-    const app = buildApp({ premiumUsers: [11], verifiedReferrers: [22] });
+    const app = buildApp({ verifiedReferrers: [22] });
     for (const target of [22, 33, 99, 11]) expect((await request(app).get(`/api/dms/compose/${target}`).set("x-test-user", "11")).status).toBe(404);
     expect((await request(app).get("/api/dms/compose/22")).status).toBe(404);
   });
 
   it("returns 404 for an unknown recipient and 400 for self-messaging", async () => {
-    const app = buildApp({ premiumUsers: [11] });
+    const app = buildApp();
     expect((await request(app).post("/api/dms/threads/99").set("Idempotency-Key","dm-test-key-00000002").set("x-test-user", "11").send({ body: "Hi" })).status).toBe(404);
     expect((await request(app).post("/api/dms/threads/11").set("Idempotency-Key","dm-test-key-00000003").set("x-test-user", "11").send({ body: "Hi" })).status).toBe(400);
   });
 
   it("validates the message body before anything else", async () => {
-    const app = buildApp({ premiumUsers: [11] });
+    const app = buildApp();
     expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "   " })).status).toBe(400);
     expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({ body: "x".repeat(3001) })).status).toBe(400);
     expect((await request(app).post("/api/dms/threads/22").set("Idempotency-Key","dm-test-key-00000001").set("x-test-user", "11").send({})).status).toBe(400);
@@ -180,30 +180,28 @@ describe("referrer messages open only after acceptance (D-012 item 3)", () => {
     expect(after.body.sendBlock).toBeNull();
   });
 
-  it("invariant: a seeker's plan, follows or thread never change a referrer pair's outcome", async () => {
-    for (const accepted of [false, true]) for (const seekerPaid of [false, true]) for (const referrerPaid of [false, true]) for (const mutual of [false, true]) for (const thread of [false, true]) {
-      const app = await served({ verifiedReferrers: [REFERRER], acceptedPairs: accepted ? [[SEEKER, REFERRER]] : [], premiumUsers: [...(seekerPaid ? [SEEKER] : []), ...(referrerPaid ? [REFERRER] : [])], mutualFollows: mutual ? [[SEEKER, REFERRER]] : [], existingThreads: thread ? [[SEEKER, REFERRER]] : [], listDmThread: async (_userId, counterpartUserId) => (thread ? { counterpartUserId, counterpartLabel: "Referrer · acme.com", messages: [] } : undefined) });
+  it("invariant: follows or a thread never change a referrer pair's outcome", async () => {
+    for (const accepted of [false, true]) for (const mutual of [false, true]) for (const thread of [false, true]) {
+      const app = await served({ verifiedReferrers: [REFERRER], acceptedPairs: accepted ? [[SEEKER, REFERRER]] : [], mutualFollows: mutual ? [[SEEKER, REFERRER]] : [], existingThreads: thread ? [[SEEKER, REFERRER]] : [], listDmThread: async (_userId, counterpartUserId) => (thread ? { counterpartUserId, counterpartLabel: "Referrer · acme.com", messages: [] } : undefined) });
       const expected = accepted ? 201 : 403;
-      expect((await send(app, SEEKER, REFERRER)).status, JSON.stringify({ accepted, seekerPaid, referrerPaid, mutual, thread })).toBe(expected);
+      expect((await send(app, SEEKER, REFERRER)).status, JSON.stringify({ accepted, mutual, thread })).toBe(expected);
       expect((await send(app, REFERRER, SEEKER, 2)).status).toBe(expected);
       if (thread) expect((await request(app).get(`/api/dms/threads/${REFERRER}`).set("x-test-user", String(SEEKER))).body.sendBlock === null).toBe(accepted);
     }
   });
 
   it("keeps the member rules for two members who are not verified referrers", async () => {
-    const paid = await served({ verifiedReferrers: [REFERRER], premiumUsers: [SEEKER] });
-    expect((await send(paid, SEEKER, MEMBER)).status).toBe(201);
     const following = await served({ verifiedReferrers: [REFERRER], mutualFollows: [[SEEKER, MEMBER]] });
     expect((await send(following, SEEKER, MEMBER)).status).toBe(201);
     const neither = await send(await served({ verifiedReferrers: [REFERRER] }), SEEKER, MEMBER);
-    expect(neither.status).toBe(402);
-    expect(neither.body).toMatchObject({ upgrade: true });
+    expect(neither.status).toBe(403);
+    expect(neither.body).toEqual({ error: "Direct messaging is not open yet. Follow each other to message this member." });
     expect(neither.body.error).not.toMatch(/referrer/i);
   });
 
   it("fails closed when the gate cannot be read, and a missing thread stays a 404 without reading it", async () => {
     let reads = 0, sends = 0;
-    const app = await served({ referrerDmGate: async () => { reads += 1; throw new Error("Database unavailable"); }, premiumUsers: [SEEKER], sendDirectMessage: async () => { sends += 1; return { id: 1, replayed: false as const }; } });
+    const app = await served({ referrerDmGate: async () => { reads += 1; throw new Error("Database unavailable"); }, sendDirectMessage: async () => { sends += 1; return { id: 1, replayed: false as const }; } });
     expect((await request(app).get(`/api/dms/threads/${REFERRER}`).set("x-test-user", String(SEEKER))).status).toBe(404);
     expect(reads).toBe(0);
     expect((await send(app, SEEKER, REFERRER)).status).toBe(500);
@@ -226,10 +224,16 @@ describe("hourly limit on refused sends (D-012 item 3 review: no referrer oracle
   type Activity = Parameters<NonNullable<DmRouteDeps["recordActivity"]>>[0];
   const send = (app: ReturnType<typeof buildApp>, from: number, to: number, n: number) => request(app).post(`/api/dms/threads/${to}`).set("Idempotency-Key", `dm-refusal-key-${String(n).padStart(8, "0")}`).set("x-test-user", String(from)).send({ body: "Hello" });
 
-  it("tells referrer and member refusals apart below the limit", async () => {
+  it("answers both refusal kinds with the same status below the limit, so no plan is implied", async () => {
     const app = buildApp({ verifiedReferrers: [REFERRER], recentRefusalCount: 9 });
-    expect((await send(app, SEEKER, REFERRER, 1)).status).toBe(403);
-    expect((await send(app, SEEKER, MEMBER, 2)).status).toBe(402);
+    const toReferrer = await send(app, SEEKER, REFERRER, 1);
+    const toMember = await send(app, SEEKER, MEMBER, 2);
+    expect(toReferrer.status).toBe(403);
+    expect(toMember.status).toBe(403);
+    // The bodies still differ (the referrer rule vs the follow rule), which is
+    // what the client renders; neither offers a purchase.
+    expect(toReferrer.body.reason).toBe("referrer_acceptance_required");
+    expect(toMember.body.upgrade).toBeUndefined();
   });
 
   it("answers every refusal with the same 429 once the sender reached the limit, whoever the recipient is", async () => {

@@ -42,9 +42,11 @@ describe("parseSubscriptionEvent over the kit price book", () => {
     expect(prices.INR).toBeGreaterThan(0);
   });
 
-  it("keeps reading grandfathered Pro and Max subscriptions as monthly", () => {
-    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_pro_monthly-INR"))).toMatchObject({ plan: "pro", interval: "monthly", currency: "INR" });
-    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_max_monthly-USD", { currency_code: "USD" }))).toMatchObject({ plan: "max", interval: "monthly", currency: "USD" });
+  // D-067 (owner, Oct 18 2026) removed the Pro/Max monthly prices from the book,
+  // so a historic event still parses but resolves no plan and no interval.
+  it("no longer resolves the retired Pro and Max monthly prices", () => {
+    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_pro_monthly-INR"))).toMatchObject({ plan: undefined, interval: undefined, itemPriceId: "skipwait_pro_monthly-INR", currency: "INR" });
+    expect(parseSubscriptionEvent(subscriptionEvent("skipwait_max_monthly-USD", { currency_code: "USD" }))).toMatchObject({ plan: undefined, interval: undefined, itemPriceId: "skipwait_max_monthly-USD", currency: "USD" });
   });
 
   it("ignores an item price outside the price book, which the wallet then refuses", () => {

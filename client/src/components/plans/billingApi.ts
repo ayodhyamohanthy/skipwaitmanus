@@ -1,7 +1,10 @@
 // Wire contracts for the /plans and /billing screens, parsed at the edge with Zod.
-// Shapes mirror server/privateReferralRoutes.ts (credits summary, receipts) and
-// server/chargebeeRoutes.ts (gifts). Unknown fields are ignored; a payload that
-// does not parse is treated as a failed load, never as an empty account.
+// Shapes mirror server/privateReferralRoutes.ts (credits summary, receipts).
+// Unknown fields are ignored; a payload that does not parse is treated as a
+// failed load, never as an empty account.
+//
+// D-067 (owner, Oct 18 2026) removed Pro/Max and retired gift checkout, so the
+// gift payload this file used to parse has no screen left to feed.
 import { z } from "zod";
 import { creditsLedgerSchema } from "@shared/creditLedger";
 import { openAskSlotsSchema } from "@shared/openAskSlots";
@@ -38,11 +41,6 @@ export const receiptSchema = z.object({
 });
 export type Receipt = z.infer<typeof receiptSchema>;
 
-const sentGiftSchema = z.object({ giftId: z.string(), plan: nullableString, receiverEmail: nullableString, providerStatus: nullableString, fulfillmentStatus: z.string() });
-const claimableGiftSchema = z.object({ giftId: z.string(), plan: nullableString, receiverEmail: nullableString });
-export type SentGift = z.infer<typeof sentGiftSchema>;
-export type ClaimableGift = z.infer<typeof claimableGiftSchema>;
-
 export function parseSummary(payload: unknown): CreditSummary | null {
   const parsed = z.object({ summary: creditSummarySchema }).safeParse(payload);
   return parsed.success ? parsed.data.summary : null;
@@ -51,11 +49,6 @@ export function parseSummary(payload: unknown): CreditSummary | null {
 export function parseReceipts(payload: unknown): Receipt[] | null {
   const parsed = z.object({ receipts: z.array(receiptSchema) }).safeParse(payload);
   return parsed.success ? parsed.data.receipts : null;
-}
-
-export function parseGifts(payload: unknown): { sent: SentGift[]; claimable: ClaimableGift[] } {
-  const parsed = z.object({ sent: z.array(sentGiftSchema).optional(), claimable: z.array(claimableGiftSchema).optional() }).safeParse(payload);
-  return parsed.success ? { sent: parsed.data.sent ?? [], claimable: parsed.data.claimable ?? [] } : { sent: [], claimable: [] };
 }
 
 /** A thrown fetch (offline, DNS, CORS) becomes the shared network copy; server errors keep their message. */

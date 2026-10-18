@@ -2,7 +2,6 @@ import type { Express, Request } from "express";
 import { z } from "zod";
 import { CHARGEBEE_TOKEN_PACKS } from "./chargebee";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
-import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrency } from "../shared/subscriptionPlans";
 
 /**
  * Admin billing-catalog diagnostic: GET /api/admin/billing/catalog.
@@ -18,7 +17,9 @@ import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrenc
  * - token packs send item_prices[quantity] up to 1000, so the price MUST be
  *   per_unit (Chargebee default is flat_fee — the classic misconfiguration).
  * - subscriptions always send quantity 1; their model is reported but not
- *   gated, since flat recurring plans are the normal shape there.
+ *   gated, since flat recurring plans are the normal shape there. D-067 (owner,
+ *   Oct 18 2026) removed Pro/Max, so no subscription price is checked today;
+ *   the report keeps the kind so a future kit-plan price can reuse it.
  */
 
 const itemPriceSchema = z.object({
@@ -55,12 +56,6 @@ function expectedPrices(): ExpectedPrice[] {
   const out: ExpectedPrice[] = [];
   for (const [id, pack] of Object.entries(CHARGEBEE_TOKEN_PACKS)) {
     out.push({ id, kind: "token-pack", currency: pack.currency, amount: pack.amount });
-  }
-  for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-    for (const currency of Object.keys(SUBSCRIPTION_PLANS[plan].prices) as SubscriptionCurrency[]) {
-      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-      out.push({ id: price.itemPriceId, kind: "subscription", currency, amount: price.amount });
-    }
   }
   return out;
 }

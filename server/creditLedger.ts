@@ -18,7 +18,7 @@ import { REVERSE_TRIAL } from "../shared/planCatalog";
 import { allocateSpend, buildCreditsLedger, spendableBuckets, usedInCycle, type SpendAllocation } from "../shared/creditSpend";
 import type { Carryover } from "../shared/planCatalog";
 import { planEntitlementsFor } from "../shared/planEntitlements";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 
 /** The transaction db.ts opens (drizzle(pool) without a relational schema). */
 export type LedgerTx = Parameters<Parameters<MySql2Database<Record<string, unknown>>["transaction"]>[0]>[0];
@@ -45,15 +45,15 @@ export class InsufficientCreditsError extends Error {
 
 /**
  * The credit rules of the plan that grants a cycle. Seekers follow the kit
- * plans (legacy Pro/Max grandfathered at Start/Momentum); referrer wallets keep
- * the pre-kit rules: the plan's allowance each term, Free 3 a month, no carryover.
+ * plans (D-067: stored pro/max wallets read as Free); referrer wallets keep
+ * Free 3 a month, no carryover.
  */
 export function cycleRulesFor(plan: string, role: WalletRole): CycleRules {
   if (role === "job_seeker") {
     const entitlements = planEntitlementsFor(plan);
     return { creditsPerMonth: entitlements.creditsPerMonth, carryover: entitlements.carryover };
   }
-  return { creditsPerMonth: isPaidSubscriptionPlan(plan) ? SUBSCRIPTION_PLANS[plan].monthlyAllowance : FREE_MONTHLY_ALLOWANCE, carryover: 0 };
+  return { creditsPerMonth: FREE_MONTHLY_ALLOWANCE, carryover: 0 };
 }
 
 /**

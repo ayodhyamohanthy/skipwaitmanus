@@ -202,13 +202,12 @@ export const REVERSE_TRIAL_ON_OFFER: boolean = false;
 
 // ---- Lookups ----
 
-/**
- * Grandfathered legacy subscribers. Pro and Max keep their billing and receive
- * at least the entitlements of the tier they map to (Pro: Start, Max: Momentum),
- * never fewer open requests than the monthly requests they pay for, and Max
- * keeps assistant access. The full rule lives in planEntitlements.ts.
+/** D-067 (owner, Oct 18 2026): Pro/Max are removed completely — no users, no
+ * grandfathering. `shared/subscriptionPlans.ts` keeps no paid plans; a wallet
+ * still marked pro/max reads as Free (see `planEntitlementsFor`). The DB ENUMs
+ * keep the literal members only because removing an ENUM member is not an
+ * additive migration; nothing new is ever written with them.
  */
-export const LEGACY_PLAN_MAP = { pro: "start", max: "momentum" } as const satisfies Record<string, CatalogPlanId>;
 
 /** "Land Focus", "Momentum": the tier label plus the Land level when there is one. */
 export function planDisplayName(plan: CatalogPlan): string {
@@ -244,7 +243,6 @@ export function catalogSessionItemPriceId(sessionId: HumanSessionId, currency: C
   return `skipwait_${sessionId}-${currency}`;
 }
 
-export function legacyPlanTarget(plan: unknown): CatalogPlan | undefined {
-  if (plan === "pro" || plan === "max") return catalogPlanById(LEGACY_PLAN_MAP[plan]);
-  return undefined;
-}
+/** D-067 (owner, Oct 18 2026): removed with Pro/Max. Any stored pro/max wallet
+ * reads as Free via `planEntitlementsFor`; nothing new is ever sold or written.
+ */

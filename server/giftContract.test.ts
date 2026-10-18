@@ -1,29 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   buyerUserIdFromGifter,
-  giftCheckoutRequestSchema,
   giftClaimRequestSchema,
   gifterCustomerId,
   isGiftStatus,
   normalizeGiftEmail,
 } from "@shared/giftSubscriptions";
 
+// D-067 (owner, Oct 18 2026) removed Pro/Max and retired gift checkout, so the
+// buyer request schema is gone with it. What stays is the claim contract and the
+// identity helpers the webhook branch still reads on historic rows.
 describe("gift subscription contract", () => {
-  it("accepts Pro/Max on the matching billing route", () => {
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD", billingCountry: "INTL" }).success).toBe(true);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "max", currency: "INR", billingCountry: "IN" }).success).toBe(true);
-  });
-
-  it("rejects every invalid edge and tolerates unknown fields", () => {
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "free", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD", billingCountry: "IN" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "INR", billingCountry: "INTL" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "EUR", billingCountry: "INTL" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD" }).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({}).success).toBe(false);
-    expect(giftCheckoutRequestSchema.safeParse({ plan: "pro", currency: "USD", billingCountry: "INTL", receiverEmail: "a@b.com" }).success).toBe(true);
-  });
-
   it("round-trips the gifter customer reference", () => {
     expect(buyerUserIdFromGifter(gifterCustomerId(42))).toBe(42);
     expect(buyerUserIdFromGifter("gifter")).toBeUndefined();

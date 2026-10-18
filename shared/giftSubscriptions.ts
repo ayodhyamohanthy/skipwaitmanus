@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionCurrency } from "./subscriptionPlans";
+import type { SubscriptionCurrency } from "./subscriptionPlans";
 
 /**
  * Gift subscriptions contract (shared client/server).
  *
- * A buyer (gifter) purchases a Pro/Max subscription for a recipient through
- * Chargebee's gift checkout. The recipient claims it; only the recipient's
- * wallet is ever credited. The buyer receives a receipt and nothing else.
+ * D-067 (owner, Oct 18 2026): gifting a Pro/Max subscription is removed with
+ * the plans, so there is no buyer request to validate any more. The claim
+ * contract stays: it reads historic gift rows, which keeps history readable.
  */
 
 export const giftStatuses = ["scheduled", "unclaimed", "claimed", "expired", "cancelled"] as const;
@@ -18,17 +18,6 @@ export type GiftFulfillmentStatus = (typeof giftFulfillmentStatuses)[number];
 export function isGiftStatus(value: unknown): value is GiftStatus {
   return typeof value === "string" && (giftStatuses as readonly string[]).includes(value);
 }
-
-/** Buyer-facing request: which plan to gift, on which billing route. */
-export const giftCheckoutRequestSchema = z.object({
-  plan: z.custom<PaidSubscriptionPlan>(isPaidSubscriptionPlan, { message: "Choose Pro or Max" }),
-  currency: z.enum(["INR", "USD"]),
-  billingCountry: z.enum(["IN", "INTL"]),
-}).refine(
-  input => (input.billingCountry === "IN" ? input.currency === "INR" : input.currency === "USD"),
-  { message: "That currency is not available for the selected billing route" },
-);
-export type GiftCheckoutRequest = z.infer<typeof giftCheckoutRequestSchema>;
 
 /** Recipient-facing claim: no body needed; identity comes from the session. */
 export const giftClaimRequestSchema = z.object({
@@ -56,4 +45,4 @@ export function normalizeGiftEmail(email: unknown): string | undefined {
   return normalized;
 }
 
-export type { PaidSubscriptionPlan, SubscriptionCurrency };
+export type { SubscriptionCurrency };

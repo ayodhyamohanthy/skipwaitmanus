@@ -36,19 +36,19 @@ describe("Direct messages inbox", () => {
     expect(screen.getByPlaceholderText("Write a message")).toBeTruthy();
   });
 
-  it("shows the paywall card when sending is rejected with 402", async () => {
+  it("states the follow rule when a member send is refused, with no upgrade offered", async () => {
     const threadPayload = { thread: { counterpartUserId: 22, counterpartLabel: "Referrer · acme.com", messages: [{ id: 1, body: "Hello", createdAt: new Date().toISOString(), isMine: false }] } };
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/dms/threads") return { ok: true, json: async () => ({ threads: [{ counterpartUserId: 22, counterpartLabel: "Referrer · acme.com", lastMessageBody: "Hello", lastMessageIsMine: false, lastMessageAt: new Date().toISOString(), unreadCount: 0 }] }) };
-      if (typeof init?.method === "string" && init.method === "POST") return { ok: false, status: 402, json: async () => ({ error: "Direct messaging is a premium feature. Upgrade to Pro to message referrers directly.", upgrade: true }) };
+      if (typeof init?.method === "string" && init.method === "POST") return { ok: false, status: 403, json: async () => ({ error: "Direct messaging is not open yet. Follow each other to message this member." }) };
       return { ok: true, json: async () => threadPayload };
     }));
     render(<Messages />);
     fireEvent.click(await screen.findByRole("button", { name: /Referrer · acme\.com/ }));
     fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "Hi there" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-    await waitFor(() => expect(screen.getAllByText(/Direct messaging is for members/).length).toBeGreaterThan(0));
-    expect(screen.getAllByRole("link", { name: "Upgrade to Pro" })[0].getAttribute("href")).toBe("/premium?role=job_seeker");
+    await waitFor(() => expect(screen.getAllByText(/Follow each other to message this member/).length).toBeGreaterThan(0));
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
   });
 });
 
@@ -164,14 +164,14 @@ describe("Direct messages with a referrer before acceptance (D-012 item 3)", () 
   it("never promises messaging referrers directly or faster answers", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
       if (url === "/api/dms/threads") return { ok: true, json: async () => ({ threads: [{ ...threadList.threads[0], counterpartLabel: "Member" }] }) };
-      if (init?.method === "POST") return { ok: false, status: 402, json: async () => ({ error: "Direct messaging is a premium feature.", upgrade: true }) };
+      if (init?.method === "POST") return { ok: false, status: 403, json: async () => ({ error: "Direct messaging is not open yet. Follow each other to message this member." }) };
       return { ok: true, json: async () => ({ thread: { ...referrerThread, counterpartLabel: "Member" }, sendBlock: null }) };
     }));
     render(<Messages />);
     fireEvent.click(await screen.findByRole("button", { name: /Member/ }));
     fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "Hi" } });
     fireEvent.click(screen.getByRole("button", { name: "Send message" }));
-    await waitFor(() => expect(screen.getAllByText(/Direct messaging is for members/).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getAllByText(/Follow each other to message this member/).length).toBeGreaterThan(0));
     expect(document.body.textContent).not.toMatch(/message (verified )?referrers directly|answers faster/i);
   });
 

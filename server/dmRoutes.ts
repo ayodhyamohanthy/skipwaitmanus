@@ -1,7 +1,7 @@
 import { retryAfterSecondsUntil, setRetryAfter } from "./retryAfter";
 import express, { type Express, type Request } from "express";
-import { DM_PREMIUM_REQUIRED_ERROR, dmSendBlockFor, type DmSendBlock, type ReferrerDmGate } from "../shared/directMessages";
-import { dmRecipientExists, dmThreadExists, getDb, hasActivePremiumSubscription, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
+import { DM_FOLLOW_REQUIRED_ERROR, dmSendBlockFor, type DmSendBlock, type ReferrerDmGate } from "../shared/directMessages";
+import { dmRecipientExists, dmThreadExists, getDb, isMutualFollow, listDmThread, listDmThreads, sendDirectMessage } from "./db";
 import { DirectMessageReferrerGateError, loadReferrerDmGate } from "./dmReferrerGate";
 import { DM_REFUSAL_LIMITED_REASON, DM_REFUSAL_LIMIT_ERROR, DM_REFUSAL_WINDOW_MS, DM_SEND_ACTION, countRecentDmRefusals, isDmRefusalLimited } from "./dmRefusalLimit";
 
@@ -18,7 +18,6 @@ export type DmRouteDeps = {
   sendDirectMessage?: typeof sendDirectMessage;
   dmThreadExists?: typeof dmThreadExists;
   dmRecipientExists?: typeof dmRecipientExists;
-  hasActivePremiumSubscription?: typeof hasActivePremiumSubscription;
   isMutualFollow?: typeof isMutualFollow;
   /** D-012(3): when a verified referrer is involved, sending opens only after they accepted a request linking the two. */
   referrerDmGate?: (senderUserId: number, recipientUserId: number) => Promise<ReferrerDmGate>;
@@ -47,7 +46,6 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
   const send = deps.sendDirectMessage ?? sendDirectMessage;
   const threadExists = deps.dmThreadExists ?? dmThreadExists;
   const recipientExists = deps.dmRecipientExists ?? dmRecipientExists;
-  const hasPremium = deps.hasActivePremiumSubscription ?? hasActivePremiumSubscription;
   const mutualFollow = deps.isMutualFollow ?? isMutualFollow;
   const referrerGate = deps.referrerDmGate ?? readReferrerDmGate;
   const recentRefusals = deps.countRecentDmRefusals ?? readRecentDmRefusals;
@@ -97,8 +95,9 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
       if (body.length > 3000) return res.status(400).json({ error: "Messages can be up to 3,000 characters" });
       if (!(await recipientExists(counterpartUserId))) return res.status(404).json({ error: "This member is not available" });
       const senderUserId = actorUserId;
-      // Past the hourly refusal limit, a 403 (referrer involved) and a 402 (member rules) look the same.
-      const refuse = async (status: 402 | 403, refusal: DmSendBlock | { error: string; upgrade: true }, reason: string) => {
+      // Every refusal below is a rule refusal: D-067 removed the paid plan that
+      // used to open member messages, so no 402/paywall answer exists any more.
+      const refuse = async (refusal: DmSendBlock | { error: string }, reason: string) => {
         if (isDmRefusalLimited(await recentRefusals(senderUserId))) {
           record({ actorUserId: senderUserId, action: DM_SEND_ACTION, outcome: "denied", resourceType: "direct_message", metadata: { reason: DM_REFUSAL_LIMITED_REASON } });
           const retryAt = new Date(Date.now() + DM_REFUSAL_WINDOW_MS);
@@ -106,14 +105,17 @@ export function registerDmRoutes(app: Express, deps: DmRouteDeps) {
           return res.status(429).json({ error: DM_REFUSAL_LIMIT_ERROR, retryAt });
         }
         record({ actorUserId: senderUserId, action: DM_SEND_ACTION, outcome: "denied", resourceType: "direct_message", metadata: { reason } });
-        return res.status(status).json(refusal);
+        return res.status(403).json(refusal);
       };
       const gate = await referrerGate(actorUserId, counterpartUserId);
       const block = dmSendBlockFor(gate);
-      if (block) return await refuse(403, block, block.reason);
+      if (block) return await refuse(block, block.reason);
       const existing = await threadExists(actorUserId, counterpartUserId);
-      if (gate.kind === "not_referrer_pair" && !existing && !(await hasPremium(actorUserId)) && !(await mutualFollow(actorUserId, counterpartUserId))) {
-        return await refuse(402, { error: DM_PREMIUM_REQUIRED_ERROR, upgrade: true }, "premium_required");
+      // D-067 (owner, Oct 18 2026): the Pro/Max member-message perk is removed
+      // with the plans. Member DMs open on an existing thread or a mutual
+      // follow; no paid-plan bypass remains.
+      if (gate.kind === "not_referrer_pair" && !existing && !(await mutualFollow(actorUserId, counterpartUserId))) {
+        return await refuse({ error: DM_FOLLOW_REQUIRED_ERROR }, "follow_required");
       }
       if (deps.countRecentMessagesBySender) { const legacyCount=await deps.countRecentMessagesBySender(actorUserId,new Date(Date.now()-3600_000)); if(legacyCount>=DM_RATE_LIMIT_PER_HOUR)return res.status(429).json({error:"You're sending messages too quickly. Try again in a few minutes."}); }
       const message = await send(actorUserId, counterpartUserId, body, idempotencyKey);

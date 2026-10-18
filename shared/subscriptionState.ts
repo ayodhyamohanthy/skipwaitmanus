@@ -91,10 +91,13 @@ export function subscriptionStateFor(wallet: SubscriptionWallet | null | undefin
   const state = stateName(wallet, now);
   if (state === "free") return FREE_STATE;
   const plan: BillablePlanId = wallet.plan;
-  const legacy = plan === "pro" || plan === "max";
+  // D-067 (owner, Oct 18 2026): Pro/Max are removed, so no billable plan is a
+  // legacy monthly plan. The field stays on the contract at a constant false so
+  // older clients that read it keep working.
+  const legacy = false;
   const resolved = resolvePlanItemPrice(wallet.subscriptionItemPriceId);
   const currency = currencyOf(wallet.subscriptionCurrency) ?? resolved?.currency ?? null;
-  const billingPeriod = interval(wallet.subscriptionBillingPeriod) ?? resolved?.interval ?? (legacy ? "monthly" : null);
+  const billingPeriod = interval(wallet.subscriptionBillingPeriod) ?? resolved?.interval ?? null;
   const catalogAmount = currency && billingPeriod ? planPrice(plan, billingPeriod, currency)?.amount ?? null : null;
   const pendingPlan = wallet.pendingPlan && isBillablePlanId(wallet.pendingPlan) ? wallet.pendingPlan : null;
   const paymentIssue = wallet.paymentDueSince

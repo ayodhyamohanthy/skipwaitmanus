@@ -16,8 +16,14 @@ export const DM_REFERRER_ACCEPTANCE_ERROR = "Messages with a referrer open after
 /** Shown to a verified referrer writing to a member before they accept that member's request. */
 export const DM_REFERRER_ACCEPTANCE_SENDER_IS_REFERRER_ERROR = "You can message this member after you accept their referral request.";
 
-/** Paid-plan gate for two members who are not verified referrers (unchanged rule, no referrer promise). */
-export const DM_PREMIUM_REQUIRED_ERROR = "Direct messaging is a premium feature. Upgrade to Pro, or follow each other, to message this member.";
+/**
+ * The rule for two members who are not a verified-referrer pair and share no
+ * thread: follow each other, then message.
+ *
+ * D-067 (owner, Oct 18 2026) removed the Pro/Max member-message perk, so this is
+ * a rule refusal (403), not a paywall: no purchase opens it.
+ */
+export const DM_FOLLOW_REQUIRED_ERROR = "Direct messaging is not open yet. Follow each other to message this member.";
 
 /**
  * The gate outcome for one sender -> recipient pair.

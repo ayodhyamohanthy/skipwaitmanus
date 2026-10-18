@@ -2,41 +2,42 @@
  * The billing view of the price book (shared/planCatalog.ts): which Chargebee
  * item price means which plan term, credit pack or human session, the amount
  * the server charges for it, when a pass may auto-extend, how a plan change
- * moves, and the public catalog payload. Grandfathered Pro/Max keep their
- * monthly prices from shared/subscriptionPlans.ts. Pure; the server and the
- * client read the same answers.
+ * moves, and the public catalog payload. D-067: Pro/Max are removed; only the
+ * kit catalog bills. Pure; the server and the client read the same answers.
  */
 import { z } from "zod";
 import { BILLING_REGIONS, indiaPriceNote, currencyForRegion, type BillingRegion } from "./billingRegion";
 import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, REVERSE_TRIAL, REVERSE_TRIAL_ON_OFFER, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
 import { planEntitlementsFor } from "./planEntitlements";
-import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
 
 export const BILLING_INTERVALS = CATALOG_INTERVALS;
 export const BILLING_CURRENCIES = CATALOG_CURRENCIES;
 /**
  * Stored billing periods (tokenBalances.subscriptionBillingPeriod and the intent
  * and invoice columns): existing values first and in order (a MySQL ENUM stores
- * the index), then the passes 0091 added. "monthly" is legacy Pro/Max only.
+ * the index), then the passes 0091 added. D-067 (owner, Oct 18 2026) removed
+ * Pro/Max, so no plan sells "monthly" any more; it stays a stored value.
  */
 export const BILLING_PERIODS = ["monthly", "yearly", "30d", "90d"] as const;
 export type BillingPeriod = (typeof BILLING_PERIODS)[number];
 
-export const LEGACY_PLAN_IDS = ["pro", "max"] as const;
 /**
  * Plan ids 0090 stored before the Oct 14 2026 decision renamed the Land levels.
  * Never sold or written; they stay in the column ENUMs only because removing an
  * ENUM member is not an additive migration. A wallet holding one reads as Free.
  */
 export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
-/** Every plan a subscription can bill: the kit plans plus grandfathered Pro/Max. */
-export const BILLABLE_PLAN_IDS = [...CATALOG_PLAN_IDS, ...LEGACY_PLAN_IDS] as const;
+/** Every plan a subscription can bill: the kit plans only (D-067: Pro/Max removed). */
+export const BILLABLE_PLAN_IDS = [...CATALOG_PLAN_IDS] as const;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
-/** tokenBalances.plan: existing values first and in order (0090, then 0091). */
-export const WALLET_PLAN_IDS = ["free", ...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+/** tokenBalances.plan: existing values first and in order (0090, then 0091).
+ * D-067: pro/max members stay in the ENUM only because removing an ENUM member
+ * is not an additive migration; they read as Free and nothing new is written.
+ */
+export const WALLET_PLAN_IDS = ["free", "pro", "max", "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */
-export const INTENT_PLAN_IDS = [...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+export const INTENT_PLAN_IDS = ["pro", "max", "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 
 export function isBillablePlanId(value: unknown): value is BillablePlanId {
   return typeof value === "string" && (BILLABLE_PLAN_IDS as readonly string[]).includes(value);
@@ -56,18 +57,19 @@ export function planSellsInterval(planId: CatalogPlanId, interval: CatalogInterv
   return Boolean(plan && plan.prices[interval]);
 }
 
+/** `legacy` reported a grandfathered Pro/Max monthly price. D-067 removed those
+ * prices, so every price this resolves is false; the field stays because the
+ * report shape is public and `sellableItemPrices` reads it.
+ */
 export type PlanPrice = { kind: "plan"; plan: BillablePlanId; interval: BillingPeriod; currency: CatalogCurrency; amount: number; itemPriceId: string; legacy: boolean };
 export type PackPrice = { kind: "pack"; packId: CatalogPackId; credits: number; currency: CatalogCurrency; amount: number; itemPriceId: string };
 export type SessionPrice = { kind: "session"; sessionId: HumanSessionId; currency: CatalogCurrency; amount: number; itemPriceId: string };
 export type CatalogPrice = PlanPrice | PackPrice | SessionPrice;
 
-/** The price the server charges for a plan term. Pro/Max are sold monthly only; kit plans for the terms they list. */
+/** The price the server charges for a plan term. D-067: kit plans only, for the
+ * terms they list ("monthly" no longer sells anything).
+ */
 export function planPrice(plan: BillablePlanId, interval: BillingPeriod, currency: CatalogCurrency): PlanPrice | undefined {
-  if (plan === "pro" || plan === "max") {
-    if (interval !== "monthly") return undefined;
-    const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-    return { kind: "plan", plan, interval, currency, amount: price.amount, itemPriceId: price.itemPriceId, legacy: true };
-  }
   if (interval === "monthly") return undefined;
   const amount = catalogPlanById(plan)?.prices[interval]?.[currency];
   if (amount === undefined) return undefined;
@@ -149,7 +151,7 @@ export function billingPlanLabel(plan: string): string {
   return planEntitlementsFor(plan).planLabel;
 }
 
-/** Entitlement strength: tier first, then the Land level. Pro/Max rank as the tier they map to. */
+/** Entitlement strength: tier first, then the Land level. */
 function strength(plan: BillablePlanId): number {
   const entitlements = planEntitlementsFor(plan);
   return tierRank(entitlements.tier) * 10 + entitlements.level;
@@ -164,7 +166,7 @@ export type PlanTerm = { plan: BillablePlanId; interval: BillingPeriod; amount: 
  * How a change of an existing subscription moves. A stronger plan, or a longer
  * term of the same plan, upgrades now (prorated, paid on a hosted checkout). A
  * weaker plan or a shorter term switches at term end, so nothing paid for is
- * cut short. Pro/Max to the tier they map to: a higher price upgrades now.
+ * cut short.
  */
 export function planChangeDirection(from: PlanTerm, to: PlanTerm): PlanChangeDirection {
   if (from.plan === to.plan && from.interval === to.interval) return "none";
@@ -178,10 +180,8 @@ export function planChangeDirection(from: PlanTerm, to: PlanTerm): PlanChangeDir
 /** The self-serve ladder: Keep warm, Start, Momentum, Land Focus, Land Sprint. Concierge is by application. */
 const LADDER: readonly CatalogPlanId[] = CATALOG_PLANS.filter(plan => !plan.byApplication).map(plan => plan.id);
 
-/** The next plan up and down for the billing action grid; Pro sits at Start, Max at Momentum. */
+/** The next plan up and down for the billing action grid (kit plans only). */
 export function adjacentPlans(plan: string): { up: CatalogPlanId | null; down: CatalogPlanId | null } {
-  if (plan === "pro") return { up: "momentum", down: null };
-  if (plan === "max") return { up: "land_focus", down: "start" };
   const index = isCatalogPlanId(plan) ? LADDER.indexOf(plan) : -1;
   if (index < 0) return { up: null, down: null };
   return { up: LADDER[index + 1] ?? null, down: LADDER[index - 1] ?? null };

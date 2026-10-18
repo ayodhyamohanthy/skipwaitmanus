@@ -3,7 +3,6 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerAdminBillingCatalogRoutes } from "./adminBillingCatalog";
 import { CHARGEBEE_TOKEN_PACKS } from "./chargebee";
-import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrency } from "../shared/subscriptionPlans";
 
 const admin = { account: { id: 1, role: "admin" as const } };
 const member = { account: { id: 2, role: "user" as const } };
@@ -61,12 +60,7 @@ describe("admin billing catalog diagnostic", () => {
     const seen: string[] = [];
     const byId = new Map<string, { currency: string; amount: number }>();
     for (const [id, pack] of Object.entries(CHARGEBEE_TOKEN_PACKS)) byId.set(id, { currency: pack.currency, amount: pack.amount });
-    for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-      for (const currency of Object.keys(SUBSCRIPTION_PLANS[plan].prices) as SubscriptionCurrency[]) {
-        const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-        byId.set(price.itemPriceId, { currency, amount: price.amount });
-      }
-    }
+    // D-067 removed Pro/Max, so the catalog diagnostic has only token packs to check.
     const fetchImpl = (async (url: unknown) => {
       const urlString = String(url);
       seen.push(urlString);
@@ -76,7 +70,7 @@ describe("admin billing catalog diagnostic", () => {
     }) as unknown as typeof fetch;
     const res = await request(appFor({ fetchImpl })).get("/api/admin/billing/catalog").expect(200);
     expect(res.body.allOk).toBe(true);
-    expect(res.body.items).toHaveLength(6);
+    expect(res.body.items).toHaveLength(2);
     expect(seen.every(url => url.includes("/api/v2/item_prices/"))).toBe(true);
   });
 
