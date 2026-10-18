@@ -72,16 +72,6 @@
           }
         }
       }
-    },
-    {
-      "method": "GET",
-      "path": "/api/chargebee/gifts/mine",
-      "match": "exact",
-      "status": 200,
-      "body": {
-        "sent": [],
-        "claimable": []
-      }
     }
   ]
 }
