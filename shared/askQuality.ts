@@ -3,7 +3,8 @@
 export type AskCheck = { readonly ok: boolean; readonly label: string; readonly hint: string };
 
 const GENERIC_ASK = /\b(any role|any job|please refer|kindly refer|looking for job)\b/i;
-const SPECIFIC_PROOF = /\b(led|built|shipped|designed|grew|reduced|launched|\d+%|\d+ (years|users))\b/i;
+// A percentage is matched outside the word boundaries: \b can never follow "%", so "rose 58% to 74%" never counted.
+const SPECIFIC_PROOF = /\b(led|built|shipped|designed|grew|reduced|launched|\d+ (years|users))\b|\d+(\.\d+)?%/i;
 
 export function countWords(note: string): number {
   const trimmed = note.trim();
