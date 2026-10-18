@@ -249,7 +249,7 @@ Known gaps (not fixed by this kit; tell an agent):
 - **The link card hides behind waiting asks.** On https://skipwait.me/queue the card shows only when the queue is empty (`client/src/pages/MyCompanyInbox.tsx`).
 - **The decline screen overstates refunds.** An opened ask's decline step says the seeker's credit is returned (`client/src/components/referrer/CandidatePreviewCard.tsx`). It isn't today (D-035).
 - **Referrers see a "Referral credits" meter** on an empty /queue (`client/src/components/ReferrerCreditsCard.tsx`), though referrers never spend credits (D-055).
-- **The sign-in page footer says "Referrals are free".** The truth pass hasn't shipped (D-043 move 3; the approved line is D-063). If asked, give the honest answer from section 3.
+- **What asking costs.** The truth pass shipped (D-063, Oct 18): every product surface says "3 asks free every month; more use credits. Referrers are never paid and never ask you for money." Use the same words in outreach; the legal pages (Terms, Refund Policy) still carry older lines until the owner rewords them.
 - **Link previews are generic.** Every SkipWait link, including personal links, unfurls on WhatsApp as the general seeker card (D-028, queued).
 - **Link asks are invisible to admin.** No admin view counts asks sent through personal links, so the move-2 link numbers are self-reported for now.
 
