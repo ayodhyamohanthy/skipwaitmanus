@@ -1,6 +1,6 @@
 import { setRetryAfter } from "./retryAfter";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
-import { isOpenAskAttachment } from "../shared/referrerAskView";
+import { isOpenAskAttachment, toLockedAskAttachment } from "../shared/referrerAskView";
 import { captureServerError } from "./sentry";
 import { normalizeReferenceId, REFERENCE_ID_ERROR } from "../shared/referenceId";
 import { OTP_RESEND_COOLDOWN_SECONDS, OtpLockedError } from "./otpPolicy";
@@ -1265,7 +1265,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       const request = await deps.getUnclaimedCompanyReferralPreview(identity.account.id, requestId);
       if (!request) return res.status(404).json({ error: "This private request is not available to your verified company account" });
-      const attachments = request.attachments.map(attachment => ({ id: attachment.id, fileName: attachment.fileName, mimeType: attachment.mimeType, fileSize: attachment.fileSize, availability: "after_claim" as const }));
+      const attachments = request.attachments.map(toLockedAskAttachment);
       // Privacy: the seeker's name is never part of the unclaimed preview (revealed only after accept).
       const { candidateName: _withheld, ...anonymousRequest } = request as typeof request & { candidateName?: unknown }; void _withheld;
       const [named] = await attachCompanyIdentities([anonymousRequest], row => row.companyDomain, lookupCompanies);
