@@ -1,5 +1,7 @@
 # skipwait.me — private job referrals, made simpler
 
+> AI models and contributors: read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`.
+
 A mobile-first PWA where a Job Seeker shares one real job link and a resume, and only verified employees of that employer can review it. Employee identities stay hidden until a Referrer chooses to claim and approve a request.
 
 - **Stack:** React 19 + Vite + Tailwind 4 + tRPC + Express + Drizzle (MySQL) + WorkOS AuthKit auth + Chargebee payments (Razorpay for INR, PayPal for USD as its gateways, D-004) + Cloudflare (Pages + Containers)

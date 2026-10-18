@@ -1,5 +1,7 @@
 # SkipWait Build Kit — START HERE (for AI coding platforms and developers)
 
+> **Read [`docs/BRIEF.md`](docs/BRIEF.md) first** — the one-page brief every AI model starts from (D-073). The full rules follow; they win any conflict with the brief.
+
 Kit version: v4 · 7 Oct 2026 · skipwait.me
 **Kit v4 is no longer binding (D-048, Oct 18 2026).** `docs/DECISIONS.md` is the single source of truth for owner decisions and `AGENTS.md` holds the working rules; this kit is a reference for SkipWait's web + mobile (PWA) design, logic, states and rules.
 It supersedes every earlier kit (v1–v3, earlier PDFs). If anything here conflicts with `docs/DECISIONS.md` or `AGENTS.md`, **they win**. No surface is re-skinned to match this kit: the goal-UI key screens approved by the owner on Oct 18 (D-048, D-071; `design/goal-ui/pick/`) roll out in phases.

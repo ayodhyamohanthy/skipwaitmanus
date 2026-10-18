@@ -4,6 +4,7 @@
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
 import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
+import { createDailyMoneyCheck } from "./dailyMoneyCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
@@ -70,5 +71,12 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createCoverageDeliverySweep(),
+  },
+  {
+    name: "daily-money-check",
+    description: "Read-only daily audit: every wallet against the ledger, one purchase credit per credited payment, parked payments and refunds, stale checkouts; emails the owner any mismatch, never writes",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 15 * MINUTE,
+    run: createDailyMoneyCheck(),
   },
 ];

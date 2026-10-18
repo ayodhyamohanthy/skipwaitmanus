@@ -48,6 +48,13 @@ function isOpenAsk(condition: SQLQuery, row: Row): boolean {
   return row.coverageVisibleAt != null ? asMs(row.coverageVisibleAt) > asMs(visibilityCutoff) : asMs(row.createdAt) > asMs(creationCutoff);
 }
 
+/** The per-company cap query (D-006) appends `jobs`.`company` = ? after the open-ask predicate's params; the plan slot count passes no company. */
+function companyMatches(condition: SQLQuery, row: Row): boolean {
+  const { sql, params } = dialect.sqlToQuery(condition);
+  if (!sql.includes("`jobs`.`company` = ?")) return true;
+  return String(row.company).toLowerCase() === String(params[params.length - 1]).toLowerCase();
+}
+
 function rowsOf(table: unknown): Row[] {
   if (table === tokenBalances) return tables.wallets;
   if (table === referralRequests) return tables.requests;
@@ -75,7 +82,7 @@ function fixtureDatabase() {
     from: (table: unknown) => {
       const label = table === tokenBalances ? "wallet" : table === referralRequests ? "requests" : table === profiles ? "referrers" : table === referralAttachments ? "attachments" : "other";
       const where = (condition: SQLQuery) => {
-        if (projection && "open" in projection) return chain(() => [{ open: rowsOf(table).filter(row => isOpenAsk(condition, row)).length }], `${label}-count`);
+        if (projection && "open" in projection) return chain(() => [{ open: rowsOf(table).filter(row => isOpenAsk(condition, row) && companyMatches(condition, row)).length }], `${label}-count`);
         return chain(() => project(rowsOf(table).filter(row => label === "attachments" || label === "other" || label === "referrers" || matchesEq(condition, row)), projection), label);
       };
       const joined: { where: typeof where; innerJoin: () => typeof joined; leftJoin: () => typeof joined } = { where, innerJoin: () => joined, leftJoin: () => joined };
@@ -95,7 +102,8 @@ const wallet = (userId: number, plan = "free"): Row => ({
 });
 
 let nextId = 1;
-const ask = (patch: Row = {}): Row => ({ id: nextId++, jobSeekerId: SEEKER, status: "pending", referrerId: null, createdAt: new Date(Date.now() - DAY), idempotencyKey: `key-${nextId}`, requestFingerprint: "fp", waitingForCoverage: false, coverageVisibleAt: null, coverageHeldAt: null, company: "acme.com", jobFunction: null, ...patch });
+// Existing asks live at globex.com so only the plan slot cap is on trial here; the per-company cap (D-006) is pinned in db.companyCap.test.ts.
+const ask = (patch: Row = {}): Row => ({ id: nextId++, jobSeekerId: SEEKER, status: "pending", referrerId: null, createdAt: new Date(Date.now() - DAY), idempotencyKey: `key-${nextId}`, requestFingerprint: "fp", waitingForCoverage: false, coverageVisibleAt: null, coverageHeldAt: null, company: "globex.com", jobFunction: null, ...patch });
 /** A verified, unpaused acme.com employee under capacity: coverage exists, so a new ask is covered. */
 const eligibleReferrer = (): Row => ({ id: 91, userId: 501, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(), paused: false, referralCapacity: 3 });
 const send = (idempotencyKey = "new-ask-key-0001") => createCompanyReferralRequest(SEEKER, { targetRoleUrl: URL_, personalPitch: "I shipped the approvals redesign this role describes.", attachmentIds: [41], idempotencyKey });

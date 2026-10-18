@@ -1,6 +1,6 @@
 # SkipWait — LLM Development Handoff
 
-> Read START_HERE.md first. The platform is already live: update it, do not rebuild it.
+> Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
 
 
 > **AI coding platforms: read `FOR_AI_BUILDERS.md` first.** It lists every rule, backend requirement and placeholder not visible in the designs.

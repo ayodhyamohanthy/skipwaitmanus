@@ -128,12 +128,16 @@ describe("My Company Inbox employee access", () => {
     expect(screen.queryByText(/avery-resume/)).toBeNull();
     expect(document.querySelector("iframe")).toBeNull();
     expect(document.querySelector('a[href*="avery-resume"]')).toBeNull();
-    expect(screen.getByRole("button", { name: "Accept & submit referral" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept & connect" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Not a fit" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Can’t support" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Not now" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Accept & submit referral" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved" }) })));
+    fireEvent.click(screen.getByRole("button", { name: "Accept & connect" }));
+    // The kit ethics gate: the accept stays disabled until the checkbox is ticked.
+    expect((screen.getByRole("button", { name: "Accept" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved", ethicsConfirmed: true }) })));
   });
 
   it("keeps decided requests out of the queue and hands an acceptance straight to the conversation", async () => {
@@ -148,8 +152,10 @@ describe("My Company Inbox employee access", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<MyCompanyInbox />);
     fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Accept & submit referral" }));
-    expect(await screen.findByText("Referral accepted. You can now message the Job Seeker privately.")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Accept & connect" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(await screen.findByText("Request accepted. You can now message the Job Seeker privately.")).toBeTruthy();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("scope=completed"))).toBe(false);
     expect(screen.queryByRole("tab", { name: "Done" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open conversation" }));

@@ -23,8 +23,8 @@ import { getAskShelfLifeEndsAtMs, isReferralProgressUpdateStatus, type ReferralP
 import { getBlockedRequestIds as defaultBlockedRequestIds } from "./blocksRoutes";
 import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDirectoryEntry, notifySeekerAlertsForCompanyDomain, resolveCompanyIdentities, type CompanyIdentityLookup } from "./companyDirectory";
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
-import type { OpenAskSlots } from "../shared/openAskSlots";
-import { OpenAskSlotCapError } from "./planGates";
+import { companyCapReachedSchema, type OpenAskSlots } from "../shared/openAskSlots";
+import { CompanyCapReachedError, OpenAskSlotCapError } from "./planGates";
 import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
@@ -762,6 +762,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
         record({ actorUserId, action: "company_referral.slot_cap_reached", outcome: "denied", resourceType: "referral_request", metadata: { open: error.slots.open, cap: error.slots.cap, plan: error.slots.plan } });
         return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
       }
+      // D-006 per-company fairness cap: refused before any side effect, same body shape on every plan.
+      if (error instanceof CompanyCapReachedError) {
+        record({ actorUserId, action: "company_referral.company_cap_reached", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain, metadata: { open: error.open, cap: error.cap } });
+        return res.status(409).json(companyCapReachedSchema.parse({ error: error.message, code: error.code, companyDomain: error.companyDomain, open: error.open, cap: error.cap }));
+      }
       // P0-block-delivery: a personal link whose owner is blocked with the seeker answers exactly like an inactive link
       // (same 400 and words, so the block is not revealed); the denial is recorded like every other blocked request.
       if (error instanceof BlockedPersonalLinkError) {
@@ -1180,6 +1185,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req); const requestId = Number(req.params.requestId); const decision = req.body?.decision; const declineReason = req.body?.declineReason;
       if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to review this private request" });
       if (!Number.isInteger(requestId) || requestId <= 0 || (decision !== "approved" && decision !== "declined") || (decision === "declined" && !isOneClickDeclineReason(declineReason)) || passReasonOf(req.body) === undefined) return res.status(400).json({ error: "Choose accept or a concise decline reason" });
+      // An accept reveals names both ways and the resume, so it must be an explicit confirmed act (the kit
+      // checkbox the thread and queue both show); a bare approve call is refused before any state change.
+      if (decision === "approved" && req.body?.ethicsConfirmed !== true) return res.status(400).json({ error: "Confirm you will refer only through the company's official process before accepting" });
       if (await isRequestBlocked(identity.account.id, requestId)) return blockedThreadDeny(identity.account.id, requestId, res);
       if (!deps.oneClickReviewReferralRequest) return res.status(503).json({ error: "One-click review is unavailable right now" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId, decision, declineReason: decision === "declined" ? declineReason : undefined, passReason: decision === "declined" ? passReasonOf(req.body) : null });
@@ -1200,6 +1208,9 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       // The same two-way block check as dashboard review, once the link is proven to be this
       // referrer's and before any decision, link use or notice.
       if (await isRequestBlocked(identity.account.id, link.requestId)) return blockedThreadDeny(identity.account.id, link.requestId, res);
+      // Same confirmed-accept rule as the dashboard route: names and the resume are revealed on accept.
+      // Checked after the link is proven to be this referrer's, so a foreign link keeps its neutral answer.
+      if (decision === "approved" && req.body?.ethicsConfirmed !== true) return res.status(400).json({ error: "Confirm you will refer only through the company's official process before accepting" });
       const result = await deps.oneClickReviewReferralRequest(identity.account.id, { requestId: link.requestId, decision, declineReason: decision === "declined" ? declineReason : undefined, passReason: decision === "declined" ? passReasonOf(req.body) : null, reviewLinkToken: linkToken });
       if (result.revision === undefined && deps.consumeReferrerReviewEmailLink) await deps.consumeReferrerReviewEmailLink(identity.account.id, linkToken);
       record({ actorUserId: identity.account.id, action: `company_referral.email_one_click_${decision}`, outcome: "success", resourceType: "referral_request", resourceId: link.requestId, companyDomain: result.companyDomain, metadata: { declineReason: result.declineReason ?? null } });

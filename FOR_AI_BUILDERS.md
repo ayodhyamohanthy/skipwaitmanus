@@ -1,6 +1,6 @@
 # SkipWait — Read This First (for AI coding platforms)
 
-> Read START_HERE.md first. The platform is already live: update it, do not rebuild it.
+> Read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
 
 
 You are turning the SkipWait **design preview** into a working product. The designs in `app/src/routes` are a reference, no longer the spec: Kit v4 is not binding, the UI is designed for the goal, and the owner approved the goal-UI key screens on Oct 18 (D-048, D-071; comps in `design/goal-ui/pick/`), rolled out in phases. Where this file conflicts with `docs/DECISIONS.md` or `AGENTS.md`, they win. Everything below is what the designs do NOT do, and what you must build or decide.

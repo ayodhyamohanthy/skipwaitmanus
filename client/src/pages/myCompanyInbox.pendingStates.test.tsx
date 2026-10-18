@@ -53,12 +53,12 @@ describe("My Company Inbox pending states", () => {
     // referrer is told that, never promised a refund for the seeker (D-063, D-066).
     expect(confirm.textContent).toContain("never your name. The ask stays with your company, so a colleague can still pick it up.");
     expect((confirm.textContent ?? "").toLowerCase()).not.toMatch(/credit|token|refund/);
-    expect(screen.queryByRole("button", { name: "Accept & submit referral" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Accept & connect" })).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("group", { name: "Confirm decline" })).toBeNull();
-    expect(screen.getByRole("button", { name: "Accept & submit referral" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept & connect" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Not a fit" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm decline" }));
@@ -96,7 +96,9 @@ describe("My Company Inbox pending states", () => {
     });
     render(<MyCompanyInbox />);
     fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Accept & submit referral" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Accept & connect" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Accept failed");
     expect(alert.textContent).toContain("Another employee accepted this request a moment earlier. Nothing was charged to your credits.");
