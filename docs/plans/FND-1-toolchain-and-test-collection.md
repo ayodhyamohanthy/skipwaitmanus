@@ -25,7 +25,7 @@ A model on a fresh machine should get a working toolchain the first time, and ev
 1. `package.json` `engines.node` is `">=22.12"`. A new `.nvmrc` contains `22`.
 2. `vitest.config.ts` `include` adds `"shared/**/*.test.ts"`. In `shared/assistant.test.ts`, the failing case asserts that a legacy Max wallet has **no** assistant access, and its title says so ("a legacy Max wallet has no assistant access (D-067)"). If D-067 already landed and changed that file, keep its version.
 3. The copy-guard regex becomes `/\.test\.tsx?$/`. Run the test: if it now fails because the scanner includes test files, fix the scanner's filter in `scripts/productCopyGuard.mjs` so test files are excluded. Never loosen the assertion.
-4. `docs/DELEGATION.md` §10 and `AGENTS.md` "Commands" say Node 22.12 or newer. `AGENTS.md` also says pnpm 10.34.7, matching `packageManager`; it currently says 10.4.1.
+4. `docs/DELEGATION.md` §10 and `AGENTS.md` "Commands" say Node 22.12 or newer, and `AGENTS.md` says pnpm 10.34.7, matching `packageManager`. Both are already true since the Oct 18 repo cleanup; only confirm.
 
 ## 4. Files
 - **In scope:** `package.json` (`engines` only), `.nvmrc` (new), `vitest.config.ts` (`include` only), `shared/assistant.test.ts`, `scripts/productCopyGuard.test.ts`, `scripts/productCopyGuard.mjs` (only if step 3 needs it), `docs/DELEGATION.md` §10, `AGENTS.md` (the "Commands" block only), the §3b row.

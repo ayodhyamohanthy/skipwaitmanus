@@ -33,7 +33,7 @@ auto-renew: we send a reminder and a one-tap re-buy instead.
   every screen leave it out until its trigger ships (D-051; `REVERSE_TRIAL_ON_OFFER` is off;
   recommended trigger: the seeker's first ask that reaches an available verified referrer).
 - An open ask slot frees when the ask is accepted, withdrawn or expires; a pass reopens it to
-  colleagues (D-021). A waiting ask will use no slot until a referrer can see it (D-061, not built yet).
+  colleagues (D-021). A waiting or held ask uses no slot until a referrer can see it (D-061).
 - Every plan holds at most **2 open asks at the same company**; Land Focus's written expert review
   and Land Sprint's review + live session show as "coming later" and are not sold until a reviewer
   is staffed (D-041); Concierge (by application) includes 6 human hours per cycle.
@@ -52,7 +52,7 @@ Sessions go on sale only once reviewers are staffed and contracted (`HUMAN_REVIE
 
 Credits pay for asks (1 credit = 1 ask) and for AI-made finished work. An ask's credit is spent
 only once a verified referrer can see it, and an ask with no credit left is held, never delivered
-free or billed later (D-034, D-047; not built yet). Purchased credits never expire and never buy
+free or billed later (D-034, D-047). Purchased credits never expire and never buy
 priority, visibility or queue position (D-006). Plan credits end with the pass that granted them
 (renewing passes keep the rollover above, after a 3-day grace).
 

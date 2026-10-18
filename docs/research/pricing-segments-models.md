@@ -243,10 +243,10 @@ These WTP (willingness-to-pay) ranges are **my estimates built from the anchors 
 **10. Play down yearly plans for active seekers, add a cheap "Keep warm" annual, and fix the honesty gaps in the draft.**
 - "Yearly = 10× monthly" doesn't fit a 1–3 month need; nearly 30% of annual subscribers cancel in month 1.
 - Add Keep warm at **$29 / ₹999 a year**: 5 open asks plus 1 credit a month, for employed passive candidates. Comparables: CareerHound $50 a year; Unstop Pro ₹1,999 a year ([Outlook Startup](https://startup.outlookindia.com/sector/saas/unstop-launches-subscription-membership-unstop-pro-news-9537) [U: page did not load]).
-- Rename "Most chosen" to "Recommended" until real purchase data supports the claim. It appears on Momentum and on a credit pack in `/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-screens/PRICING.md`.
+- Rename "Most chosen" to "Recommended" until real purchase data supports the claim. It appears on Momentum and on a credit pack in `PRICING.md` (this repository, as of 2026-10-14).
 - Reconcile the credit packs, which disagree:
   - PRICING.md: 5/$5, 25/$22, 60/$48, 150/$105.
-  - `/Users/ayodhyarammohanthy/Documents/GitHub/skipwaitmanus-screens/shared/planCatalog.ts`: 10/$9, 30/$24, 100/$69, 300/$179.
+  - `shared/planCatalog.ts` (this repository, as of 2026-10-14): 10/$9, 30/$24, 100/$69, 300/$179.
 - Test plan:
   - Run a Van Westendorp price-sensitivity survey in each market, plus 4-week A/B tests: Momentum $20 vs $29, Concierge $500 vs $750 per 30 days.
   - Track Day-35 conversion (benchmark 2.1%), the share of passes extended, and refund rate (benchmark 7.7% for India/SEA, 3.4% for North America).

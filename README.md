@@ -5,7 +5,7 @@
 A mobile-first PWA where a Job Seeker shares one real job link and a resume, and only verified employees of that employer can review it. Employee identities stay hidden until a Referrer chooses to claim and approve a request.
 
 - **Stack:** React 19 + Vite + Tailwind 4 + tRPC + Express + Drizzle (MySQL) + WorkOS AuthKit auth + Chargebee payments (Razorpay for INR, PayPal for USD as its gateways, D-004) + Cloudflare (Pages + Containers)
-- **Product docs:** start with `AGENTS.md` and `docs/DECISIONS.md` (the decision register wins over every other doc); also `docs/skipwait-vibecodingapp-handoff.md` (original build spec), `todo.md` (history), `GROWTH_AND_MONETIZATION_AUDIT.md` (its pricing is superseded by D-005)
+- **Product docs:** `docs/BRIEF.md` first, then `AGENTS.md` and `docs/DECISIONS.md` (the decision register wins over every other doc); system map `docs/ARCHITECTURE.md`; queue and status `docs/KIT_V4_BUILD_PLAN.md` §3b. Superseded specs, audits and handoffs were removed on Oct 18 2026; git history keeps them.
 
 ## Quick start (local development)
 
