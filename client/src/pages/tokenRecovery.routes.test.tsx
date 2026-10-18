@@ -44,14 +44,15 @@ describe("secure token checkout routes", () => {
     expect(openCheckout).toHaveBeenCalledWith("https://skipwait-test.chargebee.com/hosted_pages/test");
   });
 
-  it("starts a Referrer Chargebee checkout without mutating the purchased wallet", async () => {
+  it("offers a Referrer no checkout and leaves the purchased wallet alone (D-055: referrers never pay)", async () => {
     window.history.pushState({}, "", "/premium?role=referrer");
     render(<Premium />);
-    fireEvent.click(screen.getByRole("button", { name: /different billing country.*use india payment/i }));
-    fireEvent.click(screen.getByRole("button", { name: /continue to pay ₹990 inr/i }));
-    await waitFor(() => expect(fetch).toHaveBeenCalledWith("/api/chargebee/checkout", expect.objectContaining({ body: expect.stringContaining('"role":"referrer"') })));
+    expect(await screen.findByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /continue to pay/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /different billing country/i })).toBeNull();
+    expect(fetch).not.toHaveBeenCalledWith("/api/chargebee/checkout", expect.anything());
     expect(localStorage.getItem("bridge-referrer-paid-tokens")).toBeNull();
-    expect(openCheckout).toHaveBeenCalled();
+    expect(openCheckout).not.toHaveBeenCalled();
   });
 
   it("shows one detected local route first, with a quiet correction path for another billing country", () => {

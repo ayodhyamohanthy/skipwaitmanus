@@ -8,6 +8,7 @@ import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
 import { tokenReturnPath, type TokenRole } from "@/lib/tokens";
 import { applySeo } from "@/lib/seo";
 import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
+import { REFERRERS_NEVER_PAY, REFERRER_PURCHASES_ENABLED } from "@shared/referrerPurchases";
 
 type Pack = { id: "skipwait_token_1-INR" | "skipwait_token_1-USD"; price: number; currency: PaymentRoute };
 type PendingCheckout = { hostedPageId: string; role: TokenRole };
@@ -23,6 +24,8 @@ function clearPendingCheckout() { if (typeof window !== "undefined") window.sess
 
 export default function Premium() {
   const role: TokenRole = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("role") === "referrer" ? "referrer" : "job_seeker";
+  // D-055: referrers never pay, so the referrer role gets no checkout here (shared/referrerPurchases.ts).
+  const referrerPurchasesOff = role === "referrer" && !REFERRER_PURCHASES_ENABLED;
   const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const [route, setRoute] = useState<PaymentRoute>(() => params.get("currency") === "INR" ? "INR" : params.get("currency") === "USD" ? "USD" : browserPaymentRoute());
@@ -105,7 +108,7 @@ export default function Premium() {
   }, [getToken, isSignedIn, recovery, role, status]);
 
   const beginCheckout = async () => {
-    if (!isLoaded) return;
+    if (!isLoaded || referrerPurchasesOff) return;
     if (!isSignedIn) {
       const destination = new URL(window.location.href);
       destination.searchParams.set("role", role);
@@ -135,6 +138,11 @@ export default function Premium() {
     const title = confirmed ? `${creditedTokens || "Your"} referral credit${creditedTokens === 1 ? " is" : "s are"} ready.` : needsReview ? "We’re checking this payment securely." : "We’re confirming your payment.";
     const body = confirmed ? "Your verified payment is complete and your available credits are updated." : needsReview ? "Your transaction is protected. We will only add credits after the provider record matches your checkout." : "Nothing else is needed from you. We will add credits as soon as the provider’s verified record reaches our server.";
     return <main data-skipwait-screen="premium" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 items-center"><Link href={returnPath} className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex flex-1 flex-col justify-center text-center"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f5f5f5] text-black">{recovery === "checking" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : <Check className="h-6 w-6" />}</span><h1 className="font-display mt-6 text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">{title}</h1><p className="mt-4 text-sm leading-6 text-[#505050]">{body}</p></section><footer className="pb-[max(0.75rem,env(safe-area-inset-bottom))]"><Link href={returnPath} className="inline-flex w-full items-center justify-center rounded-lg bg-[#141414] px-5 py-3.5 text-sm font-semibold text-white">{confirmed ? "Use my credits" : "Continue"}</Link></footer></div></main>;
+  }
+
+  if (referrerPurchasesOff) {
+    // Payment recovery above still finishes a referrer checkout started before the switch-off.
+    return <main data-skipwait-screen="premium" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href={returnPath} className="inline-flex items-center gap-1 text-sm font-semibold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 flex-col justify-center"><h1 className="font-display text-[2.35rem] font-semibold leading-[.94] tracking-[-.02em]">{REFERRERS_NEVER_PAY}</h1><p className="mt-4 text-sm leading-6 text-[#505050]">Reviewing asks and referring are free, with nothing to buy. If you paid before and do not see your credits, open Support and we will check the payment.</p></section><footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4"><Link href={returnPath} className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-5 py-3.5 text-sm font-semibold text-white">Back to referring</Link><Link href="/support" className="mt-3 block text-center text-sm font-semibold text-black">Contact Support</Link></footer></div></main>;
   }
 
   if (!CREDIT_PACKS_ON_SALE) {

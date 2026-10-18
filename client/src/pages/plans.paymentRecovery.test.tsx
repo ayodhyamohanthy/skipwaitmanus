@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 // Plans half of premium.paymentRecovery.test.tsx, on the kit v4 card + checkout
 // dialog markup: checkout waits for cookie auth, and a signed-out upgrade keeps
-// role, source, currency and plan through sign-in without auto-checkout.
+// role, source, currency and plan through sign-in without auto-checkout. The
+// referrer role gets no purchase at all (D-055: referrers never pay).
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -20,7 +21,7 @@ describe("Plans payment return recovery", () => {
   it("waits for cookie auth before allowing checkout", async () => {
     auth.isLoaded = false;
     auth.isSignedIn = false;
-    window.history.pushState({}, "", "/plans?role=referrer");
+    window.history.pushState({}, "", "/plans?role=job_seeker");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) });
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Plans />);
@@ -45,7 +46,7 @@ describe("Plans payment return recovery", () => {
 
   it("preserves role and selected plan without auto-checkout", async () => {
     auth.isSignedIn = false;
-    window.history.pushState({}, "", "/plans?role=referrer&currency=USD&source=credits");
+    window.history.pushState({}, "", "/plans?role=job_seeker&currency=USD&source=credits");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) });
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Plans />);
@@ -54,7 +55,7 @@ describe("Plans payment return recovery", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: /sign in to pay/i }));
     const destination = String(auth.openSignIn.mock.calls[0]?.[0]?.returnTo);
     const query = new URL(destination, window.location.origin).searchParams;
-    expect(query.get("role")).toBe("referrer");
+    expect(query.get("role")).toBe("job_seeker");
     expect(query.get("source")).toBe("credits");
     expect(query.get("currency")).toBe("INR");
     expect(query.get("plan")).toBe("max");
@@ -69,5 +70,39 @@ describe("Plans payment return recovery", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(onlyAccountReads(fetchMock)).toBe(true);
+  });
+});
+
+describe("Plans for the referrer role (D-055: referrers never pay)", () => {
+  const purchaseControl = /upgrade|pay|choose|add credits|buy|gift|checkout|renew/i;
+
+  it("offers no purchase, says referrers never pay, and sends no checkout", async () => {
+    window.history.pushState({}, "", "/plans?role=referrer&currency=USD");
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 0 } }) });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Plans />);
+    expect(await screen.findByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(screen.queryAllByRole("button").filter(button => purchaseControl.test(button.textContent ?? ""))).toEqual([]);
+    expect(document.querySelector("a[href^='/premium'], a[href*='payment=']")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toEqual([]);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/api/chargebee/"))).toBe(false);
+  });
+
+  it("offers no purchase to a signed-out visitor on the referrer role either", () => {
+    auth.isSignedIn = false;
+    window.history.pushState({}, "", "/plans?role=referrer");
+    vi.stubGlobal("fetch", vi.fn());
+    render(<Plans />);
+    expect(screen.getByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(screen.queryAllByRole("button").filter(button => purchaseControl.test(button.textContent ?? ""))).toEqual([]);
+    expect(auth.openSignIn).not.toHaveBeenCalled();
+  });
+
+  it("still shows the pending screen after a referrer checkout started before the switch-off", () => {
+    window.history.pushState({}, "", "/plans?role=referrer&payment=pending");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) }));
+    render(<Plans />);
+    expect(screen.getByText("Access starts only after the verified payment event reaches our server.")).toBeTruthy();
   });
 });

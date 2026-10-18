@@ -18,7 +18,7 @@ describe("Premium payment return recovery", () => {
   it.each([{ name: "Premium", Page: Premium }])("waits for cookie auth before allowing checkout on $name", async ({ Page }) => {
     auth.isLoaded = false;
     auth.isSignedIn = false;
-    window.history.pushState({}, "", Page === Premium ? "/premium?role=referrer" : "/plans?role=referrer");
+    window.history.pushState({}, "", Page === Premium ? "/premium?role=job_seeker" : "/plans?role=job_seeker");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) });
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Page />);
@@ -40,7 +40,7 @@ describe("Premium payment return recovery", () => {
 
   it.each([{ name: "Premium", Page: Premium }])("preserves role and selected purchase without auto-checkout on $name", async ({ Page }) => {
     auth.isSignedIn = false;
-    window.history.pushState({}, "", Page === Premium ? "/premium?role=referrer&currency=USD&source=credits" : "/plans?role=referrer&currency=USD&source=credits");
+    window.history.pushState({}, "", Page === Premium ? "/premium?role=job_seeker&currency=USD&source=credits" : "/plans?role=job_seeker&currency=USD&source=credits");
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ summary: { totalAvailable: 3 } }) });
     vi.stubGlobal("fetch", fetchMock);
     const view = render(<Page />);
@@ -50,7 +50,7 @@ describe("Premium payment return recovery", () => {
     fireEvent.click(screen.getByRole("button", { name: /sign in to pay/i }));
     const destination = auth.openSignIn.mock.calls[0][0].returnTo;
     const query = new URL(destination, window.location.origin).searchParams;
-    expect(query.get("role")).toBe("referrer");
+    expect(query.get("role")).toBe("job_seeker");
     expect(query.get("source")).toBe("credits");
     expect(query.get("currency")).toBe("INR");
     expect(query.get(Page === Premium ? "quantity" : "plan")).toBe(Page === Premium ? "7" : "max");
@@ -88,5 +88,40 @@ describe("Premium payment return recovery", () => {
     render(<Premium />);
     const subscriptions = await screen.findByRole("link", { name: "Or Checkout Pro and Max Subscriptions" });
     expect(subscriptions.getAttribute("href")).toBe("/plans?role=job_seeker");
+  });
+});
+
+describe("Premium for the referrer role (D-055: referrers never pay)", () => {
+  afterEach(() => { cleanup(); window.sessionStorage.clear(); vi.unstubAllGlobals(); });
+
+  it.each([true, false])("shows no pay button and starts no checkout (signed in: %s)", async signedIn => {
+    auth.isSignedIn = signedIn;
+    window.history.pushState({}, "", "/premium?role=referrer&currency=USD&quantity=7");
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ summary: { totalAvailable: 0 } }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Premium />);
+    expect(await screen.findByText("Referrers never pay on SkipWait.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /continue to pay|sign in to pay/i })).toBeNull();
+    expect(screen.queryByRole("spinbutton")).toBeNull();
+    expect(screen.queryByRole("link", { name: /Pro and Max/i })).toBeNull();
+    expect(document.querySelector("a[href^='/plans']")).toBeNull();
+    expect(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")).toEqual([]);
+    expect(auth.openSignIn).not.toHaveBeenCalled();
+  });
+
+  it("still recovers a referrer checkout started before the switch-off", async () => {
+    window.history.pushState({}, "", "/premium?role=referrer&payment=pending");
+    window.sessionStorage.setItem("skipwait.pending-chargebee-checkout", JSON.stringify({ hostedPageId: "hp_referrer", role: "referrer" }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("credit-recovery")) return new Response(JSON.stringify({ status: "credited", tokenCount: 2, summary: { totalAvailable: 5 } }), { status: 200 });
+      return new Response(JSON.stringify({ summary: { totalAvailable: 3 } }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Premium />);
+    expect(await screen.findByText("2 referral credits are ready.")).toBeTruthy();
+    const recovery = fetchMock.mock.calls.find(([url]) => String(url).includes("credit-recovery"));
+    expect(JSON.parse(String(recovery?.[1]?.body))).toEqual({ hostedPageId: "hp_referrer", role: "referrer" });
+    expect(fetchMock.mock.calls.some(([url]) => String(url) === "/api/chargebee/checkout")).toBe(false);
   });
 });

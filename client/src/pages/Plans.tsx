@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, HeartHandshake } from "lucide-react";
 import { ASK_COST_SENTENCE, CREDIT_RULE, PAID_PLANS_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { REFERRERS_NEVER_PAY, REFERRER_PURCHASES_ENABLED } from "@shared/referrerPurchases";
 import type { PaidSubscriptionPlan } from "@shared/subscriptionPlans";
 import { Button } from "@/components/kit/button";
 import { openChargebeeCheckout } from "@/lib/chargebeeCheckout";
@@ -27,6 +28,8 @@ const authHeaders = (token: string | null | undefined): Record<string, string> =
 export default function Plans() {
   const params = new URLSearchParams(typeof window !== "undefined" ? window.location.search : "");
   const role = params.get("role") === "referrer" ? "referrer" : "job_seeker";
+  // D-055: referrers never pay, so the referrer role gets no purchase control here (shared/referrerPurchases.ts).
+  const referrerPurchasesOff = role === "referrer" && !REFERRER_PURCHASES_ENABLED;
   const { isLoaded, isSignedIn, getToken, openSignIn } = useAuth();
   const [selected] = useState<PaidSubscriptionPlan>(() => params.get("plan") === "max" ? "max" : "pro");
   const [checkoutPlan, setCheckoutPlan] = useState<PaidSubscriptionPlan | null>(null);
@@ -69,7 +72,7 @@ export default function Plans() {
   }, [getToken, isSignedIn, role, summaryKey]);
 
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!isSignedIn || referrerPurchasesOff) return;
     let active = true;
     void (async () => {
       try {
@@ -84,7 +87,7 @@ export default function Plans() {
       }
     })();
     return () => { active = false; };
-  }, [getToken, isSignedIn]);
+  }, [getToken, isSignedIn, referrerPurchasesOff]);
 
   const activePlan = activePaidPlan(summary);
   const hasActivePlan = activePlan !== null;
@@ -189,6 +192,11 @@ export default function Plans() {
 
   if (status === "pending") {
     return <main data-skipwait-screen="plans" className="page-content plans-page"><section className="workspace-empty"><span className="empty-icon"><Check /></span><h2>We’re activating your monthly credits.</h2><p>Access starts only after the verified payment event reaches our server.</p><Button asChild className="brand-button"><Link href="/requests">View my requests<ArrowRight /></Link></Button></section></main>;
+  }
+
+  if (referrerPurchasesOff) {
+    // The pending screen above still finishes a referrer checkout started before the switch-off.
+    return <main data-skipwait-screen="plans" className="page-content plans-page"><section className="workspace-empty"><span className="empty-icon"><HeartHandshake /></span><h2>{REFERRERS_NEVER_PAY}</h2><p>Reviewing asks and referring are free, with nothing to buy. Looking for a job yourself? <Link href="/plans?role=job_seeker" className="font-semibold text-foreground underline underline-offset-4">See job seeker plans</Link>.</p><Button asChild className="brand-button"><Link href="/queue">Back to my queue<ArrowRight /></Link></Button></section></main>;
   }
 
   return <main data-skipwait-screen="plans" className="page-content plans-page">
