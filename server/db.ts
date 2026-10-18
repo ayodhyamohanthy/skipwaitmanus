@@ -3416,10 +3416,12 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
       // parked it. That is the same payment, not an unknown one: reporting it as
       // unmatched tells the admin to credit the customer by hand, a second credit.
       // A different invoice on the same checkout is not this payment and stays unknown.
+      // Only a credited row is a duplicate: credit recovery reports a duplicate to the
+      // buyer as "credited", which a refunded, parked or rejected payment is not.
       const settled = (await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerHostedPageId, hostedPageId), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1))[0];
       if (settled && (!settled.providerInvoiceId || !input.invoiceId || settled.providerInvoiceId === input.invoiceId)) {
-        if (settled.status === "credited" || settled.status === "refunded") return { status: "duplicate" as const, tokenCount: settled.tokenCount };
-        if (settled.status === "requires_review" || settled.status === "rejected") return { status: "ignored" as const, reason: "payment_already_reconciled" };
+        if (settled.status === "credited") return { status: "duplicate" as const, tokenCount: settled.tokenCount };
+        if (settled.status === "refunded" || settled.status === "requires_review" || settled.status === "rejected") return { status: "ignored" as const, reason: "payment_already_reconciled" };
       }
       return { status: "ignored" as const, reason: "unknown_checkout" };
     }

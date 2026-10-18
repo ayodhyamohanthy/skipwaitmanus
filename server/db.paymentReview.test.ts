@@ -233,4 +233,11 @@ describe("the webhook's pack credit", () => {
     expect(await paid({ eventId: "evt_second" })).toEqual({ status: "ignored", reason: "payment_already_reconciled" });
     expect(db.wallets[0].balance).toBe(2);
   });
+
+  it("a paid event for a refunded checkout is already reconciled, never a duplicate credit the buyer would read as credited", async () => {
+    fresh([payment({ status: "refunded", reconciliationReason: "refunded_by_provider", providerEventId: "evt_first" })]);
+    expect(await paid({ eventId: "hosted_page:hp_41" })).toEqual({ status: "ignored", reason: "payment_already_reconciled" });
+    expect(db.wallets[0].balance).toBe(2);
+    expect(paymentTxns()).toEqual([]);
+  });
 });
