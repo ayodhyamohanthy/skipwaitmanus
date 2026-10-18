@@ -1448,8 +1448,16 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: `payment.review_${decision}`, outcome: "success", resourceType: "payment_fulfillment", resourceId: paymentId, metadata: { decision, note: note ?? null, ...takeBack } });
       res.json({ payment });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "We could not record this payment decision";
-      res.status(/already resolved/i.test(message) ? 409 : /does not exist/i.test(message) ? 404 : 500).json({ error: message });
+      // The resolver's own plain messages; a driver error (its text can quote a note) is never one of them.
+      const message = error instanceof Error && !isDriverErrorMessage(error.message) ? error.message : "";
+      if (/already resolved/i.test(message)) return res.status(409).json({ error: message });
+      if (/does not exist/i.test(message)) return res.status(404).json({ error: message });
+      // Anything else is unexpected on a money path: report it, and give the page plain words, never the database's.
+      const paymentId = Number(req.params.paymentId);
+      const decision = typeof req.body?.decision === "string" ? req.body.decision.slice(0, 40) : null;
+      console.error("[AdminPaymentReview] decision failed", { paymentId, decision, error });
+      captureServerError(error, { route: "POST /api/admin/payments/review/:paymentId", paymentId, decision });
+      res.status(500).json({ error: "We could not record this payment decision. Reload this page to check the payment before you try again." });
     }
   });
   app.get("/api/admin/privacy-requests", async (req, res) => {

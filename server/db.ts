@@ -45,13 +45,13 @@ import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } f
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskShelfLife, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks } from "./heldAsk";
-import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
+import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
-import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx, isDuplicateKeyError } from "./paymentRefundReview";
+import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
 import { REFUND_OF_UNCREDITED_PAYMENT, PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome } from "../shared/paymentReview";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
@@ -3506,7 +3506,7 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
       try {
         await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: row.tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(paymentId), idempotencyKey: `payment-credit-${paymentId}`, balanceAfter: wallet[0].balance });
       } catch (error) {
-        if (!isDuplicateKeyError(error)) throw error;
+        if (!isDuplicateKey(error)) throw error;
         // This payment already has its purchase row (the webhook or an earlier
         // review added the pack): roll back the claim and the wallet credit.
         captureServerError(error, { source: "payment-review-second-credit", paymentId });

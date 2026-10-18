@@ -73,7 +73,8 @@ export function digest(...parts: Array<string | number>): string {
   return createHash("sha256").update(parts.join("|")).digest("hex").slice(0, 40);
 }
 
-function isDuplicateKey(error: unknown): boolean {
+/** A unique-key collision, read through drizzle's DrizzleQueryError wrapper (the mysql2 error is its cause). */
+export function isDuplicateKey(error: unknown): boolean {
   const seen = new Set<unknown>();
   let current: unknown = error;
   while (current && typeof current === "object" && !seen.has(current)) {

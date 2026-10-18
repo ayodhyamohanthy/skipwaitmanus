@@ -55,7 +55,8 @@ describe("a plan cycle is granted once", () => {
     // Simulate a wallet whose cycle columns went stale (restored row, lost write): it reads as September again.
     Object.assign(db.wallets[0], { monthlyCycleKey: "2026-09", monthlyCreditsRemaining: leftover, subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-06T00:00:00Z"), subscriptionResourceVersion: 10 });
     const before = structuredClone(db);
-    await expect(applyChargebeeSubscriptionEvent(renewal({ eventId: "ev_renew_oct_again", resourceVersion: 22 }))).rejects.toMatchObject({ code: "ER_DUP_ENTRY" });
+    // Production shape: drizzle's DrizzleQueryError carrying the mysql2 duplicate-key error as its cause.
+    await expect(applyChargebeeSubscriptionEvent(renewal({ eventId: "ev_renew_oct_again", resourceVersion: 22 }))).rejects.toMatchObject({ cause: { code: "ER_DUP_ENTRY", errno: 1062 } });
     expect(db).toEqual(before);
     expect(kinds("plan_grant")).toHaveLength(1);
   });

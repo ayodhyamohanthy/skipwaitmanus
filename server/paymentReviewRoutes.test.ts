@@ -1,8 +1,13 @@
 import express from "express";
 import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { DrizzleQueryError } from "drizzle-orm";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PaymentReviewRefusedError } from "./paymentRefundReview";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+
+const mocks = vi.hoisted(() => ({ capture: vi.fn() }));
+vi.mock("./sentry", async importOriginal => ({ ...(await importOriginal<typeof import("./sentry")>()), captureServerError: mocks.capture }));
+afterEach(() => { mocks.capture.mockReset(); vi.restoreAllMocks(); });
 
 // POST /api/admin/payments/review/:paymentId (P0-refund-review-double-credit):
 // the body is parsed with the shared contract before the resolver runs, a refused
@@ -72,11 +77,35 @@ describe("admin payment review decision route", () => {
     expect(activity.some(entry => entry.action === "payment.review_credited")).toBe(false);
   });
 
-  it("returns an already resolved payment as 409 and a missing one as 404", async () => {
+  it("returns an already resolved payment as 409 and a missing one as 404, in the resolver's words and without a report", async () => {
     const resolved = buildApp({ resolveRequiresReviewPayment: async () => { throw new Error("This payment was already resolved"); } });
-    expect((await post(resolved.app, { decision: "revoke_unused" })).status).toBe(409);
+    const conflict = await post(resolved.app, { decision: "revoke_unused" });
+    expect(conflict.status).toBe(409);
+    expect(conflict.body).toEqual({ error: "This payment was already resolved" });
     const missing = buildApp({ resolveRequiresReviewPayment: async () => { throw new Error("This payment record does not exist"); } });
-    expect((await post(missing.app, { decision: "rejected" })).status).toBe(404);
+    const gone = await post(missing.app, { decision: "rejected" });
+    expect(gone.status).toBe(404);
+    expect(gone.body).toEqual({ error: "This payment record does not exist" });
+    expect(mocks.capture).not.toHaveBeenCalled();
+  });
+
+  it("an unexpected failure is logged and reported, and the page gets plain words instead of the database error", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const failure = new DrizzleQueryError("insert into `tokenTransactions` (`userId`, `role`, `tokenCount`) values (?, ?, ?)", [7, "job_seeker", 5], Object.assign(new Error("Lock wait timeout exceeded"), { code: "ER_LOCK_WAIT_TIMEOUT", errno: 1205 }));
+    const { app, activity } = buildApp({ resolveRequiresReviewPayment: async () => { throw failure; } });
+    const response = await post(app, { decision: "credited" });
+    expect(response.status).toBe(500);
+    expect(response.body.error).toBe("We could not record this payment decision. Reload this page to check the payment before you try again.");
+    expect(JSON.stringify(response.body)).not.toMatch(/Failed query|tokenTransactions|job_seeker/);
+    expect(mocks.capture).toHaveBeenCalledWith(failure, expect.objectContaining({ route: "POST /api/admin/payments/review/:paymentId", paymentId: 41, decision: "credited" }));
+    expect(consoleError).toHaveBeenCalled();
+    expect(activity.some(entry => entry.action === "payment.review_credited")).toBe(false);
+    // A driver error is unexpected even when its query text quotes an admin note that reads "already resolved".
+    const quoted = new DrizzleQueryError("insert into `operationalActivityLogs` (`metadata`) values (?)", ["already resolved in Chargebee"], new Error("Deadlock found"));
+    const noteApp = buildApp({ resolveRequiresReviewPayment: async () => { throw quoted; } });
+    const quotedResponse = await post(noteApp.app, { decision: "rejected", note: "already resolved in Chargebee" });
+    expect(quotedResponse.status).toBe(500);
+    expect(mocks.capture).toHaveBeenCalledWith(quoted, expect.objectContaining({ decision: "rejected" }));
   });
 
   it("refuses an unknown decision, an extra field or a bad credit count with 400 before calling the resolver", async () => {

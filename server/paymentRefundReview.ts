@@ -13,7 +13,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import { operationalActivityLogs, paymentFulfillments, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { REFUND_REVIEWED_KEPT, REFUND_REVIEWED_REVOKED, type PaymentReviewOutcome } from "../shared/paymentReview";
-import type { LedgerTx } from "./creditLedger";
+import { isDuplicateKey, type LedgerTx } from "./creditLedger";
 import { captureServerError } from "./sentry";
 
 const REFUSED_NAME = "PaymentReviewRefusedError";
@@ -26,10 +26,6 @@ export class PaymentReviewRefusedError extends Error {
 /** By name, so the routes recognise the refusal without depending on module identity. */
 export function isPaymentReviewRefusal(error: unknown): error is Error {
   return error instanceof Error && error.name === REFUSED_NAME;
-}
-
-export function isDuplicateKeyError(error: unknown): boolean {
-  return error instanceof Error && (error as { code?: unknown }).code === "ER_DUP_ENTRY";
 }
 
 type FulfilmentRow = typeof paymentFulfillments.$inferSelect;
@@ -64,7 +60,7 @@ export async function closeRefundedPaymentReviewTx(tx: LedgerTx, input: Refunded
     try {
       await tx.insert(tokenTransactions).values({ userId: row.userId, role: row.role, tokenCount: -revoked, kind: "admin_adjustment", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(row.id), idempotencyKey: `payment-refund-${row.id}`, balanceAfter });
     } catch (error) {
-      if (!isDuplicateKeyError(error)) throw error;
+      if (!isDuplicateKey(error)) throw error;
       // This payment already has its take-back row (webhook full refund or an earlier revocation): roll everything back.
       captureServerError(error, { source: "payment-review-second-revocation", paymentId: row.id });
       throw new PaymentReviewRefusedError("Credits for this payment were already taken back once, so nothing more can be taken back. Nothing was changed.");

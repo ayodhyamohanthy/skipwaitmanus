@@ -24,7 +24,12 @@ describe("payment and recovery wallet concurrency invariants", () => {
     const body = fn("export async function resolveRequiresReviewPayment", "export async function listRecentPayments");
     expect(body.indexOf("paymentReviewRefusal(paymentReviewKind(row), decision)")).toBeGreaterThan(body.indexOf('.for("update")'));
     expect(body.indexOf("throw new PaymentReviewRefusedError(refusal)")).toBeLessThan(body.indexOf("status: decision"));
-    expect(body).toContain("if (!isDuplicateKeyError(error)) throw error;");
+    // drizzle wraps every driver error (DrizzleQueryError, the mysql2 error as its cause), so the
+    // duplicate check must read through the wrapper: the ledger's cause-walking isDuplicateKey.
+    expect(body).toContain("if (!isDuplicateKey(error)) throw error;");
+    const takeBack = fs.readFileSync(new URL("./paymentRefundReview.ts", import.meta.url), "utf8");
+    expect(takeBack).toContain("if (!isDuplicateKey(error)) throw error;");
+    for (const text of [body, takeBack]) expect(text).not.toMatch(/\.code === "ER_DUP_ENTRY"|isDuplicateKeyError/);
   });
 
   it("tags the webhook's pack credit with its payment, the shape the admin credit writes", () => {

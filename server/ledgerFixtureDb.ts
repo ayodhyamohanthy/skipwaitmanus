@@ -4,10 +4,12 @@
 // enforces the unique keys the ledger relies on for idempotency, applies the
 // `column + ?` / `column - ?` increments the wallet paths write, runs
 // INSERT ... ON DUPLICATE KEY UPDATE against the colliding row, and rolls a failed
-// transaction back. Any other SQL expression throws instead of being guessed. The
+// transaction back. A unique-key collision throws what production throws: drizzle's
+// DrizzleQueryError with the mysql2 ER_DUP_ENTRY error as its cause, so duplicate
+// checks are tested against the real shape. Any other SQL expression throws instead of being guessed. The
 // tables object keeps its identity (reset and rollback replace its arrays), so a
 // test can hold it while the server's cached db handle reads the same rows.
-import { SQL } from "drizzle-orm";
+import { DrizzleQueryError, SQL, getTableName, type Table } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { notifications, operationalActivityLogs, paymentFulfillments, planCreditGrants, promoCreditGrants, referralRequests, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
 
@@ -17,7 +19,9 @@ export type LedgerTableName = (typeof LEDGER_TABLE_NAMES)[number];
 export type LedgerTables = Record<LedgerTableName, Row[]>;
 
 const dialect = new MySqlDialect();
-const TABLES = new Map<unknown, LedgerTableName>([[tokenBalances, "wallets"], [tokenTransactions, "txns"], [planCreditGrants, "grants"], [promoCreditGrants, "promo"], [notifications, "notes"], [users, "users"], [subscriptionEvents, "events"], [subscriptionCheckoutIntents, "intents"], [operationalActivityLogs, "activity"], [referralRequests, "requests"], [paymentFulfillments, "payments"]]);
+const TABLE_ENTRIES: ReadonlyArray<readonly [Table, LedgerTableName]> = [[tokenBalances, "wallets"], [tokenTransactions, "txns"], [planCreditGrants, "grants"], [promoCreditGrants, "promo"], [notifications, "notes"], [users, "users"], [subscriptionEvents, "events"], [subscriptionCheckoutIntents, "intents"], [operationalActivityLogs, "activity"], [referralRequests, "requests"], [paymentFulfillments, "payments"]];
+const TABLES = new Map<unknown, LedgerTableName>(TABLE_ENTRIES);
+const SQL_TABLE_NAMES = new Map<LedgerTableName, string>(TABLE_ENTRIES.map(([table, name]) => [name, getTableName(table)]));
 /** The unique keys of drizzle/schema.ts the ledger and payment paths rely on (a NULL member never collides, as in MySQL). */
 const UNIQUE_KEYS: Partial<Record<LedgerTableName, readonly (readonly string[])[]>> = {
   txns: [["userId", "role", "idempotencyKey", "kind"], ["userId", "role", "kind", "referenceType", "referenceId"]],
@@ -103,7 +107,10 @@ export function createLedgerFixture() {
   }
 
   function enforceUnique(name: LedgerTableName, row: Row) {
-    if (uniqueConflict(name, row)) throw Object.assign(new Error(`Duplicate entry in ${name}`), { code: "ER_DUP_ENTRY", errno: 1062 });
+    if (!uniqueConflict(name, row)) return;
+    // drizzle-orm (mysql-core session) rethrows every driver error as DrizzleQueryError with no code of its own.
+    const driverError = Object.assign(new Error(`Duplicate entry for a unique key of ${name}`), { code: "ER_DUP_ENTRY", errno: 1062, sqlState: "23000" });
+    throw new DrizzleQueryError(`insert into \`${SQL_TABLE_NAMES.get(name) ?? name}\``, [], driverError);
   }
 
   /** Writes one column of an UPDATE / ON DUPLICATE KEY UPDATE: a plain value, or `that column + ?` / `- ?` on a number. */
