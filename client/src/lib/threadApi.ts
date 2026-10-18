@@ -38,6 +38,8 @@ const seekerRowSchema = z.object({
   createdAt: timestampSchema,
   attachmentCount: z.number().nullish(),
   heldForReferrer: z.boolean().nullish().catch(null),
+  // D-034/D-047: which coverage state the ask is in (server-computed); drives the waiting/held seeker copy.
+  queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
 });
 const mineSchema = z.object({ requests: z.array(z.looseObject({ id: z.number() })) });
 
@@ -102,6 +104,8 @@ export type ThreadRequest = {
   attachmentCount: number;
   /** Seeker side only: a personal-link ask its employee has not acted on still counts as unclaimed (D-050). */
   heldForReferrer?: boolean;
+  /** Seeker side only: coverage state of a pending ask (D-034/D-047/D-061). */
+  queueStatus?: "available_for_review" | "waiting_for_coverage" | "held_for_credit" | null;
 };
 export type ThreadMessage = { id: number; body: string; isMine: boolean };
 export type ThreadRole = "seeker" | "referrer-pending" | "referrer-claimed";
@@ -142,7 +146,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       request: {
         id: own.id, title: own.title ?? null, pitch: own.pitch ?? null, candidateName: null, targetRoleUrl: own.targetRoleUrl ?? null,
         companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerName: own.referrerName ?? null, referrerTitle: own.referrerTitle ?? null, referrerMessage: own.referrerMessage ?? null,
-        createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0, heldForReferrer: own.heldForReferrer === true,
+        createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0, heldForReferrer: own.heldForReferrer === true, queueStatus: own.queueStatus ?? null,
       },
     };
   }

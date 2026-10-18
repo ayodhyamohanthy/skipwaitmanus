@@ -4,7 +4,7 @@
 // (real counts only, expiry from the same instant the seeker sees) stay testable.
 import { reverifyDaysLeft } from "@shared/reverify";
 import { z } from "zod";
-import { getAskExpiresAtMs, referralStatuses } from "@shared/referral";
+import { getAskShelfLifeEndsAtMs, referralStatuses } from "@shared/referral";
 import { companyIdentityOf, type CompanyIdentity } from "@shared/companies";
 import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema } from "@shared/jobFunctions";
@@ -32,6 +32,9 @@ const inboxRowSchema = z.object({
   unreadMessageCount: count.optional().transform(value => value ?? 0),
   attachmentCount: count.nullish(),
   expiresAt: timestamp.nullish(),
+  // D-061 window fields: fallback clock when a payload carries no expiresAt.
+  waitingForCoverage: z.boolean().nullish(),
+  coverageVisibleAt: timestamp.nullish(),
   jobTitle: z.string().nullish(),
   askStrength: z.enum(["strong", "good", "basic"]).nullish().catch(null),
 });
@@ -205,8 +208,8 @@ export function greetingFor(hour: number): string {
   return "Good evening";
 }
 
-function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt">): number | null {
-  const ms = row.expiresAt ? Date.parse(row.expiresAt) : getAskExpiresAtMs(row.createdAt);
+function expiryMs(row: Pick<InboxRow, "expiresAt" | "createdAt" | "waitingForCoverage" | "coverageVisibleAt">): number | null {
+  const ms = row.expiresAt ? Date.parse(row.expiresAt) : getAskShelfLifeEndsAtMs(row);
   return ms === null || Number.isNaN(ms) ? null : ms;
 }
 

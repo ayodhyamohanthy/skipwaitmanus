@@ -23,6 +23,8 @@ describe("inbox thread derivation", () => {
     const pending = askingThread(asking());
     expect(pending).toMatchObject({ who: "Someone at Merkle", note: "Waiting for a referrer to accept", pill: "Requested", highlight: false, href: "/conversation/1" });
     expect(askingThread(asking({ queueStatus: "waiting_for_coverage" })).note).toBe("Waiting for coverage");
+    // D-047: an available employee exists but the ask waits for a credit.
+    expect(askingThread(asking({ queueStatus: "held_for_credit" })).note).toBe("Add a credit to send it");
     const accepted = askingThread(asking({ status: "approved", referrerId: 9, referrerMessage: "Happy to help" }));
     expect(accepted).toMatchObject({ who: "Your referrer · Merkle", note: "Happy to help", pill: "Accepted" });
     expect(askingThread(asking({ status: "intro_made", referrerId: 9 })).note).toBe("Introduction made");
@@ -65,6 +67,7 @@ describe("inbox thread derivation", () => {
 
   it("validates list payloads at the boundary", () => {
     expect(askingListSchema.safeParse({ requests: [{ ...asking(), referrerId: undefined, unreadMessageCount: undefined }] }).success).toBe(true);
+    expect(askingListSchema.safeParse({ requests: [{ ...asking(), queueStatus: "held_for_credit" }] }).success).toBe(true);
     expect(askingListSchema.safeParse({ requests: [{ ...asking(), status: "hired" }] }).success).toBe(false);
     expect(askingListSchema.safeParse({ requests: [{ ...asking(), companyName: undefined, companyInitials: undefined }] }).success).toBe(true);
     expect(askingListSchema.safeParse({ requests: [{ ...asking(), companyInitials: "TOOLONG" }] }).success).toBe(false);

@@ -23,4 +23,9 @@ describe("seekerWaitingCopy", () => {
     expect(seekerWaitingCopy({ ...base, referrerId: 77 }, now)).toBe("A verified Acme employee is reviewing your request. We'll notify you the moment it's accepted.");
     expect(seekerWaitingCopy({ ...base, referrerId: null }, now)).toBe("Waiting for a verified Acme referrer. Expires in 5 days if nobody accepts — your slot returns automatically.");
   });
+
+  it("states the coverage wait and the held-for-credit next step (D-034/D-047)", () => {
+    expect(seekerWaitingCopy({ ...base, referrerId: null, queueStatus: "waiting_for_coverage" }, now)).toBe("No verified Acme employee is available yet. Your ask waits at no cost, and when one can see it, 1 credit is used — we'll notify you.");
+    expect(seekerWaitingCopy({ ...base, referrerId: null, queueStatus: "held_for_credit" }, now)).toBe("A verified Acme employee can see asks now. Add a credit to send yours.");
+  });
 });

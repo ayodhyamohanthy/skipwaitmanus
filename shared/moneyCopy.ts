@@ -8,7 +8,7 @@
  * cannot drift from the catalog: the number comes from the Free plan.
  */
 import { FREE_PLAN } from "./planCatalog";
-import { ASK_TTL_DAYS } from "./referral";
+import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
 
 /** Free asks every account gets each UTC calendar month (D-039). */
 export const FREE_ASKS_PER_MONTH = FREE_PLAN.creditsPerMonth;
@@ -33,25 +33,29 @@ export const MONEY_SENTENCE_SHORT = `${ASK_COST_SENTENCE} ${REFERRERS_NEVER_PAID
 
 /**
  * The credit rule exactly as the ledger keeps it today (server/db.ts):
- * createCompanyReferralRequest spends 1 credit when the ask is sent;
- * withdrawCompanyReferralRequest and expireStalePendingReferralRequest return
- * it once (refundLedgerSpendTx) only while no verified employee has picked the
- * ask up; after a pickup it stays spent, even when that employee passes
- * (passReferralRequestTx moves no credit), so no decline returns it. A credit
- * goes back to the bucket it came from, so one whose month, plan cycle or grant
- * has already ended cannot come back (refundLedgerSpendTx logs 0).
- * A personal-link ask (D-017) follows the same rule since D-050 shipped: it counts
- * as not picked up until its link owner claims, accepts or passes. D-034, D-035,
- * D-038 and D-061 change this rule. Update it in the change that ships them, never
+ * an ask at a company where no verified employee is available yet waits at no
+ * cost (D-034); the moment one can first see it, create..delivery spends 1
+ * credit (ask-delivery key), and an ask whose seeker has no credit at that
+ * moment is held and offered a top-up instead (D-047); withdraw before pickup
+ * and an unclaimed expiry return it once (refundLedgerSpendTx) — the unclaimed
+ * window is ASK_TTL_DAYS from first visibility and a waiting or held ask that
+ * never reaches an employee closes after COVERAGE_WAIT_DAYS, having spent
+ * nothing (D-061). After a pickup the credit stays spent, even when that
+ * employee passes (passReferralRequestTx moves no credit). A credit goes back
+ * to the bucket it came from, so one whose month, plan cycle or grant has
+ * already ended cannot come back (refundLedgerSpendTx logs 0).
+ * A personal-link ask (D-017) is visible to its link owner from creation, so it
+ * follows the same rule with the clock starting at creation (D-050). D-035 and
+ * D-038 change this rule; update this copy in the change that ships them, never
  * before (D-042: copy never promises what the product does not do).
  */
-export const CREDIT_RULE = `An ask spends 1 credit when you send it. The credit comes back once if you withdraw before a verified employee picks the ask up, or if the ask expires unclaimed after ${ASK_TTL_DAYS} days, as long as the credit itself has not expired by then. Once the ask is picked up, the credit stays spent, even if they pass.`;
+export const CREDIT_RULE = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, 1 credit is used; if you have none then, we hold the ask until you add one. The credit comes back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, as long as the credit itself has not expired by then. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credit stays spent, even if they pass.`;
 
 /** A credit goes back to the bucket it came from, so one whose month or plan cycle ended cannot come back (refundLedgerSpendTx logs 0). */
 export const CREDIT_ENDED_CAVEAT = "unless its month or plan has ended by then";
 
-/** The same rule as a footnote clause, after "Uses 1 credit". */
-export const CREDIT_RULE_SHORT = `the credit comes back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
+/** The same rule as a footnote clause, after "Uses 1 credit and 1 open slot when a verified employee can see it". */
+export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the credit comes back once if you withdraw before pickup or the ask expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
 
 /** What a paid plan does to the monthly allowance: it replaces the free asks, it does not add to them (planEntitlementsFor). */
 export const PAID_PLANS_SENTENCE = `Passes and Keep warm replace the ${FREE_ASKS_PER_MONTH} free asks with more credits each month.`;

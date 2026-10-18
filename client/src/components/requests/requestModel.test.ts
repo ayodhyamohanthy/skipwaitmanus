@@ -28,8 +28,21 @@ describe("requests view model", () => {
     expect(requestNote(ask({ status: "approved", referrerId: 7, unreadMessageCount: 3 }), now)).toBe("3 new");
     expect(requestNote(ask({ status: "declined", referrerId: 7, referrerMessage: "Not my team" }), now)).toBe("Not my team");
     expect(requestNote(ask({ status: "pending", referrerId: 7, queueStatus: "available_for_review" }), now)).toBe("Available for review");
-    expect(requestNote(ask({ queueStatus: "waiting_for_coverage" }), now)).toBe("Expires in 6 days · Waiting for coverage");
+    // D-061: a waiting ask closes after 90 days, so the row shows no 7-day countdown.
+    expect(requestNote(ask({ queueStatus: "waiting_for_coverage" }), now)).toBe("Waiting for coverage");
+    // D-047: an available employee exists but the ask waits for a credit — the row says the next step.
+    expect(requestNote(ask({ queueStatus: "held_for_credit" }), now)).toBe("Add a credit to send it");
     expect(requestNote(ask({ status: "interview", referrerId: 7 }), now)).toMatch(/^Updated /);
+  });
+
+  it("runs the 7-day clock from first visibility and skips waiting asks (D-061)", () => {
+    // Sent 10 days ago, first visible 6.5 days ago: inside the last day, so urgent.
+    const delivered = ask({ id: 9, createdAt: new Date(now - 10 * day).toISOString(), coverageVisibleAt: new Date(now - 6.5 * day).toISOString(), waitingForCoverage: false });
+    expect(isUrgentExpiry(delivered, now)).toBe(true);
+    // A waiting ask has no 7-day clock at all, however old it is.
+    const waiting = ask({ id: 10, queueStatus: "waiting_for_coverage", waitingForCoverage: true, createdAt: new Date(now - 6.9 * day).toISOString(), expiresAt: new Date(now + day).toISOString() });
+    expect(isUrgentExpiry(waiting, now)).toBe(false);
+    expect(countExpiringSoon([waiting], now)).toBe(0);
   });
 
   it("counts conversations and expiring asks from the list alone", () => {

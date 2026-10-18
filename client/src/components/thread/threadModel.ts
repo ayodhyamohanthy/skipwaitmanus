@@ -52,11 +52,15 @@ export function companyInitials(request: CompanyIdentitySource): string {
 /**
  * Seeker waiting line for a pending ask, with the real expiry when it applies. A personal-link ask its
  * employee has not acted on (D-050) is with that one employee and expires like an unclaimed ask.
+ * A waiting ask (D-034) has reached no employee and waits at no cost — no expiry countdown applies;
+ * a held ask (D-047) has an available employee but no credit, so the next step is adding one.
  */
-export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "companyName" | "companyInitials" | "referrerId" | "createdAt" | "heldForReferrer">, nowMs: number = Date.now()): string {
+export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "companyName" | "companyInitials" | "referrerId" | "createdAt" | "heldForReferrer" | "queueStatus">, nowMs: number = Date.now()): string {
   const company = companyName(request);
   const held = request.referrerId !== null && request.heldForReferrer === true;
   if (request.referrerId !== null && !held) return `A verified ${company} employee is reviewing your request. We'll notify you the moment it's accepted.`;
+  if (request.queueStatus === "held_for_credit") return `A verified ${company} employee can see asks now. Add a credit to send yours.`;
+  if (request.queueStatus === "waiting_for_coverage") return `No verified ${company} employee is available yet. Your ask waits at no cost, and when one can see it, 1 credit is used — we'll notify you.`;
   const days = askDaysShown({ createdAt: request.createdAt }, nowMs);
   const when = days === null || days < 0 ? null : days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
   if (held) return when ? `Sent privately to the ${company} employee whose link you used. ${when} if they don't respond — your slot returns automatically.` : `Sent privately to the ${company} employee whose link you used.`;

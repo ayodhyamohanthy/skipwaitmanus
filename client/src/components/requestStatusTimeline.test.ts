@@ -19,6 +19,11 @@ describe("buildRequestTimeline (seeker-visible status history)", () => {
     expect(entries[1].label).toBe("Waiting for company coverage");
   });
 
+  it("names the held-for-credit next step when an employee can see the ask but no credit is available (D-047)", () => {
+    const entries = buildRequestTimeline({ ...base, status: "pending", referrerId: null, queueStatus: "held_for_credit" });
+    expect(entries[1]).toMatchObject({ label: "An employee can see asks — adding a credit is the next step", state: "waiting" });
+  });
+
   it("marks the claim step as done once a verified employee holds the request, without exposing who", () => {
     const entries = buildRequestTimeline({ ...base, status: "pending", referrerId: 77 });
     expect(entries[1]).toMatchObject({ label: "Claimed by a verified employee", state: "done", tone: "blue", date: base.updatedAt });

@@ -43,8 +43,11 @@ function compactDate(value: string) {
 export function requestNote(request: ReferralRequest, nowMs: number): string {
   if (request.status === "pending") {
     if (request.referrerId && request.heldForReferrer !== true) return request.queueStatus === "available_for_review" ? "Available for review" : getJobSeekerReferralState(request).label;
-    const parts = [formatAskExpiry(request, nowMs), request.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : null].filter((part): part is string => Boolean(part));
-    return parts.length ? parts.join(" · ") : `Updated ${compactDate(request.updatedAt)}`;
+    // D-047: an available employee exists but the seeker had no credit when the ask could first reach them.
+    if (request.queueStatus === "held_for_credit") return "Add a credit to send it";
+    // D-061: a waiting ask closes after 90 days at no cost, so no 7-day countdown applies.
+    if (request.queueStatus === "waiting_for_coverage") return "Waiting for coverage";
+    return formatAskExpiry(request, nowMs) ?? `Updated ${compactDate(request.updatedAt)}`;
   }
   if (isPostApprovalReferralStatus(request.status) && request.unreadMessageCount > 0) return `${request.unreadMessageCount} new`;
   if (request.status === "approved") return "Message your referrer";
@@ -55,7 +58,8 @@ export function requestNote(request: ReferralRequest, nowMs: number): string {
 /** Unclaimed asks inside their last day are flagged like the kit's "Expires tomorrow". */
 export function isUrgentExpiry(request: ReferralRequest, nowMs: number): boolean {
   if (!canWithdrawRequest(request)) return false;
-  const days = askDaysLeft({ createdAt: request.createdAt }, nowMs);
+  // D-061: the 7-day clock runs from first visibility, and a waiting ask has none.
+  const days = askDaysLeft({ createdAt: request.createdAt, waitingForCoverage: request.waitingForCoverage, coverageVisibleAt: request.coverageVisibleAt }, nowMs);
   return days !== null && days <= 1;
 }
 
@@ -66,7 +70,7 @@ export function countInConversation(requests: readonly ReferralRequest[]): numbe
 
 export function countExpiringSoon(requests: readonly ReferralRequest[], nowMs: number): number {
   return requests.filter(request => {
-    if (!canWithdrawRequest(request)) return false;
+    if (!canWithdrawRequest(request) || request.waitingForCoverage) return false;
     const ms = request.expiresAt ? Date.parse(request.expiresAt) : getAskExpiresAtMs(request.createdAt);
     return ms !== null && !Number.isNaN(ms) && ms > nowMs && ms - nowMs <= ASK_EXPIRING_SOON_MS;
   }).length;
