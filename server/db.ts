@@ -45,7 +45,7 @@ import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } f
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
-import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskShelfLife, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks } from "./heldAsk";
+import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
 import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDRAWN_NOTICE, askDeliveryKey, coverageDeliveredEventKey, coverageDeliveredNotice, coverageHeldEventKey, coverageHeldNotice, coverageReferrerEventKey, coverageReferrerNotice, coverageWaitExpiredNotice, isAwaitingCoverageActionAllowed, type CoverageDeliveryOutcome, type CoverageHandoffSummary } from "./coverageDelivery";
@@ -2056,8 +2056,9 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
   const scopeNowMs = Date.now();
-  // D-050: a personal-link ask its employee never acted on is unclaimed, so past its 7 days it leaves the link owner's inbox like
-  // any stale unclaimed ask. Fail-soft and reported: the list never depends on it, and claim re-decides under the row lock.
+  // D-050 / P0-allocated-ask-stuck: an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is
+  // unclaimed, so past its window it leaves that employee's inbox like any stale unclaimed ask. Fail-soft and reported: the
+  // list never depends on it, and claim re-decides under the row lock.
   let staleHeld = new Set<number>();
   try { staleHeld = await listStaleHeldForViewer(db, rows, userId, scopeNowMs); }
   catch (error) { console.warn("[inbox] stale held check skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "referrer_inbox_stale_held" }); }
@@ -2129,15 +2130,17 @@ async function referralWasClaimedTx(tx: LedgerTx, requestId: number): Promise<bo
 }
 
 /**
- * D-050: the referrer a pending personal-link ask is still held for, or null. Caller holds the
- * request row lock. Held = assigned with nothing recorded since: no claim (the locking read above),
- * no queue allocation, created after claims became recorded events (server/heldAsk.ts).
+ * The referrer a pending assigned ask is still an unclaimed assignment for, and its kind, or null.
+ * Caller holds the request row lock. Unclaimed = assigned with no claim recorded (the locking read
+ * above), created after claims became recorded events (server/heldAsk.ts). The kind comes from the
+ * allocation locking read: an allocated slot (D-034 delivery or "Open referral capacity") is a
+ * queue allocation, not a pickup (P0-allocated-ask-stuck); no slot is a personal link (D-050).
  */
-async function heldForReferrerTx(tx: LedgerTx, row: { id: number; status: string; referrerId: number | null; createdAt: Date }): Promise<number | null> {
+async function heldForReferrerTx(tx: LedgerTx, row: { id: number; status: string; referrerId: number | null; createdAt: Date }): Promise<{ referrerId: number; kind: UnclaimedAssignmentKind } | null> {
   if (!isHeldCandidate(row)) return null;
   if (await referralWasClaimedTx(tx, row.id)) return null;
-  if (await readQueueAllocationTx(tx, row.id)) return null;
-  return row.referrerId;
+  const kind: UnclaimedAssignmentKind = await readQueueAllocationTx(tx, row.id) ? "queue_allocation" : "personal_link";
+  return { referrerId: row.referrerId, kind };
 }
 
 const WITHDRAW_REFUSED = "This request was already claimed by a verified employee and can no longer be withdrawn";
@@ -2148,14 +2151,16 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     const current=(await tx.select({id:referralRequests.id,status:referralRequests.status,referrerId:referralRequests.referrerId,debitTransactionId:referralRequests.debitTransactionId,waitingForCoverage:referralRequests.waitingForCoverage,coverageHeldAt:referralRequests.coverageHeldAt,createdAt:referralRequests.createdAt}).from(referralRequests).where(and(eq(referralRequests.id,requestId),eq(referralRequests.jobSeekerId,userId))).limit(1).for("update"))[0];
     if(!current)throw new Error("This referral request is not in your account");if(current.status==="withdrawn"){const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return{withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};}
     if(current.status!=="pending")throw new Error(current.status==="closed"?"This ask has already closed, so it can no longer be withdrawn":WITHDRAW_REFUSED);
-    // D-050: an assigned ask its employee has not acted on (a personal-link ask) is still unclaimed; any other assigned ask was picked up.
+    // D-050 / P0-allocated-ask-stuck: an assigned ask its employee has not claimed (a personal-link ask or a queue
+    // allocation) is still unclaimed; any other assigned ask was picked up.
     const heldFor=current.referrerId===null?null:await heldForReferrerTx(tx,current);
     if(current.referrerId!==null&&heldFor===null)throw new Error(WITHDRAW_REFUSED);
-    // Each transition re-checks the locked row. Releasing a held ask clears its referrer in the same write, so the
-    // withdrawn ask never reads as assigned or reveals who held it; the release audit row keeps that, in this transaction.
-    const authorize:ReferralTransitionInput["authorize"]=row=>{if(row.jobSeekerId!==userId||row.referrerId!==heldFor)throw new Error(WITHDRAW_REFUSED);};
+    // Each transition re-checks the locked row. Releasing an unclaimed assignment clears its referrer in the same write, so
+    // the withdrawn ask never reads as assigned or reveals who held it; the release audit row keeps that, in this transaction.
+    const heldReferrerId=heldFor?.referrerId??null;
+    const authorize:ReferralTransitionInput["authorize"]=row=>{if(row.jobSeekerId!==userId||row.referrerId!==heldReferrerId)throw new Error(WITHDRAW_REFUSED);};
     const release=heldFor===null?undefined:{referrerId:null};
-    const released=async<T extends {creditRefunded:boolean}>(result:T):Promise<T>=>{if(heldFor!==null)await recordHeldAskReleaseTx(tx,{requestId,referrerId:heldFor,kind:"personal_link",reason:"withdrawn",creditReturned:result.creditRefunded});return result;};
+    const released=async<T extends {creditRefunded:boolean}>(result:T):Promise<T>=>{if(heldFor!==null)await recordHeldAskReleaseTx(tx,{requestId,referrerId:heldFor.referrerId,kind:heldFor.kind,reason:"withdrawn",creditReturned:result.creditRefunded});return result;};
     if(heldFor===null&&await referralWasClaimedTx(tx,requestId)){
       const transition=await transitionReferralRequestTx(tx,{
         requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,
@@ -2279,8 +2284,9 @@ function legacyExpiryNotice(lead: string, refund: LegacyExpiryRefund): { title: 
  * Expires one stale ask: unclaimed pending past ASK_TTL_DAYS transitions to
  * "closed", freeing its open slot; an ask that reserved a credit before asks
  * became free gets it refunded with a "credit returned" notification, so early
- * seekers are never left hanging on a dead ask. A personal-link ask its
- * employee never acted on (D-050) expires the same way and drops its referrer.
+ * seekers are never left hanging on a dead ask. An assigned ask its employee
+ * never claimed (a personal-link ask, D-050, or a queue allocation,
+ * P0-allocated-ask-stuck) expires the same way and drops its referrer.
  * Idempotent via the transition operationKey plus the reversal-uniqueness
  * check; concurrency-safe through row locking and revision CAS.
  */
@@ -2294,13 +2300,15 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
     // ask 7 days after its first visibility (coverageVisibleAt; pre-0095 rows: creation).
     const expiresAt = getAskShelfLifeEndsAtMs(current);
     if (expiresAt === null || nowMs < expiresAt) return { expired: false as const, requestId, status: current.status };
-    // D-050: an assigned ask its employee never acted on (a personal-link ask) expires like an unclaimed one; any other assigned ask is left alone.
+    // D-050 / P0-allocated-ask-stuck: an assigned ask its employee never claimed (a personal-link ask or a queue allocation)
+    // expires like an unclaimed one; any other assigned ask is left alone.
     const heldFor = current.referrerId === null ? null : await heldForReferrerTx(tx, current);
     if (current.referrerId !== null && heldFor === null) return { expired: false as const, requestId, status: current.status };
-    const authorize: ReferralTransitionInput["authorize"] = row => { if (row.jobSeekerId !== userId || row.referrerId !== heldFor) throw new Error("This request is already in conversation and cannot expire"); };
+    const heldReferrerId = heldFor?.referrerId ?? null;
+    const authorize: ReferralTransitionInput["authorize"] = row => { if (row.jobSeekerId !== userId || row.referrerId !== heldReferrerId) throw new Error("This request is already in conversation and cannot expire"); };
     const release = heldFor === null ? undefined : { referrerId: null };
-    const lead = current.waitingForCoverage ? `No verified employee at ${current.companyDomain} became available within ${COVERAGE_WAIT_DAYS} days.` : heldFor === null ? "No verified employee claimed it within 7 days." : "The employee whose link you used didn't respond within 7 days.";
-    const released = async <T,>(result: T, creditReturned: boolean): Promise<T> => { if (heldFor !== null) await recordHeldAskReleaseTx(tx, { requestId, referrerId: heldFor, kind: "personal_link", reason: "expired", creditReturned }); return result; };
+    const lead = current.waitingForCoverage ? `No verified employee at ${current.companyDomain} became available within ${COVERAGE_WAIT_DAYS} days.` : heldFor?.kind === "personal_link" ? "The employee whose link you used didn't respond within 7 days." : "No verified employee claimed it within 7 days.";
+    const released = async <T,>(result: T, creditReturned: boolean): Promise<T> => { if (heldFor !== null) await recordHeldAskReleaseTx(tx, { requestId, referrerId: heldFor.referrerId, kind: heldFor.kind, reason: "expired", creditReturned }); return result; };
     if (heldFor === null && await referralWasClaimedTx(tx, requestId)) {
       const transition = await transitionReferralRequestTx(tx, {
         requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`,
@@ -2382,7 +2390,8 @@ export async function releaseFirstLookForRequest(requestId: number, nowMs: numbe
 
 /**
  * Reconcile-on-read for the seeker home: expires every stale unclaimed ask,
- * including a personal-link ask its employee never acted on (D-050).
+ * including an assigned ask its employee never claimed (a personal-link ask,
+ * D-050, or a queue allocation, P0-allocated-ask-stuck).
  * Fail-open per request — a failed expiry never blocks listing; the next
  * read retries. Returns the ids that transitioned so the route can report
  * them honestly.
@@ -2437,12 +2446,13 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
     const people = await db.select({ id: users.id, name: users.name, title: profiles.currentTitle }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).where(inArray(users.id, revealIds));
     for (const person of people) revealed.set(person.id, { name: person.name ?? null, title: person.title ?? null });
   }
-  // D-050: a personal-link ask its employee has not acted on still counts as unclaimed (Withdraw, expiry countdown).
-  // Fail-soft and reported: the flag only adds that entry point; withdraw and expiry re-decide under the row lock.
-  let held: ReadonlySet<number> = new Set<number>();
-  try { held = (await listHeldForReferrerIds(db, rows)).personalLink; }
+  // D-050: a personal-link ask its employee has not acted on still counts as unclaimed (heldForReferrer: Withdraw, expiry
+  // countdown). P0-allocated-ask-stuck: so does a queue allocation nobody claimed; unclaimedAssignment covers both kinds
+  // (Withdraw). Fail-soft and reported: the flags only add that entry point; withdraw and expiry re-decide under the row lock.
+  let held: UnclaimedAssignments = { personalLink: new Set<number>(), queueAllocation: new Set<number>() };
+  try { held = await listHeldForReferrerIds(db, rows); }
   catch (error) { console.warn("[requests] held flag skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "seeker_requests_held_flag" }); }
-  return rows.map(row => ({ ...row, heldForReferrer: held.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+  return rows.map(row => ({ ...row, heldForReferrer: held.personalLink.has(row.id), unclaimedAssignment: held.personalLink.has(row.id) || held.queueAllocation.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
 /**
@@ -2783,13 +2793,14 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     const current = (await tx.select({ request: referralRequests, company: jobs.company }).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
     if (!current || current.request.status !== "pending" || current.request.waitingForCoverage || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
     // D-061: a waiting or held ask has reached no referrer and cannot be claimed; the claim clock follows the ask's own
-    // shelf life (an unassigned ask: 7 days from first visibility). D-050: a personal-link ask its employee never acted
-    // on is unclaimed too (decided under this row lock; its hold keeps the creation-based 7 days), so a late claim cannot
-    // end its hold after the seeker's expiry was due and keep their credit spent.
+    // shelf life (7 days from first visibility; rows without coverageVisibleAt: creation). D-050 / P0-allocated-ask-stuck:
+    // an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is unclaimed too (decided under
+    // this row lock, on the same window), so a late claim cannot end it after the seeker's expiry was due and keep their
+    // credit spent.
     const claimNowMs = Date.now();
     if (current && (current.request.referrerId === null
       ? isAskExpired({ status: current.request.status, referrerId: current.request.referrerId, createdAt: current.request.createdAt, coverageVisibleAt: current.request.coverageVisibleAt, waitingForCoverage: current.request.waitingForCoverage }, claimNowMs)
-      : isPastAskShelfLife(current.request.createdAt, claimNowMs) && await heldForReferrerTx(tx, current.request) !== null)) throw new ReferralTransitionConflict("This referral request expired before it could be claimed", { status: current.request.status, revision: current.request.revision });
+      : isPastAskWindow(current.request, claimNowMs) && await heldForReferrerTx(tx, current.request) !== null)) throw new ReferralTransitionConflict("This referral request expired before it could be claimed", { status: current.request.status, revision: current.request.revision });
     // D-022: during the poster's 48-hour first look, nobody else can claim.
     if (current && firstLookExcludesViewer(current.request, userId, claimNowMs)) throw new ReferralTransitionConflict("This referral request is still in its poster's first look", { status: current.request.status, revision: current.request.revision });
     const passed = (await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];

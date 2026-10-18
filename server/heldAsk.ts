@@ -21,7 +21,7 @@
 // and transactions without an import cycle (the planGates.ts pattern).
 import { and, asc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import { operationalActivityLogs, referralAvailabilitySlots, referralRequests, referralTransitionEvents } from "../drizzle/schema";
-import { getAskExpiresAtMs, getAskShelfLifeEndsAtMs, type AskExpiryWindow } from "../shared/referral";
+import { getAskShelfLifeEndsAtMs, type AskExpiryWindow } from "../shared/referral";
 import type { LedgerTx } from "./creditLedger";
 
 /**
@@ -41,12 +41,6 @@ export type UnclaimedAssignmentKind = "personal_link" | "queue_allocation";
 export type HeldCandidate = { readonly status: string; readonly referrerId: number | null; readonly createdAt: Date };
 export function isHeldCandidate<T extends HeldCandidate>(row: T): row is T & { readonly referrerId: number } {
   return row.status === "pending" && row.referrerId !== null && row.createdAt.getTime() >= HELD_ASK_HISTORY_SINCE.getTime();
-}
-
-/** Past the 7-day shelf life at `nowMs` (JS clock, never DB NOW()): the age half of isAskExpired, for asks the held rule may count as unclaimed. */
-export function isPastAskShelfLife(createdAt: Date, nowMs: number): boolean {
-  const expiresAt = getAskExpiresAtMs(createdAt);
-  return expiresAt !== null && nowMs >= expiresAt;
 }
 
 /**
