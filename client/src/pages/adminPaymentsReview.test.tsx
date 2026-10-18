@@ -46,6 +46,7 @@ describe("administrator payment review decisions", () => {
   const partial = parked(4, "refund_partial", "refunded_after_credit");
   const refundedEarly = parked(5, "refund_of_uncredited_payment", "refunded_before_credit");
   const unknown = parked(6, "checkout_amount_mismatch", undefined);
+  const partlyRefundedEarly = parked(7, "refund_not_full_before_credit", "awaiting_credit");
   let queue: unknown[] = [];
   let post: (body: Record<string, unknown>) => { status: number; body: unknown };
   const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
@@ -85,6 +86,16 @@ describe("administrator payment review decisions", () => {
     expect(odd.queryByRole("button", { name: /^Add|Take back|Keep|^Reject|Close/ })).toBeNull();
     expect(odd.getByRole("button", { name: "Reload this page" })).toBeTruthy();
     expect(screen.queryByText(/Mark a payment credited to grant its tokens/)).toBeNull();
+  });
+
+  it("a payment refunded only in part before its credit can still be credited once, and says why in plain words", async () => {
+    queue = [partlyRefundedEarly, refundedEarly];
+    render(<AdminPaymentsReview />);
+    const partly = await row(7);
+    expect(partly.getAllByRole("button").map(button => button.textContent)).toEqual(["Add 4 credits", "Reject, add nothing"]);
+    expect(partly.getByText("Chargebee recorded a refund before any credits were added, but it did not cover the whole payment. Check the refunds in Chargebee, and add the credits only if the buyer still paid for the pack.")).toBeTruthy();
+    expect(partly.queryByText(/refund_not_full_before_credit/)).toBeNull();
+    expect((await row(5)).getByText("This payment was refunded in full in Chargebee before any credits were added.")).toBeTruthy();
   });
 
   it("take back posts revoke_unused and shows the outcome in plain words", async () => {

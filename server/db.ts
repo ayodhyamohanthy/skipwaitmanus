@@ -52,7 +52,8 @@ import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
-import { REFUND_OF_UNCREDITED_PAYMENT, PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome } from "../shared/paymentReview";
+import { PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome, type RefundReviewReason } from "../shared/paymentReview";
+import { settleRefundBeforeCreditTx } from "./paymentRefundEvents";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
@@ -3563,7 +3564,7 @@ export async function getRevenueSummary() {
 export type ChargebeeRefundOutcome =
   | { status: "revoked"; paymentId: number; tokenCount: number }
   | { status: "duplicate"; paymentId: number }
-  | { status: "review"; paymentId: number; reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_of_uncredited_payment" | "refund_amount_unreadable"; expectedAmount: number; currency: string }
+  | { status: "review"; paymentId: number; reason: RefundReviewReason; expectedAmount: number; currency: string }
   | { status: "unmatched"; reason: "refund_invoice_unreadable" | "refund_invoice_unknown" };
 
 /**
@@ -3584,17 +3585,13 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
     const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerInvoiceId, invoiceId))).limit(1).for("update");
     const row = rows[0];
     if (!row) return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+    // Still waiting for its credit (an amount mismatch): only refunds of everything
+    // paid stop the review from adding the pack (server/paymentRefundEvents.ts).
+    if (row.status === "requires_review" && paymentReviewKind(row) === "awaiting_credit") return settleRefundBeforeCreditTx(tx, row, { eventId: input.eventId, invoiceId, refundAmount: input.refundAmount, currency: input.currency });
     if (row.status === "refunded" || (row.status === "requires_review" && (row.reconciliationReason ?? "").startsWith("refund_"))) return { status: "duplicate" as const, paymentId: row.id };
     const park = async (reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_of_uncredited_payment" | "refund_amount_unreadable") => {
-      if (row.status === "credited") {
-        await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
-      } else if (row.status === "requires_review") {
-        // Refunded while still waiting for its credit (an amount mismatch): the
-        // review may now only close it, never add a pack whose money went back,
-        // and a redelivered refund finds the refund reason and is a duplicate.
-        await tx.update(paymentFulfillments).set({ reconciliationReason: REFUND_OF_UNCREDITED_PAYMENT, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "requires_review")));
-      }
-      await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: "billing.refund_needs_review", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ reason, eventId: input.eventId, invoiceId, refundAmount: input.refundAmount ?? null, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount }) });
+      if (row.status === "credited") await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
+      await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: "billing.refund_needs_review", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ reason, eventId: input.eventId, invoiceId, refundAmount: input.refundAmount ?? null, refundCurrency: input.currency ?? null, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount }) });
       return { status: "review" as const, paymentId: row.id, reason, expectedAmount: row.amount, currency: row.currency };
     };
     if (row.status !== "credited") return park("refund_of_uncredited_payment");

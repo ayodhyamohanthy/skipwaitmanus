@@ -41,6 +41,8 @@ function refundParked(balance: number, patch: Row = {}) {
   const txns = balance >= PACK ? [legacyPurchase(1), ...(balance > PACK ? [taggedPurchase(2, 40, balance - PACK)] : [])] : [legacyPurchase(1), purchasedSpend(2, PACK - balance)];
   fixture.reset({ users: [{ id: SEEKER, canonicalPersonId: 1 }], wallets: [wallet(balance)], payments: [payment(patch)], txns: [...txns, carryoverRow(10)], grants: [carryoverGrant()], promo: [promoGrant()] });
 }
+/** The record fulfillChargebeePayment writes when it parks a paid invoice whose amount disagrees with the checkout. */
+const mismatchLog = (paidAmount: number, paidCurrency = "INR", expectedAmount = 50000): Row => ({ id: 900, actorUserId: SEEKER, action: "billing.payment_amount_mismatch", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(PAYMENT), metadata: JSON.stringify({ role: "job_seeker", expectedAmount, expectedCurrency: "INR", paidAmount, paidCurrency, invoiceId: "inv_41" }), createdAt: PAID_AT });
 const paymentRow = () => db.payments.find(row => row.id === PAYMENT) as Row;
 const paymentTxns = (kind?: string) => db.txns.filter(row => row.referenceType === "payment_fulfillment" && row.referenceId === String(PAYMENT) && (!kind || row.kind === kind));
 const activity = (action: string) => db.activity.filter(row => row.action === action);
@@ -141,7 +143,7 @@ describe("a payment refunded after its credits were added", () => {
 });
 
 describe("a payment the webhook never credited", () => {
-  const mismatch = (balance = 2) => fixture.reset({ users: [{ id: SEEKER, canonicalPersonId: 1 }], wallets: [wallet(balance)], payments: [payment({ reconciliationReason: "checkout_amount_mismatch", creditedAt: null })], txns: balance ? [taggedPurchase(1, 40, balance)] : [] });
+  const mismatch = (balance = 2) => fixture.reset({ users: [{ id: SEEKER, canonicalPersonId: 1 }], wallets: [wallet(balance)], payments: [payment({ reconciliationReason: "checkout_amount_mismatch", creditedAt: null })], txns: balance ? [taggedPurchase(1, 40, balance)] : [], activity: [mismatchLog(50000)] });
 
   it("is credited exactly once, even on retry", async () => {
     mismatch();
@@ -173,7 +175,7 @@ describe("a payment the webhook never credited", () => {
     expect(db).toEqual(before);
   });
 
-  it("a refund arriving while it is parked blocks crediting it; it can only be closed", async () => {
+  it("a refund of everything paid, arriving while it is parked, blocks crediting it; it can only be closed", async () => {
     mismatch();
     expect(await applyChargebeePaymentRefund({ eventId: "evt_refund_1", invoiceId: "inv_41", refundAmount: 50000, currency: "INR" })).toMatchObject({ status: "review", reason: "refund_of_uncredited_payment", paymentId: PAYMENT });
     expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_of_uncredited_payment", creditedAt: null });
@@ -184,6 +186,80 @@ describe("a payment the webhook never credited", () => {
     expect(paymentRow()).toMatchObject({ status: "rejected", creditedAt: null });
     expect(db.wallets[0].balance).toBe(2);
     expect(paymentTxns()).toEqual([]);
+  });
+});
+
+// Review round 1: only a refund of everything the buyer paid closes a payment that is
+// still waiting for its credit. A refund of the overcharge on an amount mismatch is the
+// usual fix, and the buyer has still paid for the pack: it stays creditable, once.
+describe("a refund of a payment still waiting for its credit", () => {
+  const CHECKOUT = 39600;
+  const PAID = 45000;
+  const awaitingRefund = (records: Row[] = [mismatchLog(PAID, "INR", CHECKOUT)]) => fixture.reset({ users: [{ id: SEEKER, canonicalPersonId: 1 }], wallets: [wallet(2)], payments: [payment({ amount: CHECKOUT, reconciliationReason: "checkout_amount_mismatch", creditedAt: null })], txns: [taggedPurchase(1, 40, 2)], activity: records });
+  const refund = (patch: Partial<Parameters<typeof applyChargebeePaymentRefund>[0]> = {}) => applyChargebeePaymentRefund({ eventId: "evt_refund_1", invoiceId: "inv_41", refundAmount: PAID, currency: "INR", ...patch });
+  const refundLogs = () => activity("billing.refund_needs_review").map(entry => JSON.parse(String(entry.metadata)) as Record<string, unknown>);
+  const creditsOnce = async () => {
+    expect(await resolveRequiresReviewPayment(ADMIN, PAYMENT, "credited", "overcharge refunded in Chargebee")).toMatchObject({ decision: "credited", tokenCount: PACK });
+    expect(db.wallets[0].balance).toBe(2 + PACK);
+    expect(paymentTxns()).toEqual([expect.objectContaining({ kind: "purchase", tokenCount: PACK, idempotencyKey: `payment-credit-${PAYMENT}` })]);
+    await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "credited")).rejects.toThrow(/already resolved/);
+    expect(db.wallets[0].balance).toBe(2 + PACK);
+  };
+
+  it("a refund of everything the buyer paid closes it for good", async () => {
+    awaitingRefund();
+    expect(await refund()).toMatchObject({ status: "review", reason: "refund_of_uncredited_payment", paymentId: PAYMENT });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_of_uncredited_payment", creditedAt: null });
+    expect(refundLogs()).toEqual([expect.objectContaining({ reason: "refund_of_uncredited_payment", eventId: "evt_refund_1", refundAmount: PAID, refundCurrency: "INR", refundedTotal: PAID, paidAmount: PAID, paidCurrency: "INR" })]);
+    expect(await refund()).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(refundLogs()).toHaveLength(1);
+    await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "credited")).rejects.toMatchObject(REFUSED);
+    expect(db.wallets[0].balance).toBe(2);
+  });
+
+  it("a refund of only the overcharge leaves the pack to the admin, who can add it once", async () => {
+    awaitingRefund();
+    expect(await refund({ refundAmount: PAID - CHECKOUT })).toMatchObject({ status: "review", reason: "refund_not_full_before_credit", paymentId: PAYMENT });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_not_full_before_credit", creditedAt: null });
+    expect(db.wallets[0].balance).toBe(2);
+    expect(refundLogs()).toEqual([expect.objectContaining({ reason: "refund_not_full_before_credit", eventId: "evt_refund_1", refundAmount: PAID - CHECKOUT, refundCurrency: "INR", refundedTotal: PAID - CHECKOUT, paidAmount: PAID })]);
+    expect(await refund({ refundAmount: PAID - CHECKOUT })).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(refundLogs()).toHaveLength(1);
+    await creditsOnce();
+    expect(paymentRow()).toMatchObject({ status: "credited", creditedAt: NOW });
+  });
+
+  it.each([
+    ["an unreadable amount", { refundAmount: undefined }],
+    ["another currency", { currency: "USD" }],
+    ["no currency", { currency: undefined }],
+    ["the checkout price, when the buyer paid more", { refundAmount: CHECKOUT }],
+  ])("a refund of %s is not treated as a full refund: the admin decides, once", async (_case, patch) => {
+    awaitingRefund();
+    expect(await refund(patch)).toMatchObject({ status: "review", reason: "refund_not_full_before_credit" });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_not_full_before_credit" });
+    expect(await refund(patch)).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(refundLogs()).toHaveLength(1);
+    await creditsOnce();
+  });
+
+  it("refunds that add up to what was paid close it, and only readable refunds in its currency count", async () => {
+    awaitingRefund();
+    expect(await refund({ eventId: "evt_refund_1", refundAmount: PAID, currency: "USD" })).toMatchObject({ reason: "refund_not_full_before_credit" });
+    expect(await refund({ eventId: "evt_refund_2", refundAmount: 5400 })).toMatchObject({ reason: "refund_not_full_before_credit" });
+    expect(await refund({ eventId: "evt_refund_3", refundAmount: undefined })).toMatchObject({ reason: "refund_not_full_before_credit" });
+    expect(paymentRow().reconciliationReason).toBe("refund_not_full_before_credit");
+    expect(await refund({ eventId: "evt_refund_4", refundAmount: PAID - 5400 })).toMatchObject({ status: "review", reason: "refund_of_uncredited_payment" });
+    expect(paymentRow().reconciliationReason).toBe("refund_of_uncredited_payment");
+    expect(refundLogs().map(entry => entry.refundedTotal)).toEqual([0, 5400, 5400, PAID]);
+    await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "credited")).rejects.toMatchObject(REFUSED);
+  });
+
+  it("without a record of what was paid, no refund is treated as full", async () => {
+    awaitingRefund([]);
+    expect(await refund({ refundAmount: 50000 })).toMatchObject({ status: "review", reason: "refund_not_full_before_credit" });
+    expect(refundLogs()).toEqual([expect.objectContaining({ paidAmount: null, refundAmount: 50000 })]);
+    await creditsOnce();
   });
 });
 

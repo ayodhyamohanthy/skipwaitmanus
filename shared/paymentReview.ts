@@ -12,8 +12,10 @@
 //   at the provider (partial refund, credits already used, unreadable amount,
 //   currency mismatch). Crediting it again would pay the pack twice, so the only
 //   choices are to take back the credits still unused or to keep them and close.
-// - refunded_before_credit: refunded while still waiting for its credit. There is
-//   nothing to add or take back; it can only be closed.
+// - refunded_before_credit: refunded in full while still waiting for its credit.
+//   There is nothing to add or take back; it can only be closed. A refund that
+//   does not cover what the buyer paid (a refunded overcharge, an unreadable or
+//   other-currency amount) leaves it awaiting_credit: the admin checks Chargebee.
 import { z } from "zod";
 
 export const PAYMENT_REVIEW_DECISIONS = ["credited", "rejected", "revoke_unused", "keep_credits"] as const;
@@ -22,8 +24,12 @@ export type PaymentReviewDecision = (typeof PAYMENT_REVIEW_DECISIONS)[number];
 export const PAYMENT_REVIEW_KINDS = ["awaiting_credit", "refunded_after_credit", "refunded_before_credit"] as const;
 export type PaymentReviewKind = (typeof PAYMENT_REVIEW_KINDS)[number];
 
-/** Written by the refund webhook when a payment still waiting for its credit is refunded. */
+/** Written by the refund webhook when a payment still waiting for its credit is refunded in full (what was paid, in its currency). */
 export const REFUND_OF_UNCREDITED_PAYMENT = "refund_of_uncredited_payment";
+/** Written when a payment still waiting for its credit gets refunds that are not shown to cover what was paid: it may still be credited, once. */
+export const REFUND_NOT_FULL_BEFORE_CREDIT = "refund_not_full_before_credit";
+/** Why the refund webhook parked or recorded a payment for review (ChargebeeRefundOutcome "review" in server/db.ts). */
+export type RefundReviewReason = "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_amount_unreadable" | typeof REFUND_OF_UNCREDITED_PAYMENT | typeof REFUND_NOT_FULL_BEFORE_CREDIT;
 /** Closing reasons an administrator's review writes on a refunded payment (status refunded). */
 export const REFUND_REVIEWED_REVOKED = "refund_reviewed_revoked";
 export const REFUND_REVIEWED_KEPT = "refund_reviewed_kept";
@@ -32,14 +38,16 @@ export const PAYMENT_REVIEW_NOTE_MAX = 500;
 export type PaymentReviewRow = { readonly reconciliationReason: string | null; readonly creditedAt: Date | string | null };
 
 /**
- * A recorded credit time, or any refund reason (a refund only parks a credited
- * payment), means the pack was already added. Legacy rows credited before
- * creditedAt was written still carry their refund reason, so both are checked.
+ * A recorded credit time, or a refund reason other than the two written before
+ * any credit (a refund otherwise only parks a credited payment), means the pack
+ * was already added. Legacy rows credited before creditedAt was written still
+ * carry their refund reason, so both are checked.
  */
 export function paymentReviewKind(row: PaymentReviewRow): PaymentReviewKind {
   if (row.creditedAt !== null && row.creditedAt !== undefined) return "refunded_after_credit";
   const reason = row.reconciliationReason ?? "";
   if (reason === REFUND_OF_UNCREDITED_PAYMENT) return "refunded_before_credit";
+  if (reason === REFUND_NOT_FULL_BEFORE_CREDIT) return "awaiting_credit";
   if (reason.startsWith("refund_")) return "refunded_after_credit";
   return "awaiting_credit";
 }

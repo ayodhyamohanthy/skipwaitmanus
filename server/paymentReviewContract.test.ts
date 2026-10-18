@@ -21,6 +21,11 @@ describe("why a parked payment is under review", () => {
     expect(paymentReviewKind({ reconciliationReason: "refund_of_uncredited_payment", creditedAt: null })).toBe("refunded_before_credit");
   });
 
+  it("a refund that does not cover what was paid leaves a never-credited payment waiting for its credit", () => {
+    expect(paymentReviewKind({ reconciliationReason: "refund_not_full_before_credit", creditedAt: null })).toBe("awaiting_credit");
+    expect(paymentReviewKind({ reconciliationReason: "refund_not_full_before_credit", creditedAt: CREDITED_AT })).toBe("refunded_after_credit");
+  });
+
   it.each(["checkout_amount_mismatch", "provider_page_mismatch", "refund_of_uncredited_payment", null])("any row with a recorded credit (%s) was credited, so it can never be credited again", reason => {
     expect(paymentReviewKind({ reconciliationReason: reason, creditedAt: CREDITED_AT })).toBe("refunded_after_credit");
     expect(paymentReviewKind({ reconciliationReason: reason, creditedAt: CREDITED_AT.toISOString() })).toBe("refunded_after_credit");

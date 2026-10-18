@@ -25,7 +25,8 @@ const REASONS: Readonly<Record<string, string>> = {
   refund_credits_spent: "This payment was refunded in Chargebee after some of its credits were used.",
   refund_currency_mismatch: "A refund in another currency was recorded after this payment's credits were added.",
   refund_amount_unreadable: "A refund was recorded after this payment's credits were added, but its amount could not be read.",
-  refund_of_uncredited_payment: "This payment was refunded in Chargebee before any credits were added.",
+  refund_of_uncredited_payment: "This payment was refunded in full in Chargebee before any credits were added.",
+  refund_not_full_before_credit: "Chargebee recorded a refund before any credits were added, but it did not cover the whole payment. Check the refunds in Chargebee, and add the credits only if the buyer still paid for the pack.",
 };
 
 export function reviewReasonText(reason: string | null): string {
