@@ -104,7 +104,8 @@ const TAGLINES: Record<CatalogPlan["tier"], string> = {
   land: "For a search with human review, once reviewers are staffed.",
 };
 
-export type PlanCardCopy = { id: PlanId; name: string; tagline: string; price: string; per: string; features: string[]; cta: string };
+/** price/per are null on the account's own plan card: the summary carries no term or subscription currency to price it from. */
+export type PlanCardCopy = { id: PlanId; name: string; tagline: string; price: string | null; per: string | null; features: string[]; cta: string };
 
 /**
  * The plan grid: Free always, plus the account's own catalog plan when it holds
@@ -127,12 +128,14 @@ export function planCards(currency: CatalogCurrency, active: PaidCatalogPlan | n
     cta: "Ask for a referral",
   }];
   if (active) {
+    // No price: a pass is sold for 30 or 90 days in either currency, and the credit summary says
+    // neither, so a price here could misstate what the holder paid (receipts are on /billing).
     cards.push({
       id: active.id,
       name: planDisplayName(active),
       tagline: TAGLINES[active.tier],
-      price: planAmount(active.id, currency),
-      per: planTerm(active.id),
+      price: null,
+      per: null,
       features: [
         `${openRequestsLabel(active.openRequests)} referral requests open at once`,
         `${active.creditsPerMonth} credits every month`,
@@ -158,7 +161,7 @@ export const fairnessRules = [
 export function planFaqs(): Array<readonly [string, string]> {
   const free = planLimits("free");
   return [
-    ["Does paying help me get referred?", "No. Referrers see the same queue whatever you have paid for. Paid extras give you more open requests at once and more credits; the decision to refer stays human."],
+    ["Does paying help me get referred?", "No. Referrers see the same queue whatever you have paid for. Credits you buy pay for asks and tools; they never change how many requests you can have open or your place in the queue. The decision to refer stays human."],
     ["How many referral requests can I have open?", `Free includes ${openRequestsLabel(free.openRequests)} open requests at a time. A request that's answered, passed, withdrawn or expired frees its slot. Every account shares the same queue.`],
     ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from SkipWait's tools. Each referral request uses 1 credit; ${CREDIT_RULE_SHORT}. Extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
     ["Do unused credits expire?", "Credits you buy never expire, and they are spent only when a verified employee can first see your ask."],

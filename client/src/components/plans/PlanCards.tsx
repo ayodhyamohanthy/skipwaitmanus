@@ -38,7 +38,7 @@ export function PlanCards({ currency, activePlan, renewing, cancelRenewal }: Pla
       return <article key={card.id} className={`plan-card ${isActive || (activePlan === null && card.id === "free") ? "featured" : ""}`}>
         {isActive && <span className="plan-flag"><Crown />Your plan</span>}
         <h2>{card.name}</h2><p className="plan-tag">{card.tagline}</p>
-        <div className="plan-price"><strong>{card.price}</strong><span>{card.per}</span></div>
+        {card.price !== null ? <div className="plan-price"><strong>{card.price}</strong><span>{card.per}</span></div> : null}
         <ul>{card.features.map(feature => <li key={feature}><Check />{feature}</li>)}</ul>
         {isActive
           ? <CurrentPlanAction renewing={renewing} cancelRenewal={cancelRenewal} />

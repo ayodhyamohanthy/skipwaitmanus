@@ -24,7 +24,8 @@ export function CreditCta({ summary, currency, href }: { summary: CreditSummary 
 
 export function CreditsSection({ summary, currency, creditsHref }: { summary: CreditSummary | null; currency: CatalogCurrency; creditsHref: string }) {
   if (!CREDIT_PACKS_ON_SALE) return null;
-  const costs = [["Free", "Every referral request"], [CREDIT_PRICE[currency], "Each credit you buy"], ["Never", "Bought credits expire"]] as const;
+  // D-063: no badge calls a referral request free; each ask a verified employee can see uses a credit (CREDIT_RULE).
+  const costs = [["1 credit", "Each ask a verified employee can see"], [CREDIT_PRICE[currency], "Each credit you buy"], ["Never", "Bought credits expire"]] as const;
   return <section className="plans-section credits-section" id="credits">
     <span className="eyebrow">NO SUBSCRIPTION NEEDED</span>
     <div className="credits-bar-wrap">

@@ -57,6 +57,9 @@ describe("Plans on live data", () => {
     expect(screen.getByText("$1 a credit")).toBeTruthy();
     expect(screen.getByText("PAY AS YOU GO")).toBeTruthy();
     expect(screen.getByText("3 referral requests open at once")).toBeTruthy();
+    // Review round 2 (D-063): the credit cost strip never calls a referral request free.
+    const costs = screen.getByRole("list", { name: "Credit costs" });
+    expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toEqual(["1 creditEach ask a verified employee can see", "$1Each credit you buy", "NeverBought credits expire"]);
     const text = document.body.textContent ?? "";
     expect(text).not.toMatch(RETIRED);
     for (const banned of ["DESIGN PREVIEW", "EXAMPLE PRICING", "PREVIEW DATA", "Most chosen", "Momentum", "Land", "Yearly", "2 mo free", "checkout preview", "YOUR BALANCE", "free credits", "every month are free", "One private referral request", "Compare every individual plan", "monthly credits", "Your plan"]) expect(text).not.toContain(banned);
@@ -118,6 +121,9 @@ describe("Plans on live data", () => {
     expect(within(card).getByText("8 referral requests open at once")).toBeTruthy();
     expect(within(card).getByText("10 credits every month")).toBeTruthy();
     expect(within(card).getByText("Unused plan credits carry over 1 month")).toBeTruthy();
+    // Review round 2: the summary carries no term or currency, so the card names no price.
+    expect(card.querySelector(".plan-price")).toBeNull();
+    expect(within(card).queryByText("for 30 days")).toBeNull();
     expect(screen.getByRole("link", { name: "Manage plan" }).getAttribute("href")).toBe("/billing");
     expect(screen.queryByRole("button", { name: /Upgrade to/ })).toBeNull();
     expect(screen.getByText("9 credits")).toBeTruthy();
