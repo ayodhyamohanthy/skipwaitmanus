@@ -100,7 +100,7 @@ The full audit and proposal (revision 2, red-team reviewed) is `docs/GOAL_ALIGNM
 | D-065-B | D-065 slice checks: no `ask-delivery` spend on an ask still waiting; no spend reversed twice (each later money packet adds its own check). | D-065 | S | todo — packet `docs/plans/D-065-B-slice-checks.md` (Tier 2) |
 | TRUTH-1 | `/api/referral-impact` counts every `closed` ask as accepted, including expired ones; count accepted asks only (D-066 (3), D-076 (8)). | — | S | todo — packet `docs/plans/TRUTH-1-public-impact-count.md` (Tier 2) |
 | FND-1 | Toolchain says Node 22.12+ (`.nvmrc`); the never-run `shared/` tests run; the always-true copy-guard assertion is fixed. | — | S | todo — packet `docs/plans/FND-1-toolchain-and-test-collection.md` (Tier 3) |
-| FND-2 | Remove verified-dead code (Kinetic drafts, unused components, Manus template modules, `render.yaml`, the unused `VitePWA` import). | D-067 | S | todo — packet `docs/plans/FND-2-dead-code.md` (Tier 3) |
+| FND-2 | Remove verified-dead code (Kinetic drafts, unused components, Manus template modules, `render.yaml`, the unused `VitePWA` import). | — | S | todo — packet `docs/plans/FND-2-dead-code.md` (Tier 3) |
 | FND-3 | The test kit throws production-shaped duplicate-key errors; `blocksRoutes.ts` and `companyDirectoryAdmin.ts` stop missing wrapped duplicates. | P0-allocated-ask-stuck | S | todo — packet `docs/plans/FND-3-duplicate-key-fidelity.md` (Tier 2) |
 | FND-4 | Single-use tokens in API paths never reach Sentry or admin alert emails. | 2 | S | todo — packet `docs/plans/FND-4-token-path-scrubbing.md` (Tier 2) |
 | FND-5 | Every key the server reads is forwarded to the container or allowlisted, with a contract test. | D-067 | S | todo — packet `docs/plans/FND-5-env-forwarding.md` (Tier 2) |

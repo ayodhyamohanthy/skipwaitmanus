@@ -10,7 +10,7 @@
 | Size | S |
 | Implementer | any model |
 | Branch | `agent/<model>/fnd2-dead-code` |
-| Depends on | D-067 live (it edits `client/src/pages/ReferralRequest.tsx`, which this packet keeps) |
+| Depends on | nothing; parallel-safe (it keeps `client/src/pages/ReferralRequest.tsx`, which D-067 edits, and leaves `client/src/styles/globals.css` to the D-048 phase-2 packet) |
 | Verified against | `main` `e6b87f8`: every file below has no importer, checked by full path |
 
 ## 1. Goal
