@@ -31,12 +31,6 @@ function paidPlan(plan: string): PaidCatalogPlan | undefined {
   return CATALOG_PLANS.find(candidate => candidate.id === plan);
 }
 
-/** The catalog label ("Start", "Land Focus"), or "Free" for a retired or unknown id. */
-export function planLabel(plan: string): string {
-  const catalog = catalogPlanById(plan);
-  return catalog ? planDisplayName(catalog) : FREE_PLAN.label;
-}
-
 /** The term a plan card prices: a 30-day pass, else the 90-day pass, else the year. */
 function priceTerm(plan: PaidCatalogPlan): { minor: Record<CatalogCurrency, number>; per: string } | null {
   if (plan.prices["30d"]) return { minor: plan.prices["30d"], per: "for 30 days" };
