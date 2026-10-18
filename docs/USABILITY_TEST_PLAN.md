@@ -11,7 +11,7 @@ Validate that the 5 core job-referral tasks are completable and satisfactory acr
 ## The 5 core tasks
 | # | Role | Task | Success criteria |
 |---|------|------|------------------|
-| 1 | Seeker | Request a referral (fill role+company, upload resume, submit) | Success screen `data-referral-success`; credit meter decrements once an available verified referrer can see the ask (an ask to an uncovered company waits at no cost, D-034; code pending) |
+| 1 | Seeker | Request a referral (fill role+company, upload resume, submit) | Success screen `data-referral-success`; credit meter decrements once an available verified referrer can see the ask (an ask to an uncovered company waits at no cost, D-034; shipped `66801d2b`) |
 | 2 | Seeker | Withdraw a pending request and confirm credit returns | Status becomes Withdrawn, credit refunded |
 | 3 | Referrer | Sign in (work email OTP), open inbox, accept a request | Race-safe; request moves to Completed |
 | 4 | Referrer | Pass with a reason chip (no reason preselected, D-052) | Reason recorded; the ask stays open to other verified employees at that company (D-021) |

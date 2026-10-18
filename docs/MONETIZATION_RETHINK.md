@@ -31,7 +31,7 @@
 |---|---|---|---|---|
 | P-1 | Checkout opens one payment leg at a time, only once proven | change D-036/D-037 rollout — **answered: D-046, D-065, D-069** | 8 | Now: Razorpay review cleared Oct 16 (BUGFREE 4.14), so INR opens after one owner-run ₹99 round trip; USD $5 pack after one owner round trip |
 | P-2 | The catalog equals the register; advertise only what code grants; resolve #293 | change — **answered in part: D-044, D-046, D-051, D-067** | 8 | #293 resolved by D-044 (register numbers win; restore landed Oct 17); "on sale until the gate" approved as D-045 (Oct 17), then superseded by D-046; remaining items await approval |
-| P-3 | Keep the outcome-aligned credit rule (D-034 + D-038 + D-035) as the only charge event; one outcome per ask | keep + refine — **answered: kept (D-059), refined by D-047, D-050, D-052, D-061, D-066** | 7 | Build D-034, then D-038, then D-035 |
+| P-3 | Keep the outcome-aligned credit rule (D-034 + D-038 + D-035) as the only charge event; one outcome per ask | keep + refine — **answered: kept (D-059), refined by D-047, D-050, D-052, D-061, D-066** | 7 | D-034 done (`66801d2b` + `29ba528e`); build D-038, then D-035 |
 | P-4 | Paywall only where a credit buys a deliverable ask: free waiting list, release at coverage, four honest paid moments | change (implements D-034) — **answered in part: D-047, D-060, D-061, D-062** | 7 | With the D-034 build |
 | P-5 | Money-truth rule: every money sentence is generated from the catalog or ledger; banned phrases | change (makes D-043 move 3 binding) — **answered in part: D-063** | 8 | Now |
 | P-6 | What SkipWait will never charge for; referrers stay unpaid | new (answers an open question) — **answered in part: D-055, D-059** | 8 | Now |
