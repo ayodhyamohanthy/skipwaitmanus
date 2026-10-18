@@ -71,7 +71,10 @@ describe("ReferrerImpact dashboard", () => {
     expect(screen.getByText("4")).toBeTruthy();
     expect(screen.getByText("2")).toBeTruthy();
     expect(screen.getByText("1")).toBeTruthy();
-    expect(screen.getByText("3")).toBeTruthy();
+    // D-055: recognition only. The server still sends creditsRemaining; a referrer is never shown a credit balance.
+    expect(screen.queryByText("3")).toBeNull();
+    expect(screen.queryByText(/credits remaining/i)).toBeNull();
+    expect(screen.getByText(/SkipWait never pays referrers\./)).toBeTruthy();
     expect(screen.getByText("acme.com")).toBeTruthy();
     expect(screen.getByText("Accepted 2 days ago")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Open my inbox" }).getAttribute("href")).toBe("/inbox");
