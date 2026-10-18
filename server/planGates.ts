@@ -5,8 +5,9 @@
 import { and, eq, gt, isNotNull, isNull, or, type SQL } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
-import { SLOT_CAP_REACHED, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
+import { COMPANY_CAP_REACHED, SLOT_CAP_REACHED, companyCapCopy, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
 import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlements";
+import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { ASK_TTL_MS } from "../shared/referral";
 import { assignedAskNotHeldCondition } from "./heldAsk";
 
@@ -33,6 +34,20 @@ export function openAskCondition(userId: number, nowMs: number): SQL {
   );
   if (!condition) throw new Error("Open-ask condition could not be built");
   return condition;
+}
+
+/** Thrown before any side effect when a new ask would exceed the per-company fairness cap (D-006): same on every plan, waiting asks hold no room (D-061). */
+export class CompanyCapReachedError extends Error {
+  readonly code = COMPANY_CAP_REACHED;
+  readonly companyDomain: string;
+  readonly open: number;
+  readonly cap = MAX_OPEN_ASKS_PER_COMPANY;
+  constructor(companyDomain: string, open: number) {
+    super(companyCapCopy(companyDomain));
+    this.name = "CompanyCapReachedError";
+    this.companyDomain = companyDomain;
+    this.open = open;
+  }
 }
 
 /** Thrown before any side effect when a new ask would exceed the plan's open-ask cap. */
