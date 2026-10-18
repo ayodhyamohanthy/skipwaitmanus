@@ -4,7 +4,7 @@ Lane: `D-067-pro-max-removal` in `docs/KIT_V4_BUILD_PLAN.md` §3b. Decision: D-0
 
 **Read this first.** This inventory was written by a read-only audit at commit `58338cd6` (Oct 18 2026, before D-063, D-050, the refund review and block delivery landed). It is a lead list, not truth: re-verify every line against the current tree before editing, drop what is already done, and add what it missed. Line numbers have moved. Copy that D-063 already rewrote (the `/plans` and landing descriptions, the money sentence in `shared/moneyCopy.ts`) must stay D-063-true.
 
-Status (Oct 18 2026): not started in code. Branch name to use: `agent/claude/pro-max-removal` (no commits yet). Order of work: shared contracts and the server money core first (pro/max reads as Free; every legacy checkout and gift path refuses before any provider call), then the DM perk and notice removal plus the referrer-purchase switch-off, then the client and public copy, then tests, fixtures, env and docs. Red-first tests for every slice; full gate before the push; live check after.
+Status (Oct 18 2026): **done in code on `agent/claude/pro-max-removal` (merge `__SHA__`); live check pending.** The inventory below is kept as the record of what the sweep covered. Branch name to use: `agent/claude/pro-max-removal` (no commits yet). Order of work: shared contracts and the server money core first (pro/max reads as Free; every legacy checkout and gift path refuses before any provider call), then the DM perk and notice removal plus the referrer-purchase switch-off, then the client and public copy, then tests, fixtures, env and docs. Red-first tests for every slice; full gate before the push; live check after.
 
 ## Inventory
 

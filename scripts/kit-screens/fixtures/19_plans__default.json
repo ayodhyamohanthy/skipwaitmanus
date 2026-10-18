@@ -68,11 +68,7 @@
             "open": 3,
             "cap": 3,
             "full": true,
-            "nextPlan": {
-              "id": "start",
-              "label": "Start",
-              "openRequests": 8
-            }
+            "nextPlan": null
           }
         }
       }

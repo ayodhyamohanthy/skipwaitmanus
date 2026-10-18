@@ -51,7 +51,7 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
   { href: "/premium", label: "Buy credits", summary: "Extra referral credits cost $1 each and never expire." },
-  { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and monthly plans." },
+  { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and what a credit buys." },
   { href: "/plans", label: "Monthly plans", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },
   { href: "/contact", label: "Contact us", summary: "Reach the team about your account, a payment, or privacy." },

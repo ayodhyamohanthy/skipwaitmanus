@@ -49,7 +49,7 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   { route: "/privacy", title: "Privacy & trust", description: "How skipwait.me keeps a referral private: company-matched visibility, documents that stay private, and the controls your account gives you.", changefreq: "monthly", priority: "0.3" },
   { route: "/terms", title: "Terms of Service", description: "What skipwait.me does, what you agree to when you use it, and what we will never promise.", changefreq: "monthly", priority: "0.3" },
   { route: "/refunds", title: "Refunds & Cancellation", description: "Credits are reserved, not spent, until a Referrer acts. Subscriptions stop at the end of the cycle you already paid for.", changefreq: "monthly", priority: "0.3" },
-  { route: "/cancellations", title: "Cancellation Policy", description: "How to cancel a referral request, a Pro or Max subscription, or a credit purchase, and when any money comes back.", changefreq: "monthly", priority: "0.3" },
+  { route: "/cancellations", title: "Cancellation Policy", description: "How to cancel a referral request or a credit purchase, and when any money comes back.", changefreq: "monthly", priority: "0.3" },
   { route: "/shipping", title: "Shipping & Delivery", description: "skipwait.me sells referral credits and plan subscriptions. They are delivered to your account online, usually within seconds of payment.", changefreq: "monthly", priority: "0.3" },
 ];
 

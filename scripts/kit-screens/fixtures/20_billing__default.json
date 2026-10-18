@@ -22,7 +22,7 @@
       "status": 200,
       "body": {
         "summary": {
-          "plan": "pro",
+          "plan": "start",
           "monthlyAllowance": 10,
           "monthlyCreditsRemaining": 7,
           "purchasedCreditsRemaining": 2,
@@ -66,16 +66,12 @@
             }
           },
           "slots": {
-            "plan": "pro",
-            "planLabel": "Pro",
+            "plan": "start",
+            "planLabel": "Start",
             "open": 4,
-            "cap": 10,
+            "cap": 8,
             "full": false,
-            "nextPlan": {
-              "id": "momentum",
-              "label": "Momentum",
-              "openRequests": 15
-            }
+            "nextPlan": null
           }
         }
       }

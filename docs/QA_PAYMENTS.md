@@ -83,7 +83,7 @@ pass becomes real only from the verified webhook. The server path exists:
 plan whose Chargebee item price does not exist yet answers
 `409 not_available_yet` and opens no page. The `/plans` buttons for passes
 come with queue task 1 (D-046, D-053); today `/plans` still sends the legacy
-monthly-plan body, which D-067 removes (code pending) and which is not QA'd.
+monthly-plan body, which D-067 now refuses (410 `plan_retired`, nothing charged); it is not QA'd.
 Cancel schedules end-of-term. With
 `PROMO_GRANTS_ENABLED=true` only, first activation also earns the 5 promo
 credits (same rule as packs, granted once per account).

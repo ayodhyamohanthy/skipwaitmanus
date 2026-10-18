@@ -22,7 +22,7 @@
       "status": 200,
       "body": {
         "summary": {
-          "plan": "max",
+          "plan": "land_focus",
           "monthlyAllowance": 120,
           "monthlyCreditsRemaining": 112,
           "purchasedCreditsRemaining": 0,

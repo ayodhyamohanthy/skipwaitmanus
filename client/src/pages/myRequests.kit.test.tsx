@@ -82,10 +82,10 @@ describe("My Requests kit v4 states", () => {
     expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an answer or get more slots with Momentum (15).");
   });
 
-  it("shows a legacy plan's own label and cap, and Concierge's cap of 75", async () => {
-    stub([openAsk(42)], slots(4, { plan: "pro", planLabel: "Pro", cap: 10, full: false }));
+  it("shows the plan's own label and cap, and Concierge's cap of 75", async () => {
+    stub([openAsk(42)], slots(4, { plan: "start", planLabel: "Start", cap: 8, full: false }));
     renderPage();
-    expect((await screen.findByLabelText("Open slots: 4 of 10 used")).textContent).toBe("OPEN SLOTS · PRO4/10");
+    expect((await screen.findByLabelText("Open slots: 4 of 8 used")).textContent).toBe("OPEN SLOTS · START4/8");
     cleanup();
     stub([openAsk(42)], slots(12, { plan: "land_concierge", planLabel: "Land Concierge", cap: 75, full: false, nextPlan: null }));
     renderPage();
