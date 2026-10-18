@@ -112,9 +112,9 @@ export function askDaysShown(input: { createdAt: Date | string | number | null |
   return floor >= 2 ? Math.ceil((expiresAt - nowMs) / day) : floor;
 }
 
-/** Row countdown copy. Returns null when no expiry applies. */
-export function formatAskExpiry(input: { status: ReferralStatus; referrerId?: number | null; createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): string | null {
-  if (input.status !== "pending" || input.referrerId != null) return null;
+/** Row countdown copy. Returns null when no expiry applies. A personal-link ask its employee has not acted on (`heldForReferrer`, D-050) counts down like an unclaimed one. */
+export function formatAskExpiry(input: { status: ReferralStatus; referrerId?: number | null; heldForReferrer?: boolean; createdAt: Date | string | number | null | undefined }, nowMs: number = Date.now()): string | null {
+  if (input.status !== "pending" || (input.referrerId != null && input.heldForReferrer !== true)) return null;
   const days = askDaysShown(input, nowMs);
   if (days === null) return null;
   if (days < 0) return "Expired";

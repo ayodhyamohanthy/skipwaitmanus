@@ -10,6 +10,8 @@ const sendAskResponseSchema = z.object({
   requestId: z.number().int().positive(),
   companyDomain: z.string().nullish(),
   coverageStatus: z.string().nullish(),
+  // A personal-link ask (D-017) goes to the link's owner alone; anything but true reads as an ordinary ask.
+  fastTrack: z.boolean().nullish().catch(null),
   // Informational: a missing or malformed count hides the line, never fakes one.
   slots: openAskSlotsSchema.nullish().catch(null),
 });
@@ -24,7 +26,7 @@ export function parseSentAsk(payload: Record<string, unknown>): SentAsk | null {
   const parsed = sendAskResponseSchema.safeParse(payload);
   if (!parsed.success) return null;
   const companyDomain = parsed.data.companyDomain?.trim() || null;
-  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage", slots: parsed.data.slots ?? null };
+  return { requestId: parsed.data.requestId, companyDomain, waitingForCoverage: parsed.data.coverageStatus === "waiting_for_company_coverage", fastTrack: parsed.data.fastTrack === true, slots: parsed.data.slots ?? null };
 }
 
 /** The server's 409 "all open slots in use" refusal, or null for any other response. */

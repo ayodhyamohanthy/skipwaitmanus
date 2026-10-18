@@ -46,7 +46,8 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
   const close = () => { setModal(null); action.reset(); };
 
   if (stage === "Requested") {
-    const canWithdraw = request.referrerId === null;
+    // Unclaimed: no referrer yet, or a personal-link ask its employee has not acted on (D-050). The server re-decides.
+    const canWithdraw = request.referrerId === null || request.heldForReferrer === true;
     return (
       <>
         <h2 className="mt-2 text-lg font-semibold">Nothing to do yet.</h2>

@@ -49,13 +49,18 @@ export function companyInitials(request: CompanyIdentitySource): string {
   return companyIdentityOf(request).mark;
 }
 
-/** Seeker waiting line for a pending ask, with the real expiry when it applies. */
-export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "companyName" | "companyInitials" | "referrerId" | "createdAt">, nowMs: number = Date.now()): string {
+/**
+ * Seeker waiting line for a pending ask, with the real expiry when it applies. A personal-link ask its
+ * employee has not acted on (D-050) is with that one employee and expires like an unclaimed ask.
+ */
+export function seekerWaitingCopy(request: Pick<ThreadRequest, "companyDomain" | "companyName" | "companyInitials" | "referrerId" | "createdAt" | "heldForReferrer">, nowMs: number = Date.now()): string {
   const company = companyName(request);
-  if (request.referrerId !== null) return `A verified ${company} employee is reviewing your request. We'll notify you the moment it's accepted.`;
+  const held = request.referrerId !== null && request.heldForReferrer === true;
+  if (request.referrerId !== null && !held) return `A verified ${company} employee is reviewing your request. We'll notify you the moment it's accepted.`;
   const days = askDaysShown({ createdAt: request.createdAt }, nowMs);
-  if (days === null || days < 0) return `Waiting for a verified ${company} referrer.`;
-  const when = days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
+  const when = days === null || days < 0 ? null : days === 0 ? "Expires today" : days === 1 ? "Expires tomorrow" : `Expires in ${days} days`;
+  if (held) return when ? `Sent privately to the ${company} employee whose link you used. ${when} if they don't respond — your slot returns automatically.` : `Sent privately to the ${company} employee whose link you used.`;
+  if (!when) return `Waiting for a verified ${company} referrer.`;
   return `Waiting for a verified ${company} referrer. ${when} if nobody accepts — your slot returns automatically.`;
 }
 

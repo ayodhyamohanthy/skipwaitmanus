@@ -14,7 +14,8 @@ export type RequestPillStatus = "Requested" | "Accepted" | "Referred" | "Intervi
 const CLOSED_STATUSES: readonly ReferralStatus[] = ["declined", "closed", "withdrawn"];
 
 export const isClosedRequest = (request: ReferralRequest) => CLOSED_STATUSES.includes(request.status);
-export const canWithdrawRequest = (request: ReferralRequest) => request.status === "pending" && !request.referrerId;
+/** Pending and unclaimed: no referrer yet, or a personal-link ask its employee has not acted on (D-050). */
+export const canWithdrawRequest = (request: ReferralRequest) => request.status === "pending" && (!request.referrerId || request.heldForReferrer === true);
 
 /**
  * Maps a live status onto the kit pill. An unclaimed ask that lapses is closed
@@ -41,7 +42,7 @@ function compactDate(value: string) {
 /** The row's second line after the company name: the next real step or fact. */
 export function requestNote(request: ReferralRequest, nowMs: number): string {
   if (request.status === "pending") {
-    if (request.referrerId) return request.queueStatus === "available_for_review" ? "Available for review" : getJobSeekerReferralState(request).label;
+    if (request.referrerId && request.heldForReferrer !== true) return request.queueStatus === "available_for_review" ? "Available for review" : getJobSeekerReferralState(request).label;
     const parts = [formatAskExpiry(request, nowMs), request.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : null].filter((part): part is string => Boolean(part));
     return parts.length ? parts.join(" · ") : `Updated ${compactDate(request.updatedAt)}`;
   }

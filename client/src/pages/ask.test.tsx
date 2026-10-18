@@ -321,7 +321,7 @@ describe("Ask composer", () => {
   it("forwards a fast-track code and a confirmed company domain for the same link", async () => {
     stubCrypto();
     const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 14, companyDomain: "tcs.com" });
+    stubUploadThen(fetchMock, { requestId: 14, companyDomain: "tcs.com", fastTrack: true });
     vi.stubGlobal("fetch", fetchMock);
     window.history.replaceState(null, "", "/ask?fast=abcdefghijklmnop1234");
     localStorage.setItem("bridge-company-confirmation", JSON.stringify({ canonicalUrl: "https://careers.example.com/job/42", confirmedDomain: "tcs.com" }));
@@ -333,6 +333,9 @@ describe("Ask composer", () => {
     fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
     fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
     await screen.findByText("Ask sent to tcs.com.");
+    // D-050: only the link owner sees a personal-link ask, and it expires with the credit back if they never respond.
+    expect(screen.getByText("Only the tcs.com employee whose link you used will see it. It expires in 7 days if they don't respond, and your credit returns.")).toBeTruthy();
+    expect(screen.queryByText(/referrers will see it/)).toBeNull();
     const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ fastTrackCode: "abcdefghijklmnop1234", confirmedCompanyDomain: "tcs.com", compensation: "₹18–22 LPA" });
     window.history.replaceState(null, "", "/ask");

@@ -24,6 +24,9 @@ const referralRequestSchema = z.object({
   status: z.enum(referralStatuses),
   referrerId: z.number().int().nullish().transform(value => value ?? null),
   queueStatus: z.enum(["available_for_review", "waiting_for_coverage"]).nullish(),
+  // D-050: a personal-link ask its employee has not acted on still counts as unclaimed. Optional so a
+  // payload from before the flag still parses; a malformed flag reads as not held (the server decides a withdraw).
+  heldForReferrer: z.boolean().optional().catch(undefined),
   referrerMessage: z.string().nullish().transform(value => value ?? null),
   unreadMessageCount: z.coerce.number().int().min(0).catch(0),
   createdAt: z.string(),

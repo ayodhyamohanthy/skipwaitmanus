@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nextSlotPlanAmong, openAskSlots, type OpenAskSlots } from "@shared/openAskSlots";
 import { resolvePlanEntitlements } from "@shared/planEntitlements";
-import { countExpiringSoon, countInConversation, requestNote, requestPillStatus, slotMeter, slotsFullCopy } from "./requestModel";
+import { canWithdrawRequest, countExpiringSoon, countInConversation, isUrgentExpiry, requestNote, requestPillStatus, slotMeter, slotsFullCopy } from "./requestModel";
 import type { ReferralRequest } from "./requestsApi";
 
 const now = Date.parse("2026-10-08T04:30:00.000Z");
@@ -36,6 +36,21 @@ describe("requests view model", () => {
     const list = [ask({ status: "approved", referrerId: 7 }), ask({ status: "interview", referrerId: 7 }), ask({ status: "closed", referrerId: 7 }), ask({ status: "pending", referrerId: 7 }), ask({ id: 2, createdAt: new Date(now - 6 * day).toISOString() }), ask({ id: 3 })];
     expect(countInConversation(list)).toBe(2);
     expect(countExpiringSoon(list, now)).toBe(1);
+  });
+
+  it("treats a personal-link ask its employee has not acted on as unclaimed: withdrawable, with its countdown (D-050)", () => {
+    const held = ask({ referrerId: 7, queueStatus: "available_for_review", heldForReferrer: true });
+    expect(canWithdrawRequest(held)).toBe(true);
+    expect(requestNote(held, now)).toBe("Expires in 6 days");
+    const lastDays = ask({ id: 2, referrerId: 7, queueStatus: "available_for_review", heldForReferrer: true, createdAt: new Date(now - 6.5 * day).toISOString() });
+    expect(isUrgentExpiry(lastDays, now)).toBe(true);
+    expect(countExpiringSoon([held, lastDays], now)).toBe(1);
+    // An assigned ask without the flag (claimed, or a payload from before the flag) keeps today's reading.
+    const claimed = ask({ referrerId: 7, queueStatus: "available_for_review" });
+    expect(canWithdrawRequest(claimed)).toBe(false);
+    expect(requestNote(claimed, now)).toBe("Available for review");
+    expect(isUrgentExpiry({ ...lastDays, heldForReferrer: undefined }, now)).toBe(false);
+    expect(canWithdrawRequest(ask({ status: "approved", referrerId: 7, heldForReferrer: true }))).toBe(false);
   });
 
   it("meters open asks against the plan cap and fills the slots in use (kit OPEN SLOTS · FREE 2/3)", () => {
