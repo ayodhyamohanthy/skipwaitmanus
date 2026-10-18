@@ -1,5 +1,5 @@
 import { Check, Circle, Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { passwordPolicyChecks, passwordResetConfirmSuccessSchema, resetTokenSchema, type PasswordResetConfirmSuccess } from "@shared/passwordAuth";
 import { postPasswordAuth } from "@/lib/passwordAuthClient";
@@ -10,12 +10,22 @@ function tokenFromUrl(): string {
 }
 
 /**
+ * The token sets a password and signs this browser in, so it must not stay in the address bar once read:
+ * not in history, a shared screenshot, an analytics page URL or a later Referer.
+ */
+function dropTokenFromAddressBar(): void {
+  if (typeof window === "undefined" || (!window.location.search && !window.location.hash)) return;
+  window.history.replaceState(window.history.state, "", window.location.pathname);
+}
+
+/**
  * Seeker password reset (D-049), from the link WorkOS emails. WorkOS checks the token and sets the password;
  * this page says "You're signed in" only when the server actually signed this browser in. No request is made
  * before the person submits: WorkOS is the only judge of the token.
  */
 export default function ResetPassword() {
   const [token] = useState(tokenFromUrl);
+  useEffect(dropTokenFromAddressBar, []);
   const [linkValid, setLinkValid] = useState(() => resetTokenSchema.safeParse(token).success);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");

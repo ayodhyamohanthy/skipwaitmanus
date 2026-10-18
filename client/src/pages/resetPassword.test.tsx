@@ -33,6 +33,19 @@ function submitNewPassword(password = "Newpassword1!") {
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState({}, "", "/"); });
 
+describe("the reset token never stays in the address bar", () => {
+  it("drops the token from the URL once read, and still uses it on submit", async () => {
+    const calls = stubFetch({ status: 200, body: { ok: true, signedIn: true, redirectTo: "/explore" } });
+    openWithToken(TOKEN);
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(window.location.pathname).toBe("/reset-password");
+    expect(window.location.href).not.toContain(TOKEN);
+    submitNewPassword();
+    expect(await screen.findByText("Password updated.")).toBeTruthy();
+    expect(calls).toEqual([{ url: "/api/auth/password/reset/confirm", body: { token: TOKEN, password: "Newpassword1!", confirm: "Newpassword1!" } }]);
+  });
+});
+
 describe("the reset page is truthful", () => {
   it("makes no request before submit, then shows signed in only when the server signed this browser in", async () => {
     const calls = stubFetch({ status: 200, body: { ok: true, signedIn: true, redirectTo: "/explore" } });
