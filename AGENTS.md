@@ -46,8 +46,8 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 - **D-048 (owner, Oct 18): Kit v4 is no longer binding.** The UI is designed for the goal; key-screen designs go to the owner before any rollout, and until approval nobody re-skins a surface (existing tokens and components stay). The PNG-fidelity part of the next line is superseded.
 - Binding owner decisions: implement every `screens/` PNG fullstack; the PNGs win over earlier founder calls (newer founder edits on `main` after Oct 9 stay); never ship kit preview chips or sample data; Terms/Privacy keep live legal text; ship verified groups to `main`.
 - Pricing (Oct 14, amended Oct 16 by D-034–D-042):
-  - **Passes:** 30/90-day passes with opt-in auto-extend (yearly only for Keep warm). All payment options go live now, before referrers onboard (D-046, supersedes D-045 and D-037's gate): packs, every pass and Keep warm sold from `/plans`, coverage shown before payment; Concierge by application; human sessions off until deliverable; Pro/Max stay retired.
-  - **Packs:** credit packs on the D-005 ladder are the paid product until then (D-036). Pro/Max stay off sale (D-027).
+  - **Passes:** 30/90-day passes with opt-in auto-extend (yearly only for Keep warm). All payment options go live now, before referrers onboard (D-046, supersedes D-045 and D-037's gate): packs, every pass and Keep warm sold from `/plans`, coverage shown before payment; Concierge by application; human sessions off until deliverable; Pro/Max removed (D-067). Chargebee item prices are synced to the catalog by an admin dry-run/apply tool (D-069).
+  - **Packs:** credit packs on the D-005 ladder (D-036). Pro/Max are removed (D-067).
   - **Regions:** India INR + global USD first.
   - **Free:** 3 open asks + 3 credits a month, with no welcome credits (D-039). The reverse trial stays off the public catalog until its trigger is built (D-051). Referrers stay unpaid; recognition only (D-055). No price or plan-content changes until two weeks of baseline data exist (D-056).
   - **Plan contents:** Keep warm 4 credits a month, Momentum 36 (D-041).
@@ -67,6 +67,9 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 - **P0 pre-accept privacy (Claude Code, Oct 18):** D-019 item (e) never landed: a claim writes the resume grant while the ask is still `pending` and the claimed view returns the seeker's name, while a direct one-click accept writes no grant (404 thread, no resume). Porting the stalled `p0-basics-pitch` fix onto current `main`, regression tests first: no grant on claim, grant on every accept path in the same transaction, access only for accepted statuses, locked file count and no name before acceptance, earlier accepted asks keep access. Exact targets in the living plan row P0-pre-accept-privacy. No schema, migration, credit or price change. **Done — `5ca2aab8`, live** (health ready on that SHA, web serves it; full gate 2688 tests passed, 0 failed). **Status:** implemented and committed locally on the branch, not pushed: client half `6d141eed` (safe to deploy first), server half `308e85f6`, preview locked count `99d7b565` (its own droppable commit; tell PR #308's owner before pushing it). Tests were red first (30 failing); after the fix 171/171 focused and the full suite (367 files, 2,681 passed, 16 skipped), `pnpm check`, `pnpm build` and the design-token audit pass. Review round 1, also local: `c283e48b` (only the referrer's own recorded acceptance opens the name or resume, never a grant alone; transition events carry the app clock's time) and `a776c669` (the document route answers a referrer blocked with the seeker with the no-access 404); red first (10 failing), then the full suite (367 files, 2,688 passed, 16 skipped), `pnpm check` and `pnpm build` pass. Pending: latest-main integration and the quality gate, 1280/390 captures, push, and the exact-release live check.
 
 ## 0a. Standing principles (founder, Oct 14 2026) - read before coding
+- **Docs move with every change (D-068):** every decision, status or behaviour change updates every affected markdown file (register, AGENTS.md, living plan, agent entry docs) in the same push; a stale statement is a defect.
+- **Pending actions are emailed (D-060):** whenever a user has an action pending, they get one transactional email with a direct link (reminders only as the owning decision names them; at most one such email per person per day; preferences respected).
+- **Lasting rules from D-001 (retired by D-059):** never ship preview chips or sample data in the product; Terms/Privacy keep live legal text.
 - **Payments bar (founder, verbatim):** "We cant mess with customers payments and refunds and delayed transactions or any transactions so make sure we are solidly built every backup plan if something is off."
 - **No half-baked flows (founder, verbatim intent: "all agents will learn to be serious not build half baked flows"):** a flow ships end-to-end with its failure paths handled and its recovery documented, or it does not ship.
 - **Silent failure is a defect.** Every failure path is visible: logged, alerted, and shown to the user in plain words.
@@ -120,7 +123,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 - **Phased execution:** Clarify -> Plan -> Inspect -> Execute -> Verify.
 - **Milestone discipline:** Focus only on the active MVP/P0 milestone. Do not architect, stub, or implement P1/P2 work unless explicitly requested.
 - **Mandatory plan and inspect:** Before editing, output a concise plan listing affected files and export signatures, technical assumptions, and proposed step-by-step logic.
-- **Clarification gate:** Record targeted questions when requirements, edge cases, or architecture are ambiguous. Reconcile this with the founder's autonomy rule: when existing calibration covers the call, state the changeable assumption and continue instead of blocking.
+- **Clarification gate:** Record targeted questions when requirements, edge cases, or architecture are ambiguous. Reconcile this with D-058 (owner autonomy for the discussed program): when existing calibration covers the call, state the changeable assumption and continue instead of blocking.
 - **Zero unsolicited refactoring:** Do not rename variables, alter directories, clean formatting, or modify working code outside the requested scope.
 - **Package installation gate:** Do not add npm or Python dependencies without explicit approval and a written reason native or existing code is insufficient.
 
@@ -286,7 +289,8 @@ fixtures beside each feature instead of relying on this list alone.
    ones — sign-in then instantly-signed-out means this regressed.
 2. `JWT_SECRET` rotation invalidates all sessions at once. Rotate deliberately.
 3. Credits: `spendToken` reserves a credit per referral; approvals grant the
-   pending invite rewards (`invite_reward_pending` → `granted`).
+   pending invite rewards (`invite_reward_pending` → `granted`) — except the referrer role:
+   accepting an ask never grants a referrer reward (D-055).
 4. Employer resolution is deliberately strict: job-board links must map to a
    verified referrer company domain (URL candidates → page evidence → handle
    prefix match). Unresolvable links are rejected with a clear error.
@@ -297,6 +301,7 @@ fixtures beside each feature instead of relying on this list alone.
    `scripts/sync-check.sh` when working locally.
 
 ## Product and identity constraints
+- A **verified referrer** is any canonical person with a verified work email, whatever else they use SkipWait for (definition kept from the removed D-020; see D-057 for continuity across employers).
 - A person is one canonical account plus verified login aliases. Resolve an
   exact alias before normalized verified-email linking. WorkOS and work-email
   OTP must converge atomically on that canonical person.
