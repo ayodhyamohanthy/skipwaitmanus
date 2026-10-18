@@ -13,7 +13,7 @@ const root = path.resolve(__dirname, "..");
 const BRIEF = "docs/BRIEF.md";
 const BRIEF_MAX_BYTES = 10 * 1024;
 const ENTRY_DOCS = [
-  "CLAUDE.md", "AGENTS.md", "GEMINI.md", ".github/copilot-instructions.md",
+  "CLAUDE.md", "AGENTS.md", "GEMINI.md", "QWEN.md", ".github/copilot-instructions.md",
   "COLLABORATION.md", "README.md", "DESIGN.md", "PRICING.md",
 ];
 

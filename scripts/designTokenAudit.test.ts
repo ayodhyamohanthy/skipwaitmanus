@@ -54,6 +54,11 @@ describe("design-token audit: goal scope", () => {
     expect(rules(GOAL, 'className="animate-spin"')).toEqual(["R5"]);
     expect(rules(GOAL, 'className="aria-disabled:opacity-50"')).toEqual(["R5"]);
   });
+  it("ignores comments for colours and the compensation rule, but never strings", () => {
+    expect(rules(SCREEN, "// Gated by PR #316; compensation is not sent (D-071)\nconst ok = 1;")).toEqual([]);
+    expect(rules(SCREEN, "/* #abc */ const url = \"https://example.com/a#bcd\";")).toEqual(["R1"]);
+    expect(rules(SCREEN, 'const c = "#316";')).toEqual(["R1"]);
+  });
   it("R6: rejects comp sample data anywhere and a compensation field in goal files", () => {
     expect(rules(LIVE, "const name = 'Sample Co';", ["Sample Co"])).toEqual(["R6"]);
     expect(rules(SCREEN, "<dt>Compensation</dt>")).toEqual(["R6"]);

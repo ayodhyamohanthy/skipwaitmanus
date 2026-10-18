@@ -21,7 +21,7 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - **Privacy and trust.** A referrer sees no seeker name or resume, and no seeker can message a verified referrer, until that referrer accepts (D-019(e), D-012(3)). A block hides two people from each other everywhere, including delivery. No public per-referrer metrics, invented numbers, sample data, dark patterns, false urgency or pressure on referrers. Terms and Privacy keep live legal text; agents never reword Terms, Privacy, Refund or Cancellation; they list the lines for the owner in plan §6.
 - **Basics always work (D-019).** Payments, logins and the seeker, referrer and admin flows. A broken basic is a P0: restore it (no approval needed), verify it live, report. Changing how a basic works needs the owner.
 - **No half-baked flows.** Ship a flow end to end or not at all: every failure is logged, alerted and shown in plain words; every screen handles loading, empty, error and offline; every money change is idempotent, reconciled and recoverable. A user with a pending action gets one idempotent email with a direct link, at most one a day (D-060).
-- **Design (D-048, D-070, D-071).** Approved comps: `design/goal-ui/pick/`. Until a screen is moved over, keep its tokens and components; never re-skin ad hoc.
+- **Design (D-048, D-070, D-071, D-079).** `DESIGN.md` is the visual contract (tokens in `client/src/index.css`, primitives in `client/src/components/goal/`, enforced by `node scripts/design-token-audit.mjs`). Moved: the shell, Find a referral, the Referral queue, My asks; the rest move one surface per session (`docs/plans/D-048-phase-3.md`). Never re-skin ad hoc.
 - **The repo is public (D-059).** Never commit a secret or put one in a `VITE_*` key; no business numbers or personal data in docs, fixtures or commits.
 
 ## Working with the owner
@@ -29,8 +29,9 @@ Sources of truth: `docs/DECISIONS.md` (the register; it wins over every other do
 - Never override a decision; recommend a better one with evidence. New features, redesigns and pricing need the owner's approval; P0 fixes and tasks already approved in the queue do not. Add a decision only on the owner's say-so, numbered highest ID + 1 after fetching `main`. Every change updates every affected markdown file in the same push (D-068).
 
 ## How to pick work
+- **When the owner just says "build" (or "continue"):** open `docs/plans/README.md`, take the first row whose packet is ready and whose §3b status is `todo` (or yours, in progress), and follow `docs/DELEGATION.md` §4. Never invent work outside the queue.
 - Only from §3b: P0s first, then work in progress, then the next `todo`. Implement a row only from its packet in `docs/plans/` (hand-over prompt, risk tiers, review: `docs/DELEGATION.md`; system map: `docs/ARCHITECTURE.md`; D-074). Tier 1 work (money, sign-in, identity, privacy, migrations) gets an independent review on a draft PR before `main`. Claim the row with a docs-only push to `main` before any code (queue rule 4; only Claude Code under D-058 may claim in the same push). Take over a lane only after 24 h with no commits. Edit only the paths your row names.
-- Now (D-075): `P0-allocated-ask-stuck`, then the D-072 lanes: D-067, seeker passwords (task 2), D-069 after D-067, D-048 phase 2; lanes marked parallel-safe in `docs/plans/README.md` may run side by side. Then D-038-A, D-038-B, D-035 (rulings: D-076). Branches and next steps: `AGENTS.md` section 0, "Handoff now".
+- Now (D-075): `P0-allocated-ask-stuck`, then the D-072 lanes: D-067, seeker passwords (task 2), D-069 after D-067, D-048 phase 3 (one surface per session); lanes marked parallel-safe in `docs/plans/README.md` may run side by side. Then D-038-A, D-038-B, D-035 (rulings: D-076). Branches and next steps: `AGENTS.md` section 0, "Handoff now".
 - Before your session ends, push your lane branch to `origin` and update its row; work left on one machine is invisible to other models.
 
 ## How to ship

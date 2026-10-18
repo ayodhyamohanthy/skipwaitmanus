@@ -55,6 +55,39 @@ const STATUS_HUE = /\bg-(?:emerald|amber|crimson)\b/g;
 const TRUST = /\bg-trust\b/g;
 
 const lineOf = (source, index) => source.slice(0, index).split("\n").length;
+
+/** Blank out comments (keeping line breaks and offsets), so "PR #316" or a note that something is NOT shown never
+ * reads as a colour or a field. Strings and JSX text are kept; a URL's "//" inside a string is left alone. */
+export function stripComments(source) {
+  let out = "";
+  let i = 0;
+  let quote = null;
+  while (i < source.length) {
+    const char = source[i];
+    const next = source[i + 1];
+    if (quote) {
+      out += char;
+      if (char === "\\") { out += next ?? ""; i += 2; continue; }
+      if (char === quote) quote = null;
+      i += 1;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === "`") { quote = char; out += char; i += 1; continue; }
+    if (char === "/" && next === "/") {
+      while (i < source.length && source[i] !== "\n") { out += " "; i += 1; }
+      continue;
+    }
+    if (char === "/" && next === "*") {
+      while (i < source.length && !(source[i] === "*" && source[i + 1] === "/")) { out += source[i] === "\n" ? "\n" : " "; i += 1; }
+      out += "  ";
+      i += 2;
+      continue;
+    }
+    out += char;
+    i += 1;
+  }
+  return out;
+}
 function* matches(source, regex) {
   regex.lastIndex = 0;
   for (let match = regex.exec(source); match; match = regex.exec(source)) yield match;
@@ -75,12 +108,13 @@ export function auditFiles(files, { sampleNames = [] } = {}) {
       if (index >= 0) add(file, source, index, "R6", `comp sample data "${name}" never ships`);
     }
     if (isGoalFile(file)) {
-      for (const match of matches(source, COLOUR_LITERAL)) add(file, source, match.index, "R1", `colour literal ${match[0]} (use a g- token)`);
+      const code = stripComments(source);
+      for (const match of matches(code, COLOUR_LITERAL)) add(file, source, match.index, "R1", `colour literal ${match[0]} (use a g- token)`);
       for (const match of matches(source, KIT_TOKEN)) add(file, source, match.index, "R4", `Kit v4 / shadcn token ${match[0]}`);
       for (const match of matches(source, KIT_SHAPE)) add(file, source, match.index, "R4", `Kit v4 / shadcn class ${match[0]}`);
       for (const match of matches(source, KIT_BREAKPOINT)) add(file, source, match.index, "R4", `breakpoint ${match[0]} (goal UI uses gdesk: / max-gdesk:)`);
       for (const match of matches(source, BANNED_EFFECT)) add(file, source, match.index, "R5", `banned effect ${match[0]}`);
-      if (/\bcompensation\b/i.test(source)) add(file, source, source.search(/\bcompensation\b/i), "R6", 'no compensation field (D-071)');
+      if (/\bcompensation\b/i.test(code)) add(file, source, code.search(/\bcompensation\b/i), "R6", 'no compensation field (D-071)');
     } else {
       const tokens = source.match(/[a-z-]*\[#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})\](?:\/[0-9]{1,3})?/g) ?? [];
       for (const token of tokens) {

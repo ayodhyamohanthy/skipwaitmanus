@@ -113,7 +113,7 @@ Please follow your company's referral policy. If now isn't a good time, no probl
 ```
 Thank you, {Name}! You're verified at {Company}.
 - Asks appear at https://skipwait.me/queue. If one isn't for you, tap "Pass privately" so it moves on. That includes asks through your own link.
-- Your own link is on that page, card "Your Fast-Track Link" (shown when your queue is empty). Asks through it come only to you. "Pause link" turns it off.
+- Your own link is on that page, under "Your personal link" (below your asks, or on its own when the queue is empty). Asks through it come only to you. "Pause link" turns it off.
 - Optional setup (areas, asks a month, emails): https://skipwait.me/referrer-setup. Pause new asks at https://skipwait.me/referrer-home.
 - Hiring on your team? Post the role at https://skipwait.me/post-opportunity. Asks on it come to you first for 48 hours.
 - A colleague might want this too? The same link works: https://skipwait.me/sign-in?intent=referrer
@@ -128,7 +128,6 @@ Please follow your company's referral policy. If it helps, I can send a calendar
 - *Do the people I refer pay?* "3 asks free every month; more use credits. Referrers are never paid and never ask you for money. Credits are paid to SkipWait, and referrers never pay." (D-063) Count this objection in section 5.
 - *Will seekers see who I am?* "Not unless you accept. Until then they see 'Someone at {Company}' and 'Verified via work email'. After you accept, they see your account name. For an account made with the work-email code, that is the part of your work email before the @."
 - *The code didn't arrive.* "Check spam or quarantine; some company filters hold new senders. You can ask for a new code after 30 seconds."
-- *Why does my queue show 'Referral credits'?* "Ignore it. Referrers never spend credits, and accepting an ask costs you nothing."
 - *Will my company know?* "SkipWait doesn't tell your company. Its public page shows only whether someone there is open to referrals, never who or how many. The code, and new-ask emails if you keep them on, go to your work inbox. You can turn new-ask emails off in setup."
 - *How much time?* "You set how many asks a month, from 1 to 15. The default is 3. The app estimates about 5 minutes an ask."
 - *Why a work email?* "The code proves you can receive email at {Company} today. It doesn't prove your role, and it doesn't mean {Company} endorses SkipWait."
@@ -139,7 +138,7 @@ Please follow your company's referral policy. If it helps, I can send a calendar
 - That referrals are free (D-043 move 3, D-063).
 - That their record follows them to the next job. D-057 is decided, not built.
 - That SkipWait stores only a fingerprint of their email. Work-email sign-in keeps the address as the account login (`server/_core/otpLogin.ts`).
-- That passing gives the seeker their credit back. The decline screen on an opened ask says so, but today the credit stays spent while the ask goes on to colleagues (D-035 is not built).
+- That passing gives the seeker their credit back. Today the credit stays spent while the ask goes on to colleagues (D-035 is not built).
 - That {Company} is a partner of SkipWait or endorses it.
 
 ## 4. Two vouch questions
@@ -236,9 +235,9 @@ If an onboarded referrer turns out to sell referrals: suspend them at https://sk
 | Sign-in and verification by work-email code (D-030, D-049) | https://skipwait.me/sign-in?intent=referrer | Work email only. Six-digit code, valid 10 minutes, subject "Your skipwait.me verification code". Resend after 30 seconds; 5 wrong codes lock it for 15 minutes. Lands on setup. Members already signed in verify at https://skipwait.me/verify. |
 | Company shows as open | https://skipwait.me/explore | Within a minute of verifying. Verified, not paused, not suspended and under capacity (3 by default) makes the company show as open. |
 | Setup | https://skipwait.me/referrer-setup | Areas and levels, asks a month (1–15), new-ask emails on or off. |
-| Home and pause | https://skipwait.me/referrer-home | "Pause new asks" stops new review emails, and a paused referrer stops counting as available. It does not switch off the personal link: use the link card's "Pause link" for that. |
+| Home and pause | https://skipwait.me/referrer-home | "Pause new asks" stops new review emails, and a paused referrer stops counting as available. It does not switch off the personal link: use "Your personal link" → "Pause link" for that. |
 | Asks | https://skipwait.me/queue, https://skipwait.me/inbox | Accept, or "Pass privately". The seeker gets a short note, never the referrer's name, and the ask stays open to colleagues (D-021). On a personal-link ask the seeker knows whose link they used. |
-| Personal link (D-017) | https://skipwait.me/queue, card "Your Fast-Track Link" | An address like `skipwait.me/refer/wipro/ref-…`, with Copy and "Copy for LinkedIn bio". Asks through it go only to that referrer, for jobs at the same company. The card's "Pause link" retires that address for good; a new one can be made. |
+| Personal link (D-017) | https://skipwait.me/queue, "Your personal link" (below the asks, or on its own when the queue is empty) | An address like `skipwait.me/refer/wipro/ref-…`, with "Copy link" and "Copy for LinkedIn bio". Asks through it go only to that referrer, for jobs at the same company. "Pause link" (after a confirmation) retires that address for good; "Create a new link" makes a fresh one. |
 | Posted roles (D-022) | https://skipwait.me/post-opportunity ("Your openings" to renew or close) | Needs a public job link on the company's own careers site or ATS. Shows on https://skipwait.me/explore/{company-slug} and https://skipwait.me/wall as "a verified employee" unless they choose to show a first name. Hides after 30 days unless renewed with one tap. Asks on it go to the poster alone for 48 hours, then to colleagues. |
 | Private record (D-057) | https://skipwait.me/referrer/impact | Referrals accepted, pending decisions, unread messages. Only they see it: never ranked, never public. Not built yet: keeping the record across a job change or a gap (D-057). Don't promise it. |
 | Help | https://skipwait.me/help | Leaving the company: pass on open asks, then ask here to remove the badge. |
@@ -246,9 +245,6 @@ If an onboarded referrer turns out to sell referrals: suspend them at https://sk
 Known gaps (not fixed by this kit; tell an agent):
 - **D-050 not live yet.** Until queue row P0-personal-link-asks ships, an ask sent through a personal link never expires and the seeker cannot withdraw it; it waits for that one referrer. A pass frees it. Until then, don't suggest the LinkedIn-bio step, and ask every referrer to pass on link asks they won't take.
 - **Pausing leaves the personal link on.** A paused referrer's link still creates asks for them, and they get no review email while paused. Until D-050 ships, those asks can't expire or be withdrawn. Anyone who pauses should also tap "Pause link".
-- **The link card hides behind waiting asks.** On https://skipwait.me/queue the card shows only when the queue is empty (`client/src/pages/MyCompanyInbox.tsx`).
-- **The decline screen overstates refunds.** An opened ask's decline step says the seeker's credit is returned (`client/src/components/referrer/CandidatePreviewCard.tsx`). It isn't today (D-035).
-- **Referrers see a "Referral credits" meter** on an empty /queue (`client/src/components/ReferrerCreditsCard.tsx`), though referrers never spend credits (D-055).
 - **What asking costs.** The truth pass shipped (D-063, Oct 18): every product surface says "3 asks free every month; more use credits. Referrers are never paid and never ask you for money." Use the same words in outreach; the legal pages (Terms, Refund Policy) still carry older lines until the owner rewords them.
 - **Link previews are generic.** Every SkipWait link, including personal links, unfurls on WhatsApp as the general seeker card (D-028, queued).
 - **Link asks are invisible to admin.** No admin view counts asks sent through personal links, so the move-2 link numbers are self-reported for now.

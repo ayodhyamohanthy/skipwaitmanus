@@ -46,6 +46,7 @@ Verified against `main` `e6b87f8` (Oct 18 2026). Line numbers drift: find a func
     - `referrerAvailability.ts`: who is available, by capacity (D-062);
     - `blockedPairs.ts`;
     - `referrerDocumentAccess.ts` and `referrerAskView.ts`: what a referrer may see before and after acceptance;
+    - `displayRef.ts`: the non-sequential reference people see on an ask (D-077(5)), added to `/mine`, the inbox and the preview;
     - `askExpirySweep.ts`;
     - `planGates.ts`: open-ask slots and the per-company cap (D-006).
   - **Jobs:** `scheduledJobRegistry.ts`, `scheduledJobRunner.ts`, `scheduledJobsRoutes.ts`, `jobRunStore.ts`.
@@ -56,10 +57,11 @@ Verified against `main` `e6b87f8` (Oct 18 2026). Line numbers drift: find a func
   - `creditLedger.ts`, `planCatalog.ts`, `billingCatalog.ts`, `planEntitlements.ts`, `openAskSlots.ts`.
   - `moneyCopy.ts`: the D-063 sentence and the credit rule text.
   - `passReasons.ts`, `referrerAccess.ts`, `scheduledJobs.ts`, `jobsTick.ts`.
+  - `roleTitle.ts`: role names read from a job link (stored titles are a placeholder); `whyMe.ts`: the three-line "why me" note (D-077(4)).
 - `client/src/` (about 27K lines):
   - `App.tsx`: every route on one line; 81 lazy pages, Home eager.
-  - `pages/`: a flat folder, one page per route.
-  - `components/`: by domain. `kit/` holds the live Kit v4 button, panel and status pill; `ui/` holds shadcn parts, 10 of them unused.
+  - `pages/`: one page per route; `pages/goal/` holds the screens moved to the goal UI (`FindReferral` for `/explore` and `/ask`, `ReferralQueue`, `MyAsks`) with their pure models and API boundaries beside them.
+  - `components/`: by domain. `goal/` holds the goal-UI primitives (`DESIGN.md`; import from `@/components/goal`, merge classes with `gcn`); `AppShell.tsx` is the goal shell every signed-in page uses; `kit/` holds the Kit v4 button, panel and status pill for surfaces not yet moved; `ui/` holds shadcn parts, 10 of them unused.
   - `lib/`: `apiResponse.ts` `readApiJson`, `threadApi.ts`, `trpc.ts`, `referrerSignIn.ts`, `idempotentSend.ts`.
   - `_core/auth.tsx`: AuthKit, or a server-session-only fallback.
   - Styles: `index.css`, plus `styles/kit.css` (ported kit CSS, 86 KB, never edited rule by rule).
@@ -215,7 +217,6 @@ A new job needs its name in both registries and a contract test (`server/schedul
 ## 11. Known gaps (each has a packet or row in `docs/plans/README.md`)
 1. **Dead code that misleads readers:**
    - the Kinetic drafts: `components/layout/AppShell.tsx`, `components/ui/primitives.tsx`, `components/referrer/ReferrerCockpit.tsx`, `components/seeker/SeekerSearchPage.tsx`, `pipeline/PipelineTracker.tsx`;
-   - `styles/globals.css`;
    - the unrouted pages `Notifications.tsx` and `ReferralRequest.tsx`;
    - `src/services/mailService.ts`;
    - the unused Manus Forge modules (`map`, `dataApi`, `imageGeneration`, `voiceTranscription`, `heartbeat`);

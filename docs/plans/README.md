@@ -25,7 +25,8 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 2), open to any model under queue rule 2 | — | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | 1.2 live | 1.3, 1.4 |
 | 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 3), open to any model under queue rule 2 | 1.1 live | 1.2, 1.4, 3.1 |
-| 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | ready | — | 0.1, 1.1, 1.2, 1.3 |
+| 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | done (Oct 18, with the start of phase 3) | — | — |
+| 1.5 | D-048 (phase 3): the remaining signed-in surfaces, one per session | [D-048-phase-3.md](D-048-phase-3.md) | per surface (1–3) | S–M each | ready: Inbox and the ask thread first; money and sign-in surfaces after their lanes | 1.4 | 0.1, 1.1, 1.2, 1.3 (different files; the packet names the waits) |
 
 ## Stage 2 — payments ready before referrers onboard (D-046, D-064, D-075)
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
@@ -61,7 +62,6 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | D-060-pending-action-emails | Needs task 21 (notification kinds and preferences); D-038's reminders ship in-app first |
 | D-057-referrer-continuity | After the session gate (1.2b) |
 | P2 (D-028 link previews and company pages) | After stage 1; parallel-safe with stage 3 |
-| D-048 phase 3 (surface by surface) | After 1.4; each surface is its own packet |
 | Tasks 12, 13, 20 | Owned by opencode and Qoder (open PRs #308, #310, #311, #314) |
 | The rest of §3b | D-053 order; parked rows stay parked (29, 30, 31, lite mode, 40) |
 

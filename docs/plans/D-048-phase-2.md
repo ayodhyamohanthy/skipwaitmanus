@@ -1,5 +1,7 @@
 # Packet D-048 phase 2: the goal-UI design system exists in code (tokens, primitives, DESIGN.md, token audit), and no live screen changes
 
+> **Status: done (Oct 18 2026, D-079).** Tokens, primitives, the token audit and the goal `DESIGN.md` shipped together with the start of phase 3; continue with [`D-048-phase-3.md`](D-048-phase-3.md). This packet stays as the record of the foundation's design choices.
+
 > Read `docs/BRIEF.md` first, then this packet. The exact token values, the primitive specs and the full `DESIGN.md` draft are in the spec appendix [`D-048-phase-2-spec.md`](D-048-phase-2-spec.md); open the section a step names.
 
 | Field | Value |
