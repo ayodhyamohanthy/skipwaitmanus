@@ -70,7 +70,6 @@ import { sendReferrerReviewEmail } from "../referrerReviewEmail";
 import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
 import { sendTransactionalEmail } from "../emailDelivery";
 import { workEmailOtpService } from "../workEmailOtp";
-import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { createWorkosAuthRoutesRegistrar, currentWorkosSessionId, configuredWorkosClientId, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
@@ -251,12 +250,6 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerPaymentRoutes(app, {
     resolveIdentity,
     record: db.recordOperationalActivity,
-    planPricing: (planId, tokens) => {
-      void tokens;
-      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-      if (!plan) return undefined;
-      return { inrAmount: plan.prices.INR.amount / 100, usdAmount: plan.prices.USD.amount / 100 };
-    },
   });
   registerAdminBillingCatalogRoutes(app, { resolveIdentity });
   registerPlansCatalogRoutes(app);

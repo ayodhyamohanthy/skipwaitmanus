@@ -37,37 +37,21 @@ const giftClaimedPayload = (gift: Record<string, unknown>) => ({
 });
 
 describe("gift checkout endpoint", () => {
-  it("refuses every gift checkout while GIFT_CHECKOUT_ENABLED is not true", async () => {
-    vi.stubEnv("GIFT_CHECKOUT_ENABLED", "");
-    const createGiftCheckout = vi.fn();
-    const response = await request(appFor({ createGiftCheckout })).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
-    expect(response.status).toBe(503);
-    expect(createGiftCheckout).not.toHaveBeenCalled();
-  });
-
-  it("requires sign-in and a valid plan on a supported route", async () => {
-    const app = appFor({ resolveIdentity: async () => undefined });
-    expect((await request(app).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" })).status).toBe(401);
-    const authed = appFor();
-    expect((await request(authed).post("/api/chargebee/gift-checkout").send({ plan: "free", currency: "USD", billingCountry: "INTL" })).status).toBe(400);
-    expect((await request(authed).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "IN" })).status).toBe(400);
-  });
-
-  it("starts a gift checkout bound to the buyer and never to a receiver", async () => {
+  // D-067: gifts only ever sold Pro or Max, which are removed completely, so the
+  // route stays off whatever the environment says, before identity or any provider call.
+  it.each(["", "true"])("refuses every gift checkout with 503 when GIFT_CHECKOUT_ENABLED is %j", async flag => {
+    vi.stubEnv("GIFT_CHECKOUT_ENABLED", flag);
     const createGiftCheckout = vi.fn(async () => ({ checkoutUrl: "https://checkout.example/gift", hostedPageId: "hp_gift_7" }));
-    const app = appFor({ createGiftCheckout });
-    const response = await request(app).post("/api/chargebee/gift-checkout").send({ plan: "max", currency: "INR", billingCountry: "IN" });
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ checkoutUrl: "https://checkout.example/gift", hostedPageId: "hp_gift_7" });
-    expect(createGiftCheckout).toHaveBeenCalledWith(expect.objectContaining({ plan: "max", currency: "INR", buyerUserId: 7 }));
-    const form = createGiftCheckout.mock.calls[0][0] as Record<string, unknown>;
-    expect(form).not.toHaveProperty("receiverEmail");
-  });
-
-  it("fails closed when the provider is not configured", async () => {
-    const app = appFor({ createGiftCheckout: async () => { throw new Error("Chargebee API key is not configured"); } });
-    const response = await request(app).post("/api/chargebee/gift-checkout").send({ plan: "pro", currency: "USD", billingCountry: "INTL" });
-    expect(response.status).toBe(503);
+    const resolveIdentity = vi.fn(async () => ({ account: { id: 7 } }));
+    const provider = vi.fn(); vi.stubGlobal("fetch", provider);
+    for (const body of [{ plan: "pro", currency: "USD", billingCountry: "INTL" }, { plan: "max", currency: "INR", billingCountry: "IN" }, {}]) {
+      const response = await request(appFor({ createGiftCheckout, resolveIdentity } as never)).post("/api/chargebee/gift-checkout").send(body);
+      expect(response.status).toBe(503);
+      expect(response.body).toEqual({ error: "Gifting is not available. Nothing has been charged." });
+    }
+    expect(createGiftCheckout).not.toHaveBeenCalled();
+    expect(resolveIdentity).not.toHaveBeenCalled();
+    expect(provider).not.toHaveBeenCalled();
   });
 });
 

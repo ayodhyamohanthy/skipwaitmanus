@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { SUBSCRIPTION_PLANS, subscriptionPlanFromItemPrice, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
+import { subscriptionPlanFromItemPrice, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 import { resolvePlanItemPrice, type BillablePlanId, type BillingPeriod } from "../shared/billingCatalog";
 import { buyerUserIdFromGifter, normalizeGiftEmail } from "../shared/giftSubscriptions";
 
@@ -208,36 +208,6 @@ export function parseGiftEvent(payload: any): ParsedGiftEvent | undefined {
   };
 }
 
-export function buildGiftSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; gifterCustomerId: string; redirectUrl: string; cancelUrl: string }) {
-  const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
-  const form = new URLSearchParams();
-  form.set("subscription_items[item_price_id][0]", price.itemPriceId);
-  form.set("subscription_items[quantity][0]", "1");
-  form.set("gifter[customer_id]", input.gifterCustomerId);
-  form.set("redirect_url", input.redirectUrl);
-  form.set("cancel_url", input.cancelUrl);
-  return form;
-}
-
-export async function createGiftSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; buyerUserId: number; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string }) {
-  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
-  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
-  if (!apiKey) throw new Error("Chargebee API key is not configured");
-  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/checkout_gift_for_items`, {
-    method: "POST",
-    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: buildGiftSubscriptionCheckoutForm({ plan: input.plan, currency: input.currency, gifterCustomerId: `skipwait-u${input.buyerUserId}`, redirectUrl: input.redirectUrl, cancelUrl: input.cancelUrl }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Chargebee gift checkout failed (${response.status})`);
-  const hostedPage = body?.hosted_page;
-  const checkoutUrl = hostedPage?.url ?? hostedPage?.checkout_url;
-  const hostedPageId = hostedPage?.id;
-  if (typeof checkoutUrl !== "string" || typeof hostedPageId !== "string") throw new Error("Chargebee returned an incomplete gift checkout");
-  return { checkoutUrl, hostedPageId };
-}
-
 export type RetrievedGiftSubscription = {
   subscriptionId: string;
   plan?: PaidSubscriptionPlan;
@@ -347,23 +317,6 @@ export function buildCheckoutForm(input: { itemPriceId: ChargebeeTokenPackId; qu
   return form;
 }
 
-export function buildSubscriptionCheckoutForm(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; redirectUrl: string; cancelUrl: string; checkoutIntentId: string }) {
-  const price = SUBSCRIPTION_PLANS[input.plan].prices[input.currency];
-  const form = new URLSearchParams();
-  form.set("subscription_items[item_price_id][0]", price.itemPriceId);
-  form.set("subscription_items[quantity][0]", "1");
-  if (input.email) form.set("customer[email]", input.email);
-  if (input.firstName) form.set("customer[first_name]", input.firstName);
-  if (input.lastName) form.set("customer[last_name]", input.lastName);
-  if (input.billingAddress?.country) form.set("billing_address[country]", input.billingAddress.country);
-  if (input.billingAddress?.stateCode) form.set("billing_address[state_code]", input.billingAddress.stateCode);
-  if (input.billingAddress?.city) form.set("billing_address[city]", input.billingAddress.city);
-  form.set("redirect_url", input.redirectUrl);
-  form.set("cancel_url", input.cancelUrl);
-  form.set("pass_thru_content", input.checkoutIntentId);
-  return form;
-}
-
 export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTokenPackId; quantity?: number; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
   const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
   const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
@@ -393,26 +346,6 @@ export async function createChargebeeCheckout(input: { itemPriceId: ChargebeeTok
   const hostedPageId = hostedPage?.id;
   if (typeof checkoutUrl !== "string" || typeof hostedPageId !== "string") throw new Error("Chargebee returned an incomplete hosted checkout");
   return { checkoutUrl, hostedPageId, checkoutIntentId, customerId: typeof hostedPage?.customer?.id === "string" ? hostedPage.customer.id : undefined };
-}
-
-export async function createChargebeeSubscriptionCheckout(input: { plan: PaidSubscriptionPlan; currency: "INR" | "USD"; email?: string; firstName?: string; lastName?: string; billingAddress?: ChargebeeBillingAddress; site?: string; apiKey?: string; redirectUrl: string; cancelUrl: string; checkoutIntentId?: string }) {
-  const site = input.site ?? process.env.CHARGEBEE_SITE ?? "skipwait-test";
-  const apiKey = input.apiKey ?? process.env.CHARGEBEE_API_KEY;
-  if (!apiKey) throw new Error("Chargebee API key is not configured");
-  const checkoutIntentId = input.checkoutIntentId ?? crypto.randomUUID();
-  const response = await fetch(`https://${site}.chargebee.com/api/v2/hosted_pages/checkout_new_for_items`, {
-    method: "POST",
-    headers: { Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString("base64")}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: buildSubscriptionCheckoutForm({ ...input, checkoutIntentId }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Chargebee subscription checkout failed (${response.status})`);
-  const hostedPage = body?.hosted_page;
-  const checkoutUrl = hostedPage?.url ?? hostedPage?.checkout_url;
-  const hostedPageId = hostedPage?.id;
-  if (typeof checkoutUrl !== "string" || typeof hostedPageId !== "string") throw new Error("Chargebee returned an incomplete subscription checkout");
-  return { checkoutUrl, hostedPageId, checkoutIntentId };
 }
 
 export async function scheduleChargebeeSubscriptionCancellation(input: { subscriptionId: string; site?: string; apiKey?: string }) {

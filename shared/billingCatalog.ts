@@ -22,7 +22,18 @@ export const BILLING_CURRENCIES = CATALOG_CURRENCIES;
 export const BILLING_PERIODS = ["monthly", "yearly", "30d", "90d"] as const;
 export type BillingPeriod = (typeof BILLING_PERIODS)[number];
 
-export const LEGACY_PLAN_IDS = ["pro", "max"] as const;
+/**
+ * The pre-kit monthly plans D-067 removed completely (owner, Oct 18 2026). No
+ * checkout sells them (POST /api/chargebee/subscription-checkout answers 410
+ * plan_retired). They stay in the column ENUMs, in place, only because removing
+ * an ENUM member is not an additive migration and history must stay readable.
+ */
+export const RETIRED_PLAN_IDS = ["pro", "max"] as const;
+export type RetiredPlanId = (typeof RETIRED_PLAN_IDS)[number];
+
+export function isRetiredPlanId(value: unknown): value is RetiredPlanId {
+  return typeof value === "string" && (RETIRED_PLAN_IDS as readonly string[]).includes(value);
+}
 /**
  * Plan ids 0090 stored before the Oct 14 2026 decision renamed the Land levels.
  * Never sold or written; they stay in the column ENUMs only because removing an
@@ -30,13 +41,13 @@ export const LEGACY_PLAN_IDS = ["pro", "max"] as const;
  */
 export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
 /** Every plan a subscription can bill: the kit plans plus grandfathered Pro/Max. */
-export const BILLABLE_PLAN_IDS = [...CATALOG_PLAN_IDS, ...LEGACY_PLAN_IDS] as const;
+export const BILLABLE_PLAN_IDS = [...CATALOG_PLAN_IDS, ...RETIRED_PLAN_IDS] as const;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
 /** tokenBalances.plan: existing values first and in order (0090, then 0091). */
-export const WALLET_PLAN_IDS = ["free", ...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */
-export const INTENT_PLAN_IDS = [...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 
 export function isBillablePlanId(value: unknown): value is BillablePlanId {
   return typeof value === "string" && (BILLABLE_PLAN_IDS as readonly string[]).includes(value);

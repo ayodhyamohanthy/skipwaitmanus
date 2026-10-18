@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import { billingCustomers, billingInvoices, subscriptionCancellationFeedback, subscriptionCheckoutIntents, tokenBalances } from "../drizzle/schema";
 import { checkoutIntentStateSchema, paymentFailureReasonFrom, parseReceiptId, receiptSchema } from "../shared/billingAccount";
 import { INTENT_PLAN_IDS, WALLET_PLAN_IDS, adjacentPlans, autoExtendMethods, catalogPackForAmount, planCatalogResponse, planCatalogResponseSchema, planChangeDirection, planPrice, planSellsInterval, resolveItemPrice, sellableItemPrices } from "../shared/billingCatalog";
-import { CANCELLATION_REASONS, kitPlanCheckoutRequestSchema, legacyPlanCheckoutRequestSchema, packCheckoutRequestSchema, subscriptionCancelRequestSchema, subscriptionChangeRequestSchema, subscriptionChangeResponseSchema, subscriptionPauseRequestSchema } from "../shared/subscriptionManagement";
+import * as subscriptionManagement from "../shared/subscriptionManagement";
+import { CANCELLATION_REASONS, PLAN_RETIRED_CODE, SUBSCRIPTION_REFUSALS, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema, subscriptionCancelRequestSchema, subscriptionChangeRequestSchema, subscriptionChangeResponseSchema, subscriptionPauseRequestSchema } from "../shared/subscriptionManagement";
 import { subscriptionStateFor, type SubscriptionWallet } from "../shared/subscriptionState";
 import { DESIRED_COLUMNS, DESIRED_FOREIGN_KEYS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
 
@@ -195,7 +196,11 @@ describe("checkout and lifecycle requests", () => {
     expect(kitPlanCheckoutRequestSchema.safeParse({ planId: "keep_warm", interval: "30d", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
     expect(kitPlanCheckoutRequestSchema.safeParse({ planId: "land", interval: "30d", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
     expect(kitPlanCheckoutRequestSchema.safeParse({ planId: "start", interval: "monthly", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
-    expect(legacyPlanCheckoutRequestSchema.safeParse({ plan: "pro", currency: "INR", billingCountry: "IN" }).success).toBe(true);
+    // D-067: the pre-kit Pro/Max body has no schema any more; the route refuses it with 410 plan_retired.
+    expect(subscriptionManagement).not.toHaveProperty("legacyPlanCheckoutRequestSchema");
+    expect(PLAN_RETIRED_CODE).toBe("plan_retired");
+    expect(SUBSCRIPTION_REFUSALS.planRetired).toBe(PLAN_RETIRED_CODE);
+    expect(kitPlanCheckoutRequestSchema.safeParse({ plan: "pro", currency: "INR", billingCountry: "IN" }).success).toBe(false);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_25", billingCountry: "IN" }).success).toBe(true);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_10", billingCountry: "IN" }).success).toBe(false);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_25", billingCountry: "IN", amount: 1 }).success).toBe(true);
