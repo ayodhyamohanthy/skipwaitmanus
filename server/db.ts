@@ -51,6 +51,7 @@ import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
+import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
 import { decideAdminReferralApproval } from "./adminReferralApproval";
 import { REFERRER_DOCUMENT_ACCESS_STATUSES, actorAcceptanceEventOn, grantFromJoin, isAcceptingReferrer, isReferrerDocumentAccessActive, isReferrerDocumentAccessStatus, openAcceptanceDocumentGrantTx } from "./referrerDocumentAccess";
@@ -861,7 +862,7 @@ function parseProfileOpenTo(raw: unknown): string[] {
 }
 
 export function shapePublicProfile(
-  owner: { id: number; name: string | null },
+  owner: { id: number; name: string | null; email: string | null },
   profile: NonNullable<Awaited<ReturnType<typeof getProfileByUserId>>>,
   allItems: Awaited<ReturnType<typeof listMyWorkItems>>,
   viewerUserId?: number,
@@ -874,7 +875,9 @@ export function shapePublicProfile(
     visible: true as const,
     visibility,
     isOwner,
-    displayName: owner.name,
+    // Beside "Verified at {domain}" a name taken from the email rebuilds the work email, so a
+    // verified page withholds it (the owner's preview too); the email itself never leaves here.
+    displayName: profile.workEmailVerifiedAt ? publicDisplayNameOf(owner.name, owner.email) : owner.name,
     headline: profile.headline,
     location: profile.location,
     openTo: parseProfileOpenTo((profile as { openTo?: unknown }).openTo),
@@ -889,7 +892,7 @@ export async function getPublicProfileByHandle(handle: string, viewerUserId?: nu
   const db = await getDb(); if (!db) return undefined;
   const normalized = normalizeProfileHandle(handle);
   if (!normalized) return undefined;
-  const owner = (await db.select({ id: users.id, name: users.name }).from(users).innerJoin(profiles, eq(profiles.userId, users.id)).where(eq(profiles.handle, normalized)).limit(1))[0];
+  const owner = (await db.select({ id: users.id, name: users.name, email: users.email }).from(users).innerJoin(profiles, eq(profiles.userId, users.id)).where(eq(profiles.handle, normalized)).limit(1))[0];
   if (!owner) return undefined;
   const profile = await getProfileByUserId(owner.id);
   if (!profile) return undefined;
@@ -1547,14 +1550,19 @@ type OpportunityRow = {
   id: number; companyDomain: string; kind: "hiring_now" | "walk_in"; roleTitle: string; targetRoleUrl: string | null;
   location: string | null; compensation: string | null; walkInAt: Date | null; walkInEndsAt: Date | null;
   createdAt: Date; expiresAt: Date | null; isActive: boolean; showPosterFirstName: boolean; ownerName: string | null;
+  /** Read only to keep a name taken from it off the card; the public contract never carries it. */
+  ownerEmail: string | null;
 };
 
-const opportunitySelect = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, compensation: companyOpportunities.compensation, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt, expiresAt: companyOpportunities.expiresAt, isActive: companyOpportunities.isActive, showPosterFirstName: companyOpportunities.showPosterFirstName, ownerName: users.name };
+const opportunitySelect = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, compensation: companyOpportunities.compensation, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt, expiresAt: companyOpportunities.expiresAt, isActive: companyOpportunities.isActive, showPosterFirstName: companyOpportunities.showPosterFirstName, ownerName: users.name, ownerEmail: users.email };
 
-/** The poster's public face. A chosen first name is the first word only, never the last name. */
-export function opportunityPosterOf(row: Pick<OpportunityRow, "showPosterFirstName" | "ownerName">): OpportunityPoster {
-  const firstName = row.ownerName?.trim().split(/\s+/)[0]?.slice(0, 80) ?? "";
-  return row.showPosterFirstName && firstName ? { kind: "firstName", firstName } : { kind: "anonymous" };
+/**
+ * The poster's public face. A chosen first name is the first word only, never the last name,
+ * and never one that would rebuild the poster's work email next to the company (server/publicName.ts).
+ */
+export function opportunityPosterOf(row: Pick<OpportunityRow, "showPosterFirstName" | "ownerName" | "ownerEmail">): OpportunityPoster {
+  const firstName = row.showPosterFirstName ? publicFirstNameOf(row.ownerName, row.ownerEmail) : null;
+  return firstName ? { kind: "firstName", firstName } : { kind: "anonymous" };
 }
 
 /** The single resolved expiry clock for a post, whether or not the column carried a value. */

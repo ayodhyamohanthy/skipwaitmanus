@@ -278,7 +278,9 @@ const jobRow = () => ({ id: 3, company: "acme.com", title: "Role from shared job
 
 function seed() {
   rows = {
-    users: [userRow(SEEKER, "Sam Seeker", "sam@example.com"), userRow(POSTER, "Maya Chen", "maya@acme.com"), userRow(COLLEAGUE, "Ravi Patel", "ravi@acme.com")],
+    // The colleague's first.last address keeps "Ravi" safe to show; a first@ address would make
+    // the first name rebuild it, so the poster would show as anonymous (see the withheld-name test).
+    users: [userRow(SEEKER, "Sam Seeker", "sam@example.com"), userRow(POSTER, "Maya Chen", "maya@acme.com"), userRow(COLLEAGUE, "Ravi Patel", "ravi.patel@acme.com")],
     canonicalPeople: [],
     profiles: [referrerProfile(1, POSTER), referrerProfile(2, COLLEAGUE)],
     companyOpportunities: [post()],
@@ -512,6 +514,21 @@ describe("post lists and the poster's controls", () => {
     expect(opportunityPosterOf({ showPosterFirstName: false, ownerName: "Maya Chen" })).toEqual({ kind: "anonymous" });
     expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "Maya Chen" })).toEqual({ kind: "firstName", firstName: "Maya" });
     expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: null })).toEqual({ kind: "anonymous" });
+  });
+
+  // P0-referrer-exposure: work-email sign-ups stored the address's local part as the name, and the
+  // card sits next to the company domain ("Your last name and work email never appear").
+  it("withholds a chosen first name that would rebuild the poster's work email", async () => {
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "zoya.quill", ownerEmail: "zoya.quill@acme.com" })).toEqual({ kind: "anonymous" });
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "Maya Chen", ownerEmail: "maya@acme.com" })).toEqual({ kind: "anonymous" });
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "zoya_q", ownerEmail: null })).toEqual({ kind: "anonymous" });
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "Maya Chen", ownerEmail: "maya.chen@acme.com" })).toEqual({ kind: "firstName", firstName: "Maya" });
+
+    // Through the real list: the poster (Maya Chen, maya@acme.com) ticked the box and stays anonymous.
+    rows.companyOpportunities[0].showPosterFirstName = true;
+    const posts = await listCompanyOpportunityPosts(["acme.com"]);
+    expect(posts).toEqual([expect.objectContaining({ id: 55, poster: { kind: "anonymous" } })]);
+    expect(JSON.stringify(posts)).not.toMatch(/maya/i);
   });
 });
 
