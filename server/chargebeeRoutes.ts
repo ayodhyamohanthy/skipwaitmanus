@@ -1,6 +1,6 @@
 import type { Express, Request } from "express";
 import { basicAuthMatches, CHARGEBEE_TOKEN_PACKS, createChargebeeCheckout, createChargebeeSubscriptionCheckout, createGiftSubscriptionCheckout, isTokenPackId, isTokenQuantity, parseGiftEvent, parsePaidPaymentEvent, parseRefundEvent, parseSubscriptionEvent, retrieveChargebeeHostedPage, retrieveGiftSubscriptionPlan, scheduleChargebeeSubscriptionCancellation, tokenPackFromAmount } from "./chargebee";
-import type { TokenRole } from "./chargebee";
+import type { TokenRole, VerifiedChargebeeHostedPage } from "./chargebee";
 import { resolveChargebeeRuntime, resolveChargebeeWebhookSecret } from "./chargebeeEnvironment";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan } from "../shared/subscriptionPlans";
 import { giftCheckoutRequestSchema, giftClaimRequestSchema } from "../shared/giftSubscriptions";
@@ -26,7 +26,7 @@ type Deps = {
   cancelSubscription?: typeof scheduleChargebeeSubscriptionCancellation;
   resolveHostedPage?: (input: { invoiceId?: string; amount: number; currency: string; site: string; apiKey: string }) => Promise<{ hostedPageId: string; invoiceId?: string; passThruContent?: string; amount?: number; currency?: string; pageState: string; invoiceStatus?: string; paymentStatus?: string; paid: boolean } | undefined>;
   getPaymentRecovery?: (userId: number, role: TokenRole, hostedPageId: string) => Promise<{ id: number; status: "pending" | "credited" | "requires_review" | "rejected" | "refunded"; hostedPageId: string | null; checkoutIntentId: string | null; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null } | undefined>;
-  markPaymentForReview?: (paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected") => Promise<unknown>;
+  markPaymentForReview?: (paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected", evidence?: { invoiceId?: string; paidAmount?: number; paidCurrency?: string }) => Promise<unknown>;
   retrieveHostedPage?: typeof retrieveChargebeeHostedPage;
   getCreditSummary?: (userId: number, role: TokenRole) => Promise<unknown>;
   alertPaymentReview?: (input: { paymentId: number; reason: string; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
@@ -45,6 +45,11 @@ type Deps = {
 };
 
 type ReviewResult = { status: "requires_review"; reason: string; paymentId: number; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string };
+
+/** What a hosted page says was paid, kept with a payment that recovery holds (only the fields it actually carries). */
+function paidEvidence(page: VerifiedChargebeeHostedPage): { invoiceId?: string; paidAmount?: number; paidCurrency?: string } {
+  return { invoiceId: page.invoiceId, paidAmount: Number.isInteger(page.amount) ? page.amount : undefined, paidCurrency: page.currency || undefined };
+}
 function isReviewResult(value: unknown): value is ReviewResult {
   return typeof value === "object" && value !== null && (value as { status?: unknown }).status === "requires_review" && typeof (value as { paymentId?: unknown }).paymentId === "number";
 }
@@ -287,17 +292,17 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       // explicitly succeeded page with a paid source-of-truth invoice can credit.
       if (!hostedPage.paid) return res.json({ status: "pending", summary: await summary() });
       if (!hostedPage.passThruContent || !Number.isInteger(hostedPage.amount) || !hostedPage.currency) {
-        await deps.markPaymentForReview?.(payment.id, "provider_page_incomplete");
+        await deps.markPaymentForReview?.(payment.id, "provider_page_incomplete", paidEvidence(hostedPage));
         return res.json({ status: "requires_review", summary: await summary() });
       }
       if (hostedPage.passThruContent !== payment.checkoutIntentId || hostedPage.amount !== payment.amount || hostedPage.currency !== payment.currency) {
-        await deps.markPaymentForReview?.(payment.id, "provider_page_mismatch");
+        await deps.markPaymentForReview?.(payment.id, "provider_page_mismatch", paidEvidence(hostedPage));
         void deps.alertPaymentReview?.({ paymentId: payment.id, reason: "provider_page_mismatch", expectedAmount: payment.amount, expectedCurrency: payment.currency, paidAmount: hostedPage.amount as number, paidCurrency: hostedPage.currency as string }).catch(() => undefined);
         return res.json({ status: "requires_review", summary: await summary() });
       }
       const result = await deps.fulfillPayment({ eventId: `hosted_page:${hostedPage.hostedPageId}`, hostedPageId: hostedPage.hostedPageId, invoiceId: hostedPage.invoiceId, passThruContent: hostedPage.passThruContent, amount: hostedPage.amount, currency: hostedPage.currency });
       if ((result as { status?: string }).status === "credited" || (result as { status?: string }).status === "duplicate") return res.json({ status: "credited", tokenCount: payment.tokenCount, summary: await summary() });
-      await deps.markPaymentForReview?.(payment.id, "reconciliation_rejected");
+      await deps.markPaymentForReview?.(payment.id, "reconciliation_rejected", paidEvidence(hostedPage));
       return res.json({ status: "requires_review", summary: await summary() });
     } catch (error) {
       console.error("[Chargebee] payment recovery error", error);

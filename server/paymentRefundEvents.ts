@@ -30,9 +30,14 @@ export type NonCreditedRefundOutcome =
 /** The records the refund webhook writes for a payment (resourceType payment_fulfillment), each naming its event. */
 const REFUND_RECORD_ACTIONS = ["billing.refund_needs_review", "billing.refund_credits_revoked"] as const;
 const PAID_RECORD_ACTION = "billing.payment_amount_mismatch";
+/** What Chargebee says was paid for a payment held before its paid webhook parked it (credit recovery, or the paid webhook after such a hold). */
+export const PAID_EVIDENCE_ACTION = "billing.payment_paid_evidence";
 const CLOSED_BY_REVIEW: ReadonlySet<string> = new Set([REFUND_REVIEWED_REVOKED, REFUND_REVIEWED_KEPT]);
 
 const refundRecordSchema = z.object({ eventId: z.string().min(1), refundAmount: z.number().int().positive().nullish(), refundCurrency: z.string().min(1).nullish() });
+// Records from before the refund currency was saved carry only the payment's currency; a currency mismatch is the one case they differ.
+const storedRefundSchema = refundRecordSchema.extend({ reason: z.string().optional(), currency: z.string().min(1).optional() })
+  .transform(({ reason, currency, ...refund }) => ({ ...refund, refundCurrency: refund.refundCurrency !== undefined ? refund.refundCurrency : reason === "refund_currency_mismatch" ? null : currency ?? null }));
 const paidRecordSchema = z.object({ paidAmount: z.number().int().positive(), paidCurrency: z.string().min(1) });
 type RecordedRefund = z.infer<typeof refundRecordSchema>;
 type PaymentRefundHistory = { refunds: RecordedRefund[]; paid?: { amount: number; currency: string } };
@@ -45,17 +50,17 @@ function parseJson(raw: string | null): unknown {
 async function readPaymentRefundHistoryTx(tx: LedgerTx, paymentId: number): Promise<PaymentRefundHistory> {
   // The transaction's first consistent read comes after the caller's row lock, so a
   // delivery that waited on that lock sees the record the one before it committed.
-  const rows = await tx.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, metadata: operationalActivityLogs.metadata }).from(operationalActivityLogs).where(and(inArray(operationalActivityLogs.action, [...REFUND_RECORD_ACTIONS, PAID_RECORD_ACTION]), eq(operationalActivityLogs.resourceType, "payment_fulfillment"), eq(operationalActivityLogs.resourceId, String(paymentId))));
+  const rows = await tx.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, metadata: operationalActivityLogs.metadata }).from(operationalActivityLogs).where(and(inArray(operationalActivityLogs.action, [...REFUND_RECORD_ACTIONS, PAID_RECORD_ACTION, PAID_EVIDENCE_ACTION]), eq(operationalActivityLogs.resourceType, "payment_fulfillment"), eq(operationalActivityLogs.resourceId, String(paymentId))));
   const history: PaymentRefundHistory = { refunds: [] };
   let paidRecordId = 0;
   for (const row of rows) {
     const metadata = parseJson(row.metadata);
-    if (row.action === PAID_RECORD_ACTION) {
+    if (row.action === PAID_RECORD_ACTION || row.action === PAID_EVIDENCE_ACTION) {
       const paid = paidRecordSchema.safeParse(metadata);
       if (paid.success && row.id > paidRecordId) { paidRecordId = row.id; history.paid = { amount: paid.data.paidAmount, currency: paid.data.paidCurrency }; }
       continue;
     }
-    const refund = refundRecordSchema.safeParse(metadata);
+    const refund = storedRefundSchema.safeParse(metadata);
     if (refund.success) history.refunds.push(refund.data);
   }
   return history;
@@ -84,6 +89,23 @@ export function summariseRecordedRefunds(records: ReadonlyArray<{ id: number; re
 /** Whether this refund event was already handled for this payment: a replay of a refund recorded before the payment was credited must not count again. */
 export async function refundEventRecordedTx(tx: LedgerTx, paymentId: number, eventId: string): Promise<boolean> {
   return (await readPaymentRefundHistoryTx(tx, paymentId)).refunds.some(refund => refund.eventId === eventId);
+}
+
+/**
+ * Records what Chargebee says the buyer paid for a held payment that has no such record yet, so a later
+ * refund can be checked against it (a full refund then closes the payment instead of leaving it creditable).
+ * Caller holds the payment row lock. The first record wins; an unusable amount writes nothing.
+ */
+export async function recordPaidEvidenceTx(tx: LedgerTx, row: { id: number; userId: number }, evidence: { amount?: number; currency?: string; invoiceId?: string | null; source: "credit_recovery" | "paid_webhook" }): Promise<void> {
+  if (!Number.isInteger(evidence.amount) || (evidence.amount ?? 0) <= 0 || !evidence.currency) return;
+  if ((await readPaymentRefundHistoryTx(tx, row.id)).paid) return;
+  await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: PAID_EVIDENCE_ACTION, outcome: "success", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ paidAmount: evidence.amount, paidCurrency: evidence.currency, invoiceId: evidence.invoiceId ?? null, source: evidence.source }) });
+}
+
+/** Whether this payment's recorded refunds add up to what the buyer paid, in that currency. Unknown when nothing records what was paid: then false, and the admin decides. Caller holds the payment row lock. */
+export async function recordedRefundsCoverPaymentTx(tx: LedgerTx, paymentId: number): Promise<boolean> {
+  const history = await readPaymentRefundHistoryTx(tx, paymentId);
+  return history.paid !== undefined && refundedIn(history.paid.currency, history.refunds) >= history.paid.amount;
 }
 
 /** How much of these refunds provably went back in this currency (an unreadable or other-currency refund counts for nothing). */

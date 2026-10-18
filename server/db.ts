@@ -53,7 +53,7 @@ import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
 import { PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome, type RefundReviewReason } from "../shared/paymentReview";
-import { refundEventRecordedTx, settleRefundOfNonCreditedPaymentTx, summariseRecordedRefunds } from "./paymentRefundEvents";
+import { recordPaidEvidenceTx, recordedRefundsCoverPaymentTx, refundEventRecordedTx, settleRefundOfNonCreditedPaymentTx, summariseRecordedRefunds } from "./paymentRefundEvents";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
@@ -3382,10 +3382,23 @@ export async function getChargebeePaymentRecovery(userId: number, role: WalletRo
   return record[0];
 }
 
-export async function markChargebeePaymentForReview(paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected") {
+/**
+ * Holds a pending payment for the admin's review. The hosted page's invoice id and paid amount are kept
+ * with it: the refund webhook finds a payment only by its invoice id, and a full refund closes a held
+ * payment only when what was paid is on record (server/paymentRefundEvents.ts). An invoice id the row
+ * already carries is never replaced.
+ */
+export async function markChargebeePaymentForReview(paymentId: number, reason: "provider_page_mismatch" | "provider_page_incomplete" | "reconciliation_rejected", evidence: { invoiceId?: string; paidAmount?: number; paidCurrency?: string } = {}) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  await db.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "pending")));
+  await db.transaction(async tx => {
+    const row = (await tx.select({ id: paymentFulfillments.id, userId: paymentFulfillments.userId, status: paymentFulfillments.status, providerInvoiceId: paymentFulfillments.providerInvoiceId }).from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1).for("update"))[0];
+    if (!row || row.status !== "pending") return;
+    const invoice = evidence.invoiceId && !row.providerInvoiceId ? { providerInvoiceId: evidence.invoiceId } : {};
+    const held = await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date(), ...invoice }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "pending")));
+    if (Number(held[0]?.affectedRows ?? 0) !== 1) return;
+    await recordPaidEvidenceTx(tx, row, { amount: evidence.paidAmount, currency: evidence.paidCurrency, invoiceId: evidence.invoiceId ?? row.providerInvoiceId, source: "credit_recovery" });
+  });
 }
 
 // Read-only correlation for direct-gateway webhook deliveries (Razorpay/PayPal):
@@ -3400,6 +3413,15 @@ export async function recordGatewayPaymentEvent(input: { provider: "razorpay" | 
   return { matched: row.length > 0 };
 }
 
+/**
+ * A paid event for a payment credit recovery already held: keep its invoice id, so its refund is found,
+ * and what was paid, so a full refund closes it instead of leaving it creditable. Caller holds the row lock.
+ */
+async function keepHeldPaymentEvidenceTx(tx: LedgerTx, row: { id: number; userId: number; providerInvoiceId: string | null }, input: { invoiceId?: string; amount: number; currency: string }) {
+  if (!row.providerInvoiceId && input.invoiceId) await tx.update(paymentFulfillments).set({ providerInvoiceId: input.invoiceId }).where(and(eq(paymentFulfillments.id, row.id), isNull(paymentFulfillments.providerInvoiceId)));
+  await recordPaidEvidenceTx(tx, row, { amount: input.amount, currency: input.currency, invoiceId: input.invoiceId ?? row.providerInvoiceId, source: "paid_webhook" });
+}
+
 export async function fulfillChargebeePayment(input: { eventId: string; hostedPageId?: string; invoiceId?: string; passThruContent?: string; amount: number; currency: string }) {
   if (!input.hostedPageId) return { status: "ignored" as const, reason: "missing_hosted_page" };
   if (!input.passThruContent) return { status: "ignored" as const, reason: "missing_checkout_intent" };
@@ -3410,7 +3432,7 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
   return db.transaction(async tx => {
     const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
-    const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1);
+    const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1).for("update");
     if (!intent[0]) {
       // No pending row: credit recovery or the reconcile job may already have
       // settled this checkout (event id hosted_page:<id>), or an earlier event
@@ -3419,12 +3441,18 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
       // A different invoice on the same checkout is not this payment and stays unknown.
       // Only a credited row is a duplicate: credit recovery reports a duplicate to the
       // buyer as "credited", which a refunded, parked or rejected payment is not.
-      const settled = (await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerHostedPageId, hostedPageId), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1))[0];
+      const settled = (await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerHostedPageId, hostedPageId), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1).for("update"))[0];
       if (settled && (!settled.providerInvoiceId || !input.invoiceId || settled.providerInvoiceId === input.invoiceId)) {
         if (settled.status === "credited") return { status: "duplicate" as const, tokenCount: settled.tokenCount };
+        if (settled.status === "requires_review") await keepHeldPaymentEvidenceTx(tx, settled, input);
         if (settled.status === "refunded" || settled.status === "requires_review" || settled.status === "rejected") return { status: "ignored" as const, reason: "payment_already_reconciled" };
       }
       return { status: "ignored" as const, reason: "unknown_checkout" };
+    }
+    if (intent[0].status === "requires_review") {
+      // Credit recovery held it before this event arrived: nothing is credited here.
+      await keepHeldPaymentEvidenceTx(tx, intent[0], input);
+      return { status: "ignored" as const, reason: "payment_already_reconciled" };
     }
     if (intent[0].amount !== input.amount || intent[0].currency !== input.currency) {
       // A paid invoice that disagrees with the checkout (tax, coupon, rounding,
@@ -3500,6 +3528,9 @@ export async function resolveRequiresReviewPayment(adminUserId: number, paymentI
     if (credits !== undefined && (decision !== "revoke_unused" || !Number.isInteger(credits) || credits < 1)) throw new PaymentReviewRefusedError("A credit count only applies to taking back unused credits, as a whole number of at least 1.");
     const cleanNote = typeof note === "string" && note.trim() ? note.trim().slice(0, PAYMENT_REVIEW_NOTE_MAX) : null;
     if (decision === "revoke_unused" || decision === "keep_credits") return closeRefundedPaymentReviewTx(tx, { adminUserId, row, decision, note: cleanNote, credits, now: new Date() });
+    // The stored reason can predate a refund (refunded under older code, or before its invoice was linked):
+    // the payment's own refund records decide, under the row lock.
+    if (decision === "credited" && await recordedRefundsCoverPaymentTx(tx, paymentId)) throw new PaymentReviewRefusedError("Chargebee shows this payment refunded in full, so its credits cannot be added. Reject it to close it. Nothing was changed.");
     const resolvedAt = new Date();
     const claimed = await tx.update(paymentFulfillments).set({ status: decision, creditedAt: decision === "credited" ? resolvedAt : null, lastCheckedAt: resolvedAt }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "requires_review")));
     if (Number(claimed[0]?.affectedRows ?? 0) !== 1) throw new Error("This payment was already resolved");
