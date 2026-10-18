@@ -1,0 +1,21 @@
+// Goal-UI primitives (D-048 phase 2; DESIGN.md "Components"). Screens import only from here.
+export { gcn } from "./gcn";
+export { GOAL_NAV, goalNavFor, type GoalNavId, type GoalNavItem } from "./nav";
+export { GOAL_STEPS, goalSteps, type GoalStepNode, type GoalStepState, type GoalTerminal } from "./stepper";
+export { GOAL_DESKTOP_QUERY, useGoalDesktop, useOnlineStatus } from "./useGoalMedia";
+export { GoalNum } from "./GoalNum";
+export { GoalKeycap, GoalKeycaps, type GoalKey } from "./GoalKeycap";
+export { GoalButton, type GoalButtonProps, type GoalButtonVariant } from "./GoalButton";
+export { GoalIconButton } from "./GoalIconButton";
+export { GoalVerifiedMark } from "./GoalVerifiedMark";
+export { GOAL_STATUS_TONE, GoalAvailability, GoalClock, GoalMiniStepper, GoalStatus, GoalStepper, type GoalStatusKind } from "./GoalStatus";
+export { GoalChipGroup, GoalFilterChip } from "./GoalFilterChip";
+export { GoalSearchInput } from "./GoalSearchInput";
+export { GoalField, GoalTextInput, type GoalFieldHint } from "./GoalField";
+export { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "./GoalStates";
+export { GoalCompanyMark, GoalListRow, GoalListSection, goalInitials, type GoalRowDensity } from "./GoalListRow";
+export { GoalCheckList, GoalDetailHeader, GoalDetailPane, GoalExternalLink, GoalLockedPanel, GoalPhoneSubheader, GoalProps, GoalReasonList, GoalSection } from "./GoalDetail";
+export { GoalPassReasons, type GoalPassReasonsCopy } from "./GoalPassReasons";
+export { GoalDecisionBar, GoalPosition, type GoalDecisionBarProps } from "./GoalDecisionBar";
+export { GoalConfirmDialog, GoalDrawer, GoalSheet } from "./GoalDrawer";
+export { GoalShell, type GoalAccount, type GoalAccountItem, type GoalCredits, type GoalShellProps } from "./GoalShell";
