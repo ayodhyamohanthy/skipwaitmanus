@@ -46,6 +46,10 @@ import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskShelfLife, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
+import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
+// Re-exported for every existing caller (tests and companyDirectory.ts import
+// these from ./db); the definitions live in server/referrerAvailability.ts.
+export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
@@ -1418,10 +1422,6 @@ export async function resolveEmployerDomainFromTargetUrl(targetRoleUrl: string) 
 
 export function isWorkEmailDomain(domain: string): boolean { return isCorporateEmailDomain(domain); }
 
-export function isVerifiedEmployeeOfCompany(profile: { accountType?: string | null; workEmailDomain?: string | null; workEmailVerifiedAt?: Date | null }, companyDomain: string) {
-  return profile.accountType === "referrer" && Boolean(profile.workEmailVerifiedAt) && profile.workEmailDomain?.trim().toLowerCase() === companyDomain.trim().toLowerCase();
-}
-
 export function companyCoverageStatus(eligibleEmployeeCount: number) {
   return eligibleEmployeeCount > 0 ? "covered" as const : "waiting_for_company_coverage" as const;
 }
@@ -1641,25 +1641,21 @@ export function firstLookExcludesViewer(input: { firstLookReferrerId: number | n
   return Number.isFinite(ms) && ms > nowMs;
 }
 
-// Mirrors companyDirectory.ts DEFAULT_REFERRAL_CAPACITY without importing it
-// (companyDirectory imports this module; importing back would cycle).
-const DEFAULT_FIRST_LOOK_REFERRAL_CAPACITY = 3;
-
 /**
- * Whether the poster of a post keeps the ask for 48 hours: they must still be a
- * verified, unpaused, unsuspended employee of the post's company, below their
- * referral capacity (the same openness rule the public directory uses), and
- * someone other than the asker. Returns the referrer id and the first-look end,
- * or null so the ask simply opens to the whole company.
+ * Whether the poster of a post keeps the ask for 48 hours: they must still be an
+ * open referrer of the post's company (the same D-062 availability rule the
+ * public directory and coverage delivery use), and someone other than the
+ * asker. Returns the referrer id and the first-look end, or null so the ask
+ * simply opens to the whole company.
  */
 async function resolveAskFirstLookTx(tx: any, input: { posterUserId: number; seekerUserId: number; companyDomain: string; nowMs: number }) {
   if (input.posterUserId === input.seekerUserId) return null;
   const rows = await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
     .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.userId, input.posterUserId)).limit(1);
   const poster = rows[0];
-  if (!poster || !isVerifiedEmployeeOfCompany(poster, input.companyDomain) || poster.paused || poster.userSuspended || poster.personSuspended === true) return null;
+  if (!poster) return null;
   const allocated = Number((await tx.select({ allocated: count() }).from(referralAvailabilitySlots).where(and(eq(referralAvailabilitySlots.referrerId, input.posterUserId), eq(referralAvailabilitySlots.status, "allocated"))))[0]?.allocated ?? 0);
-  if (allocated >= (poster.referralCapacity ?? DEFAULT_FIRST_LOOK_REFERRAL_CAPACITY)) return null;
+  if (!isOpenReferrer(poster, input.companyDomain, allocated)) return null;
   return { referrerId: input.posterUserId, until: firstLookUntilFrom(new Date(input.nowMs)) };
 }
 
