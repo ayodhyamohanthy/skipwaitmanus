@@ -9,7 +9,7 @@ import { passReasonSeekerLabel } from "../shared/passReasons";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
+import { accountPreferences, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, users } from "../drizzle/schema";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -39,6 +39,7 @@ import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, p
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
+import { PAY_FORWARD_CHOICES, THANK_YOU_MAX_LENGTH, type LandedJourneyRequest, type LandedJourneyState, type ReferrerThankYouWall } from "../shared/landedJourney";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
 import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
@@ -2583,6 +2584,75 @@ export async function sendReferralConversationMessage(userId: number, requestId:
   const result = await db.insert(messages).values({ senderId: userId, recipientId, body: trimmedBody.slice(0, 3000), referralRequestId: requestId });
   await db.insert(notifications).values({ kind: "message_new", userId: recipientId, category: "message", title: "New private referral message", body: "You have a new message in an accepted referral request." });
   return { id: Number(result[0].insertId) };
+}
+
+/**
+ * The kit landed journey (queue row 20 slice C): the seeker whose ask ended with a
+ * hire records their thank-you, whether the referrer may keep it on their private
+ * wall, and their pay-it-forward answer. The note stays editable until it reaches
+ * the referrer, then it is final and reaches them through the existing referral
+ * conversation exactly once — `deliveredAt` is
+ * claimed with a conditional update before the send, so a double click or a retry
+ * after a lost response cannot hand the referrer the same note twice. A failed send
+ * releases the claim, so the seeker's own next attempt can deliver it and the response
+ * says truthfully that it has not gone yet.
+ */
+export async function recordLandedJourney(userId: number, input: LandedJourneyRequest): Promise<LandedJourneyState> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const ask = (await db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, status: referralRequests.status }).from(referralRequests).where(eq(referralRequests.id, input.referralRequestId)).limit(1))[0];
+  if (!ask || ask.jobSeekerId !== userId) throw new Error("This thank-you is not available to you");
+  if (ask.status !== "closed" || !ask.referrerId) throw new Error("A thank-you opens once your referrer marks the ask as hired");
+  const message = input.message?.trim().slice(0, THANK_YOU_MAX_LENGTH);
+  const now = new Date();
+  // Create-if-absent without throwing when a second submit wins the unique index.
+  await db.insert(landedJourney).values({ referralRequestId: ask.id, seekerUserId: userId, referrerUserId: ask.referrerId }).onDuplicateKeyUpdate({ set: { updatedAt: now } });
+  const rows = await db.select({ thankYouMessage: landedJourney.thankYouMessage, shareOnWall: landedJourney.shareOnWall, payForwardChoice: landedJourney.payForwardChoice, deliveredAt: landedJourney.deliveredAt }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1);
+  const row = rows[0];
+  if (!row) throw new Error("We could not save that thank-you");
+  const thankYouMessage = row.deliveredAt ? row.thankYouMessage ?? message ?? null : message ?? row.thankYouMessage ?? null;
+  const shareOnWall = input.shareOnWall ?? row.shareOnWall;
+  const payForward = input.payForward ?? PAY_FORWARD_CHOICES.find(choice => choice === row.payForwardChoice) ?? null;
+  await db.update(landedJourney).set({ thankYouMessage, shareOnWall, payForwardChoice: payForward, updatedAt: now }).where(eq(landedJourney.referralRequestId, ask.id));
+  let delivered = Boolean(row.deliveredAt);
+  if (!delivered && message) {
+    const claimed = await db.update(landedJourney).set({ deliveredAt: now }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.deliveredAt)));
+    if (Number(claimed[0]?.affectedRows ?? 0) === 1) {
+      try {
+        const sent = await sendReferralConversationMessage(userId, ask.id, message);
+        await db.update(landedJourney).set({ conversationMessageId: sent.id }).where(eq(landedJourney.referralRequestId, ask.id));
+        delivered = true;
+      } catch (error) {
+        captureServerError(error, { area: "landedJourney", referralRequestId: ask.id });
+        const released = await db.update(landedJourney).set({ deliveredAt: null }).where(and(eq(landedJourney.referralRequestId, ask.id), isNull(landedJourney.conversationMessageId)));
+        if (Number(released[0]?.affectedRows ?? 0) !== 1) captureServerError(new Error("Landed thank-you claim could not be released"), { area: "landedJourney", referralRequestId: ask.id });
+      }
+    } else {
+      // Another of this seeker's own submits holds the claim; report what it settled on.
+      const after = (await db.select({ deliveredAt: landedJourney.deliveredAt }).from(landedJourney).where(eq(landedJourney.referralRequestId, ask.id)).limit(1))[0];
+      delivered = Boolean(after?.deliveredAt);
+    }
+  }
+  return { referralRequestId: ask.id, thankYouMessage, shareOnWall, payForward, delivered };
+}
+
+/**
+ * The referrer's private thank-you wall (queue row 20 slice D): the notes they
+ * received, and the newest few the seekers let them keep. Only a delivered note
+ * counts or shows, and the name and role are the ones this referrer already saw on
+ * the ask they worked. Nothing here is public to another user.
+ */
+export async function listReferrerThankYous(userId: number, limit = 3): Promise<ReferrerThankYouWall> {
+  const db = await getDb(); if (!db) return { thankYous: [], total: 0 };
+  const received = and(eq(landedJourney.referrerUserId, userId), isNotNull(landedJourney.deliveredAt));
+  const safeLimit = Math.max(1, Math.min(limit, 10));
+  const [rows, totals] = await Promise.all([
+    db.select({ id: landedJourney.id, message: landedJourney.thankYouMessage, seekerName: users.name, roleTitle: jobs.title, createdAt: landedJourney.createdAt }).from(landedJourney).innerJoin(referralRequests, eq(landedJourney.referralRequestId, referralRequests.id)).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(landedJourney.seekerUserId, users.id)).where(and(received, eq(landedJourney.shareOnWall, true), isNotNull(landedJourney.thankYouMessage))).orderBy(desc(landedJourney.createdAt), desc(landedJourney.id)).limit(safeLimit),
+    db.select({ total: count() }).from(landedJourney).where(received),
+  ]);
+  return {
+    thankYous: rows.filter(row => Boolean(row.message)).map(row => ({ id: row.id, message: row.message ?? "", seekerName: row.seekerName ?? null, roleTitle: row.roleTitle ?? null, createdAt: new Date(row.createdAt).toISOString() })),
+    total: Number(totals[0]?.total ?? 0),
+  };
 }
 
 
