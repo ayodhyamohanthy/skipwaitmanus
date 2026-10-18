@@ -146,6 +146,11 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "referralRequests", column: "opportunityId", definition: "INT NULL" },
   { table: "referralRequests", column: "firstLookReferrerId", definition: "INT NULL" },
   { table: "referralRequests", column: "firstLookUntil", definition: "TIMESTAMP NULL" },
+  // D-034/D-047/D-061 (0095): first visibility starts the 7-day clock; an ask
+  // held for credit keeps coverageHeldAt until the sweep delivers it. Both are
+  // nullable and older rows read through coalesce(coverageVisibleAt, createdAt).
+  { table: "referralRequests", column: "coverageVisibleAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "coverageHeldAt", definition: "TIMESTAMP NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -214,6 +219,8 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "subscriptionCancellationFeedback", name: "subscription_cancellation_feedback_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
   // D-022 referrer-posted roles (0094): the first-look-release sweep scans by this clock.
   { table: "referralRequests", name: "referral_requests_first_look_idx", columns: "`firstLookUntil`", nonUnique: true },
+  // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
+  { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is

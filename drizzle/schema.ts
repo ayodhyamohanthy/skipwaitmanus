@@ -480,9 +480,15 @@ export const referralRequests = mysqlTable("referralRequests", {
   opportunityId: int("opportunityId").references(() => companyOpportunities.id, { onDelete: "set null" }),
   firstLookReferrerId: int("firstLookReferrerId").references(() => users.id, { onDelete: "set null" }),
   firstLookUntil: timestamp("firstLookUntil"),
+  // D-034/D-047/D-061 (migration 0095): when an available referrer could first
+  // see the ask (starts the 7-day clock; null while it waits for coverage), and
+  // when coverage opened but the seeker had no credit, so the ask is held
+  // (server/coverageDelivery.ts) until the hourly sweep delivers it.
+  coverageVisibleAt: timestamp("coverageVisibleAt"),
+  coverageHeldAt: timestamp("coverageHeldAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), index("referral_requests_coverage_held_idx").on(table.coverageHeldAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
 export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   id: int("id").autoincrement().primaryKey(),
