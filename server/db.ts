@@ -53,7 +53,7 @@ import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
 import { PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome, type RefundReviewReason } from "../shared/paymentReview";
-import { settleRefundOfNonCreditedPaymentTx } from "./paymentRefundEvents";
+import { settleRefundOfNonCreditedPaymentTx, summariseRecordedRefunds } from "./paymentRefundEvents";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
@@ -3470,8 +3470,11 @@ export async function listRequiresReviewPayments(limit = 100) {
   const db = await getDb();
   if (!db) return [];
   const rows = await db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, providerHostedPageId: paymentFulfillments.providerHostedPageId, checkoutIntentId: paymentFulfillments.checkoutIntentId, userId: paymentFulfillments.userId, role: paymentFulfillments.role, tokenCount: paymentFulfillments.tokenCount, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, reconciliationReason: paymentFulfillments.reconciliationReason, creditedAt: paymentFulfillments.creditedAt, createdAt: paymentFulfillments.createdAt, userEmail: users.email }).from(paymentFulfillments).innerJoin(users, eq(paymentFulfillments.userId, users.id)).where(eq(paymentFulfillments.status, "requires_review")).orderBy(desc(paymentFulfillments.createdAt)).limit(Math.max(1, Math.min(limit, 250)));
+  // What Chargebee refunded for each listed payment, from the refund webhook's records (server/paymentRefundEvents.ts).
+  const ids = rows.map(row => String(row.id));
+  const refunds = summariseRecordedRefunds(ids.length ? await db.select({ id: operationalActivityLogs.id, resourceId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.action, "billing.refund_needs_review"), eq(operationalActivityLogs.resourceType, "payment_fulfillment"), inArray(operationalActivityLogs.resourceId, ids))) : []);
   // Why each row is parked decides which decisions the review page offers (shared/paymentReview.ts).
-  return rows.map(row => ({ ...row, reviewKind: paymentReviewKind(row) }));
+  return rows.map(row => ({ ...row, reviewKind: paymentReviewKind(row), refunds: refunds.get(row.id) ?? null }));
 }
 
 /**

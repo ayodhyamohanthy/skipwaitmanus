@@ -18,7 +18,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { operationalActivityLogs, paymentFulfillments } from "../drizzle/schema";
-import { REFUND_NOT_FULL_BEFORE_CREDIT, REFUND_OF_UNCREDITED_PAYMENT, REFUND_REPEATED, REFUND_REVIEWED_KEPT, REFUND_REVIEWED_REVOKED, paymentReviewKind, type RefundReviewReason } from "../shared/paymentReview";
+import { REFUND_NOT_FULL_BEFORE_CREDIT, REFUND_OF_UNCREDITED_PAYMENT, REFUND_REPEATED, REFUND_REVIEWED_KEPT, REFUND_REVIEWED_REVOKED, paymentReviewKind, type PaymentRefundSummary, type RefundReviewReason } from "../shared/paymentReview";
 import type { LedgerTx } from "./creditLedger";
 
 type FulfilmentRow = typeof paymentFulfillments.$inferSelect;
@@ -59,6 +59,26 @@ async function readPaymentRefundHistoryTx(tx: LedgerTx, paymentId: number): Prom
     if (refund.success) history.refunds.push(refund.data);
   }
   return history;
+}
+
+const summaryRecordSchema = refundRecordSchema.extend({ reason: z.string().optional(), currency: z.string().min(1).optional() });
+
+/** Per payment, from its refund records (billing.refund_needs_review): how many refund events, and the latest one's amount and currency. */
+export function summariseRecordedRefunds(records: ReadonlyArray<{ id: number; resourceId: string | null; metadata: string | null }>): Map<number, PaymentRefundSummary> {
+  const byPayment = new Map<number, { latestId: number; events: Set<string>; amount: number | null; currency: string | null }>();
+  for (const record of records) {
+    const paymentId = Number(record.resourceId);
+    const parsed = summaryRecordSchema.safeParse(parseJson(record.metadata));
+    if (!Number.isInteger(paymentId) || paymentId <= 0 || !parsed.success) continue;
+    const { eventId, refundAmount, refundCurrency, reason, currency } = parsed.data;
+    // Records from before the refund currency was saved carry the payment's; a currency mismatch is the one case they differ.
+    const recordCurrency = refundCurrency !== undefined ? refundCurrency : reason === "refund_currency_mismatch" ? null : currency ?? null;
+    const entry = byPayment.get(paymentId) ?? { latestId: 0, events: new Set<string>(), amount: null, currency: null };
+    entry.events.add(eventId);
+    if (record.id > entry.latestId) Object.assign(entry, { latestId: record.id, amount: refundAmount ?? null, currency: recordCurrency });
+    byPayment.set(paymentId, entry);
+  }
+  return new Map(Array.from(byPayment, ([paymentId, entry]) => [paymentId, { count: entry.events.size, latestAmount: entry.amount, latestCurrency: entry.currency }]));
 }
 
 /** How much of these refunds provably went back in this currency (an unreadable or other-currency refund counts for nothing). */

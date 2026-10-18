@@ -42,6 +42,9 @@ describe("payment and recovery wallet concurrency invariants", () => {
     const body = fn("export async function listRequiresReviewPayments", "export async function resolveRequiresReviewPayment");
     expect(body).toContain("creditedAt: paymentFulfillments.creditedAt");
     expect(body).toContain("reviewKind: paymentReviewKind(row)");
+    // What Chargebee refunded, from the refund records of the listed payments only.
+    expect(body).toContain('eq(operationalActivityLogs.action, "billing.refund_needs_review"), eq(operationalActivityLogs.resourceType, "payment_fulfillment"), inArray(operationalActivityLogs.resourceId, ids)');
+    expect(body).toContain("refunds: refunds.get(row.id) ?? null");
   });
 
   it("locks both fulfillment and wallet and subtracts atomically on revocation", () => {

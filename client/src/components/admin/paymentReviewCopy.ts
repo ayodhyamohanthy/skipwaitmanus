@@ -1,6 +1,6 @@
 // Plain words for the admin payment review queue (client/src/pages/AdminPaymentsReview.tsx).
 // Contract: shared/paymentReview.ts. Raw reason codes never reach the page.
-import type { PaymentReviewDecision, PaymentReviewKind, PaymentReviewOutcome } from "@shared/paymentReview";
+import type { PaymentRefundSummary, PaymentReviewDecision, PaymentReviewKind, PaymentReviewOutcome } from "@shared/paymentReview";
 
 export const creditCount = (count: number) => `${count} credit${count === 1 ? "" : "s"}`;
 export const displayPaymentRef = (id: number) => `Ref-PMT-${1000 + id}`;
@@ -32,6 +32,13 @@ const REASONS: Readonly<Record<string, string>> = {
 
 export function reviewReasonText(reason: string | null): string {
   return (reason && REASONS[reason]) || "Held for a manual check.";
+}
+
+/** What Chargebee refunded, from the refund records the server sent. */
+export function refundLine(summary: PaymentRefundSummary): string {
+  const amount = summary.latestAmount !== null && summary.latestCurrency !== null ? formatAmount(summary.latestAmount, summary.latestCurrency) : null;
+  if (summary.count === 1) return amount ? `Refund recorded in Chargebee: ${amount}.` : "Refund recorded in Chargebee. Its amount could not be read.";
+  return amount ? `${summary.count} refunds recorded in Chargebee. The latest was ${amount}.` : `${summary.count} refunds recorded in Chargebee. The latest amount could not be read.`;
 }
 
 /** Reasons where the refunded share is unknown here, so a take-back needs the admin's own count. */

@@ -147,6 +147,20 @@ describe("administrator payment review decisions", () => {
     await waitFor(() => expect(posts()).toEqual([{ url: "/api/admin/payments/review/8", body: { decision: "revoke_unused", credits: 1 } }]));
   });
 
+  it("shows what Chargebee refunded for a held payment, and nothing it cannot read", async () => {
+    queue = [
+      { ...partial, refunds: { count: 1, latestAmount: 5400, latestCurrency: "INR" } },
+      { ...refundedAgain, refunds: { count: 2, latestAmount: 30000, latestCurrency: "INR" } },
+      { ...spent, refunds: { count: 1, latestAmount: null, latestCurrency: null } },
+      { ...awaiting, refunds: { count: "two" } },
+    ];
+    render(<AdminPaymentsReview />);
+    expect((await row(4)).getByText("Refund recorded in Chargebee: INR 54.")).toBeTruthy();
+    expect((await row(8)).getByText("2 refunds recorded in Chargebee. The latest was INR 300.")).toBeTruthy();
+    expect((await row(3)).getByText("Refund recorded in Chargebee. Its amount could not be read.")).toBeTruthy();
+    expect((await row(1)).queryByText(/recorded in Chargebee/)).toBeNull();
+  });
+
   it("keeps the credits only after a confirmation", async () => {
     render(<AdminPaymentsReview />);
     fireEvent.click((await row(3)).getByRole("button", { name: "Keep credits and close" }));

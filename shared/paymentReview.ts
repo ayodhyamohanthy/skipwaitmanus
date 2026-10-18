@@ -75,6 +75,10 @@ export function parsePaymentReviewKind(value: unknown): PaymentReviewKind | unde
   return PAYMENT_REVIEW_KINDS.find(kind => kind === value);
 }
 
+/** What Chargebee refunded for a held payment, from the refund webhook's records (GET /api/admin/payments/review `refunds`, null when none). */
+export const paymentRefundSummarySchema = z.object({ count: z.number().int().positive(), latestAmount: z.number().int().positive().nullable(), latestCurrency: z.string().min(1).nullable() });
+export type PaymentRefundSummary = z.infer<typeof paymentRefundSummarySchema>;
+
 const note = z.string().transform(value => value.trim().slice(0, PAYMENT_REVIEW_NOTE_MAX)).optional();
 
 /** POST /api/admin/payments/review/:paymentId. `credits` caps a take-back (required by the page for a partial refund). */
