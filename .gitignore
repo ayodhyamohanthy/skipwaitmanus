@@ -123,3 +123,6 @@ commit-sha.txt
 
 # kit screen fidelity harness output
 .kit-screens/
+
+# Local output of scripts/live-flow-audit.mjs (screenshots); never committed
+artifacts/

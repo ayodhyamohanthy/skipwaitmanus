@@ -67,8 +67,8 @@ Verified against `main` `e6b87f8` (Oct 18 2026). Line numbers drift: find a func
 - `scripts/`: build-time prerender (`prerender-public-pages.tsx`), the gate scripts (§9), deploy shell scripts, the screenshot harness (`kit-screens/capture.mjs`), and one-off owner scripts.
 - Not product code (never edit for a product change):
   - `app/`: the Kit v4 reference app, a separate TanStack project that nothing builds or tests.
-  - `screens/`, `design/`, `research/`, `artifacts/`.
-  - The root `.zip` and `.pdf`.
+  - `design/` (the goal-UI comps and brief, `design/goal-ui/`) and `research/`.
+  - `artifacts/`: local output of `scripts/live-flow-audit.mjs`, git-ignored. (The kit screenshots in `screens/` and the root kit `.zip` and `.pdf` were removed on Oct 18.)
 
 ## 4. `server/db.ts` by domain (line ranges at `e6b87f8`)
 Never read it whole. Find a function with `/usr/bin/grep -n "export async function name" server/db.ts`, then read its range with `sed -n 'A,Bp' server/db.ts | cut -c1-400`.
@@ -219,7 +219,6 @@ A new job needs its name in both registries and a contract test (`server/schedul
    - the unrouted pages `Notifications.tsx` and `ReferralRequest.tsx`;
    - `src/services/mailService.ts`;
    - the unused Manus Forge modules (`map`, `dataApi`, `imageGeneration`, `voiceTranscription`, `heartbeat`);
-   - `render.yaml`;
    - the imported-but-unused `VitePWA`.
 2. **Test blind spots:**
    - `shared/` tests never run;

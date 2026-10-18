@@ -33,7 +33,7 @@ Files that nothing builds, routes or imports cost every model context, and some 
 - Unused server and worker code:
   - `src/services/mailService.ts` (a duplicate ZeptoMail sender; the live one is `server/emailDelivery.ts`)
   - `server/_core/map.ts`, `server/_core/dataApi.ts`, `server/_core/imageGeneration.ts`, `server/_core/voiceTranscription.ts`, `server/_core/heartbeat.ts` (Manus template modules with no importer)
-- `render.yaml` (no workflow uses it; it has no `BILLING_ENV`, so a deploy from it would not start)
+- `render.yaml`: **done** — already removed by the Oct 18 repo cleanup; skip it.
 - In `vite.config.ts`: the unused `import { VitePWA } ...` line only (the real service worker is the hand-written `client/public/sw.js`). Leave `tsconfig.json`'s `vite-plugin-pwa/client` types alone.
 
 ## 3. Keep (looks dead, is not)
@@ -41,7 +41,7 @@ Files that nothing builds, routes or imports cost every model context, and some 
 - `client/src/pages/Notifications.tsx` is unrouted, but `server/notificationCenterUi.test.ts` reads it as text. Leave both.
 - `client/src/pages/ReferralRequest.tsx` is unrouted, but D-067 keeps and edits it, and `client/src/pages/referralRequest.auth.test.tsx` imports it.
 - `client/src/pages/ComponentShowcase.tsx` is DEV-only by design.
-- `app/`, `screens/`, `design/`, `research/` are references, not code.
+- `app/`, `design/`, `research/` are references, not code (`screens/` was removed by the Oct 18 repo cleanup).
 
 ## 4. Docs (same push)
 `docs/ARCHITECTURE.md` §11 item 1 (remove what you deleted); the `AGENTS.md` living map, if any row names a deleted file.
