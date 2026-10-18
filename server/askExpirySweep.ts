@@ -2,15 +2,19 @@
 //
 // Finds unclaimed pending asks older than ASK_TTL_DAYS across all seekers, in
 // bounded oldest-first batches, and hands each to the same
-// expireStalePendingReferralRequest the seeker's own reads already use. That
-// function re-checks ownership (the ask's own seeker), status, claimant and age
-// under a row lock, refunds the reserved credit once and notifies the seeker,
-// so a concurrent read, a claim in flight or a repeated sweep can never expire
-// or refund an ask twice. Anything left over is picked up by the next window.
+// expireStalePendingReferralRequest the seeker's own reads already use. An
+// unclaimed ask has no referrer, or is a personal-link ask still held for the
+// employee whose link the seeker used, who has not claimed, accepted or passed
+// (D-050, server/heldAsk.ts). The expiry re-checks ownership (the ask's own
+// seeker), status, claimant and age under a row lock, refunds the credit once
+// and notifies the seeker, so a concurrent read, a claim in flight or a
+// repeated sweep can never expire or refund an ask twice. Anything left over is
+// picked up by the next window.
 import { and, asc, eq, isNull, lt } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { ASK_TTL_MS } from "../shared/referral";
 import { expireStalePendingReferralRequest, getDb } from "./db";
+import { selectStaleHeldAsks } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
@@ -23,14 +27,19 @@ export type AskExpirySweepDeps = {
   expire: (jobSeekerId: number, requestId: number, nowMs: number) => Promise<{ expired: boolean }>;
 };
 
+const oldestFirst = (a: { id: number; createdAt: Date }, b: { id: number; createdAt: Date }) => a.createdAt.getTime() - b.createdAt.getTime() || a.id - b.id;
+
 export async function listStalePendingAsks(cutoff: Date, limit: number): Promise<StaleAsk[]> {
   const db = await getDb();
   if (!db) throw new JobRunStoreUnavailableError();
-  return db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId })
+  const unassigned = await db.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, createdAt: referralRequests.createdAt })
     .from(referralRequests)
     .where(and(eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), lt(referralRequests.createdAt, cutoff)))
     .orderBy(asc(referralRequests.createdAt), asc(referralRequests.id))
     .limit(limit);
+  // Each query is bounded on its own; merged oldest first, the batch keeps the same bound.
+  const held = await selectStaleHeldAsks(db, { cutoff, limit });
+  return [...unassigned, ...held].sort(oldestFirst).slice(0, limit).map(({ id, jobSeekerId }) => ({ id, jobSeekerId }));
 }
 
 export function createAskExpirySweep(deps: AskExpirySweepDeps = { listStale: listStalePendingAsks, expire: expireStalePendingReferralRequest }) {

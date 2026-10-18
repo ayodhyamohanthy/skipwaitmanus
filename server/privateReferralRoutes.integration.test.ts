@@ -401,6 +401,7 @@ describe("withdrawal activity reports only authoritative credit movement", () =>
 
   it.each([
     ["This request was already claimed by a verified employee and can no longer be withdrawn", 409],
+    ["This ask has already closed, so it can no longer be withdrawn", 409],
     ["Database unavailable", 500],
   ] as const)("does not emit a successful refund claim when the operation fails with %s", async (failure, status) => {
     const { app, withdrawalEvents } = setup(false, failure);

@@ -44,6 +44,7 @@ import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegr
 import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
+import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, listHeldForReferrerIds, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks } from "./heldAsk";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
@@ -2062,40 +2063,62 @@ async function referralWasClaimedTx(tx: LedgerTx, requestId: number): Promise<bo
   return claimed.length > 0;
 }
 
+/**
+ * D-050: the referrer a pending personal-link ask is still held for, or null. Caller holds the
+ * request row lock. Held = assigned with nothing recorded since: no claim (the locking read above),
+ * no queue allocation, created after claims became recorded events (server/heldAsk.ts).
+ */
+async function heldForReferrerTx(tx: LedgerTx, row: { id: number; status: string; referrerId: number | null; createdAt: Date }): Promise<number | null> {
+  if (!isHeldCandidate(row)) return null;
+  if (await referralWasClaimedTx(tx, row.id)) return null;
+  if (await readQueueAllocationTx(tx, row.id)) return null;
+  return row.referrerId;
+}
+
+const WITHDRAW_REFUSED = "This request was already claimed by a verified employee and can no longer be withdrawn";
+
 export async function withdrawCompanyReferralRequest(userId: number, requestId: number) {
   const db=await getDb();if(!db)throw new Error("Database unavailable");
   return db.transaction(async tx=>{
-    const current=(await tx.select({id:referralRequests.id,status:referralRequests.status,referrerId:referralRequests.referrerId,debitTransactionId:referralRequests.debitTransactionId}).from(referralRequests).where(and(eq(referralRequests.id,requestId),eq(referralRequests.jobSeekerId,userId))).limit(1).for("update"))[0];
+    const current=(await tx.select({id:referralRequests.id,status:referralRequests.status,referrerId:referralRequests.referrerId,debitTransactionId:referralRequests.debitTransactionId,createdAt:referralRequests.createdAt}).from(referralRequests).where(and(eq(referralRequests.id,requestId),eq(referralRequests.jobSeekerId,userId))).limit(1).for("update"))[0];
     if(!current)throw new Error("This referral request is not in your account");if(current.status==="withdrawn"){const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return{withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};}
-    if(current.status!=="pending"||current.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");
-    if(await referralWasClaimedTx(tx,requestId)){
+    if(current.status!=="pending")throw new Error(current.status==="closed"?"This ask has already closed, so it can no longer be withdrawn":WITHDRAW_REFUSED);
+    // D-050: an assigned ask its employee has not acted on (a personal-link ask) is still unclaimed; any other assigned ask was picked up.
+    const heldFor=current.referrerId===null?null:await heldForReferrerTx(tx,current);
+    if(current.referrerId!==null&&heldFor===null)throw new Error(WITHDRAW_REFUSED);
+    // Each transition re-checks the locked row. Releasing a held ask clears its referrer in the same write, so the
+    // withdrawn ask never reads as assigned or reveals who held it; the release audit row keeps that, in this transaction.
+    const authorize:ReferralTransitionInput["authorize"]=row=>{if(row.jobSeekerId!==userId||row.referrerId!==heldFor)throw new Error(WITHDRAW_REFUSED);};
+    const release=heldFor===null?undefined:{referrerId:null};
+    const released=async<T extends {creditRefunded:boolean}>(result:T):Promise<T>=>{if(heldFor!==null)await recordHeldAskReleaseTx(tx,{requestId,referrerId:heldFor,reason:"withdrawn",creditReturned:result.creditRefunded});return result;};
+    if(heldFor===null&&await referralWasClaimedTx(tx,requestId)){
       const transition=await transitionReferralRequestTx(tx,{
         requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,
         toStatus:"withdrawn",allowedFrom:["pending"],
         notification:{userId,title:"Your ask was withdrawn",body:current.debitTransactionId!==null?"Your ask was withdrawn and its open slot is free again. A verified employee previously picked it up, so its credit stays spent.":"Your ask was withdrawn and its open slot is free again."},
-        authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");},
+        authorize,
       });
       const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];
       return{withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};
     }
     // A free ask (no reserved credit) only frees its slot; an ask that reserved a credit before asks became free refunds it below.
-    if(current.debitTransactionId===null){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return{withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined};}
+    if(current.debitTransactionId===null){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize,patch:release});const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1))[0];return released({withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined});}
     const spendRow=(await tx.select().from(tokenTransactions).where(and(eq(tokenTransactions.id,current.debitTransactionId),eq(tokenTransactions.userId,userId))).limit(1).for("update"))[0];
     if(spendRow&&spendRow.kind!=="direct_request"){
       // Ledger-spent ask (credit spent at send): hand back exactly what it took, once, then withdraw.
       if(spendRow.kind!=="credit_spend"&&spendRow.kind!=="promo_spend")throw new Error("The original referral credit debit is unavailable; contact support before withdrawing");
       const lockedWallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!lockedWallet)throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
       const refundNow=new Date();const refunded=await refundLedgerSpendTx(tx,{userId,requestId,kind:"withdrawal_refund",wallet:lockedWallet,now:refundNow});
-      const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});
-      return{withdrawn:true as const,creditRefunded:refunded.returned>0,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:await creditSummaryAfterRefundTx(tx,refunded.wallet,refundNow)};
+      const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize,patch:release});
+      return released({withdrawn:true as const,creditRefunded:refunded.returned>0,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:await creditSummaryAfterRefundTx(tx,refunded.wallet,refundNow)});
     }
     const debit=spendRow;if(!debit||!debit.source)throw new Error("The original referral credit debit is unavailable; contact support before withdrawing");
     const existing=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId,debit.id)).limit(1))[0];
     const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!wallet)throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
-    if(existing){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});return{withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet(wallet)};}
+    if(existing){const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize,patch:release});return released({withdrawn:true as const,creditRefunded:false,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet(wallet)});}
     const patch=await refundReferralDebitTx(tx,{userId,requestId,debit,wallet,kind:"withdrawal_refund"});
-    const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize:row=>{if(row.jobSeekerId!==userId||row.referrerId!==null)throw new Error("This request was already claimed by a verified employee and can no longer be withdrawn");}});
-    return{withdrawn:true as const,creditRefunded:patch.balance>wallet.balance||patch.monthlyCreditsRemaining>wallet.monthlyCreditsRemaining,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet({...wallet,...patch})};
+    const transition=await transitionReferralRequestTx(tx,{requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,toStatus:"withdrawn",allowedFrom:["pending"],authorize,patch:release});
+    return released({withdrawn:true as const,creditRefunded:patch.balance>wallet.balance||patch.monthlyCreditsRemaining>wallet.monthlyCreditsRemaining,requestId,status:"withdrawn" as const,revision:transition.revision,creditSummary:creditSummaryFromWallet({...wallet,...patch})});
   });
 }
 
@@ -2174,7 +2197,8 @@ async function creditSummaryAfterRefundTx(tx: any, wallet: WalletRow, now: Date)
  * Expires one stale ask: unclaimed pending past ASK_TTL_DAYS transitions to
  * "closed", freeing its open slot; an ask that reserved a credit before asks
  * became free gets it refunded with a "credit returned" notification, so early
- * seekers are never left hanging on a dead ask.
+ * seekers are never left hanging on a dead ask. A personal-link ask its
+ * employee never acted on (D-050) expires the same way and drops its referrer.
  * Idempotent via the transition operationKey plus the reversal-uniqueness
  * check; concurrency-safe through row locking and revision CAS.
  */
@@ -2183,14 +2207,21 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
   return db.transaction(async tx => {
     const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, debitTransactionId: referralRequests.debitTransactionId, createdAt: referralRequests.createdAt }).from(referralRequests).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
     if (!current) throw new Error("This referral request is not in your account");
-    if (current.status !== "pending" || current.referrerId !== null) return { expired: false as const, requestId, status: current.status };
+    if (current.status !== "pending") return { expired: false as const, requestId, status: current.status };
     const expiresAt = getAskExpiresAtMs(current.createdAt);
     if (expiresAt === null || nowMs < expiresAt) return { expired: false as const, requestId, status: current.status };
-    if (await referralWasClaimedTx(tx, requestId)) {
+    // D-050: an assigned ask its employee never acted on (a personal-link ask) expires like an unclaimed one; any other assigned ask is left alone.
+    const heldFor = current.referrerId === null ? null : await heldForReferrerTx(tx, current);
+    if (current.referrerId !== null && heldFor === null) return { expired: false as const, requestId, status: current.status };
+    const authorize: ReferralTransitionInput["authorize"] = row => { if (row.jobSeekerId !== userId || row.referrerId !== heldFor) throw new Error("This request is already in conversation and cannot expire"); };
+    const release = heldFor === null ? undefined : { referrerId: null };
+    const lead = heldFor === null ? "No verified employee claimed it within 7 days." : "The employee whose link you used didn't respond within 7 days.";
+    const released = async <T,>(result: T, creditReturned: boolean): Promise<T> => { if (heldFor !== null) await recordHeldAskReleaseTx(tx, { requestId, referrerId: heldFor, reason: "expired", creditReturned }); return result; };
+    if (heldFor === null && await referralWasClaimedTx(tx, requestId)) {
       const transition = await transitionReferralRequestTx(tx, {
         requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`,
         toStatus: "closed", allowedFrom: ["pending"],
-        authorize: row => { if (row.jobSeekerId !== userId || row.referrerId !== null) throw new Error("This request is already in conversation and cannot expire"); },
+        authorize,
         notification: { userId, title: "Your ask expired", body: current.debitTransactionId !== null ? "Your ask expired after 7 days. A verified employee previously picked it up, so its credit stays spent; its open slot is free again." : "Your ask expired after 7 days and its open slot is free again." },
       });
       return { expired: true as const, requestId, status: transition.status, revision: transition.revision };
@@ -2201,23 +2232,25 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
       const lockedWallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
       if (!lockedWallet) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
       const refundNow = new Date(nowMs); const refunded = await refundLedgerSpendTx(tx, { userId, requestId, kind: "expiry_refund", wallet: lockedWallet, now: refundNow });
-      const notification = refunded.returned > 0 ? { userId, title: "Your ask expired — credit returned", body: "No verified employee claimed it within 7 days. Your credit is back on your balance; send a fresh ask anytime." } : { userId, title: "Your ask expired", body: "No verified employee claimed it within 7 days. The credit came from a bucket that has since ended, so it could not be returned; send a fresh ask anytime." };
-      const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize: row => { if (row.jobSeekerId !== userId || row.referrerId !== null) throw new Error("This request is already in conversation and cannot expire"); }, notification });
-      return { expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary: await creditSummaryAfterRefundTx(tx, refunded.wallet, refundNow) };
+      const notification = refunded.returned > 0 ? { userId, title: "Your ask expired — credit returned", body: `${lead} Your credit is back on your balance; send a fresh ask anytime.` } : { userId, title: "Your ask expired", body: `${lead} The credit came from a bucket that has since ended, so it could not be returned; send a fresh ask anytime.` };
+      const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize, patch: release, notification });
+      return released({ expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary: await creditSummaryAfterRefundTx(tx, refunded.wallet, refundNow) }, refunded.returned > 0);
     }
     const debit = spendRow && spendRow.kind === "direct_request" ? spendRow : undefined;
     const wallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
     if (debit?.source && !wallet) throw new Error("Your referral credit wallet is unavailable; contact support to restore this credit");
     const existing = debit ? (await tx.select({ id: tokenTransactions.id }).from(tokenTransactions).where(eq(tokenTransactions.reversesTransactionId, debit.id)).limit(1))[0] : undefined;
     let creditSummary;
+    let creditReturned = false;
     if (debit?.source && wallet && !existing) {
       const patch = await refundReferralDebitTx(tx, { userId, requestId, debit, wallet, kind: "expiry_refund" });
       creditSummary = creditSummaryFromWallet({ ...wallet, ...patch });
+      creditReturned = patch.balance > wallet.balance || patch.monthlyCreditsRemaining > wallet.monthlyCreditsRemaining;
     } else if (wallet) creditSummary = creditSummaryFromWallet(wallet);
     // Only an ask that reserved a credit (before asks became free) has one to return; every expired ask frees its slot.
-    const notification = debit?.source ? { userId, title: "Your ask expired — credit returned", body: "No verified employee claimed it within 7 days. Your reserved credit is back on your balance; send a fresh ask anytime." } : { userId, title: "Your ask expired — slot freed", body: "No verified employee claimed it within 7 days. Its open slot is free again; send a fresh ask anytime." };
-    const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize: row => { if (row.jobSeekerId !== userId || row.referrerId !== null) throw new Error("This request is already in conversation and cannot expire"); }, notification });
-    return { expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary };
+    const notification = debit?.source ? { userId, title: "Your ask expired — credit returned", body: `${lead} Your reserved credit is back on your balance; send a fresh ask anytime.` } : { userId, title: "Your ask expired — slot freed", body: `${lead} Its open slot is free again; send a fresh ask anytime.` };
+    const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`, toStatus: "closed", allowedFrom: ["pending"], authorize, patch: release, notification });
+    return released({ expired: true as const, requestId, status: transition.status, revision: transition.revision, creditSummary }, creditReturned);
   });
 }
 
@@ -2255,7 +2288,8 @@ export async function releaseFirstLookForRequest(requestId: number, nowMs: numbe
 }
 
 /**
- * Reconcile-on-read for the seeker home: expires every stale unclaimed ask.
+ * Reconcile-on-read for the seeker home: expires every stale unclaimed ask,
+ * including a personal-link ask its employee never acted on (D-050).
  * Fail-open per request — a failed expiry never blocks listing; the next
  * read retries. Returns the ids that transitioned so the route can report
  * them honestly.
@@ -2264,8 +2298,9 @@ export async function reconcileExpiredPendingReferrals(userId: number, nowMs: nu
   const db = await getDb(); if (!db) return { expiredRequestIds: [] as number[] };
   const cutoff = new Date(nowMs - ASK_TTL_MS);
   const stale = await db.select({ id: referralRequests.id }).from(referralRequests).where(and(eq(referralRequests.jobSeekerId, userId), eq(referralRequests.status, "pending"), isNull(referralRequests.referrerId), lt(referralRequests.createdAt, cutoff)));
+  const held = await selectStaleHeldAsks(db, { cutoff, limit: HELD_ASK_RECONCILE_LIMIT, jobSeekerId: userId });
   const expiredRequestIds: number[] = [];
-  for (const row of stale) {
+  for (const row of [...stale, ...held]) {
     try {
       const result = await expireStalePendingReferralRequest(userId, row.id, nowMs);
       if (result.expired) expiredRequestIds.push(row.id);
@@ -2296,7 +2331,12 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
     const people = await db.select({ id: users.id, name: users.name, title: profiles.currentTitle }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).where(inArray(users.id, revealIds));
     for (const person of people) revealed.set(person.id, { name: person.name ?? null, title: person.title ?? null });
   }
-  return rows.map(row => ({ ...row, referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? "waiting_for_coverage" as const : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+  // D-050: a personal-link ask its employee has not acted on still counts as unclaimed (Withdraw, expiry countdown).
+  // Fail-soft and reported: the flag only adds that entry point; withdraw and expiry re-decide under the row lock.
+  let held = new Set<number>();
+  try { held = await listHeldForReferrerIds(db, rows); }
+  catch (error) { console.warn("[requests] held flag skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "seeker_requests_held_flag" }); }
+  return rows.map(row => ({ ...row, heldForReferrer: held.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? "waiting_for_coverage" as const : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
 export async function openCompanyReferralAvailability(userId: number, input: { slotCount?: number }) {

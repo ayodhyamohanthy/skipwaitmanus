@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { SQL, type SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { notifications, planCreditGrants, promoCreditGrants, referralDocumentAccessGrants, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
-import { expireStalePendingReferralRequest, reconcileExpiredPendingReferrals, withdrawCompanyReferralRequest } from "./db";
+import { expireStalePendingReferralRequest, withdrawCompanyReferralRequest } from "./db";
 import { createAskExpirySweep } from "./askExpirySweep";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -167,10 +167,13 @@ describe("ask expiry", () => {
   it("leaves fresh and claimed asks untouched", async () => {
     tables.txns = [debitRow("monthly_allowance", "2026-10")];
     tables.requests = [requestRow(new Date(NOW.getTime() - 2 * DAY), { id: 501 }), requestRow(new Date(NOW.getTime() - 9 * DAY), { id: 502, referrerId: 9 })];
+    // Every claim has written this event since migration 0058; an assigned ask without one is a personal-link ask (D-050).
+    tables.events = [{ id: 1, referralRequestId: 502, operationKey: "claim:9", actorUserId: 9, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1 }];
     expect((await expireStalePendingReferralRequest(7, 501, NOW.getTime())).expired).toBe(false);
     expect((await expireStalePendingReferralRequest(7, 502, NOW.getTime())).expired).toBe(false);
     expect(tables.txns.some(t => t.kind === "expiry_refund")).toBe(false);
-    expect(tables.events.length).toBe(0);
+    expect(tables.events.filter(e => e.action !== "claim")).toEqual([]);
+    expect(tables.requests.map(r => r.status)).toEqual(["pending", "pending"]);
   });
 
   it("is idempotent: a second expiry changes nothing and refunds once", async () => {
@@ -182,23 +185,8 @@ describe("ask expiry", () => {
     expect(tables.wallets[0].monthlyCreditsRemaining).toBe(3);
   });
 
-  it("reconciles only stale asks and reports their ids", async () => {
-    tables.txns = [debitRow("monthly_allowance", "2026-10")];
-    tables.requests = [requestRow(new Date(NOW.getTime() - 2 * DAY), { id: 501 }), requestRow(new Date(NOW.getTime() - 10 * DAY), { id: 502 })];
-    const result = await reconcileExpiredPendingReferrals(7, NOW.getTime());
-    expect(result.expiredRequestIds).toEqual([502]);
-    expect(tables.requests.find(r => r.id === 501)?.status).toBe("pending");
-    expect(tables.requests.find(r => r.id === 502)?.status).toBe("closed");
-  });
-
-  it("fails open per request: one bad row never blocks the rest", async () => {
-    tables.txns = [];
-    tables.requests = [requestRow(new Date(NOW.getTime() - 10 * DAY), { id: 503, debitTransactionId: 99 })];
-    const result = await reconcileExpiredPendingReferrals(7, NOW.getTime());
-    // No debit row and no wallet change possible is fine (nothing reserved),
-    // but a missing wallet with a real debit must throw like a withdraw.
-    expect(result.expiredRequestIds).toEqual([503]);
-  });
+  // The reconcile-on-read tests moved to askExpirySweep.personalLink.test.ts (same assertions): reconcile now also reads
+  // personal-link asks through a join, which this fixture cannot evaluate.
 
   it("refuses to expire or refund another seeker's ask (cross-user)", async () => {
     tables.txns = [debitRow("monthly_allowance", "2026-10")];
