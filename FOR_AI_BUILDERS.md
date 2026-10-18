@@ -26,7 +26,7 @@ Example data lives in: `src/lib/marketplace-data.ts`, `src/lib/monetization-data
 ## 3. Backend to build (none exists)
 | Area | Requirements |
 |---|---|
-| Auth | Email+password and Google. Forgot/reset password (`/forgot-password`, `/reset-password`) with neutral "check your email" copy, 1-hour single-use link, sign out other sessions on reset. Onboarding (`/onboarding`) after first sign-in. |
+| Auth | Job seekers: email + password and Google (plus Microsoft, GitHub, LinkedIn, Slack), all on skipwait.me through WorkOS (D-049). Forgot/reset password (`/forgot-password`, `/reset-password`) with neutral "check your email" copy and a single-use link WorkOS emails (WorkOS sets its lifetime), signing out other sessions on reset. Referrers sign in with a work-email code only, never a password. Onboarding (`/onboarding`) after first sign-in. |
 | Roles | Store roles in a separate `user_roles` table. Admin pages (`/admin`, `/admin-review`) require server-verified admin role. Never check roles client-side only. |
 | Work-email OTP | 6-digit code, hashed, 10-min TTL, max 5 attempts then 15-min lockout, resend after 30 s, rate-limit per email+IP. Block personal domains. Company domain allowlist (employers can add domains after DNS proof). Store only an HMAC of the email + company + verified_at. Re-verify every 90 days; on failure remove badge and return open asks. Unlisted domains → manual review queue. |
 | Asks (requests) | States: Requested → Accepted → Referred → Interviewing → Offer → Hired; terminal Declined, Expired, Withdrawn. Auto-expire after 7 days. Open-ask limits: Free 3, Start 8, Momentum 15, Land 30/50/unlimited. A slot frees when an ask is answered, passed, withdrawn or expires. Server-side quality checks mirror `/ask` (official link, 30–120 words, location fit). |
@@ -71,7 +71,7 @@ Use these; prefer startup/student credits (GitHub Student Pack, Microsoft for St
 |---|---|---|
 | Hosting / edge / CDN / storage | Cloudflare ($10k credits) | Workers/Pages, R2 for resumes & work files, Turnstile on sign-up/report forms |
 | Overflow compute / AI | Azure ($5k, exp Jun 14 2027; more via Microsoft for Startups milestones) | Azure OpenAI for Ask One-Pager, dossiers, coaching tools |
-| Auth (sign-in) | WorkOS AuthKit | Google + email sign-in for all users. No SSO / sign-on with work email |
+| Auth (sign-in) | WorkOS (User Management, server-side) | Job seekers: social logins and email + password, all on skipwait.me, never the hosted AuthKit page (D-030, D-049); WorkOS sends the sign-up code and reset emails. Referrers: work-email code only (own OTP flow below), never social, personal email or password |
 | Work-email verification | Own OTP flow, sent via ZeptoMail (Zoho) | `/verify`: 6-digit code to the work email proves employment only; it is NOT a login. Store hashed code, 10-min expiry, 5 tries, resend cooldown; never show the work email to seekers |
 | Subscriptions & credits ledger | Chargebee (free to $1M) | Plans Start/Momentum/Land monthly+yearly, credit packs as one-time charges, rollover rules, dunning (`/billing` states) |
 | Payments | Razorpay (India: cards, UPI AutoPay, netbanking, wallets; also intl cards) + PayPal (outside India) | Wire through Chargebee gateways. Show methods as in `/billing` |
