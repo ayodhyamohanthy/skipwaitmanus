@@ -130,6 +130,13 @@ describe("ReferralConversation thread", () => {
     render(<ReferralConversation />);
     expect(await screen.findByText("Would you refer this person?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Pass privately/ }));
+    // D-052: no reason is preselected, and Pass stays off until the referrer picks one.
+    const reasons = await screen.findAllByRole("radio");
+    expect(reasons).toHaveLength(7);
+    expect(reasons.filter(radio => (radio as HTMLInputElement).checked)).toHaveLength(0);
+    expect((screen.getByRole("button", { name: /^Pass$/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
     fireEvent.click(await screen.findByLabelText("At capacity right now"));
     fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(

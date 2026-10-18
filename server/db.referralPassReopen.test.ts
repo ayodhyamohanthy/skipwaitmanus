@@ -300,6 +300,14 @@ describe("a claimed decline reopens the ask (D-021)", () => {
     expect(String(seekerNotice().body)).toContain("Your request stays active for other employees.");
     expect(String(seekerNotice().body)).not.toContain("open again");
   });
+
+  it("records a D-052 reason code and names the reason to the seeker, never the referrer", async () => {
+    await oneClickReviewReferralRequest(9, { requestId: 501, decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" });
+
+    expect(rows.referralRequestPasses).toEqual([expect.objectContaining({ referrerId: 9, reason: "cannot_support", reasonCode: "only_refer_known" })]);
+    expect(String(seekerNotice().body)).toContain("(I only refer people I know)");
+    expect(ask()).toMatchObject({ status: "pending", referrerId: null });
+  });
 });
 
 describe("the claimed-review decline is the same pass (D-021)", () => {

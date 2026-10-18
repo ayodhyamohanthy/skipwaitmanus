@@ -52,6 +52,17 @@ describe("Referrer one-click review actions", () => {
     expect(reviews).toEqual([{ userId: 2, requestId: 81, decision: "declined", declineReason: "timing", passReason: "at_capacity" }]);
   });
 
+  it("accepts D-052's two added reasons with their legacy decline reasons", async () => {
+    const { app, reviews } = appFor();
+    const post = (body: object) => request(app).post("/api/company-referrals/81/one-click-review").set("x-test-user", "employee").send(body);
+    expect((await post({ decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" })).status).toBe(200);
+    expect((await post({ decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" })).status).toBe(200);
+    expect(reviews).toEqual([
+      { userId: 2, requestId: 81, decision: "declined", declineReason: "role_not_a_fit", passReason: "role_closed" },
+      { userId: 2, requestId: 81, decision: "declined", declineReason: "cannot_support", passReason: "only_refer_known" },
+    ]);
+  });
+
   it("sends a company-only email handoff and completes its action once for the authenticated intended Referrer", async () => {
     const { app, reviews, consumed, sent } = appFor();
     const created = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [1] });
