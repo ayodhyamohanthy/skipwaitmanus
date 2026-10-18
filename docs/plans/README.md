@@ -6,6 +6,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 
 ## Rules for this page
 - A row may be delegated only when its packet below is **ready**. "Architect" means Claude Code writes or refreshes the packet first.
+- A row still claimed by a Claude Code session (D-072 lanes) stays with that session unless 24 hours pass with no new commits on its branch (queue rule 2). Check the §3b row before you claim it.
 - Pick the first stage with a ready packet whose §3b status is `todo` and whose dependencies are live. Within a stage, anything marked parallel-safe may run at the same time with different models (D-075). Pushes to `main` stay one at a time.
 - Rows another model already owns (§3b status `in progress — <model>`) are theirs until 24 hours pass with no commits on their branch (queue rule 2).
 
@@ -18,10 +19,10 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 ## Stage 1 — the D-072 lanes
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
-| 1.1 | D-067-pro-max-removal | [D-067-pro-max-removal.md](D-067-pro-max-removal.md) | 1 | L (sliced into commits) | ready (re-verified at `e6b87f8`) | — | 0.1, 1.2, 1.4 |
-| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | ready (branch review at `e6b87f8`) | — | 0.1, 1.1, 1.4 |
+| 1.1 | D-067-pro-max-removal | [D-067-packet.md](D-067-packet.md) (verification for slices 3–4 and the review) | 1 | L (sliced into commits) | in progress: Claude Code, slices 1–2 of 4 on `origin/agent/claude/pro-max-removal` | — | 0.1, 1.2, 1.4 |
+| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 2), open to any model under queue rule 2 | — | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | 1.2 live | 1.3, 1.4 |
-| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | ready | 1.1 live | 1.2, 1.4, 3.1 |
+| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 3), open to any model under queue rule 2 | 1.1 live | 1.2, 1.4, 3.1 |
 | 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | ready | — | 0.1, 1.1, 1.2, 1.3 |
 
 ## Stage 2 — payments ready before referrers onboard (D-046, D-064, D-075)

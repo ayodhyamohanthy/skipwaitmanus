@@ -1,6 +1,6 @@
 # Appendix to packet D-067: verification of the original inventory (at `main` `e6b87f8`, Oct 18 2026)
 
-> Reference only. The packet is [`D-067-pro-max-removal.md`](D-067-pro-max-removal.md); open the section a step names. This file replaces the original inventory, which was written at `58338cd6` before D-063, D-050, the refund review, block delivery and the D-034 money tier landed. Each verdict below quotes the start of the original bullet.
+> Reference only. The packet is [`D-067-packet.md`](D-067-packet.md); open the section a step names. This file verifies the original inventory ([`D-067-pro-max-removal.md`](D-067-pro-max-removal.md)), which was written at `58338cd6` before D-063, D-050, the refund review, block delivery and the D-034 money tier landed. Each verdict below quotes the start of the original bullet.
 
 ## 0. What changed in scope-relevant files since 58338cd6 (git diff 58338cd6..e6b87f8)
 
