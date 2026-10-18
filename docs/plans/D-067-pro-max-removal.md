@@ -1,10 +1,10 @@
 # D-067 Pro/Max removal — working inventory
 
+Status (Oct 18 2026): **implemented on the branch, not pushed.** All four slices are committed on `agent/claude/pro-max-removal` (17 commits, `1478d58d` … `c44009ae`, plus the slice 4 docs commit), merged with `main` at `7d0593c7`; `origin` holds the branch only up to `10d48fef`. Full gate green on that candidate (`pnpm check`, design-token audit, migration lint, deploy-trigger check, full vitest 398 files / 3,259 tests passed with 16 skipped and 0 failed, `pnpm build`). Not done: an independent review, pixel captures at 1280 and 390, the push and the live check. The evidence and the next steps are in the `D-067-pro-max-removal` row of `docs/KIT_V4_BUILD_PLAN.md` §3b. The inventory below is the record of what the sweep covered (written at `58338cd6`, before any code); its line numbers and "Red today" notes describe the tree at that commit, not now.
+
 Lane: `D-067-pro-max-removal` in `docs/KIT_V4_BUILD_PLAN.md` §3b. Decision: D-067 (plus the D-055 follow-up: referrer-role purchases switched off behind `REFERRER_PURCHASES_ENABLED = false`, D-042).
 
 **Read this first.** This inventory was written by a read-only audit at commit `58338cd6` (Oct 18 2026, before D-063, D-050, the refund review and block delivery landed). It is a lead list, not truth: re-verify every line against the current tree before editing, drop what is already done, and add what it missed. Line numbers have moved. Copy that D-063 already rewrote (the `/plans` and landing descriptions, the money sentence in `shared/moneyCopy.ts`) must stay D-063-true.
-
-Status (Oct 18 2026): **done in code on `agent/claude/pro-max-removal` (merge `__SHA__`); live check pending.** The inventory below is kept as the record of what the sweep covered. Branch name to use: `agent/claude/pro-max-removal` (no commits yet). Order of work: shared contracts and the server money core first (pro/max reads as Free; every legacy checkout and gift path refuses before any provider call), then the DM perk and notice removal plus the referrer-purchase switch-off, then the client and public copy, then tests, fixtures, env and docs. Red-first tests for every slice; full gate before the push; live check after.
 
 ## Inventory
 
