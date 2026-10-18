@@ -302,6 +302,21 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/withdraw", expect.objectContaining({ method: "POST" })));
   });
 
+  it("offers Withdraw on a delivered ask nobody picked up (unclaimedAssignment), and its dialog says it frees your slot (P0-allocated-ask-stuck)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
+      return ok({ requests: [{ ...seekerPending, referrerId: 77, queueStatus: "available_for_review", heldForReferrer: false, unclaimedAssignment: true }] });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Withdraw request/ }));
+    expect(await screen.findByText("It leaves the referrer's queue and frees your slot.")).toBeTruthy();
+    expect(screen.queryByText(/It never reached a verified employee/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/withdraw", expect.objectContaining({ method: "POST" })));
+  });
+
   it("gives the referrer who accepted the candidate, the resume and the note the ask was sent with", async () => {
     stubFetch(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });

@@ -10,9 +10,10 @@ import { BEFORE_CLAIM_HISTORY, COLLEAGUE, LINK_OWNER, NOW, REQUEST_ID, SEEKER, a
  * is unclaimed, so its 7-day shelf life binds the link owner too: past day 7,
  * and before the hourly sweep closes it, the owner can no longer claim it (a
  * late claim would end the hold for good and keep the seeker's credit spent)
- * and it leaves their inbox, exactly like a stale unclaimed ask. Claimed,
- * queue-allocated and pre-history assigned asks keep today's rules. Real
- * server/db.ts calls over the in-memory database, on a fixed clock.
+ * and it leaves their inbox, exactly like a stale unclaimed ask. A
+ * queue-allocated ask nobody claimed is unclaimed too (P0-allocated-ask-stuck).
+ * Claimed and pre-history assigned asks keep today's rules. Real server/db.ts
+ * calls over the in-memory database, on a fixed clock.
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn(), capture: vi.fn() }));
@@ -70,12 +71,19 @@ describe("a held personal-link ask past its 7 days", () => {
 
   it.each<[string, HeldSeed, { claimed: true; replayed: boolean }]>([
     ["already claimed (the claim replays)", { asks: [stale()], events: [claimEvent()] }, { claimed: true, replayed: true }],
-    ["queue-allocated", { asks: [stale()], slots: [allocatedSlot()] }, { claimed: true, replayed: false }],
     ["from before claims were recorded", { asks: [stale({ createdAt: BEFORE_CLAIM_HISTORY })] }, { claimed: true, replayed: false }],
   ])("keeps today's claim for an assigned ask that is %s", async (_label, seed, result) => {
     seedHeldAsks(seed);
     expect(await claimCompanyReferralRequest(LINK_OWNER, REQUEST_ID)).toMatchObject(result);
     expect(askById()).toMatchObject({ status: "pending", referrerId: LINK_OWNER });
+    expect(reversalsOf()).toEqual([]);
+  });
+
+  it("refuses the allocated referrer's late claim on a queue-allocated ask nobody claimed (P0-allocated-ask-stuck)", async () => {
+    seedHeldAsks({ asks: [stale()], slots: [allocatedSlot()] });
+    await expect(claimCompanyReferralRequest(LINK_OWNER, REQUEST_ID)).rejects.toThrow(EXPIRED);
+    expect(askById()).toMatchObject({ status: "pending", referrerId: LINK_OWNER, revision: 0 });
+    expect(eventActions()).toEqual([]);
     expect(reversalsOf()).toEqual([]);
   });
 
@@ -101,9 +109,9 @@ describe("the link owner's inbox", () => {
       events: [claimEvent(503)],
       slots: [allocatedSlot(504)],
     });
-    // 501 held on day 2, 503 claimed, 504 queue-allocated, 505 pre-history and 507 unassigned on day 2 stay;
-    // 502 (held, day 8) and 506 (unassigned, day 8) are past their shelf life.
-    expect(await inboxIds("new")).toEqual([501, 503, 504, 505, 507]);
+    // 501 held on day 2, 503 claimed, 505 pre-history and 507 unassigned on day 2 stay; 502 (held, day 8),
+    // 504 (queue-allocated with no claim, day 8: P0-allocated-ask-stuck) and 506 (unassigned, day 8) are past their shelf life.
+    expect(await inboxIds("new")).toEqual([501, 503, 505, 507]);
   });
 
   it("drops a saved held ask from the saved tab once it is past its 7 days", async () => {

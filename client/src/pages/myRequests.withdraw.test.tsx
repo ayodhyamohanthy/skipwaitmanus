@@ -57,6 +57,26 @@ describe("My Requests withdraw entry point", () => {
     expect(screen.queryByRole("button", { name: "Withdraw" })).toBeNull();
   });
 
+  // P0-allocated-ask-stuck: a delivered ask nobody picked up is withdrawable, so with every slot in use the
+  // list's full-slots note offers withdrawing it (the list's withdraw signal; Withdraw itself lives in the thread).
+  it("counts a pending ask with unclaimedAssignment as withdrawable when every slot is in use", async () => {
+    const full = { ...slots, open: 3, full: true };
+    const claimed = (id: number) => ({ ...claimedRequest, id });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [claimed(21), claimed(22), { ...claimed(23), unclaimedAssignment: true }], slots: full }) })));
+    renderPage();
+    expect(await screen.findByText(/All 3 slots are in use\./)).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Wait for an answer, withdraw an ask, or get more slots with Momentum (15).");
+  });
+
+  it("does not offer withdrawing when every open ask was picked up", async () => {
+    const full = { ...slots, open: 3, full: true };
+    const claimed = (id: number) => ({ ...claimedRequest, id });
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [claimed(21), claimed(22), { ...claimed(23), unclaimedAssignment: false }], slots: full }) })));
+    renderPage();
+    expect(await screen.findByText(/All 3 slots are in use\./)).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toContain("Wait for an answer or get more slots with Momentum (15).");
+  });
+
   it("never calls the withdraw endpoint from the list", async () => {
     const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => ({ requests: [pendingRequest], slots }) }));
     vi.stubGlobal("fetch", fetchMock);

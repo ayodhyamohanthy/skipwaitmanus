@@ -10,10 +10,13 @@ import { DAY_MS, LINK_OWNER, NOW, REQUEST_ID, SEEKER, allocatedSlot, askById, as
  * One D-050 rule, four readers: the seeker list's held flag, the sweep's held
  * selection, the link owner's inbox and the locked withdraw/expiry guard must
  * agree on every way an employee can act on a personal-link ask. Every ask here
- * is 8 days old. While it is still assigned to the link owner, held <=>
+ * is 8 days old. While it is still assigned to the link owner, unclaimed <=>
  * selected by the sweep <=> gone from the owner's inbox <=> withdraw succeeds
- * <=> the expiry closes it. A pass unassigns the ask, which then follows the
- * ordinary open-ask rule (refund unless it was ever claimed).
+ * <=> the expiry closes it. A personal-link ask is unclaimed while it is held;
+ * a queue allocation nobody claimed is unclaimed but not held (the seeker
+ * list's held flag stays personal-link only, P0-allocated-ask-stuck). A pass
+ * unassigns the ask, which then follows the ordinary open-ask rule (refund
+ * unless it was ever claimed).
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -40,7 +43,8 @@ const onDay2 = (work: () => Promise<void>) => async () => {
 const lateClaim = async () => { await expect(claim()).rejects.toThrow(/expired before it could be claimed/); };
 
 type Withdrawal = "refund" | "no refund" | "refused";
-type Case = { acted: string; seed: HeldSeed; act: () => Promise<void>; held: boolean; inbox: boolean; withdrawal: Withdrawal; expires: boolean };
+/** `unclaimed` defaults to `held`: only a queue allocation is unclaimed without being held for a personal link. */
+type Case = { acted: string; seed: HeldSeed; act: () => Promise<void>; held: boolean; unclaimed?: boolean; inbox: boolean; withdrawal: Withdrawal; expires: boolean };
 const CASES: readonly Case[] = [
   { acted: "nothing", seed: stale(), act: async () => undefined, held: true, inbox: false, withdrawal: "refund", expires: true },
   { acted: "a claim on day 2", seed: stale(), act: onDay2(claim), held: false, inbox: true, withdrawal: "refused", expires: false },
@@ -49,7 +53,7 @@ const CASES: readonly Case[] = [
   { acted: "a review approve", seed: stale(), act: async () => { await reviewReferralRequest(LINK_OWNER, { requestId: REQUEST_ID, decision: "approved" }); }, held: false, inbox: false, withdrawal: "refused", expires: false },
   { acted: "a pass", seed: stale(), act: pass, held: false, inbox: false, withdrawal: "refund", expires: true },
   { acted: "a claim on day 2 then a pass", seed: stale(), act: onDay2(async () => { await claim(); await pass(); }), held: false, inbox: false, withdrawal: "no refund", expires: true },
-  { acted: "a queue allocation", seed: { ...stale(), slots: [allocatedSlot()] }, act: async () => undefined, held: false, inbox: true, withdrawal: "refused", expires: false },
+  { acted: "a queue allocation", seed: { ...stale(), slots: [allocatedSlot()] }, act: async () => undefined, held: false, unclaimed: true, inbox: false, withdrawal: "refund", expires: true },
   { acted: "nothing, before the history cut-off", seed: stale({ createdAt: new Date(HELD_ASK_HISTORY_SINCE.getTime() - DAY_MS) }), act: async () => undefined, held: false, inbox: true, withdrawal: "refused", expires: false },
 ];
 
@@ -70,7 +74,7 @@ async function withdrawalOf(): Promise<Withdrawal> {
 }
 
 describe("the held flag, the sweep selection, the owner's inbox and the locked guard agree (D-050)", () => {
-  it.each(CASES)("after $acted", async ({ seed, act, held, inbox, withdrawal, expires }) => {
+  it.each(CASES)("after $acted", async ({ seed, act, held, unclaimed = held, inbox, withdrawal, expires }) => {
     const db = await getDb();
     if (!db) throw new Error("the in-memory database is not installed");
 
@@ -80,8 +84,8 @@ describe("the held flag, the sweep selection, the owner's inbox and the locked g
     const flagged = (await listHeldForReferrerIds(db, [listedAsk(askById())])).has(REQUEST_ID);
     const selected = (await selectStaleHeldAsks(db, { cutoff: new Date(NOW - ASK_TTL_MS), limit: 10 })).some(row => row.id === REQUEST_ID);
     const listed = (await listCompanyReferralInboxByState(LINK_OWNER, "new")).some(row => row.id === REQUEST_ID);
-    expect({ flagged, selected, listed }).toEqual({ flagged: held, selected: held, listed: inbox });
-    if (stillAssigned && askById()?.status === "pending") expect(listed).toBe(!held);
+    expect({ flagged, selected, listed }).toEqual({ flagged: held, selected: unclaimed, listed: inbox });
+    if (stillAssigned && askById()?.status === "pending") expect(listed).toBe(!unclaimed);
     expect(await withdrawalOf()).toBe(withdrawal);
 
     seedHeldAsks(seed);
@@ -90,7 +94,7 @@ describe("the held flag, the sweep selection, the owner's inbox and the locked g
     const expiry = await expireStalePendingReferralRequest(SEEKER, REQUEST_ID, NOW);
     expect(expiry.expired).toBe(expires);
     expect(reversalsOf().length - before).toBe(expires && withdrawal === "refund" ? 1 : 0);
-    if (stillAssigned) expect([withdrawal !== "refused", expires]).toEqual([held, held]);
+    if (stillAssigned) expect([withdrawal !== "refused", expires]).toEqual([unclaimed, unclaimed]);
   });
 
   it("selects held asks of one seeker only when asked to", async () => {

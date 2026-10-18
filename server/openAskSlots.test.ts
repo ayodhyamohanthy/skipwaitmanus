@@ -80,14 +80,14 @@ describe("per-company cap contract (every plan)", () => {
 });
 
 describe("open-ask predicate", () => {
-  it("counts only the one seeker's pending, unexpired, covered asks; waiting asks never hold a slot; claimed, queue-allocated and pre-history assigned asks never expire, a held personal-link ask does (D-050/D-061)", () => {
+  it("counts only the one seeker's pending, unexpired, covered asks; waiting asks never hold a slot; claimed and pre-history assigned asks never expire, a held personal-link ask and an unclaimed queue allocation do (D-050/D-061, P0-allocated-ask-stuck)", () => {
     const query = new MySqlDialect().sqlToQuery(openAskCondition(7, NOW.getTime()));
-    expect(query.sql).toBe("(`referralRequests`.`jobSeekerId` = ? and `referralRequests`.`status` = ? and `referralRequests`.`waitingForCoverage` = ? and ((`referralRequests`.`referrerId` is not null and (`referralRequests`.`createdAt` < ? or exists (select 1 from `referralTransitionEvents` where `referralTransitionEvents`.`referralRequestId` = `referralRequests`.`id` and `referralTransitionEvents`.`action` = ?) or exists (select 1 from `referralAvailabilitySlots` where `referralAvailabilitySlots`.`referralRequestId` = `referralRequests`.`id` and `referralAvailabilitySlots`.`status` = ?))) or (`referralRequests`.`coverageVisibleAt` is not null and `referralRequests`.`coverageVisibleAt` > ?) or (`referralRequests`.`coverageVisibleAt` is null and `referralRequests`.`createdAt` > ?)))");
-    expect(query.params).toEqual([7, "pending", false, "2026-09-21 00:00:00.000", "claim", "allocated", "2026-10-07 12:00:00.000", "2026-10-07 12:00:00.000"]);
+    expect(query.sql).toBe("(`referralRequests`.`jobSeekerId` = ? and `referralRequests`.`status` = ? and `referralRequests`.`waitingForCoverage` = ? and ((`referralRequests`.`referrerId` is not null and (`referralRequests`.`createdAt` < ? or exists (select 1 from `referralTransitionEvents` where `referralTransitionEvents`.`referralRequestId` = `referralRequests`.`id` and `referralTransitionEvents`.`action` = ?))) or (`referralRequests`.`coverageVisibleAt` is not null and `referralRequests`.`coverageVisibleAt` > ?) or (`referralRequests`.`coverageVisibleAt` is null and `referralRequests`.`createdAt` > ?)))");
+    expect(query.params).toEqual([7, "pending", false, "2026-09-21 00:00:00.000", "claim", "2026-10-07 12:00:00.000", "2026-10-07 12:00:00.000"]);
     expect(Date.parse(`${String(query.params[3]).replace(" ", "T")}Z`)).toBe(HELD_ASK_HISTORY_SINCE.getTime());
     // D-061: the 7-day clock runs from first visibility; pre-0095 rows (no coverageVisibleAt) keep the creation clock.
+    expect(Date.parse(`${String(query.params[5]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
     expect(Date.parse(`${String(query.params[6]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
-    expect(Date.parse(`${String(query.params[7]).replace(" ", "T")}Z`)).toBe(NOW.getTime() - ASK_TTL_MS);
     expect(new MySqlDialect().sqlToQuery(openAskCondition(8, NOW.getTime())).params[0]).toBe(8);
   });
 });

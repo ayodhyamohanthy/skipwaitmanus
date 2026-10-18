@@ -35,15 +35,18 @@ function matchesEq(condition: SQLQuery, row: Row): boolean {
  * The open-ask predicate (server/planGates.ts openAskCondition, exact SQL pinned in openAskSlots.test.ts), evaluated row
  * by row. D-061: a waiting or held ask never holds a slot; a delivered ask counts while its 7-day visibility clock runs
  * (pre-0095 rows without coverageVisibleAt keep the creation clock); an older assigned ask keeps its slot only while it
- * predates recorded claims, was claimed or holds a queue allocation.
+ * predates recorded claims or was claimed, and, when the SQL carries the queue-allocation clause, holds an allocation.
+ * Parameters are read by position, so the allocation clause's parameter is read only when the SQL renders it.
  */
 function isOpenAsk(condition: SQLQuery, row: Row): boolean {
   const { sql, params } = dialect.sqlToQuery(condition);
   if (!sql.includes("`referralRequests`.`waitingForCoverage` = ?") || !sql.includes("`referralRequests`.`coverageVisibleAt` is null and `referralRequests`.`createdAt` > ?")) throw new Error(`Unexpected open-ask SQL: ${sql}`);
-  const [seeker, status, waiting, since, claimAction, allocatedStatus, visibilityCutoff, creationCutoff] = params;
+  const allocationClause = sql.includes("from `referralAvailabilitySlots`");
+  const [seeker, status, waiting, since, claimAction, ...rest] = params;
+  const [allocatedStatus, visibilityCutoff, creationCutoff] = allocationClause ? rest : [undefined, ...rest];
   if (row.jobSeekerId !== seeker || row.status !== status || row.waitingForCoverage !== waiting) return false;
   const claimed = tables.events.some(event => event.referralRequestId === row.id && event.action === claimAction);
-  const allocated = tables.slots.some(slot => slot.referralRequestId === row.id && slot.status === allocatedStatus);
+  const allocated = allocationClause && tables.slots.some(slot => slot.referralRequestId === row.id && slot.status === allocatedStatus);
   if (row.referrerId != null && (asMs(row.createdAt) < asMs(since) || claimed || allocated)) return true;
   return row.coverageVisibleAt != null ? asMs(row.coverageVisibleAt) > asMs(visibilityCutoff) : asMs(row.createdAt) > asMs(creationCutoff);
 }
@@ -167,8 +170,28 @@ describe("open-ask slot cap at ask creation", () => {
     expect(await getOpenAskSlots(SEEKER)).toMatchObject({ open: 1, full: false });
   });
 
+  // P0-allocated-ask-stuck: an allocation is not a pickup, so an unclaimed queue-allocated ask frees its slot at day 7 (D-062).
+  it("an unclaimed queue-allocated ask 8 days old frees its slot at day 7, like an unclaimed one", async () => {
+    const allocated = ask({ referrerId: 501, createdAt: new Date(Date.now() - 8 * DAY) });
+    tables.requests = [ask(), ask(), allocated];
+    tables.slots = [{ referralRequestId: allocated.id, status: "allocated" }];
+    await expect(send()).rejects.toThrow(PAST_CAP);
+    expect(sideEffects).toEqual([]);
+    expect((await getOpenAskSlots(SEEKER)).open).toBe(2);
+  });
+
+  it("an unclaimed allocated ask frees its slot when its window ends; a claimed one keeps it", async () => {
+    const delivered = (visibleDaysAgo: number) => ask({ referrerId: 501, createdAt: new Date(Date.now() - 30 * DAY), coverageVisibleAt: new Date(Date.now() - visibleDaysAgo * DAY) });
+    const inWindow = delivered(2);
+    const pastWindow = delivered(8);
+    const claimedPastWindow = delivered(8);
+    tables.requests = [inWindow, pastWindow, claimedPastWindow];
+    tables.slots = [inWindow, pastWindow, claimedPastWindow].map(row => ({ referralRequestId: row.id, status: "allocated" }));
+    tables.events = [{ referralRequestId: claimedPastWindow.id, action: "claim" }];
+    expect(await getOpenAskSlots(SEEKER)).toMatchObject({ open: 2, full: false });
+  });
+
   it.each<[string, Row, Partial<typeof tables>]>([
-    ["queue-allocated", { referrerId: 501, createdAt: new Date(Date.now() - 8 * DAY) }, { slots: [{ referralRequestId: 0, status: "allocated" }] }],
     ["from before claims were recorded", { referrerId: 501, createdAt: new Date("2026-09-15T00:00:00Z") }, {}],
   ])("an assigned ask that is %s keeps its slot however old it is", async (_label, patch, history) => {
     const kept = ask(patch);

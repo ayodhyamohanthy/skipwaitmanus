@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
-import { claimCompanyReferralRequest, deliverWaitingAsksToReferrer, tryDeliverWaitingAsk, withdrawCompanyReferralRequest } from "./db";
+import { claimCompanyReferralRequest, deliverWaitingAsksToReferrer, expireStalePendingReferralRequest, oneClickReviewReferralRequest, tryDeliverWaitingAsk, withdrawCompanyReferralRequest } from "./db";
 import { COVERAGE_WITHDRAWN_NOTICE, askDeliveryKey, coverageDeliveredNotice, coverageHeldNotice, coverageReferrerNotice } from "./coverageDelivery";
 
 /*
@@ -191,5 +191,92 @@ describe("D-061: no referrer-facing action and no credit on an ask that never re
     expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
     expect(store.rows(tokenTransactions)).toEqual([]);
     expect(noticesFor(SEEKER)).toEqual([expect.objectContaining({ ...COVERAGE_WITHDRAWN_NOTICE })]);
+  });
+});
+
+/*
+ * P0-allocated-ask-stuck (D-034, D-050, D-061, D-062): a delivered ask is assigned to one referrer with an
+ * allocated slot, but an allocation is not a pickup. Until that referrer claims, accepts or passes, the seeker
+ * can withdraw it with the credit back, and it expires 7 days after first visibility with the credit back.
+ */
+describe("an ask delivered to a referrer who never picked it up", () => {
+  const VISIBLE = NOW.getTime();
+  const CREATED = VISIBLE - 10 * DAY_MS;
+  const deliver = async () => {
+    seed({ asks: [ask({ createdAt: new Date(CREATED), updatedAt: new Date(CREATED), coverageQueuedAt: new Date(CREATED) })] });
+    expect(await deliverWaitingAsksToReferrer(REFERRER, "acme.com", VISIBLE)).toEqual({ delivered: 1, held: 0, skipped: 0 });
+    const [spend] = spends();
+    expect(spend).toMatchObject({ idempotencyKey: `${askDeliveryKey(REQUEST_ID)}#1` });
+    return Number(spend.id);
+  };
+  const reversalsOf = (spendId: number) => store.rows(tokenTransactions).filter(row => row.reversesTransactionId === spendId);
+  const slotStatuses = () => store.rows(referralAvailabilitySlots).map(row => row.status);
+  const releaseRows = () => store.rows(operationalActivityLogs).filter(row => row.action === "queue_allocation.released").map(row => JSON.parse(String(row.metadata)));
+  const expire = (nowMs: number) => expireStalePendingReferralRequest(SEEKER, REQUEST_ID, nowMs);
+  const WITHDRAW_REFUSED = /^This request was already claimed by a verified employee and can no longer be withdrawn$/;
+
+  beforeEach(() => { vi.useFakeTimers({ toFake: ["Date"] }); vi.setSystemTime(VISIBLE); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it("a delivered ask nobody claimed can be withdrawn with its credit back", async () => {
+    const spendId = await deliver();
+    expect(await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).toMatchObject({ withdrawn: true, status: "withdrawn", creditRefunded: true });
+    expect(askById(REQUEST_ID)).toMatchObject({ status: "withdrawn", referrerId: null });
+    expect(reversalsOf(spendId)).toEqual([expect.objectContaining({ kind: "withdrawal_refund", tokenCount: 1 })]);
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(slotStatuses()).toEqual(["released"]);
+    expect(releaseRows()).toEqual([{ reason: "withdrawn", creditReturned: true, referrerId: REFERRER }]);
+
+    expect(await withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).toMatchObject({ withdrawn: true, creditRefunded: false });
+    expect(reversalsOf(spendId)).toHaveLength(1);
+    expect(walletOf(SEEKER)).toMatchObject({ monthlyCreditsRemaining: 2 });
+    expect(releaseRows()).toHaveLength(1);
+  });
+
+  it("a delivered ask expires 7 days after first visibility, not after creation", async () => {
+    const spendId = await deliver();
+    expect(await expire(CREATED + 16 * DAY_MS)).toMatchObject({ expired: false, status: "pending" });
+    expect(reversalsOf(spendId)).toEqual([]);
+
+    expect(await expire(CREATED + 17 * DAY_MS + 1)).toMatchObject({ expired: true, status: "closed" });
+    expect(askById(REQUEST_ID)).toMatchObject({ status: "closed", referrerId: null });
+    expect(reversalsOf(spendId)).toEqual([expect.objectContaining({ kind: "expiry_refund", tokenCount: 1 })]);
+    const notice = noticesFor(SEEKER).find(row => row.title === "Your ask expired — credit returned");
+    expect(String(notice?.body)).toMatch(/^No verified employee claimed it within 7 days\./);
+    expect(slotStatuses()).toEqual(["released"]);
+    expect(releaseRows()).toEqual([{ reason: "expired", creditReturned: true, referrerId: REFERRER }]);
+  });
+
+  it("the allocated referrer cannot claim a delivered ask past its 7 days", async () => {
+    await deliver();
+    vi.setSystemTime(VISIBLE + 7 * DAY_MS + 1);
+    await expect(claimCompanyReferralRequest(REFERRER, REQUEST_ID)).rejects.toThrow(/^This referral request expired before it could be claimed$/);
+    expect(askById(REQUEST_ID)).toMatchObject({ status: "pending", referrerId: REFERRER, revision: 0 });
+    expect(store.rows(referralTransitionEvents)).toEqual([]);
+
+    // Control: on day 6 of its visibility (day 16 since creation) the claim still lands.
+    await deliver();
+    vi.setSystemTime(VISIBLE + 6 * DAY_MS);
+    expect(await claimCompanyReferralRequest(REFERRER, REQUEST_ID)).toMatchObject({ claimed: true, replayed: false });
+  });
+
+  it("a claimed delivered ask keeps today's rules", async () => {
+    const spendId = await deliver();
+    vi.setSystemTime(VISIBLE + DAY_MS);
+    await claimCompanyReferralRequest(REFERRER, REQUEST_ID);
+    await expect(withdrawCompanyReferralRequest(SEEKER, REQUEST_ID)).rejects.toThrow(WITHDRAW_REFUSED);
+    expect(await expire(VISIBLE + 8 * DAY_MS)).toMatchObject({ expired: false, status: "pending" });
+    expect(reversalsOf(spendId)).toEqual([]);
+    expect(askById(REQUEST_ID)).toMatchObject({ status: "pending", referrerId: REFERRER });
+    expect(slotStatuses()).toEqual(["allocated"]);
+  });
+
+  it("an accepted delivered ask never expires", async () => {
+    const spendId = await deliver();
+    vi.setSystemTime(VISIBLE + DAY_MS);
+    await oneClickReviewReferralRequest(REFERRER, { requestId: REQUEST_ID, decision: "approved" });
+    expect(askById(REQUEST_ID)?.status).toBe("approved");
+    expect(await expire(VISIBLE + 8 * DAY_MS)).toMatchObject({ expired: false, status: "approved" });
+    expect(reversalsOf(spendId)).toEqual([]);
   });
 });

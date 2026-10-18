@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
+import { operationalActivityLogs, referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
 import type { Row } from "./inMemoryDrizzle.testkit";
 import { ReferralTransitionConflict, claimCompanyReferralRequest, expireStalePendingReferralRequest, oneClickReviewReferralRequest, reviewReferralRequest, withdrawCompanyReferralRequest } from "./db";
 import { BEFORE_CLAIM_HISTORY, CLAIMED_REFUSAL, COLLEAGUE, DAY_MS, LINK_OWNER, NOW, PERSONAL_LINK_LEAD, REQUEST_ID, SEEKER, allocatedSlot, askById, askRow, claimEvent, daysAgo, eventActions, legacyDebitRow, noticesFor, releaseLogs, reversalsOf, seedHeldAsks, spendRow, store, walletOf, type HeldSeed } from "./heldAsk.testkit";
@@ -121,8 +121,27 @@ describe("withdrawing a personal-link ask its employee has not acted on", () => 
     expect(releaseLogs()).toEqual([]);
   });
 
+  // P0-allocated-ask-stuck: an allocation is not a pickup, so a queue-allocated ask nobody claimed is unclaimed too.
+  it("a queue-allocated assigned ask nobody claimed withdraws with one refund and expires at its 7 days with one refund", async () => {
+    const queueReleases = () => store.rows(operationalActivityLogs).filter(row => row.action === "queue_allocation.released");
+    seedHeldAsks({ slots: [allocatedSlot()] });
+    expect(await withdraw()).toMatchObject({ withdrawn: true, status: "withdrawn", creditRefunded: true });
+    expect(askById()).toMatchObject({ status: "withdrawn", referrerId: null });
+    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "withdrawal_refund", tokenCount: 1 })]);
+    expect(store.rows(referralAvailabilitySlots).map(row => row.status)).toEqual(["released"]);
+    expect(queueReleases().map(metadataOf)).toEqual([{ reason: "withdrawn", creditReturned: true, referrerId: LINK_OWNER }]);
+    expect(releaseLogs()).toEqual([]);
+
+    seedHeldAsks({ slots: [allocatedSlot()] });
+    expect(await expire(daysAgo(2).getTime() + 7 * DAY_MS - 1)).toMatchObject({ expired: false });
+    expect(await expire(daysAgo(2).getTime() + 7 * DAY_MS)).toMatchObject({ expired: true, status: "closed" });
+    expect(askById()).toMatchObject({ status: "closed", referrerId: null });
+    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "expiry_refund", tokenCount: 1 })]);
+    expect(store.rows(referralAvailabilitySlots).map(row => row.status)).toEqual(["released"]);
+    expect(queueReleases().map(metadataOf)).toEqual([{ reason: "expired", creditReturned: true, referrerId: LINK_OWNER }]);
+  });
+
   it.each<[string, HeldSeed]>([
-    ["a queue-allocated assigned ask", { slots: [allocatedSlot()] }],
     ["an assigned ask created before claims were recorded", { asks: [askRow({ createdAt: BEFORE_CLAIM_HISTORY, updatedAt: BEFORE_CLAIM_HISTORY })] }],
   ])("%s keeps today's refusal on withdraw and expiry", async (_label, seed) => {
     seedHeldAsks(seed);
@@ -239,10 +258,24 @@ describe("the 7-day expiry of a personal-link ask its employee has not acted on"
     expect(String(noticesFor()[0]?.body)).toContain(PERSONAL_LINK_LEAD);
   });
 
+  it("expires an 8-day-old queue-allocated ask nobody claimed with one refund and the unclaimed lead (P0-allocated-ask-stuck)", async () => {
+    seedHeldAsks({ ...stale(), slots: [allocatedSlot()] });
+    expect(await expire()).toMatchObject({ expired: true, status: "closed" });
+    expect(askById()).toMatchObject({ status: "closed", referrerId: null });
+    expect(reversalsOf()).toEqual([expect.objectContaining({ kind: "expiry_refund", tokenCount: 1 })]);
+    expect(walletOf()?.monthlyCreditsRemaining).toBe(3);
+    expect(noticesFor()).toEqual([expect.objectContaining({ title: "Your ask expired — credit returned" })]);
+    expect(String(noticesFor()[0]?.body)).toMatch(/^No verified employee claimed it within 7 days\./);
+    expect(String(noticesFor()[0]?.body)).not.toContain(PERSONAL_LINK_LEAD);
+    expect(store.rows(referralAvailabilitySlots).map(row => row.status)).toEqual(["released"]);
+    expect(releaseLogs()).toEqual([]);
+    expect(await expire()).toMatchObject({ expired: false });
+    expect(reversalsOf()).toHaveLength(1);
+  });
+
   it.each<[string, HeldSeed]>([
     ["6 days old", { asks: [askRow({ createdAt: daysAgo(6) })] }],
     ["8 days old and claimed", { ...stale(), events: [claimEvent()] }],
-    ["8 days old and queue-allocated", { ...stale(), slots: [allocatedSlot()] }],
     ["from before claims were recorded", { asks: [askRow({ createdAt: BEFORE_CLAIM_HISTORY })] }],
   ])("leaves the assigned ask untouched when it is %s", async (_label, seed) => {
     seedHeldAsks(seed);

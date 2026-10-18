@@ -8,10 +8,11 @@ import { notifications } from "../drizzle/schema";
 /*
  * D-050 in the scheduled ask-expiry sweep and the seeker's reconcile-on-read:
  * a stale personal-link ask its employee never acted on is listed and expired
- * like any other unclaimed ask; claimed, accepted, queue-allocated and
- * pre-history assigned asks are filtered out in SQL, so they never fill a
- * batch, are never locked and are never retried. Real server/askExpirySweep.ts
- * and server/db.ts over the in-memory database.
+ * like any other unclaimed ask, and so is a queue-allocated ask nobody claimed
+ * (P0-allocated-ask-stuck); claimed, accepted and pre-history assigned asks are
+ * filtered out in SQL, so they never fill a batch, are never locked and are
+ * never retried. Real server/askExpirySweep.ts and server/db.ts over the
+ * in-memory database.
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -46,8 +47,39 @@ describe("the ask-expiry sweep lists personal-link asks its employee never acted
       events: [claimEvent(503)],
       slots: [allocatedSlot(504)],
     });
-    expect(await listStalePendingAsks(windows, 10)).toEqual([{ id: 502, jobSeekerId: SEEKER }, { id: 501, jobSeekerId: SEEKER }]);
+    // 504 is queue-allocated with no claim: an allocation is not a pickup, so it is stale like 501 (P0-allocated-ask-stuck).
+    expect(await listStalePendingAsks(windows, 10)).toEqual([{ id: 504, jobSeekerId: SEEKER }, { id: 502, jobSeekerId: SEEKER }, { id: 501, jobSeekerId: SEEKER }]);
     expect(await listStalePendingAsks(windows, 1)).toEqual([{ id: 502, jobSeekerId: SEEKER }]);
+  });
+
+  it("the sweep selects a stale delivered ask and a stale older allocation, oldest first, and never a claimed one", async () => {
+    const spend = (id: number, requestId: number) => spendRow({ id, referenceId: `${requestId}#1`, idempotencyKey: `k${requestId}#1` });
+    seedHeldAsks({
+      asks: [
+        // D-034 deliveries: the 7 days run from first visibility (coverageVisibleAt), not creation.
+        askRow({ id: 521, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(8), debitTransactionId: 71 }),
+        askRow({ id: 522, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(3), debitTransactionId: 72 }),
+        // An older openCompanyReferralAvailability allocation (no coverageVisibleAt): creation.
+        askRow({ id: 523, createdAt: daysAgo(9), debitTransactionId: 73 }),
+        askRow({ id: 524, revision: 1, createdAt: daysAgo(30), coverageVisibleAt: daysAgo(10), debitTransactionId: 74 }),
+      ],
+      spends: [spend(71, 521), spend(72, 522), spend(73, 523), spend(74, 524)],
+      wallets: [walletRow({ monthlyCreditsRemaining: 1 })],
+      events: [claimEvent(524)],
+      slots: [allocatedSlot(521, 91), allocatedSlot(522, 92), allocatedSlot(523, 93), allocatedSlot(524, 94)],
+    });
+    expect(await listStalePendingAsks(windows, 10)).toEqual([{ id: 521, jobSeekerId: SEEKER }, { id: 523, jobSeekerId: SEEKER }]);
+    expect(await listStalePendingAsks(windows, 1)).toEqual([{ id: 521, jobSeekerId: SEEKER }]);
+
+    const sweep = createAskExpirySweep();
+    expect(await sweep(context)).toEqual({ processed: 2, failed: 0 });
+    expect(await sweep(context)).toEqual({ processed: 0, failed: 0 });
+    expect([reversalsOf(71), reversalsOf(72), reversalsOf(73), reversalsOf(74)].map(rows => rows.length)).toEqual([1, 0, 1, 0]);
+    expect(walletOf()?.monthlyCreditsRemaining).toBe(3);
+    expect(askById(521)).toMatchObject({ status: "closed", referrerId: null });
+    expect(askById(523)).toMatchObject({ status: "closed", referrerId: null });
+    expect(askById(522)).toMatchObject({ status: "pending", referrerId: LINK_OWNER });
+    expect(askById(524)).toMatchObject({ status: "pending", referrerId: LINK_OWNER });
   });
 
   it("never lets claimed assigned asks fill a batch ahead of a held one", async () => {
