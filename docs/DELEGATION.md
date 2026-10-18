@@ -103,6 +103,7 @@ Verdict: `pass` (then the reviewer pushes the merged candidate to `main` and run
 13. Never land a whole long-lived branch at once: one pricing landing brought 143 files into `main` in a single merge (`7cda8cf7`). One packet per push.
 14. Never make a real payment or change live provider settings (D-065, runbook §4); never commit a secret or personal data (the repo is public, D-059); never reword Terms, Privacy, Refund or Cancellation text.
 15. Never refactor, rename or reformat outside the packet; never force-push, rewrite shared history or `git reset --hard` a shared tree.
+16. Files removed by the Oct 18 repo cleanup stay removed. On a modify/delete merge conflict for any of them (FOR_AI_BUILDERS.md, LLM_HANDOFF.md, START_HERE.md, SkipWait-START-HERE.md, docs/KIT_V4_AUDIT.md, app/, screens/), keep the deletion and move any still-needed fact into AGENTS.md, DESIGN.md or the packet.
 
 ## 8. Working in a small context window
 - Required reading is the brief (under 10 KB) plus one packet. Aim for under 15 KB; a large lane keeps its packet under 60 KB and moves reference tables (verification, token values, specs) to an appendix that the implementer opens by section. The architecture map (`docs/ARCHITECTURE.md`) is also a reference: read only the section the packet names.

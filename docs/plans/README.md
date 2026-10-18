@@ -2,6 +2,8 @@
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first (D-073). The binding queue and every row's status live only in [`docs/KIT_V4_BUILD_PLAN.md`](../KIT_V4_BUILD_PLAN.md) §3b. This page is the execution view (D-074, D-075): what to run next, which packet to hand over, how risky it is, and what may run side by side.
 
+**Files removed by the Oct 18 repo cleanup stay removed.** On a modify/delete merge conflict for any of them (FOR_AI_BUILDERS.md, LLM_HANDOFF.md, START_HERE.md, SkipWait-START-HERE.md, docs/KIT_V4_AUDIT.md, app/, screens/), keep the deletion and move any still-needed fact into AGENTS.md, DESIGN.md or the packet.
+
 How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. System map: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md). Packet format: [`TEMPLATE.md`](TEMPLATE.md).
 
 ## Rules for this page
