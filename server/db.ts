@@ -2155,7 +2155,7 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     // withdrawn ask never reads as assigned or reveals who held it; the release audit row keeps that, in this transaction.
     const authorize:ReferralTransitionInput["authorize"]=row=>{if(row.jobSeekerId!==userId||row.referrerId!==heldFor)throw new Error(WITHDRAW_REFUSED);};
     const release=heldFor===null?undefined:{referrerId:null};
-    const released=async<T extends {creditRefunded:boolean}>(result:T):Promise<T>=>{if(heldFor!==null)await recordHeldAskReleaseTx(tx,{requestId,referrerId:heldFor,reason:"withdrawn",creditReturned:result.creditRefunded});return result;};
+    const released=async<T extends {creditRefunded:boolean}>(result:T):Promise<T>=>{if(heldFor!==null)await recordHeldAskReleaseTx(tx,{requestId,referrerId:heldFor,kind:"personal_link",reason:"withdrawn",creditReturned:result.creditRefunded});return result;};
     if(heldFor===null&&await referralWasClaimedTx(tx,requestId)){
       const transition=await transitionReferralRequestTx(tx,{
         requestId,actorUserId:userId,action:"withdraw",operationKey:`withdraw:${userId}`,
@@ -2300,7 +2300,7 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
     const authorize: ReferralTransitionInput["authorize"] = row => { if (row.jobSeekerId !== userId || row.referrerId !== heldFor) throw new Error("This request is already in conversation and cannot expire"); };
     const release = heldFor === null ? undefined : { referrerId: null };
     const lead = current.waitingForCoverage ? `No verified employee at ${current.companyDomain} became available within ${COVERAGE_WAIT_DAYS} days.` : heldFor === null ? "No verified employee claimed it within 7 days." : "The employee whose link you used didn't respond within 7 days.";
-    const released = async <T,>(result: T, creditReturned: boolean): Promise<T> => { if (heldFor !== null) await recordHeldAskReleaseTx(tx, { requestId, referrerId: heldFor, reason: "expired", creditReturned }); return result; };
+    const released = async <T,>(result: T, creditReturned: boolean): Promise<T> => { if (heldFor !== null) await recordHeldAskReleaseTx(tx, { requestId, referrerId: heldFor, kind: "personal_link", reason: "expired", creditReturned }); return result; };
     if (heldFor === null && await referralWasClaimedTx(tx, requestId)) {
       const transition = await transitionReferralRequestTx(tx, {
         requestId, actorUserId: userId, action: "expire", operationKey: `expire:${requestId}`,
@@ -2404,7 +2404,7 @@ export async function reconcileExpiredPendingReferrals(userId: number, nowMs: nu
       )),
     ),
   ));
-  const held = await selectStaleHeldAsks(db, { cutoff, limit: HELD_ASK_RECONCILE_LIMIT, jobSeekerId: userId });
+  const held = await selectStaleHeldAsks(db, { visibleBefore: cutoff, heldBefore: cutoff, limit: HELD_ASK_RECONCILE_LIMIT, jobSeekerId: userId });
   const expiredRequestIds: number[] = [];
   for (const row of [...stale, ...held]) {
     try {
@@ -2439,8 +2439,8 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   }
   // D-050: a personal-link ask its employee has not acted on still counts as unclaimed (Withdraw, expiry countdown).
   // Fail-soft and reported: the flag only adds that entry point; withdraw and expiry re-decide under the row lock.
-  let held = new Set<number>();
-  try { held = await listHeldForReferrerIds(db, rows); }
+  let held: ReadonlySet<number> = new Set<number>();
+  try { held = (await listHeldForReferrerIds(db, rows)).personalLink; }
   catch (error) { console.warn("[requests] held flag skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "seeker_requests_held_flag" }); }
   return rows.map(row => ({ ...row, heldForReferrer: held.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }

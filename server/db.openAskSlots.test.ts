@@ -181,7 +181,8 @@ describe("open-ask slot cap at ask creation", () => {
   });
 
   it("an unclaimed allocated ask frees its slot when its window ends; a claimed one keeps it", async () => {
-    const delivered = (visibleDaysAgo: number) => ask({ referrerId: 501, createdAt: new Date(Date.now() - 30 * DAY), coverageVisibleAt: new Date(Date.now() - visibleDaysAgo * DAY) });
+    // Created 10 days ago (after the 2026-09-21 claim-history cut-off), delivered 2 or 8 days ago.
+    const delivered = (visibleDaysAgo: number) => ask({ referrerId: 501, createdAt: new Date(Date.now() - 10 * DAY), coverageVisibleAt: new Date(Date.now() - visibleDaysAgo * DAY) });
     const inWindow = delivered(2);
     const pastWindow = delivered(8);
     const claimedPastWindow = delivered(8);

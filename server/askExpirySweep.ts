@@ -55,7 +55,7 @@ export async function listStalePendingAsks(windows: AskExpiryWindows, limit: num
     ))
     .orderBy(asc(referralRequests.createdAt), asc(referralRequests.id))
     .limit(limit);
-  return mergeHeldStaleAsks(unassigned, () => selectStaleHeldAsks(db, { cutoff: windows.heldBefore, limit }), limit);
+  return mergeHeldStaleAsks(unassigned, () => selectStaleHeldAsks(db, { visibleBefore: windows.visibleBefore, heldBefore: windows.heldBefore, limit }), limit);
 }
 
 type StaleRow = { id: number; jobSeekerId: number; createdAt: Date };

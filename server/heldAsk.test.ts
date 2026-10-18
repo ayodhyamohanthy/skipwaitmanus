@@ -81,10 +81,13 @@ describe("the held flag, the sweep selection, the owner's inbox and the locked g
     seedHeldAsks(seed);
     await act();
     const stillAssigned = askById()?.referrerId === LINK_OWNER;
-    const flagged = (await listHeldForReferrerIds(db, [listedAsk(askById())])).has(REQUEST_ID);
-    const selected = (await selectStaleHeldAsks(db, { cutoff: new Date(NOW - ASK_TTL_MS), limit: 10 })).some(row => row.id === REQUEST_ID);
+    const assignments = await listHeldForReferrerIds(db, [listedAsk(askById())]);
+    const flagged = assignments.personalLink.has(REQUEST_ID);
+    const allocatedFlag = assignments.queueAllocation.has(REQUEST_ID);
+    const cutoff = new Date(NOW - ASK_TTL_MS);
+    const selected = (await selectStaleHeldAsks(db, { visibleBefore: cutoff, heldBefore: cutoff, limit: 10 })).some(row => row.id === REQUEST_ID);
     const listed = (await listCompanyReferralInboxByState(LINK_OWNER, "new")).some(row => row.id === REQUEST_ID);
-    expect({ flagged, selected, listed }).toEqual({ flagged: held, selected: unclaimed, listed: inbox });
+    expect({ flagged, allocatedFlag, selected, listed }).toEqual({ flagged: held, allocatedFlag: unclaimed && !held, selected: unclaimed, listed: inbox });
     if (stillAssigned && askById()?.status === "pending") expect(listed).toBe(!unclaimed);
     expect(await withdrawalOf()).toBe(withdrawal);
 
@@ -102,8 +105,8 @@ describe("the held flag, the sweep selection, the owner's inbox and the locked g
     if (!db) throw new Error("the in-memory database is not installed");
     seedHeldAsks({ asks: [askRow({ createdAt: daysAgo(8) }), askRow({ id: 508, jobSeekerId: 8, createdAt: daysAgo(9) })] });
     const cutoff = new Date(NOW - ASK_TTL_MS);
-    expect((await selectStaleHeldAsks(db, { cutoff, limit: 10 })).map(row => row.id).sort()).toEqual([501, 508]);
-    expect((await selectStaleHeldAsks(db, { cutoff, limit: 10, jobSeekerId: SEEKER })).map(row => row.id)).toEqual([501]);
+    expect((await selectStaleHeldAsks(db, { visibleBefore: cutoff, heldBefore: cutoff, limit: 10 })).map(row => row.id).sort()).toEqual([501, 508]);
+    expect((await selectStaleHeldAsks(db, { visibleBefore: cutoff, heldBefore: cutoff, limit: 10, jobSeekerId: SEEKER })).map(row => row.id)).toEqual([501]);
   });
 });
 
