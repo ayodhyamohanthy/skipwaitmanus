@@ -1,0 +1,212 @@
+{
+ "signedIn": {
+  "id": 5201,
+  "name": "Mira Kapoor",
+  "email": "mira@northwindlabs.example",
+  "role": "user"
+ },
+ "routes": [
+  {
+   "method": "GET",
+   "path": "/api/company-referrals/access",
+   "body": {
+    "verifiedCompanyAccess": true,
+    "workEmailDomain": "northwindlabs.example",
+    "companyName": "Northwind Labs",
+    "companyInitials": "NL"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/company-referrals/inbox",
+   "body": {
+    "requests": [
+     {
+      "id": 71,
+      "displayRef": "R-8KX2P",
+      "targetRoleUrl": "https://careers.northwindlabs.example/jobs/product-designer-merchant-onboarding",
+      "companyDomain": "northwindlabs.example",
+      "companyName": "Northwind Labs",
+      "companyInitials": "NL",
+      "jobFunction": "Design",
+      "jobTitle": "Role from shared job link",
+      "status": "pending",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-02T09:00:00.000Z",
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z",
+      "attachmentCount": 2,
+      "officialLinkIncluded": true,
+      "fitNoteIncluded": true,
+      "resumeAttached": true,
+      "askStrength": "strong",
+      "isClaimedByYou": false,
+      "expiresAt": null,
+      "unreadMessageCount": 0,
+      "savedAt": null
+     },
+     {
+      "id": 72,
+      "displayRef": "R-3TQ9V",
+      "targetRoleUrl": "https://careers.northwindlabs.example/jobs/android-engineer-merchant-app",
+      "companyDomain": "northwindlabs.example",
+      "companyName": "Northwind Labs",
+      "companyInitials": "NL",
+      "jobFunction": "Engineering",
+      "jobTitle": "Role from shared job link",
+      "status": "pending",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-04T09:00:00.000Z",
+      "createdAt": "2026-10-04T09:00:00.000Z",
+      "updatedAt": "2026-10-04T09:00:00.000Z",
+      "attachmentCount": 2,
+      "officialLinkIncluded": true,
+      "fitNoteIncluded": true,
+      "resumeAttached": true,
+      "askStrength": "good",
+      "isClaimedByYou": false,
+      "expiresAt": null,
+      "unreadMessageCount": 0,
+      "savedAt": null
+     },
+     {
+      "id": 73,
+      "displayRef": "R-6MZ4A",
+      "targetRoleUrl": "https://careers.northwindlabs.example/jobs/data-analyst-risk",
+      "companyDomain": "northwindlabs.example",
+      "companyName": "Northwind Labs",
+      "companyInitials": "NL",
+      "jobFunction": "Data",
+      "jobTitle": "Role from shared job link",
+      "status": "pending",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-05T09:00:00.000Z",
+      "createdAt": "2026-10-05T09:00:00.000Z",
+      "updatedAt": "2026-10-05T09:00:00.000Z",
+      "attachmentCount": 2,
+      "officialLinkIncluded": true,
+      "fitNoteIncluded": true,
+      "resumeAttached": true,
+      "askStrength": "strong",
+      "isClaimedByYou": false,
+      "expiresAt": null,
+      "unreadMessageCount": 0,
+      "savedAt": null
+     },
+     {
+      "id": 74,
+      "displayRef": "R-9WD7C",
+      "targetRoleUrl": "https://careers.northwindlabs.example/jobs/product-manager-payouts",
+      "companyDomain": "northwindlabs.example",
+      "companyName": "Northwind Labs",
+      "companyInitials": "NL",
+      "jobFunction": "Product",
+      "jobTitle": "Role from shared job link",
+      "status": "pending",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-07T09:00:00.000Z",
+      "createdAt": "2026-10-07T09:00:00.000Z",
+      "updatedAt": "2026-10-07T09:00:00.000Z",
+      "attachmentCount": 2,
+      "officialLinkIncluded": true,
+      "fitNoteIncluded": true,
+      "resumeAttached": true,
+      "askStrength": "basic",
+      "isClaimedByYou": false,
+      "expiresAt": null,
+      "unreadMessageCount": 0,
+      "savedAt": null
+     },
+     {
+      "id": 75,
+      "displayRef": "R-2HJ5N",
+      "targetRoleUrl": "https://careers.northwindlabs.example/jobs/site-reliability-engineer",
+      "companyDomain": "northwindlabs.example",
+      "companyName": "Northwind Labs",
+      "companyInitials": "NL",
+      "jobFunction": "Engineering",
+      "jobTitle": "Role from shared job link",
+      "status": "pending",
+      "referrerId": null,
+      "waitingForCoverage": false,
+      "coverageVisibleAt": "2026-10-07T12:00:00.000Z",
+      "createdAt": "2026-10-07T12:00:00.000Z",
+      "updatedAt": "2026-10-07T12:00:00.000Z",
+      "attachmentCount": 2,
+      "officialLinkIncluded": true,
+      "fitNoteIncluded": true,
+      "resumeAttached": true,
+      "askStrength": "good",
+      "isClaimedByYou": false,
+      "expiresAt": null,
+      "unreadMessageCount": 0,
+      "savedAt": null
+     }
+    ],
+    "scope": "new"
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/company-referrals/71/preview",
+   "body": {
+    "request": {
+     "id": 71,
+     "displayRef": "R-8KX2P",
+     "title": "Role from shared job link",
+     "targetRoleUrl": "https://careers.northwindlabs.example/jobs/product-designer-merchant-onboarding",
+     "companyDomain": "northwindlabs.example",
+     "companyName": "Northwind Labs",
+     "companyInitials": "NL",
+     "jobFunction": "Design",
+     "candidateMessage": "Redesigned onboarding for 400,000 small merchants at a payments startup; completion rose from 58% to 74%.\nRan 30 merchant interviews in two languages and turned them into a service blueprint the ops team still uses.\nThe posting asks for systems work: I maintain a 250-component design library used by 4 product squads.",
+     "attachments": [
+      {
+       "mimeType": "application/pdf",
+       "fileSize": 120000,
+       "availability": "after_claim"
+      },
+      {
+       "mimeType": "application/pdf",
+       "fileSize": 80000,
+       "availability": "after_claim"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/referrer-fast-track/me",
+   "body": {
+    "link": {
+     "linkCode": "abcdef0123456789",
+     "vanityAlias": "ref-mira",
+     "companyDomain": "northwindlabs.example",
+     "isActive": true,
+     "url": "https://skipwait.me/fast/abcdef0123456789",
+     "vanityUrl": "https://skipwait.me/refer/northwind-labs/ref-mira",
+     "suggestedBioCopy": "Referring for Northwind Labs roles. Ask privately:"
+    }
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/notifications",
+   "body": {
+    "notifications": []
+   }
+  },
+  {
+   "method": "GET",
+   "path": "/api/account/preferences",
+   "body": {
+    "preferences": {}
+   }
+  }
+ ]
+}

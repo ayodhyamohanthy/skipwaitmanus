@@ -86,7 +86,7 @@ describe("login rule: referrer", () => {
   });
 
   it("no referrer-facing page opens the full AuthKit sign-in (SignInButton / openSignIn)", () => {
-    for (const file of ["ReferrerSetup", "ReferrerHome", "ReferrerImpact", "Verify", "Referrer", "MyCompanyInbox"]) {
+    for (const file of ["ReferrerSetup", "ReferrerHome", "ReferrerImpact", "Verify", "Referrer", "goal/ReferralQueue", "goal/PersonalLinkPanel"]) {
       const source = readFileSync(`client/src/pages/${file}.tsx`, "utf8");
       expect(source, `${file}.tsx must use referrerSignInHref / the OTP dialog`).not.toMatch(/SignInButton|openSignIn|auth\/workos/);
     }

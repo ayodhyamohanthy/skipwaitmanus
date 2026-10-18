@@ -1,4 +1,4 @@
-import { CircleCheck, CircleDashed, CircleDot, CircleMinus, CircleX, type LucideIcon } from "lucide-react";
+import { CircleCheck, CircleDashed, CircleDot, CircleMinus, CircleX, Clock, type LucideIcon } from "lucide-react";
 import { gcn } from "./gcn";
 import { goalSteps, type GoalStepNode, type GoalStepState, type GoalTerminal } from "./stepper";
 
@@ -128,6 +128,13 @@ export function GoalAvailability({ open, label }: { open: boolean; label: string
 }
 
 /** A day-level clock ("2 days left", DESIGN.md rule 14). Amber at 2 days or fewer; never crimson (it sits in the referrer queue). */
-export function GoalClock({ daysLeft, children, className }: { daysLeft: number; children: string; className?: string }) {
-  return <span className={gcn("g-num", daysLeft <= 2 ? "text-g-amber" : "text-g-ink-3", className)}>{children}</span>;
+export function GoalClock({ daysLeft, children, withIcon = false, className }: { daysLeft: number; children: string; withIcon?: boolean; className?: string }) {
+  const tone = daysLeft <= 2 ? "text-g-amber" : "text-g-ink-3";
+  if (!withIcon) return <span className={gcn("g-num", tone, className)}>{children}</span>;
+  return (
+    <span className={gcn("inline-flex items-center gap-1.5", tone, className)}>
+      <Clock aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} />
+      <span className="g-num">{children}</span>
+    </span>
+  );
 }

@@ -10,6 +10,7 @@ export { GoalIconButton } from "./GoalIconButton";
 export { GoalVerifiedMark } from "./GoalVerifiedMark";
 export { GOAL_STATUS_TONE, GoalAvailability, GoalClock, GoalMiniStepper, GoalStatus, GoalStepper, type GoalStatusKind } from "./GoalStatus";
 export { GoalChipGroup, GoalFilterChip } from "./GoalFilterChip";
+export { GoalCheckbox } from "./GoalCheckbox";
 export { GoalSearchInput } from "./GoalSearchInput";
 export { GoalField, GoalTextInput, type GoalFieldHint } from "./GoalField";
 export { GoalEmptyState, GoalErrorState, GoalSkeletonRows } from "./GoalStates";
