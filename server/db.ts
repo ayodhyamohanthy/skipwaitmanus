@@ -2722,9 +2722,11 @@ export async function listMyPaymentReceipts(userId: number, role: "job_seeker" |
   return db.select({ id: paymentFulfillments.id, provider: paymentFulfillments.provider, amount: paymentFulfillments.amount, currency: paymentFulfillments.currency, tokenCount: paymentFulfillments.tokenCount, status: paymentFulfillments.status, providerInvoiceId: paymentFulfillments.providerInvoiceId, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.role, role), inArray(paymentFulfillments.status, ["credited", "refunded"]))).orderBy(desc(paymentFulfillments.createdAt)).limit(safeLimit);
 }
 
-export async function getCreditLedgerAudit(limit = 200) {
-  const db=await getDb();if(!db)return {mismatches:[],integrity:[],checkedWallets:0};
-  const wallets=await db.select().from(tokenBalances).orderBy(desc(tokenBalances.updatedAt)).limit(Math.max(1,Math.min(limit,500)));
+type LedgerAuditDb = NonNullable<Awaited<ReturnType<typeof getDb>>>;
+type LedgerAuditWallet = typeof tokenBalances.$inferSelect;
+type LedgerAuditFindings = { mismatches: Array<Record<string, unknown>>; integrity: Array<Record<string, unknown>> };
+
+async function auditLedgerWallets(db: LedgerAuditDb, wallets: LedgerAuditWallet[]): Promise<LedgerAuditFindings> {
   const mismatches:Array<Record<string,unknown>>=[];const integrity:Array<Record<string,unknown>>=[];
   for(const wallet of wallets){const rows=await db.select().from(tokenTransactions).where(and(eq(tokenTransactions.userId,wallet.userId),eq(tokenTransactions.role,wallet.role))).orderBy(desc(tokenTransactions.id));
     const purchased=rows.filter(row=>row.source==="purchased_balance"||(["purchase","admin_adjustment","company_coverage_reward","personal_referral_reward","invite_reward_granted"].includes(row.kind)&&!row.source)).reduce((sum,row)=>sum+row.tokenCount,0);
@@ -2733,13 +2735,44 @@ export async function getCreditLedgerAudit(limit = 200) {
     // Kit ledger: the cycle bucket reconciles against its own cycle's rows once that cycle was opened by a plan_grant row
     // (a cycle that began before the ledger has no opening row), and every grant against the rows that name it.
     const cycleRows=rows.filter(row=>row.source===BUCKET_SOURCES.cycle&&row.sourceCycleKey===wallet.monthlyCycleKey);
+   
     if(cycleRows.filter(row=>row.kind==="plan_grant").length===1){const expected=cycleRows.reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==wallet.monthlyCreditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"cycle",cycleKey:wallet.monthlyCycleKey,expected,actual:wallet.monthlyCreditsRemaining,delta:wallet.monthlyCreditsRemaining-expected});}
     const grants=await readGrantsTx(db,wallet.userId,wallet.role,false);
     for(const grant of grants){const expected=rows.filter(row=>row.creditGrantId===grant.id).reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==grant.creditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:`grant:${grant.source}`,grantId:grant.id,expected,actual:grant.creditsRemaining,delta:grant.creditsRemaining-expected});if(grant.creditsRemaining<0)integrity.push({type:"negative_grant",userId:wallet.userId,role:wallet.role,grantId:grant.id});}
   }
+  return { mismatches, integrity };
+}
+
+async function auditOrphanLedgerDebits(db: LedgerAuditDb): Promise<Array<Record<string, unknown>>> {
   // Asks no longer reserve a credit, so an ask without a debit is expected; a debit without its ask is still a fault.
-  const orphanDebits=await db.select({id:tokenTransactions.id,referenceId:tokenTransactions.referenceId,userId:tokenTransactions.userId}).from(tokenTransactions).leftJoin(referralRequests,eq(sql`CAST(${referralRequests.id} AS CHAR)`,tokenTransactions.referenceId)).where(and(eq(tokenTransactions.kind,"direct_request"),isNotNull(tokenTransactions.referenceId),isNull(referralRequests.id))).limit(200);for(const row of orphanDebits)integrity.push({type:"debit_without_request",...row});
-  return {checkedWallets:wallets.length,mismatches,integrity,readOnly:true};
+  const orphanDebits=await db.select({id:tokenTransactions.id,referenceId:tokenTransactions.referenceId,userId:tokenTransactions.userId}).from(tokenTransactions).leftJoin(referralRequests,eq(sql`CAST(${referralRequests.id} AS CHAR)`,tokenTransactions.referenceId)).where(and(eq(tokenTransactions.kind,"direct_request"),isNotNull(tokenTransactions.referenceId),isNull(referralRequests.id))).limit(200);
+  return orphanDebits.map(row=>({type:"debit_without_request",...row}));
+}
+
+export async function getCreditLedgerAudit(limit = 200) {
+  const db=await getDb();if(!db)return {mismatches:[] as Array<Record<string,unknown>>,integrity:[] as Array<Record<string,unknown>>,checkedWallets:0};
+  const wallets=await db.select().from(tokenBalances).orderBy(desc(tokenBalances.updatedAt)).limit(Math.max(1,Math.min(limit,500)));
+  const findings=await auditLedgerWallets(db,wallets);
+  const integrity=[...findings.integrity,...(await auditOrphanLedgerDebits(db))];
+  return {checkedWallets:wallets.length,mismatches:findings.mismatches,integrity,readOnly:true};
+}
+
+/** D-065: the daily money check reads every wallet in id order, not the 200-latest admin page. Same bucket rules as getCreditLedgerAudit. */
+export async function getFullCreditLedgerAudit(batch = 200) {
+  const db=await getDb();if(!db)return {mismatches:[] as Array<Record<string,unknown>>,integrity:[] as Array<Record<string,unknown>>,checkedWallets:0};
+  const size=Math.max(1,Math.min(batch,500));
+  let afterId=0;let checkedWallets=0;
+  const mismatches:Array<Record<string,unknown>>=[];const integrity:Array<Record<string,unknown>>=[];
+  for(;;){
+    const wallets=await db.select().from(tokenBalances).where(gt(tokenBalances.id,afterId)).orderBy(asc(tokenBalances.id)).limit(size);
+    if(wallets.length===0)break;
+    const part=await auditLedgerWallets(db,wallets);
+    mismatches.push(...part.mismatches);integrity.push(...part.integrity);
+    checkedWallets+=wallets.length;afterId=wallets[wallets.length-1]!.id;
+    if(wallets.length<size)break;
+  }
+  integrity.push(...(await auditOrphanLedgerDebits(db)));
+  return {checkedWallets,mismatches,integrity,readOnly:true};
 }
 
 export async function claimCompanyReferralRequest(userId: number, requestId: number) {
