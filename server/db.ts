@@ -53,7 +53,7 @@ import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
 import { PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome, type RefundReviewReason } from "../shared/paymentReview";
-import { settleRefundBeforeCreditTx } from "./paymentRefundEvents";
+import { settleRefundOfNonCreditedPaymentTx } from "./paymentRefundEvents";
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
@@ -3574,7 +3574,10 @@ export type ChargebeeRefundOutcome =
  * credits already spent, unreadable amount) is parked as requires_review with
  * no wallet change so a human decides. One transaction with the fulfillment and
  * wallet rows locked, in the same order as revokeCreditedPaymentCredits. A
- * redelivered event finds the row already refunded or parked and does nothing.
+ * payment that is no longer credited (parked, closed by review, refunded,
+ * rejected, or still waiting for its credit) goes to
+ * settleRefundOfNonCreditedPaymentTx: each refund event is recorded once, a
+ * redelivered one is a duplicate, and a new one always reaches a human.
  */
 export async function applyChargebeePaymentRefund(input: { eventId: string; invoiceId?: string; refundAmount?: number; currency?: string }): Promise<ChargebeeRefundOutcome> {
   if (!input.invoiceId) return { status: "unmatched", reason: "refund_invoice_unreadable" };
@@ -3585,16 +3588,13 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
     const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerInvoiceId, invoiceId))).limit(1).for("update");
     const row = rows[0];
     if (!row) return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
-    // Still waiting for its credit (an amount mismatch): only refunds of everything
-    // paid stop the review from adding the pack (server/paymentRefundEvents.ts).
-    if (row.status === "requires_review" && paymentReviewKind(row) === "awaiting_credit") return settleRefundBeforeCreditTx(tx, row, { eventId: input.eventId, invoiceId, refundAmount: input.refundAmount, currency: input.currency });
-    if (row.status === "refunded" || (row.status === "requires_review" && (row.reconciliationReason ?? "").startsWith("refund_"))) return { status: "duplicate" as const, paymentId: row.id };
-    const park = async (reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_of_uncredited_payment" | "refund_amount_unreadable") => {
-      if (row.status === "credited") await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
+    // Not credited: the refund is recorded once per event and decides what the review may do next; no credit moves there.
+    if (row.status !== "credited") return settleRefundOfNonCreditedPaymentTx(tx, row, { eventId: input.eventId, invoiceId, refundAmount: input.refundAmount, currency: input.currency });
+    const park = async (reason: "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_amount_unreadable") => {
+      await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date() }).where(and(eq(paymentFulfillments.id, row.id), eq(paymentFulfillments.status, "credited")));
       await tx.insert(operationalActivityLogs).values({ actorUserId: row.userId, action: "billing.refund_needs_review", outcome: "failure", resourceType: "payment_fulfillment", resourceId: String(row.id), metadata: JSON.stringify({ reason, eventId: input.eventId, invoiceId, refundAmount: input.refundAmount ?? null, refundCurrency: input.currency ?? null, amount: row.amount, currency: row.currency, tokenCount: row.tokenCount }) });
       return { status: "review" as const, paymentId: row.id, reason, expectedAmount: row.amount, currency: row.currency };
     };
-    if (row.status !== "credited") return park("refund_of_uncredited_payment");
     if (!input.refundAmount) return park("refund_amount_unreadable");
     if (input.currency && input.currency !== row.currency) return park("refund_currency_mismatch");
     if (input.refundAmount < row.amount) return park("refund_partial");

@@ -27,10 +27,21 @@ const REASONS: Readonly<Record<string, string>> = {
   refund_amount_unreadable: "A refund was recorded after this payment's credits were added, but its amount could not be read.",
   refund_of_uncredited_payment: "This payment was refunded in full in Chargebee before any credits were added.",
   refund_not_full_before_credit: "Chargebee recorded a refund before any credits were added, but it did not cover the whole payment. Check the refunds in Chargebee, and add the credits only if the buyer still paid for the pack.",
+  refund_repeated: "Chargebee recorded another refund for this payment after its credits were added and an earlier refund was handled. Check the total refunded in Chargebee before you take back more credits.",
 };
 
 export function reviewReasonText(reason: string | null): string {
   return (reason && REASONS[reason]) || "Held for a manual check.";
+}
+
+/** Reasons where the refunded share is unknown here, so a take-back needs the admin's own count. */
+const TAKE_BACK_COUNT_NOTES: Readonly<Record<string, string>> = {
+  refund_partial: "Only part of this payment was refunded. Check the refund in Chargebee and enter the credits it covers.",
+  refund_repeated: "More than one refund was recorded for this payment. Check the total refunded in Chargebee and enter the credits this refund covers. Credits already taken back for this payment count toward its pack.",
+};
+
+export function takeBackCountNote(reason: string | null): string | null {
+  return (reason && TAKE_BACK_COUNT_NOTES[reason]) || null;
 }
 
 export function decisionLabel(decision: PaymentReviewDecision, kind: PaymentReviewKind, tokenCount: number): string {

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import StatusBadge from "@/components/StatusBadge";
 import { DECISIONS_BY_KIND, parsePaymentReviewKind, type PaymentReviewDecision, type PaymentReviewOutcome, type PaymentReviewRequestBody } from "@shared/paymentReview";
-import { compactDate, creditCount, decisionLabel, displayPaymentRef, formatAmount, outcomeBadge, outcomeText, parseTakeBackCount, reviewReasonText } from "./paymentReviewCopy";
+import { compactDate, creditCount, decisionLabel, displayPaymentRef, formatAmount, outcomeBadge, outcomeText, parseTakeBackCount, reviewReasonText, takeBackCountNote } from "./paymentReviewCopy";
 
 export type ReviewQueuePayment = { id: number; provider: string; userId: number; role: string | null; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: string | Date; userEmail: string | null; reviewKind?: unknown };
 export type ReviewSubmitResult = { ok: true; outcome: PaymentReviewOutcome | null } | { ok: false; status: number; message: string };
@@ -23,7 +23,7 @@ const actionTone: Record<PaymentReviewDecision, string> = {
 export default function PaymentReviewRow({ payment, submit, onReload }: Props) {
   const kind = parsePaymentReviewKind(payment.reviewKind);
   const pack = payment.tokenCount;
-  const partialRefund = payment.reconciliationReason === "refund_partial";
+  const countNote = takeBackCountNote(payment.reconciliationReason);
   const who = payment.userEmail || `User #${payment.userId}`;
   const [note, setNote] = useState("");
   const [working, setWorking] = useState(false);
@@ -47,7 +47,7 @@ export default function PaymentReviewRow({ payment, submit, onReload }: Props) {
   };
 
   const open = (decision: PaymentReviewDecision) => {
-    if (decision === "revoke_unused") { setTakeBack(partialRefund ? "" : String(pack)); setConfirming(decision); return; }
+    if (decision === "revoke_unused") { setTakeBack(countNote ? "" : String(pack)); setConfirming(decision); return; }
     if (decision === "keep_credits") { setConfirming(decision); return; }
     void decide(decision);
   };
@@ -72,7 +72,7 @@ export default function PaymentReviewRow({ payment, submit, onReload }: Props) {
           <AlertDialogTitle>Take back unused credits?</AlertDialogTitle>
           <AlertDialogDescription>Chargebee already returned this payment's money. This removes up to the number below from {who}'s unused purchased credits. Nothing goes below zero: credits already used stay used, and plan or promo credits are not touched.</AlertDialogDescription>
         </AlertDialogHeader>
-        {partialRefund ? <p className="text-sm text-[#505050]">Only part of this payment was refunded. Check the refund in Chargebee and enter the credits it covers.</p> : null}
+        {countNote ? <p className="text-sm text-[#505050]">{countNote}</p> : null}
         <div><label htmlFor={`take-back-${payment.id}`} className="text-[11px] font-bold uppercase tracking-[.12em] text-[#505050]">Credits to take back (1 to {pack})</label><input id={`take-back-${payment.id}`} type="number" inputMode="numeric" min={1} max={pack} step={1} value={takeBack} onChange={event => setTakeBack(event.target.value)} className="mt-1 w-full rounded-lg border border-[#e5e5e5] px-3 py-2.5 text-sm outline-none focus:border-[#141414]" /></div>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancel</AlertDialogCancel>

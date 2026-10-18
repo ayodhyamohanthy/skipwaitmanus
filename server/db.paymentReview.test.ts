@@ -103,9 +103,24 @@ describe("a payment refunded after its credits were added", () => {
     expect(paymentTxns("admin_adjustment")).toHaveLength(1);
   });
 
-  it("a payment whose credits were already taken back once is refused by the unique key and rolled back", async () => {
+  it("a take-back after an earlier one for the same payment takes at most the rest of the pack, under its own ledger key", async () => {
+    refundParked(7, { reconciliationReason: "refund_repeated" });
+    db.txns.push({ id: 30, userId: SEEKER, role: "job_seeker", tokenCount: -1, kind: "admin_adjustment", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(PAYMENT), idempotencyKey: `payment-refund-${PAYMENT}`, createdAt: PAID_AT });
+    db.wallets[0].balance = 6;
+    const before = structuredClone(db);
+    await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused", undefined, PACK)).rejects.toThrow("You can take back at most 4 more credits for this payment: 1 of its 5 was already taken back.");
+    expect(db).toEqual(before);
+    expect(await resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused")).toMatchObject({ requested: 4, revoked: 4, unrecovered: 0, balanceBefore: 6, balanceAfter: 2 });
+    expect(paymentTxns("admin_adjustment")).toHaveLength(1);
+    expect(db.txns.filter(row => row.referenceType === "payment_refund_review")).toEqual([expect.objectContaining({ kind: "admin_adjustment", source: "purchased_balance", tokenCount: -4, referenceId: `${PAYMENT}:2`, idempotencyKey: `payment-refund-${PAYMENT}-2`, balanceAfter: 2 })]);
+    expect(JSON.parse(String(activity("payment.review_revoke_unused")[0].metadata))).toMatchObject({ takenBackBefore: 1, requested: 4, revoked: 4 });
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+
+  it("a database refusal of the take-back row is reported and rolls everything back", async () => {
     refundParked(7);
-    db.txns.push({ id: 30, userId: SEEKER, role: "job_seeker", tokenCount: -1, kind: "admin_adjustment", source: "payment_refund", referenceType: "payment_fulfillment", referenceId: String(PAYMENT), idempotencyKey: `payment-refund-${PAYMENT}`, createdAt: PAID_AT });
+    // An unrelated row already holds this payment's take-back key: the unique index refuses the new one.
+    db.txns.push({ id: 30, userId: SEEKER, role: "job_seeker", tokenCount: 0, kind: "admin_adjustment", source: "admin_recovery", referenceType: "admin_token_adjustment", referenceId: "9", idempotencyKey: `payment-refund-${PAYMENT}`, createdAt: PAID_AT });
     const before = structuredClone(db);
     await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused")).rejects.toMatchObject(REFUSED);
     expect(mocks.capture).toHaveBeenCalledTimes(1);
@@ -260,6 +275,88 @@ describe("a refund of a payment still waiting for its credit", () => {
     expect(await refund({ refundAmount: 50000 })).toMatchObject({ status: "review", reason: "refund_not_full_before_credit" });
     expect(refundLogs()).toEqual([expect.objectContaining({ paidAmount: null, refundAmount: 50000 })]);
     await creditsOnce();
+  });
+});
+
+// Review round 1: a refund that arrives after the review closed the payment, or while it
+// is still parked, is never dropped: it re-opens the payment for review and alerts. A take-
+// back in a later round is capped by what earlier rounds took, so a pack is never taken
+// back beyond its size, and a redelivered refund event is a duplicate.
+describe("a later refund of a payment whose credits were added", () => {
+  const credited = (balance = 7) => refundParked(balance, { status: "credited", reconciliationReason: null });
+  const refund = (eventId: string, refundAmount: number) => applyChargebeePaymentRefund({ eventId, invoiceId: "inv_41", refundAmount, currency: "INR" });
+  const refundLogs = () => activity("billing.refund_needs_review").map(entry => JSON.parse(String(entry.metadata)) as Record<string, unknown>);
+
+  it("after a take-back, a second refund re-opens the payment, and the next take-back stays within the pack", async () => {
+    credited();
+    expect(await refund("evt_ref_1", 20000)).toMatchObject({ status: "review", reason: "refund_partial" });
+    expect(await resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused", undefined, 2)).toMatchObject({ revoked: 2, balanceAfter: 5 });
+    expect(paymentRow()).toMatchObject({ status: "refunded", reconciliationReason: "refund_reviewed_revoked" });
+
+    expect(await refund("evt_ref_2", 30000)).toEqual({ status: "review", reason: "refund_repeated", paymentId: PAYMENT, expectedAmount: 50000, currency: "INR" });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_repeated", creditedAt: PAID_AT });
+    expect(db.wallets[0].balance).toBe(5);
+    expect(refundLogs()).toEqual([expect.objectContaining({ eventId: "evt_ref_1" }), expect.objectContaining({ reason: "refund_repeated", eventId: "evt_ref_2", refundAmount: 30000, refundCurrency: "INR", previousStatus: "refunded", previousReason: "refund_reviewed_revoked" })]);
+    expect(await refund("evt_ref_2", 30000)).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(await refund("evt_ref_1", 20000)).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(refundLogs()).toHaveLength(2);
+
+    const parked = structuredClone(db);
+    await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused", undefined, 4)).rejects.toMatchObject(REFUSED);
+    expect(db).toEqual(parked);
+    expect(await resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused", undefined, 3)).toMatchObject({ requested: 3, revoked: 3, unrecovered: 0, balanceBefore: 5, balanceAfter: 2 });
+    expect(paymentRow()).toMatchObject({ status: "refunded", reconciliationReason: "refund_reviewed_revoked" });
+    expect(db.txns.filter(row => row.kind === "admin_adjustment").map(row => [row.referenceType, row.referenceId, row.idempotencyKey, row.tokenCount])).toEqual([["payment_fulfillment", String(PAYMENT), `payment-refund-${PAYMENT}`, -2], ["payment_refund_review", `${PAYMENT}:2`, `payment-refund-${PAYMENT}-2`, -3]]);
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+
+    // The whole pack is taken back: a third refund still re-opens it, but nothing more can be taken.
+    expect(await refund("evt_ref_3", 100)).toMatchObject({ status: "review", reason: "refund_repeated" });
+    await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused")).rejects.toThrow("All 5 credits from this payment were already taken back, so there is nothing more to take back. Close it with Keep credits and close.");
+    expect(await resolveRequiresReviewPayment(ADMIN, PAYMENT, "keep_credits")).toMatchObject({ decision: "keep_credits" });
+    expect(db.wallets[0].balance).toBe(2);
+  });
+
+  it("after keep credits, a second refund re-opens the payment and its first take-back uses the payment's own key", async () => {
+    credited();
+    await refund("evt_ref_1", 20000);
+    await resolveRequiresReviewPayment(ADMIN, PAYMENT, "keep_credits");
+    expect(await refund("evt_ref_2", 30000)).toMatchObject({ status: "review", reason: "refund_repeated" });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_repeated", creditedAt: PAID_AT });
+    await expect(resolveRequiresReviewPayment(ADMIN, PAYMENT, "credited")).rejects.toMatchObject(REFUSED);
+    expect(await resolveRequiresReviewPayment(ADMIN, PAYMENT, "revoke_unused", undefined, 5)).toMatchObject({ revoked: 5, balanceAfter: 2 });
+    expect(paymentTxns("admin_adjustment")).toEqual([expect.objectContaining({ idempotencyKey: `payment-refund-${PAYMENT}`, tokenCount: -5 })]);
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+
+  it("a second refund while the payment is still parked is recorded and alerted, not dropped", async () => {
+    credited(3);
+    expect(await refund("evt_ref_1", 50000)).toMatchObject({ status: "review", reason: "refund_credits_spent" });
+    expect(await refund("evt_ref_2", 100)).toMatchObject({ status: "review", reason: "refund_repeated" });
+    expect(paymentRow()).toMatchObject({ status: "requires_review", reconciliationReason: "refund_repeated" });
+    expect(await refund("evt_ref_2", 100)).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(refundLogs().map(entry => entry.eventId)).toEqual(["evt_ref_1", "evt_ref_2"]);
+    expect(db.wallets[0].balance).toBe(3);
+  });
+
+  it("a refund event on a payment already refunded in full is recorded and alerted without changing it", async () => {
+    credited();
+    expect(await refund("evt_ref_1", 50000)).toMatchObject({ status: "revoked" });
+    expect(await refund("evt_ref_1", 50000)).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(refundLogs()).toEqual([]);
+    expect(await refund("evt_ref_2", 50000)).toMatchObject({ status: "review", reason: "refund_repeated" });
+    expect(paymentRow()).toMatchObject({ status: "refunded", reconciliationReason: "refunded_by_provider" });
+    expect(db.wallets[0].balance).toBe(2);
+    expect(refundLogs()).toEqual([expect.objectContaining({ eventId: "evt_ref_2", previousStatus: "refunded" })]);
+  });
+
+  it("a refund of a rejected payment alerts once per refund event", async () => {
+    refundParked(2, { status: "rejected", reconciliationReason: "checkout_amount_mismatch", creditedAt: null });
+    expect(await refund("evt_ref_1", 50000)).toMatchObject({ status: "review", reason: "refund_of_uncredited_payment" });
+    expect(await refund("evt_ref_1", 50000)).toEqual({ status: "duplicate", paymentId: PAYMENT });
+    expect(await refund("evt_ref_2", 50000)).toMatchObject({ status: "review", reason: "refund_repeated" });
+    expect(paymentRow()).toMatchObject({ status: "rejected", creditedAt: null });
+    expect(refundLogs()).toHaveLength(2);
+    expect(db.wallets[0].balance).toBe(2);
   });
 });
 

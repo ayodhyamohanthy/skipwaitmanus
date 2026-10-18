@@ -12,7 +12,7 @@ describe("why a parked payment is under review", () => {
     expect(paymentReviewKind({ reconciliationReason: reason, creditedAt: null })).toBe("awaiting_credit");
   });
 
-  it.each(["refund_partial", "refund_credits_spent", "refund_currency_mismatch", "refund_amount_unreadable"])("%s was refunded after its credits were added, with or without a recorded credit time", reason => {
+  it.each(["refund_partial", "refund_credits_spent", "refund_currency_mismatch", "refund_amount_unreadable", "refund_repeated"])("%s was refunded after its credits were added, with or without a recorded credit time", reason => {
     expect(paymentReviewKind({ reconciliationReason: reason, creditedAt: CREDITED_AT })).toBe("refunded_after_credit");
     expect(paymentReviewKind({ reconciliationReason: reason, creditedAt: null })).toBe("refunded_after_credit");
   });

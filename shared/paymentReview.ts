@@ -28,8 +28,10 @@ export type PaymentReviewKind = (typeof PAYMENT_REVIEW_KINDS)[number];
 export const REFUND_OF_UNCREDITED_PAYMENT = "refund_of_uncredited_payment";
 /** Written when a payment still waiting for its credit gets refunds that are not shown to cover what was paid: it may still be credited, once. */
 export const REFUND_NOT_FULL_BEFORE_CREDIT = "refund_not_full_before_credit";
+/** Written when another refund arrives for a payment whose credits were added and that already had a refund handled (parked, or closed by review): it goes back to review. */
+export const REFUND_REPEATED = "refund_repeated";
 /** Why the refund webhook parked or recorded a payment for review (ChargebeeRefundOutcome "review" in server/db.ts). */
-export type RefundReviewReason = "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_amount_unreadable" | typeof REFUND_OF_UNCREDITED_PAYMENT | typeof REFUND_NOT_FULL_BEFORE_CREDIT;
+export type RefundReviewReason = "refund_partial" | "refund_credits_spent" | "refund_currency_mismatch" | "refund_amount_unreadable" | typeof REFUND_OF_UNCREDITED_PAYMENT | typeof REFUND_NOT_FULL_BEFORE_CREDIT | typeof REFUND_REPEATED;
 /** Closing reasons an administrator's review writes on a refunded payment (status refunded). */
 export const REFUND_REVIEWED_REVOKED = "refund_reviewed_revoked";
 export const REFUND_REVIEWED_KEPT = "refund_reviewed_kept";

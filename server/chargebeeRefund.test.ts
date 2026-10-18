@@ -76,12 +76,19 @@ describe("applyChargebeePaymentRefund invariants (source contract, like the othe
   const source = fs.readFileSync(new URL("./db.ts", import.meta.url), "utf8");
   const from = source.indexOf("export async function applyChargebeePaymentRefund");
   const body = source.slice(from, source.indexOf("export async function createChargebeeSubscriptionIntent", from));
+  const events = fs.readFileSync(new URL("./paymentRefundEvents.ts", import.meta.url), "utf8");
   it("locks fulfillment then wallet, never makes a balance negative, and is idempotent per refund", () => {
     expect(body.match(/\.for\("update"\)/g)).toHaveLength(2);
     expect(body).toContain('sql`${tokenBalances.balance} >= ${row.tokenCount}`');
     expect(body.indexOf("wallet[0].balance < row.tokenCount")).toBeLessThan(body.indexOf('status: "refunded"'));
     expect(body).toContain('idempotencyKey: `payment-refund-${row.id}`');
-    expect(body).toContain('row.status === "refunded"');
+    // A payment no longer credited is settled per refund event, under the row lock and before any wallet work.
+    const handoff = body.indexOf('if (row.status !== "credited") return settleRefundOfNonCreditedPaymentTx(');
+    expect(handoff).toBeGreaterThan(body.indexOf('.for("update")'));
+    expect(handoff).toBeLessThan(body.indexOf("tx.select().from(tokenBalances)"));
+    expect(events).toContain('if (history.refunds.some(refund => refund.eventId === event.eventId)) return { status: "duplicate", paymentId: row.id };');
+    // Nothing on that path moves a credit: it never touches the wallet or the ledger.
+    expect(events).not.toMatch(/tokenBalances|tokenTransactions/);
   });
   it("never changes the wallet for a partial refund, spent credits or a currency mismatch", () => {
     for (const reason of ["refund_partial", "refund_credits_spent", "refund_currency_mismatch", "refund_amount_unreadable"]) expect(body).toContain(`park("${reason}")`);

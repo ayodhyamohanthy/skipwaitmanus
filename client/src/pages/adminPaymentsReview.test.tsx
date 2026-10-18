@@ -47,6 +47,7 @@ describe("administrator payment review decisions", () => {
   const refundedEarly = parked(5, "refund_of_uncredited_payment", "refunded_before_credit");
   const unknown = parked(6, "checkout_amount_mismatch", undefined);
   const partlyRefundedEarly = parked(7, "refund_not_full_before_credit", "awaiting_credit");
+  const refundedAgain = parked(8, "refund_repeated", "refunded_after_credit");
   let queue: unknown[] = [];
   let post: (body: Record<string, unknown>) => { status: number; body: unknown };
   const json = (status: number, body: unknown) => ({ ok: status >= 200 && status < 300, status, json: async () => body });
@@ -125,6 +126,25 @@ describe("administrator payment review decisions", () => {
     expect(confirm.disabled).toBe(false);
     fireEvent.click(confirm);
     await waitFor(() => expect(posts()).toEqual([{ url: "/api/admin/payments/review/4", body: { decision: "revoke_unused", credits: 2 } }]));
+  });
+
+  it("another refund after the review asks for the credit count and explains that earlier take-backs count", async () => {
+    queue = [refundedAgain];
+    render(<AdminPaymentsReview />);
+    const again = await row(8);
+    expect(again.getByText("Chargebee recorded another refund for this payment after its credits were added and an earlier refund was handled. Check the total refunded in Chargebee before you take back more credits.")).toBeTruthy();
+    expect(again.queryByRole("button", { name: /^Add/ })).toBeNull();
+    fireEvent.click(again.getByRole("button", { name: "Take back unused credits" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(within(dialog).getByText(/More than one refund was recorded for this payment/)).toBeTruthy();
+    expect(within(dialog).getByText(/Credits already taken back for this payment count toward its pack/)).toBeTruthy();
+    const field = within(dialog).getByLabelText(/Credits to take back/) as HTMLInputElement;
+    const confirm = within(dialog).getByRole("button", { name: "Take back credits" }) as HTMLButtonElement;
+    expect(field.value).toBe("");
+    expect(confirm.disabled).toBe(true);
+    fireEvent.change(field, { target: { value: "1" } });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(posts()).toEqual([{ url: "/api/admin/payments/review/8", body: { decision: "revoke_unused", credits: 1 } }]));
   });
 
   it("keeps the credits only after a confirmation", async () => {
