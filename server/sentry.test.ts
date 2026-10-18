@@ -19,5 +19,7 @@ describe("server Sentry wiring", () => {
     expect(scrubSentryPath("/fast/r12-34abcdef")).toBe("/fast/[redacted]");
     expect(scrubSentryPath("/refer/acme/vanity1")).toBe("/refer/[redacted]");
     expect(scrubSentryPath("/api/company-referrals/mine")).toBe("/api/company-referrals/mine");
+    expect(scrubSentryPath("/api/referrer-review-links/tok_abc123/decision")).toBe("/api/referrer-review-links/[redacted]/decision");
+    expect(scrubSentryPath("/api/referrer-fast-track/r12-34abcdef")).toBe("/api/referrer-fast-track/[redacted]");
   });
 });
