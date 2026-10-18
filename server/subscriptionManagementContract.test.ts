@@ -135,7 +135,12 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
   it("global callers see USD prices only, each with its availability and auto-extend rails", () => {
     const catalog = planCatalogResponse({ ...base, region: "INTL" });
     expect(catalog).toMatchObject({ region: "INTL", currency: "USD", priceNote: null, fairness: { maxOpenAsksPerCompany: 2, planVisibleToReferrers: false } });
-    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 3, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } });
+    // D-051: nothing grants the reverse trial yet (no caller of grantTrialCreditsTx), so the
+    // public catalog no longer advertises it. The field is optional, not removed: a payload
+    // that carries it still parses, so switching the trial back on is additive for clients.
+    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 3 });
+    const withTrial = { ...catalog, free: { ...catalog.free, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } } };
+    expect(planCatalogResponseSchema.parse(withTrial).free.trial).toEqual(withTrial.free.trial);
     expect(catalog.plans.map(plan => [plan.id, plan.terms.map(term => [term.interval, term.amount, term.available])])).toEqual([
       ["keep_warm", [["yearly", 2_900, false]]],
       ["start", [["30d", 800, true], ["90d", 1_900, false]]],

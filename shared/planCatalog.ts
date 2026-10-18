@@ -15,7 +15,8 @@
  *    (D-007: Indian sole proprietorship, not GST-registered).
  *  - Free: 3 open asks, 3 credits every UTC calendar month (no carryover).
  *    No welcome credits (D-039). The one-time 14-day Momentum reverse trial
- *    stays in code; its start timing is an open owner question.
+ *    stays in code, switched off and off the public catalog until its
+ *    trigger ships (D-051, REVERSE_TRIAL_ON_OFFER).
  *  - Keep warm carries 4 credits a month, Momentum 36 per 30 days (D-041).
  *  - Land Focus/Sprint human review and live sessions read as "coming later"
  *    until reviewers are staffed (D-041); Concierge is by application.
@@ -189,6 +190,15 @@ export const MAX_OPEN_ASKS_PER_COMPANY = 2;
 
 /** One-time reverse trial after the first ask: Momentum's open asks and 5 trial credits for 14 days, no card, once per person. */
 export const REVERSE_TRIAL = { plan: "momentum", days: 14, credits: 5 } as const satisfies { plan: CatalogPlanId; days: number; credits: number };
+
+/**
+ * D-051: nothing grants the reverse trial yet (grantTrialCreditsTx has no runtime caller), so
+ * it is not offered: the public catalog (GET /api/plans/catalog) and every screen leave it
+ * out (D-044: nothing advertised that code does not grant). It stays in code, switched off,
+ * not removed (D-042). Turn this on in the same change that ships its trigger (recommended:
+ * the seeker's first ask that reaches an available verified referrer).
+ */
+export const REVERSE_TRIAL_ON_OFFER: boolean = false;
 
 // ---- Lookups ----
 
