@@ -4145,7 +4145,11 @@ async function verifiedEmailsForUserTx(tx: any, userId: number): Promise<string[
   return Array.from(new Set(aliases.map((alias: { normalizedVerifiedEmail: string | null }) => alias.normalizedVerifiedEmail).filter((email: string | null): email is string => !!email)));
 }
 
-/** The receipt row for a provider gift event. A claimed gift is parked as plan_retired in the same write; nothing is credited. */
+/**
+ * The receipt row for a provider gift event. A claimed gift is parked as plan_retired in the same write; nothing is credited.
+ * `parked` is true only for the call that moved the row to plan_retired (the webhook alerts once per gift on it); a
+ * redelivery, a gift credited before D-067 and a terminal (expired/cancelled) gift park nothing.
+ */
 export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -4161,9 +4165,10 @@ export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
         fulfillmentStatus: terminal ?? (claimed ? "conflict" : "pending"),
         failureReason: terminal ? `provider_${terminal}` : claimed ? GIFT_RETIRED_REASON : null,
       });
-      return (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1))[0];
+      const inserted = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1))[0];
+      return { ...inserted, parked: !terminal && claimed };
     }
-    if (existing.fulfillmentStatus === "credited") return existing;
+    if (existing.fulfillmentStatus === "credited") return { ...existing, parked: false };
     const patch: Record<string, unknown> = { providerStatus: input.status };
     if (!existing.subscriptionId && input.subscriptionId) patch.subscriptionId = input.subscriptionId;
     if (!existing.receiverEmail && input.receiverEmail) patch.receiverEmail = input.receiverEmail;
@@ -4174,22 +4179,25 @@ export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
     if (terminal && (existing.fulfillmentStatus === "pending" || existing.fulfillmentStatus === "conflict")) {
       patch.fulfillmentStatus = terminal;
       patch.failureReason = `provider_${terminal}`;
-    } else if (claimed && existing.fulfillmentStatus === "pending") {
+    }
+    const parked = !terminal && claimed && existing.fulfillmentStatus === "pending";
+    if (parked) {
       patch.fulfillmentStatus = "conflict";
       patch.failureReason = GIFT_RETIRED_REASON;
     }
     await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, existing.id));
-    return { ...existing, ...patch };
+    return { ...existing, ...patch, parked };
   });
 }
 
 /**
  * POST /api/chargebee/gifts/claim. Only the verified recipient may claim, and a
  * claim never credits anything (D-067): a still-pending gift is parked as
- * plan_retired and the answer is "retired"; a gift credited before D-067 is a
- * duplicate. No wallet, plan cycle or ledger row is ever written here.
+ * plan_retired and the answer is "retired" (`parked` says whether this call
+ * moved it, so the route alerts once per gift); a gift credited before D-067 is
+ * a duplicate. No wallet, plan cycle or ledger row is ever written here.
  */
-export async function claimGiftSubscription(callerUserId: number, giftId: string): Promise<{ status: "retired"; giftId: string } | { status: "duplicate" }> {
+export async function claimGiftSubscription(callerUserId: number, giftId: string): Promise<{ status: "retired"; giftId: string; parked: boolean } | { status: "duplicate" }> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
@@ -4199,8 +4207,9 @@ export async function claimGiftSubscription(callerUserId: number, giftId: string
     if (!row.receiverEmail) throw new Error("This gift is not ready to claim yet");
     const resolution = await resolveGiftRecipientTx(tx, row.receiverEmail);
     if (resolution.status !== "resolved" || resolution.userId !== callerUserId) throw new Error("This gift was sent to a different email address");
-    if (row.fulfillmentStatus === "pending") await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", failureReason: GIFT_RETIRED_REASON }).where(and(eq(giftSubscriptionFulfillments.id, row.id), eq(giftSubscriptionFulfillments.fulfillmentStatus, "pending")));
-    return { status: "retired" as const, giftId: row.giftId };
+    const parked = row.fulfillmentStatus === "pending";
+    if (parked) await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", failureReason: GIFT_RETIRED_REASON }).where(and(eq(giftSubscriptionFulfillments.id, row.id), eq(giftSubscriptionFulfillments.fulfillmentStatus, "pending")));
+    return { status: "retired" as const, giftId: row.giftId, parked };
   });
 }
 

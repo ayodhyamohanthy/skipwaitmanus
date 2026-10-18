@@ -125,12 +125,38 @@ describe("gift receipts after D-067", () => {
     gifts.push({ id: 1, giftId: "gift_1", provider: "chargebee", buyerUserId: 9, receiverEmail: "james@user.com", recipientUserId: null, role: "job_seeker", plan: "pro", currency: "USD", amount: 700, subscriptionId: "sub_gift_1", providerStatus: "claimed", fulfillmentStatus: "pending", failureReason: null, creditedAt: null });
     await expect(claimGiftSubscription(8, "gift_1")).rejects.toThrow("This gift was sent to a different email address");
     expect(gifts[0]).toMatchObject({ fulfillmentStatus: "pending" });
-    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1" });
+    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1", parked: true });
     expect(gifts[0]).toMatchObject({ fulfillmentStatus: "conflict", failureReason: "plan_retired", recipientUserId: null, creditedAt: null });
-    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1" });
+    // A repeat claim is refused the same way, but this call parked nothing (so the route sends no second alert).
+    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1", parked: false });
     expect(wallets).toEqual([]);
     expect(ledgerRows).toEqual([]);
     await expect(claimGiftSubscription(7, "gift_missing")).rejects.toThrow("We could not find this gift");
+  });
+
+  // Review round (D-067): the admin is alerted once per gift, when a call parks it. Each write
+  // says whether it was the one that moved the row to plan_retired; a replay, a credited row or a
+  // terminal row parks nothing.
+  it("reports parked only for the receipt that moved the gift to plan_retired", async () => {
+    expect(await recordGiftProviderEvent({ ...claimed, plan: "max" })).toMatchObject({ fulfillmentStatus: "conflict", parked: true });
+    expect(await recordGiftProviderEvent({ ...claimed, plan: "max" })).toMatchObject({ fulfillmentStatus: "conflict", parked: false });
+    expect(await recordGiftProviderEvent({ ...scheduled, eventId: "ev_s2", giftId: "gift_2" })).toMatchObject({ fulfillmentStatus: "pending", parked: false });
+    expect(await recordGiftProviderEvent({ ...scheduled, eventId: "ev_u2", eventType: "gift_updated", giftId: "gift_2", status: "claimed" })).toMatchObject({ fulfillmentStatus: "conflict", parked: true });
+    expect(await recordGiftProviderEvent({ ...claimed, eventId: "ev_c2", giftId: "gift_2" })).toMatchObject({ fulfillmentStatus: "conflict", parked: false });
+    expect(await recordGiftProviderEvent({ eventId: "ev_x3", eventType: "gift_expired", giftId: "gift_3", status: "expired" })).toMatchObject({ fulfillmentStatus: "expired", parked: false });
+    expect(await recordGiftProviderEvent({ ...claimed, eventId: "ev_c3", giftId: "gift_3" })).toMatchObject({ fulfillmentStatus: "expired", parked: false });
+    gifts.push({ id: 9, giftId: "gift_old", provider: "chargebee", buyerUserId: 9, receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker", plan: "pro", currency: "USD", amount: 700, subscriptionId: "sub_old", providerStatus: "claimed", fulfillmentStatus: "credited", failureReason: null, creditedAt: NOW });
+    expect(await recordGiftProviderEvent({ ...claimed, eventId: "ev_late", giftId: "gift_old" })).toMatchObject({ fulfillmentStatus: "credited", parked: false });
+    expect(wallets).toEqual([]);
+    expect(ledgerRows).toEqual([]);
+  });
+
+  it("a claim of a gift a receipt already parked, or one that expired, parks nothing", async () => {
+    await recordGiftProviderEvent({ ...claimed });
+    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1", parked: false });
+    await recordGiftProviderEvent({ eventId: "ev_x", eventType: "gift_expired", giftId: "gift_2", status: "expired", receiverEmail: "james@user.com" });
+    expect(await claimGiftSubscription(7, "gift_2")).toEqual({ status: "retired", giftId: "gift_2", parked: false });
+    expect(gifts[1]).toMatchObject({ fulfillmentStatus: "expired" });
   });
 
   it("answers a gift credited before D-067 as a duplicate and never credits it again", async () => {

@@ -33,11 +33,11 @@ type Deps = {
   alertPaymentRefund?: (input: { eventId: string; invoiceId?: string; paymentId?: number; reason: string; refundAmount?: number; currency?: string }) => Promise<unknown>;
   alertUnmatchedPayment?: (input: { eventId: string; invoiceId?: string; hostedPageId?: string; reason: string; paidAmount: number; paidCurrency: string }) => Promise<unknown>;
   /** Durable receipt for a provider gift event (D-067: receipts only; a claimed gift is parked as plan_retired). */
-  recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number }) => Promise<{ giftId: string; fulfillmentStatus: string }>;
+  recordGiftEvent?: (input: { eventId: string; eventType: string; giftId: string; status: string; receiverEmail?: string; receiverCustomerId?: string; subscriptionId?: string; buyerUserId?: number }) => Promise<{ giftId: string; fulfillmentStatus: string; parked: boolean }>;
   listBuyerGifts?: (buyerUserId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; receiverEmail: string | null; providerStatus: string | null; fulfillmentStatus: string; subscriptionId: string | null; creditedAt: Date | null; createdAt: Date }>>;
   listClaimableGifts?: (userId: number) => Promise<Array<{ giftId: string; plan: RetiredPlanId | null; currency: string | null; amount: number | null; subscriptionId: string | null; receiverEmail: string | null; createdAt: Date }>>;
-  /** Never credits (D-067): "retired" for a gift still waiting, "duplicate" for one credited before D-067. */
-  claimGift?: (userId: number, giftId: string) => Promise<{ status: "retired"; giftId: string } | { status: "duplicate" }>;
+  /** Never credits (D-067): "retired" for a gift not credited (`parked` when this call parked it), "duplicate" for one credited before D-067. */
+  claimGift?: (userId: number, giftId: string) => Promise<{ status: "retired"; giftId: string; parked: boolean } | { status: "duplicate" }>;
   /** D-067: anything Chargebee sends for the retired Pro/Max plans, or a claim of such a gift; a human cancels and refunds it. */
   alertRetiredPlanEvent?: (input: { eventId?: string; eventType?: string; reason: string; subscriptionId?: string; giftId?: string; itemPriceId?: string }) => Promise<unknown>;
 };
@@ -193,9 +193,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       if (!deps.claimGift) return res.status(503).json({ error: "Gift claiming is temporarily unavailable" });
       const result = await deps.claimGift(identity.account.id, parsed.data.giftId);
       // D-067: no gift is ever credited. The recipient is told plainly, and a human refunds the sender.
+      // The admin is told once per gift: only the call that parked it alerts (a repeat claim, or a gift
+      // the provider receipt already parked and alerted, gets the same answer without another email).
       if (result.status === "retired") {
-        record({ actorUserId: identity.account.id, action: "billing.gift_claim_refused", outcome: "denied", resourceType: "gift", resourceId: parsed.data.giftId, metadata: { reason: PLAN_RETIRED_CODE } });
-        void deps.alertRetiredPlanEvent?.({ reason: "gift_claim_refused", giftId: parsed.data.giftId }).catch(() => undefined);
+        record({ actorUserId: identity.account.id, action: "billing.gift_claim_refused", outcome: "denied", resourceType: "gift", resourceId: parsed.data.giftId, metadata: { reason: PLAN_RETIRED_CODE, parked: result.parked } });
+        if (result.parked) void deps.alertRetiredPlanEvent?.({ reason: "gift_claim_refused", giftId: parsed.data.giftId }).catch(() => undefined);
         return res.status(409).json({ error: GIFT_RETIRED_MESSAGE, code: PLAN_RETIRED_CODE });
       }
       return res.json({ status: result.status });
@@ -352,19 +354,24 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
     const gift = parseGiftEvent(req.body);
     if (gift && deps.recordGiftEvent) {
       try {
-        await deps.recordGiftEvent({ ...gift });
+        const receipt = await deps.recordGiftEvent({ ...gift });
         // Every gift event is a durable receipt and moves no credit. Lifecycle events
         // (scheduled/unclaimed/expired/cancelled/updated) end 202 exactly as before
-        // gifts existed. D-067: a claimed gift naming a receiver subscription used to
-        // credit the recipient with Pro or Max. It is now parked as plan_retired by the
-        // receipt above, never fulfilled, answered 2xx so Chargebee stops retrying, and
-        // alerted so a human cancels and refunds it in the Chargebee dashboard.
-        if (gift.eventType === "gift_claimed" && gift.subscriptionId && gift.receiverEmail) {
+        // gifts existed. D-067: a claimed gift used to credit the recipient with Pro or
+        // Max. It is now parked as plan_retired by the receipt above, never fulfilled,
+        // answered 2xx so Chargebee stops retrying, and alerted once, by the delivery that
+        // parked it, so a human cancels and refunds it in the Chargebee dashboard. A
+        // redelivery gets the same answer without a second email; a gift credited before
+        // D-067 is history and asks for no refund.
+        if (receipt.parked) {
           handled = true;
           obligations.gift = { status: "parked", reason: PLAN_RETIRED_CODE };
           console.error("[Chargebee] claimed gift for a retired plan needs review", { eventId: gift.eventId, giftId: gift.giftId });
           record({ action: "billing.retired_plan_event", outcome: "failure", resourceType: "gift", resourceId: gift.giftId, metadata: { eventId: gift.eventId, eventType: gift.eventType, reason: "gift_claimed", subscriptionId: gift.subscriptionId } });
           void deps.alertRetiredPlanEvent?.({ eventId: gift.eventId, eventType: gift.eventType, reason: "gift_claimed", giftId: gift.giftId, subscriptionId: gift.subscriptionId }).catch(() => undefined);
+        } else if (gift.eventType === "gift_claimed" && gift.subscriptionId && gift.receiverEmail) {
+          handled = true;
+          obligations.gift = receipt.fulfillmentStatus === "credited" ? { status: "duplicate" } : { status: "parked", reason: PLAN_RETIRED_CODE };
         }
       } catch (error) {
         console.error("[Chargebee] gift event error", error);
