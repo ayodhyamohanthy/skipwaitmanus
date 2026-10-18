@@ -12,6 +12,18 @@ config();
 // data to a provider by forgetting to stub a call.
 isolateLiveOutboundCredentials(process.env);
 
+// vitest.config.ts pins LC_ALL/LANG to en_US.UTF-8 for the forked workers because date
+// and number fixtures assume the en-US default locale. If the pin did not reach this
+// worker (a threads pool shares the parent process's locale), stop here with the cause
+// instead of failing date assertions one by one with "8 Oct" vs "Oct 8".
+const workerLocale = new Intl.DateTimeFormat().resolvedOptions().locale;
+if (workerLocale !== "en-US") {
+  throw new Error(
+    `Tests expect the en-US default locale, but this worker resolved "${workerLocale}". ` +
+      "Run with the default forks pool (vitest.config.ts pins LC_ALL) or export LC_ALL=en_US.UTF-8.",
+  );
+}
+
 // waitFor's default async-utility timeout is 1000ms. Several components perform
 // three or more sequential awaits before their first meaningful paint, and under
 // a fully parallel suite run the event loop starves past that budget — producing
