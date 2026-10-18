@@ -73,7 +73,7 @@ describe("block enforcement on referral surfaces", () => {
     expect((await agent.post("/api/company-referrals/601/claim").set(auth)).status).toBe(404);
     expect((await agent.post("/api/company-referrals/601/save").set(auth).send({ saved: true })).status).toBe(404);
     expect((await agent.post("/api/company-referrals/601/review").set(auth).send({ decision: "approved" })).status).toBe(404);
-    expect((await agent.post("/api/company-referrals/601/one-click-review").set(auth).send({ decision: "approved" })).status).toBe(404);
+    expect((await agent.post("/api/company-referrals/601/one-click-review").set(auth).send({ decision: "approved", ethicsConfirmed: true })).status).toBe(404);
     expect((await agent.post("/api/company-referrals/601/progress").set(auth).send({ status: "intro_made" })).status).toBe(404);
     const withdraw = await agent.post("/api/company-referrals/601/withdraw").set("x-test-user", "seeker");
     expect(withdraw.status).toBe(200);
@@ -149,7 +149,7 @@ describe("block enforcement on private email review links", () => {
 
   it("refuses a blocked pair's accept and pass through the email link with no decision, link use or notice", async () => {
     const { app, calls } = reviewLinkApp(new Set([601]));
-    const accept = await decide(app, token, { decision: "approved" }, "referrer");
+    const accept = await decide(app, token, { decision: "approved", ethicsConfirmed: true }, "referrer");
     const pass = await decide(app, token, { decision: "declined", declineReason: "role_not_a_fit" }, "referrer");
     await settle();
     for (const response of [accept, pass]) {
@@ -171,7 +171,7 @@ describe("block enforcement on private email review links", () => {
     expect(ready.headers["cache-control"]).toBe("private, no-store");
 
     const accepted = reviewLinkApp(new Set([602]));
-    const accept = await decide(accepted.app, token, { decision: "approved" }, "referrer");
+    const accept = await decide(accepted.app, token, { decision: "approved", ethicsConfirmed: true }, "referrer");
     await settle();
     expect(accept.status).toBe(200);
     expect(accept.text).toBe(JSON.stringify({ status: "approved" }));
@@ -224,7 +224,7 @@ describe("block enforcement on private email review links", () => {
     expect(ready.status).toBe(200);
     expect(ready.text).toBe(readyBody);
     const { app, calls } = reviewLinkApp(new Set([601]), failing);
-    const accept = await decide(app, token, { decision: "approved" }, "referrer");
+    const accept = await decide(app, token, { decision: "approved", ethicsConfirmed: true }, "referrer");
     expect(accept.status).toBe(200);
     expect(accept.text).toBe(JSON.stringify({ status: "approved" }));
     expect(calls.decisions).toHaveLength(1);

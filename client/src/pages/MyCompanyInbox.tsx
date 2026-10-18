@@ -86,10 +86,10 @@ export default function MyCompanyInbox() {
   const oneClickReview = async (requestId: number, decision: "approved" | "declined", declineReason?: DeclineReason, passReason?: PassReasonCode) => {
     setWorkingId(requestId); setError("");
     try {
-      await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, declineReason, ...(passReason ? { passReason } : {}) }) });
+      await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(decision === "approved" ? { decision, ethicsConfirmed: true } : { decision, declineReason, ...(passReason ? { passReason } : {}) }) });
       setPreview(null); setPendingDecline(null); setPassingId(null);
       setAcceptedId(decision === "approved" ? requestId : null);
-      setNotice(decision === "approved" ? "Referral accepted. You can now message the Job Seeker privately." : "Passed privately. The Job Seeker gets a short private note — never your name.");
+      setNotice(decision === "approved" ? "Request accepted. You can now message the Job Seeker privately." : "Passed privately. The Job Seeker gets a short private note — never your name.");
       await loadInbox();
     } catch (reason) { const message = reason instanceof Error ? reason.message : "This private request can no longer be reviewed"; setError(message.includes("no longer available") ? "Accept failed — Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); }
     finally { setWorkingId(null); }
