@@ -138,7 +138,7 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-b")).status).toBe(409);
   });
 
-  it("queues a no-coverage referral for manual administrator follow-up after reserving the Job Seeker credit", async () => {
+  it("saves a no-coverage referral as waiting, reserves no Job Seeker credit and queues the coverage follow-up", async () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     registerPrivateReferralRoutes(app, {
@@ -152,7 +152,8 @@ describe("private referral HTTP routes", () => {
     const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ requestId: 880, notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2 });
-    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: true } }));
+    // D-034: the credit is spent at first visibility, not at create, so nothing is reserved yet.
+    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: false } }));
   });
 
   it("opens only exact-company referral capacity with bounded slots and no Referrer identity in the Job Seeker-facing result", async () => {

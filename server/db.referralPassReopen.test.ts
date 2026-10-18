@@ -205,7 +205,7 @@ function fixtureDatabase() {
 /** A verified Acme employee (referrerId 9 claims; referrerId 10 is another employee). */
 const profileRow = (userId: number) => ({ id: userId, userId, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: NOW, paused: false, notifyNewAsk: true });
 
-const requestRow = (over: Row = {}): Row => ({ id: 501, jobSeekerId: 7, jobId: 3, referrerId: 9, personalPitch: "I led two launches.", status: "pending", revision: 4, referrerMessage: null, createdAt: new Date("2026-10-14T12:00:00.000Z"), updatedAt: new Date("2026-10-14T12:00:00.000Z"), debitTransactionId: 11, ...over });
+const requestRow = (over: Row = {}): Row => ({ id: 501, jobSeekerId: 7, jobId: 3, referrerId: 9, personalPitch: "I led two launches.", status: "pending", revision: 4, referrerMessage: null, waitingForCoverage: false, coverageVisibleAt: null, coverageHeldAt: null, createdAt: new Date("2026-10-14T12:00:00.000Z"), updatedAt: new Date("2026-10-14T12:00:00.000Z"), debitTransactionId: 11, ...over });
 
 function seed() {
   rows = {
