@@ -25,6 +25,7 @@ import { attachCompanyIdentities, getCompanyDirectoryEntry as defaultCompanyDire
 import { askJobFunctionInputSchema, withParsedJobFunction, type JobFunction } from "../shared/jobFunctions";
 import type { OpenAskSlots } from "../shared/openAskSlots";
 import { OpenAskSlotCapError } from "./planGates";
+import { BlockedPersonalLinkError } from "./blockedPairs";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
 import { resolveAskNote } from "../shared/askNote";
@@ -760,6 +761,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (error instanceof OpenAskSlotCapError) {
         record({ actorUserId, action: "company_referral.slot_cap_reached", outcome: "denied", resourceType: "referral_request", metadata: { open: error.slots.open, cap: error.slots.cap, plan: error.slots.plan } });
         return res.status(409).json({ error: error.message, code: error.code, slots: error.slots });
+      }
+      // P0-block-delivery: a personal link whose owner is blocked with the seeker answers exactly like an inactive link
+      // (same 400 and words, so the block is not revealed); the denial is recorded like every other blocked request.
+      if (error instanceof BlockedPersonalLinkError) {
+        record({ actorUserId, action: "company_referral.blocked_denied", outcome: "denied", resourceType: "referral_request", metadata: { path: "personal_link_create" } });
+        return res.status(400).json({ error: error.message });
       }
       res.status(error instanceof Error && error.name === "ReferralIdempotencyConflictError" ? 409 : /credit|document|link|company domain|employer behind|submission key|opening/i.test(error instanceof Error ? error.message : "") ? 400 : 500).json({ error: error instanceof Error ? error.message : "We could not send this private referral request" }); }
   });

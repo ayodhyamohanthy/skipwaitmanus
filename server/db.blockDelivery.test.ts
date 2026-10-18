@@ -7,6 +7,7 @@ import { jobs, notifications, operationalActivityLogs, profiles, referralAvailab
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { openCompanyReferralAvailability, prepareReferrerReviewEmailNotifications, releaseFirstLookForRequest, saveVerifiedWorkEmail } from "./db";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
+import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE } from "./blockedPairs";
 
 /*
  * P0-block-delivery: a block (userBlocks, either direction) keeps a seeker's
@@ -137,6 +138,35 @@ describe("email and Slack dispatch after an ask is created", () => {
     expect(sent.email).toEqual(["colin@acme.com"]);
     expect(sent.slackAskedFor).toEqual([[COLLEAGUE]]);
     expect(sent.slack).toEqual([`https://hooks.slack.com/services/T0/B0/${COLLEAGUE}`]);
+  });
+});
+
+describe("the ask route's answer to a blocked personal link", () => {
+  type Activity = { actorUserId?: number; action: string; outcome: string };
+  const appRefusing = (error: Error, activity: Activity[]) => {
+    const app = express();
+    app.use(express.json());
+    const deps = {
+      resolveIdentity: async (req: express.Request) => (req.header("x-test-user") ? { account: { id: Number(req.header("x-test-user")), openId: "seeker" } } : undefined),
+      createCompanyReferralRequest: async () => { throw error; },
+      recordActivity: async (entry: Activity) => { activity.push(entry); },
+    };
+    registerPrivateReferralRoutes(app, deps as unknown as PrivateReferralRouteDeps);
+    return app;
+  };
+  const viaLink = { fastTrackCode: "personal-link-code-0001" };
+
+  it("is byte-for-byte the inactive link's answer, and the denial is recorded for the repair loop", async () => {
+    const blockedActivity: Activity[] = [];
+    const inactiveActivity: Activity[] = [];
+    const blocked = await sendAsk(appRefusing(new BlockedPersonalLinkError(), blockedActivity), viaLink);
+    const inactive = await sendAsk(appRefusing(new Error(PERSONAL_LINK_UNAVAILABLE), inactiveActivity), viaLink);
+    expect(blocked.status).toBe(400);
+    expect(blocked.body).toEqual({ error: PERSONAL_LINK_UNAVAILABLE });
+    expect([blocked.status, blocked.text]).toEqual([inactive.status, inactive.text]);
+    expect(blockedActivity).toContainEqual(expect.objectContaining({ actorUserId: SEEKER, action: "company_referral.blocked_denied", outcome: "denied" }));
+    expect(blockedActivity.map(entry => entry.action)).not.toContain("company_referral.created");
+    expect(inactiveActivity.map(entry => entry.action)).not.toContain("company_referral.blocked_denied");
   });
 });
 

@@ -45,7 +45,7 @@ import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } f
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskShelfLife, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks } from "./heldAsk";
-import { blockedCounterpartsFailOpen } from "./blockedPairs";
+import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
@@ -1775,7 +1775,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
   if(input.opportunityId&&(input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias))throw new Error("Use one private referral link at a time");
   if(input.fastTrackCode&&(input.fastTrackCompanySlug||input.fastTrackAlias))throw new Error("Use one private referral link at a time");
   const fastTrackLink=input.fastTrackCode?await getActiveReferrerFastTrackLink(input.fastTrackCode):input.fastTrackCompanySlug&&input.fastTrackAlias?await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug,input.fastTrackAlias):undefined;
-  if((input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias)&&!fastTrackLink)throw new Error("This private referral link is no longer active");
+  if((input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias)&&!fastTrackLink)throw new Error(PERSONAL_LINK_UNAVAILABLE);
   if(fastTrackLink&&!fastTrackLinkMatchesCompany(fastTrackLink.companyDomain,companyDomain))throw new Error("Use a job link for the same company as this private referral link");
   await ensureTokenWallet(userId,"job_seeker");
   return db.transaction(async tx=>{
@@ -1805,10 +1805,12 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
     const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
     const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));const coverageStatus=companyCoverageStatus(eligible.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
-    // P0-block-delivery: one lookup over everyone this ask could reach (fail-open, server/blockedPairs.ts). Anyone
-    // blocked with the seeker (either way) is never told and gets no review link; a blocked poster gets no first look.
-    // Coverage still counts every eligible employee, so the ask's status never reveals a block.
-    const blockedWithSeeker=await blockedCounterpartsFailOpen(tx,userId,eligible.map(employee=>employee.userId),"ask_create_delivery");
+    // P0-block-delivery: one lookup over everyone this ask could reach (fail-open, server/blockedPairs.ts). A personal
+    // link whose owner is blocked with the seeker (either way) is refused here, before any write or credit, with the
+    // inactive-link words. Anyone else blocked is never told and gets no review link; a blocked poster gets no first
+    // look. Coverage still counts every eligible employee, so the ask's status never reveals a block.
+    const blockedWithSeeker=await blockedCounterpartsFailOpen(tx,userId,[...eligible.map(employee=>employee.userId),...(fastTrackLink?[fastTrackLink.referrerId]:[])],"ask_create_delivery");
+    if(fastTrackLink&&blockedWithSeeker.has(fastTrackLink.referrerId))throw new BlockedPersonalLinkError();
     const reachable=eligible.filter(employee=>!blockedWithSeeker.has(employee.userId));
     // D-022: an ask written from a post goes to the poster alone for 48 hours
     // while they still count as an open referrer; otherwise it opens to the team.

@@ -6,7 +6,7 @@ import {
   promoCreditGrants, planCreditGrants, referralAttachments, referralAvailabilitySlots,
   referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves,
   referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks,
-  tokenBalances, tokenTransactions, userBlocks, users,
+  referrerFastTrackLinks, tokenBalances, tokenTransactions, userBlocks, users,
 } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { OPPORTUNITY_FIRST_LOOK_MS, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
@@ -18,6 +18,7 @@ import {
   saveCompanyReferralRequest, opportunityPosterOf,
 } from "./db";
 import { listLapsedFirstLooks } from "./firstLookRelease";
+import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE } from "./blockedPairs";
 
 /*
  * D-022 referrer-posted roles: an ask written from a post goes to the poster
@@ -46,7 +47,7 @@ const COLLEAGUE = 10;
 const URL_ = "https://careers.acme.com/jobs/123";
 
 type Row = Record<string, unknown>;
-const TABLES = [tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants, jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, companyOpportunities, users, canonicalPeople, operationalActivityLogs, userBlocks];
+const TABLES = [tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants, jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, companyOpportunities, users, canonicalPeople, operationalActivityLogs, userBlocks, referrerFastTrackLinks];
 const TABLE_BY_NAME = new Map(TABLES.map(table => [getTableName(table), table]));
 const COLUMNS_BY_NAME = new Map(TABLES.map(table => [getTableName(table), Object.keys(getTableColumns(table))]));
 
@@ -322,6 +323,7 @@ function seed() {
     notifications: [],
     operationalActivityLogs: [],
     userBlocks: [],
+    referrerFastTrackLinks: [],
   };
   sequence = {};
   failBlockReads = false;
@@ -462,6 +464,46 @@ describe("P0-block-delivery: a block on the create path", () => {
     expect(await sendWithPost()).toMatchObject({ firstLook: true, notifiedEmployees: 1 });
     expect(recipients(rows.notifications)).toEqual([POSTER]);
     expect(mocks.capture).toHaveBeenCalledWith(expect.objectContaining({ code: "ER_NO_SUCH_TABLE" }), expect.objectContaining({ area: "ask_create_delivery" }));
+  });
+
+  describe("through a personal link (D-017)", () => {
+    const LINK = "personal-link-code-0001";
+    beforeEach(() => {
+      rows.referrerFastTrackLinks = [{ id: 1, referrerId: POSTER, companyDomain: "acme.com", linkCode: LINK, vanityAlias: null, isActive: true, createdAt: new Date(NOW), updatedAt: new Date(NOW), deactivatedAt: null }];
+    });
+    const sendViaLink = () => createCompanyReferralRequest(SEEKER, { targetRoleUrl: URL_, personalPitch: "I shipped the approvals redesign this role describes.", attachmentIds: [41], idempotencyKey: "link-ask-key-0001", fastTrackCode: LINK });
+    const refusalOf = (work: Promise<unknown>) => work.then(() => undefined, (reason: unknown) => reason);
+
+    it.each(DIRECTIONS)("is refused with the inactive-link words before any write or credit when %s", async (_label, blocker, blocked) => {
+      blockPair(blocker, blocked);
+      const refusal = await refusalOf(sendViaLink());
+      expect(refusal).toBeInstanceOf(BlockedPersonalLinkError);
+      expect(refusal instanceof Error ? refusal.message : "").toBe(PERSONAL_LINK_UNAVAILABLE);
+      expect(rows.referralRequests).toEqual([]);
+      expect(rows.jobs).toHaveLength(1); // the seeded row only
+      expect(rows.tokenTransactions).toEqual([]);
+      expect(rows.planCreditGrants).toEqual([]);
+      expect(rows.tokenBalances[0]).toMatchObject({ monthlyCreditsRemaining: 3, balance: 0 });
+      expect(rows.referralAttachments[0].referralRequestId).toBeNull();
+      expect(rows.notifications).toEqual([]);
+      expect(rows.referrerReviewEmailLinks).toEqual([]);
+      expect(rows.referralReviewDeliveries).toEqual([]);
+    });
+
+    it("answers a blocked link with exactly the words an inactive link gets", async () => {
+      rows.referrerFastTrackLinks[0].isActive = false;
+      const inactive = await refusalOf(sendViaLink());
+      expect(inactive instanceof Error ? inactive.message : "").toBe(PERSONAL_LINK_UNAVAILABLE);
+      expect(inactive).not.toBeInstanceOf(BlockedPersonalLinkError);
+    });
+
+    it("still goes to the link owner alone when nothing is blocked", async () => {
+      blockPair(COLLEAGUE, SEEKER);
+      expect(await sendViaLink()).toMatchObject({ fastTrack: true, notifiedEmployees: 1, replayed: false });
+      expect(rows.referralRequests[0]).toMatchObject({ referrerId: POSTER, status: "pending" });
+      expect(recipients(rows.notifications)).toEqual([POSTER]);
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    });
   });
 });
 
