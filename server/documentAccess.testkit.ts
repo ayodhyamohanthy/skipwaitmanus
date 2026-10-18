@@ -5,9 +5,10 @@
  * in-memory drizzle client. Tests install the client with
  * vi.mock("drizzle-orm/mysql2", ...) and reseed with `resetStore`.
  *
- * The in-memory client applies no column defaults, so an event the code
- * inserts has createdAt null; a historical acceptance is seeded with an
- * explicit time through `acceptance`.
+ * The in-memory client applies no column defaults. The code writes each
+ * transition event's createdAt itself (the app clock); a historical
+ * acceptance or claim is seeded with an explicit time through `acceptance`
+ * or `claim`.
  */
 import express from "express";
 import { jobs, profiles, referralAttachments, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, referrerReviewEmailLinks, tokenBalances, tokenTransactions, users } from "../drizzle/schema";
@@ -29,9 +30,14 @@ export const REVIEW_LINK_TOKEN = "a".repeat(48);
 export const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type AskSeed = { status?: string; referrerId?: number | null; revision?: number; waitingForCoverage?: boolean; firstLookReferrerId?: number | null; firstLookUntil?: Date | null };
-/** A recorded acceptance of the ask (its "approved" transition event): who accepted it and when. */
+/** A recorded transition of the ask by one person (its "approved" acceptance, or a claim): who and when. */
 export type AcceptanceSeed = { by: number; at: Date };
-export type StoreSeed = { ask?: AskSeed; grants?: readonly Row[]; passedBy?: readonly number[]; extraAttachments?: readonly Row[]; acceptance?: AcceptanceSeed; reviewLinkFor?: number };
+export type StoreSeed = { ask?: AskSeed; grants?: readonly Row[]; passedBy?: readonly number[]; extraAttachments?: readonly Row[]; acceptance?: AcceptanceSeed; claim?: AcceptanceSeed; reviewLinkFor?: number };
+
+const transitionEvent = (id: number, event: AcceptanceSeed, kind: "claim" | "approve", revision: number): Row => ({
+  id, referralRequestId: REQUEST_ID, operationKey: kind === "claim" ? `claim:${event.by}` : `one-click:${event.by}:approved`, actorUserId: event.by, action: kind,
+  fromStatus: "pending", resultingStatus: kind === "claim" ? "pending" : "approved", resultingRevision: revision, referenceId: null, createdAt: event.at,
+});
 
 /** One ask (pending and unclaimed unless overridden), the seeker's resume on it, and the seeker's wallet with the ask's debit. */
 export function seedRows(options: StoreSeed = {}) {
@@ -50,7 +56,7 @@ export function seedRows(options: StoreSeed = {}) {
     [referralAttachments, [...(options.extraAttachments ?? []), { id: RESUME_ID, ownerId: SEEKER, referralRequestId: REQUEST_ID, fileName: "Avery-Example-Resume.pdf", fileKey: "private/avery.pdf", mimeType: "application/pdf", fileSize: 2048 }]],
     [referralDocumentAccessGrants, [...(options.grants ?? [])]],
     [referralRequestPasses, (options.passedBy ?? []).map((referrerId, index): Row => ({ id: 70 + index, referralRequestId: REQUEST_ID, referrerId, reason: "timing" }))],
-    [referralTransitionEvents, acceptance ? [{ id: 40, referralRequestId: REQUEST_ID, operationKey: `one-click:${acceptance.by}:approved`, actorUserId: acceptance.by, action: "approve", fromStatus: "pending", resultingStatus: "approved", resultingRevision: revision, referenceId: null, createdAt: acceptance.at }] : []],
+    [referralTransitionEvents, [...(options.claim ? [transitionEvent(39, options.claim, "claim", revision - 1)] : []), ...(acceptance ? [transitionEvent(40, acceptance, "approve", revision)] : [])]],
     [referrerReviewEmailLinks, reviewLinkFor === undefined ? [] : [{ id: 51, referralRequestId: REQUEST_ID, referrerId: reviewLinkFor, linkToken: REVIEW_LINK_TOKEN, expiresAt: new Date(Date.now() + DAY_MS), consumedAt: null, grantVersion: 1, rotatedAt: null }]],
     [tokenBalances, [{ id: 81, userId: SEEKER, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-10", plan: "free" }]],
     [tokenTransactions, [{ id: 61, userId: SEEKER, role: "job_seeker", tokenCount: -1, kind: "direct_request", source: "monthly_allowance", sourceCycleKey: "2026-10", reversesTransactionId: null }]],

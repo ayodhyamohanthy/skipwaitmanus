@@ -353,6 +353,10 @@ describe("attachment lookup scopes the requested file before limiting", () => {
     // D-019(e): the claimed ask is still pending, so its active claim-era grant opens nothing.
     expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
     ask().status = "approved";
+    // Approved without referrer 9's own acceptance (an administrator approved the claim before ee226f3): still nothing.
+    expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();
+    // Referrer 9's own acceptance, older than 30 days, so the grant's window decides each check below.
+    rows.referralTransitionEvents.push({ id: 1, referralRequestId: 501, operationKey: "one-click:9:approved", actorUserId: 9, action: "approve", fromStatus: "pending", resultingStatus: "approved", resultingRevision: 5, referenceId: null, createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000) });
     expect(await getAccessibleReferralAttachment(9, 72)).toMatchObject({ id: 72 });
     rows.referralDocumentAccessGrants[0].expiresAt = new Date(0);
     expect(await getAccessibleReferralAttachment(9, 72)).toBeUndefined();

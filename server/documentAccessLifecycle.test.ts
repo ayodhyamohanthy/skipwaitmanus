@@ -32,6 +32,11 @@ const oneClickAccept = (server: express.Express, user: number) => request(server
 const review = (server: express.Express, user: number) => request(server).post(`/api/company-referrals/${REQUEST_ID}/review`).set("x-test-user", String(user)).send({ decision: "approved" });
 const grants = () => store.rows(referralDocumentAccessGrants);
 const detailViews = (activity: readonly RecordedActivity[]) => activity.filter(entry => entry.action === "company_referral.claimed_detail_viewed").map(entry => entry.metadata);
+/** Whether the referrer's acceptance event (one-click "approve" or legacy "review") carries the app clock's time (AGENTS invariant 5). */
+const acceptanceStampedNow = (action: "approve" | "review") => {
+  const at = store.rows(referralTransitionEvents).find(event => event.action === action && event.actorUserId === REFERRER && event.resultingStatus === "approved")?.createdAt;
+  return at instanceof Date && Math.abs(at.getTime() - Date.now()) < 60_000;
+};
 const OPEN_RESUME = { id: RESUME_ID, fileName: "Avery-Example-Resume.pdf", mimeType: "application/pdf", fileSize: 2048, url: `/api/documents/${RESUME_ID}` };
 
 describe("a claim never opens the resume (D-019(e))", () => {
@@ -74,6 +79,8 @@ describe("acceptance opens the resume to the accepting referrer only", () => {
     expect(grants()).toEqual([expect.objectContaining({ referralRequestId: REQUEST_ID, referrerId: REFERRER, grantVersion: 1, revokedAt: null })]);
     const expiresAt = grants()[0]?.expiresAt;
     expect(expiresAt instanceof Date && Math.abs(expiresAt.getTime() - (Date.now() + 30 * DAY_MS)) < 60_000).toBe(true);
+    // Access is decided from this acceptance event, so its time comes from the app, as the grant's does.
+    expect(acceptanceStampedNow("approve")).toBe(true);
 
     const file = await getDocument(server, REFERRER);
     expect(file.status).toBe(307);
@@ -119,6 +126,7 @@ describe("acceptance opens the resume to the accepting referrer only", () => {
     const server = documentAccessApp();
     expect((await review(server, REFERRER)).status).toBe(200);
     expect(grants()).toEqual([expect.objectContaining({ referrerId: REFERRER, revokedAt: null })]);
+    expect(acceptanceStampedNow("review")).toBe(true);
     expect((await getDocument(server, REFERRER)).status).toBe(307);
   });
 

@@ -2419,8 +2419,8 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
 }
 
 // The ask assigned to this referrer: claimed and still pending, or accepted by them. A claim writes no document grant
-// (D-019(e)), so a pending ask loads on its assignment alone; an accepted ask needs this referrer's own acceptance or
-// an unrevoked grant (isAcceptingReferrer). Only the accepting referrer gets the seeker's name, and
+// (D-019(e)), so a pending ask loads on its assignment alone; an accepted ask needs this referrer's own recorded
+// acceptance, never a grant alone (isAcceptingReferrer). Only the accepting referrer gets the seeker's name, and
 // documentAccessActive is the same rule as GET /api/documents/:id. server/referrerAskView.ts builds the response.
 export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
   const db = await getDb(); if (!db) return undefined;
@@ -2506,12 +2506,14 @@ async function transitionReferralRequestTx(tx: any, input: ReferralTransitionInp
   if (["declined","withdrawn","closed"].includes(input.toStatus)) await tx.update(referralDocumentAccessGrants).set({revokedAt:new Date(),revokeReason:`terminal:${input.toStatus}`}).where(and(eq(referralDocumentAccessGrants.referralRequestId,input.requestId),isNull(referralDocumentAccessGrants.revokedAt)));
   // D-019(e): the referrer's own acceptance opens their document access, in this transaction (a replay returned above,
   // so once per acceptance). Every accept path lands here: one-click (/queue, thread, email link, D-022 first look) and review.
+  // The event's time is the app clock, like the grant's: document access compares the acceptance time with app time (invariant 5).
+  const now = new Date();
   const acceptedBy: number | null = input.toStatus === "approved" ? (input.patch?.referrerId !== undefined ? input.patch.referrerId : current.referrerId) : null;
   if (acceptedBy !== null && acceptedBy === input.actorUserId) {
-    const grant = await openAcceptanceDocumentGrantTx(tx, { requestId: input.requestId, referrerId: acceptedBy, revision: nextRevision, now: new Date() });
+    const grant = await openAcceptanceDocumentGrantTx(tx, { requestId: input.requestId, referrerId: acceptedBy, revision: nextRevision, now });
     if (grant === "kept_revoked") captureServerError(new Error("Acceptance left a revoked document grant closed"), { requestId: input.requestId, referrerId: acceptedBy });
   }
-  await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision, referenceId: input.eventReferenceId ?? null });
+  await tx.insert(referralTransitionEvents).values({ referralRequestId: input.requestId, operationKey: input.operationKey, actorUserId: input.actorUserId, action: input.action, fromStatus: current.status, resultingStatus: input.toStatus, resultingRevision: nextRevision, referenceId: input.eventReferenceId ?? null, createdAt: now });
   if (input.notification) await tx.insert(notifications).values({ userId: input.notification.userId, category: "status", kind: transitionNotificationKind(input.action, input.toStatus), refId: input.requestId, title: input.notification.title, body: input.notification.body, eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` }).onDuplicateKeyUpdate({ set: { eventKey: `referral:${input.requestId}:v${nextRevision}:${input.toStatus}` } });
   return { status: input.toStatus, revision: nextRevision, replayed: false as const };
 }

@@ -170,5 +170,9 @@ describe("referrer-facing reads", () => {
     // Assigned to an accepted ask with no evidence this referrer accepted it: nothing.
     rowsByTable.set(referralRequests, [{ ...ask, status: "approved", grantId: null, grantRevokedAt: null, grantExpiresAt: null, acceptedByActorAt: null }]);
     expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toBeUndefined();
+
+    // An unexpired claim-era grant is not an acceptance (an administrator approved the claimed ask before ee226f3): nothing.
+    rowsByTable.set(referralRequests, [{ ...ask, status: "approved", grantId: 9, grantRevokedAt: null, grantExpiresAt: new Date(Date.now() + DAY), acceptedByActorAt: null }]);
+    expect(await getClaimedCompanyReferralDetail(REFERRER, 501)).toBeUndefined();
   });
 });

@@ -12,8 +12,9 @@ import { claimCompanyReferralRequest, expireStalePendingReferralRequest, getAcce
  * the seeker keeps their file; an administrator never opens the resume to
  * anyone; and rows written before the fix follow rule (e), derived on read
  * with no backfill: an ask accepted earlier opens for 30 days from that
- * referrer's own acceptance, a claim-era grant opens nothing until acceptance,
- * and a revoked grant is never reopened.
+ * referrer's own acceptance, a claim-era grant opens nothing until acceptance
+ * (and nothing at all when an administrator, not the referrer, approved the
+ * claimed ask before ee226f3), and a revoked grant is never reopened.
  */
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn(), capture: vi.fn() }));
@@ -122,6 +123,22 @@ describe("rule (e): rows from before the fix, derived on read", () => {
     await expect(getClaimedCompanyReferralDetail(REFERRER, REQUEST_ID)).resolves.toBeUndefined();
     expect(await opens(REFERRER)).toBe(false);
     expect(await opens(COLLEAGUE)).toBe(false);
+  });
+
+  it("a claim and its grant are not an acceptance: the claimant of an ask an administrator approved before ee226f3 gets no name and no file", async () => {
+    // What resolveAdminApproval left before ee226f3: approved, the claimant assigned, their claim event and unexpired
+    // claim-era grant, and no acceptance event by them (an admin approval recorded none).
+    const adminApproved = (grantExpiresAt: Date) => resetStore({ ask: { status: "approved", referrerId: REFERRER, revision: 4 }, claim: { by: REFERRER, at: new Date(Date.now() - 2 * DAY_MS) }, grants: [claimEraGrant(grantExpiresAt)] });
+    adminApproved(new Date(Date.now() + 20 * DAY_MS));
+    const detail = await detailOf(REFERRER);
+    expect(detail.status).toBe(404);
+    expect(JSON.stringify(detail.body)).not.toMatch(/Avery|candidateName|\/api\/documents/);
+    expect(await fileStatus(REFERRER)).toBe(404);
+    expect(await opens(SEEKER)).toBe(true);
+    // Nor once that grant has expired: no lasting name either.
+    adminApproved(new Date(Date.now() - DAY_MS));
+    await expect(getClaimedCompanyReferralDetail(REFERRER, REQUEST_ID)).resolves.toBeUndefined();
+    expect(await opens(REFERRER)).toBe(false);
   });
 
   it("a pending ask holding a claim-era grant opens nothing until accepted", async () => {

@@ -11,11 +11,13 @@ import { referralDocumentAccessGrants, referralRequests, referralTransitionEvent
  *   document grant, in the acceptance transaction (transitionReferralRequestTx
  *   calls openAcceptanceDocumentGrantTx), valid DOCUMENT_GRANT_TTL_MS. An
  *   administrator can never accept a claimed ask (adminReferralApproval.ts).
- * - Rows written before this rule are read, never rewritten (no backfill):
- *   the referrer's own recorded acceptance (their transition event that
- *   resulted in approved, logged since migration 0058) opens the same 30-day
- *   window an acceptance grant gives; an unrevoked claim-era grant keeps its
- *   own window; a revoked grant always wins and is never reopened.
+ * - Only the referrer's own recorded acceptance counts: their transition event
+ *   that resulted in approved (logged since migration 0058, before grants
+ *   existed). It opens a 30-day window; an unrevoked grant can only extend it;
+ *   a revoked grant always wins and is never reopened. A grant alone opens
+ *   nothing: before ee226f3 an administrator could approve a claimed ask,
+ *   which left the claimant's claim-era grant and no acceptance by them.
+ * - Rows written before this rule are read, never rewritten (no backfill).
  * - The Job Seeker who uploaded a file always has it (checked by the caller).
  *
  * GET /api/documents/:id and the assigned referrer's detail view both use these
@@ -51,13 +53,13 @@ export function isReferrerDocumentAccessStatus(status: string | null | undefined
 
 const timeOf = (value: Date | null | undefined): number | null => (value instanceof Date && Number.isFinite(value.getTime()) ? value.getTime() : null);
 
-/** The referrer the ask is assigned to, who accepted it and never passed: may see the seeker's name and file names. */
+/** The referrer the ask is assigned to, who accepted it themselves and never passed: may see the seeker's name and file names. A grant is not an acceptance. */
 export function isAcceptingReferrer(input: ReferrerAskAccessInput): boolean {
   if (!isReferrerDocumentAccessStatus(input.requestStatus) || input.referrerId !== input.actorUserId || input.passedByActor) return false;
-  return timeOf(input.acceptedByActorAt) !== null || (input.grant !== null && input.grant.revokedAt === null);
+  return timeOf(input.acceptedByActorAt) !== null;
 }
 
-/** May open the files now: an accepting referrer whose grant, or own acceptance, is inside its window and never revoked. */
+/** May open the files now: an accepting referrer, no revoked grant, inside the later of their acceptance + 30 days and their grant's expiry. */
 export function isReferrerDocumentAccessActive(input: ReferrerAskAccessInput): boolean {
   if (!isAcceptingReferrer(input) || (input.grant !== null && input.grant.revokedAt !== null)) return false;
   const nowMs = input.now.getTime();
