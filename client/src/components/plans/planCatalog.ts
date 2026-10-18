@@ -4,6 +4,7 @@
 // from shared/planEntitlements.ts (legacy Pro/Max grandfathered), the rules the
 // server enforces. Kit tier names and example prices are not used here: live
 // checkout still sells Free / Pro / Max.
+import { ASK_COST_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
 import { CREDIT_PACKS_ON_SALE, type Carryover } from "@shared/planCatalog";
 import { planEntitlementsFor } from "@shared/planEntitlements";
 import { SUBSCRIPTION_PLANS, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionCurrency } from "@shared/subscriptionPlans";
@@ -120,10 +121,11 @@ export function compareRows(currency: SubscriptionCurrency): Array<readonly [str
   ];
 }
 
+// D-063: the band carries the whole money sentence, one half per rule.
 export const fairnessRules = [
-  "Every account gets free referral credits each month.",
+  ASK_COST_SENTENCE,
   "Paying never moves you up a referrer's queue.",
-  "Referrers never pay to review requests.",
+  REFERRER_MONEY_SENTENCE,
   "No commissions on hires. No paid priority.",
 ];
 
@@ -138,7 +140,7 @@ export function planFaqs(): Array<readonly [string, string]> {
     ["What are credits for?", `1 credit = ${CREDIT_PRICE.USD} = one finished piece of work from SkipWait's tools. Each referral request uses 1 credit, returned if you withdraw before pickup or it expires. ${pro.label} includes ${proLimits.creditsPerMonth} credits a month and ${max.label} ${maxLimits.creditsPerMonth}; extra credits are ${CREDIT_PRICE.USD} each (${CREDIT_PRICE.INR} in India).`],
     ["Do unused credits expire?", `Credits you buy never expire — even if you cancel. Monthly plan credits carry over ${carry(proLimits.carryover)} on ${pro.label} and ${carry(maxLimits.carryover)} on ${max.label}, and end when the paid plan ends.`],
     ["Can I cancel?", "Anytime, from Manage plan. Paid access stays through the current cycle, then your account returns to Free."],
-    ["Do referrers pay?", "Never to review requests. Referrers are always free."],
+    ["Do referrers pay?", "No. Referrers never pay to review requests, SkipWait never pays them, and they never ask you for money."],
     ["Is pricing local?", `Yes. In India plans are charged in rupees (${pro.label} ${pro.prices.INR.display}, ${max.label} ${max.prices.INR.display}); elsewhere in US dollars (${pro.prices.USD.display}, ${max.prices.USD.display}).`],
   ];
 }

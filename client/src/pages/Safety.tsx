@@ -2,12 +2,14 @@ import type { ReactNode } from "react";
 import { ArrowUpRight, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
+import { MONEY_SENTENCE } from "@shared/moneyCopy";
 
 // Kit v4 /safety (app/src/routes/safety.tsx), answers verbatim from the kit.
 // Two kit answers end in a design-preview sentence; those keep the kit's first
 // sentence and drop the preview one (the pay answer points at the live Report flow).
+// The cost answer is the D-063 money sentence: asking is free only for a monthly allowance.
 const ANSWERS: ReadonlyArray<readonly [string, ReactNode]> = [
-  ["Are referrals really free?", "Yes. No payments between job seekers and referrers, no commissions, and no paid priority. A referral is a voluntary introduction, not a purchase."],
+  ["Are referrals really free?", `${MONEY_SENTENCE} There are no commissions and no paid priority: a referral is a voluntary introduction, not a purchase.`],
   ["Who can see a referrer’s name?", "Referrer names are not public. A name is revealed only to the seeker whose request that referrer has accepted."],
   ["Does a referral guarantee an interview?", "No. A referral, interview, offer, or job is never guaranteed. Employers make their own hiring decisions."],
   ["What does work-email verification mean?", "It confirms ownership of an email address on an approved company domain. It does not prove current employment or employer endorsement."],

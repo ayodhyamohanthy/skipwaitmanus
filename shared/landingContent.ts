@@ -10,19 +10,24 @@
  * Nothing here may state an outcome, count, or identity that the product does
  * not produce itself.
  */
+import { MONEY_SENTENCE_SHORT } from "./moneyCopy";
 import { FREE_MONTHLY_ALLOWANCE } from "./subscriptionPlans";
 
 export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
 
 export const LANDING_TITLE = "Private job referrals from verified employees";
-/** The hero headline, one line per row; the page breaks between them and adds the brand dot after the last. */
-export const LANDING_H1_LINES = ["Free job referrals.", "A warmer way in"] as const;
+/**
+ * The hero headline, one line per row; the page breaks between them and adds the brand dot after the last.
+ * D-063: asking is free only for a monthly allowance, so the headline never says "free".
+ */
+export const LANDING_H1_LINES = ["Private job referrals.", "A warmer way in"] as const;
 export const LANDING_H1 = `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}.`;
 /** The hero paragraph, one sentence group per row (the page breaks between them on wide screens). */
 export const LANDING_HERO_LEAD_PARTS = ["Connect with people inside the companies you want to join.", "A real introduction. Not another application into the unknown."] as const;
 export const LANDING_HERO_LEAD = LANDING_HERO_LEAD_PARTS.join(" ");
-export const LANDING_SUMMARY = `Paste the role link, add your resume, and verified employees at that company decide privately whether to refer you. ${FREE_MONTHLY_ALLOWANCE} referral requests are free every month.`;
+/** The search snippet (160 characters at most): how it works, then both money facts (D-063). */
+export const LANDING_SUMMARY = `Paste a role link; verified employees at the company decide privately whether to refer you. ${MONEY_SENTENCE_SHORT}`;
 
 export const LANDING_SEEKER_STEPS: readonly LandingStep[] = [
   { title: "Start with the role", body: "Paste the job link for the company you want to join." },

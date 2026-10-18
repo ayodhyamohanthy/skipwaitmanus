@@ -74,13 +74,15 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" }).every(link => link.getAttribute("href") === "mailto:support@skipwait.me")).toBe(true);
   });
 
-  it("Guidelines carry the kit free-referral rules, published, with no intro paragraph", () => {
+  it("Guidelines carry the no-money rules and the D-063 cost line, published, with no intro paragraph", () => {
     const { container } = render(<Guidelines />);
     expect(document.querySelector('[data-skipwait-screen="guidelines"]')).toBeTruthy();
     expect(screen.getByRole("heading", { level: 1, name: "Guidelines." })).toBeTruthy();
     expect(screen.getByText(/No money, gifts, or favours — before or after\. Seekers: if anyone asks for payment, report it\./)).toBeTruthy();
     expect(screen.getByRole("heading", { name: "The short version" })).toBeTruthy();
-    expect(screen.getByText("Never pay or charge for a referral.")).toBeTruthy();
+    expect(screen.getByText("Never pay a referrer, and never ask a seeker for money.")).toBeTruthy();
+    expect(screen.getByText("3 asks free every month; more use credits. Referrers are never paid and never ask you for money.")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/Referrals are free|free referrals/i);
     expect(screen.queryByText(/Draft · pending legal review/)).toBeNull();
     expect(screen.queryByText(/Breaking these rules can limit or close an account/)).toBeNull();
     expect(screen.getAllByRole("heading", { level: 2 }).map(heading => heading.textContent)).toContain("6. What happens if rules are broken");

@@ -1,7 +1,8 @@
 import { Link } from "wouter";
 import { Tag } from "lucide-react";
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
+import { ASK_COST_SENTENCE, REFERRER_MONEY_SENTENCE } from "@shared/moneyCopy";
+import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 
 /** /pricing — public price list. Mirrors the checkout prices; no sign-in. */
 export default function Pricing() {
@@ -12,11 +13,11 @@ export default function Pricing() {
     eyebrow="Pricing"
     title="Simple prices. Start free."
     intro="Prices are in Indian rupees (INR) for India and US dollars (USD) everywhere else. The price you pay is shown before checkout."
-    updated="September 23, 2026"
+    updated="October 18, 2026"
     status="published"
   >
     <PolicySection number="01" title="Free">
-      <p><strong>{FREE_MONTHLY_ALLOWANCE} referral credits every month, free.</strong> Credits reset monthly. Reviewing and accepting requests is always free for Referrers.</p>
+      <p><strong>{ASK_COST_SENTENCE}</strong> The free credits reset each month. {REFERRER_MONEY_SENTENCE}</p>
     </PolicySection>
     <PolicySection number="02" title="Extra credits (one-time)">
       <ul>

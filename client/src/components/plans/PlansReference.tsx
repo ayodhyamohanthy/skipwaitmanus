@@ -22,7 +22,7 @@ export function PlansReference({ currency }: { currency: SubscriptionCurrency })
       </table></div>
     </section>
 
-    <section className="plans-section referrer-free"><Sparkles /><div><h2>Referrers: always free.</h2><p>Open your door, keep your capacity and build a verified impact record. Referrers never pay to review requests.</p></div><Button asChild variant="outline" className="brand-button"><Link href="/referrer">Referrer workspace <ArrowRight /></Link></Button></section>
+    <section className="plans-section referrer-free"><Sparkles /><div><h2>Referrers: never charged, never paid.</h2><p>Open your door, keep your capacity and build a verified impact record. Referrers never pay to review requests.</p></div><Button asChild variant="outline" className="brand-button"><Link href="/referrer">Referrer workspace <ArrowRight /></Link></Button></section>
 
     <section className="plans-section"><span className="eyebrow">QUESTIONS</span><h2>Straight answers</h2><div className="safety-list">{planFaqs().map(([question, answer]) => <details key={question}><summary>{question}</summary><p>{answer}</p></details>)}</div></section>
 

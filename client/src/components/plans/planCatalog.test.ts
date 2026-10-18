@@ -18,6 +18,12 @@ describe("plan catalog copy after D-012 item 3", () => {
     });
   }
 
+  it("states the D-063 money sentence in the fairness band and never calls referrals free", () => {
+    expect(fairnessRules).toContain("3 asks free every month; more use credits.");
+    expect(fairnessRules).toContain("Referrers are never paid and never ask you for money.");
+    for (const line of [...fairnessRules, ...planFaqs().flat()]) expect(line).not.toMatch(/always free|free\.\s*always|referrals (?:are|stay) free/i);
+  });
+
   it("keeps every other Pro and Max feature, stated as the server enforces it", () => {
     // The copy reads the enforced entitlements (shared/planEntitlements.ts), so a
     // grandfathered Pro keeps at least what it pays for: 10 open asks at once,

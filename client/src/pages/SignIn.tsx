@@ -5,6 +5,7 @@ import { Button } from "@/components/kit/button";
 import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
+import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
 
 type Intent = "seeker" | "referrer";
 
@@ -45,7 +46,7 @@ export default function SignIn() {
         // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a six-digit code.
         : <SeekerSignIn returnTo={INTENT_RETURN_TO.seeker} />}
       {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email or social logins for referrers.</p> : <p className="auth-new">New to SkipWait? Enter your email and we’ll create your account.</p>}
-      <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. Referrals are free and never guarantee an interview.</p>
+      <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. {MONEY_SENTENCE_SHORT} A referral never guarantees an interview.</p>
     </div></section>
   </main>;
 }
