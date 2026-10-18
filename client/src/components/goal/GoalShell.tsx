@@ -1,5 +1,5 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
-import { Bell, Coins } from "lucide-react";
+import { Bell, Coins, Ellipsis } from "lucide-react";
 import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
@@ -25,6 +25,8 @@ export type GoalShellProps = {
   credits: GoalCredits | null;
   /** null when signed out. */
   account: GoalAccount | null;
+  /** Signed out: a quiet "More" menu (help, legal, support) so those stay reachable from every page. */
+  more?: readonly GoalAccountItem[];
   signInHref?: string;
   alerts: { href: string; unread: number } | null;
   giveReferralHref?: string;
@@ -142,6 +144,30 @@ function AccountMenu({ account, side }: { account: GoalAccount; side: "right" | 
   );
 }
 
+function MoreMenu({ items, side }: { items: readonly GoalAccountItem[]; side: "right" | "bottom" }) {
+  return (
+    <DropdownMenu.Root modal={false}>
+      <DropdownMenu.Trigger className="inline-flex h-9 items-center gap-1.5 rounded-g-control px-2 text-g-meta text-g-ink-2 transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover hover:text-g-ink max-gdesk:h-11">
+        <Ellipsis aria-hidden="true" className="size-4" strokeWidth={1.75} />
+        More
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content side={side} align={side === "right" ? "end" : "start"} sideOffset={8} className="g-scope z-50 min-w-52 rounded-g-popover bg-g-surface p-1.5 text-g-ink shadow-g-popover data-[state=closed]:animate-g-fade-out data-[state=open]:animate-g-fade-in">
+          {items.map(item =>
+            "href" in item ? (
+              <DropdownMenu.Item key={item.label} asChild>
+                <Link href={item.href} className="flex h-10 cursor-pointer items-center rounded-g-control px-2 text-g-body text-g-ink outline-none data-[highlighted]:bg-g-surface-hover">{item.label}</Link>
+              </DropdownMenu.Item>
+            ) : (
+              <DropdownMenu.Item key={item.label} onSelect={item.onSelect} className="flex h-10 cursor-pointer items-center rounded-g-control px-2 text-g-body text-g-ink outline-none data-[highlighted]:bg-g-surface-hover">{item.label}</DropdownMenu.Item>
+            ),
+          )}
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  );
+}
+
 function SignInLink({ href }: { href: string }) {
   return (
     <Link href={href} className="inline-flex h-9 items-center rounded-g-control px-3 text-g-label text-g-ink transition-colors duration-(--g-dur-hover) ease-g-out hover:bg-g-surface-hover max-gdesk:h-11">
@@ -154,7 +180,7 @@ function SignInLink({ href }: { href: string }) {
  * bottom bar. The document scrolls (the rail, top bar and drawer column stay sticky), so pages that rely on window
  * scrolling keep working; list/detail screens size their own panes to the viewport. Every portalled goal surface
  * carries `g-scope` itself; this root carries it for everything inside. */
-export function GoalShell({ active, verifiedReferrer, pageTitle, credits, account, signInHref = "/sign-in", alerts, giveReferralHref, hideBottomBar = false, drawer, children }: GoalShellProps) {
+export function GoalShell({ active, verifiedReferrer, pageTitle, credits, account, more, signInHref = "/sign-in", alerts, giveReferralHref, hideBottomBar = false, drawer, children }: GoalShellProps) {
   const nav = goalNavFor(verifiedReferrer);
   const giveHref = giveReferralHref ?? referrerSignInHref();
   return (
@@ -196,13 +222,13 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
         </ul>
         <div className="-mx-2 mt-auto flex w-[calc(100%+16px)] flex-col items-center gap-4">
           {!verifiedReferrer ? <GiveReferralLink href={giveHref} variant="rail" /> : null}
-          {account ? <AccountMenu account={account} side="right" /> : null}
+          {account ? <AccountMenu account={account} side="right" /> : more?.length ? <MoreMenu items={more} side="right" /> : null}
         </div>
       </nav>
 
       <header className="sticky top-0 z-30 flex h-(--g-topbar-h) items-center gap-1 border-b border-g-hairline bg-g-surface pl-2.5 pr-1 gdesk:col-span-2 gdesk:col-start-2 gdesk:row-start-1 gdesk:gap-2 gdesk:pl-6 gdesk:pr-3">
         <div className="flex min-w-0 items-center gap-1 gdesk:hidden">
-          {account ? <span className="ml-0.5 mr-1.5"><AccountMenu account={account} side="bottom" /></span> : null}
+          {account ? <span className="ml-0.5 mr-1.5"><AccountMenu account={account} side="bottom" /></span> : more?.length ? <MoreMenu items={more} side="bottom" /> : null}
           {!verifiedReferrer ? <GiveReferralLink href={giveHref} variant="top" /> : null}
         </div>
         <p className="hidden whitespace-nowrap text-g-meta text-g-ink-3 gdesk:block">{pageTitle}</p>

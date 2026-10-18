@@ -50,10 +50,19 @@ function accountItems(verifiedReferrer: boolean, signOut: () => void): GoalAccou
     { label: "Connected assistants", href: "/assistants" },
     { label: "Share SkipWait", href: "/share" },
     { label: "Help and safety", href: "/help" },
+    { label: "For companies", href: "/for-companies" },
     { label: "Settings", href: "/settings" },
     { label: "Sign out", onSelect: signOut },
   ];
 }
+
+const SIGNED_OUT_MORE: GoalAccount["items"] = [
+  { label: "Help and safety", href: "/help" },
+  { label: "Terms", href: "/terms" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Support", href: "/support" },
+  { label: "For companies", href: "/for-companies" },
+];
 
 export type AppShellProps = {
   children: ReactNode;
@@ -99,6 +108,7 @@ export function AppShell({ children, active, title, drawer, hideBottomBar }: App
       pageTitle={title ?? route.title}
       credits={credits}
       account={account}
+      more={account ? undefined : SIGNED_OUT_MORE}
       signInHref={`/sign-in?${new URLSearchParams({ returnTo })}`}
       alerts={isSignedIn ? { href: "/alerts", unread: unread.data ?? 0 } : null}
       drawer={drawer}

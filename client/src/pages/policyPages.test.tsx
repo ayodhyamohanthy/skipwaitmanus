@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Terms from "./Terms";
 import Guidelines from "./Guidelines";
@@ -135,16 +136,17 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.queryByText("Draft · pending legal review")).toBeNull();
   });
 
-  it("Settings and NotFound keep the kit bodies; the shell's More menu (Help & safety) carries the disclosures", () => {
-    // Owner decision (Oct 9 2026): the kit screens win, so neither body repeats
-    // a legal row or a support line. Both render inside the app shell, whose
-    // More menu opens Help & safety with Terms, Privacy and Support.
+  it("Settings and NotFound keep their bodies; the shell's account menu (Help and safety) carries the disclosures", async () => {
+    // Neither body repeats a legal row or a support line. Both render inside the app shell, whose account menu
+    // (signed in) or More menu (signed out) opens Help and safety with Terms, Privacy and Support.
     render(<Settings />);
     expect(screen.queryByRole("navigation", { name: "Legal and support" })).toBeNull();
     cleanup();
-    render(<NotFound />);
+    render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><NotFound /></QueryClientProvider>);
     expect(screen.queryByRole("link", { name: "Contact support" })).toBeNull();
-    expect(screen.getAllByRole("button", { name: "More" }).length).toBeGreaterThan(0);
+    const menu = screen.getAllByRole("button", { name: "Account menu" })[0];
+    fireEvent.pointerDown(menu, { button: 0, ctrlKey: false });
+    expect((await screen.findByRole("menuitem", { name: "Help and safety" })).getAttribute("href")).toBe("/help");
   });
 });
 
