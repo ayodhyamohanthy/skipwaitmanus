@@ -87,6 +87,29 @@ describe("referrer matching against a model answer", () => {
   });
 });
 
+// P0-referrer-exposure: whatever a caller puts in the context, no referrer field is
+// serialized into a prompt, so it can neither leave for the model provider nor come
+// back in a reply to the member.
+describe("referrer rows never reach the model", () => {
+  it("leaves every referrer field out of each prompt, even when a caller supplies them", async () => {
+    const prompts: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: unknown, init?: { body?: unknown }) => {
+      const sent = JSON.parse(String(init?.body)) as { messages: Array<{ content: string }> };
+      prompts.push(sent.messages.map(message => message.content).join("\n"));
+      return completion("{}");
+    }));
+    const supplied = { ...context, referrers: [{ userId: 77, name: "zoya.quill", company: "quasar-ledgers.com", title: "Principal Payments Engineer", expertise: "ledger reconciliation", capacity: 4 }] };
+    await runCareerCopilot({ message: "Who can refer me?", context: supplied });
+    await createProactiveBrief({ context: supplied });
+    await matchReferrers({ jobTitle: "Staff Engineer", company: "Acme", context: supplied });
+    expect(prompts).toHaveLength(3);
+    for (const prompt of prompts) {
+      expect(prompt).not.toMatch(/zoya|quill|quasar|Principal Payments|ledger reconciliation|availableReferrers|"userId":77/i);
+      expect(prompt).toContain("Platform team");
+    }
+  });
+});
+
 describe("proactive brief against a model answer", () => {
   it("refuses to render an item the model left a field out of", async () => {
     provider(async () => completion(JSON.stringify({ items: [

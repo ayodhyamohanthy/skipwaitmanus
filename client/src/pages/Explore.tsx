@@ -1,6 +1,7 @@
 import { ArrowRight, ArrowUpRight, Building2, Globe2, HeartHandshake, LockKeyhole, MapPin, RefreshCw, Search, ShieldCheck, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
+import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
 import { publicRoute } from "@shared/publicRoutes";
 import { Button } from "@/components/kit/button";
 import { CompanyCard, CompanyCardSkeleton } from "@/components/explore/CompanyCard";
@@ -31,6 +32,6 @@ export default function Explore() {
     </> : directory.isError ? <section className="no-results" role="alert"><Building2 /><h2>We couldn’t load companies.</h2><p>{directory.error.message}</p><div><Button variant="outline" onClick={() => { void directory.refetch(); }} disabled={directory.isFetching}><RefreshCw />Try again</Button></div></section>
       : <section className="company-grid mt-[38px]" aria-busy="true" aria-label="Loading companies">{[0, 1, 2].map(index => <CompanyCardSkeleton key={index} />)}</section>}
     <section className="employee-band"><span className="band-icon"><HeartHandshake /></span><div><h3>Work at one of these companies?</h3><p>Open another door. You control every request you accept.</p></div><Button variant="outline" asChild><Link href="/referrer">I can refer <ArrowUpRight /></Link></Button></section>
-    <div className="trust-row"><span><HeartHandshake />Free. Always.</span><span><LockKeyhole />Private by default</span><span><ShieldCheck />People choose every request</span></div>
+    <div className="trust-row"><span><HeartHandshake />{FREE_ASKS_CHIP}</span><span><LockKeyhole />Private by default</span><span><ShieldCheck />People choose every request</span></div>
   </main>;
 }

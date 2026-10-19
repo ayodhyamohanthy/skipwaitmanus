@@ -67,7 +67,7 @@ describe("Ask composer", () => {
     expect(screen.getAllByRole("listitem").map(item => item.querySelector("strong")?.textContent)).toEqual(["Official job link", "30–120 words", "One specific proof of fit", "Resume attached"]);
     expect(screen.getByText("Add resume (shared after accept)")).toBeTruthy();
     expect(screen.getByText("The referrer sees your role and note — not your name or resume — until they accept.")).toBeTruthy();
-    expect(screen.getByText("Uses 1 credit and 1 open slot · the credit comes back if you withdraw before pickup or it expires")).toBeTruthy();
+    expect(screen.getByText("Uses 1 credit and 1 open slot when a verified employee can see it · nothing is used while it waits for coverage, and the credit comes back once if you withdraw before pickup or the ask expires unclaimed, unless its month or plan has ended by then")).toBeTruthy();
     const page = document.body.textContent ?? "";
     for (const preview of ["DESIGN PREVIEW", "Fill example", "pinned", "Enterprise approvals redesign", "open slots", "Improve my note", "Wipro"]) expect(page).not.toContain(preview);
     expect(fetchCalls()).toBe(0);
@@ -180,7 +180,7 @@ describe("Ask composer", () => {
     // The note travels in the field the server stores as the seeker's pitch (shared/askNote.ts).
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ candidateMessage: STRONG_NOTE });
     expect(screen.getByRole("link", { name: /Track this ask/ }).getAttribute("href")).toBe("/conversation/9");
-    expect(screen.getByText("Verified wipro.com referrers will see it. It expires in 7 days if nobody accepts, and your credit returns.")).toBeTruthy();
+    expect(screen.getByText("Verified wipro.com referrers will see it. If nobody picks it up within 7 days, it expires and the credit comes back, unless its month or plan has ended by then; once someone picks it up, the credit stays spent.")).toBeTruthy();
     expect(screen.getByText(/^Open slots:/).textContent).toBe("Open slots: 2 of 3 used");
     // The send response carries the count; no second request is needed.
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("/mine"))).toBe(false);
@@ -239,8 +239,13 @@ describe("Ask composer", () => {
     fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
     fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
     expect(await screen.findByText("Ask sent to merkle.com.")).toBeTruthy();
-    expect(screen.getByText(/No verified referrers there yet/)).toBeTruthy();
-    expect(screen.queryByText(/expires in 7 days/)).toBeNull();
+    expect(screen.getByText(/No verified referrers there yet, so nothing was spent/)).toBeTruthy();
+    // D-034/D-047/D-061: nothing is spent while it waits; the credit is used at first visibility,
+    // the 7-day clock runs from then, and a creditless ask is held until the seeker adds one.
+    expect(screen.getByText(/waits for free up to 90 days: when a verified employee can see it, 1 credit is used and it goes live/)).toBeTruthy();
+    expect(screen.getByText(/unclaimed 7 days after that, it expires and the credit comes back, unless its month or plan has ended by then\./)).toBeTruthy();
+    expect(screen.getByText(/No credit then\? We hold it until you add one\./)).toBeTruthy();
+    expect(screen.queryByText(/If one verifies within 7 days/)).toBeNull();
   });
 
   it("picks up the job link and note handed over from a company door, and clears it once sent", async () => {
@@ -321,7 +326,7 @@ describe("Ask composer", () => {
   it("forwards a fast-track code and a confirmed company domain for the same link", async () => {
     stubCrypto();
     const fetchMock = vi.fn();
-    stubUploadThen(fetchMock, { requestId: 14, companyDomain: "tcs.com" });
+    stubUploadThen(fetchMock, { requestId: 14, companyDomain: "tcs.com", fastTrack: true });
     vi.stubGlobal("fetch", fetchMock);
     window.history.replaceState(null, "", "/ask?fast=abcdefghijklmnop1234");
     localStorage.setItem("bridge-company-confirmation", JSON.stringify({ canonicalUrl: "https://careers.example.com/job/42", confirmedDomain: "tcs.com" }));
@@ -333,6 +338,9 @@ describe("Ask composer", () => {
     fireEvent.change(picker, { target: { files: [new File(["resume-bytes"], "resume.pdf", { type: "application/pdf" })] } });
     fireEvent.click(screen.getByRole("button", { name: /Send ask/ }));
     await screen.findByText("Ask sent to tcs.com.");
+    // D-050: only the link owner sees a personal-link ask, and it expires with the credit back if they never pick it up (D-063 wording).
+    expect(screen.getByText("Only the tcs.com employee whose link you used will see it. If they don't pick it up within 7 days, it expires and the credit comes back, unless its month or plan has ended by then.")).toBeTruthy();
+    expect(screen.queryByText(/referrers will see it/)).toBeNull();
     const sendCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith("/api/company-referrals"));
     expect(JSON.parse(String((sendCall as unknown as Array<{ body?: string }>)?.[1]?.body))).toMatchObject({ fastTrackCode: "abcdefghijklmnop1234", confirmedCompanyDomain: "tcs.com", compensation: "₹18–22 LPA" });
     window.history.replaceState(null, "", "/ask");

@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-030, D-057).
+
 # Referrer Work-Email Verification Fix
 
 ## Observed failure

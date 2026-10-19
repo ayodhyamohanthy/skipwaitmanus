@@ -6,6 +6,7 @@ import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
+import { LAND_NOT_ON_SALE_LINE } from "@shared/assistant";
 
 const PROVIDERS = ["chatgpt", "claude", "custom"] as const;
 type Provider = (typeof PROVIDERS)[number];
@@ -201,7 +202,8 @@ export default function ConnectAssistant() {
           <ShieldCheck className="mx-auto size-8 text-primary" />
           <h1 className="mt-3 text-2xl font-semibold">Assistants need Land</h1>
           <p className="mt-2 text-sm text-muted-foreground">Signing in, connecting and applying through ChatGPT, Claude, bots or your own tools is part of Land and Concierge.</p>
-          <div className="mt-5 grid gap-2"><Button asChild size="lg"><Link href="/plans">Upgrade to Land</Link></Button><Button variant="ghost" asChild><Link href="/explore">Keep using SkipWait yourself</Link></Button></div>
+          <p className="mt-3 text-sm">{LAND_NOT_ON_SALE_LINE}</p>
+          <div className="mt-5 grid gap-2"><Button variant="outline" asChild size="lg"><Link href="/explore">Keep using SkipWait yourself</Link></Button></div>
         </Panel>
       ) : null}
 

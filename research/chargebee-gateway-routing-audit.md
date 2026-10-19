@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-036, D-067, D-069).
+
 # Chargebee gateway-routing audit
 
 ## Required commercial routing

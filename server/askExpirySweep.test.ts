@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { SCHEDULED_JOB_NAMES } from "../shared/scheduledJobs";
-import { ASK_TTL_MS } from "../shared/referral";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
 import { ASK_EXPIRY_SWEEP_BATCH, createAskExpirySweep, type StaleAsk } from "./askExpirySweep";
 import { SCHEDULED_JOBS } from "./scheduledJobRegistry";
 
@@ -8,11 +8,15 @@ const NOW = Date.parse("2026-10-14T10:15:00.000Z");
 const context = { nowMs: NOW, windowKey: "2026-10-14T10:15Z" };
 
 describe("ask expiry sweep", () => {
-  it("asks for stale unclaimed asks past the TTL, oldest first, in one bounded batch", async () => {
+  it("asks for stale unclaimed asks with D-061's own window per state (visible 7 days, waiting 90, held personal-link 7), oldest first, in one bounded batch", async () => {
     const listStale = vi.fn(async () => [] as StaleAsk[]);
     const expire = vi.fn();
     expect(await createAskExpirySweep({ listStale, expire })(context)).toEqual({ processed: 0, failed: 0 });
-    expect(listStale).toHaveBeenCalledWith(new Date(NOW - ASK_TTL_MS), ASK_EXPIRY_SWEEP_BATCH);
+    expect(listStale).toHaveBeenCalledWith({
+      visibleBefore: new Date(NOW - ASK_TTL_MS),
+      waitingBefore: new Date(NOW - COVERAGE_WAIT_MS),
+      heldBefore: new Date(NOW - ASK_TTL_MS),
+    }, ASK_EXPIRY_SWEEP_BATCH);
     expect(expire).not.toHaveBeenCalled();
   });
 

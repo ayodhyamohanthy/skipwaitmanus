@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-036, D-041, D-051).
+
 # SkipWait pricing research: how job seekers buy, and how to price for India and global markets
 
 **How to read the citations.** I looked at every URL on **2026-10-14**. Publication dates are given where known. Each source carries a tag:

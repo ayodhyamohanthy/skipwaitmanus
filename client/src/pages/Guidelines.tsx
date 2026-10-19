@@ -1,4 +1,5 @@
 import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
+import { MONEY_SENTENCE } from "@shared/moneyCopy";
 
 /**
  * /guidelines — Community guidelines.
@@ -6,22 +7,23 @@ import { PolicyPageShell, PolicySection } from "@/components/PolicyPageShell";
  * Kit v4 text verbatim (app/src/routes/guidelines.tsx) in the kit legal layout:
  * short version, six numbered sections as plain paragraphs, no intro paragraph.
  * Owner decision (Oct 9 2026): Guidelines takes the kit text and is published.
+ * D-063: section 01 states what asking costs instead of calling referrals free.
  */
 export default function Guidelines() {
   return <PolicyPageShell
     screen="guidelines"
     eyebrow="COMMUNITY GUIDELINES"
     title="Guidelines"
-    description="How seekers and referrers treat each other on SkipWait: free referrals, honest asks, respectful passes, zero tolerance for scams."
-    updated="13 Oct 2026"
+    description="How seekers and referrers treat each other on SkipWait: no money between them, honest asks, respectful passes, zero tolerance for scams."
+    updated="18 Oct 2026"
     summary={[
-      "Never pay or charge for a referral.",
+      "Never pay a referrer, and never ask a seeker for money.",
       "Ask for one specific role, honestly.",
       "Passing is always okay. Pressure is never okay.",
       "Report anything that feels off — it's confidential.",
     ]}
     sections={[
-      { id: "01", label: "Referrals are free" },
+      { id: "01", label: "Referrers are never paid" },
       { id: "02", label: "For seekers" },
       { id: "03", label: "For referrers" },
       { id: "04", label: "Respect" },
@@ -29,7 +31,8 @@ export default function Guidelines() {
       { id: "06", label: "What happens if rules are broken" },
     ]}
   >
-    <PolicySection number="01" title="Referrals are free">
+    <PolicySection number="01" title="Referrers are never paid">
+      <p>{MONEY_SENTENCE}</p>
       <p>No money, gifts, or favours — before or after. Seekers: if anyone asks for payment, report it. Referrers: a thank-you note is the only acceptable reward.</p>
     </PolicySection>
 

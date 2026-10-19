@@ -63,14 +63,13 @@ import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
 import { resolveChargebeeHostedPageForPayment } from "../chargebee";
-import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
+import { createPaymentRefundAlerter, createPaymentReviewAlerter, createUnmatchedPaymentAlerter, createRetiredPlanAlerter, materialErrorAlertMiddleware } from "../errorAlerting";
 import { globalSecurityHeaders } from "../securityHeaders";
 import { draftSmartReferralPitch } from "../ai";
 import { sendReferrerReviewEmail } from "../referrerReviewEmail";
 import { sendSlotOpenedAlertEmail } from "../slotOpenedAlertEmail";
 import { sendTransactionalEmail } from "../emailDelivery";
 import { workEmailOtpService } from "../workEmailOtp";
-import { SUBSCRIPTION_PLANS } from "@shared/subscriptionPlans";
 import { createWorkosAuthRoutesRegistrar, currentWorkosSessionId, configuredWorkosClientId, resolveWorkosIdentity, workosConfigured } from "./workosAuth";
 import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
@@ -251,12 +250,6 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   registerPaymentRoutes(app, {
     resolveIdentity,
     record: db.recordOperationalActivity,
-    planPricing: (planId, tokens) => {
-      void tokens;
-      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-      if (!plan) return undefined;
-      return { inrAmount: plan.prices.INR.amount / 100, usdAmount: plan.prices.USD.amount / 100 };
-    },
   });
   registerAdminBillingCatalogRoutes(app, { resolveIdentity });
   registerPlansCatalogRoutes(app);
@@ -269,9 +262,6 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     createSubscriptionIntent: db.createChargebeeSubscriptionIntent,
     applySubscriptionEvent: db.applyChargebeeSubscriptionEvent,
     recordGiftEvent: db.recordGiftProviderEvent,
-    updateGiftPlan: db.updateGiftPlan,
-    resolveGiftRecipient: db.resolveGiftRecipient,
-    fulfillGift: db.fulfillGiftSubscription,
     listBuyerGifts: db.listBuyerGifts,
     listClaimableGifts: db.listClaimableGiftsForUser,
     claimGift: db.claimGiftSubscription,
@@ -284,6 +274,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     applyPaymentRefund: db.applyChargebeePaymentRefund,
     alertPaymentRefund: createPaymentRefundAlerter(),
     alertUnmatchedPayment: createUnmatchedPaymentAlerter(),
+    alertRetiredPlanEvent: createRetiredPlanAlerter(),
     resolveHostedPage: async input => {
       const pending = await db.listPendingChargebeePaymentIntents();
       return resolveChargebeeHostedPageForPayment({ ...input, pendingHostedPageIds: pending.flatMap(row => row.hostedPageId ? [row.hostedPageId] : []) });

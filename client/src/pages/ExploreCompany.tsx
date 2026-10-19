@@ -7,6 +7,7 @@ import { CompanyNotFoundError, useCompany, type PublicCompany } from "@/lib/comp
 import { useCompanyOpportunities, type PublicOpportunityPost } from "@/lib/companyOpportunities";
 import { formatDay, formatDayTime } from "@/lib/displayPrefs";
 import { applySeo } from "@/lib/seo";
+import { ASK_COST_SENTENCE } from "@shared/moneyCopy";
 import { NotFoundContent } from "./NotFound";
 
 export default function ExploreCompany() {
@@ -34,7 +35,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
   // Each "Ask for a referral" mounts a fresh dialog, so a new ask starts empty.
   const [draft, setDraft] = useState(0);
   useEffect(() => {
-    applySeo({ title: `Referrals at ${company.name}`, description: `Request a free, private introduction to someone at ${company.name}.`, path: `/explore/${company.slug}` });
+    applySeo({ title: `Referrals at ${company.name}`, description: `Request a private introduction to someone at ${company.name}. ${ASK_COST_SENTENCE}`, path: `/explore/${company.slug}` });
   }, [company.name, company.slug]);
   return <main data-skipwait-screen="explore-company" className="page-content company-page">
     <Link className="back-link" href="/explore"><ArrowLeft />All companies</Link>

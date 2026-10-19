@@ -152,7 +152,7 @@ export default function ReferralConversation() {
               {referenceId ? <p className="mt-2 font-medium">Referred! Reference ID {referenceId}</p> : null}
             </div>
             <div className="rounded-3xl border border-border p-5 text-sm text-muted-foreground">
-              <ShieldCheck className="mb-2 size-5 text-primary" />Referrals are free. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>
+              <ShieldCheck className="mb-2 size-5 text-primary" />Referrers are never paid and never ask for money. Never pay or accept money for a referral. <Link href="/report" className="text-link">Report or block</Link>
             </div>
           </aside>
         </div>

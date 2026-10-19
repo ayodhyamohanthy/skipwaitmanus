@@ -3,7 +3,6 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 import { registerAdminBillingCatalogRoutes } from "./adminBillingCatalog";
 import { CHARGEBEE_TOKEN_PACKS } from "./chargebee";
-import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrency } from "../shared/subscriptionPlans";
 
 const admin = { account: { id: 1, role: "admin" as const } };
 const member = { account: { id: 2, role: "user" as const } };
@@ -61,12 +60,6 @@ describe("admin billing catalog diagnostic", () => {
     const seen: string[] = [];
     const byId = new Map<string, { currency: string; amount: number }>();
     for (const [id, pack] of Object.entries(CHARGEBEE_TOKEN_PACKS)) byId.set(id, { currency: pack.currency, amount: pack.amount });
-    for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-      for (const currency of Object.keys(SUBSCRIPTION_PLANS[plan].prices) as SubscriptionCurrency[]) {
-        const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-        byId.set(price.itemPriceId, { currency, amount: price.amount });
-      }
-    }
     const fetchImpl = (async (url: unknown) => {
       const urlString = String(url);
       seen.push(urlString);
@@ -76,8 +69,17 @@ describe("admin billing catalog diagnostic", () => {
     }) as unknown as typeof fetch;
     const res = await request(appFor({ fetchImpl })).get("/api/admin/billing/catalog").expect(200);
     expect(res.body.allOk).toBe(true);
-    expect(res.body.items).toHaveLength(6);
+    expect(res.body.items).toHaveLength(2);
     expect(seen.every(url => url.includes("/api/v2/item_prices/"))).toBe(true);
+  });
+
+  // D-067: Pro and Max are removed completely, so the diagnostic no longer probes their item prices.
+  it("never probes the retired Pro/Max item prices; the token packs are still checked", async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (url: unknown) => { seen.push(String(url)); return priceResponse(); }) as unknown as typeof fetch;
+    const res = await request(appFor({ fetchImpl })).get("/api/admin/billing/catalog").expect(200);
+    expect(seen.some(url => /skipwait_(pro|max)_monthly/.test(url))).toBe(false);
+    expect(res.body.items.map((item: { id: string; kind: string }) => [item.id, item.kind])).toEqual(Object.keys(CHARGEBEE_TOKEN_PACKS).map(id => [id, "token-pack"]));
   });
 
   it("flags an on_off token pack as the checkout breaker", async () => {

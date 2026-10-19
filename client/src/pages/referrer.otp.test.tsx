@@ -185,6 +185,25 @@ describe("Referrer work-email OTP verification", () => {
     window.history.pushState({}, "", "/");
   });
 
+  it("never tells a referrer who joined from a coverage invite that they earned a credit (D-055)", async () => {
+    window.history.pushState({}, "", "/referrer");
+    sessionStorage.setItem("skipwait:employee-sign-in-email", "employee@acme.com");
+    sessionStorage.setItem("skipwait:company-coverage-invite", "cov-acme-1");
+    const fetchMock = vi.fn(async (input: string, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/inbox")) return { ok: true, json: async () => ({ requests: [] }) };
+      if (url.endsWith("/verify-work-email")) return { ok: true, json: async () => ({ verified: true, workEmailDomain: "acme.com", reward: { rewarded: true, tokenCount: 1 } }) };
+      return { ok: true, json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    render(<Referrer />);
+    expect(await screen.findByText("You joined from an invite. The person who invited you gets one referral credit after their next ask. SkipWait never pays referrers.")).toBeTruthy();
+    expect(screen.queryByText(/each received one referral credit|Welcome credit added/)).toBeNull();
+    const enroll = fetchMock.mock.calls.find(call => String(call[0]).endsWith("/verify-work-email"));
+    expect(JSON.parse(String(enroll?.[1]?.body))).toEqual({ email: "employee@acme.com", inviteCode: "cov-acme-1" });
+    window.history.pushState({}, "", "/");
+  });
+
   it("keeps the Referrer approval free and offers a direct private-message handoff after approval", async () => {
     window.history.pushState({}, "", "/referrer?request=901");
     vi.stubGlobal("fetch", vi.fn(async (input: string, init?: RequestInit) => {
@@ -195,7 +214,7 @@ describe("Referrer work-email OTP verification", () => {
     }));
     render(<Referrer />);
     await waitFor(() => expect(screen.getByRole("button", { name: "Approve referral" })).toBeTruthy());
-    expect(screen.getByText("Reviewing is free.")).toBeTruthy();
+    expect(screen.getByText("Reviewing costs you nothing.")).toBeTruthy();
     expect(screen.queryByText(/token per approved referral/i)).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Approve referral" }));
     await waitFor(() => expect(screen.getByText("Referral approved.")).toBeTruthy());

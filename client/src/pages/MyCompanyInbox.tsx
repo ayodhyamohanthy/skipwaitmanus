@@ -12,13 +12,14 @@ import { REFERRER_SIGN_IN_HREF, ReferrerWorkspace } from "@/components/referrer/
 import { QueueGuidance, QueuePanel, QueueRequestCard } from "@/components/referrer/QueueParts";
 import { PassPrivatelyPanel } from "@/components/referrer/PassPrivatelyPanel";
 import { CandidatePreviewCard, type CandidatePreview, type DeclineReason } from "@/components/referrer/CandidatePreviewCard";
-import { askDaysLeft, formatAskExpiry, type ReferralStatus } from "@shared/referral";
+import { getAskShelfLifeEndsAtMs, type ReferralStatus } from "@shared/referral";
 import { parseJobFunction, type JobFunction } from "@shared/jobFunctions";
+import type { PassReasonCode } from "@shared/passReasons";
 import { readApiJson } from "@/lib/apiResponse";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useSlowLoad } from "@/hooks/useSlowLoad";
 
-type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number };
+type CompanyInboxItem = { id: number; targetRoleUrl: string | null; companyDomain: string; companyName?: string | null; companyInitials?: string | null; jobFunction?: JobFunction | null; compensation?: string | null; status: ReferralStatus; savedAt: string | null; createdAt: string; updatedAt: string; attachmentCount: number; isClaimedByYou: boolean; isQueueOpenAllocation?: boolean; unreadMessageCount: number; expiresAt?: string | null; waitingForCoverage?: boolean | null; coverageVisibleAt?: string | null };
 type InboxPayload = { requests?: CompanyInboxItem[] };
 type PrivateImpactSummary = { reviewed: number; approved: number; introductions: number; interviews: number; offers: number };
 
@@ -82,13 +83,13 @@ export default function MyCompanyInbox() {
   const reviewCandidate = async (requestId: number) => { setWorkingId(requestId); setError(""); try { const payload = await companyFetch<{ request?: CandidatePreview }>(`/api/company-referrals/${requestId}/preview`); setPreview(payload.request || null); setPendingDecline(null); } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not load this private candidate preview"); } finally { setWorkingId(null); } };
   // /referrer-home rows link here as /queue?request=:id and open that request directly.
   useEffect(() => { if (isSignedIn && verified && Number.isInteger(requestedId) && requestedId > 0) void reviewCandidate(requestedId); }, [isSignedIn, verified, requestedId]);
-  const oneClickReview = async (requestId: number, decision: "approved" | "declined", declineReason?: DeclineReason) => {
+  const oneClickReview = async (requestId: number, decision: "approved" | "declined", declineReason?: DeclineReason, passReason?: PassReasonCode) => {
     setWorkingId(requestId); setError("");
     try {
-      await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, declineReason }) });
+      await companyFetch(`/api/company-referrals/${requestId}/one-click-review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(decision === "approved" ? { decision, ethicsConfirmed: true } : { decision, declineReason, ...(passReason ? { passReason } : {}) }) });
       setPreview(null); setPendingDecline(null); setPassingId(null);
       setAcceptedId(decision === "approved" ? requestId : null);
-      setNotice(decision === "approved" ? "Referral accepted. You can now message the Job Seeker privately." : "Passed privately. The Job Seeker gets a short private note — never your name.");
+      setNotice(decision === "approved" ? "Request accepted. You can now message the Job Seeker privately." : "Passed privately. The Job Seeker gets a short private note — never your name.");
       await loadInbox();
     } catch (reason) { const message = reason instanceof Error ? reason.message : "This private request can no longer be reviewed"; setError(message.includes("no longer available") ? "Accept failed — Another employee accepted this request a moment earlier. Nothing was charged to your credits." : message); }
     finally { setWorkingId(null); }
@@ -122,7 +123,7 @@ export default function MyCompanyInbox() {
   const nowMs = Date.now();
   const cardFooter = (request: CompanyInboxItem) => {
     if (request.status !== "pending") return <footer><Button type="button" onClick={() => go(`/conversation/${request.id}?from=inbox`)}>Open conversation <ArrowRight /></Button></footer>;
-    if (passingId === request.id) return <PassPrivatelyPanel working={workingId === request.id} onConfirm={reason => { void oneClickReview(request.id, "declined", reason); }} onCancel={() => setPassingId(null)} />;
+    if (passingId === request.id) return <PassPrivatelyPanel working={workingId === request.id} onConfirm={reason => { void oneClickReview(request.id, "declined", reason.legacy, reason.code); }} onCancel={() => setPassingId(null)} />;
     return <footer>
       <Button type="button" variant="ghost" disabled={workingId === request.id} onClick={() => setPassingId(request.id)}>Pass privately</Button>
       <Button type="button" disabled={workingId === request.id} onClick={() => { void reviewCandidate(request.id); }}>{workingId === request.id ? "Opening request…" : "Open request"}<ArrowRight /></Button>
@@ -135,12 +136,18 @@ export default function MyCompanyInbox() {
   else if (requests.length) body = <div className="grid min-w-0 content-start gap-[22px]">
     {requests.map(request => {
       const unclaimed = request.status === "pending" && !request.isClaimedByYou;
-      const expiryDays = unclaimed ? askDaysLeft({ createdAt: request.createdAt }, nowMs) : null;
+      // D-061: the server sends the window-aware expiry (7 days from first visibility); the shared clock
+      // is the fallback for a payload without one. Waiting asks never reach a referrer inbox.
+      const expiryMs = unclaimed ? (request.expiresAt ? Date.parse(request.expiresAt) : getAskShelfLifeEndsAtMs({ createdAt: request.createdAt, waitingForCoverage: request.waitingForCoverage, coverageVisibleAt: request.coverageVisibleAt })) : null;
+      const validExpiry = expiryMs !== null && !Number.isNaN(expiryMs) ? expiryMs : null;
+      const expiryDays = validExpiry === null ? null : Math.floor((validExpiry - nowMs) / 86_400_000);
+      const daysShown = validExpiry === null ? null : Math.ceil((validExpiry - nowMs) / 86_400_000);
+      const expiryLabel = daysShown === null ? null : daysShown < 0 ? "Expired" : daysShown === 0 ? "Expires today" : daysShown === 1 ? "Expires tomorrow" : `Expires in ${daysShown} days`;
       return <QueueRequestCard
         key={request.id}
         request={request}
         badge={kitStatusFor(request.status)}
-        expiry={unclaimed ? formatAskExpiry({ status: "pending", referrerId: null, createdAt: request.createdAt }, nowMs) : null}
+        expiry={expiryLabel}
         expiryUrgent={expiryDays !== null && expiryDays <= 1}
         footer={cardFooter(request)}
       />;

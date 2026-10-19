@@ -6,7 +6,7 @@ import {
   promoCreditGrants, planCreditGrants, referralAttachments, referralAvailabilitySlots,
   referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves,
   referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks,
-  tokenBalances, tokenTransactions, users,
+  referrerFastTrackLinks, tokenBalances, tokenTransactions, userBlocks, users,
 } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { OPPORTUNITY_FIRST_LOOK_MS, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
@@ -18,6 +18,7 @@ import {
   saveCompanyReferralRequest, opportunityPosterOf,
 } from "./db";
 import { listLapsedFirstLooks } from "./firstLookRelease";
+import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE } from "./blockedPairs";
 
 /*
  * D-022 referrer-posted roles: an ask written from a post goes to the poster
@@ -31,9 +32,10 @@ import { listLapsedFirstLooks } from "./firstLookRelease";
  * onDuplicateKeyUpdate, transaction).
  */
 
-const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
+const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn(), capture: vi.fn() }));
 vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
 vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
+vi.mock("./sentry", async importOriginal => ({ ...(await importOriginal<typeof import("./sentry")>()), captureServerError: mocks.capture }));
 
 const dialect = new MySqlDialect();
 const NOW = Date.parse("2026-10-16T12:00:00.000Z");
@@ -45,12 +47,14 @@ const COLLEAGUE = 10;
 const URL_ = "https://careers.acme.com/jobs/123";
 
 type Row = Record<string, unknown>;
-const TABLES = [tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants, jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, companyOpportunities, users, canonicalPeople, operationalActivityLogs];
+const TABLES = [tokenBalances, tokenTransactions, planCreditGrants, promoCreditGrants, jobs, notifications, profiles, referralAttachments, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequestSaves, referralRequests, referralReviewDeliveries, referralTransitionEvents, referrerReviewEmailLinks, companyOpportunities, users, canonicalPeople, operationalActivityLogs, userBlocks, referrerFastTrackLinks];
 const TABLE_BY_NAME = new Map(TABLES.map(table => [getTableName(table), table]));
 const COLUMNS_BY_NAME = new Map(TABLES.map(table => [getTableName(table), Object.keys(getTableColumns(table))]));
 
 let rows: Record<string, Row[]>;
 let sequence: Record<string, number>;
+/** When true, every read of userBlocks throws like a missing table (the fail-open case). */
+let failBlockReads = false;
 
 const tableNameOf = (table: unknown) => getTableName(table as never);
 const bucket = (table: unknown) => (rows[tableNameOf(table)] ??= []);
@@ -102,10 +106,14 @@ function compareValues(a: unknown, b: unknown): number {
   return as === bs ? 0 : as < bs ? -1 : 1;
 }
 
-/** Evaluates the WHERE slice this suite exercises: =, <, <=, >, >=, <>, is (not) null, in, and/or, column or param right side. */
+/**
+ * Evaluates the WHERE slice this suite exercises: =, <, <=, >, >=, <>, is (not) null, in, and/or, column or param right
+ * side, and the open-ask count's correlated `exists (select 1 from <table> where ...)` (a match against any of that table's rows).
+ */
 function matches(condition: unknown, flat: Record<string, unknown>): boolean {
   const query = dialect.sqlToQuery(condition as SQLQuery);
   const cursor = { index: 0 };
+  let scope = flat;
   const unwrap = (sql: string): string => {
     let text = sql.trim();
     while (text.startsWith("(")) {
@@ -131,14 +139,28 @@ function matches(condition: unknown, flat: Record<string, unknown>): boolean {
       const count = (inMatch[3].match(/\?/g) ?? []).length;
       const values = query.params.slice(cursor.index, cursor.index + count);
       cursor.index += count;
-      return values.includes(flat[`${inMatch[1]}.${inMatch[2]}`]);
+      return values.includes(scope[`${inMatch[1]}.${inMatch[2]}`]);
+    }
+    const existsMatch = /^exists \(select 1 from `([^`]+)` where (.+)\)$/.exec(trimmed);
+    if (existsMatch) {
+      const [, table, inner] = existsMatch;
+      const start = cursor.index; const outer = scope;
+      let found = false;
+      for (const row of rows[table] ?? []) {
+        cursor.index = start;
+        scope = { ...outer, ...flatten([{ table, row }]) };
+        if (evaluate(inner)) found = true;
+      }
+      scope = outer;
+      cursor.index = start + (inner.match(/\?/g) ?? []).length;
+      return found;
     }
     const match = ATOM.exec(trimmed);
     if (!match) throw new Error(`fixture cannot evaluate: ${trimmed}`);
-    const value = flat[`${match[1]}.${match[2]}`];
+    const value = scope[`${match[1]}.${match[2]}`];
     const [, , , nullOp, compareOp, rightColumn, rightTable, rightName] = match;
     if (nullOp) return /is not null/i.test(nullOp) ? value !== null && value !== undefined : value === null || value === undefined;
-    const right = rightColumn ? flat[`${rightTable}.${rightName}`] : query.params[cursor.index++];
+    const right = rightColumn ? scope[`${rightTable}.${rightName}`] : query.params[cursor.index++];
     if (compareOp === "=") return asMs(value) === asMs(right);
     if (compareOp === "<>") return asMs(value) !== asMs(right);
     const left = asMs(value); const bound = asMs(right);
@@ -216,7 +238,7 @@ function fixtureDatabase() {
     };
     const slice = (n: number) => run().slice(0, n);
     const chain = {
-      from: (table: unknown) => { state.from = table; return chain; },
+      from: (table: unknown) => { if (failBlockReads && table === userBlocks) throw Object.assign(new Error("Table 'userBlocks' doesn't exist"), { code: "ER_NO_SUCH_TABLE" }); state.from = table; return chain; },
       innerJoin: (table: unknown, on: unknown) => { state.joins.push({ table, on, kind: "inner" }); return chain; },
       leftJoin: (table: unknown, on: unknown) => { state.joins.push({ table, on, kind: "left" }); return chain; },
       where: (condition: unknown) => { state.where = condition; return chain; },
@@ -278,7 +300,9 @@ const jobRow = () => ({ id: 3, company: "acme.com", title: "Role from shared job
 
 function seed() {
   rows = {
-    users: [userRow(SEEKER, "Sam Seeker", "sam@example.com"), userRow(POSTER, "Maya Chen", "maya@acme.com"), userRow(COLLEAGUE, "Ravi Patel", "ravi@acme.com")],
+    // The colleague's first.last address keeps "Ravi" safe to show; a first@ address would make
+    // the first name rebuild it, so the poster would show as anonymous (see the withheld-name test).
+    users: [userRow(SEEKER, "Sam Seeker", "sam@example.com"), userRow(POSTER, "Maya Chen", "maya@acme.com"), userRow(COLLEAGUE, "Ravi Patel", "ravi.patel@acme.com")],
     canonicalPeople: [],
     profiles: [referrerProfile(1, POSTER), referrerProfile(2, COLLEAGUE)],
     companyOpportunities: [post()],
@@ -298,8 +322,11 @@ function seed() {
     referralReviewDeliveries: [],
     notifications: [],
     operationalActivityLogs: [],
+    userBlocks: [],
+    referrerFastTrackLinks: [],
   };
   sequence = {};
+  failBlockReads = false;
 }
 
 beforeEach(() => {
@@ -380,6 +407,103 @@ describe("an ask written from a post", () => {
     expect(replay).toMatchObject({ replayed: true, fromPost: true, firstLook: true, notifiedEmployees: 0 });
     expect(rows.jobs).toHaveLength(1);
     expect(rows.notifications).toEqual([]);
+  });
+});
+
+describe("P0-block-delivery: a block on the create path", () => {
+  const blockPair = (blocker: number, blocked: number) => { rows.userBlocks.push({ id: rows.userBlocks.length + 1, blockerUserId: blocker, blockedUserId: blocked, reason: null, createdAt: new Date(NOW) }); };
+  const sendPlain = () => createCompanyReferralRequest(SEEKER, { targetRoleUrl: URL_, personalPitch: "I shipped the approvals redesign this role describes.", attachmentIds: [41], idempotencyKey: "plain-ask-key-0001" });
+  const recipients = (table: Row[]) => table.map(row => row.userId ?? row.referrerId).sort((a, b) => Number(a) - Number(b));
+  const DIRECTIONS = [
+    ["the poster blocked the seeker", POSTER, SEEKER],
+    ["the seeker blocked the poster", SEEKER, POSTER],
+  ] as const;
+  beforeEach(() => { mocks.capture.mockClear(); vi.spyOn(console, "warn").mockImplementation(() => undefined); });
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it.each(DIRECTIONS)("tells only the unblocked colleague about a plain ask when %s, and the ask still costs its one credit", async (_label, blocker, blocked) => {
+    blockPair(blocker, blocked);
+    const result = await sendPlain();
+    expect(result).toMatchObject({ coverageStatus: "covered", notifiedEmployees: 1, firstLook: false, fastTrack: false, replayed: false });
+    expect(recipients(rows.notifications)).toEqual([COLLEAGUE]);
+    expect(recipients(rows.referrerReviewEmailLinks)).toEqual([COLLEAGUE]);
+    expect(recipients(rows.referralReviewDeliveries)).toEqual([COLLEAGUE]);
+    expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+  });
+
+  it.each(DIRECTIONS)("gives a blocked poster no first look when %s: the ask opens to the colleagues at once", async (_label, blocker, blocked) => {
+    blockPair(blocker, blocked);
+    const result = await sendWithPost();
+    expect(result).toMatchObject({ fromPost: true, firstLook: false, notifiedEmployees: 1 });
+    expect(insertedRequest()).toMatchObject({ opportunityId: 55, firstLookReferrerId: null, firstLookUntil: null });
+    expect(recipients(rows.notifications)).toEqual([COLLEAGUE]);
+    expect(String(rows.notifications[0].body)).toContain("A Job Seeker shared a role at acme.com");
+    expect(recipients(rows.referrerReviewEmailLinks)).toEqual([COLLEAGUE]);
+  });
+
+  it("keeps the ask covered when every employee is blocked, so its status never reveals a block", async () => {
+    blockPair(POSTER, SEEKER);
+    blockPair(SEEKER, COLLEAGUE);
+    const result = await sendPlain();
+    expect(result).toMatchObject({ coverageStatus: "covered", notifiedEmployees: 0 });
+    expect(rows.notifications).toEqual([]);
+    expect(rows.referrerReviewEmailLinks).toEqual([]);
+    expect(rows.referralRequests[0]).toMatchObject({ waitingForCoverage: false, referrerId: null });
+  });
+
+  it("ignores blocks with other people", async () => {
+    blockPair(POSTER, 99);
+    blockPair(98, COLLEAGUE);
+    expect(await sendPlain()).toMatchObject({ notifiedEmployees: 2 });
+    expect(recipients(rows.notifications)).toEqual([POSTER, COLLEAGUE]);
+  });
+
+  it("fails open when the block lookup fails: the ask goes out as before and the failure is reported", async () => {
+    blockPair(POSTER, SEEKER);
+    failBlockReads = true;
+    expect(await sendWithPost()).toMatchObject({ firstLook: true, notifiedEmployees: 1 });
+    expect(recipients(rows.notifications)).toEqual([POSTER]);
+    expect(mocks.capture).toHaveBeenCalledWith(expect.objectContaining({ code: "ER_NO_SUCH_TABLE" }), expect.objectContaining({ area: "ask_create_delivery" }));
+  });
+
+  describe("through a personal link (D-017)", () => {
+    const LINK = "personal-link-code-0001";
+    beforeEach(() => {
+      rows.referrerFastTrackLinks = [{ id: 1, referrerId: POSTER, companyDomain: "acme.com", linkCode: LINK, vanityAlias: null, isActive: true, createdAt: new Date(NOW), updatedAt: new Date(NOW), deactivatedAt: null }];
+    });
+    const sendViaLink = () => createCompanyReferralRequest(SEEKER, { targetRoleUrl: URL_, personalPitch: "I shipped the approvals redesign this role describes.", attachmentIds: [41], idempotencyKey: "link-ask-key-0001", fastTrackCode: LINK });
+    const refusalOf = (work: Promise<unknown>) => work.then(() => undefined, (reason: unknown) => reason);
+
+    it.each(DIRECTIONS)("is refused with the inactive-link words before any write or credit when %s", async (_label, blocker, blocked) => {
+      blockPair(blocker, blocked);
+      const refusal = await refusalOf(sendViaLink());
+      expect(refusal).toBeInstanceOf(BlockedPersonalLinkError);
+      expect(refusal instanceof Error ? refusal.message : "").toBe(PERSONAL_LINK_UNAVAILABLE);
+      expect(rows.referralRequests).toEqual([]);
+      expect(rows.jobs).toHaveLength(1); // the seeded row only
+      expect(rows.tokenTransactions).toEqual([]);
+      expect(rows.planCreditGrants).toEqual([]);
+      expect(rows.tokenBalances[0]).toMatchObject({ monthlyCreditsRemaining: 3, balance: 0 });
+      expect(rows.referralAttachments[0].referralRequestId).toBeNull();
+      expect(rows.notifications).toEqual([]);
+      expect(rows.referrerReviewEmailLinks).toEqual([]);
+      expect(rows.referralReviewDeliveries).toEqual([]);
+    });
+
+    it("answers a blocked link with exactly the words an inactive link gets", async () => {
+      rows.referrerFastTrackLinks[0].isActive = false;
+      const inactive = await refusalOf(sendViaLink());
+      expect(inactive instanceof Error ? inactive.message : "").toBe(PERSONAL_LINK_UNAVAILABLE);
+      expect(inactive).not.toBeInstanceOf(BlockedPersonalLinkError);
+    });
+
+    it("still goes to the link owner alone when nothing is blocked", async () => {
+      blockPair(COLLEAGUE, SEEKER);
+      expect(await sendViaLink()).toMatchObject({ fastTrack: true, notifiedEmployees: 1, replayed: false });
+      expect(rows.referralRequests[0]).toMatchObject({ referrerId: POSTER, status: "pending" });
+      expect(recipients(rows.notifications)).toEqual([POSTER]);
+      expect(rows.tokenBalances[0].monthlyCreditsRemaining).toBe(2);
+    });
   });
 });
 
@@ -512,6 +636,21 @@ describe("post lists and the poster's controls", () => {
     expect(opportunityPosterOf({ showPosterFirstName: false, ownerName: "Maya Chen" })).toEqual({ kind: "anonymous" });
     expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "Maya Chen" })).toEqual({ kind: "firstName", firstName: "Maya" });
     expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: null })).toEqual({ kind: "anonymous" });
+  });
+
+  // P0-referrer-exposure: work-email sign-ups stored the address's local part as the name, and the
+  // card sits next to the company domain ("Your last name and work email never appear").
+  it("withholds a chosen first name that would rebuild the poster's work email", async () => {
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "zoya.quill", ownerEmail: "zoya.quill@acme.com" })).toEqual({ kind: "anonymous" });
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "Maya Chen", ownerEmail: "maya@acme.com" })).toEqual({ kind: "anonymous" });
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "zoya_q", ownerEmail: null })).toEqual({ kind: "anonymous" });
+    expect(opportunityPosterOf({ showPosterFirstName: true, ownerName: "Maya Chen", ownerEmail: "maya.chen@acme.com" })).toEqual({ kind: "firstName", firstName: "Maya" });
+
+    // Through the real list: the poster (Maya Chen, maya@acme.com) ticked the box and stays anonymous.
+    rows.companyOpportunities[0].showPosterFirstName = true;
+    const posts = await listCompanyOpportunityPosts(["acme.com"]);
+    expect(posts).toEqual([expect.objectContaining({ id: 55, poster: { kind: "anonymous" } })]);
+    expect(JSON.stringify(posts)).not.toMatch(/maya/i);
   });
 });
 

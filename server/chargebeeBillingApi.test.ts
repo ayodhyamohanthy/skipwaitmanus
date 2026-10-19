@@ -74,7 +74,6 @@ describe("item price availability", () => {
   const pass30 = planPrice("momentum", "30d", "USD")!;
   const pass90 = planPrice("momentum", "90d", "USD")!;
   const yearly = planPrice("keep_warm", "yearly", "INR")!;
-  const legacy = planPrice("pro", "monthly", "USD")!;
   const pack = packPrice("pack_25", "USD")!;
   const session = sessionPrice("written_review", "INR")!;
 
@@ -91,7 +90,6 @@ describe("item price availability", () => {
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "year" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 12, period_unit: "month" }, yearly)).toBe(true);
     expect(itemPriceMatches({ ...live, id: yearly.itemPriceId, currency_code: "INR", price: 99_900, period: 1, period_unit: "month" }, yearly)).toBe(false);
-    expect(itemPriceMatches({ ...live, id: legacy.itemPriceId, price: 700, period: 1, period_unit: "month" }, legacy)).toBe(true);
     expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "charge" }, pack)).toBe(true);
     expect(itemPriceMatches({ id: pack.itemPriceId, status: "active", currency_code: "USD", price: 2_200, item_type: "plan" }, pack)).toBe(false);
     expect(itemPriceMatches({ id: session.itemPriceId, status: "active", currency_code: "INR", price: 79_900, item_type: "charge" }, session)).toBe(true);

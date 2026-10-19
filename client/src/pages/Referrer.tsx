@@ -57,7 +57,7 @@ export default function Referrer() {
   useEffect(() => {
     // /referrer is the public employee entry point, so it carries its own title
     // instead of inheriting the current shell metadata.
-    applySeo({ title: "Verify a work email to review private referrals", description: "Verify a company email once, then review private referral requests for your own company and choose whether to help. Reviewing is always free.", path: "/referrer" });
+    applySeo({ title: "Verify a work email to review private referrals", description: "Verify a company email once, then review private referral requests for your own company and choose whether to help. Reviewing never costs you anything.", path: "/referrer" });
   }, []);
   useEffect(() => {
     // /referrer is the employee login door: signed-out visitors meet the
@@ -94,7 +94,8 @@ export default function Referrer() {
     setEmployeeEnrollmentReady(false);
     void companyFetch("/api/company-referrals/verify-work-email", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: employeeSignInEmail, inviteCode: savedInviteCode || undefined }) }).then(payload => {
       if (!active) return;
-      if (payload.reward?.rewarded) setCoverageRewardMessage("Welcome credit added. You and the person who invited you each received one referral credit.");
+      // D-055: a completed coverage invite rewards the inviting job seeker only; SkipWait never pays referrers.
+      if (payload.reward?.rewarded) setCoverageRewardMessage("You joined from an invite. The person who invited you gets one referral credit after their next ask. SkipWait never pays referrers.");
       if (savedInviteCode) window.sessionStorage.removeItem(coverageInviteSessionKey);
       setShowWorkEmailEnrollment(false); setWorkEmailError("");
     }).catch(error => { if (active) setWorkEmailError(error instanceof Error ? error.message : "We could not confirm this company email for private referral access."); }).finally(() => { if (active) setEmployeeEnrollmentReady(true); });

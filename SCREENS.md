@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-048, D-049, D-053, D-059).
+
 # SkipWait — End-to-End Screen Map (Web + Mobile PWA)
 
 Every screen below is a real route in `app/src/routes/`. All screens are

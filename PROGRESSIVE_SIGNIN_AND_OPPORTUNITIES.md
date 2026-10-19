@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-022, D-030).
+
 # Progressive Sign-In and Verified Opportunity Sharing
 
 ## Product position

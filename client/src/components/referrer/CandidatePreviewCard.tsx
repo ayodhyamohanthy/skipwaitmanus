@@ -1,6 +1,7 @@
 // Candidate preview inside the kit v4 queue card: the seeker's note, role link
 // and documents, then the one-click decision (accept, or decline with one
 // reason after a confirmation). Behavior matches the pre-kit company inbox.
+import { useState } from "react";
 import { CheckCircle2, FileText } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
@@ -31,6 +32,10 @@ export function CandidatePreviewCard({ preview, working, error, raceError, pendi
   onBackToQueue: () => void;
 }) {
   const pendingOption = declineReasonOptions.find(option => option.value === pendingDecline);
+  // Accepting reveals names both ways and the resume, so it takes an explicit confirmed step
+  // (the kit ethics checkbox, as in the thread's accept dialog) before anything is recorded.
+  const [accepting, setAccepting] = useState(false);
+  const [ethicsConfirmed, setEthicsConfirmed] = useState(false);
   return (
     <article aria-label="Candidate preview" className="queue-card min-w-0">
       <header>
@@ -63,15 +68,26 @@ export function CandidatePreviewCard({ preview, working, error, raceError, pendi
         {pendingDecline && pendingOption ? (
           <div role="group" aria-label="Confirm decline" className="rounded-[7px] bg-muted p-4">
             <p className="text-sm font-semibold">Decline as “{pendingOption.label}”?</p>
-            <p className="mt-1 text-[13px] leading-[1.7] text-muted-foreground">{pendingOption.hint} The Job Seeker sees a short private note — never your name — and their credit is returned.</p>
+            <p className="mt-1 text-[13px] leading-[1.7] text-muted-foreground">{pendingOption.hint} The Job Seeker sees a short private note — never your name. The ask stays with your company, so a colleague can still pick it up.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button type="button" variant="outline" className="flex-1 text-destructive" disabled={working} onClick={() => onConfirmDecline(pendingDecline)}>{working ? "Recording…" : "Confirm decline"}</Button>
               <Button type="button" variant="ghost" className="min-h-11 flex-1" disabled={working} onClick={onCancelDecline}>Cancel</Button>
             </div>
           </div>
         ) : (
+          accepting ? (
+          <div role="group" aria-label="Confirm accept" className="rounded-[7px] bg-muted p-4">
+            <p className="text-sm font-semibold">Accept this request?</p>
+            <p className="mt-1 text-[13px] leading-[1.7] text-muted-foreground">You’ll both see names, and you’ll get the resume. Referring comes later, through {preview.companyDomain}’s own process.</p>
+            <label className="mt-3 flex items-start gap-3 text-[13px] leading-[1.6]"><input type="checkbox" checked={ethicsConfirmed} onChange={event => setEthicsConfirmed(event.target.checked)} disabled={working} className="mt-0.5 size-4 shrink-0" />I’ll refer only through {preview.companyDomain}’s official process and won’t accept anything in return.</label>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button type="button" className="flex-1" disabled={working || !ethicsConfirmed} onClick={onAccept}>{working ? "Recording decision…" : "Accept"}<CheckCircle2 /></Button>
+              <Button type="button" variant="ghost" className="min-h-11 flex-1" disabled={working} onClick={() => { setAccepting(false); setEthicsConfirmed(false); }}>Cancel</Button>
+            </div>
+          </div>
+        ) : (
           <>
-            <Button type="button" className="w-full" onClick={onAccept} disabled={working || !preview.attachments.length}>{working ? "Recording decision…" : "Accept & submit referral"}<CheckCircle2 /></Button>
+            <Button type="button" className="w-full" onClick={() => setAccepting(true)} disabled={working || !preview.attachments.length}>Accept &amp; connect<CheckCircle2 /></Button>
             <p className="mt-4 text-center text-xs font-semibold text-muted-foreground">Or decline with one reason</p>
             <div className="mt-2 grid grid-cols-3 gap-2">
               {declineReasonOptions.map(option => (
@@ -79,7 +95,7 @@ export function CandidatePreviewCard({ preview, working, error, raceError, pendi
               ))}
             </div>
           </>
-        )}
+        ))}
       </div>
     </article>
   );

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { decideReferrerDmGate, hasAcceptedLink, resolveReferrerDmGate, type DmGateEventRow, type DmGateProfileRow, type DmGateRequestRow, type DmGateStore, type DmGateUserRow } from "./dmReferrerGate";
-import { DM_REFERRER_ACCEPTANCE_ERROR, DM_REFERRER_ACCEPTANCE_SENDER_IS_REFERRER_ERROR, dmSendBlockFor, parseDmSendBlock } from "../shared/directMessages";
+import { DM_FOLLOW_REQUIRED, DM_REFERRER_ACCEPTANCE_ERROR, DM_REFERRER_ACCEPTANCE_SENDER_IS_REFERRER_ERROR, dmSendBlockFor, parseDmFollowRequired, parseDmSendBlock } from "../shared/directMessages";
 import { AdminCannotAcceptClaimedReferralError, decideAdminReferralApproval } from "./adminReferralApproval";
 
 type Tables = { users: DmGateUserRow[]; profiles: DmGateProfileRow[]; requests: DmGateRequestRow[]; events: DmGateEventRow[] };
@@ -50,6 +50,16 @@ describe("referrer DM gate decision", () => {
     expect(parseDmSendBlock({ reason: "referrer_acceptance_required", error: DM_REFERRER_ACCEPTANCE_ERROR, senderRole: "admin" })).toBeNull();
     expect(parseDmSendBlock({ reason: "premium_required", error: "x" })).toBeNull();
     expect(parseDmSendBlock(null)).toBeNull();
+  });
+
+  it("keeps the member follow rule a different body from the referrer block, so the client never mixes them up", () => {
+    expect(DM_FOLLOW_REQUIRED).toEqual({ reason: "mutual_follow_required", error: "You can message this member once you follow each other." });
+    expect(parseDmSendBlock(DM_FOLLOW_REQUIRED)).toBeNull();
+    expect(parseDmFollowRequired(DM_FOLLOW_REQUIRED)).toEqual(DM_FOLLOW_REQUIRED);
+    expect(parseDmFollowRequired(dmSendBlockFor({ kind: "acceptance_required", senderRole: "member" }))).toBeNull();
+    expect(parseDmFollowRequired({ reason: "mutual_follow_required", error: "" })).toBeNull();
+    expect(parseDmFollowRequired({ error: "Direct messaging is a premium feature.", upgrade: true })).toBeNull();
+    expect(parseDmFollowRequired(null)).toBeNull();
   });
 
   it("counts closed only when the request was approved first", () => {

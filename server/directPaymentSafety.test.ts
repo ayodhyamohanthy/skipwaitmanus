@@ -5,13 +5,13 @@ import { registerPaymentRoutes } from "./payments";
 
 const build = (signedIn=true) => {
   const app=express(); app.use(express.json()); const records: unknown[]=[];
-  registerPaymentRoutes(app,{resolveIdentity:async()=>signedIn?{account:{id:7}}:undefined,planPricing:()=>({inrAmount:99,usdAmount:2}),record:async x=>{records.push(x)}});
+  registerPaymentRoutes(app,{resolveIdentity:async()=>signedIn?{account:{id:7}}:undefined,record:async x=>{records.push(x)}});
   return {app,records};
 };
 describe("direct consumer checkout safety gate",()=>{
   it.each(["razorpay","paypal"])("never creates a payable %s orphan",async provider=>{
     const fetchSpy=vi.spyOn(globalThis,"fetch"); const {app,records}=build();
-    const response=await request(app).post(`/api/payments/${provider}/order`).send({planId:"pro",tokens:999});
+    const response=await request(app).post(`/api/payments/${provider}/order`).send({planId:"momentum",tokens:999});
     expect(response.status).toBe(503); expect(response.body.error).toContain("Chargebee"); expect(fetchSpy).not.toHaveBeenCalled();
     expect(records).toHaveLength(1);
     fetchSpy.mockRestore();

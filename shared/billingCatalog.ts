@@ -2,41 +2,64 @@
  * The billing view of the price book (shared/planCatalog.ts): which Chargebee
  * item price means which plan term, credit pack or human session, the amount
  * the server charges for it, when a pass may auto-extend, how a plan change
- * moves, and the public catalog payload. Grandfathered Pro/Max keep their
- * monthly prices from shared/subscriptionPlans.ts. Pure; the server and the
- * client read the same answers.
+ * moves, and the public catalog payload. Only the kit catalog is billable: the
+ * retired monthly Pro/Max (D-067) have no price here and no item price resolves
+ * to them. Pure; the server and the client read the same answers.
  */
 import { z } from "zod";
 import { BILLING_REGIONS, indiaPriceNote, currencyForRegion, type BillingRegion } from "./billingRegion";
-import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, REVERSE_TRIAL, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
+import { CATALOG_CURRENCIES, CATALOG_INTERVALS, CATALOG_PACK_IDS, CATALOG_PLAN_IDS, CATALOG_PLANS, CREDIT_PACKS, CREDIT_TOOLS, CREDIT_TOOL_IDS, FREE_PLAN, HUMAN_SESSIONS, HUMAN_SESSION_IDS, MAX_OPEN_ASKS_PER_COMPANY, PASS_DAYS, REVERSE_TRIAL, REVERSE_TRIAL_ON_OFFER, catalogItemPriceId, catalogPackById, catalogPackItemPriceId, catalogPlanById, catalogSessionItemPriceId, humanSessionById, planDisplayName, planIntervals, tierRank, type CatalogCurrency, type CatalogInterval, type CatalogPackId, type CatalogPlanId, type HumanSessionId, type PaidCatalogPlan } from "./planCatalog";
 import { planEntitlementsFor } from "./planEntitlements";
-import { SUBSCRIPTION_PLANS } from "./subscriptionPlans";
 
 export const BILLING_INTERVALS = CATALOG_INTERVALS;
 export const BILLING_CURRENCIES = CATALOG_CURRENCIES;
 /**
  * Stored billing periods (tokenBalances.subscriptionBillingPeriod and the intent
  * and invoice columns): existing values first and in order (a MySQL ENUM stores
- * the index), then the passes 0091 added. "monthly" is legacy Pro/Max only.
+ * the index), then the passes 0091 added. "monthly" was the retired Pro/Max
+ * term (D-067): storage-only, never sold or resolved, kept first because it is
+ * ENUM index 0.
  */
 export const BILLING_PERIODS = ["monthly", "yearly", "30d", "90d"] as const;
 export type BillingPeriod = (typeof BILLING_PERIODS)[number];
 
-export const LEGACY_PLAN_IDS = ["pro", "max"] as const;
+/**
+ * The pre-kit monthly plans D-067 removed completely (owner, Oct 18 2026). No
+ * checkout sells them (POST /api/chargebee/subscription-checkout answers 410
+ * plan_retired), no item price resolves to them, they are never billable and a
+ * wallet holding one reads as Free. They stay in the column ENUMs, in place,
+ * only because removing an ENUM member is not an additive migration and history
+ * (wallets, intents, gift receipts, ledger rows) must stay readable.
+ */
+export const RETIRED_PLAN_IDS = ["pro", "max"] as const;
+export type RetiredPlanId = (typeof RETIRED_PLAN_IDS)[number];
+
+export function isRetiredPlanId(value: unknown): value is RetiredPlanId {
+  return typeof value === "string" && (RETIRED_PLAN_IDS as readonly string[]).includes(value);
+}
+
+/**
+ * A retired plan's Chargebee item price (skipwait_pro_monthly-INR and the like).
+ * Never sold and never resolved to a plan: recognised only so a late provider
+ * event that names one is recorded, refused (it grants nothing) and alerted.
+ */
+export function isRetiredPlanItemPrice(itemPriceId: unknown): boolean {
+  return typeof itemPriceId === "string" && RETIRED_PLAN_IDS.some(plan => BILLING_CURRENCIES.some(currency => itemPriceId === `skipwait_${plan}_monthly-${currency}`));
+}
 /**
  * Plan ids 0090 stored before the Oct 14 2026 decision renamed the Land levels.
  * Never sold or written; they stay in the column ENUMs only because removing an
  * ENUM member is not an additive migration. A wallet holding one reads as Free.
  */
 export const RESERVED_PLAN_IDS = ["land_100", "land_200", "land_500"] as const;
-/** Every plan a subscription can bill: the kit plans plus grandfathered Pro/Max. */
-export const BILLABLE_PLAN_IDS = [...CATALOG_PLAN_IDS, ...LEGACY_PLAN_IDS] as const;
+/** Every plan a subscription can bill: the kit catalog plans only (D-067). */
+export const BILLABLE_PLAN_IDS = CATALOG_PLAN_IDS;
 export type BillablePlanId = (typeof BILLABLE_PLAN_IDS)[number];
 /** tokenBalances.plan: existing values first and in order (0090, then 0091). */
-export const WALLET_PLAN_IDS = ["free", ...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+export const WALLET_PLAN_IDS = ["free", ...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 export type WalletPlanId = (typeof WALLET_PLAN_IDS)[number];
 /** subscriptionCheckoutIntents.plan, same ordering rule. */
-export const INTENT_PLAN_IDS = [...LEGACY_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
+export const INTENT_PLAN_IDS = [...RETIRED_PLAN_IDS, "start", "momentum", ...RESERVED_PLAN_IDS, "keep_warm", "land_focus", "land_sprint", "land_concierge"] as const;
 
 export function isBillablePlanId(value: unknown): value is BillablePlanId {
   return typeof value === "string" && (BILLABLE_PLAN_IDS as readonly string[]).includes(value);
@@ -56,22 +79,17 @@ export function planSellsInterval(planId: CatalogPlanId, interval: CatalogInterv
   return Boolean(plan && plan.prices[interval]);
 }
 
-export type PlanPrice = { kind: "plan"; plan: BillablePlanId; interval: BillingPeriod; currency: CatalogCurrency; amount: number; itemPriceId: string; legacy: boolean };
+export type PlanPrice = { kind: "plan"; plan: BillablePlanId; interval: BillingPeriod; currency: CatalogCurrency; amount: number; itemPriceId: string };
 export type PackPrice = { kind: "pack"; packId: CatalogPackId; credits: number; currency: CatalogCurrency; amount: number; itemPriceId: string };
 export type SessionPrice = { kind: "session"; sessionId: HumanSessionId; currency: CatalogCurrency; amount: number; itemPriceId: string };
 export type CatalogPrice = PlanPrice | PackPrice | SessionPrice;
 
-/** The price the server charges for a plan term. Pro/Max are sold monthly only; kit plans for the terms they list. */
+/** The price the server charges for a plan term: kit plans for the terms they list; no plan sells "monthly". */
 export function planPrice(plan: BillablePlanId, interval: BillingPeriod, currency: CatalogCurrency): PlanPrice | undefined {
-  if (plan === "pro" || plan === "max") {
-    if (interval !== "monthly") return undefined;
-    const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-    return { kind: "plan", plan, interval, currency, amount: price.amount, itemPriceId: price.itemPriceId, legacy: true };
-  }
   if (interval === "monthly") return undefined;
   const amount = catalogPlanById(plan)?.prices[interval]?.[currency];
   if (amount === undefined) return undefined;
-  return { kind: "plan", plan, interval, currency, amount, itemPriceId: catalogItemPriceId(plan, interval, currency), legacy: false };
+  return { kind: "plan", plan, interval, currency, amount, itemPriceId: catalogItemPriceId(plan, interval, currency) };
 }
 
 export function packPrice(packId: CatalogPackId, currency: CatalogCurrency): PackPrice | undefined {
@@ -111,7 +129,7 @@ export function catalogPackForAmount(amount: number, currency: string): PackPric
 
 /** Every item price the kit sells, for availability probes: 22 plan terms, 8 packs and 4 sessions. */
 export function sellableItemPrices(): CatalogPrice[] {
-  return ALL_PRICES.filter(price => price.kind !== "plan" || !price.legacy);
+  return [...ALL_PRICES];
 }
 
 // ---- Auto-extend: opt-in renewal only where a renewal needs no extra authentication ----
@@ -144,12 +162,12 @@ export function autoExtendMethods(planId: CatalogPlanId, interval: CatalogInterv
 
 // ---- Plan changes ----
 
-/** "Momentum", "Land Sprint", "Pro", "Free". */
+/** "Momentum", "Land Sprint", "Free" (a retired or unknown id reads as "Free"). */
 export function billingPlanLabel(plan: string): string {
   return planEntitlementsFor(plan).planLabel;
 }
 
-/** Entitlement strength: tier first, then the Land level. Pro/Max rank as the tier they map to. */
+/** Entitlement strength: tier first, then the Land level. */
 function strength(plan: BillablePlanId): number {
   const entitlements = planEntitlementsFor(plan);
   return tierRank(entitlements.tier) * 10 + entitlements.level;
@@ -164,7 +182,7 @@ export type PlanTerm = { plan: BillablePlanId; interval: BillingPeriod; amount: 
  * How a change of an existing subscription moves. A stronger plan, or a longer
  * term of the same plan, upgrades now (prorated, paid on a hosted checkout). A
  * weaker plan or a shorter term switches at term end, so nothing paid for is
- * cut short. Pro/Max to the tier they map to: a higher price upgrades now.
+ * cut short.
  */
 export function planChangeDirection(from: PlanTerm, to: PlanTerm): PlanChangeDirection {
   if (from.plan === to.plan && from.interval === to.interval) return "none";
@@ -178,10 +196,8 @@ export function planChangeDirection(from: PlanTerm, to: PlanTerm): PlanChangeDir
 /** The self-serve ladder: Keep warm, Start, Momentum, Land Focus, Land Sprint. Concierge is by application. */
 const LADDER: readonly CatalogPlanId[] = CATALOG_PLANS.filter(plan => !plan.byApplication).map(plan => plan.id);
 
-/** The next plan up and down for the billing action grid; Pro sits at Start, Max at Momentum. */
+/** The next plan up and down for the billing action grid; none for Free or a plan outside the ladder. */
 export function adjacentPlans(plan: string): { up: CatalogPlanId | null; down: CatalogPlanId | null } {
-  if (plan === "pro") return { up: "momentum", down: null };
-  if (plan === "max") return { up: "land_focus", down: "start" };
   const index = isCatalogPlanId(plan) ? LADDER.indexOf(plan) : -1;
   if (index < 0) return { up: null, down: null };
   return { up: LADDER[index + 1] ?? null, down: LADDER[index - 1] ?? null };
@@ -201,7 +217,8 @@ export const planCatalogResponseSchema = z.strictObject({
   free: z.strictObject({
     openRequests: z.number().int().positive(),
     creditsPerMonth: z.number().int().min(0),
-    trial: z.strictObject({ plan: z.enum(CATALOG_PLAN_IDS), planLabel: z.string().min(1), days: z.number().int().positive(), openRequests: z.number().int().positive(), credits: z.number().int().min(0) }),
+    /** Present only while the reverse trial is on offer (REVERSE_TRIAL_ON_OFFER); absent until its trigger ships (D-051). */
+    trial: z.strictObject({ plan: z.enum(CATALOG_PLAN_IDS), planLabel: z.string().min(1), days: z.number().int().positive(), openRequests: z.number().int().positive(), credits: z.number().int().min(0) }).optional(),
   }),
   plans: z.array(z.strictObject({
     id: z.enum(CATALOG_PLAN_IDS),
@@ -290,7 +307,8 @@ export function planCatalogResponse(input: CatalogResponseInput): PlanCatalogRes
     free: {
       openRequests: FREE_PLAN.openRequests,
       creditsPerMonth: FREE_PLAN.creditsPerMonth,
-      trial: { plan: REVERSE_TRIAL.plan, planLabel: trialPlan ? planDisplayName(trialPlan) : REVERSE_TRIAL.plan, days: REVERSE_TRIAL.days, openRequests: trialPlan?.openRequests ?? FREE_PLAN.openRequests, credits: REVERSE_TRIAL.credits },
+      // D-051: nothing grants the trial yet, so it is advertised only once it is on offer.
+      ...(REVERSE_TRIAL_ON_OFFER ? { trial: { plan: REVERSE_TRIAL.plan, planLabel: trialPlan ? planDisplayName(trialPlan) : REVERSE_TRIAL.plan, days: REVERSE_TRIAL.days, openRequests: trialPlan?.openRequests ?? FREE_PLAN.openRequests, credits: REVERSE_TRIAL.credits } } : {}),
     },
     plans: CATALOG_PLANS.flatMap(plan => planEntry(plan, input, currency)),
     packs: CREDIT_PACKS.flatMap(pack => {

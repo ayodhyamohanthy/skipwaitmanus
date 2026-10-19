@@ -23,7 +23,17 @@ const referralRequestSchema = z.object({
   compensation: z.string().nullish(),
   status: z.enum(referralStatuses),
   referrerId: z.number().int().nullish().transform(value => value ?? null),
-  queueStatus: z.enum(["available_for_review", "waiting_for_coverage"]).nullish(),
+  queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
+  // D-061 window fields: a waiting ask counts 90 days from creation (and shows no countdown),
+  // everything else 7 days from first visibility (pre-0095 rows: creation).
+  waitingForCoverage: z.boolean().optional().catch(undefined),
+  coverageVisibleAt: z.string().nullish().transform(value => value ?? null),
+  // D-050: a personal-link ask its employee has not acted on still counts as unclaimed. Optional so a
+  // payload from before the flag still parses; a malformed flag reads as not held (the server decides a withdraw).
+  heldForReferrer: z.boolean().optional().catch(undefined),
+  // P0-allocated-ask-stuck: an ask assigned to one referrer who has not claimed it, through a personal link or a
+  // queue allocation (a D-034 delivery), still counts as unclaimed. Optional so a payload from before the flag parses.
+  unclaimedAssignment: z.boolean().optional().catch(undefined),
   referrerMessage: z.string().nullish().transform(value => value ?? null),
   unreadMessageCount: z.coerce.number().int().min(0).catch(0),
   createdAt: z.string(),

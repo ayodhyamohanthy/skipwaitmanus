@@ -6,6 +6,7 @@ import { ReferrerOtpSignIn } from "@/components/ReferrerOtpSignIn";
 import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
+import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
 
 type Intent = "seeker" | "referrer";
 
@@ -50,7 +51,7 @@ export default function SignIn() {
         // (D-049). SeekerSignIn renders its own "New to SkipWait? Create a free account" line under the form.
         : <SeekerSignIn returnTo={seekerReturnTo} />}
       {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email, passwords or social logins for referrers.</p> : null}
-      <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. Referrals are free and never guarantee an interview.</p>
+      <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. {MONEY_SENTENCE_SHORT} A referral never guarantees an interview.</p>
     </div></section>
   </main>;
 }

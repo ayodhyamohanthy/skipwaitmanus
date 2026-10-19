@@ -1,4 +1,4 @@
-import { PASS_REASON_OPTIONS } from "@shared/passReasons";
+import { PASS_REASON_OPTIONS, type PassReasonCode } from "@shared/passReasons";
 import { ArrowRight, Check, Undo2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
@@ -7,7 +7,7 @@ import type { ThreadRequest, ThreadRole } from "@/lib/threadApi";
 import { ModalError, ThreadModal } from "./ThreadModal";
 import { companyName, stageIndex, stageOf } from "./threadModel";
 
-/** Kit pass reasons; `value` is the legacy decline reason the server routes on, `code` the kit reason. */
+/** Pass reasons (D-052); `value` is the legacy decline reason the server routes on, `code` the reason the referrer picked. */
 export const PASS_REASONS = PASS_REASON_OPTIONS.map(option => ({ label: option.label, value: option.legacy, code: option.code }));
 
 const SEEKER_MILESTONES = [
@@ -46,7 +46,11 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
   const close = () => { setModal(null); action.reset(); };
 
   if (stage === "Requested") {
-    const canWithdraw = request.referrerId === null;
+    // Unclaimed: no referrer yet, a personal-link ask its employee has not acted on (D-050), or any assigned ask
+    // nobody claimed, such as a D-034 delivery (P0-allocated-ask-stuck). The server re-decides.
+    const canWithdraw = request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true;
+    // D-061: a waiting or held ask never reached a verified employee, so withdrawing it returns nothing — nothing was spent.
+    const awaitingCoverage = request.queueStatus === "waiting_for_coverage" || request.queueStatus === "held_for_credit";
     return (
       <>
         <h2 className="mt-2 text-lg font-semibold">Nothing to do yet.</h2>
@@ -57,7 +61,7 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
             {titleId => (
               <>
                 <h2 id={titleId} className="text-xl font-semibold">Withdraw this request?</h2>
-                <p className="mt-2 text-muted-foreground">It leaves the referrer&apos;s queue and frees your slot.</p>
+                <p className="mt-2 text-muted-foreground">{awaitingCoverage ? "It never reached a verified employee, so no credit was used." : "It leaves the referrer's queue and frees your slot."}</p>
                 <ModalError message={action.error} />
                 <footer className="mt-6 flex justify-end gap-2">
                   <Button variant="ghost" onClick={close}>Keep it</Button>
@@ -106,14 +110,15 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
   const [modal, setModal] = useState<null | "accept" | "pass" | "referred">(null);
   const [confirmed, setConfirmed] = useState(false);
   const [reference, setReference] = useState("");
-  const [reasonLabel, setReasonLabel] = useState<string>(PASS_REASONS[0].label);
+  // D-052: the referrer always picks a reason actively, so nothing is selected when the pass opens.
+  const [reasonCode, setReasonCode] = useState<PassReasonCode | null>(null);
   const action = useAction();
   const stage = stageOf(request);
   const company = companyName(request);
-  const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setReference(""); setModal(next); };
+  const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setReference(""); setReasonCode(null); setModal(next); };
   const close = () => { setModal(null); action.reset(); };
   const submit = (run: () => Promise<void>, fallback: string) => { void action.run(run, fallback).then(ok => { if (ok) setModal(null); }); };
-  const selectedReason = PASS_REASONS.find(option => option.label === reasonLabel) ?? PASS_REASONS[0];
+  const selectedReason = PASS_REASONS.find(option => option.code === reasonCode);
 
   return (
     <>
@@ -160,15 +165,15 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
               <p className="mt-2 text-muted-foreground">The seeker sees a kind note with your reason. Never your name.</p>
               <div className="mt-4 grid gap-2" role="radiogroup" aria-label="Pass reason">
                 {PASS_REASONS.map(option => (
-                  <label key={option.label} className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 ${reasonLabel === option.label ? "border-primary bg-primary/5" : "border-border"}`}>
-                    <input type="radio" name="pass-reason" checked={reasonLabel === option.label} onChange={() => setReasonLabel(option.label)} />{option.label}
+                  <label key={option.code} className={`flex min-h-11 items-center gap-3 rounded-xl border px-3 ${reasonCode === option.code ? "border-primary bg-primary/5" : "border-border"}`}>
+                    <input type="radio" name="pass-reason" checked={reasonCode === option.code} onChange={() => setReasonCode(option.code)} />{option.label}
                   </label>
                 ))}
               </div>
               <ModalError message={action.error} />
               <footer className="mt-6 flex justify-end gap-2">
                 <Button variant="ghost" onClick={close}>Cancel</Button>
-                <Button disabled={action.busy} onClick={() => submit(() => onPass(selectedReason.value, selectedReason.code), "We could not record your decision")}>Pass</Button>
+                <Button disabled={!selectedReason || action.busy} onClick={() => { if (selectedReason) submit(() => onPass(selectedReason.value, selectedReason.code), "We could not record your decision"); }}>Pass</Button>
               </footer>
             </>
           )}

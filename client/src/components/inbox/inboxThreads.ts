@@ -15,7 +15,7 @@ const askingRowSchema = z.object({
   ...companyIdentityFieldsSchema.shape,
   status: z.enum(referralStatuses),
   referrerId: z.number().int().nullable().optional().transform(value => value ?? null),
-  queueStatus: z.enum(["available_for_review", "waiting_for_coverage"]).nullish(),
+  queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
   referrerMessage: z.string().nullish(),
   unreadMessageCount: z.number().int().nonnegative().optional().transform(value => value ?? 0),
   updatedAt: timestamp,
@@ -101,7 +101,7 @@ export function askingThread(row: AskingRow): InboxThread {
       : !pending && row.referrerMessage
         ? row.referrerMessage
         : pending
-          ? row.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : row.queueStatus === "available_for_review" ? "Available for review" : "Waiting for a referrer to accept"
+          ? row.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : row.queueStatus === "held_for_credit" ? "Add a credit to send it" : row.queueStatus === "available_for_review" ? "Available for review" : "Waiting for a referrer to accept"
           : getJobSeekerReferralState({ status: row.status, referrerId: row.referrerId }).label;
   return {
     key: `asking-${row.id}`,

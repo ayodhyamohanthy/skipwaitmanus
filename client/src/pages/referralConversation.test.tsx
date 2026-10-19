@@ -130,6 +130,13 @@ describe("ReferralConversation thread", () => {
     render(<ReferralConversation />);
     expect(await screen.findByText("Would you refer this person?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Pass privately/ }));
+    // D-052: no reason is preselected, and Pass stays off until the referrer picks one.
+    const reasons = await screen.findAllByRole("radio");
+    expect(reasons).toHaveLength(7);
+    expect(reasons.filter(radio => (radio as HTMLInputElement).checked)).toHaveLength(0);
+    expect((screen.getByRole("button", { name: /^Pass$/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
     fireEvent.click(await screen.findByLabelText("At capacity right now"));
     fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
@@ -278,6 +285,36 @@ describe("ReferralConversation thread", () => {
     expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Withdraw request/ })).toBeNull();
     expect(screen.getByText(/is reviewing your request/)).toBeTruthy();
+  });
+
+  it("offers Withdraw on a personal-link ask its employee has not acted on, with truthful waiting copy (D-050)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
+      return ok({ requests: [{ ...seekerPending, referrerId: 77, queueStatus: "available_for_review", heldForReferrer: true, createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString() }] });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
+    expect(screen.getByText(/Sent privately to the acme\.com employee whose link you used\. Expires in 5 days if they don't respond/)).toBeTruthy();
+    expect(screen.queryByText(/is reviewing your request/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Withdraw request/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Withdraw" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/withdraw", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("offers Withdraw on a delivered ask nobody picked up (unclaimedAssignment), and its dialog says it frees your slot (P0-allocated-ask-stuck)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
+      return ok({ requests: [{ ...seekerPending, referrerId: 77, queueStatus: "available_for_review", heldForReferrer: false, unclaimedAssignment: true }] });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Withdraw request/ }));
+    expect(await screen.findByText("It leaves the referrer's queue and frees your slot.")).toBeTruthy();
+    expect(screen.queryByText(/It never reached a verified employee/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Withdraw" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/withdraw", expect.objectContaining({ method: "POST" })));
   });
 
   it("gives the referrer who accepted the candidate, the resume and the note the ask was sent with", async () => {

@@ -1,6 +1,6 @@
 # SkipWait — LLM Development Handoff
 
-> Read START_HERE.md first. The platform is already live: update it, do not rebuild it.
+> Read [`docs/BRIEF.md`](../../../docs/BRIEF.md) first (D-073), then `AGENTS.md`. The platform is already live: update it, do not rebuild it.
 
 
 > **AI coding platforms: read `FOR_AI_BUILDERS.md` first.** It lists every rule, backend requirement and placeholder not visible in the designs.
@@ -8,7 +8,7 @@
 Give this whole folder to your LLM / developer. Start by reading this file, then `AGENTS.md`, then `reference/`.
 
 ## 1. Product
-SkipWait (skipwait.me) is a global platform for **free, private job referrals**. Seekers ask employees at a company for a referral; referrers accept, chat privately, and refer. Referrals are free forever — no commissions, no paid priority.
+SkipWait (skipwait.me) is a global platform for **private job referrals**. Seekers ask employees at a company for a referral; referrers accept, chat privately, and refer. 3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063) — no commissions, no paid priority.
 
 Launch companies (real people open to referrals): **SkipWait, Wipro, Go Neutrinos, TCS, Merkle**.
 Hard rule: never invent user counts, testimonials, outcomes, or fake activity. Label demo data as preview.

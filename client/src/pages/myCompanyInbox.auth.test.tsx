@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from "react";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import MyCompanyInbox from "./MyCompanyInbox";
 
@@ -86,12 +86,18 @@ describe("My Company Inbox employee access", () => {
     const [first] = await screen.findAllByRole("button", { name: "Pass privately" });
     fireEvent.click(first);
     const group = screen.getByRole("group", { name: "Pass privately" });
+    // D-052: the shared reason list, and nothing picked until the referrer picks.
+    const reasons = within(group).getAllByRole("button", { pressed: false }).map(button => button.textContent);
+    expect(reasons).toEqual(["Not my team or function", "Role needs more experience", "Not enough context", "At capacity right now", "Role is closed", "I only refer people I know", "Prefer not to say"]);
+    expect(within(group).queryAllByRole("button", { pressed: true })).toHaveLength(0);
     expect(screen.queryByRole("button", { name: "Confirm pass" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Not now" }));
-    expect(group.textContent).toContain("Pass as “Not now”?");
+    fireEvent.click(screen.getByRole("button", { name: "At capacity right now" }));
+    expect(group.textContent).toContain("Pass as “At capacity right now”?");
+    expect(group.textContent).toContain("The Job Seeker sees “At capacity right now” in a short private note — never your name.");
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("one-click-review"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "Confirm pass" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing" }) })));
+    // Like the thread's pass: the legacy reason the server routes on, plus the picked code.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing", passReason: "at_capacity" }) })));
     expect(await screen.findByText(/Passed privately/)).toBeTruthy();
     await waitFor(() => expect(screen.getAllByRole("article").map(card => card.getAttribute("aria-label"))).toEqual(["Private request Ref-1008"]));
   });
@@ -122,12 +128,16 @@ describe("My Company Inbox employee access", () => {
     expect(screen.queryByText(/avery-resume/)).toBeNull();
     expect(document.querySelector("iframe")).toBeNull();
     expect(document.querySelector('a[href*="avery-resume"]')).toBeNull();
-    expect(screen.getByRole("button", { name: "Accept & submit referral" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Accept & connect" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Not a fit" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Can’t support" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Not now" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Accept & submit referral" }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved" }) })));
+    fireEvent.click(screen.getByRole("button", { name: "Accept & connect" }));
+    // The kit ethics gate: the accept stays disabled until the checkbox is ticked.
+    expect((screen.getByRole("button", { name: "Accept" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/7/one-click-review", expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "approved", ethicsConfirmed: true }) })));
   });
 
   it("keeps decided requests out of the queue and hands an acceptance straight to the conversation", async () => {
@@ -142,8 +152,10 @@ describe("My Company Inbox employee access", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<MyCompanyInbox />);
     fireEvent.click(await screen.findByRole("button", { name: "Open request" }));
-    fireEvent.click(await screen.findByRole("button", { name: "Accept & submit referral" }));
-    expect(await screen.findByText("Referral accepted. You can now message the Job Seeker privately.")).toBeTruthy();
+    fireEvent.click(await screen.findByRole("button", { name: "Accept & connect" }));
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "Accept" }));
+    expect(await screen.findByText("Request accepted. You can now message the Job Seeker privately.")).toBeTruthy();
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes("scope=completed"))).toBe(false);
     expect(screen.queryByRole("tab", { name: "Done" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open conversation" }));

@@ -99,7 +99,7 @@ describe("authorize + token", () => {
     const { app, activity } = setup({ issueCode: async () => { throw new AssistantPlanRequiredError(); } });
     const res = await authorize(app, {});
     expect(res.status).toBe(402);
-    expect(res.body).toEqual({ error: "Assistants are part of Land and Concierge. Upgrade to Land to connect ChatGPT, Claude or your own tools.", code: "assistant_plan_required", upgradePath: "/plans" });
+    expect(res.body).toEqual({ error: "Assistants are part of Land and Concierge, which are not on sale yet, so ChatGPT, Claude and your own tools cannot connect to this account.", code: "assistant_plan_required", upgradePath: "/plans" });
     expect(res.body.redirectTo).toBeUndefined();
     expect(res.headers["cache-control"]).toBe("no-store");
     expect(activity.map(a => a.action)).not.toContain("assistant.oauth_allowed");

@@ -1,7 +1,11 @@
 # Pricing & credits spec (display values — source: `docs/PRICING_RECOMMENDATION.md`, code: `shared/planCatalog.ts`)
 
-Referrals are always free. Money never buys queue position, referral access or acceptance odds.
+> Start with [`docs/BRIEF.md`](docs/BRIEF.md) (D-073).
+
+3 asks free every month; more use credits. Referrers are never paid and never ask you for money (D-063).
+Money never buys queue position, referral access or acceptance odds.
 If this file and `shared/planCatalog.ts` disagree, the code wins — change both together.
+No price, plan-content or new credit-rule change until two full weeks of baseline data exist (D-056).
 
 Paid plans are **passes paid once**: 30-day or 90-day. Keep warm is the only yearly plan.
 A 90-day pass grants its plan credits in three cycles of about 30 days. A pass ends by itself;
@@ -24,11 +28,15 @@ auto-renew: we send a reminder and a one-tap re-buy instead.
 
 - USD is the one global price. India sees the INR "India price"; GST wording appears only once a
   GSTIN exists (`INDIA_GST_REGISTERED`, off — Indian sole proprietorship, Udyam MSME; see D-007).
-- Free includes a one-time 14-day reverse trial: Momentum's 15 open asks and
-  5 trial credits, no card, once per person (start timing is an open owner question).
-- An open ask slot frees when the request is answered, passed or expires.
-- Every plan holds at most **2 open asks at the same company**; Land Focus includes 1 written
-  expert review, Land Sprint 1 written review + 1 live session, Concierge 6 human hours per cycle.
+- The one-time 14-day reverse trial (Momentum's 15 open asks and 5 trial credits, no card, once
+  per person) stays in code but is not offered: nothing grants it yet, so the public catalog and
+  every screen leave it out until its trigger ships (D-051; `REVERSE_TRIAL_ON_OFFER` is off;
+  recommended trigger: the seeker's first ask that reaches an available verified referrer).
+- An open ask slot frees when the ask is accepted, withdrawn or expires; a pass reopens it to
+  colleagues (D-021). A waiting ask will use no slot until a referrer can see it (D-061, not built yet).
+- Every plan holds at most **2 open asks at the same company**; Land Focus's written expert review
+  and Land Sprint's review + live session show as "coming later" and are not sold until a reviewer
+  is staffed (D-041); Concierge (by application) includes 6 human hours per cycle.
 
 ## Human time (sold as sessions, never for credits)
 
@@ -42,9 +50,11 @@ Sessions go on sale only once reviewers are staffed and contracted (`HUMAN_REVIE
 
 ## Credits
 
-Credits buy AI-made finished work. Purchased credits never expire and never affect referral
-access or queue position. Plan credits end with the pass that granted them (renewing passes
-keep the rollover above, after a 3-day grace).
+Credits pay for asks (1 credit = 1 ask) and for AI-made finished work. An ask's credit is spent
+only once a verified referrer can see it, and an ask with no credit left is held, never delivered
+free or billed later (D-034, D-047; not built yet). Purchased credits never expire and never buy
+priority, visibility or queue position (D-006). Plan credits end with the pass that granted them
+(renewing passes keep the rollover above, after a 3-day grace).
 
 - Packs (one-time): USD 5/$5 (first), 25/$22, 60/$48, 150/$105.
   India: 2/₹99 (first), 25/₹1,199, 60/₹2,599, 150/₹5,999.
@@ -56,8 +66,16 @@ keep the rollover above, after a 3-day grace).
 
 Company page free · Referral programme from $199/mo · Enterprise talk to us.
 
+The line above is what `/for-companies` shows today (pinned by `client/src/components/employer/employerPlans.test.ts`).
+Every plan there is sales-led: "Get started" opens the demo request and nothing is charged. D-040 requires every
+`/for-companies` claim to match the product, and the referral programme has nothing built behind it while employer
+referral campaigns are parked (D-059), so the line changes together with that code. Employers may buy only labeled
+job ads ("Featured listing") and tooling (D-040).
+
 ## Pricing ethics
 
 Honest anchoring only (yearly, packs, Land levels). No fake tiers, fake "was" prices or fake
 scarcity. No hiring guarantees. Never sell referrals, priority, visibility or payments to referrers,
-and never show a plan to a referrer.
+and never show a plan to a referrer. Referrers never pay: every referrer-role checkout is refused
+before any provider call (D-055; `REFERRER_PURCHASES_ENABLED = false` in `shared/referrerPurchases.ts`,
+switched off, not deleted; live since `08d193a0`).

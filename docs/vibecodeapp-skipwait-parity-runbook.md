@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-048, D-058).
+
 # skipwait.me × VibecodeApp: Implementation-Parity Runbook
 
 **Target operating model.** The full skipwait.me application will be built and hosted in **VibecodeApp**. The only public production address is **`https://skipwait.me`**. The current managed deployment is retained only as a rollback system until the Vibecode deployment passes every gate in this runbook.

@@ -10,19 +10,23 @@
  * Nothing here may state an outcome, count, or identity that the product does
  * not produce itself.
  */
-import { FREE_MONTHLY_ALLOWANCE } from "./subscriptionPlans";
+import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE } from "./moneyCopy";
 
 export type LandingStep = { title: string; body: string };
 export type LandingLink = { href: string; label: string; summary: string };
 
 export const LANDING_TITLE = "Private job referrals from verified employees";
-/** The hero headline, one line per row; the page breaks between them and adds the brand dot after the last. */
-export const LANDING_H1_LINES = ["Free job referrals.", "A warmer way in"] as const;
+/**
+ * The hero headline, one line per row; the page breaks between them and adds the brand dot after the last.
+ * D-063: asking is free only for a monthly allowance, so the headline never says "free".
+ */
+export const LANDING_H1_LINES = ["Private job referrals.", "A warmer way in"] as const;
 export const LANDING_H1 = `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}.`;
 /** The hero paragraph, one sentence group per row (the page breaks between them on wide screens). */
 export const LANDING_HERO_LEAD_PARTS = ["Connect with people inside the companies you want to join.", "A real introduction. Not another application into the unknown."] as const;
 export const LANDING_HERO_LEAD = LANDING_HERO_LEAD_PARTS.join(" ");
-export const LANDING_SUMMARY = `Paste the role link, add your resume, and verified employees at that company decide privately whether to refer you. ${FREE_MONTHLY_ALLOWANCE} referral requests are free every month.`;
+/** The search snippet (160 characters at most): how it works, then both money facts (D-063). */
+export const LANDING_SUMMARY = `Paste a role link; verified employees at the company decide privately whether to refer you. ${MONEY_SENTENCE_SHORT}`;
 
 export const LANDING_SEEKER_STEPS: readonly LandingStep[] = [
   { title: "Start with the role", body: "Paste the job link for the company you want to join." },
@@ -47,8 +51,8 @@ export const LANDING_EXPLORE: readonly LandingLink[] = [
   { href: "/wall", label: "Internal openings", summary: "Hiring signals shared privately by verified employees." },
   { href: "/referrer", label: "For employees", summary: "Verify your work email to review private requests at your company." },
   { href: "/premium", label: "Buy credits", summary: "Extra referral credits cost $1 each and never expire." },
-  { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and monthly plans." },
-  { href: "/plans", label: "Monthly plans", summary: "Pro and Max add credits every month on top of the free allowance." },
+  { href: "/pricing", label: "Pricing", summary: "The free monthly allowance, extra credits, and what a credit buys." },
+  { href: "/plans", label: "Plans and credits", summary: PAID_PLANS_SENTENCE },
   { href: "/about", label: "About us", summary: "Who runs skipwait.me and what it sells." },
   { href: "/contact", label: "Contact us", summary: "Reach the team about your account, a payment, or privacy." },
   { href: "/support", label: "Support", summary: "A person answers, usually within one business day." },
@@ -87,6 +91,6 @@ export const LANDING_FAQ_HEADING = "Common questions, answered plainly.";
 export const LANDING_FAQ: readonly { question: string; answer: string }[] = [
   { question: "Is skipwait.me a public job board?", answer: "No. A referral request is visible only to verified employees at the company behind the role link you paste, and your resume stays private." },
   { question: "Who can review my request?", answer: "Only employees who verified a company email at that employer. They see the role, your resume, and your short note — never your contact details." },
-  { question: "What does it cost?", answer: `${FREE_MONTHLY_ALLOWANCE} referral requests are free every month. Extra credits cost $1 each (₹99 in India), never expire, and are spent once a verified employee picks up your request; withdrawn or expired asks get the credit back.` },
+  { question: "What does it cost?", answer: `${MONEY_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE}` },
   { question: "Does a referral guarantee an interview?", answer: "No. Employees choose whether to help, and a referral never guarantees an interview, an offer, or a job. You can withdraw an unclaimed request at any time." },
 ];

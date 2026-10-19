@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-005, D-007, D-036, D-063).
+
 # India job-seeker pricing: comparables and takeaways for SkipWait
 
 **Bottom line:** In India, people pay about **₹999 for a month** of a job-seeker product, or **₹2,000–₹3,000 for 3–6 months**. Above that, the next things people buy are human help sold per session (₹99–₹1,500) and bootcamps that cost lakhs. The current INR draft prices Momentum (₹1,699) above every Indian job platform, and it prices Land as monthly subscriptions. That does not work well with UPI AutoPay limits, and Indian buyers mostly pay one time for a fixed period.

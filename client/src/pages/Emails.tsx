@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { MONEY_SENTENCE } from "@shared/moneyCopy";
 
 /**
  * /emails — reference for every transactional message skipwait.me sends, in
@@ -92,7 +93,7 @@ const TEMPLATES = [
     channel: "Email + Slack",
     trigger: "A private review link is prepared for a verified employee. Never includes candidate content.",
     subject: "Private referral review at ⟨company⟩",
-    body: ["A private review is ready at ⟨company⟩", "Reviewing is optional and always free. Sign in with your verified company email before any decision is recorded.", "Opening this link never records a decision. Review and confirm on Skipwait."],
+    body: ["A private review is ready at ⟨company⟩", "Reviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.", "Opening this link never records a decision. Review and confirm on Skipwait."],
     cta: "Open private review",
   },
   { name: "Re-verify reminder", channel: "Email", trigger: "A work-email verification approaches its re-check window." },
@@ -134,7 +135,7 @@ export default function Emails() {
             {template.code ? <p role="img" aria-label="Six-digit code" className="mt-6 flex justify-center rounded-2xl bg-muted py-5 text-3xl"><span className="flex h-9 items-center gap-[0.8em]">{[0, 1].map(group => <span key={group} className="flex gap-[0.3em]">{[0, 1, 2].map(dot => <span key={dot} className="size-[0.3em] rounded-full bg-foreground" />)}</span>)}</span></p> : null}
             {template.cta ? <span className="mt-6 inline-block rounded-full bg-primary px-6 py-3 font-semibold text-primary-foreground">{template.cta}</span> : null}
             <hr className="my-8 border-border" />
-            <p className="text-xs text-muted-foreground">Referrals on SkipWait are always free. We&apos;ll never ask for money or your password.</p>
+            <p className="text-xs text-muted-foreground">{MONEY_SENTENCE} SkipWait never asks for your password by email.</p>
           </div>
         </article>
       </div>

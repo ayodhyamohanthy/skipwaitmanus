@@ -96,7 +96,7 @@ describe("referral status email + in-app notifications", () => {
       sendEmail: async input => { emails.push(input); return { sent: true }; },
       createNotification: async (_userId, _category, title) => { notifications.push({ title }); },
     }));
-    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved" });
+    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved", ethicsConfirmed: true });
     await flushMicrotasks();
     expect(response.status).toBe(200);
     expect(emails[0].subject).toContain("Your referral was accepted");
@@ -111,7 +111,7 @@ describe("referral status email + in-app notifications", () => {
       sendEmail: async () => { sendAttempts += 1; throw new Error("smtp down"); },
       createNotification: async () => { throw new Error("db down"); },
     }));
-    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved" });
+    const response = await request(app).post("/api/company-referrals/9/one-click-review").send({ decision: "approved", ethicsConfirmed: true });
     await flushMicrotasks();
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("approved");

@@ -42,11 +42,11 @@ describe("Home mobile navigation", () => {
     expect(screen.getAllByRole("link", { name: /Become a referrer/ }).every(link => link.getAttribute("href") === "/referrer")).toBe(true);
   });
 
-  it("closes with the kit free line only: no activity counts and no data fetch on the landing", () => {
+  it("closes with the money sentence only: no activity counts and no data fetch on the landing", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     render(<Home />);
-    const final = screen.getByText("Referrals are free. Always.").closest("section") as HTMLElement;
+    const final = screen.getByText("3 asks free every month; more use credits. Referrers are never paid and never ask you for money.").closest("section") as HTMLElement;
     expect(final.className).toBe("launch-final");
     expect(final.querySelectorAll("p")).toHaveLength(1);
     expect(document.body.textContent).not.toMatch(/referral requests accepted/);

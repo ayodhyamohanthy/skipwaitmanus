@@ -2,9 +2,11 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { billingCustomers, billingInvoices, subscriptionCancellationFeedback, subscriptionCheckoutIntents, tokenBalances } from "../drizzle/schema";
 import { checkoutIntentStateSchema, paymentFailureReasonFrom, parseReceiptId, receiptSchema } from "../shared/billingAccount";
-import { INTENT_PLAN_IDS, WALLET_PLAN_IDS, adjacentPlans, autoExtendMethods, catalogPackForAmount, planCatalogResponse, planCatalogResponseSchema, planChangeDirection, planPrice, planSellsInterval, resolveItemPrice, sellableItemPrices } from "../shared/billingCatalog";
-import { CANCELLATION_REASONS, kitPlanCheckoutRequestSchema, legacyPlanCheckoutRequestSchema, packCheckoutRequestSchema, subscriptionCancelRequestSchema, subscriptionChangeRequestSchema, subscriptionChangeResponseSchema, subscriptionPauseRequestSchema } from "../shared/subscriptionManagement";
+import { BILLABLE_PLAN_IDS, INTENT_PLAN_IDS, RETIRED_PLAN_IDS, WALLET_PLAN_IDS, adjacentPlans, billingPlanLabel, isRetiredPlanItemPrice, autoExtendMethods, catalogPackForAmount, planCatalogResponse, planCatalogResponseSchema, planChangeDirection, planPrice, planSellsInterval, resolveItemPrice, sellableItemPrices } from "../shared/billingCatalog";
+import * as subscriptionManagement from "../shared/subscriptionManagement";
+import { CANCELLATION_REASONS, PLAN_RETIRED_CODE, SUBSCRIPTION_REFUSALS, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema, subscriptionCancelRequestSchema, subscriptionChangeRequestSchema, subscriptionChangeResponseSchema, subscriptionPauseRequestSchema } from "../shared/subscriptionManagement";
 import { subscriptionStateFor, type SubscriptionWallet } from "../shared/subscriptionState";
+import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { DESIRED_COLUMNS, DESIRED_FOREIGN_KEYS, DESIRED_INDEXES, DESIRED_TABLES } from "./schemaReconcile";
 
 const migration = readFileSync(new URL("../drizzle/deploy/0090_subscription_management.sql", import.meta.url), "utf8");
@@ -57,11 +59,10 @@ describe("subscription management schema contract (0090)", () => {
 });
 
 describe("billing catalog", () => {
-  it("resolves every plan term, legacy plan, pack and session item price to what it sells and nothing else", () => {
-    expect(resolveItemPrice("skipwait_momentum_90d-USD")).toEqual({ kind: "plan", plan: "momentum", interval: "90d", currency: "USD", amount: 5_900, itemPriceId: "skipwait_momentum_90d-USD", legacy: false });
+  it("resolves every plan term, pack and session item price to what it sells and nothing else", () => {
+    expect(resolveItemPrice("skipwait_momentum_90d-USD")).toEqual({ kind: "plan", plan: "momentum", interval: "90d", currency: "USD", amount: 5_900, itemPriceId: "skipwait_momentum_90d-USD" });
     expect(resolveItemPrice("skipwait_land_sprint_30d-INR")).toMatchObject({ plan: "land_sprint", amount: 1_199_900 });
     expect(resolveItemPrice("skipwait_keep_warm_yearly-INR")).toMatchObject({ plan: "keep_warm", interval: "yearly", amount: 99_900 });
-    expect(resolveItemPrice("skipwait_pro_monthly-INR")).toMatchObject({ kind: "plan", plan: "pro", amount: 59_900, legacy: true });
     expect(resolveItemPrice("skipwait_pack_25-USD")).toEqual({ kind: "pack", packId: "pack_25", credits: 25, currency: "USD", amount: 2_200, itemPriceId: "skipwait_pack_25-USD" });
     expect(resolveItemPrice("skipwait_pack_2-INR")).toMatchObject({ kind: "pack", credits: 2, amount: 9_900 });
     expect(resolveItemPrice("skipwait_written_review-USD")).toEqual({ kind: "session", sessionId: "written_review", currency: "USD", amount: 4_900, itemPriceId: "skipwait_written_review-USD" });
@@ -70,12 +71,39 @@ describe("billing catalog", () => {
     expect(sellableItemPrices()).toHaveLength(34);
   });
 
-  it("kit plans sell only their listed terms; legacy plans sell monthly only", () => {
+  // D-067: Pro and Max are removed completely. The price book neither sells nor
+  // resolves them, while the storage ENUM lists keep them in place (pinned above).
+  it("sells and resolves no Pro or Max item price, while the storage enums still list them", () => {
+    for (const id of ["skipwait_pro_monthly-INR", "skipwait_pro_monthly-USD", "skipwait_max_monthly-INR", "skipwait_max_monthly-USD"]) expect(resolveItemPrice(id)).toBeUndefined();
+    expect([...BILLABLE_PLAN_IDS]).toEqual([...CATALOG_PLAN_IDS]);
+    expect(RETIRED_PLAN_IDS).toEqual(["pro", "max"]);
+    for (const plan of RETIRED_PLAN_IDS) {
+      expect(BILLABLE_PLAN_IDS as readonly string[]).not.toContain(plan);
+      expect(WALLET_PLAN_IDS as readonly string[]).toContain(plan);
+      expect(INTENT_PLAN_IDS as readonly string[]).toContain(plan);
+    }
+    const sold = JSON.stringify(sellableItemPrices());
+    expect(sold).not.toMatch(/skipwait_(pro|max)_|"plan":"(pro|max)"/);
+    expect(sellableItemPrices().every(price => !("legacy" in price))).toBe(true);
+    for (const region of ["IN", "INTL"] as const) {
+      const catalog = JSON.stringify(planCatalogResponse({ region, available: () => true, usdRecurringConfirmed: true, sessionsStaffed: true, indiaGstRegistered: false }));
+      expect(catalog).not.toMatch(/"(pro|max)"|\bPro\b|\bMax\b/);
+    }
+    expect(adjacentPlans("pro")).toEqual({ up: null, down: null });
+    expect(adjacentPlans("max")).toEqual({ up: null, down: null });
+    expect(billingPlanLabel("pro")).toBe("Free");
+    expect(billingPlanLabel("max")).toBe("Free");
+    // Recognised only so a late provider event naming one is refused and alerted.
+    for (const id of ["skipwait_pro_monthly-INR", "skipwait_pro_monthly-USD", "skipwait_max_monthly-INR", "skipwait_max_monthly-USD"]) expect(isRetiredPlanItemPrice(id)).toBe(true);
+    for (const id of ["skipwait_start_30d-INR", "skipwait_momentum_90d-USD", "skipwait_token_1-INR", "skipwait_pro_yearly-USD", "skipwait_land_500_monthly-USD", "", undefined, null, 7]) expect(isRetiredPlanItemPrice(id)).toBe(false);
+  });
+
+  it("kit plans sell only their listed terms; no plan sells monthly", () => {
     expect(planPrice("start", "30d", "INR")?.amount).toBe(29_900);
     expect(planPrice("start", "yearly", "INR")).toBeUndefined();
     expect(planPrice("start", "monthly", "USD")).toBeUndefined();
     expect(planPrice("keep_warm", "90d", "USD")).toBeUndefined();
-    expect(planPrice("max", "yearly", "USD")).toBeUndefined();
+    for (const plan of CATALOG_PLAN_IDS) for (const currency of ["INR", "USD"] as const) expect(planPrice(plan, "monthly", currency)).toBeUndefined();
     expect(planSellsInterval("keep_warm", "yearly")).toBe(true);
     expect(planSellsInterval("momentum", "yearly")).toBe(false);
   });
@@ -96,9 +124,6 @@ describe("billing catalog", () => {
     expect(planChangeDirection(term("momentum", "90d"), term("momentum", "30d"))).toBe("downgrade");
     expect(planChangeDirection(term("momentum", "30d"), term("momentum", "30d"))).toBe("none");
     expect(planChangeDirection(term("keep_warm", "yearly"), term("start", "30d"))).toBe("upgrade");
-    expect(planChangeDirection(term("pro", "monthly", 700), term("start", "30d", 800))).toBe("upgrade");
-    expect(planChangeDirection(term("max", "monthly", 1_500), term("start", "30d", 800))).toBe("downgrade");
-    expect(planChangeDirection(term("max", "monthly", 1_500), term("land_focus", "30d", 10_000))).toBe("upgrade");
   });
 
   it("walks the self-serve ladder for the billing actions; Concierge is by application", () => {
@@ -107,8 +132,6 @@ describe("billing catalog", () => {
     expect(adjacentPlans("keep_warm")).toEqual({ up: "start", down: null });
     expect(adjacentPlans("land_sprint")).toEqual({ up: null, down: "land_focus" });
     expect(adjacentPlans("land_concierge")).toEqual({ up: null, down: null });
-    expect(adjacentPlans("pro")).toEqual({ up: "momentum", down: null });
-    expect(adjacentPlans("max")).toEqual({ up: "land_focus", down: "start" });
     expect(adjacentPlans("free")).toEqual({ up: null, down: null });
     expect(adjacentPlans("land_500")).toEqual({ up: null, down: null });
   });
@@ -135,7 +158,12 @@ describe("public catalog payload (GET /api/plans/catalog)", () => {
   it("global callers see USD prices only, each with its availability and auto-extend rails", () => {
     const catalog = planCatalogResponse({ ...base, region: "INTL" });
     expect(catalog).toMatchObject({ region: "INTL", currency: "USD", priceNote: null, fairness: { maxOpenAsksPerCompany: 2, planVisibleToReferrers: false } });
-    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 3, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } });
+    // D-051: nothing grants the reverse trial yet (no caller of grantTrialCreditsTx), so the
+    // public catalog no longer advertises it. The field is optional, not removed: a payload
+    // that carries it still parses, so switching the trial back on is additive for clients.
+    expect(catalog.free).toEqual({ openRequests: 3, creditsPerMonth: 3 });
+    const withTrial = { ...catalog, free: { ...catalog.free, trial: { plan: "momentum", planLabel: "Momentum", days: 14, openRequests: 15, credits: 5 } } };
+    expect(planCatalogResponseSchema.parse(withTrial).free.trial).toEqual(withTrial.free.trial);
     expect(catalog.plans.map(plan => [plan.id, plan.terms.map(term => [term.interval, term.amount, term.available])])).toEqual([
       ["keep_warm", [["yearly", 2_900, false]]],
       ["start", [["30d", 800, true], ["90d", 1_900, false]]],
@@ -190,7 +218,11 @@ describe("checkout and lifecycle requests", () => {
     expect(kitPlanCheckoutRequestSchema.safeParse({ planId: "keep_warm", interval: "30d", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
     expect(kitPlanCheckoutRequestSchema.safeParse({ planId: "land", interval: "30d", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
     expect(kitPlanCheckoutRequestSchema.safeParse({ planId: "start", interval: "monthly", currency: "USD", billingCountry: "INTL" }).success).toBe(false);
-    expect(legacyPlanCheckoutRequestSchema.safeParse({ plan: "pro", currency: "INR", billingCountry: "IN" }).success).toBe(true);
+    // D-067: the pre-kit Pro/Max body has no schema any more; the route refuses it with 410 plan_retired.
+    expect(subscriptionManagement).not.toHaveProperty("legacyPlanCheckoutRequestSchema");
+    expect(PLAN_RETIRED_CODE).toBe("plan_retired");
+    expect(SUBSCRIPTION_REFUSALS.planRetired).toBe(PLAN_RETIRED_CODE);
+    expect(kitPlanCheckoutRequestSchema.safeParse({ plan: "pro", currency: "INR", billingCountry: "IN" }).success).toBe(false);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_25", billingCountry: "IN" }).success).toBe(true);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_10", billingCountry: "IN" }).success).toBe(false);
     expect(packCheckoutRequestSchema.safeParse({ packId: "pack_25", billingCountry: "IN", amount: 1 }).success).toBe(true);
@@ -220,9 +252,16 @@ describe("subscription state", () => {
     expect(state.actions).toEqual({ changePlan: true, cancel: true, pause: true, reactivate: false, retryPayment: false, cancelScheduledChange: false });
   });
 
-  it("grandfathered Pro keeps its label and monthly price even before the 0090 columns exist", () => {
-    const state = subscriptionStateFor({ plan: "pro", subscriptionId: "sub_p", subscriptionStatus: "active", subscriptionCurrency: "INR", subscriptionCurrentTermEnd: new Date("2026-11-01T00:00:00.000Z") }, NOW);
-    expect(state).toMatchObject({ plan: "pro", planLabel: "Pro", legacy: true, billingPeriod: "monthly", currency: "INR", amount: 59_900 });
+  // D-067: an active Pro or Max subscription reads as Free in the billing state: no price, no actions.
+  it.each(["pro", "max"])("an active %s subscription reads as Free with no actions", plan => {
+    const free = subscriptionStateFor(null, NOW);
+    for (const subscriptionStatus of ["active", "non_renewing", "paused"]) {
+      const state = subscriptionStateFor({ plan, subscriptionId: "sub_p", subscriptionStatus, subscriptionCurrency: "INR", subscriptionCurrentTermEnd: new Date("2026-11-01T00:00:00.000Z"), subscriptionItemPriceId: `skipwait_${plan}_monthly-INR`, subscriptionBillingPeriod: "monthly", subscriptionAmount: 59_900, pendingPlan: plan }, NOW);
+      expect(state).toEqual(free);
+      expect(state).toMatchObject({ plan: "free", planLabel: "Free", state: "free", legacy: false, billingPeriod: null, amount: null });
+      expect(Object.values(state.actions).every(action => action === false)).toBe(true);
+    }
+    expect(subscriptionStateFor(wallet({ pendingPlan: plan, pendingBillingPeriod: "monthly" }), NOW).pendingChange).toBeNull();
   });
 
   it("a pass without the 0090 period column still reads its 90-day term from the item price", () => {
