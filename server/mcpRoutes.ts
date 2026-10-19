@@ -13,7 +13,7 @@ export type BearerAuth = { userId: number; tokenId: number };
 export type McpRouteDeps = McpDeps & {
   /** Looks up a non-revoked token by its hash and records last use. Returns null for unknown or revoked. */
   verifyBearer: (tokenHash: string) => Promise<BearerAuth | null>;
-  /** False when the token owner has no assistant entitlement (not on Land or legacy Max, or the plan lapsed). */
+  /** False when the token owner has no assistant entitlement (not on Land, or the plan lapsed). */
   hasAccess: (userId: number) => Promise<boolean>;
   recordActivity?: (input: { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> }) => Promise<void>;
   /** Calls allowed per token per minute. */

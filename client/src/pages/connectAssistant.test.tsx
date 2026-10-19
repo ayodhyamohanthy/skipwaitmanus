@@ -29,7 +29,7 @@ function stubFetch(handler: (url: string, init?: RequestInit) => { ok: boolean; 
   vi.stubGlobal("fetch", mock);
   return mock;
 }
-const granted = (url: string) => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "max", hasAccess: true }) } : null);
+const granted = (url: string) => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "land_focus", hasAccess: true }) } : null);
 
 beforeEach(() => {
   authState.isSignedIn = true;
@@ -118,11 +118,14 @@ describe("ConnectAssistant", () => {
   });
 
   it("routes members without assistant access to the Land gate", async () => {
-    stubFetch(url => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "pro", hasAccess: false }) } : { ok: true, json: async () => ({}) }));
+    stubFetch(url => (url.includes("/api/assistants/access") ? { ok: true, json: async () => ({ plan: "start", hasAccess: false }) } : { ok: true, json: async () => ({}) }));
     render(<ConnectAssistant />);
     expect(await screen.findByText("Assistants need Land")).toBeTruthy();
     expect(screen.getByText("Signing in, connecting and applying through ChatGPT, Claude, bots or your own tools is part of Land and Concierge.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Upgrade to Land" }).getAttribute("href")).toBe("/plans");
+    // Review round 2 (D-067): no upgrade link while /plans sells no Land.
+    expect(screen.getByText("Land is not on sale yet. It arrives with the 30 and 90-day passes.")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Upgrade/ })).toBeNull();
+    expect(document.querySelector('a[href="/plans"]')).toBeNull();
     expect(screen.getByRole("link", { name: "Keep using SkipWait yourself" }).getAttribute("href")).toBe("/explore");
   });
 

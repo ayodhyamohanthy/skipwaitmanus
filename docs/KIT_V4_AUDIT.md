@@ -579,7 +579,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `22_assistants__momentum-or-start`
-- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants and API tokens come with Land' / 'Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.' / 'Upgrade to Land' · live: '…come with Max' / 'Max members can…' / 'Upgrade to Max' · fix: Kit copy verbatim in PlanGate.
+- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants and API tokens come with Land' / 'Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.' / 'Upgrade to Land' · live: '…come with Max' / 'Max members can…' / 'Upgrade to Max' · fix: Kit copy verbatim in PlanGate. (D-067 review round 2: the 'Upgrade to Land' button is held back, replaced by the line 'Land is not on sale yet. It arrives with the 30 and 90-day passes.', until /plans sells Land.)
 - preview scaffolding not shipped: 1 item(s)
 
 ### `23_approve__declined`
@@ -643,7 +643,7 @@ Kinds: **data** = needs server data, tables, endpoints or jobs; **ui** = markup,
 - preview scaffolding not shipped: 1 item(s)
 
 ### `24_connect-assistant__not-on-land`
-- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants need Land' / '…is part of Land and Concierge.' / 'Upgrade to Land' · live: 'Assistants need Max' / '…is part of Max.' / 'Upgrade to Max' · fix: Kit copy verbatim.
+- **reversal** (both) — feature `assistant-land-entitlement`: kit: 'Assistants need Land' / '…is part of Land and Concierge.' / 'Upgrade to Land' · live: 'Assistants need Max' / '…is part of Max.' / 'Upgrade to Max' · fix: Kit copy verbatim. (D-067 review round 2: 'Upgrade to Land' is held back the same way until /plans sells Land; 'Keep using SkipWait yourself' stays.)
 - **data** (both) — feature `assistant-land-entitlement`: kit: A non-Land member arriving from ChatGPT sees this screen · live: In OAuth mode the unverified stage wins the race (the plan check only replaces 'consent'). · fix: Resolve access before choosing the stage (the plan gate takes precedence).
 - preview scaffolding not shipped: 1 item(s)
 

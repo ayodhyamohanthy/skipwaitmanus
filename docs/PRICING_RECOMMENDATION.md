@@ -269,7 +269,7 @@ The 90-day passes cost 2.3–2.65× the 30-day price, a saving of 12–22%. Comp
 2. What does each credit cost us, tool by tool? This sets the INR credit floor and decides whether Free can afford 2 credits a month.
 3. Who delivers human sessions and Concierge, at what hourly cost? Can contracts stop reviewers from reviewing asks to their own employer?
 4. Do the limits of 2 open asks per company and 1 per referrer exist today? If not, they must ship before any plan adds more asks.
-5. Are any yearly or Land item prices already live with buyers? How do legacy Pro and Max subscribers move to passes?
+5. Are any yearly or Land item prices already live with buyers? (The second half, how legacy subscribers move to passes, is answered by D-067: there were none, and the legacy plans are removed completely with no migration.)
 6. How long does an open ask stay live after a pass ends (the expiry sweep window)?
 7. For the EU and UK: register for VAT (EU non-Union OSS and HMRC), use a merchant of record, or block checkout until then?
 8. Are you comfortable with Concierge at $750 by application, and holding it back from New York and California residents?

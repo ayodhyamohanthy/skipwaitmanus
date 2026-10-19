@@ -4,7 +4,7 @@
 // server did not send is left out, never filled with a guess.
 import { ArrowRight, Check, Coins, Gauge } from "lucide-react";
 import { Link } from "wouter";
-import type { SubscriptionCurrency } from "@shared/subscriptionPlans";
+import type { CatalogCurrency } from "@shared/planCatalog";
 import { Button } from "@/components/kit/button";
 import { kitDate } from "./format";
 import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
@@ -16,15 +16,16 @@ function creditCount(count: number): string {
 }
 
 /** Heading aside: the kit "credits · ADD CREDITS" pill with the real balance once signed in, the price of a credit before. */
-export function CreditCta({ summary, currency, href }: { summary: CreditSummary | null; currency: SubscriptionCurrency; href: string }) {
+export function CreditCta({ summary, currency, href }: { summary: CreditSummary | null; currency: CatalogCurrency; href: string }) {
   // Packs are off sale: show the real balance, no purchase link.
   if (!CREDIT_PACKS_ON_SALE) return summary ? <div className="heading-aside"><span className="credit-cta"><Coins /><b>{creditCount(summary.totalAvailable)}</b></span></div> : null;
   return <div className="heading-aside"><Link href={href} className="credit-cta"><Coins /><b>{summary ? creditCount(summary.totalAvailable) : `${CREDIT_PRICE[currency]} a credit`}</b><span>Add credits</span></Link></div>;
 }
 
-export function CreditsSection({ summary, currency, creditsHref }: { summary: CreditSummary | null; currency: SubscriptionCurrency; creditsHref: string }) {
+export function CreditsSection({ summary, currency, creditsHref }: { summary: CreditSummary | null; currency: CatalogCurrency; creditsHref: string }) {
   if (!CREDIT_PACKS_ON_SALE) return null;
-  const costs = [["Free", "Every referral request"], [CREDIT_PRICE[currency], "Each credit you buy"], ["Never", "Bought credits expire"]] as const;
+  // D-063: no badge calls a referral request free; each ask a verified employee can see uses a credit (CREDIT_RULE).
+  const costs = [["1 credit", "Each ask a verified employee can see"], [CREDIT_PRICE[currency], "Each credit you buy"], ["Never", "Bought credits expire"]] as const;
   return <section className="plans-section credits-section" id="credits">
     <span className="eyebrow">NO SUBSCRIPTION NEEDED</span>
     <div className="credits-bar-wrap">

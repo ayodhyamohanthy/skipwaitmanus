@@ -2,7 +2,6 @@ import type { Express, Request } from "express";
 import { z } from "zod";
 import { CHARGEBEE_TOKEN_PACKS } from "./chargebee";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
-import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrency } from "../shared/subscriptionPlans";
 
 /**
  * Admin billing-catalog diagnostic: GET /api/admin/billing/catalog.
@@ -14,11 +13,11 @@ import { SUBSCRIPTION_PLANS, type PaidSubscriptionPlan, type SubscriptionCurrenc
  * the hosted page with "This param should not be sent for on_off addon type"
  * after a ~25s wait. This endpoint turns that into a 2-second answer.
  *
- * Rules encoded here mirror the two checkout forms in server/chargebee.ts:
- * - token packs send item_prices[quantity] up to 1000, so the price MUST be
- *   per_unit (Chargebee default is flat_fee — the classic misconfiguration).
- * - subscriptions always send quantity 1; their model is reported but not
- *   gated, since flat recurring plans are the normal shape there.
+ * Rule encoded here mirrors the token-pack checkout form in server/chargebee.ts:
+ * token packs send item_prices[quantity] up to 1000, so the price MUST be
+ * per_unit (Chargebee default is flat_fee — the classic misconfiguration).
+ * The retired Pro/Max monthly item prices are no longer probed (D-067); the kit
+ * catalog's item prices are checked by server/billingAvailability.ts.
  */
 
 const itemPriceSchema = z.object({
@@ -32,7 +31,7 @@ const itemPriceSchema = z.object({
 
 export type CatalogCheckItem = {
   id: string;
-  kind: "token-pack" | "subscription";
+  kind: "token-pack";
   found: boolean;
   status?: string;
   itemType?: string;
@@ -56,12 +55,6 @@ function expectedPrices(): ExpectedPrice[] {
   for (const [id, pack] of Object.entries(CHARGEBEE_TOKEN_PACKS)) {
     out.push({ id, kind: "token-pack", currency: pack.currency, amount: pack.amount });
   }
-  for (const plan of Object.keys(SUBSCRIPTION_PLANS) as PaidSubscriptionPlan[]) {
-    for (const currency of Object.keys(SUBSCRIPTION_PLANS[plan].prices) as SubscriptionCurrency[]) {
-      const price = SUBSCRIPTION_PLANS[plan].prices[currency];
-      out.push({ id: price.itemPriceId, kind: "subscription", currency, amount: price.amount });
-    }
-  }
   return out;
 }
 
@@ -84,7 +77,7 @@ async function checkPrice(fetchImpl: typeof fetch, authorization: string, site: 
   if (live.status !== "active") problems.push(`status is ${live.status ?? "unknown"} (must be active)`);
   if ((live.currency_code ?? "").toUpperCase() !== expected.currency) problems.push(`currency is ${live.currency_code ?? "unknown"} (expected ${expected.currency})`);
   if (live.price !== expected.amount) problems.push(`price is ${live.price ?? "unknown"} (expected ${expected.amount} minor units)`);
-  if (expected.kind === "token-pack" && live.pricing_model !== "per_unit") {
+  if (live.pricing_model !== "per_unit") {
     problems.push(`pricing_model is ${live.pricing_model ?? "unknown"} (must be per_unit: quantity checkout is rejected for on_off/flat_fee types)`);
   }
   return {

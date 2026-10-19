@@ -32,8 +32,9 @@ import {
   type AssistantToken,
   type DeveloperApp,
 } from "../shared/assistant";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS, currentMonthlyCycleKey, isPaidSubscriptionPlan, type PaidSubscriptionPlan, type SubscriptionPlan } from "../shared/subscriptionPlans";
-import { isBillablePlanId, type BillablePlanId, type BillingPeriod, type WalletPlanId } from "../shared/billingCatalog";
+import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
+import { isBillablePlanId, isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId, type WalletPlanId } from "../shared/billingCatalog";
+import { PLAN_RETIRED_CODE } from "../shared/subscriptionManagement";
 import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
 import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
@@ -41,7 +42,7 @@ import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referral
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
 import { resolveAskJobFunction } from "../shared/jobFunctionClassifier";
 import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegrity";
-import { resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
+import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, showcaseLimitViolation } from "./planGates";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
@@ -64,6 +65,7 @@ import { recordPaidEvidenceTx, recordedRefundsCoverPaymentTx, refundEventRecorde
 import { validateOpportunityTargetUrl } from "./opportunityTargetUrl";
 import { publicDisplayNameOf, publicFirstNameOf } from "./publicName";
 import { assertReferrerDmGateOpen, loadReferrerDmGate } from "./dmReferrerGate";
+import { DM_FOLLOW_REQUIRED, DM_FOLLOW_REQUIRED_ERROR } from "../shared/directMessages";
 import { decideAdminReferralApproval } from "./adminReferralApproval";
 import { REFERRER_DOCUMENT_ACCESS_STATUSES, actorAcceptanceEventOn, grantFromJoin, isAcceptingReferrer, isReferrerDocumentAccessActive, isReferrerDocumentAccessStatus, openAcceptanceDocumentGrantTx } from "./referrerDocumentAccess";
 import { directEmployerDomainFromTargetUrl, employerCandidatesFromJobPageHtml, hostedEmployerCandidatesFromTargetUrl, isHostedJobPlatform, officialEmployerDomainsFromJobPageHtml, publicEmployerPageUrls, verifiedEmployerDomainFromCandidates, verifiedEmployerDomainFromProtectedHostedListing, verifiedRedirectEmployerDomain } from "./employerRouting";
@@ -508,7 +510,7 @@ export async function getSeekerEntitlements(userId: number, now: Date = new Date
   return resolvePlanEntitlements(wallet ?? null, now);
 }
 
-/** GET /api/assistants/access: the Land tier, or a grandfathered legacy Max subscriber. */
+/** GET /api/assistants/access: the Land tier only (a wallet still marked max reads as Free, D-067). */
 export async function getAssistantAccess(userId: number): Promise<AssistantAccess> {
   return assistantAccessFrom(await getSeekerEntitlements(userId));
 }
@@ -579,7 +581,7 @@ export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId
   return { userId: row.userId, tokenId: row.id };
 }
 
-/** True when the owner's plan still includes assistants (Land, or legacy Max). Fails closed. */
+/** True when the owner's plan still includes assistants (the Land tier). Fails closed. */
 export async function hasAssistantAccess(userId: number): Promise<boolean> {
   try { return (await getSeekerEntitlements(userId)).assistants; } catch { return false; }
 }
@@ -3103,12 +3105,6 @@ export async function dmCounterpartLabel(counterpartUserId: number) {
   return rows[0] ? `Referrer · ${rows[0].companyDomain}` : "Member";
 }
 
-export async function hasActivePremiumSubscription(userId: number, now: Date = new Date()) {
-  const db = await getDb(); if (!db) return false;
-  const wallets = await db.select({ plan: tokenBalances.plan, subscriptionStatus: tokenBalances.subscriptionStatus, subscriptionCurrentTermEnd: tokenBalances.subscriptionCurrentTermEnd }).from(tokenBalances).where(eq(tokenBalances.userId, userId));
-  return wallets.some(wallet => wallet.plan !== "free" && (wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing") && Boolean(wallet.subscriptionCurrentTermEnd && wallet.subscriptionCurrentTermEnd > now));
-}
-
 export async function dmThreadExists(userId: number, counterpartUserId: number) {
   const db = await getDb(); if (!db) return false;
   const rows = await db.select({ id: messages.id }).from(messages).where(and(isNull(messages.referralRequestId), or(and(eq(messages.senderId, userId), eq(messages.recipientId, counterpartUserId)), and(eq(messages.senderId, counterpartUserId), eq(messages.recipientId, userId))))).limit(1);
@@ -3148,7 +3144,9 @@ export async function listDmThread(userId: number, counterpartUserId: number): P
 
 export class DirectMessageConflictError extends Error{constructor(){super("This message key was already used for different content");this.name="DirectMessageConflictError";}}
 export class DirectMessageRateLimitError extends Error{constructor(public retryAt:Date){super("You're sending messages too quickly. Try again later.");this.name="DirectMessageRateLimitError";}}
-export async function sendDirectMessage(userId:number,recipientId:number,body:string,idempotencyKey:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const safeBody=body.slice(0,3000),fingerprint=createHash("sha256").update(JSON.stringify({senderId:userId,recipientId,body:safeBody})).digest("hex");return db.transaction(async tx=>{const duplicate=(await tx.select().from(messages).where(and(eq(messages.senderId,userId),eq(messages.idempotencyKey,idempotencyKey))).limit(1).for("update"))[0];if(duplicate){if(duplicate.requestFingerprint!==fingerprint)throw new DirectMessageConflictError();return{id:duplicate.id,replayed:true as const};}const pair=await tx.select({id:users.id,suspended:users.suspended}).from(users).where(inArray(users.id,[userId,recipientId])).for("update");const sender=pair.find(x=>x.id===userId),recipient=pair.find(x=>x.id===recipientId);if(!sender||!recipient||sender.suspended||recipient.suspended)throw new Error("This member is not available");const gate=await loadReferrerDmGate(tx,userId,recipientId);assertReferrerDmGateOpen(gate);const thread=(await tx.select({id:messages.id}).from(messages).where(and(isNull(messages.referralRequestId),or(and(eq(messages.senderId,userId),eq(messages.recipientId,recipientId)),and(eq(messages.senderId,recipientId),eq(messages.recipientId,userId))))).limit(1))[0];const follows=await tx.select().from(userFollows).where(and(inArray(userFollows.followerUserId,[userId,recipientId]),inArray(userFollows.followingUserId,[userId,recipientId]))).for("update");const mutual=follows.some(x=>x.followerUserId===userId&&x.followingUserId===recipientId)&&follows.some(x=>x.followerUserId===recipientId&&x.followingUserId===userId);const wallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];const premium=Boolean(wallet&&isPaidSubscriptionPlan(wallet.plan)&&wallet.subscriptionStatus==="active"&&(!wallet.subscriptionCurrentTermEnd||wallet.subscriptionCurrentTermEnd>new Date()));if(gate.kind==="not_referrer_pair"&&!thread&&!mutual&&!premium)throw new Error("Direct messaging is a premium feature");const now=new Date(),windowStart=new Date(now);windowStart.setMinutes(0,0,0);await tx.insert(directMessageQuotaWindows).values({senderId:userId,windowStart,sendCount:0}).onDuplicateKeyUpdate({set:{senderId:userId}});const quota=(await tx.select().from(directMessageQuotaWindows).where(and(eq(directMessageQuotaWindows.senderId,userId),eq(directMessageQuotaWindows.windowStart,windowStart))).limit(1).for("update"))[0];if(!quota||quota.sendCount>=30)throw new DirectMessageRateLimitError(new Date(windowStart.getTime()+3600_000));await tx.update(directMessageQuotaWindows).set({sendCount:quota.sendCount+1}).where(and(eq(directMessageQuotaWindows.id,quota.id),eq(directMessageQuotaWindows.sendCount,quota.sendCount)));const inserted=await tx.insert(messages).values({senderId:userId,recipientId,body:safeBody,referralRequestId:null,idempotencyKey,requestFingerprint:fingerprint});const id=Number(inserted[0].insertId);await tx.insert(notifications).values({ kind: "message_new",userId:recipientId,category:"message",title:"New direct message",body:"You have a new message from a member.",eventKey:`dm:${id}:notification`});await tx.insert(directMessageNotificationOutbox).values({messageId:id,recipientId,status:"pending"});return{id,replayed:false as const};});}
+/** Two members who are not verified referrers, with no thread and no mutual follow (D-067: no plan opens it). */
+export class DirectMessageFollowRequiredError extends Error{readonly block=DM_FOLLOW_REQUIRED;constructor(){super(DM_FOLLOW_REQUIRED_ERROR);this.name="DirectMessageFollowRequiredError";}}
+export async function sendDirectMessage(userId:number,recipientId:number,body:string,idempotencyKey:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const safeBody=body.slice(0,3000),fingerprint=createHash("sha256").update(JSON.stringify({senderId:userId,recipientId,body:safeBody})).digest("hex");return db.transaction(async tx=>{const duplicate=(await tx.select().from(messages).where(and(eq(messages.senderId,userId),eq(messages.idempotencyKey,idempotencyKey))).limit(1).for("update"))[0];if(duplicate){if(duplicate.requestFingerprint!==fingerprint)throw new DirectMessageConflictError();return{id:duplicate.id,replayed:true as const};}const pair=await tx.select({id:users.id,suspended:users.suspended}).from(users).where(inArray(users.id,[userId,recipientId])).for("update");const sender=pair.find(x=>x.id===userId),recipient=pair.find(x=>x.id===recipientId);if(!sender||!recipient||sender.suspended||recipient.suspended)throw new Error("This member is not available");const gate=await loadReferrerDmGate(tx,userId,recipientId);assertReferrerDmGateOpen(gate);const thread=(await tx.select({id:messages.id}).from(messages).where(and(isNull(messages.referralRequestId),or(and(eq(messages.senderId,userId),eq(messages.recipientId,recipientId)),and(eq(messages.senderId,recipientId),eq(messages.recipientId,userId))))).limit(1))[0];const follows=await tx.select().from(userFollows).where(and(inArray(userFollows.followerUserId,[userId,recipientId]),inArray(userFollows.followingUserId,[userId,recipientId]))).for("update");const mutual=follows.some(x=>x.followerUserId===userId&&x.followingUserId===recipientId)&&follows.some(x=>x.followerUserId===recipientId&&x.followingUserId===userId);if(gate.kind==="not_referrer_pair"&&!thread&&!mutual)throw new DirectMessageFollowRequiredError();const now=new Date(),windowStart=new Date(now);windowStart.setMinutes(0,0,0);await tx.insert(directMessageQuotaWindows).values({senderId:userId,windowStart,sendCount:0}).onDuplicateKeyUpdate({set:{senderId:userId}});const quota=(await tx.select().from(directMessageQuotaWindows).where(and(eq(directMessageQuotaWindows.senderId,userId),eq(directMessageQuotaWindows.windowStart,windowStart))).limit(1).for("update"))[0];if(!quota||quota.sendCount>=30)throw new DirectMessageRateLimitError(new Date(windowStart.getTime()+3600_000));await tx.update(directMessageQuotaWindows).set({sendCount:quota.sendCount+1}).where(and(eq(directMessageQuotaWindows.id,quota.id),eq(directMessageQuotaWindows.sendCount,quota.sendCount)));const inserted=await tx.insert(messages).values({senderId:userId,recipientId,body:safeBody,referralRequestId:null,idempotencyKey,requestFingerprint:fingerprint});const id=Number(inserted[0].insertId);await tx.insert(notifications).values({ kind: "message_new",userId:recipientId,category:"message",title:"New direct message",body:"You have a new message from a member.",eventKey:`dm:${id}:notification`});await tx.insert(directMessageNotificationOutbox).values({messageId:id,recipientId,status:"pending"});return{id,replayed:false as const};});}
 
 
 
@@ -3353,16 +3351,21 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
   };
 }
 
+// The pre-kit referrer wallet reset. A paid plan counts only while it is a kit
+// catalog plan billing inside its term (isPaidPlanActive, JS clock): a wallet
+// still marked with a retired Pro/Max plan (D-067) normalizes to Free at once.
 function normalizedWalletState(wallet: typeof tokenBalances.$inferSelect, now: Date = new Date()) {
   const cycleKey = currentMonthlyCycleKey(now);
-  const subscriptionActive = wallet.plan !== "free" && (wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing") && Boolean(wallet.subscriptionCurrentTermEnd && wallet.subscriptionCurrentTermEnd > now);
+  const subscriptionActive = isPaidPlanActive(wallet, now);
   if (subscriptionActive) return { changed: false, patch: {} };
   if (wallet.plan !== "free") return {
     changed: true,
     patch: {
       plan: "free" as const,
       monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
-      monthlyCreditsRemaining: wallet.monthlyCycleKey === cycleKey ? wallet.monthlyCreditsRemaining : FREE_MONTHLY_ALLOWANCE,
+      // Referrer wallets only (seekers reconcile through the kit ledger): leaving a paid plan never leaves more of
+      // this month's credits than Free grants, so a retired Max wallet cannot read Free with 30 of 3 (D-067, D-055).
+      monthlyCreditsRemaining: wallet.monthlyCycleKey === cycleKey ? Math.min(wallet.monthlyCreditsRemaining, FREE_MONTHLY_ALLOWANCE) : FREE_MONTHLY_ALLOWANCE,
       monthlyCycleKey: cycleKey,
       subscriptionStatus: "cancelled",
     },
@@ -3982,6 +3985,13 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
   return db.transaction(async tx => {
     const duplicate = await tx.select().from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const };
+    // D-067: an event naming a retired Pro/Max item price grants nothing, whatever wallet or intent it
+    // names (even a kit wallet whose subscription was moved to one). Recorded once so a redelivery is a
+    // duplicate; the webhook alerts it (plan_retired) so a human cancels and refunds it in Chargebee.
+    if (isRetiredPlanItemPrice(input.itemPriceId)) {
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      return { status: "ignored" as const, reason: PLAN_RETIRED_CODE };
+    }
 
     const intent = input.hostedPageId && input.passThruContent
       ? (await tx.select().from(subscriptionCheckoutIntents).where(and(eq(subscriptionCheckoutIntents.hostedPageId, input.hostedPageId), eq(subscriptionCheckoutIntents.checkoutIntentId, input.passThruContent))).limit(1).for("update"))[0]
@@ -4011,7 +4021,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     }
     if (!expectedPlan || !isBillablePlanId(expectedPlan)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
-      return { status: "ignored" as const, reason: "unsupported_plan" };
+      // A wallet or intent still stored as Pro/Max is a retired plan (cancel and refund); anything
+      // else is a price SkipWait cannot place, reviewed without a Pro/Max label.
+      return { status: "ignored" as const, reason: isRetiredPlanId(expectedPlan) ? PLAN_RETIRED_CODE : "unsupported_plan" };
     }
     const currentSubscription = sameSubscription ? wallet : undefined;
     if (currentSubscription?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentSubscription.subscriptionResourceVersion) {
@@ -4019,8 +4031,9 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       return { status: "stale" as const };
     }
 
-    // Plan credits a cycle: the plan's entitlement (legacy Pro/Max keep at least
-    // what they pay for, kit passes grant their own creditsPerMonth).
+    // Plan credits a cycle: the kit plan's own creditsPerMonth. expectedPlan is a
+    // catalog plan here: a retired Pro/Max intent or wallet (D-067) stopped above
+    // as plan_retired, recorded once and granting nothing.
     const allowance = planEntitlementsFor(expectedPlan).creditsPerMonth;
     const retainsAccess = input.status === "active" || input.status === "non_renewing";
     const startsNewTerm = !currentSubscription?.subscriptionCurrentTermStart || (input.currentTermStart && currentSubscription.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
@@ -4084,13 +4097,14 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
   });
 }
 
-// ---- Gift subscriptions ----
-// A buyer purchases Pro/Max for a recipient through Chargebee's gift
-// checkout. Only the recipient's wallet is ever credited; the buyer keeps a
-// receipt row. Recipient resolution is exact verified-email alias only:
-// unresolved, ambiguous, or suspended identities stay pending and are never
-// merged or credited. Promo interplay belongs to the #35 rebuild: gift
-// activation intentionally does not grant promo credits.
+// ---- Gift subscriptions: receipts only (D-067) ----
+// Gifts only ever sold the monthly Pro and Max plans, which D-067 removed
+// completely, so no gift is ever credited to a wallet any more. Every provider
+// gift event stays a durable receipt row (giftSubscriptionFulfillments; its plan
+// ENUM('pro','max') is storage only). A claimed gift is parked as conflict with
+// failureReason plan_retired, which the webhook and the claim route alert so a
+// human cancels and refunds it in Chargebee. Nothing here writes a wallet, a
+// plan cycle or a ledger row. Rows credited before D-067 stay credited.
 
 export type GiftRecipientResolution =
   | { status: "resolved"; userId: number }
@@ -4105,24 +4119,13 @@ export type RecordGiftEventInput = {
   receiverCustomerId?: string;
   subscriptionId?: string;
   buyerUserId?: number;
-  plan?: PaidSubscriptionPlan;
+  plan?: RetiredPlanId;
   currency?: "INR" | "USD";
   amount?: number;
 };
 
-export type FulfillGiftInput = {
-  giftId: string;
-  subscriptionId: string;
-  plan: PaidSubscriptionPlan;
-  currency: "INR" | "USD";
-  status: string;
-  currentTermStart?: Date;
-  currentTermEnd?: Date;
-  resourceVersion?: number;
-  receiverEmail: string;
-  recipientUserId: number;
-  role: WalletRole;
-};
+/** Why a gift row stops waiting: no plan can be gifted or claimed any more (D-067). */
+const GIFT_RETIRED_REASON = "plan_retired" as const;
 
 function giftTerminalStatus(providerStatus: string): "expired" | "cancelled" | undefined {
   return providerStatus === "expired" ? "expired" : providerStatus === "cancelled" ? "cancelled" : undefined;
@@ -4140,12 +4143,6 @@ async function resolveGiftRecipientTx(tx: any, normalizedEmail: string): Promise
   return { status: active.length === 0 ? "unresolved" : "ambiguous" };
 }
 
-export async function resolveGiftRecipient(normalizedEmail: string): Promise<GiftRecipientResolution> {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => resolveGiftRecipientTx(tx, normalizedEmail));
-}
-
 async function verifiedEmailsForUserTx(tx: any, userId: number): Promise<string[]> {
   const account = (await tx.select({ canonicalPersonId: users.canonicalPersonId }).from(users).where(eq(users.id, userId)).limit(1))[0];
   if (!account?.canonicalPersonId) return [];
@@ -4153,56 +4150,30 @@ async function verifiedEmailsForUserTx(tx: any, userId: number): Promise<string[
   return Array.from(new Set(aliases.map((alias: { normalizedVerifiedEmail: string | null }) => alias.normalizedVerifiedEmail).filter((email: string | null): email is string => !!email)));
 }
 
-function giftWalletPatch(input: { plan: PaidSubscriptionPlan; status: string; currency?: "INR" | "USD"; currentTermStart?: Date; currentTermEnd?: Date; resourceVersion?: number; subscriptionId: string; current?: typeof tokenBalances.$inferSelect }) {
-  const current = input.current;
-  const allowance = SUBSCRIPTION_PLANS[input.plan].monthlyAllowance;
-  const retainsAccess = input.status === "active" || input.status === "non_renewing";
-  const startsNewTerm = !current?.subscriptionCurrentTermStart || (input.currentTermStart && current.subscriptionCurrentTermStart.getTime() !== input.currentTermStart.getTime());
-  const patch = retainsAccess
-    ? {
-        plan: input.plan,
-        monthlyAllowance: allowance,
-        monthlyCreditsRemaining: startsNewTerm ? allowance : (current?.monthlyCreditsRemaining ?? allowance),
-        monthlyCycleKey: input.currentTermStart ? currentMonthlyCycleKey(input.currentTermStart) : currentMonthlyCycleKey(),
-        subscriptionId: input.subscriptionId,
-        subscriptionStatus: input.status,
-        subscriptionCurrency: input.currency ?? current?.subscriptionCurrency ?? null,
-        subscriptionCurrentTermStart: input.currentTermStart ?? current?.subscriptionCurrentTermStart ?? null,
-        subscriptionCurrentTermEnd: input.currentTermEnd ?? current?.subscriptionCurrentTermEnd ?? null,
-        subscriptionResourceVersion: input.resourceVersion ?? current?.subscriptionResourceVersion ?? null,
-      }
-    : {
-        plan: "free" as const,
-        monthlyAllowance: FREE_MONTHLY_ALLOWANCE,
-        monthlyCreditsRemaining: Math.min(current?.monthlyCreditsRemaining ?? FREE_MONTHLY_ALLOWANCE, FREE_MONTHLY_ALLOWANCE),
-        monthlyCycleKey: currentMonthlyCycleKey(),
-        subscriptionId: input.subscriptionId,
-        subscriptionStatus: input.status,
-        subscriptionCurrency: input.currency ?? current?.subscriptionCurrency ?? null,
-        subscriptionCurrentTermStart: input.currentTermStart ?? current?.subscriptionCurrentTermStart ?? null,
-        subscriptionCurrentTermEnd: input.currentTermEnd ?? current?.subscriptionCurrentTermEnd ?? null,
-        subscriptionResourceVersion: input.resourceVersion ?? current?.subscriptionResourceVersion ?? null,
-      };
-  return { patch, retainsAccess, startsNewTerm: Boolean(startsNewTerm) };
-}
-
+/**
+ * The receipt row for a provider gift event. A claimed gift is parked as plan_retired in the same write; nothing is credited.
+ * `parked` is true only for the call that moved the row to plan_retired (the webhook alerts once per gift on it); a
+ * redelivery, a gift credited before D-067 and a terminal (expired/cancelled) gift park nothing.
+ */
 export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const existing = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1).for("update"))[0];
     const terminal = giftTerminalStatus(input.status);
+    const claimed = input.status === "claimed";
     if (!existing) {
       await tx.insert(giftSubscriptionFulfillments).values({
         giftId: input.giftId, buyerUserId: input.buyerUserId ?? null, receiverEmail: input.receiverEmail ?? null,
         plan: input.plan ?? null, currency: input.currency ?? null, amount: input.amount ?? null,
         subscriptionId: input.subscriptionId ?? null, providerStatus: input.status,
-        fulfillmentStatus: terminal ?? "pending",
-        failureReason: terminal ? `provider_${terminal}` : null,
+        fulfillmentStatus: terminal ?? (claimed ? "conflict" : "pending"),
+        failureReason: terminal ? `provider_${terminal}` : claimed ? GIFT_RETIRED_REASON : null,
       });
-      return (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1))[0];
+      const inserted = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1))[0];
+      return { ...inserted, parked: !terminal && claimed };
     }
-    if (existing.fulfillmentStatus === "credited") return existing;
+    if (existing.fulfillmentStatus === "credited") return { ...existing, parked: false };
     const patch: Record<string, unknown> = { providerStatus: input.status };
     if (!existing.subscriptionId && input.subscriptionId) patch.subscriptionId = input.subscriptionId;
     if (!existing.receiverEmail && input.receiverEmail) patch.receiverEmail = input.receiverEmail;
@@ -4214,93 +4185,36 @@ export async function recordGiftProviderEvent(input: RecordGiftEventInput) {
       patch.fulfillmentStatus = terminal;
       patch.failureReason = `provider_${terminal}`;
     }
+    const parked = !terminal && claimed && existing.fulfillmentStatus === "pending";
+    if (parked) {
+      patch.fulfillmentStatus = "conflict";
+      patch.failureReason = GIFT_RETIRED_REASON;
+    }
     await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, existing.id));
-    return { ...existing, ...patch };
+    return { ...existing, ...patch, parked };
   });
 }
 
-export async function updateGiftPlan(giftId: string, input: { plan?: PaidSubscriptionPlan; currency?: "INR" | "USD"; subscriptionId?: string }) {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
-    const row = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, giftId)).limit(1).for("update"))[0];
-    if (!row || row.fulfillmentStatus !== "pending") return row ?? null;
-    const patch: Record<string, unknown> = {};
-    if (!row.plan && input.plan) patch.plan = input.plan;
-    if (!row.currency && input.currency) patch.currency = input.currency;
-    if (!row.subscriptionId && input.subscriptionId) patch.subscriptionId = input.subscriptionId;
-    if (!Object.keys(patch).length) return row;
-    await tx.update(giftSubscriptionFulfillments).set(patch).where(eq(giftSubscriptionFulfillments.id, row.id));
-    return { ...row, ...patch };
-  });
-}
-
-async function fulfillGiftTx(tx: any, row: typeof giftSubscriptionFulfillments.$inferSelect, input: FulfillGiftInput) {
-  const resolution = await resolveGiftRecipientTx(tx, input.receiverEmail);
-  if (resolution.status !== "resolved" || resolution.userId !== input.recipientUserId) {
-    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "pending", failureReason: `recipient_${resolution.status}` }).where(eq(giftSubscriptionFulfillments.id, row.id));
-    return { status: "pending" as const, reason: `recipient_${resolution.status}` };
-  }
-  const recipient = (await tx.select({ suspended: users.suspended }).from(users).where(eq(users.id, input.recipientUserId)).limit(1))[0];
-  if (!recipient || recipient.suspended) {
-    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "pending", failureReason: "recipient_suspended" }).where(eq(giftSubscriptionFulfillments.id, row.id));
-    return { status: "pending" as const, reason: "recipient_suspended" };
-  }
-  const walletBySubscription = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
-  if (walletBySubscription && (walletBySubscription.userId !== input.recipientUserId || walletBySubscription.role !== input.role)) {
-    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", failureReason: "subscription_owner_mismatch" }).where(eq(giftSubscriptionFulfillments.id, row.id));
-    return { status: "conflict" as const, reason: "subscription_owner_mismatch" };
-  }
-  const wallet = walletBySubscription ?? (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, input.recipientUserId), eq(tokenBalances.role, input.role))).limit(1).for("update"))[0];
-  const sameSubscription = wallet?.subscriptionId === input.subscriptionId;
-  if (wallet && !sameSubscription && (wallet.plan !== "free" || wallet.subscriptionStatus === "active" || wallet.subscriptionStatus === "non_renewing")) {
-    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", subscriptionId: input.subscriptionId, failureReason: "subscription_conflict" }).where(eq(giftSubscriptionFulfillments.id, row.id));
-    return { status: "conflict" as const, reason: "subscription_conflict" };
-  }
-  const { patch, retainsAccess, startsNewTerm } = giftWalletPatch({ plan: input.plan, status: input.status, currency: input.currency, currentTermStart: input.currentTermStart, currentTermEnd: input.currentTermEnd, resourceVersion: input.resourceVersion, subscriptionId: input.subscriptionId, current: wallet });
-  if (!retainsAccess) {
-    await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "expired", subscriptionId: input.subscriptionId, failureReason: "subscription_cancelled" }).where(eq(giftSubscriptionFulfillments.id, row.id));
-    return { status: "expired" as const, reason: "subscription_cancelled" };
-  }
-  const now = new Date();
-  // Credit ledger: the gifted term opens a plan cycle with a plan_grant row, exactly like a paid activation.
-  const next = termOpeningCycle(input.currentTermStart, input.currentTermEnd, now);
-  const cycle = startsNewTerm ? (wallet ? await rollCycleTx(tx, { wallet, next, plan: input.plan, subscriptionId: input.subscriptionId, now }) : await openCycleTx(tx, { userId: input.recipientUserId, role: input.role, next, plan: input.plan, subscriptionId: input.subscriptionId })) : undefined;
-  const walletPatch = cycle ? { ...patch, ...cycle } : patch;
-  if (wallet) await tx.update(tokenBalances).set(walletPatch).where(eq(tokenBalances.id, wallet.id));
-  else await tx.insert(tokenBalances).values({ userId: input.recipientUserId, role: input.role, balance: 0, ...walletPatch });
-  await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "credited", recipientUserId: input.recipientUserId, subscriptionId: input.subscriptionId, failureReason: null, creditedAt: now }).where(eq(giftSubscriptionFulfillments.id, row.id));
-  return { status: "credited" as const, plan: input.plan, userId: input.recipientUserId, role: input.role };
-}
-
-export async function fulfillGiftSubscription(input: FulfillGiftInput) {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-  return db.transaction(async tx => {
-    const row = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, input.giftId)).limit(1).for("update"))[0];
-    if (!row) throw new Error("Unknown gift subscription");
-    if (row.fulfillmentStatus === "credited") return row.subscriptionId === input.subscriptionId ? { status: "duplicate" as const } : { status: "conflict" as const, reason: "subscription_changed_after_credit" };
-    if (row.fulfillmentStatus === "expired" || row.fulfillmentStatus === "cancelled") return { status: row.fulfillmentStatus };
-    return fulfillGiftTx(tx, row, input);
-  });
-}
-
-export async function claimGiftSubscription(callerUserId: number, giftId: string) {
+/**
+ * POST /api/chargebee/gifts/claim. Only the verified recipient may claim, and a
+ * claim never credits anything (D-067): a still-pending gift is parked as
+ * plan_retired and the answer is "retired" (`parked` says whether this call
+ * moved it, so the route alerts once per gift); a gift credited before D-067 is
+ * a duplicate. No wallet, plan cycle or ledger row is ever written here.
+ */
+export async function claimGiftSubscription(callerUserId: number, giftId: string): Promise<{ status: "retired"; giftId: string; parked: boolean } | { status: "duplicate" }> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const row = (await tx.select().from(giftSubscriptionFulfillments).where(eq(giftSubscriptionFulfillments.giftId, giftId)).limit(1).for("update"))[0];
     if (!row) throw new Error("We could not find this gift");
     if (row.fulfillmentStatus === "credited") return { status: "duplicate" as const };
-    if (row.providerStatus !== "claimed") throw new Error("This gift is not ready to claim yet");
     if (!row.receiverEmail) throw new Error("This gift is not ready to claim yet");
-    if (!row.subscriptionId || !row.plan) throw new Error("This gift is not ready to claim yet");
     const resolution = await resolveGiftRecipientTx(tx, row.receiverEmail);
     if (resolution.status !== "resolved" || resolution.userId !== callerUserId) throw new Error("This gift was sent to a different email address");
-    return fulfillGiftTx(tx, row, {
-      giftId, subscriptionId: row.subscriptionId, plan: row.plan, currency: (row.currency ?? "USD") as "INR" | "USD",
-      status: "non_renewing", receiverEmail: row.receiverEmail, recipientUserId: callerUserId, role: row.role,
-    });
+    const parked = row.fulfillmentStatus === "pending";
+    if (parked) await tx.update(giftSubscriptionFulfillments).set({ fulfillmentStatus: "conflict", failureReason: GIFT_RETIRED_REASON }).where(and(eq(giftSubscriptionFulfillments.id, row.id), eq(giftSubscriptionFulfillments.fulfillmentStatus, "pending")));
+    return { status: "retired" as const, giftId: row.giftId, parked };
   });
 }
 

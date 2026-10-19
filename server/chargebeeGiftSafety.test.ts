@@ -58,10 +58,13 @@ describe("gift event safety", () => {
     expect(applySubscriptionEvent).not.toHaveBeenCalled();
   });
 
-  it("routes a gift-claimed subscription to the durable layer instead of crediting directly", async () => {
+  // D-067: the gifted Pro item price resolves to no plan, so the durable layer can grant nothing,
+  // and a retired-plan event is alerted.
+  it("routes a gift-claimed subscription to the durable layer with no plan instead of crediting directly", async () => {
     const fulfillPayment = vi.fn();
     const applySubscriptionEvent = vi.fn(async () => ({ status: "ignored" as const, reason: "unknown_subscription" }));
-    const response = await authed(appFor({ fulfillPayment, applySubscriptionEvent }), {
+    const alertRetiredPlanEvent = vi.fn(async () => ({ alerted: true }));
+    const response = await authed(appFor({ fulfillPayment, applySubscriptionEvent, alertRetiredPlanEvent } as never), {
       id: "ev_gift_claim",
       event_type: "subscription_created",
       content: {
@@ -74,14 +77,15 @@ describe("gift event safety", () => {
       },
     });
     expect(response.status).toBe(200);
-    expect(applySubscriptionEvent).toHaveBeenCalledWith(expect.objectContaining({ subscriptionId: "sub_gifted_1", plan: "pro" }));
+    expect(applySubscriptionEvent).toHaveBeenCalledWith(expect.objectContaining({ subscriptionId: "sub_gifted_1", plan: undefined, itemPriceId: "skipwait_pro_monthly-USD" }));
     expect(fulfillPayment).not.toHaveBeenCalled();
+    expect(alertRetiredPlanEvent).toHaveBeenCalledWith(expect.objectContaining({ eventId: "ev_gift_claim", subscriptionId: "sub_gifted_1", itemPriceId: "skipwait_pro_monthly-USD" }));
   });
 
   it("never resolves a gift payment against another checkout's hosted page", async () => {
     const resolveHostedPage = vi.fn(async () => undefined);
     const fulfillPayment = vi.fn(async () => ({ status: "ignored" as const, reason: "missing_hosted_page" }));
-    // $7 Pro gift: amount coincides with 7 token packs, but the gift invoice
+    // A $7 Pro gift invoice: amount coincides with 7 token packs, but the gift invoice
     // matches none of our pending hosted pages, so fulfillment stays ignored.
     const response = await authed(appFor({ fulfillPayment, resolveHostedPage }), {
       id: "ev_gift_payment",

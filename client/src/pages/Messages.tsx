@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
-import { ArrowLeft, ArrowRight, Crown, MessageSquare, Send } from "lucide-react";
-import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmSendBlock, type DmSendBlock } from "@shared/directMessages";
+import { ArrowLeft, ArrowRight, MessageSquare, Send, UserPlus } from "lucide-react";
+import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmFollowRequired, parseDmSendBlock, type DmFollowRequired, type DmSendBlock } from "@shared/directMessages";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { buttonVariants } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
@@ -39,12 +39,16 @@ function UnsentText({ text }: { text: string }) {
   </div>;
 }
 
-function PaywallCard() {
-  return <div data-skipwait-screen="dm-paywall" className="rounded-xl border border-[#e5e5e5] bg-[#f5f5f5] p-5">
-    <span className="grid h-11 w-11 place-items-center rounded-xl bg-white text-black"><Crown className="h-5 w-5" /></span>
-    <h2 className="mt-4 text-xl font-semibold tracking-[-.02em] text-black">Direct messaging is for members</h2>
-    <p className="mt-2 text-sm leading-6 text-black">Start a conversation with another member on Pro or Max, or follow each other to message free. Messages with a referrer open only after they accept your request, on every plan.</p>
-    <Link href="/premium?role=job_seeker" className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#141414] px-4 py-3 text-sm font-bold text-white">Upgrade to Pro</Link>
+// A member writing to another member (neither a verified referrer) with no
+// chat yet needs a mutual follow; no plan opens it (D-067), so there is no
+// upgrade path. The composer and the draft stay for when they follow each other.
+function FollowRuleCard({ rule }: { rule: DmFollowRequired }) {
+  return <div data-skipwait-screen="dm-follow-rule" role="status" className="pb-2">
+    <Panel tone="muted">
+      <span className="grid h-11 w-11 place-items-center rounded-xl bg-background text-foreground"><UserPlus className="h-5 w-5" aria-hidden="true" /></span>
+      <h2 className="mt-4 text-xl font-semibold tracking-[-.02em] text-foreground">Follow each other to message</h2>
+      <p className="mt-2 text-sm leading-6 text-muted-foreground">{rule.error}</p>
+    </Panel>
   </div>;
 }
 
@@ -56,7 +60,7 @@ export default function Messages() {
   const [listError, setListError] = useState("");
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
-  const [paywalled, setPaywalled] = useState(false);
+  const [followRule, setFollowRule] = useState<DmFollowRequired | null>(null);
   const [sendBlock, setSendBlock] = useState<DmSendBlock | null>(null);
   const [unsent, setUnsent] = useState("");
   const composerRef = useRef<HTMLInputElement>(null);
@@ -82,7 +86,7 @@ export default function Messages() {
 
   const openThread = async (counterpartUserId: number) => {
     // A draft belongs to one conversation: never carry it into another.
-    setThreadError(""); setPaywalled(false); setSendBlock(null); setDraft(""); setUnsent("");
+    setThreadError(""); setFollowRule(null); setSendBlock(null); setDraft(""); setUnsent("");
     openCounterpartRef.current = counterpartUserId;
     try {
       const response = await authedFetch(`/api/dms/threads/${counterpartUserId}`);
@@ -101,7 +105,7 @@ export default function Messages() {
     const normalized = normalizeMessageBody(draft);
     if (!normalized) return;
     inFlightRef.current = true;
-    setSending(true); setThreadError(""); setPaywalled(false);
+    setSending(true); setThreadError(""); setFollowRule(null);
     try {
       const { record: attempt } = beginPendingSend({ workflow: DM_SEND_WORKFLOW, recipientKey: String(recipientUserId), body: normalized });
       const response = await authedFetch(`/api/dms/threads/${recipientUserId}`, {
@@ -122,13 +126,14 @@ export default function Messages() {
         composerRef.current?.focus();
         return;
       }
-      if (response.status === 402) { setPaywalled(true); return; }
       const block = response.status === 403 ? parseDmSendBlock(payload) : null;
       if (block) {
         clearPendingSend(DM_SEND_WORKFLOW);
         if (openCounterpartRef.current === recipientUserId) { setUnsent(attempt.body); setDraft(""); setSendBlock(block); }
         return;
       }
+      const memberRule = response.status === 403 ? parseDmFollowRequired(payload) : null;
+      if (memberRule) { if (openCounterpartRef.current === recipientUserId) setFollowRule(memberRule); return; }
       if (response.status === 409) {
         clearPendingSend(DM_SEND_WORKFLOW);
         setThreadError("That send changed while retrying, so we kept your text and did not send a duplicate. Review it and send again to start a fresh attempt.");
@@ -149,13 +154,13 @@ export default function Messages() {
   if (!isSignedIn) return <main data-skipwait-screen="messages" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col"><header className="flex h-10 shrink-0 items-center"><Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link></header><section className="flex min-h-0 flex-1 flex-col justify-center gap-5"><h1 className="text-[2.35rem] font-semibold leading-[.96] tracking-[-.02em]">Direct messages</h1><Panel tone="muted"><h2 className="text-xl font-semibold tracking-[-.02em] text-foreground">Sign in to see your messages</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">{DM_REFERRER_ACCEPTANCE_ERROR}</p><SignInButton className={buttonVariants({ className: "mt-4 h-11 w-full" })}>Sign in</SignInButton></Panel></section></div></main>;
 
   return <main data-skipwait-screen="messages" className="h-dvh min-h-dvh overflow-hidden bg-white px-5 py-4 text-black"><div className="mx-auto flex h-full max-w-xl flex-col">
-    <header className="flex h-10 shrink-0 items-center justify-between">{thread ? <button type="button" onClick={() => { openCounterpartRef.current = null; setThread(null); setThreadError(""); setPaywalled(false); setSendBlock(null); setDraft(""); setUnsent(""); }} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />All chats</button> : <Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link>}</header>
+    <header className="flex h-10 shrink-0 items-center justify-between">{thread ? <button type="button" onClick={() => { openCounterpartRef.current = null; setThread(null); setThreadError(""); setFollowRule(null); setSendBlock(null); setDraft(""); setUnsent(""); }} className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />All chats</button> : <Link href="/" className="inline-flex items-center gap-1 text-sm font-bold text-[#505050]"><ArrowLeft className="h-4 w-4" />Back</Link>}</header>
     {thread ? <section className="flex min-h-0 flex-1 flex-col">
       <h1 className="pt-4 text-lg font-semibold tracking-[-.02em] text-black">{thread.counterpartLabel}</h1>
       <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto pb-3" data-skipwait-thread="open">
         {thread.messages.map(message => <div key={message.id} className={`flex ${message.isMine ? "justify-end" : "justify-start"}`}><p className={`${message.isMine ? "bg-[#141414] text-white" : "bg-white text-black border border-[#e5e5e5]"} max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-6`}>{message.body}</p></div>)}
       </div>
-      {paywalled && <PaywallCard />}
+      {followRule ? <FollowRuleCard rule={followRule} /> : null}
       {threadError && <p role="alert" className="pb-2 text-xs font-semibold text-[#B91C1C]">{threadError}</p>}
       {sendBlock ? <div className="shrink-0 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3"><ReferrerRuleCard block={sendBlock} />{unsent ? <UnsentText text={unsent} /> : null}</div> : <footer className="shrink-0 border-t border-[#e5e5e5] pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3">
         <form className="flex items-center gap-2" onSubmit={event => { event.preventDefault(); void send(); }}>

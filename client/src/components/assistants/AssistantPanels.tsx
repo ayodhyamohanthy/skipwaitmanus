@@ -2,6 +2,7 @@
 import { Bot, Copy, KeyRound, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { LAND_NOT_ON_SALE_LINE } from "@shared/assistant";
 import { Button } from "@/components/kit/button";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { createdLabel, describeEvent, scopeSummary, providerLabel, timeAgo, type AssistantConnection, type AssistantEvent, type AssistantToken } from "./format";
@@ -24,7 +25,8 @@ export function PlanGate() {
       <Bot className="mx-auto size-8" />
       <h2 className="mt-2 font-semibold">Assistants and API tokens come with Land</h2>
       <p className="mt-1 text-sm text-muted-foreground">Land and Concierge members can sign in, connect and apply from ChatGPT, Claude, bots and their own tools.</p>
-      <Button asChild className="mt-4"><Link href="/plans">Upgrade to Land</Link></Button>
+      {/* No upgrade link while /plans sells no Land: it would lead to a page that cannot sell it. */}
+      <p className="mt-4 text-sm">{LAND_NOT_ON_SALE_LINE}</p>
     </Panel>
   );
 }

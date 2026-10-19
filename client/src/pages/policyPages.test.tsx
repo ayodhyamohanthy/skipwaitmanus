@@ -119,9 +119,11 @@ describe("legal and support disclosures (pre-launch P0 gate)", () => {
     expect(screen.getAllByRole("link", { name: "support@skipwait.me" })[0].getAttribute("href")).toBe("mailto:support@skipwait.me");
     cleanup();
     render(<Pricing />);
-    expect(screen.getByText(/₹599\/month or \$7\/month/)).toBeTruthy();
-    expect(screen.getByText(/₹1,299\/month or \$15\/month/)).toBeTruthy();
+    // D-067 removed the Pro/Max plans: /pricing lists only what can be bought today.
     expect(screen.getByText(/₹99 per credit/)).toBeTruthy();
+    expect(screen.getByText(/\$1 per credit/)).toBeTruthy();
+    const text = document.body.textContent ?? "";
+    for (const retired of ["₹599", "$7/month", "₹1,299", "$15/month", "Pro", "Max"]) expect(text).not.toContain(retired);
   });
 
   it("Support offers one primary email action plus self-serve routes to existing screens", () => {
