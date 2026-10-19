@@ -1,7 +1,9 @@
 import { MailCheck } from "lucide-react";
-import { Link } from "wouter";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { Button } from "@/components/kit/button";
 import type { PasswordMode } from "./PasswordForm";
+
+const INLINE_LINK = "py-2 font-semibold text-primary underline underline-offset-2";
 
 type CheckEmailStepProps = { readonly email: string; readonly origin: PasswordMode; readonly onBack: () => void };
 
@@ -19,7 +21,9 @@ export function CheckEmailStep({ email, origin, onBack }: CheckEmailStepProps) {
         : <>To keep your account safe, this address needs confirming first. If <strong className="break-all text-foreground">{email}</strong> can sign in with a password, we&apos;ve sent it a link to set your password and finish signing in.</>}
     </p>
     <p className="text-xs leading-relaxed text-muted-foreground">Already have an account with this email? The link sets a new password for that same account. It works once and can take a few minutes, so check spam too.</p>
-    <p className="text-xs leading-relaxed text-muted-foreground">Give referrals? Referrers have no password: <Link href="/sign-in?intent=referrer" className="text-link">sign in with your work email</Link>.</p>
+    {/* An inline link inside the sentence (py-2 widens the tap area without a line break); a full page load, so
+        /sign-in really opens on the referrer side instead of keeping this seeker form. */}
+    <p className="text-xs leading-relaxed text-muted-foreground">Give referrals? Referrers have no password: <a href={referrerSignInHref()} className={INLINE_LINK}>sign in with your work email</a>.</p>
     <Button type="button" variant="ghost" onClick={onBack}>Use a different email</Button>
   </div>;
 }

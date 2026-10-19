@@ -83,7 +83,7 @@ export default function ForgotPassword() {
           </section>
         )}
         <p className="mt-8 text-sm leading-6 text-[var(--muted-foreground)]">
-          Give referrals? Referrers have no password: <Link href="/sign-in?intent=referrer" className="text-link">Sign in with your work email</Link>
+          Give referrals? Referrers have no password: <Link href="/sign-in?intent=referrer" className="py-2 font-semibold text-[var(--primary)] underline underline-offset-2">Sign in with your work email</Link>.
         </p>
         <Link href="/sign-in" className="text-link mt-4 inline-flex min-h-11 items-center gap-1 text-sm">
           <ArrowLeft className="size-4" />

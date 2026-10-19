@@ -4,6 +4,7 @@ import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { PASSWORD_AUTH_COPY } from "@shared/passwordAuth";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { SeekerSignIn } from "./SeekerSignIn";
 
 vi.mock("wouter", () => ({
@@ -109,6 +110,21 @@ describe("check-your-email, create-account and error states are explicit", () =>
     expect(calls).toEqual([{ url: "/api/auth/password/sign-up", body: { email: "new@gmail.com" } }]);
     expect(step.textContent).toContain("new@gmail.com");
     expect(step.textContent).toMatch(/same account/);
+  });
+
+  // Screenshot pass, item 3: the work-email link sat alone on its own line at 390 with an orphaned period. It is an
+  // inline link inside the sentence now, and a full page load, so /sign-in really switches to the referrer side.
+  it("check-your-email points referrers to their work-email sign-in with an inline link inside the sentence", async () => {
+    stubFetch([{ status: 200, body: { ok: true, step: "check_email" } }]);
+    render(<SeekerSignIn />);
+    fireEvent.click(screen.getByRole("button", { name: "Create a free account" }));
+    fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "new@gmail.com" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Create account/ }));
+    await screen.findByTestId("seeker-check-email");
+    const link = screen.getByRole("link", { name: "sign in with your work email" });
+    expect(link.getAttribute("href")).toBe(referrerSignInHref());
+    expect(link.className).not.toContain("text-link");
+    expect(link.parentElement?.textContent).toBe("Give referrals? Referrers have no password: sign in with your work email.");
   });
 
   it.each([

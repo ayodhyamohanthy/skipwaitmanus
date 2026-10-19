@@ -71,6 +71,10 @@ describe("the forgot page is neutral and parses the response", () => {
 
   it("points referrers to the work-email sign-in", () => {
     render(<ForgotPassword />);
-    expect(screen.getByRole("link", { name: /Sign in with your work email/ }).getAttribute("href")).toBe("/sign-in?intent=referrer");
+    const link = screen.getByRole("link", { name: /Sign in with your work email/ });
+    expect(link.getAttribute("href")).toBe("/sign-in?intent=referrer");
+    // Screenshot pass, item 3: an inline link inside the sentence, not a 44px flex box on its own line.
+    expect(link.className).not.toContain("text-link");
+    expect(link.parentElement?.textContent).toBe("Give referrals? Referrers have no password: Sign in with your work email.");
   });
 });
