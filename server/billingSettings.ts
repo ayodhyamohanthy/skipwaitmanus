@@ -44,3 +44,14 @@ export function humanReviewersStaffed(env: BillingEnv = process.env): boolean {
 export function employerSponsorshipEnabled(env: BillingEnv = process.env): boolean {
   return (env.EMPLOYER_SPONSORSHIP_ENABLED ?? "").trim().toLowerCase() !== "false";
 }
+
+/**
+ * Free monthly credits unlock only after the seeker validates a card (D-079,
+ * owner Oct 19 2026). Default off: while unset, today's grants are untouched.
+ * The check itself is owned by the provider (Chargebee card verification);
+ * SkipWait stores only the outcome. No real money in tests; production
+ * enablement is an owner decision after Chargebee-test-site QA.
+ */
+export function freeCreditsRequireCardValidation(env: BillingEnv = process.env): boolean {
+  return flag(env, "FREE_CREDITS_REQUIRE_CARD_VALIDATION");
+}

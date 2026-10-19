@@ -151,6 +151,11 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   // nullable and older rows read through coalesce(coverageVisibleAt, createdAt).
   { table: "referralRequests", column: "coverageVisibleAt", definition: "TIMESTAMP NULL" },
   { table: "referralRequests", column: "coverageHeldAt", definition: "TIMESTAMP NULL" },
+  // D-079 (0096): card validation for free credits. Both nullable; a null
+  // cardValidatedAt means "no validated card" and a null chargebeeCustomerId
+  // means the provider customer is created on first use.
+  { table: "tokenBalances", column: "cardValidatedAt", definition: "TIMESTAMP NULL" },
+  { table: "users", column: "chargebeeCustomerId", definition: "VARCHAR(80) NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
