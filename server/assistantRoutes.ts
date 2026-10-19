@@ -87,7 +87,7 @@ export function registerAssistantRoutes(app: Express, deps: AssistantRouteDeps) 
     try {
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to manage assistants" });
-      // The plan entitlement decides: Land (Focus, Sprint, Concierge) or a grandfathered legacy Max.
+      // The plan entitlement decides: Land (Focus, Sprint, Concierge) only.
       res.set("Cache-Control", "private, no-store");
       res.json(await access(identity.account.id));
     } catch { res.status(500).json({ error: "We could not check assistant access" }); }

@@ -114,7 +114,7 @@ const PAST_CAP = /resume documents are unavailable/;
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  tables = { wallets: [wallet(SEEKER), wallet(OTHER, "max")], requests: [], events: [], slots: [], referrers: [eligibleReferrer()] };
+  tables = { wallets: [wallet(SEEKER), wallet(OTHER, "momentum")], requests: [], events: [], slots: [], referrers: [eligibleReferrer()] };
   sideEffects = [];
   lockedReads = [];
   mocks.createPool.mockResolvedValue({});
@@ -206,22 +206,33 @@ describe("open-ask slot cap at ask creation", () => {
     tables.requests = [ask(), ask(), ...Array.from({ length: 6 }, () => ask({ jobSeekerId: OTHER }))];
     await expect(send()).rejects.toThrow(PAST_CAP);
     expect((await getOpenAskSlots(SEEKER)).open).toBe(2);
-    expect(await getOpenAskSlots(OTHER)).toMatchObject({ plan: "max", planLabel: "Max", open: 6, cap: 30, full: false });
+    expect(await getOpenAskSlots(OTHER)).toMatchObject({ plan: "momentum", planLabel: "Momentum", open: 6, cap: 15, full: false });
   });
 
-  it("a grandfathered Pro subscriber keeps the 10 open asks Pro sells", async () => {
-    tables.wallets = [wallet(SEEKER, "pro")];
-    tables.requests = Array.from({ length: 9 }, () => ask());
+  it("a Start subscriber holds Start's 8 open asks", async () => {
+    tables.wallets = [wallet(SEEKER, "start")];
+    tables.requests = Array.from({ length: 7 }, () => ask());
     await expect(send()).rejects.toThrow(PAST_CAP);
     tables.requests.push(ask());
     const error = await send().catch((reason: unknown) => reason);
     expect(error).toBeInstanceOf(OpenAskSlotCapError);
-    expect((error as OpenAskSlotCapError).slots).toMatchObject({ planLabel: "Pro", open: 10, cap: 10, nextPlan: null });
-    expect((error as Error).message).toBe("All 10 slots are in use. Wait for an answer or withdraw an ask.");
+    expect((error as OpenAskSlotCapError).slots).toMatchObject({ plan: "start", planLabel: "Start", open: 8, cap: 8, nextPlan: null });
+    expect((error as Error).message).toBe("All 8 slots are in use. Wait for an answer or withdraw an ask.");
+  });
+
+  // D-067: Pro and Max are removed completely; no grandfathered 10 or 30 open asks.
+  it.each(["pro", "max"])("a wallet still marked %s meets the Free cap of 3", async plan => {
+    tables.wallets = [wallet(SEEKER, plan)];
+    tables.requests = [ask(), ask(), ask()];
+    expect(await getOpenAskSlots(SEEKER)).toEqual({ plan: "free", planLabel: "Free", open: 3, cap: 3, full: true, nextPlan: null });
+    // Sending first brings the wallet up to date: the retired plan rolls to Free through the ledger
+    // (rows pinned in db.creditLedger.test.ts), which this write-refusing fixture stops before any ask exists.
+    await expect(send()).rejects.toThrow("side effect reached");
+    expect(sideEffects).not.toContain("insert:referralRequests");
   });
 
   it("a lapsed paid plan falls back to the Free cap", async () => {
-    tables.wallets = [{ ...wallet(SEEKER, "max"), subscriptionCurrentTermEnd: new Date(Date.now() - DAY) }];
+    tables.wallets = [{ ...wallet(SEEKER, "momentum"), subscriptionCurrentTermEnd: new Date(Date.now() - DAY) }];
     tables.requests = [ask(), ask(), ask()];
     await expect(send()).rejects.toBeInstanceOf(OpenAskSlotCapError);
   });

@@ -5,6 +5,7 @@ import { profiles, referralAttachments, referralRequests, tokenBalances } from "
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { companyReferralFingerprint, createCompanyReferralRequest, getOpenAskSlots, resolveEmployerDomainFromTargetUrl } from "./db";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
+import { planEntitlementsFor } from "../shared/planEntitlements";
 import { CompanyCapReachedError, OpenAskSlotCapError } from "./planGates";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -100,7 +101,7 @@ function fixtureDatabase() {
 }
 
 const wallet = (userId: number, plan = "free"): Row => ({
-  id: userId, userId, role: "job_seeker", balance: 5, monthlyCreditsRemaining: 3, monthlyAllowance: 3, monthlyCycleKey: currentMonthlyCycleKey(), plan,
+  id: userId, userId, role: "job_seeker", balance: 5, monthlyCreditsRemaining: planEntitlementsFor(plan).creditsPerMonth, monthlyAllowance: planEntitlementsFor(plan).creditsPerMonth, monthlyCycleKey: currentMonthlyCycleKey(), plan,
   subscriptionId: plan === "free" ? null : `sub_${userId}`, subscriptionStatus: plan === "free" ? null : "active", subscriptionCurrency: null, subscriptionCurrentTermStart: null,
   subscriptionCurrentTermEnd: plan === "free" ? null : new Date(Date.now() + 20 * DAY), subscriptionResourceVersion: null, updatedAt: new Date(),
 });
@@ -114,7 +115,7 @@ const PAST_CAP = /resume documents are unavailable/;
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  tables = { wallets: [wallet(SEEKER), wallet(OTHER, "max")], requests: [], events: [], slots: [], referrers: [eligibleReferrer()] };
+  tables = { wallets: [wallet(SEEKER), wallet(OTHER, "start")], requests: [], events: [], slots: [], referrers: [eligibleReferrer()] };
   sideEffects = [];
   lockedReads = [];
   mocks.createPool.mockResolvedValue({});
@@ -164,7 +165,7 @@ describe("per-company fairness cap at ask creation (D-006)", () => {
   });
 
   it("is the same on every plan: a paying seeker with plan slots left is still refused", async () => {
-    tables.wallets = [wallet(SEEKER, "max")];
+    tables.wallets = [wallet(SEEKER, "start")];
     tables.requests = [ask(), ask()];
     const error = await send().catch((reason: unknown) => reason);
     expect(error).toBeInstanceOf(CompanyCapReachedError);

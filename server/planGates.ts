@@ -98,7 +98,7 @@ export function showcaseLimitViolation(entitlements: PlanEntitlements, owned: Re
   return null;
 }
 
-/** Assistants, tokens, developer apps and OAuth need the assistant entitlement (Land, or legacy Max). */
+/** Assistants, tokens, developer apps and OAuth need the assistant entitlement (the Land tier). */
 export class AssistantPlanRequiredError extends Error {
   readonly code = "assistant_plan_required" as const;
   constructor() {

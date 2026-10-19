@@ -4,8 +4,8 @@
 // When either party is a verified referrer, a direct message can be sent only
 // after a referral request links the two people and that request's referrer
 // accepted it. No plan, follow or earlier thread opens it sooner. Messaging
-// between two members who are not verified referrers keeps its own rules
-// (existing thread, mutual follow or an active paid plan).
+// between two members who are not verified referrers opens with an existing
+// thread or a mutual follow; no plan opens it (D-067 removed the paid-plan perk).
 import { z } from "zod";
 
 export const DM_REFERRER_ACCEPTANCE_REASON = "referrer_acceptance_required" as const;
@@ -16,8 +16,29 @@ export const DM_REFERRER_ACCEPTANCE_ERROR = "Messages with a referrer open after
 /** Shown to a verified referrer writing to a member before they accept that member's request. */
 export const DM_REFERRER_ACCEPTANCE_SENDER_IS_REFERRER_ERROR = "You can message this member after you accept their referral request.";
 
-/** Paid-plan gate for two members who are not verified referrers (unchanged rule, no referrer promise). */
-export const DM_PREMIUM_REQUIRED_ERROR = "Direct messaging is a premium feature. Upgrade to Pro, or follow each other, to message this member.";
+export const DM_FOLLOW_REQUIRED_REASON = "mutual_follow_required" as const;
+
+/**
+ * Shown to a member starting a chat with another member (neither a verified
+ * referrer) when they have no thread yet and do not follow each other. No plan
+ * changes this (D-067), so it never mentions one.
+ */
+export const DM_FOLLOW_REQUIRED_ERROR = "You can message this member once you follow each other.";
+
+/** The 403 body for the member rule, distinct from the referrer block by its reason. */
+export const dmFollowRequiredSchema = z.object({
+  reason: z.literal(DM_FOLLOW_REQUIRED_REASON),
+  error: z.string().min(1).max(300),
+});
+export type DmFollowRequired = z.infer<typeof dmFollowRequiredSchema>;
+
+export const DM_FOLLOW_REQUIRED: DmFollowRequired = { reason: DM_FOLLOW_REQUIRED_REASON, error: DM_FOLLOW_REQUIRED_ERROR };
+
+/** Lenient client-side read: anything that is not a well-formed member refusal means "not this refusal". */
+export function parseDmFollowRequired(value: unknown): DmFollowRequired | null {
+  const parsed = dmFollowRequiredSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
 
 /**
  * The gate outcome for one sender -> recipient pair.

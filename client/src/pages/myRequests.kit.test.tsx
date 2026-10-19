@@ -75,6 +75,16 @@ describe("My Requests kit v4 states", () => {
     expect(screen.getByLabelText("Open slots: 3 of 3 used").textContent).toBe("OPEN SLOTS · FREE3/3");
   });
 
+  // Review round 2 (D-067): no plan on sale raises the open-ask cap, so the server sends no
+  // next plan and the nudge offers no "See plans" button that would lead nowhere.
+  it("offers no plans button when no plan on sale raises the cap", async () => {
+    stub([openAsk(42), openAsk(43), openAsk(44)], slots(3, { nextPlan: null }));
+    renderPage();
+    const lead = await screen.findByText("All 3 slots are in use.");
+    expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an answer or withdraw an ask.");
+    expect(screen.queryByRole("link", { name: "See plans" })).toBeNull();
+  });
+
   it("does not suggest withdrawing when no ask can be withdrawn", async () => {
     stub([{ ...openAsk(42), referrerId: 501 }, { ...openAsk(43), referrerId: 502 }, { ...openAsk(44), referrerId: 503 }], slots(3));
     renderPage();
@@ -82,10 +92,10 @@ describe("My Requests kit v4 states", () => {
     expect(lead.parentElement?.textContent).toBe("All 3 slots are in use. Wait for an answer or get more slots with Momentum (15).");
   });
 
-  it("shows a legacy plan's own label and cap, and Concierge's cap of 75", async () => {
-    stub([openAsk(42)], slots(4, { plan: "pro", planLabel: "Pro", cap: 10, full: false }));
+  it("shows the plan's own label and cap, and Concierge's cap of 75", async () => {
+    stub([openAsk(42)], slots(4, { plan: "start", planLabel: "Start", cap: 8, full: false }));
     renderPage();
-    expect((await screen.findByLabelText("Open slots: 4 of 10 used")).textContent).toBe("OPEN SLOTS · PRO4/10");
+    expect((await screen.findByLabelText("Open slots: 4 of 8 used")).textContent).toBe("OPEN SLOTS · START4/8");
     cleanup();
     stub([openAsk(42)], slots(12, { plan: "land_concierge", planLabel: "Land Concierge", cap: 75, full: false, nextPlan: null }));
     renderPage();

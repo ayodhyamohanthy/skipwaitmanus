@@ -1,10 +1,12 @@
-// Per-sender limit on refused direct-message sends (D-012 item 3, D-020).
+// Per-sender limit on refused direct-message sends (D-012 item 3).
 //
-// A refused POST /api/dms/threads/:userId answers 403 referrer_acceptance_required
-// when a verified referrer is involved, and 402 when the member rules refuse it.
-// Without a thread, which one comes back tells the sender whether the
-// recipient has a verified work email (D-020: that is what makes a verified
-// referrer, including a job seeker who is employed). So once a sender has
+// A refused POST /api/dms/threads/:userId answers 403 with the reason
+// referrer_acceptance_required when a verified referrer is involved, and 403
+// with the reason mutual_follow_required when the member rules refuse it (no
+// plan opens a member thread, D-067). Without a thread, which reason comes
+// back tells the sender whether the recipient has a verified work email (that
+// is what makes a verified referrer, including a job seeker who is employed;
+// AGENTS.md "Product and identity constraints"). So once a sender has
 // DM_REFUSAL_LIMIT_PER_HOUR refusals in the last hour, every further refusal
 // is the same neutral 429, whatever the recipient. Sends that go through are
 // never limited here (the send quota in sendDirectMessage covers those).

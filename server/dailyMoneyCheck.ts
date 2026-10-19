@@ -4,15 +4,16 @@
 // does not reconcile: every wallet against its ledger rows (the same bucket
 // rules as the admin audit, but all wallets, not the 200 latest), one
 // purchase credit per credited payment, payments parked for review, refunds
-// no payment explains, checkouts still pending after a day, and asks still
-// allocated to a referrer more than a day past their shelf life (a stuck
-// ask-expiry sweep, P0-allocated-ask-stuck). It never writes to a wallet,
-// payment, ledger or ask row; the only writes are the job's own run record
-// (the runner) and one operational-activity row when an alert email goes out.
-// The email carries ids, amounts, currencies and reasons — never names,
-// emails, or request content.
+// no payment explains, checkouts still pending after a day, any wallet still
+// marked with a retired Pro/Max plan and an active term (D-067: each one is a
+// missed normalization to Free), and asks still allocated to a referrer more
+// than a day past their shelf life (a stuck ask-expiry sweep,
+// P0-allocated-ask-stuck). It never writes to a wallet, payment, ledger or ask
+// row; the only writes are the job's own run record (the runner) and one
+// operational-activity row when an alert email goes out. The email carries
+// ids, amounts, currencies and reasons — never names, emails, or request content.
 import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
-import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenTransactions } from "../drizzle/schema";
+import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
 import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
@@ -40,6 +41,7 @@ export type StaleCheckoutRow = { id: number; amount: number; currency: string; c
 export type AllocatedAskRow = { id: number; createdAt: Date; coverageVisibleAt: Date | null; waitingForCoverage: boolean; latestClaimAt: Date | null; latestReleaseAt: Date | null };
 /** SQL pre-filter cutoffs: each window's end plus the grace, computed from the job's clock. */
 export type AllocatedAskCutoffs = { visibleBefore: Date; waitingBefore: Date };
+export type LegacyPlanWalletRow = { id: number; role: string; plan: string; termEnd: Date | null };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -49,6 +51,7 @@ export type DailyMoneyCheckDeps = {
   listUnmatchedRefunds: (limit: number) => Promise<UnmatchedRefundRow[]>;
   listStaleCheckouts: (olderThan: Date, limit: number) => Promise<StaleCheckoutRow[]>;
   listAllocatedAsks: (cutoffs: AllocatedAskCutoffs, afterId: number, limit: number) => Promise<AllocatedAskRow[]>;
+  listLegacyPlanWallets: (now: Date, limit: number) => Promise<LegacyPlanWalletRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -160,6 +163,18 @@ export function isAllocatedAskPastWindow(ask: AllocatedAskRow, nowMs: number): b
   return endsAt !== null && nowMs - endsAt > ALLOCATED_ASK_GRACE_MS;
 }
 
+/**
+ * D-067: a wallet still marked pro or max reads as Free and is rolled to Free by the next read or the hourly
+ * plan-credit-cycles job. One that still holds an active term was missed. The term end is compared with the
+ * app clock (never MySQL NOW()); the plan values stay in the enum as storage-only.
+ */
+async function listLegacyPlanWallets(now: Date, limit: number): Promise<LegacyPlanWalletRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  return db.select({ id: tokenBalances.id, role: tokenBalances.role, plan: tokenBalances.plan, termEnd: tokenBalances.subscriptionCurrentTermEnd })
+    .from(tokenBalances).where(and(inArray(tokenBalances.plan, ["pro", "max"]), gt(tokenBalances.subscriptionCurrentTermEnd, now)))
+    .orderBy(asc(tokenBalances.id)).limit(limit);
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -187,6 +202,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listUnmatchedRefunds,
   listStaleCheckouts,
   listAllocatedAsks: listAllocatedPendingAsks,
+  listLegacyPlanWallets,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 }) {
@@ -243,6 +259,9 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
       if (!last || asks.length < MONEY_CHECK_BATCH) break;
       askAfterId = last.id;
     }
+
+    const legacy = await deps.listLegacyPlanWallets(new Date(nowMs), FINDINGS_PREVIEW_LIMIT);
+    for (const wallet of legacy) findings.push(`legacy plan wallet: wallet #${wallet.id} (${wallet.role}, ${wallet.plan}) still holds an active term until ${wallet.termEnd?.toISOString() ?? "an unknown date"}`);
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;

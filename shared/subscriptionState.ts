@@ -3,7 +3,8 @@
  * the member pays for, a switch waiting for term end, a pause, a failed renewal
  * and which plan actions the server will accept now. Derived purely from the
  * wallet row the webhooks keep (server/db.ts applyChargebeeSubscriptionEvent);
- * a lapsed plan reads as Free, exactly like the entitlement resolver.
+ * a lapsed plan, a retired Pro/Max plan (D-067) or any id outside the kit
+ * catalog reads as Free, exactly like the entitlement resolver.
  */
 import { z } from "zod";
 import { PAYMENT_FAILURE_REASONS, isPaymentFailureReason } from "./billingAccount";
@@ -22,6 +23,7 @@ export const subscriptionStateSchema = z.object({
   plan: z.enum(WALLET_PLAN_IDS),
   planLabel: z.string().min(1),
   state: z.enum(SUBSCRIPTION_STATES),
+  /** Always false since D-067 removed the grandfathered Pro/Max; kept so a cached client still parses the payload. */
   legacy: z.boolean(),
   billingPeriod: z.enum(BILLING_PERIODS).nullable(),
   currency: z.enum(BILLING_CURRENCIES).nullable(),
@@ -91,10 +93,9 @@ export function subscriptionStateFor(wallet: SubscriptionWallet | null | undefin
   const state = stateName(wallet, now);
   if (state === "free") return FREE_STATE;
   const plan: BillablePlanId = wallet.plan;
-  const legacy = plan === "pro" || plan === "max";
   const resolved = resolvePlanItemPrice(wallet.subscriptionItemPriceId);
   const currency = currencyOf(wallet.subscriptionCurrency) ?? resolved?.currency ?? null;
-  const billingPeriod = interval(wallet.subscriptionBillingPeriod) ?? resolved?.interval ?? (legacy ? "monthly" : null);
+  const billingPeriod = interval(wallet.subscriptionBillingPeriod) ?? resolved?.interval ?? null;
   const catalogAmount = currency && billingPeriod ? planPrice(plan, billingPeriod, currency)?.amount ?? null : null;
   const pendingPlan = wallet.pendingPlan && isBillablePlanId(wallet.pendingPlan) ? wallet.pendingPlan : null;
   const paymentIssue = wallet.paymentDueSince
@@ -107,7 +108,7 @@ export function subscriptionStateFor(wallet: SubscriptionWallet | null | undefin
     plan,
     planLabel: billingPlanLabel(plan),
     state,
-    legacy,
+    legacy: false,
     billingPeriod,
     currency,
     amount: wallet.subscriptionAmount ?? resolved?.amount ?? catalogAmount,

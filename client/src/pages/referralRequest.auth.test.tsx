@@ -180,6 +180,41 @@ describe("ReferralRequest secure resume handoff", () => {
     expect(screen.getByRole("link", { name: "Add credits" })).toBeTruthy();
   });
 
+  // D-067: the credit summary carries catalog plan ids (start, momentum, land_focus …); the
+  // retired Pro/Max are gone. The page reads a pass's own credits and never calls them free.
+  it("reads a catalog pass summary: its plan credits, never 'free monthly' ones", async () => {
+    authState.signedIn = true;
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ summary: { plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: 4, purchasedCreditsRemaining: 0, totalAvailable: 4, cycleKey: "2026-10", subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" } }) })));
+    render(<ReferralRequest />);
+    await waitFor(() => expect(screen.getByText(/4 of 10 monthly plan credits left/)).toBeTruthy());
+    expect(screen.queryByText(/free monthly credits/i)).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the server's catalog pass summary after a send instead of guessing a Free one", async () => {
+    authState.signedIn = true;
+    let sent = false;
+    const startSummary = (remaining: number) => ({ plan: "start", monthlyAllowance: 10, monthlyCreditsRemaining: remaining, purchasedCreditsRemaining: 0, totalAvailable: remaining, cycleKey: "2026-10", subscriptionStatus: "active", subscriptionCurrentTermEnd: "2026-11-06T00:00:00.000Z" });
+    vi.stubGlobal("fetch", vi.fn(async (input: string) => {
+      if (String(input).includes("/complete")) return { ok: true, json: async () => ({ id: "74", fileName: "avery-resume.pdf", mimeType: "application/pdf", fileSize: 6, key: "private/74", url: "/api/documents/74" }) };
+      if (String(input).includes("/chunks")) return { ok: true, json: async () => ({ nextChunkIndex: 1, receivedSize: 6 }) };
+      if (String(input).includes("/api/documents/uploads")) return { ok: true, json: async () => ({ sessionId: "upload-74", chunkBytes: 49152 }) };
+      if (String(input).includes("/api/company-referrals")) { sent = true; return { ok: true, json: async () => ({ companyDomain: "acme.com", coverageStatus: "routed", remainingTokens: 9, creditSummary: startSummary(9) }) }; }
+      return { ok: true, json: async () => ({ summary: startSummary(sent ? 9 : 10) }) };
+    }));
+    render(<ReferralRequest />);
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(fileInput, { target: { files: [new File(["resume"], "avery-resume.pdf", { type: "application/pdf" })] } });
+    const sendButton = await screen.findByRole("button", { name: /send private referral request/i }) as HTMLButtonElement;
+    await waitFor(() => expect(sendButton.disabled).toBe(false));
+    fireEvent.click(sendButton);
+    await waitFor(() => expect(document.querySelector('[data-referral-success="true"]')).toBeTruthy());
+    expect(screen.getByText("Start plan")).toBeTruthy();
+    expect(screen.getByText(/1 of 10 plan credits used this month/)).toBeTruthy();
+    expect(screen.queryByText("Free plan")).toBeNull();
+    vi.unstubAllGlobals();
+  });
+
   it("uses a credit and queues a private request while presenting one visual coverage invite action when no verified employee exists", async () => {
     authState.signedIn = true;
     vi.stubGlobal("fetch", vi.fn(async (input: string) => {

@@ -68,23 +68,9 @@
             "open": 3,
             "cap": 3,
             "full": true,
-            "nextPlan": {
-              "id": "start",
-              "label": "Start",
-              "openRequests": 8
-            }
+            "nextPlan": null
           }
         }
-      }
-    },
-    {
-      "method": "GET",
-      "path": "/api/chargebee/gifts/mine",
-      "match": "exact",
-      "status": 200,
-      "body": {
-        "sent": [],
-        "claimable": []
       }
     }
   ]

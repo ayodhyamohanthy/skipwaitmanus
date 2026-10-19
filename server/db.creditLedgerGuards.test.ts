@@ -17,8 +17,9 @@ const db = fixture.tables;
 const at = (iso: string) => new Date(iso);
 const SEEKER = 7;
 const OTHER = 8;
-const wallet = (patch: Row = {}): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", balance: 2, monthlyCreditsRemaining: 4, monthlyAllowance: 10, monthlyCycleKey: "2026-09", plan: "pro", subscriptionId: "sub_pro", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-06T00:00:00Z"), subscriptionResourceVersion: 10, updatedAt: at("2026-09-06T00:00:00Z"), ...patch });
-const renewal = (patch: Row = {}) => ({ eventId: "ev_renew_oct", eventType: "subscription_renewed", subscriptionId: "sub_pro", plan: "pro" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-06T00:00:00Z"), resourceVersion: 20, ...patch });
+// A Start 30-day pass (10 credits a cycle, one month of carryover) from 6 Sep to 6 Oct.
+const wallet = (patch: Row = {}): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", balance: 2, monthlyCreditsRemaining: 4, monthlyAllowance: 10, monthlyCycleKey: "2026-09", plan: "start", subscriptionId: "sub_start", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-06T00:00:00Z"), subscriptionResourceVersion: 10, updatedAt: at("2026-09-06T00:00:00Z"), ...patch });
+const renewal = (patch: Row = {}) => ({ eventId: "ev_renew_oct", eventType: "subscription_renewed", subscriptionId: "sub_start", plan: "start" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-05T00:00:00Z"), resourceVersion: 20, ...patch });
 const purchase = (id: number, userId: number, tokenCount: number, role = "job_seeker"): Row => ({ id, userId, role, tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(40 + id), idempotencyKey: `payment-credit-${40 + id}`, createdAt: at("2026-08-01T00:00:00Z") });
 const rowsOf = (userId: number) => ({ wallets: db.wallets.filter(row => row.userId === userId), grants: db.grants.filter(row => row.userId === userId), txns: db.txns.filter(row => row.userId === userId) });
 const kinds = (kind: string) => db.txns.filter(row => row.kind === kind);
@@ -61,11 +62,12 @@ describe("a plan cycle is granted once", () => {
     expect(kinds("plan_grant")).toHaveLength(1);
   });
 
-  it("the yearly safety net and an in-term webhook never open the same month twice", async () => {
-    fixture.reset({ wallets: [wallet({ plan: "max", subscriptionId: "sub_max", monthlyAllowance: 36, monthlyCreditsRemaining: 25, subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2027-09-01T00:00:00Z") })], txns: [purchase(1, SEEKER, 2)], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
+  it("the multi-cycle safety net and an in-term webhook never open the same month twice", async () => {
+    // A 90-day Momentum pass (1 Sep to 30 Nov): three monthly cycles of 36 credits.
+    fixture.reset({ wallets: [wallet({ plan: "momentum", subscriptionId: "sub_mom", monthlyAllowance: 36, monthlyCreditsRemaining: 25, subscriptionCurrentTermStart: at("2026-09-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-30T00:00:00Z") })], txns: [purchase(1, SEEKER, 2)], users: [{ id: SEEKER, canonicalPersonId: 1 }] });
     vi.setSystemTime(at("2026-10-02T00:00:00Z"));
     expect(await reconcileSeekerCredits(SEEKER, at("2026-10-02T00:00:00Z"))).toEqual({ changed: true });
-    const inTerm = { eventId: "ev_max_changed", eventType: "subscription_changed", subscriptionId: "sub_max", plan: "max" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-09-01T00:00:00Z"), currentTermEnd: at("2027-09-01T00:00:00Z"), resourceVersion: 30 };
+    const inTerm = { eventId: "ev_mom_changed", eventType: "subscription_changed", subscriptionId: "sub_mom", plan: "momentum" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-09-01T00:00:00Z"), currentTermEnd: at("2026-11-30T00:00:00Z"), resourceVersion: 30 };
     expect(await applyChargebeeSubscriptionEvent(inTerm)).toMatchObject({ status: "applied" });
     await getTokenWallet(SEEKER, "job_seeker");
     expect(await reconcileSeekerCredits(SEEKER, at("2026-10-02T01:00:00Z"))).toEqual({ changed: false });
@@ -77,7 +79,7 @@ describe("a plan cycle is granted once", () => {
 
 describe("one person's credits never move another's", () => {
   const otherWallet = (patch: Row = {}): Row => wallet({ id: 2, userId: OTHER, balance: 5, monthlyCreditsRemaining: 6, monthlyCycleKey: "2026-10", subscriptionId: "sub_other", subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z"), ...patch });
-  const otherGrant = (patch: Row = {}): Row => ({ id: 1, userId: OTHER, role: "job_seeker", source: "carryover", grantKey: "carry:other", planId: "pro", subscriptionId: "sub_other", cycleKey: "2026-09", tokenCount: 8, creditsRemaining: 8, status: "active", grantedAt: at("2026-10-01T00:00:00Z"), expiresAt: at("2026-11-01T00:00:00Z"), closedAt: null, ...patch });
+  const otherGrant = (patch: Row = {}): Row => ({ id: 1, userId: OTHER, role: "job_seeker", source: "carryover", grantKey: "carry:other", planId: "start", subscriptionId: "sub_other", cycleKey: "2026-09", tokenCount: 8, creditsRemaining: 8, status: "active", grantedAt: at("2026-10-01T00:00:00Z"), expiresAt: at("2026-11-01T00:00:00Z"), closedAt: null, ...patch });
 
   beforeEach(() => {
     db.wallets.push(otherWallet());
@@ -118,7 +120,7 @@ describe("the switch to the ledger moves nobody's credits", () => {
     vi.setSystemTime(at("2026-10-14T12:00:00Z"));
     const pre = [
       wallet({ id: 1, userId: 11, monthlyCycleKey: "2026-10", monthlyCreditsRemaining: 7, balance: 2, subscriptionId: "sub_a", subscriptionCurrentTermStart: at("2026-10-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-06T00:00:00Z") }),
-      wallet({ id: 2, userId: 12, plan: "max", monthlyAllowance: 30, monthlyCycleKey: "2026-09", monthlyCreditsRemaining: 12, balance: 0, subscriptionId: "sub_b", subscriptionStatus: "non_renewing", subscriptionCurrentTermStart: at("2026-09-20T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-20T00:00:00Z") }),
+      wallet({ id: 2, userId: 12, plan: "momentum", monthlyAllowance: 36, monthlyCycleKey: "2026-09", monthlyCreditsRemaining: 12, balance: 0, subscriptionId: "sub_b", subscriptionStatus: "non_renewing", subscriptionCurrentTermStart: at("2026-09-20T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-20T00:00:00Z") }),
       wallet({ id: 3, userId: 13, plan: "free", monthlyAllowance: 3, monthlyCycleKey: "2026-10", monthlyCreditsRemaining: 1, balance: 4, subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null }),
       wallet({ id: 4, userId: 13, role: "referrer", plan: "free", monthlyAllowance: 3, monthlyCycleKey: "2026-10", monthlyCreditsRemaining: 2, balance: 1, subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null }),
     ];
@@ -131,5 +133,36 @@ describe("the switch to the ledger moves nobody's credits", () => {
     }
     expect(db).toEqual(before);
     expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+  });
+});
+
+// D-067: a referrer wallet still marked pro or max reads as Free on the pre-kit referrer
+// path (normalizedWalletState): 3 a month from the next month, purchased credits untouched.
+describe("a referrer wallet still marked with a retired plan", () => {
+  it.each(["pro", "max"] as const)("a referrer %s wallet normalizes to Free on read and keeps its purchased credits", async plan => {
+    vi.setSystemTime(at("2026-10-14T12:00:00Z"));
+    const referrer = wallet({ id: 5, userId: 21, role: "referrer", plan, monthlyAllowance: 30, monthlyCreditsRemaining: 2, monthlyCycleKey: "2026-10", balance: 6, subscriptionId: `sub_ref_${plan}`, subscriptionStatus: "active", subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z") });
+    fixture.reset({ wallets: [referrer], txns: [purchase(1, 21, 6, "referrer")], users: [{ id: 21, canonicalPersonId: 3 }] });
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+    const summary = await getTokenWallet(21, "referrer");
+    expect(summary).toMatchObject({ plan: "free", monthlyAllowance: 3, purchasedCreditsRemaining: 6 });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", subscriptionStatus: "cancelled", monthlyAllowance: 3, balance: 6, subscriptionId: `sub_ref_${plan}` });
+    // What this month already granted stays for the month (the pre-kit rule for any lapsed referrer plan); next month is Free's 3.
+    expect(db.wallets[0].monthlyCreditsRemaining).toBe(2);
+    expect(db.txns).toEqual([purchase(1, 21, 6, "referrer")]);
+    expect((await getCreditLedgerAudit()).mismatches).toEqual([]);
+    vi.setSystemTime(at("2026-11-02T00:00:00Z"));
+    expect(await getTokenWallet(21, "referrer")).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 6 });
+  });
+
+  // D-067 packet 5b.2: the raw pre-kit reset kept a Max referrer's whole month, so the wallet read Free with 30 of 3.
+  // Leaving a paid plan never leaves more monthly credits than the Free allowance (referrers are never paid, D-055).
+  it.each(["pro", "max"] as const)("a referrer %s wallet holding more than Free's allowance this month is clamped to 3", async plan => {
+    vi.setSystemTime(at("2026-10-14T12:00:00Z"));
+    const referrer = wallet({ id: 5, userId: 21, role: "referrer", plan, monthlyAllowance: 30, monthlyCreditsRemaining: 30, monthlyCycleKey: "2026-10", balance: 6, subscriptionId: `sub_ref_${plan}`, subscriptionStatus: "active", subscriptionCurrentTermStart: at("2026-10-01T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-11-01T00:00:00Z") });
+    fixture.reset({ wallets: [referrer], txns: [purchase(1, 21, 6, "referrer")], users: [{ id: 21, canonicalPersonId: 3 }] });
+    expect(await getTokenWallet(21, "referrer")).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, purchasedCreditsRemaining: 6 });
+    expect(db.wallets[0]).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, balance: 6 });
+    expect(db.txns).toEqual([purchase(1, 21, 6, "referrer")]);
   });
 });

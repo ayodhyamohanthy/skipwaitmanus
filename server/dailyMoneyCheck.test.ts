@@ -25,6 +25,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listUnmatchedRefunds: vi.fn(async () => []),
     listStaleCheckouts: vi.fn(async () => []),
     listAllocatedAsks: vi.fn(async () => []),
+    listLegacyPlanWallets: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -122,6 +123,16 @@ describe("daily-money-check (D-065)", () => {
     await runJob(deps);
     expect(sent[0]!.subject).toBe(`skipwait.me daily money check · ${FINDINGS_EMAIL_LINE_LIMIT + 5} findings`);
     expect(sent[0]!.text).toContain("...and 5 more finding(s) not shown here.");
+  });
+
+  it("flags a wallet still marked pro or max with an active term: a missed D-067 normalization", async () => {
+    const listLegacyPlanWallets = vi.fn(async () => [{ id: 5, role: "job_seeker", plan: "max", termEnd: new Date(NOW.getTime() + 10 * DAY) }]);
+    const { deps, sent } = makeDeps({ listLegacyPlanWallets });
+    const output = await runJob(deps);
+    expect(listLegacyPlanWallets).toHaveBeenCalledWith(NOW, expect.any(Number));
+    expect(output.failed).toBe(0);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.text).toContain("legacy plan wallet: wallet #5 (job_seeker, max) still holds an active term until 2026-10-29T02:00:00.000Z");
   });
 
   it("fails the window when findings exist but the owner email cannot be sent", async () => {

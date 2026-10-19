@@ -39,7 +39,7 @@ describe("credit packs are on sale", () => {
     const { container } = render(<CreditsSection summary={null} currency="USD" creditsHref="/premium" />);
     expect(container.innerHTML).not.toBe("");
     const summary = { plan: "free", ledger: { balance: 0, cycle: { used: 3 } }, slots: null } as never;
-    const [moment] = upgradeMoments(summary, new Date(), "/premium", () => {});
+    const [moment] = upgradeMoments(summary, new Date(), "/premium");
     expect(moment.cta).toEqual({ label: "Add credits", href: "/premium" });
   });
 });
