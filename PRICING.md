@@ -78,4 +78,4 @@ Honest anchoring only (yearly, packs, Land levels). No fake tiers, fake "was" pr
 scarcity. No hiring guarantees. Never sell referrals, priority, visibility or payments to referrers,
 and never show a plan to a referrer. Referrers never pay: every referrer-role checkout is refused
 before any provider call (D-055; `REFERRER_PURCHASES_ENABLED = false` in `shared/referrerPurchases.ts`,
-switched off, not deleted; in code on `agent/claude/pro-max-removal`, not yet live).
+switched off, not deleted; live since `08d193a0`).
