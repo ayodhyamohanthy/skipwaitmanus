@@ -22,7 +22,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | 1.1 | D-067-pro-max-removal | [D-067-packet.md](D-067-packet.md) (verification for slices 3–4 and the review) | 1 | L (sliced into commits) | done — `08d193a0`, live (independent review passed on PR #318) | — | 0.1, 1.2, 1.4 |
 | 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | review passed — landing blocked by D-080 (PR #324, head `bcff1742`; also waits on the owner's dashboard steps and `SEEKER_CODE_VERIFY_UNTIL`) | — | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | 1.2 live | 1.3, 1.4 |
-| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | in progress — Claude Code, branch `agent/claude/catalog-sync-finish` | 1.1 live | 1.2, 1.4, 3.1 |
+| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | **implemented** (D-058 takeover, Oct 19) — money review, gate and the owner's dry run pending; nothing applied; draft PR #326 | 1.1 live | 1.2, 1.4, 3.1 |
 | 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | ready | — | 0.1, 1.1, 1.2, 1.3 |
 
 ## Stage 2 — payments ready before referrers onboard (D-046, D-064, D-075)
