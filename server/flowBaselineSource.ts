@@ -4,8 +4,9 @@
 // be tested against a fixture source without a database. Every row here is an
 // aggregate or a timestamp: no names, emails, domains-of-people or request text
 // leave this layer.
-import { and, count, eq, gte, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, notInArray } from "drizzle-orm";
 import { canonicalPeople, companyDomains, jobs, profiles, referralAvailabilitySlots, referralRequests, referralRequestPasses, referralTransitionEvents, tokenBalances, users } from "../drizzle/schema";
+import { REFERRER_EXCLUSION_CODES } from "../shared/passReasons";
 import type { getDb } from "./db";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
@@ -31,7 +32,7 @@ export function drizzleFlowBaselineSource(db: Db): FlowBaselineSource {
     // Statuses, timestamps and company domains only; a seeker's note never enters this query.
     loadRequests: () => db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt })
       .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
-    loadPassedRequestIds: async () => (await db.select({ id: referralRequestPasses.referralRequestId }).from(referralRequestPasses)).map(row => row.id),
+    loadPassedRequestIds: async () => (await db.select({ id: referralRequestPasses.referralRequestId }).from(referralRequestPasses).where(notInArray(referralRequestPasses.reasonCode, [...REFERRER_EXCLUSION_CODES]))).map(row => row.id),
     // Accept and pass are the referrer's decisions; claim and review only mark activity.
     loadTransitionsSince: sinceMs => db.select({ requestId: referralTransitionEvents.referralRequestId, actorUserId: referralTransitionEvents.actorUserId, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt })
       .from(referralTransitionEvents).where(gte(referralTransitionEvents.createdAt, new Date(sinceMs))),

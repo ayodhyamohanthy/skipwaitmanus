@@ -7,6 +7,7 @@ import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createDailyMoneyCheck } from "./dailyMoneyCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
+import { createReferralTimers } from "./referralTimers";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
@@ -71,6 +72,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createCoverageDeliverySweep(),
+  },
+  {
+    name: "referral-timers",
+    description: "D-038-A: reminds referrers 24 h before a claim or allocation lapses, lapses claims and allocations past 48 h, and returns the ask to colleagues; bounded 100 per step, oldest first",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createReferralTimers(),
   },
   {
     name: "daily-money-check",
