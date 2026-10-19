@@ -76,15 +76,23 @@ Every agent entry doc tells an agent what `build` means: run `node scripts/next-
 
 A claim is the task's branch on `origin`, an empty marker commit: the first push wins and a second agent's push is refused. Without `--claim` the script only shows the pick. Name yourself with a session tag (for example `Qwen 3 · 14:05`) so two sessions of one model count as different people for reviews.
 
-For an agent that loads no instruction file, paste:
+For an agent that loads no instruction file, or one started in a folder that is behind `main`, paste:
 
 ```text
 You are working on SkipWait (github.com/ayodhyamohanthy/skipwaitmanus), a
-live product that handles real money. git fetch origin, read docs/BRIEF.md,
-then run: node scripts/next-task.mjs --claim "<your model name · a session tag>"
-and do only the task it prints, exactly as it says. Never choose work
+live product that handles real money. Your folder may be behind main, so
+run the task picker straight from origin/main:
+
+  git fetch origin
+  d=$(mktemp -d); for f in next-task.mjs nextTaskCore.mjs nextTaskText.mjs; do git show origin/main:scripts/$f > "$d/$f"; done
+  node "$d/next-task.mjs" --claim "<your model name · a session tag>"
+
+Do only the task it prints, exactly as it says, in the worktree it tells
+you to create, and read docs/BRIEF.md there first. Never choose work
 yourself. If it prints STOP, WAIT or NOTHING TO PICK, tell me and stop.
 ```
+
+Use this prompt instead of `build` in any folder that is behind `main` (its entry docs do not know `build` yet). It changes nothing in the folder: the picker only reads git and pushes the claim.
 
 Claude Code keeps the list: a task goes in only with a ready packet (or as `architect` until it has one), and an agent changes only its own task's status, to done, in the pull request that lands it.
 

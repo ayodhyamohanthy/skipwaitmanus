@@ -181,6 +181,18 @@
       "status": "architect",
       "dependsOn": [],
       "note": "Claude Code writes one packet per surface; each becomes its own task here."
+    },
+    {
+      "id": "SYNC-LOG-off-main",
+      "title": "Keep the deploy log without pushing to main (the D-082 ruleset refuses the bot's push)",
+      "row": "D-082",
+      "packet": null,
+      "tier": 3,
+      "lane": "deploy-workflows",
+      "branch": "agent/claude/sync-log-off-main",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Claude Code writes the packet: write the log to the run summary or a sync-log branch instead of main. Low priority; deploys are unaffected."
     }
   ]
 }

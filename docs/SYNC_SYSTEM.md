@@ -34,7 +34,7 @@ Cloudflare Containers with `sleepAfter=10m` recycle the instance only after 10 m
 
 ## Audit trail
 
-`docs/SYNC_LOG.md` — one row per deploy attempt (timestamp, workflow, commit, status). Appended by CI (`if: always()`), so failures are recorded too.
+`docs/SYNC_LOG.md` — one row per deploy attempt (timestamp, workflow, commit, status). Appended by CI (`if: always()`), so failures are recorded too. Since Oct 20 the D-082 ruleset refuses the deploy bot's push of this log to `main` (GitHub allows no Actions bypass on a personal repo), so the file stops growing; the GitHub Actions run history is the deploy log until the log moves off `main` (task SYNC-LOG-off-main).
 
 ## Rollback
 
