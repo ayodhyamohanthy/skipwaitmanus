@@ -15,6 +15,7 @@ import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from
 import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenTransactions } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
+import { HELD_ASK_HISTORY_SINCE } from "./heldAsk";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
@@ -150,6 +151,9 @@ export async function listAllocatedPendingAsks(cutoffs: AllocatedAskCutoffs, aft
  * credit back. A claimed ask keeps its credit spent and never expires (D-021), so it is never a finding.
  */
 export function isAllocatedAskPastWindow(ask: AllocatedAskRow, nowMs: number): boolean {
+  // An assigned ask created before claims became recorded events keeps today's rules (it never expires), so the
+  // sweep never closes it by design: flagging it would repeat the same line in every daily email (heldAsk.ts).
+  if (!ask.waitingForCoverage && ask.createdAt.getTime() < HELD_ASK_HISTORY_SINCE.getTime()) return false;
   const claimedSinceRelease = ask.latestClaimAt !== null && (ask.latestReleaseAt === null || ask.latestClaimAt.getTime() > ask.latestReleaseAt.getTime());
   if (claimedSinceRelease) return false;
   const endsAt = getAskShelfLifeEndsAtMs(ask);

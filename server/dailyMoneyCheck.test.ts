@@ -163,7 +163,7 @@ describe("allocated_ask_past_window", () => {
     expect(sent[0]!.text).not.toContain("ask #1 ");
   });
 
-  it("flags only an unclaimed allocation a day past its window; within the grace, claimed and waiting asks stay quiet", async () => {
+  it("flags only an unclaimed allocation a day past its window; within the grace, claimed, waiting and pre-cut-off asks stay quiet", async () => {
     const { deps, sent } = makeDeps({
       listAllocatedAsks: vi.fn(async (_windows: unknown, afterId: number) => afterId === 0 ? [
         unclaimed(11),
@@ -171,6 +171,9 @@ describe("allocated_ask_past_window", () => {
         unclaimed(13, { latestClaimAt: new Date(NOW.getTime() - 8 * DAY) }),
         unclaimed(14, { waitingForCoverage: true, coverageVisibleAt: null, createdAt: new Date(NOW.getTime() - 30 * DAY) }),
         unclaimed(15, { coverageVisibleAt: null, createdAt: new Date(NOW.getTime() - 9 * DAY) }),
+        // Created before the 2026-09-21 cut-off: an assigned ask then keeps today's rules (never expires), so
+        // the sweep never closes it by design and the daily email must not repeat it forever.
+        unclaimed(16, { coverageVisibleAt: null, createdAt: new Date("2026-09-10T00:00:00Z") }),
       ] : []),
     });
     await runJob(deps);
@@ -178,7 +181,7 @@ describe("allocated_ask_past_window", () => {
     expect(sent[0]!.subject).toBe("skipwait.me daily money check · 2 findings");
     expect(sent[0]!.text).toContain("allocated_ask_past_window: ask #11 ");
     expect(sent[0]!.text).toContain("allocated_ask_past_window: ask #15 ");
-    for (const id of [12, 13, 14]) expect(sent[0]!.text).not.toContain(`ask #${id} `);
+    for (const id of [12, 13, 14, 16]) expect(sent[0]!.text).not.toContain(`ask #${id} `);
   });
 });
 
