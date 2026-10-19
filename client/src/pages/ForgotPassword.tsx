@@ -1,6 +1,7 @@
 import { ArrowLeft, MailCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { Button } from "@/components/kit/button";
 import { EMAIL_PATTERN, passwordForgotAcceptedSchema } from "@shared/passwordAuth";
 import { postPasswordAuth } from "@/lib/passwordAuthClient";
 
@@ -76,9 +77,9 @@ export default function ForgotPassword() {
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
               No email after a few minutes? Create an account with the same address; it joins your existing account.
             </p>
-            <button type="button" onClick={() => setSentTo("")} className="brand-button-secondary mt-6">
+            <Button type="button" variant="outline" onClick={() => setSentTo("")} className="mt-6">
               Use a different email
-            </button>
+            </Button>
           </section>
         )}
         <p className="mt-8 text-sm leading-6 text-[var(--muted-foreground)]">

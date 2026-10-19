@@ -39,6 +39,17 @@ describe("the forgot page is neutral and parses the response", () => {
     expect(calls).toEqual([{ url: "/api/auth/password/forgot", body: { email: "asha@gmail.com" } }]);
   });
 
+  // Screenshot pass, item 2: "Use a different email" used a class with no CSS and rendered as plain text.
+  it("offers a real secondary button to use a different email, which goes back to the form", async () => {
+    stubFetch({ status: 200, body: { ok: true } });
+    requestReset("asha@gmail.com");
+    const again = await screen.findByRole("button", { name: "Use a different email" });
+    expect(again.className).not.toContain("brand-button-secondary");
+    expect(again.className.split(" ")).toEqual(expect.arrayContaining(["brand-button", "border-2", "bg-background"]));
+    fireEvent.click(again);
+    expect(screen.getByRole("button", { name: "Send reset link" })).toBeTruthy();
+  });
+
   it("too many requests says how long to wait", async () => {
     stubFetch({ status: 429, body: { ok: false, code: "rate_limited", message: PASSWORD_AUTH_COPY.rate_limited, retryAfterSeconds: 1800 } });
     requestReset("asha@gmail.com");
