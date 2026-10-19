@@ -12,7 +12,9 @@ import { registerSeekerEmailCodeRoutes, SEEKER_CODE_RETIRED_MESSAGE, SEEKER_CODE
 
 // Before the cutoff an already-emailed code still signs in (cached app versions); after it, nothing does.
 const BEFORE_CUTOFF = () => SEEKER_CODE_VERIFY_UNTIL.getTime() - 60_000;
-const app = (now: () => number = BEFORE_CUTOFF) => { const a = express(); a.use(express.json()); registerSeekerEmailCodeRoutes(a, { now }); return a; };
+const app = (now: () => number = BEFORE_CUTOFF) => { const a = express(); a.use(express.json()); a.use(express.urlencoded({ extended: true })); registerSeekerEmailCodeRoutes(a, { now }); return a; };
+/** A verify call from skipwait.me itself, as a cached app version sends it. */
+const verify = (server: express.Express, body: object) => request(server).post("/api/auth/workos/email-code/verify").set("Sec-Fetch-Site", "same-origin").send(body);
 beforeEach(() => {
   Object.values(m).forEach(f => f.mockReset());
   m.sendCode.mockResolvedValue({ sent: true, reason: "sent" }); m.verifyCode.mockResolvedValue(true);
@@ -51,8 +53,22 @@ describe("the retired seeker email code (D-049, D-078 ruling 1)", () => {
     expect(m.createSessionToken).not.toHaveBeenCalled();
   });
 
+  // Review F3: until the cutoff, verify still signs people in, so a cross-site form must not log a victim into an
+  // attacker's account (the global urlencoded parser would accept it). Same origin guard as every auth POST.
+  it("refuses a cross-site or non-JSON verify before checking the code", async () => {
+    const evilForm = await request(app()).post("/api/auth/workos/email-code/verify").set("Origin", "https://evil.example").type("form").send("email=attacker%40gmail.com&code=482913");
+    expect(evilForm.status).toBe(403);
+    expect(evilForm.headers["set-cookie"]).toBeUndefined();
+    const evilJson = await request(app()).post("/api/auth/workos/email-code/verify").set("Origin", "https://evil.example").send({ email: "attacker@gmail.com", code: "482913" });
+    expect(evilJson.status).toBe(403);
+    const noOrigin = await request(app()).post("/api/auth/workos/email-code/verify").send({ email: "attacker@gmail.com", code: "482913" });
+    expect(noOrigin.status).toBe(403);
+    expect(m.verifyCode).not.toHaveBeenCalled();
+    expect(m.createSessionToken).not.toHaveBeenCalled();
+  });
+
   it("correct code resolves the canonical account and sets the session cookie; no work email is enrolled", async () => {
-    const res = await request(app()).post("/api/auth/workos/email-code/verify").send({ email: "asha@gmail.com", code: "482913" });
+    const res = await verify(app(), { email: "asha@gmail.com", code: "482913" });
     expect(res.status).toBe(200); expect(res.body).toEqual({ signedIn: true });
     expect(m.verifyCode).toHaveBeenCalledWith("asha@gmail.com", "482913", expect.objectContaining({ seeker: true }));
     expect(m.resolve).toHaveBeenCalledWith(expect.objectContaining({ provider: "email_code", email: "asha@gmail.com", emailVerified: true }));
@@ -61,16 +77,16 @@ describe("the retired seeker email code (D-049, D-078 ruling 1)", () => {
   });
   it("wrong code: generic 400 and no session", async () => {
     m.verifyCode.mockResolvedValue(false);
-    const res = await request(app()).post("/api/auth/workos/email-code/verify").send({ email: "asha@gmail.com", code: "000000" });
+    const res = await verify(app(), { email: "asha@gmail.com", code: "000000" });
     expect(res.status).toBe(400); expect(m.createSessionToken).not.toHaveBeenCalled();
   });
   it("locked pair gets 429; suspended or blocked accounts get no session", async () => {
     m.verifyCode.mockRejectedValueOnce(new OtpLockedError(new Date(Date.now() + 60_000), 60));
-    expect((await request(app()).post("/api/auth/workos/email-code/verify").send({ email: "asha@gmail.com", code: "482913" })).status).toBe(429);
+    expect((await verify(app(), { email: "asha@gmail.com", code: "482913" })).status).toBe(429);
     m.resolve.mockResolvedValueOnce({ id: 7, openId: "x", suspended: true });
-    expect((await request(app()).post("/api/auth/workos/email-code/verify").send({ email: "asha@gmail.com", code: "482913" })).status).toBe(403);
+    expect((await verify(app(), { email: "asha@gmail.com", code: "482913" })).status).toBe(403);
     m.resolve.mockRejectedValueOnce(new Error("ACCOUNT_NOT_ACTIVE"));
-    expect((await request(app()).post("/api/auth/workos/email-code/verify").send({ email: "asha@gmail.com", code: "482913" })).status).toBe(403);
+    expect((await verify(app(), { email: "asha@gmail.com", code: "482913" })).status).toBe(403);
     expect(m.createSessionToken).not.toHaveBeenCalled();
   });
 });

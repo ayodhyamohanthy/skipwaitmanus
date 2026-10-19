@@ -1,8 +1,10 @@
 import type { Express, Request, Response } from "express";
 import { COOKIE_NAME } from "@shared/const";
+import { PASSWORD_AUTH_COPY } from "@shared/passwordAuth";
 import { resolveLoginIdentity } from "../db";
 import { OtpLockedError } from "../otpPolicy";
 import { workEmailOtpService } from "../workEmailOtp";
+import { isTrustedAuthPost } from "./authPostGuard";
 import { getSessionCookieOptions } from "./cookies";
 import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 import { resolveTrustedClientIp } from "./trustedClientIp";
@@ -35,6 +37,8 @@ export function registerSeekerEmailCodeRoutes(app: Express, deps: Deps = {}) {
 
   app.post("/api/auth/workos/email-code/verify", async (req: Request, res: Response) => {
     if (now() >= SEEKER_CODE_VERIFY_UNTIL.getTime()) return retired(res);
+    // Review F3: the same login-CSRF guard as every auth POST, so a cross-site form cannot sign a victim in.
+    if (!isTrustedAuthPost(req)) return res.status(403).set("Cache-Control", "no-store").json({ error: PASSWORD_AUTH_COPY.forbidden_origin });
     const email = normalizeEmail(req.body?.email);
     const code = typeof req.body?.code === "string" ? req.body.code.trim() : "";
     if (!EMAIL.test(email) || email.length > 320 || !/^\d{6}$/.test(code)) return res.status(400).json({ error: "Enter the six-digit code from your email" });
