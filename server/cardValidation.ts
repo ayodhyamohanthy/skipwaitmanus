@@ -2,6 +2,7 @@
 // card check end to end (its hosted page and card verification, auto-voided);
 // this module only creates the page and re-reads provider truth. Card numbers
 // are never seen or logged here.
+import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { createCustomer, createManagePaymentSourcesPage, listPaymentSources } from "./chargebeeAccountApi";
 import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 import { getUserChargebeeCustomerId, markCardValidatedFromProvider, setUserChargebeeCustomerId } from "./db";
@@ -27,6 +28,7 @@ export async function createCardValidationPageForUser(input: { userId: number; e
 /** Provider-truth re-read for the return path (webhook lag): a valid payment
  * source on the linked customer validates the wallet and grants the month. */
 export async function reconcileCardValidationFromProvider(input: { userId: number }): Promise<{ checked: boolean; validated: boolean }> {
+  if (!freeCreditsRequireCardValidation()) return { checked: false, validated: false };
   const customerId = await getUserChargebeeCustomerId(input.userId);
   if (!customerId) return { checked: false, validated: false };
   const runtime = resolveChargebeeRuntime(undefined);

@@ -54,6 +54,7 @@ import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDR
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
+import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
@@ -2748,6 +2749,12 @@ async function auditLedgerWallets(db: LedgerAuditDb, wallets: LedgerAuditWallet[
     // (a cycle that began before the ledger has no opening row), and every grant against the rows that name it.
     const cycleRows=rows.filter(row=>row.source===BUCKET_SOURCES.cycle&&row.sourceCycleKey===wallet.monthlyCycleKey);
    
+    // D-079: with the flag on, a locked wallet must hold no free credits, and a
+    // validated free wallet's current cycle must show its grant rows.
+    if(freeCreditsRequireCardValidation()&&wallet.role==="job_seeker"&&wallet.plan==="free"){
+      if(wallet.cardValidatedAt==null&&wallet.monthlyCreditsRemaining>0)integrity.push({type:"locked_wallet_holds_free_credits",userId:wallet.userId,role:wallet.role,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining,cycleKey:wallet.monthlyCycleKey});
+      if(wallet.cardValidatedAt!=null&&wallet.monthlyCreditsRemaining>0&&cycleRows.filter(row=>row.kind==="plan_grant").length===0)integrity.push({type:"validated_wallet_missing_cycle_grant",userId:wallet.userId,role:wallet.role,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining,cycleKey:wallet.monthlyCycleKey});
+    }
     if(cycleRows.filter(row=>row.kind==="plan_grant").length===1){const expected=cycleRows.reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==wallet.monthlyCreditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"cycle",cycleKey:wallet.monthlyCycleKey,expected,actual:wallet.monthlyCreditsRemaining,delta:wallet.monthlyCreditsRemaining-expected});}
     const grants=await readGrantsTx(db,wallet.userId,wallet.role,false);
     for(const grant of grants){const expected=rows.filter(row=>row.creditGrantId===grant.id).reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==grant.creditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:`grant:${grant.source}`,grantId:grant.id,expected,actual:grant.creditsRemaining,delta:grant.creditsRemaining-expected});if(grant.creditsRemaining<0)integrity.push({type:"negative_grant",userId:wallet.userId,role:wallet.role,grantId:grant.id});}
@@ -3231,6 +3238,10 @@ export type CreditSummary = {
   subscriptionCurrentTermEnd: Date | null;
   /** Kit ledger block (shared/creditLedger.ts): on GET /api/credits/summary and spends; embedded summaries omit it. */
   ledger?: CreditsLedger;
+  /** D-079: the provider confirmed a card for this wallet's owner. Always false for referrers (their credits are not gated). */
+  cardValidated: boolean;
+  /** D-079: flag on + seeker + no validated card: free monthly credits are locked until validation. */
+  freeCreditsLocked: boolean;
 };
 export const MAX_ADMIN_TOKEN_ADJUSTMENT = 1000;
 export const COMPANY_COVERAGE_REWARD_TOKENS = 1;
@@ -3359,6 +3370,8 @@ function creditSummaryFromWallet(wallet: typeof tokenBalances.$inferSelect, prom
     cycleKey: wallet.monthlyCycleKey,
     subscriptionStatus: wallet.subscriptionStatus ?? null,
     subscriptionCurrentTermEnd: wallet.subscriptionCurrentTermEnd ?? null,
+    cardValidated: wallet.role === "job_seeker" && wallet.cardValidatedAt != null,
+    freeCreditsLocked: wallet.role === "job_seeker" && freeCreditsRequireCardValidation() && wallet.cardValidatedAt == null,
   };
 }
 

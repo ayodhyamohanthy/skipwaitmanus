@@ -128,7 +128,10 @@ async function expireGrantsTx(tx: LedgerTx, wallet: WalletRow, grants: GrantRow[
 export function seekerCycleDue(wallet: WalletRow, now: Date): boolean {
   if (wallet.plan !== "free" && isPaidPlanActive(wallet, now)) return paidCycleSteps(wallet, now).length > 0;
   if (paidPlanLapsed(wallet, now)) return true;
-  return wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now);
+  if (wallet.plan === "free" && freeCycleBehind(wallet.monthlyCycleKey, now)) return true;
+  // D-079: a validated wallet on a locked current cycle is due, so reconcile
+  // grants it even when the webhook signal was missed.
+  return wallet.plan === "free" && wallet.monthlyCycleKey === currentMonthlyCycleKey(now) && freeCreditsRequireCardValidation() && wallet.cardValidatedAt != null && wallet.monthlyAllowance === 0;
 }
 
 const CYCLE_KEY_PATTERN = /^\d{4}-\d{2}$/;

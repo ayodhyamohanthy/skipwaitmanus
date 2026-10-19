@@ -2,7 +2,7 @@
 // once, grant the current Free month once; unmatched customers surface for the
 // owner alert; non-valid statuses never stamp.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { applyCardValidationEvent } from "./db";
+import { applyCardValidationEvent, getTokenWallet } from "./db";
 import { createLedgerFixture, type Row } from "./ledgerFixtureDb";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -44,6 +44,21 @@ describe("applyCardValidationEvent (D-079)", () => {
     expect(await applyCardValidationEvent(event({ customerId: "cb_other" }))).toEqual({ status: "unmatched", reason: "no_user_for_customer" });
     expect(db.wallets[0].cardValidatedAt).toBeNull();
     expect(planGrants()).toHaveLength(0);
+  });
+
+  it("the summary reports the lock state for the client", async () => {
+    let summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary.cardValidated).toBe(false);
+    expect(summary.freeCreditsLocked).toBe(true);
+
+    await applyCardValidationEvent(event());
+    summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary.cardValidated).toBe(true);
+    expect(summary.freeCreditsLocked).toBe(false);
+
+    vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "false");
+    summary = await getTokenWallet(SEEKER, "job_seeker");
+    expect(summary.freeCreditsLocked).toBe(false);
   });
 
   it("a declined or pending source never stamps and never grants", async () => {

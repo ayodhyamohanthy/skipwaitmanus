@@ -150,6 +150,8 @@ export type PrivateReferralRouteDeps = {
   listAdminTokenAdjustments?: (limit?: number) => Promise<unknown[]>;
   grantAdminTokenAdjustment?: (adminUserId: number, input: { recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; caseReference: string; reason: string }) => Promise<{ adjustmentId: number; recipientUserId: number; role: "job_seeker" | "referrer"; tokenCount: number; newBalance: number }>;
   getCreditSummary?: (userId: number, role: "job_seeker" | "referrer") => Promise<unknown>;
+  /** D-079: provider-truth card-validation re-read on the return path (webhook lag); fail-open, alerts inside. */
+  reconcileCardValidation?: (userId: number) => Promise<unknown>;
   listCreditLedger?: (userId: number, role: "job_seeker" | "referrer", limit: number) => Promise<CreditLedgerEntry[]>;
   getOrCreatePersonalReferralInvite?: (userId: number) => Promise<{ inviteCode: string }>;
   claimPersonalReferralInvite?: (joinerUserId: number, input: { inviteCode: string; verifiedEmail: string }) => Promise<{ rewarded: boolean; tokenCount?: number; reason?: string }>;
@@ -780,6 +782,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const identity = await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in to view your referral credits" });
       const role = req.query.role === "referrer" ? "referrer" : "job_seeker";
+      // D-079: after the hosted page redirects back, the webhook may lag; re-read provider truth first (fail-open).
+      if (role === "job_seeker" && deps.reconcileCardValidation) { try { await deps.reconcileCardValidation(identity.account.id); } catch { /* the summary still loads; the alert fired inside */ } }
       const summary = await deps.getCreditSummary?.(identity.account.id, role);
       if (!summary) return res.status(500).json({ error: "We could not load your referral credits" });
       // Seeker open-ask slots ride on the summary; fail-open: a count failure omits them, never the credits.
