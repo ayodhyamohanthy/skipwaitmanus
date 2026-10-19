@@ -24,4 +24,12 @@ describe("live CSS overrides respect the kit", () => {
     expect(kit).toContain(".work-thumb{");
     for (const legacy of [".work-thumb", ".pinned-pill", ".role-list", ".role-row"]) expect(css).not.toContain(legacy);
   });
+
+  // Screenshot pass, item 1: the global input:focus-visible outline beat the kit's ".auth-input input{outline:none}",
+  // so a focused sign-in field drew two rings. Only the field's wrapper ring shows, and only on auth inputs.
+  it("gives a focused sign-in field exactly one ring: the wrapper's, scoped to auth inputs", () => {
+    expect(kit).toContain(".auth-input:focus-within{border-color:var(--primary);");
+    expect(kit).toContain(".auth-input input:focus-visible{outline:none;}");
+    expect(css).toContain("button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--primary); outline-offset: 4px; }");
+  });
 });
