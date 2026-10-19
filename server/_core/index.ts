@@ -60,6 +60,7 @@ import { registerBlocksRoutes } from "../blocksRoutes";
 import { createCardValidationPageForUser, reconcileCardValidationFromProvider } from "../cardValidation";
 import { registerChargebeeRoutes } from "../chargebeeRoutes";
 import { registerAdminBillingCatalogRoutes } from "../adminBillingCatalog";
+import { registerAdminCatalogSyncRoutes } from "../adminCatalogSyncRoutes";
 import { registerPlansCatalogRoutes } from "../plansCatalogRoutes";
 import { registerAdminBillingLedgerRoutes } from "../adminBillingLedger";
 import { validateBillingEnvironment } from "../chargebeeEnvironment";
@@ -253,6 +254,17 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     record: db.recordOperationalActivity,
   });
   registerAdminBillingCatalogRoutes(app, { resolveIdentity });
+  // D-069: admin-only Chargebee catalog sync (dry run, then one owner-triggered apply).
+  // The strict recorder refuses the apply when nothing can be written, so no create
+  // ever happens without an audit trail.
+  registerAdminCatalogSyncRoutes(app, {
+    resolveIdentity,
+    recordActivity: async entry => {
+      if (!(await db.getDb())) throw new Error("Database unavailable");
+      await db.recordOperationalActivity(entry);
+    },
+    reportError: captureServerError,
+  });
   registerPlansCatalogRoutes(app);
   registerAdminBillingLedgerRoutes(app, { resolveIdentity, loadRows: db.listBillingLedgerRows });
   registerChargebeeRoutes(app, {

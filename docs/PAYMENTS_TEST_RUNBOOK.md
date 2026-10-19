@@ -65,7 +65,7 @@ Run one qty-1 INR credits pack (the smallest one-time purchase) as the unit of t
 1. Refund after every payment. No payment is left unrefunded at the end of a step.
 2. Wallet-verify between payments: read `/api/credits/summary` before and after each payment and after each refund; the balance must return to the starting value.
 3. Stop on a decline. Do not retry with a different card to get around it; report the decline and its message.
-4. No writes on the live site beyond the test transactions themselves (no catalog, plan, customer or subscription edits). Catalog item prices are created by the owner, or (once it is built) by the admin catalog sync's apply step that the owner triggers after reading its dry run (D-069).
+4. No writes on the live site beyond the test transactions themselves (no catalog, plan, customer or subscription edits). Catalog item prices are created by the owner, or by the admin catalog sync's apply step at `/admin/catalog-sync` that the owner triggers after reading its dry run (D-069); the sync only creates and never edits a provider object.
 5. Keys live in the vault and are never printed, logged, committed or pasted into chat or docs.
 6. Agents never make real payments (D-065; `AGENTS.md` and `docs/QA_PAYMENTS.md` prohibit real-money QA). Live-site cells are the owner's own: one ₹99 UPI buy-and-refund, and a USD test needs a buyer outside India (D-065).
 7. Credits move only through the in-app flow with the exact cost shown.
