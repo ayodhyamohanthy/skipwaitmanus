@@ -58,7 +58,7 @@ let queued: Array<() => Promise<void>> = [];
 /** Runs the work the routes deferred until after their answer (sign-up, the emailed links). */
 async function flush(): Promise<void> { while (queued.length) await queued.shift()?.(); }
 const mail = vi.hoisted(() => vi.fn());
-async function buildApp(options: { store?: DurableLimitStore | null; now?: () => number } = {}) {
+async function buildApp(options: { store?: DurableLimitStore | null; now?: () => number; responseFloorMs?: number } = {}) {
   vi.resetModules();
   for (const [key, value] of Object.entries(baseEnv)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
   const { createWorkosAuthRoutesRegistrar } = await import("./workosAuth");
@@ -67,7 +67,7 @@ async function buildApp(options: { store?: DurableLimitStore | null; now?: () =>
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   const store = options.store === undefined ? createMemoryDurableLimitStore() : options.store;
-  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, defer: task => { queued.push(task); }, sendEmail: mail, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
+  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, responseFloorMs: options.responseFloorMs ?? 0, defer: task => { queued.push(task); }, sendEmail: mail, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
     const identity = await resolveWorkosIdentity(req);
@@ -311,6 +311,31 @@ describe("seeker password sign-in", () => {
     expect(limited.status).toBe(429);
     expect(limited.headers["retry-after"]).toBe("42");
     expect(limited.body).toEqual(expect.objectContaining({ code: "rate_limited", retryAfterSeconds: 42 }));
+  });
+
+  // S-6 (D-078 ruling 7): how long sign-in and sign-up take must not say what the server found for an email.
+  it("sign-in and sign-up never answer before the response-time floor, whatever the outcome", async () => {
+    const { AUTH_RESPONSE_FLOOR_MS } = await import("./passwordResponses");
+    expect(AUTH_RESPONSE_FLOOR_MS).toBeGreaterThanOrEqual(1000);
+    const app = await buildApp({ responseFloorMs: 150 });
+    wos.authenticateWithPassword.mockRejectedValueOnce(wrongPassword()).mockResolvedValueOnce(authResponse());
+    const cases: Array<[string, () => request.Test, number, string | undefined]> = [
+      ["unknown email or wrong password", () => post(app, SIGN_IN, { email: EMAIL, password: "Wr0ng-password!" }), 401, "invalid_credentials"],
+      ["signed in", () => post(app, SIGN_IN, { email: EMAIL, password: PASSWORD }), 200, undefined],
+      ["bad input", () => post(app, SIGN_IN, { email: "nope", password: "x" }), 400, "invalid_input"],
+      ["sign-up", () => post(app, SIGN_UP, { email: "new@gmail.com" }), 200, undefined],
+    ];
+    for (const [label, call, status, code] of cases) {
+      const started = Date.now();
+      const res = await call();
+      expect(Date.now() - started, label).toBeGreaterThanOrEqual(145);
+      expect(res.status, label).toBe(status);
+      if (code) expect(res.body.code, label).toBe(code);
+    }
+    // Other password routes are not held: forgot already answers before any WorkOS work.
+    const started = Date.now();
+    expect((await post(app, "/api/auth/password/forgot", { email: EMAIL })).status).toBe(200);
+    expect(Date.now() - started).toBeLessThan(145);
   });
 
   it("password POSTs refuse cross-site and non-JSON requests", async () => {

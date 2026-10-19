@@ -29,6 +29,8 @@ export type PasswordRouteContext = {
   readonly sendEmail: (input: TransactionalEmailInput) => Promise<TransactionalEmailResult>;
   /** Whether a password's setter proved the inbox (server/passwordWitness.ts, D-078 ruling 5). */
   readonly witness: PasswordWitnessStore;
+  /** S-6: sign-in and sign-up answer no sooner than this (plus jitter) after they start; 0 turns it off (tests). */
+  readonly responseFloorMs: number;
   /** Read-only, and throws when it cannot decide (server/passwordAccountLookup.ts); runs before any write or WorkOS call. */
   readonly emailStanding: PasswordEmailStandingLookup;
 };
@@ -99,7 +101,30 @@ export function reportPasswordFailure(operation: string, kind: string, error: un
 
 export function failUnexpectedly(res: Response, operation: string, error: unknown): void {
   reportPasswordFailure(operation, "unexpected", error);
-  if (!res.headersSent) sendPasswordError(res, "temporarily_unavailable");
+  if (!res.headersSent && res.locals.passwordAnswered !== true) sendPasswordError(res, "temporarily_unavailable");
+}
+
+/**
+ * S-6 (D-078 ruling 7): the time a sign-in or sign-up takes must not say what the server found for an email (an
+ * unknown address, a wrong password, a missing witness, a new or existing account). Every answer is held until a
+ * floor of AUTH_RESPONSE_FLOOR_MS plus up to a quarter of it in jitter after the request started; slower answers go
+ * at once. The first answer wins, with the status it was given; the session cookie is set with it.
+ */
+export const AUTH_RESPONSE_FLOOR_MS = 1_200;
+
+export function holdAnswersUntilFloor(res: Response, floorMs: number): void {
+  if (floorMs <= 0) return;
+  const earliest = Date.now() + floorMs + Math.floor(Math.random() * (floorMs / 4));
+  const send = res.json.bind(res);
+  res.json = ((body: unknown) => {
+    if (res.locals.passwordAnswered === true) return res;
+    res.locals.passwordAnswered = true;
+    const status = res.statusCode;
+    const wait = earliest - Date.now();
+    if (wait <= 0) return send(body);
+    setTimeout(() => { if (!res.headersSent) { res.status(status); send(body); } }, wait);
+    return res;
+  }) as Response["json"];
 }
 
 /** D-054 funnel events: never the email, password, token or WorkOS ids. */

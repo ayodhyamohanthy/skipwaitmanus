@@ -4,7 +4,7 @@ import { startPasswordSetup } from "../passwordLinks";
 import { recordDurableFailures } from "./durableRateLimit";
 import { failureCounters, passwordLockKeys, requestIp, signInLimits, signUpLimits } from "./passwordLimits";
 import {
-  clientContext, failUnexpectedly, guardPasswordPost, noteWorkosSuccess, noteWorkosUnauthorized, passLimits, passLock, recordPasswordActivity,
+  clientContext, failUnexpectedly, guardPasswordPost, holdAnswersUntilFloor, noteWorkosSuccess, noteWorkosUnauthorized, passLimits, passLock, recordPasswordActivity,
   reportPasswordFailure, sendPasswordError, sendPasswordStep, signedInDestination, type PasswordRouteContext,
 } from "./passwordResponses";
 import { answerCheckEmail, PASSWORD_ACTIVITY, respondSignedIn, type SignInOrigin } from "./passwordSteps";
@@ -66,6 +66,7 @@ async function recordFailure(ctx: PasswordRouteContext, email: string, ip: strin
 
 export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteContext): void {
   app.post("/api/auth/password/sign-in", async (req, res) => {
+    holdAnswersUntilFloor(res, ctx.responseFloorMs);
     try {
       const body = guardPasswordPost(req, res, passwordSignInRequestSchema);
       if (!body) return;
@@ -86,6 +87,7 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
   });
 
   app.post("/api/auth/password/sign-up", async (req, res) => {
+    holdAnswersUntilFloor(res, ctx.responseFloorMs);
     try {
       const body = guardPasswordPost(req, res, passwordSignUpRequestSchema);
       if (!body) return;

@@ -55,7 +55,7 @@ async function buildApp(options: { store?: MemoryDurableLimitStore; now?: () => 
   app.use(express.json());
   createWorkosAuthRoutesRegistrar({
     workos: { userManagement: { listSessions: vi.fn(async () => ({ data: [] })), revokeSession: vi.fn() } } as never,
-    password: { client: wos, store: options.store ?? createMemoryDurableLimitStore(), now: options.now, defer: task => { pending.push(task()); }, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.recorded.push(workosUserId); state.witnesses.add(workosUserId); } }, emailStanding: async email => (state.standings.get(email) ?? "unknown") as never },
+    password: { client: wos, store: options.store ?? createMemoryDurableLimitStore(), now: options.now, responseFloorMs: 0, defer: task => { pending.push(task()); }, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.recorded.push(workosUserId); state.witnesses.add(workosUserId); } }, emailStanding: async email => (state.standings.get(email) ?? "unknown") as never },
   })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./_core/workosAuth");

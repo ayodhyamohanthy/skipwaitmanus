@@ -97,7 +97,7 @@ describe("server Sentry privacy (real SDK, real password routes)", () => {
     const { flushServerSentry } = await import("./sentry");
     const app = express();
     app.use(express.json());
-    registerPasswordAuthRoutes(app, { client, store: createMemoryDurableLimitStore(), emailStanding: async () => "unknown", sendEmail: async () => ({ sent: true, reason: "sent" }) });
+    registerPasswordAuthRoutes(app, { client, store: createMemoryDurableLimitStore(), emailStanding: async () => "unknown", sendEmail: async () => ({ sent: true, reason: "sent" }), responseFloorMs: 0 });
 
     const signIn = await withBrowserHeaders(request(app).post(`/api/auth/password/sign-in?debug=${SECRETS.query}`)).send({ email: SECRETS.email, password: SECRETS.password });
     expect(signIn.status).toBe(503);
