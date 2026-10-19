@@ -1,5 +1,5 @@
-import { Mail } from "lucide-react";
-import { useState } from "react";
+import { Github, Mail } from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { Button } from "@/components/kit/button";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { PasswordForm, type PasswordMode } from "./seeker-sign-in/PasswordForm";
@@ -18,13 +18,14 @@ import { CheckEmailStep } from "./seeker-sign-in/CheckEmailStep";
  * provider's own authorize page). Drop an id from WORKING_SOCIAL_IDS if a provider app stops accepting
  * WorkOS's callback URL, so a click never ends on a provider error page.
  */
-const ALL_SOCIAL = [
+type SocialProvider = { readonly id: string; readonly label: string; readonly mark: ReactNode };
+const ALL_SOCIAL: readonly SocialProvider[] = [
   { id: "google", label: "Google", mark: "G" },
   { id: "microsoft", label: "Microsoft", mark: "M" },
-  { id: "github", label: "GitHub", mark: "H" },
+  { id: "github", label: "GitHub", mark: <Github /> },
   { id: "linkedin", label: "LinkedIn", mark: "in" },
   { id: "slack", label: "Slack", mark: "S" },
-] as const;
+];
 const WORKING_SOCIAL_IDS: readonly string[] = ["google", "github", "microsoft", "linkedin", "slack"];
 export const SEEKER_SOCIAL = ALL_SOCIAL.filter(p => WORKING_SOCIAL_IDS.includes(p.id));
 

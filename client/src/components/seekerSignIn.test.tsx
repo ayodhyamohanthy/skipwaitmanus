@@ -61,6 +61,16 @@ describe("seekers sign in with email and password, never a sign-in code", () => 
     expect(calls.some(call => call.url.includes("/api/auth/workos/email-code/"))).toBe(false);
   });
 
+  // Screenshot pass, item 6: the GitHub button's mark was the letter "H"; it is lucide's GitHub icon now.
+  it("marks the GitHub button with an icon, not a stray letter", () => {
+    render(<SeekerSignIn />);
+    const github = screen.getByRole("button", { name: "Continue with GitHub" });
+    expect(github.textContent).toBe("Continue with GitHub");
+    const mark = github.querySelector(".google-g");
+    expect(mark?.getAttribute("aria-hidden")).toBe("true");
+    expect(mark?.querySelector("svg.lucide-github")).toBeTruthy();
+  });
+
   it("never follows a redirect that leaves the app", async () => {
     const assign = stubAssign();
     stubFetch([{ status: 200, body: { ok: true, step: "signed_in", redirectTo: "https://evil.example" } }]);
