@@ -5,10 +5,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { users, verifiedLoginAliases } from "../drizzle/schema";
+import { profiles, users, verifiedLoginAliases } from "../drizzle/schema";
 
 type Row = Record<string, unknown>;
-const fixture = vi.hoisted(() => ({ aliases: [] as Record<string, unknown>[], users: [] as Record<string, unknown>[], domains: new Map<number, string>(), writes: 0, db: true }));
+const fixture = vi.hoisted(() => ({ aliases: [] as Record<string, unknown>[], users: [] as Record<string, unknown>[], profiles: [] as Record<string, unknown>[], domains: new Map<number, string>(), writes: 0, db: true }));
 vi.mock("./db", () => ({
   getDb: vi.fn(async () => (fixture.db ? database : undefined)),
   normalizeVerifiedEmail: (email: string) => email.trim().normalize("NFKC").toLowerCase(),
@@ -17,20 +17,31 @@ vi.mock("./db", () => ({
 import { passwordEmailStanding } from "./passwordAccountLookup";
 
 const dialect = new MySqlDialect();
+/** Matches drizzle `col = ?`, `lower(trim(col)) = ?`, `col in (?, …)` and `col is not null`, joined by `and`. */
 function matches(condition: SQL, row: Row): boolean {
   const query = dialect.sqlToQuery(condition);
   let index = 0;
-  for (const match of query.sql.matchAll(/(lower\(trim\()?`[^`]+`\.`([^`]+)`(\)\))? = \?/gi)) {
+  let checked = 0;
+  for (const match of query.sql.matchAll(/(lower\(trim\()?`[^`]+`\.`([^`]+)`(\)\))?\s+(= \?|in \(([?, ]+)\)|is not null)/gi)) {
     const value = row[match[2]];
+    checked += 1;
+    if (/^is not null$/i.test(match[4])) { if (value === null || value === undefined) return false; continue; }
+    if (match[5]) {
+      const count = match[5].split("?").length - 1;
+      const wanted = query.params.slice(index, index + count);
+      index += count;
+      if (!wanted.includes(value)) return false;
+      continue;
+    }
     const actual = match[1] ? String(value ?? "").trim().toLowerCase() : value;
     if (actual !== query.params[index]) return false;
     index += 1;
   }
-  return index > 0;
+  return checked > 0;
 }
 const database = {
   select: (projection: Record<string, { name: string }>) => ({ from: (table: unknown) => ({ where: (condition: SQL) => ({ limit: async (limit: number) => {
-    const rows = table === verifiedLoginAliases ? fixture.aliases : table === users ? fixture.users : [];
+    const rows = table === verifiedLoginAliases ? fixture.aliases : table === users ? fixture.users : table === profiles ? fixture.profiles : [];
     return rows.filter(row => matches(condition, row)).slice(0, limit).map(row => Object.fromEntries(Object.entries(projection).map(([key, column]) => [key, row[column.name]])));
   } }) }) }),
   insert: () => { fixture.writes += 1; throw new Error("standing must not write"); },
@@ -39,7 +50,7 @@ const database = {
 };
 
 beforeEach(() => {
-  fixture.aliases = []; fixture.users = []; fixture.domains.clear(); fixture.writes = 0; fixture.db = true;
+  fixture.aliases = []; fixture.users = []; fixture.profiles = []; fixture.domains.clear(); fixture.writes = 0; fixture.db = true;
 });
 afterEach(() => { expect(fixture.writes).toBe(0); });
 
@@ -76,6 +87,28 @@ describe("passwordEmailStanding (read-only)", () => {
     fixture.aliases = [alias({ provider: "email_code", subject: "code@gmail.com", canonicalUserId: 4, normalizedVerifiedEmail: "code@gmail.com" })];
     expect(await passwordEmailStanding("code@gmail.com")).toBe("verified_seeker");
     expect(await passwordEmailStanding("nobody@gmail.com")).toBe("unknown");
+  });
+
+  // D-081 (review F-R1): a work email verified inside a seeker account keeps only the company domain on the profile,
+  // so no lookup can see that exact address. On the password paths every address at a verified referrer domain is
+  // treated as a referrer work email; social sign-in keeps the exact-email rule.
+  it("on the password paths, any address at a verified referrer domain is a referrer work email", async () => {
+    fixture.aliases = [alias({ subject: "user_g", canonicalUserId: 3, normalizedVerifiedEmail: "asha@gmail.com" })];
+    fixture.users = [{ id: 3, email: "asha@gmail.com" }];
+    fixture.profiles = [{ id: 30, userId: 3, workEmailDomain: "wipro.com", workEmailVerifiedAt: new Date("2026-10-01T00:00:00Z") }];
+    fixture.domains.set(3, "wipro.com");
+    for (const email of ["asha@wipro.com", "Someone.Else@Wipro.com", "ravi@in.wipro.com"]) {
+      expect(await passwordEmailStanding(email), email).toBe("referrer_work_email");
+      expect(await passwordEmailStanding(email, { rule: "password" }), email).toBe("referrer_work_email");
+    }
+    // Social sign-in keeps the exact-email rule: a seeker's Google account at that company still signs in.
+    expect(await passwordEmailStanding("asha@wipro.com", { rule: "social" })).toBe("unknown");
+    // Controls: personal-email families are never a referrer domain; an unverified profile domain counts for nothing.
+    expect(await passwordEmailStanding("asha@gmail.com")).toBe("unknown");
+    fixture.profiles.push({ id: 31, userId: 4, workEmailDomain: "gmail.com", workEmailVerifiedAt: new Date("2026-10-01T00:00:00Z") }, { id: 32, userId: 5, workEmailDomain: "tcs.com", workEmailVerifiedAt: null });
+    expect(await passwordEmailStanding("someone@gmail.com")).toBe("unknown");
+    expect(await passwordEmailStanding("someone@tcs.com")).toBe("unknown");
+    expect(await passwordEmailStanding("someone@notwipro.com")).toBe("unknown");
   });
 
   it("fails closed without a database instead of answering unknown", async () => {

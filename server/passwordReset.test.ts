@@ -10,7 +10,7 @@ import { createMemoryDurableLimitStore, type MemoryDurableLimitStore } from "./_
 import { passwordLockKeys } from "./_core/passwordLimits";
 
 type Row = Record<string, unknown> & { id: number; openId: string; email: string; sessionsValidAfter: Date };
-const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), standings: new Map<string, string>(), witnesses: new Set<string>(), recorded: [] as string[], nextId: 10 }));
+const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), standings: new Map<string, string>(), referrerDomains: new Set<string>(), witnesses: new Set<string>(), recorded: [] as string[], nextId: 10 }));
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
 const revokeUserSessions = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
@@ -55,7 +55,7 @@ async function buildApp(options: { store?: MemoryDurableLimitStore; now?: () => 
   app.use(express.json());
   createWorkosAuthRoutesRegistrar({
     workos: { userManagement: { listSessions: vi.fn(async () => ({ data: [] })), revokeSession: vi.fn() } } as never,
-    password: { client: wos, store: options.store ?? createMemoryDurableLimitStore(), now: options.now, responseFloorMs: 0, defer: task => { pending.push(task()); }, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.recorded.push(workosUserId); state.witnesses.add(workosUserId); } }, emailStanding: async email => (state.standings.get(email) ?? "unknown") as never },
+    password: { client: wos, store: options.store ?? createMemoryDurableLimitStore(), now: options.now, responseFloorMs: 0, defer: task => { pending.push(task()); }, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.recorded.push(workosUserId); state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => (state.standings.get(email) ?? (lookup?.rule !== "social" && state.referrerDomains.has(email.slice(email.indexOf("@") + 1)) ? "referrer_work_email" : "unknown")) as never },
   })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./_core/workosAuth");
@@ -72,7 +72,7 @@ const pairOf = (setCookie: string | undefined) => (setCookie ?? "").split(";")[0
 
 beforeEach(() => {
   pending = [];
-  state.accounts.clear(); state.workEmailDomains.clear(); state.standings.clear(); state.witnesses = new Set(["user_x"]); state.recorded = []; state.nextId = 10;
+  state.accounts.clear(); state.workEmailDomains.clear(); state.standings.clear(); state.referrerDomains.clear(); state.witnesses = new Set(["user_x"]); state.recorded = []; state.nextId = 10;
   [resolveLoginIdentity, revokeUserSessions, capture, zepto, ...Object.values(wos)].forEach(fn => fn.mockReset());
   resolveLoginIdentity.mockImplementation(async (input: { openId: string; email: string }) => state.accounts.get(input.openId) ?? seedAccount(input.openId, { email: input.email }));
   revokeUserSessions.mockImplementation(async (openId: string) => { const row = state.accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); });
@@ -108,6 +108,26 @@ describe("forgot password (SkipWait emails the WorkOS reset link)", () => {
     const everything = JSON.stringify([responses.map(res => res.body), spies.map(spy => spy.mock.calls), capture.mock.calls]);
     expect(everything).not.toContain(TOKEN);
     expect(everything).not.toContain("reset-password?token");
+  });
+
+  // D-081 (review F-R1): an address at a verified referrer domain gets the neutral answer and nothing else.
+  it("an address at a verified referrer domain is answered like any other and never reaches WorkOS or an inbox", async () => {
+    const app = await buildApp();
+    state.referrerDomains.add("wipro.com");
+    wos.listUsers.mockImplementation(async ({ email }: { email: string }) => ({ data: [workosUser({ email })] }));
+    const personal = await post(app, FORGOT, { email: EMAIL });
+    await Promise.all(pending);
+    const calls = Object.values(wos).map(fn => fn.mock.calls.length);
+    const mails = zepto.mock.calls.length;
+    expect(mails).toBe(1);
+    for (const email of ["asha@wipro.com", "someone.else@wipro.com"]) {
+      const forgot = await post(app, FORGOT, { email }, "198.51.100.70");
+      expect(forgot.status).toBe(personal.status);
+      expect(forgot.body).toEqual(personal.body);
+    }
+    await Promise.all(pending);
+    expect(Object.values(wos).map(fn => fn.mock.calls.length)).toEqual(calls);
+    expect(zepto.mock.calls.length).toBe(mails);
   });
 
   it("limits durably per email and per network", async () => {

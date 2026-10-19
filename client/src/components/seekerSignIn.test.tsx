@@ -50,6 +50,7 @@ describe("seekers sign in with email and password, never a sign-in code", () => 
     expect((screen.getByLabelText("Password") as HTMLInputElement).type).toBe("password");
     expect(screen.getByLabelText("Password").getAttribute("autocomplete")).toBe("current-password");
     expect(screen.getByRole("link", { name: "Forgot password?" }).getAttribute("href")).toBe("/forgot-password");
+    expect(screen.queryByText(/Use a personal email address/)).toBeNull();
     // D-078 ruling 8: a seeker who used the retired email code sets a password through Forgot password.
     expect(screen.getByText("Signed in with a code before? Use Forgot password to set one. It's the same account.")).toBeTruthy();
     fillSignIn();
@@ -111,6 +112,8 @@ describe("check-your-email, create-account and error states are explicit", () =>
     expect(screen.queryByLabelText("Password")).toBeNull();
     expect(document.querySelector("input[type=password]")).toBeNull();
     expect(screen.getByText(/We'll email you a link to set your password/)).toBeTruthy();
+    // D-081: one static line, the same for every address (it never says whether an address has an account).
+    expect(screen.getByText("Use a personal email address. Work emails at companies on SkipWait sign in with a work-email code under Give a referral.")).toBeTruthy();
     const submit = () => screen.getByRole("button", { name: /^Create account/ }) as HTMLButtonElement;
     expect(submit().disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " New@Gmail.com " } });

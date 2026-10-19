@@ -58,7 +58,11 @@ export function PasswordForm({ mode, email, onEmailChange, returnTo, onCheckEmai
     <label htmlFor="seeker-email">Email address</label>
     <div className="auth-input"><Mail /><input id="seeker-email" name="email" type="email" inputMode="email" placeholder="you@example.com" autoComplete="username" autoCapitalize="none" spellCheck={false} required value={email} onChange={event => { onEmailChange(event.target.value); setError(""); setWorkEmail(false); }} /></div>
     {creating
-      ? <p className="text-xs leading-relaxed text-muted-foreground">We&apos;ll email you a link to set your password. It&apos;s how we know the address is yours.</p>
+      ? <>
+          <p className="text-xs leading-relaxed text-muted-foreground">We&apos;ll email you a link to set your password. It&apos;s how we know the address is yours.</p>
+          {/* D-081: one static line for every address; it never says whether a given address has an account. */}
+          <p className="text-xs leading-relaxed text-muted-foreground">Use a personal email address. Work emails at companies on SkipWait sign in with a work-email code under Give a referral.</p>
+        </>
       : <>
           <label htmlFor="seeker-password">Password</label>
           <div className="auth-input">

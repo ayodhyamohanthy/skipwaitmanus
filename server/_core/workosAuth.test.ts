@@ -9,7 +9,7 @@ const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@
 const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", role: "user", suspended: false, sessionsValidAfter: new Date(0), createdAt: new Date(0), updatedAt: new Date(0), lastSignedIn: new Date(0) };
 const accounts = vi.hoisted(() => new Map<string, Record<string, unknown>>());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
-const standings = vi.hoisted(() => ({ byEmail: new Map<string, string>(), calls: [] as Array<[string, string | undefined]> }));
+const standings = vi.hoisted(() => ({ byEmail: new Map<string, string>(), referrerDomains: new Set<string>(), calls: [] as Array<[string, string | undefined]> }));
 const hosted = vi.hoisted(() => ({ list: vi.fn(async () => ({ data: [{ id: "session_live", status: "active" }] })), revoke: vi.fn(async () => {}) }));
 vi.mock("../db", () => ({
   upsertUser: vi.fn(),
@@ -52,7 +52,7 @@ async function buildApp(env: Record<string, string | undefined>) {
   Object.entries(env).forEach(([key, value]) => { if (value === undefined) delete process.env[key]; else process.env[key] = value; });
   const { createWorkosAuthRoutesRegistrar } = await import("./workosAuth");
   const app = express();
-  registrarFactory.registrar = createWorkosAuthRoutesRegistrar({ workos: undefined, password: { emailStanding: async (email, lookup) => { standings.calls.push([email, lookup?.workosUserId]); return (standings.byEmail.get(email.trim().toLowerCase()) ?? "unknown") as never; } } });
+  registrarFactory.registrar = createWorkosAuthRoutesRegistrar({ workos: undefined, password: { emailStanding: async (email, lookup) => { standings.calls.push([email, lookup?.workosUserId]); const exact = standings.byEmail.get(email.trim().toLowerCase()); if (!exact && lookup?.rule !== "social" && standings.referrerDomains.has(email.trim().toLowerCase().split("@")[1] ?? "")) return "referrer_work_email"; return (exact ?? "unknown") as never; } } });
   registrarFactory.registrar(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
@@ -299,6 +299,20 @@ describe("canonical WorkOS callback session", () => {
         expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(true);
       }
     } finally { standings.calls = []; restore(); }
+  });
+
+  // D-081: the verified-referrer-domain rule is for the password paths only. Social sign-in keeps the exact-email
+  // rule, so a seeker's own Google account at a company with referrers on SkipWait still signs in.
+  it("a social sign-in at a verified referrer domain is not refused unless the exact address is a referrer's", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      standings.referrerDomains.add("wipro.com");
+      authenticate.mockResolvedValueOnce({ user: { id: "user_wipro_seeker", email: "asha@wipro.com", emailVerified: true, firstName: "Asha", lastName: "K" }, authenticationMethod: "GoogleOAuth" } as never);
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe("/premium");
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(true);
+    } finally { standings.referrerDomains.clear(); standings.calls = []; restore(); }
   });
 
   it("a standing lookup failure fails closed: no session", async () => {

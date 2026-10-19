@@ -1,6 +1,7 @@
-import { and, eq, sql } from "drizzle-orm";
-import { users, verifiedLoginAliases } from "../drizzle/schema";
-import type { PasswordEmailStanding } from "./_core/passwordResponses";
+import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { isCorporateEmailDomain } from "@shared/const";
+import { profiles, users, verifiedLoginAliases } from "../drizzle/schema";
+import type { PasswordEmailStanding, PasswordStandingRule } from "./_core/passwordResponses";
 import { isOwnWorkEmailDomain } from "./_core/passwordSession";
 import { getDb, getVerifiedWorkEmailAccess, normalizeVerifiedEmail } from "./db";
 
@@ -14,15 +15,37 @@ import { getDb, getVerifiedWorkEmailAccess, normalizeVerifiedEmail } from "./db"
  *  - verified_seeker: a seeker who signed in with an emailed code (a verified email_code alias) and may have no
  *    WorkOS user yet; /forgot creates one without a password so the reset can set it.
  *  - unknown: anything else.
+ * On the password paths (rule "password", the default) any address whose domain, or a parent of it, is a verified
+ * referrer domain (a profile with that workEmailDomain and workEmailVerifiedAt set) is also a referrer work email
+ * (D-081, review F-R1): a work email verified inside a seeker account keeps only its domain, so the exact address
+ * cannot be found. Personal-email families are never corporate, so never a referrer domain. The OAuth callback asks
+ * with rule "social" and keeps the exact-email rule.
  * Read-only. Only verified aliases count (an unverified email never decides anything), and a missing database
  * throws so every caller fails closed instead of treating a referrer's address as unknown.
  */
 const LOOKUP_LIMIT = 20;
 
-export async function passwordEmailStanding(email: string, lookup: { readonly workosUserId?: string } = {}): Promise<PasswordEmailStanding> {
+/** The address's domain and each parent domain with at least two labels: in.wipro.com → in.wipro.com, wipro.com. */
+function domainAndParents(email: string): string[] {
+  const labels = email.slice(email.lastIndexOf("@") + 1).split(".").filter(Boolean);
+  return labels.slice(0, -1).map((_, index) => labels.slice(index).join("."));
+}
+
+export async function passwordEmailStanding(email: string, lookup: { readonly workosUserId?: string; readonly rule?: PasswordStandingRule } = {}): Promise<PasswordEmailStanding> {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const normalized = normalizeVerifiedEmail(email);
+  if ((lookup.rule ?? "password") === "password") {
+    const domains = domainAndParents(normalized).filter(isCorporateEmailDomain);
+    if (domains.length) {
+      const covered = await db
+        .select({ id: profiles.id })
+        .from(profiles)
+        .where(and(inArray(profiles.workEmailDomain, domains), isNotNull(profiles.workEmailVerifiedAt)))
+        .limit(1);
+      if (covered.length) return "referrer_work_email";
+    }
+  }
   const byEmail = await db
     .select({ provider: verifiedLoginAliases.provider, userId: verifiedLoginAliases.canonicalUserId })
     .from(verifiedLoginAliases)

@@ -17,7 +17,13 @@ import { describeWorkosError } from "./workosPasswordErrors";
  * The routes are registered before the Express error middleware, so every failure is answered and reported here.
  */
 export type PasswordEmailStanding = "verified_seeker" | "referrer_work_email" | "unknown";
-export type PasswordEmailStandingLookup = (email: string, lookup?: { readonly workosUserId?: string }) => Promise<PasswordEmailStanding>;
+/**
+ * "password" (the default, every password path): any address at a verified referrer domain counts as a referrer
+ * work email (D-081). "social" (the OAuth callback only): the exact-email rule, so a seeker's own Google account at
+ * such a company still signs in.
+ */
+export type PasswordStandingRule = "password" | "social";
+export type PasswordEmailStandingLookup = (email: string, lookup?: { readonly workosUserId?: string; readonly rule?: PasswordStandingRule }) => Promise<PasswordEmailStanding>;
 export type PasswordRouteContext = {
   readonly client: PasswordWorkosClient | null;
   /** undefined: the MySQL limiter; null: no durable store (every limited route fails closed). */

@@ -326,7 +326,8 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
             return res.set("Cache-Control", "no-store").redirect(302, USE_PASSWORD_SIGN_IN_PATH);
           }
           stage = "standing";
-          if ((await emailStanding(user.email, { workosUserId: user.id })) === "referrer_work_email") {
+          // The exact-email rule only (D-081): a seeker's own Google account at a company with referrers still signs in.
+          if ((await emailStanding(user.email, { workosUserId: user.id, rule: "social" })) === "referrer_work_email") {
             console.warn("[workos-callback]", { stage, code: "use_work_email_code" });
             return res.set("Cache-Control", "no-store").redirect(302, USE_WORK_EMAIL_CODE_PATH);
           }

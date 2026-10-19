@@ -10,7 +10,7 @@ import { createMemoryDurableLimitStore } from "./memoryDurableLimitStore";
 import type { DurableLimitStore } from "./durableRateLimit";
 
 type Row = Record<string, unknown> & { id: number; openId: string; email: string; sessionsValidAfter: Date };
-const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), subjects: new Map<number, string[]>(), standings: new Map<string, string>(), standingCalls: [] as Array<[string, string | undefined]>, witnesses: new Set<string>(), nextId: 10 }));
+const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), subjects: new Map<number, string[]>(), standings: new Map<string, string>(), standingCalls: [] as Array<[string, string | undefined]>, standingRules: [] as Array<string | undefined>, referrerDomains: new Set<string>(), witnesses: new Set<string>(), nextId: 10 }));
 const revokeUserSessions = vi.hoisted(() => vi.fn());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
@@ -67,7 +67,7 @@ async function buildApp(options: { store?: DurableLimitStore | null; now?: () =>
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   const store = options.store === undefined ? createMemoryDurableLimitStore() : options.store;
-  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, responseFloorMs: options.responseFloorMs ?? 0, defer: task => { queued.push(task); }, sendEmail: mail, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); const standing = state.standings.get(email); if (standing === "throw") throw new Error("Database unavailable"); return (standing ?? "unknown") as never; } } })(app);
+  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, responseFloorMs: options.responseFloorMs ?? 0, defer: task => { queued.push(task); }, sendEmail: mail, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); state.standingRules.push(lookup?.rule); const standing = state.standings.get(email); if (standing === "throw") throw new Error("Database unavailable"); if (!standing && lookup?.rule !== "social" && state.referrerDomains.has(email.slice(email.indexOf("@") + 1))) return "referrer_work_email"; return (standing ?? "unknown") as never; } } })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
     const identity = await resolveWorkosIdentity(req);
@@ -92,7 +92,7 @@ const LINK = "https://skipwait.me/reset-password?token=tok_secret";
 
 beforeEach(() => {
   queued = [];
-  state.accounts.clear(); state.workEmailDomains.clear(); state.subjects.clear(); state.standings.clear(); state.standingCalls = []; state.nextId = 10;
+  state.accounts.clear(); state.workEmailDomains.clear(); state.subjects.clear(); state.standings.clear(); state.standingCalls = []; state.standingRules = []; state.referrerDomains.clear(); state.nextId = 10;
   // The usual WorkOS user here already proved the inbox for this password (D-078 ruling 5).
   state.witnesses = new Set(["user_x"]);
   [resolveLoginIdentity, revokeUserSessions, capture, recordActivity, mail, ...Object.values(wos), ...Object.values(hosted)].forEach(fn => fn.mockReset());
@@ -382,13 +382,14 @@ describe("seeker password sign-in", () => {
     const app = await buildApp();
     for (const email of ["asha@wipro.com", "asha@in.wipro.com"]) {
       state.standings.set(email, "referrer_work_email");
-      wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ id: "user_ref", email })));
       const refused = await post(app, SIGN_IN, { email, password: PASSWORD });
       expect(refused.status).toBe(403);
       expect(refused.body.code).toBe("use_work_email_code");
       expect(cookieOf(refused, "app_session_id")).toBeUndefined();
-      expect(state.standingCalls.at(-1)).toEqual([email, "user_ref"]);
+      // D-081: decided before WorkOS is asked anything.
+      expect(state.standingCalls.at(-1)).toEqual([email, undefined]);
     }
+    expect(wos.authenticateWithPassword).not.toHaveBeenCalled();
     expect(resolveLoginIdentity).not.toHaveBeenCalled();
     expect(revokeUserSessions).not.toHaveBeenCalled();
     // Defence in depth: should the lookup miss, the resolved account's own work domain still refuses.
@@ -402,6 +403,39 @@ describe("seeker password sign-in", () => {
     const personal = await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD });
     expect(personal.status).toBe(200);
     expect(personal.body.step).toBe("signed_in");
+  });
+
+  // D-081 (review F-R1): every address at a verified referrer domain is a referrer work email on the password paths.
+  // Sign-up looks like any other; an unverified or a normal password sign-in never reaches WorkOS and answers
+  // use_work_email_code; nothing is ever emailed to it.
+  it("an address at a verified referrer domain never reaches WorkOS or gets an email on any password path", async () => {
+    const app = await buildApp({ responseFloorMs: 120 });
+    state.referrerDomains.add("wipro.com");
+    const fresh = await post(app, SIGN_UP, { email: "new@gmail.com" });
+    await flush();
+    const calls = Object.values(wos).map(fn => fn.mock.calls.length);
+    const mails = mail.mock.calls.length;
+    for (const email of ["asha@wipro.com", "someone.else@wipro.com"]) {
+      const started = Date.now();
+      const signUp = await post(app, SIGN_UP, { email });
+      expect(Date.now() - started).toBeGreaterThanOrEqual(115);
+      expect(signUp.status).toBe(fresh.status);
+      expect(signUp.body).toEqual(fresh.body);
+      expect(signUp.headers["set-cookie"]).toBeUndefined();
+      // A sign-in WorkOS would have answered with email_verification_required, and a plain one.
+      wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification({ email }));
+      const signIn = await post(app, SIGN_IN, { email, password: PASSWORD });
+      expect(signIn.status).toBe(403);
+      expect(signIn.body).toEqual({ ok: false, code: "use_work_email_code", message: PASSWORD_AUTH_COPY.use_work_email_code });
+      expect(wos.authenticateWithPassword).not.toHaveBeenCalled();
+      wos.authenticateWithPassword.mockReset().mockResolvedValue(authResponse());
+    }
+    await flush();
+    expect(Object.values(wos).map(fn => fn.mock.calls.length)).toEqual(calls);
+    expect(mail.mock.calls.length).toBe(mails);
+    expect(state.standingRules.every(rule => rule !== "social")).toBe(true);
+    // A personal address is unaffected.
+    expect((await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD })).body.step).toBe("signed_in");
   });
 
   // D-078 ruling 3 (S-3): a referrer's work email never reaches WorkOS from sign-up and is never emailed.

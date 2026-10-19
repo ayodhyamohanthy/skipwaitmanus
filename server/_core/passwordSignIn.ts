@@ -75,6 +75,12 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
       const ip = requestIp(req);
       if (!(await passLimits(ctx, res, signInLimits(body.email, ip)))) return;
       if (!(await passLock(ctx, res, passwordLockKeys(body.email, ip)))) return;
+      // D-081: an address at a verified referrer domain never reaches WorkOS for a password; the answer depends only on
+      // the domain, so it says nothing about whether this exact address has an account.
+      if ((await ctx.emailStanding(body.email)) === "referrer_work_email") {
+        recordPasswordActivity(PASSWORD_ACTIVITY.sign_in, "denied", { code: "use_work_email_code" });
+        return sendPasswordError(res, "use_work_email_code");
+      }
       const at: AttemptContext = { email: body.email, ip, redirectTo: signedInDestination(req, body.returnTo), origin: "sign_in" };
       const attempt = await authenticate(client, req, body.email, body.password);
       if (attempt.type === "failed") return await answerFailure(ctx, client, res, attempt, at);
