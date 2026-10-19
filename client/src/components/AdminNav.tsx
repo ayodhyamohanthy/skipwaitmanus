@@ -12,12 +12,13 @@ import { Link } from "wouter";
  * quiet pills. On narrow viewports the row scrolls horizontally instead of
  * wrapping into a wall of buttons.
  */
-export type AdminSection = "overview" | "approvals" | "payments" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema";
+export type AdminSection = "overview" | "approvals" | "payments" | "catalog" | "privacy-requests" | "token-recovery" | "activity" | "flow-health" | "users" | "partners" | "schema";
 
 const sections: Array<{ id: AdminSection; href: string; label: string; icon: LucideIcon }> = [
   { id: "overview", href: "/admin", label: "Overview", icon: Gauge },
   { id: "approvals", href: "/admin/approvals", label: "Approvals", icon: CheckSquare },
   { id: "payments", href: "/admin/payments", label: "Payment reviews", icon: CreditCard },
+  { id: "catalog", href: "/admin/catalog-sync", label: "Catalog sync", icon: Database },
   { id: "partners", href: "/admin/partners", label: "Partners", icon: Handshake },
   { id: "privacy-requests", href: "/admin/privacy-requests", label: "Privacy requests", icon: EyeOff },
   { id: "token-recovery", href: "/admin/token-recovery", label: "Token recovery", icon: Wallet },

@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "repo": "ayodhyamohanthy/skipwaitmanus",
+  "decidedBy": "Claude Code (architect, D-074, D-083)",
+  "updated": "2026-10-20",
+  "rules": "Order is priority. Only Claude Code adds, removes or reorders tasks. An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (Claude Code writes the packet first), owner (waits on the owner). Run `node scripts/next-task.mjs`.",
+  "tasks": [
+    {
+      "id": "D-069-chargebee-catalog-sync",
+      "title": "Admin-only Chargebee catalog sync: dry run, then one owner-triggered apply",
+      "row": "D-069-chargebee-catalog-sync",
+      "packet": "docs/plans/D-069-chargebee-catalog-sync.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/claude/chargebee-catalog-sync",
+      "status": "done",
+      "dependsOn": [],
+      "note": "Landed as `c573af21` (PR #326, independent review passed). Live Oct 20: API CONVERGED on c573af21, web git-commit c573af21, signed-out GET /api/admin/billing/catalog-sync answers 403. Next: the owner's dry run at /admin/catalog-sync, then apply (plan §6)."
+    },
+    {
+      "id": "GO-LIVE-1",
+      "title": "/plans sells packs and passes; coverage shown before payment; a pass never renews by accident",
+      "row": "1",
+      "packet": "docs/plans/GO-LIVE-1-plans-purchase.md",
+      "tier": 1,
+      "lane": "payments",
+      "branch": "agent/queue/go-live-plans",
+      "status": "todo",
+      "dependsOn": [
+        "D-069-chargebee-catalog-sync"
+      ]
+    },
+    {
+      "id": "D-038-reconcile",
+      "title": "Reconcile the D-038 timers: part B reached main unreviewed (c53ea471 + #330), part A sits on agent/opencode/d038-a-lapses, both add server/referralTimers.ts",
+      "row": "D-038-B",
+      "packet": null,
+      "tier": 1,
+      "lane": "money-core",
+      "branch": "agent/claude/d038-reconcile",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Claude Code writes the reconcile packet (independent review of the code on main against both D-038 packets, then part A through a draft PR, then register the referral-timers job)."
+    },
+    {
+      "id": "D-035",
+      "title": "The pass reason decides the credit (D-035 with D-052, D-066 (4), D-076 (1), (7))",
+      "row": "D-035",
+      "packet": "docs/plans/D-035-pass-reason-credit.md",
+      "tier": 1,
+      "lane": "money-core",
+      "branch": "agent/queue/d035-pass-credit",
+      "status": "todo",
+      "dependsOn": [
+        "D-038-reconcile"
+      ]
+    },
+    {
+      "id": "D-065-B",
+      "title": "Daily money check slice checks: no ask-delivery spend on a waiting ask; no spend reversed twice",
+      "row": "D-065-B",
+      "packet": "docs/plans/D-065-B-slice-checks.md",
+      "tier": 2,
+      "lane": "money-check",
+      "branch": "agent/queue/d065b-slice-checks",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-5",
+      "title": "Every key the server reads is forwarded to the container or allowlisted, with a contract test",
+      "row": "FND-5",
+      "packet": "docs/plans/FND-5-env-forwarding.md",
+      "tier": 2,
+      "lane": "config",
+      "branch": "agent/queue/fnd5-env",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-3",
+      "title": "The test kit throws production-shaped duplicate-key errors; two duplicate checks stop reading only code",
+      "row": "FND-3",
+      "packet": "docs/plans/FND-3-duplicate-key-fidelity.md",
+      "tier": 2,
+      "lane": "test-kit",
+      "branch": "agent/queue/fnd3-dup-keys",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-1",
+      "title": "Toolchain says Node 22.12+; the never-run shared/ tests run; the always-true copy-guard assertion is fixed",
+      "row": "FND-1",
+      "packet": "docs/plans/FND-1-toolchain-and-test-collection.md",
+      "tier": 3,
+      "lane": "toolchain",
+      "branch": "agent/queue/fnd1-toolchain",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-2",
+      "title": "Remove verified-dead code that misleads readers",
+      "row": "FND-2",
+      "packet": "docs/plans/FND-2-dead-code.md",
+      "tier": 3,
+      "lane": "cleanup",
+      "branch": "agent/queue/fnd2-dead-code",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-6",
+      "title": "Correct the stale status cells of the Oct 15-17 rows from evidence on main",
+      "row": "FND-6",
+      "packet": "docs/plans/FND-6-row-status-audit.md",
+      "tier": 3,
+      "lane": "docs-status",
+      "branch": "agent/queue/fnd6-row-audit",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "FND-7",
+      "title": "Triage the open PRs and remote branches for the owner (read-only report)",
+      "row": "FND-7",
+      "packet": "docs/plans/FND-7-pr-branch-triage.md",
+      "tier": 3,
+      "lane": "triage",
+      "branch": "agent/queue/fnd7-triage",
+      "status": "todo",
+      "dependsOn": []
+    },
+    {
+      "id": "seeker-passwords",
+      "title": "Seeker email + password sign-in (task 2 + Drift-D030)",
+      "row": "2",
+      "packet": "docs/plans/seeker-passwords.md",
+      "tier": 1,
+      "lane": "sign-in",
+      "branch": "agent/claude/seeker-signin-finish",
+      "status": "owner",
+      "dependsOn": [],
+      "note": "Review passed on PR #324; lands only after the owner's WorkOS takeover test (D-080), the dashboard steps and SEEKER_CODE_VERIFY_UNTIL."
+    },
+    {
+      "id": "D-057-session-gate",
+      "title": "Reviewing or accepting asks needs a work-email code in that session (D-057, finding S-4)",
+      "row": "D-057-session-gate",
+      "packet": "docs/plans/D-057-session-gate.md",
+      "tier": 1,
+      "lane": "sign-in",
+      "branch": "agent/queue/d057-session-gate",
+      "status": "todo",
+      "dependsOn": [
+        "seeker-passwords"
+      ]
+    },
+    {
+      "id": "FND-4",
+      "title": "Single-use tokens in API paths never reach Sentry or admin alert emails",
+      "row": "FND-4",
+      "packet": "docs/plans/FND-4-token-path-scrubbing.md",
+      "tier": 2,
+      "lane": "observability",
+      "branch": "agent/queue/fnd4-token-paths",
+      "status": "todo",
+      "dependsOn": [
+        "seeker-passwords"
+      ]
+    },
+    {
+      "id": "D-048-phase-3",
+      "title": "Goal UI phase 3: move one surface at a time",
+      "row": "D-048",
+      "packet": null,
+      "tier": 2,
+      "lane": "design",
+      "branch": "agent/claude/d048-phase-3",
+      "status": "architect",
+      "dependsOn": [],
+      "note": "Claude Code writes one packet per surface; each becomes its own task here."
+    }
+  ]
+}

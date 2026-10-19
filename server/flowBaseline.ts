@@ -117,6 +117,35 @@ export async function buildFlowBaseline(source: FlowBaselineSource, options: Bui
   }
   const latency = decisionLatencyHours(latencySamples);
 
+  // D-038-B north star: asks first marked Referred within 7 days of first visibility.
+  // A referral "counts" when it reaches intro_made via the referrer's mark or the
+  // seeker's confirmation. The clock starts at first visibility (coverageVisibleAt;
+  // pre-0095 rows: creation).
+  const firstReferredAt = new Map<number, number>();
+  for (const transition of transitions) {
+    const at = toMs(transition.createdAt);
+    if (!Number.isFinite(at)) continue;
+    const isReferralMark = (transition.action === "progress" && transition.resultingStatus === "intro_made") ||
+      (transition.action === "seeker_confirmed_referred" && transition.resultingStatus === "intro_made");
+    if (!isReferralMark) continue;
+    const current = firstReferredAt.get(transition.requestId);
+    if (current === undefined || at < current) firstReferredAt.set(transition.requestId, at);
+  }
+  let referredWithin7DaysTotal = 0;
+  let referredWithin7DaysCount = 0;
+  for (const request of requests) {
+    const referredAt = firstReferredAt.get(request.id);
+    if (referredAt === undefined) continue;
+    referredWithin7DaysCount += 1;
+    const visibleAt = request.coverageVisibleAt != null ? toMs(request.coverageVisibleAt) : toMs(request.createdAt);
+    if (visibleAt !== null && referredAt - visibleAt <= 7 * DAY_MS) {
+      referredWithin7DaysTotal += 1;
+      const bucket = buckets.get(weekKeyFor(toMs(request.createdAt), weeks) ?? "");
+      if (bucket) bucket.referredWithin7Days = (bucket.referredWithin7Days ?? 0) + 1;
+    }
+  }
+  const referredWithin7DaysPct = referredWithin7DaysCount === 0 ? 0 : Math.round((referredWithin7DaysTotal / referredWithin7DaysCount) * 100);
+
   // External referrer activity: distinct verified referrers who acted, operator domains excluded.
   const referrerById = new Map(referrerProfiles.map(row => [row.userId, row]));
   const activeInWindow = new Set<number>();
@@ -171,6 +200,7 @@ export async function buildFlowBaseline(source: FlowBaselineSource, options: Bui
     demand,
     externalReferrers: { activeLast7Days: activeLast7.size, activeInWindow: activeInWindow.size, excludedOperatorDomains: [...operator] },
     subscribers,
+    referredWithin7DaysPct,
     dataQuality,
   };
 }

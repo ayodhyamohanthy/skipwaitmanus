@@ -45,8 +45,8 @@ export function BaselineMetricsPanel({ baseline }: { baseline: FlowBaseline | nu
 
   return <div className="mt-8 grid gap-5">
     <Panel icon={BarChart3} title="Baseline" subtitle={`The last ${baseline.windowDays} days by UTC week, generated ${baseline.generatedAt.slice(0, 16).replace("T", " ")} UTC. Counts only: this view has no person, address or request text in it.`}>        {asks === 0 ? <p className="mt-6 rounded-xl border border-dashed border-[#cfcfcf] bg-white p-6 text-sm leading-6 text-[#505050]">No asks were recorded in this window yet. A baseline starts on the first real ask — nothing here is backfilled or assumed.</p> : <><Table
-        head={["Week of", "Asks", "Accepted", "Passed", "Expired", "Declined", "Withdrawn", "Waiting", "No coverage"]}
-        rows={[...baseline.weeks].reverse().map(week => [week.weekStart, number(week.asks), number(week.accepted), number(week.passed), number(week.expired), number(week.declined), number(week.withdrawn), number(week.waiting), number(week.uncovered)])}
+        head={["Week of", "Asks", "Accepted", "Passed", "Expired", "Declined", "Withdrawn", "Waiting", "No coverage", "Referred ≤7d"]}
+        rows={[...baseline.weeks].reverse().map(week => [week.weekStart, number(week.asks), number(week.accepted), number(week.passed), number(week.expired), number(week.declined), number(week.withdrawn), number(week.waiting), number(week.uncovered), number(week.referredWithin7Days ?? 0)])}
       /><p className="mt-3 text-xs leading-5 text-[#505050]">Outcome is the ask's state now, grouped by the week it was created. “Waiting” means no referrer has decided it yet; a passed ask still counts in waiting demand below, because it is open to that company again. “No coverage” counts asks at a company with no verified referrer today.</p></>}
     </Panel>
 
@@ -55,6 +55,7 @@ export function BaselineMetricsPanel({ baseline }: { baseline: FlowBaseline | nu
       <Metric label="Median time to first decision" value={hours(baseline.decisionLatency.medianHours)} detail={baseline.decisionLatency.sampleSize === 0 ? "No referrer decision in the window yet." : `${number(baseline.decisionLatency.sampleSize)} asks with an accept or pass.`} />
       <Metric label="90th percentile decision" value={hours(baseline.decisionLatency.p90Hours)} detail="The slow tail a seeker actually feels." />
       <Metric label="External referrers active, 7 days" value={number(baseline.externalReferrers.activeLast7Days)} detail={`${number(baseline.externalReferrers.activeInWindow)} in the whole window. Operator domains excluded.`} />
+      <Metric label="Referred within 7 days" value={baseline.referredWithin7DaysPct === undefined ? "—" : `${number(baseline.referredWithin7DaysPct)}%`} detail="Share of asks first marked Referred within 7 days of first visibility (D-038-B north star)." />
     </section>
 
     <section className="grid gap-5 lg:grid-cols-[1.25fr_.75fr]">

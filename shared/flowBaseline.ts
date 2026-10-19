@@ -31,6 +31,8 @@ export const flowBaselineWeekSchema = z.object({
   waiting: z.number().int().nonnegative(),
   /** Asks from that week whose company has no verified referrer today. */
   uncovered: z.number().int().nonnegative(),
+  /** Asks first marked Referred within 7 days of first visibility (D-038-B north star). */
+  referredWithin7Days: z.number().int().nonnegative().optional(),
 });
 
 export const flowBaselineSchema = z.object({
@@ -66,6 +68,8 @@ export const flowBaselineSchema = z.object({
     trialing: z.number().int().nonnegative(),
     byPlan: z.array(z.object({ plan: z.string(), count: z.number().int().nonnegative() })),
   }),
+  /** Share of asks first marked Referred within 7 days of first visibility (D-038-B north star). Optional in the client schema so older API responses still parse. */
+  referredWithin7DaysPct: z.number().int().nonnegative().optional(),
   dataQuality: z.array(z.object({
     id: z.string(),
     label: z.string(),
@@ -136,7 +140,7 @@ export function daysSince(ms: number, nowMs: number): number {
 
 /** The zero baseline: a database-less dev server reports nothing, never invented numbers. */
 export function emptyFlowBaseline(nowMs: number, operatorDomains: readonly string[] = []): FlowBaseline {
-  const weeks = baselineWeekStarts(nowMs).map(weekStart => ({ weekStart, asks: 0, accepted: 0, passed: 0, expired: 0, declined: 0, withdrawn: 0, waiting: 0, uncovered: 0 }));
+  const weeks = baselineWeekStarts(nowMs).map(weekStart => ({ weekStart, asks: 0, accepted: 0, passed: 0, expired: 0, declined: 0, withdrawn: 0, waiting: 0, uncovered: 0, referredWithin7Days: 0 }));
   return {
     windowDays: BASELINE_WINDOW_DAYS,
     generatedAt: new Date(nowMs).toISOString(),
@@ -147,6 +151,7 @@ export function emptyFlowBaseline(nowMs: number, operatorDomains: readonly strin
     demand: [],
     externalReferrers: { activeLast7Days: 0, activeInWindow: 0, excludedOperatorDomains: [...operatorDomains] },
     subscribers: { paid: 0, trialing: 0, byPlan: [] },
+    referredWithin7DaysPct: 0,
     dataQuality: [],
   };
 }

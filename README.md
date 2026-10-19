@@ -1,6 +1,8 @@
 # skipwait.me — private job referrals, made simpler
 
 > AI models and contributors: read [`docs/BRIEF.md`](docs/BRIEF.md) first (D-073), then `AGENTS.md`.
+>
+> **Owner says `build`?** Run `node scripts/next-task.mjs --claim "<your model name · session>"` and do only the task it prints, step by step. Never choose work yourself: Claude Code sets the order in `docs/plans/assignments.json` (D-083).
 
 A mobile-first PWA where a Job Seeker shares one real job link and a resume, and only verified employees of that employer can review it. Employee identities stay hidden until a Referrer chooses to claim and approve a request.
 

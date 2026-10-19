@@ -1,6 +1,8 @@
 # SkipWait Build Kit — START HERE (for AI coding platforms and developers)
 
 > **Read [`docs/BRIEF.md`](docs/BRIEF.md) first** — the one-page brief every AI model starts from (D-073). The full rules follow; they win any conflict with the brief.
+>
+> **Owner says `build`?** Run `node scripts/next-task.mjs --claim "<your model name · session>"` and do only the task it prints, step by step. Never choose work yourself: Claude Code sets the order in `docs/plans/assignments.json` (D-083).
 
 Kit version: v4 · 7 Oct 2026 · skipwait.me
 **Kit v4 is no longer binding (D-048, Oct 18 2026).** `docs/DECISIONS.md` is the single source of truth for owner decisions and `AGENTS.md` holds the working rules; this kit is a reference for SkipWait's web + mobile (PWA) design, logic, states and rules.
@@ -14,7 +16,7 @@ SkipWait is already running in production. You are **updating an existing app**,
    - Database changes are additive migrations only (add columns/tables; backfill; never drop or rename columns that hold live data without a migration + backup).
    - Keep existing URLs working; add redirects for any renamed route (e.g. `/wallet` → `/plans`).
    - Keep existing sign-ins working; the login rule is founder-locked (`AGENTS.md`, D-030 as amended by D-049/D-057).
-4. **Ship each verified group straight to `main`** in small batches after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 (D-003), then verify it live (D-019). Each batch must pass build, tests and a phone + desktop visual check (against the live app until the owner approves new designs, D-048).
+4. **Ship each verified group to `main`** in small batches, only after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 passes and GitHub CI is green on that exact commit (D-003, D-082), then verify it live (D-019). Each batch must pass build, tests and a phone + desktop visual check (against the live app until the owner approves new designs, D-048).
 5. **Replace demo data with real data.** Everything labelled `DESIGN PREVIEW`, sample names, messages, prices and counts in `app/src/lib/*-data.ts` is illustrative. Never ship fake activity, counts, testimonials or outcomes.
 6. When the owner sends a newer kit or approves new designs, record the decision in `docs/DECISIONS.md` first, then repeat steps 2–4 (`CHANGELOG.md` shows what changed in a kit).
 

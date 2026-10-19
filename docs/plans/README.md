@@ -2,7 +2,7 @@
 
 > Read [`docs/BRIEF.md`](../BRIEF.md) first (D-073). The binding queue and every row's status live only in [`docs/KIT_V4_BUILD_PLAN.md`](../KIT_V4_BUILD_PLAN.md) §3b. This page is the execution view (D-074, D-075): what to run next, which packet to hand over, how risky it is, and what may run side by side.
 
-How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. System map: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md). Packet format: [`TEMPLATE.md`](TEMPLATE.md).
+How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. The machine order every agent's `build` uses is [`assignments.json`](assignments.json) (D-083): change the two together. System map: [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md). Packet format: [`TEMPLATE.md`](TEMPLATE.md).
 
 ## Rules for this page
 - A row may be delegated only when its packet below is **ready**. "Architect" means Claude Code writes or refreshes the packet first.
@@ -22,8 +22,8 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | 1.1 | D-067-pro-max-removal | [D-067-packet.md](D-067-packet.md) (verification for slices 3–4 and the review) | 1 | L (sliced into commits) | done — `08d193a0`, live (independent review passed on PR #318) | — | 0.1, 1.2, 1.4 |
 | 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | review passed — landing blocked by D-080 (PR #324, head `bcff1742`; also waits on the owner's dashboard steps and `SEEKER_CODE_VERIFY_UNTIL`) | — | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | 1.2 live | 1.3, 1.4 |
-| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 3), open to any model under queue rule 2 | 1.1 live | 1.2, 1.4, 3.1 |
-| 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | ready | — | 0.1, 1.1, 1.2, 1.3 |
+| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | done — `c573af21`, live (independent review passed on PR #326); nothing applied: the owner's dry run, then apply | 1.1 live | 1.2, 1.4, 3.1 |
+| 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | done — `b6ea65f1` (PR #320); phase 3 packets next (architect) | — | 0.1, 1.1, 1.2, 1.3 |
 
 ## Stage 2 — payments ready before referrers onboard (D-046, D-064, D-075)
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
@@ -36,8 +36,8 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on |
 |---|---|---|---|---|---|---|
 | 3.0 | D-079-card-validation-free-credits | [D-079-card-validation-free-credits.md](D-079-card-validation-free-credits.md) | 1 | M | ready; claimed by Instinct (Oct 19) | — | nothing that touches the credit-cycle functions (3.1-3.3 included) |
-| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | ready | 0.1 live |
-| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | ready | 3.1 live |
+| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | built on `agent/opencode/d038-a-lapses`, not on `main`; draft PR and independent review next | 0.1 live |
+| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | on `main` unreviewed (`c53ea471`, fixed forward in #330 `7b201aab`); timer job not registered; independent review next | 3.1 live |
 | 3.3 | D-035 + D-052: the pass reason decides the credit | [D-035-pass-reason-credit.md](D-035-pass-reason-credit.md) | 1 | M | ready | 3.2 live |
 | 3.4 | D-035 + D-066(1): Send again | D-035-send-again.md | 1 | M | architect (after 3.3) | 3.3 live |
 
@@ -51,7 +51,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | F-5 | Forward or remove the server keys the container never receives | [FND-5-env-forwarding.md](FND-5-env-forwarding.md) | 2 | S | ready | 1.1 |
 | F-6 | Correct stale §3b status cells (rows 4, 5, 7, 21, 25) from evidence on `main` | [FND-6-row-status-audit.md](FND-6-row-status-audit.md) | 3 | S | ready | — |
 | F-7 | Triage the 53 open PRs and ~250 branches for the owner (read-only) | [FND-7-pr-branch-triage.md](FND-7-pr-branch-triage.md) | 3 | S | ready | — |
-| T-1 | Public impact counts only accepted asks, never expired ones | [TRUTH-1-public-impact-count.md](TRUTH-1-public-impact-count.md) | 2 | S | ready | — |
+| T-1 | Public impact counts only accepted asks, never expired ones | [TRUTH-1-public-impact-count.md](TRUTH-1-public-impact-count.md) | 2 | S | done — `c34582a9` | — |
 
 ## Later (packets come from the architect when the stage before them is live)
 | §3b row | Why it waits |
