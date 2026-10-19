@@ -51,14 +51,14 @@ Next: <next action or requested coordination>
 
 ## 5. Integrate through review
 
-- Work on a feature branch; once a group passes the gate in `docs/KIT_V4_BUILD_PLAN.md` §3, ship it straight to main (D-003), never as concurrent direct pushes. Commit, push, merge, and deploy only when authorized by the user or the environment's applicable instructions. This protocol does not grant new permission to publish.
+- Work on a feature branch; once a group passes the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 and GitHub CI is green on that exact commit, ship it to main (D-003 as amended by D-082: pull request first; while main is red, push nothing but the fix), never as concurrent direct pushes. Commit, push, merge, and deploy only when authorized by the user or the environment's applicable instructions. This protocol does not grant new permission to publish.
 - Before committing, inspect status, the full diff, recent history, and the staged diff. Stage explicit owned paths; never use `git add .` or `git add -A` to sweep up shared changes.
 - Before merging, fetch again and review the entire branch diff against current main, not only the latest commit.
 - Update only your clean, isolated branch. Resolve conflicts by reading both changes and preserving their intent; never blindly select ours/theirs or delete conflict markers to make tests pass.
 - Ask the owners to resolve ambiguous behavior conflicts. Rerun validation on the integrated result; earlier passing tests do not certify a later merge.
 - Run `git diff --check`, `pnpm check`, affected Vitest files, and `pnpm build` for runtime/dependency changes. Report exact commands and outcomes, including failures outside the task. Do not weaken tests to conceal conflicts.
 - Use one designated integrator or the repository merge queue to serialize integration. Never force-push main. A rejected push means fetch, inspect, coordinate, and revalidate, not force.
-- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection.
+- Where repository settings permit, maintainers should protect main with required CI checks (verified groups ship without a PR review, D-003). Documentation alone does not enable branch protection (proposed to the owner under D-082; not on yet).
 
 ## 6. Leave a usable handoff
 

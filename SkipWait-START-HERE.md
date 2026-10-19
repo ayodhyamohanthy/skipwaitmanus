@@ -14,7 +14,7 @@ SkipWait is already running in production. You are **updating an existing app**,
    - Database changes are additive migrations only (add columns/tables; backfill; never drop or rename columns that hold live data without a migration + backup).
    - Keep existing URLs working; add redirects for any renamed route (e.g. `/wallet` → `/plans`).
    - Keep existing sign-ins working; the login rule is founder-locked (`AGENTS.md`, D-030 as amended by D-049/D-057).
-4. **Ship each verified group straight to `main`** in small batches after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 (D-003), then verify it live (D-019). Each batch must pass build, tests and a phone + desktop visual check (against the live app until the owner approves new designs, D-048).
+4. **Ship each verified group to `main`** in small batches, only after the gate in `docs/KIT_V4_BUILD_PLAN.md` §3 passes and GitHub CI is green on that exact commit (D-003, D-082), then verify it live (D-019). Each batch must pass build, tests and a phone + desktop visual check (against the live app until the owner approves new designs, D-048).
 5. **Replace demo data with real data.** Everything labelled `DESIGN PREVIEW`, sample names, messages, prices and counts in `app/src/lib/*-data.ts` is illustrative. Never ship fake activity, counts, testimonials or outcomes.
 6. When the owner sends a newer kit or approves new designs, record the decision in `docs/DECISIONS.md` first, then repeat steps 2–4 (`CHANGELOG.md` shows what changed in a kit).
 

@@ -22,7 +22,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | 1.1 | D-067-pro-max-removal | [D-067-packet.md](D-067-packet.md) (verification for slices 3–4 and the review) | 1 | L (sliced into commits) | done — `08d193a0`, live (independent review passed on PR #318) | — | 0.1, 1.2, 1.4 |
 | 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | review passed — landing blocked by D-080 (PR #324, head `bcff1742`; also waits on the owner's dashboard steps and `SEEKER_CODE_VERIFY_UNTIL`) | — | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | 1.2 live | 1.3, 1.4 |
-| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | **implemented** (D-058 takeover, Oct 19) — money review, gate and the owner's dry run pending; nothing applied; draft PR #326 | 1.1 live | 1.2, 1.4, 3.1 |
+| 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | **independent review passed** on draft PR #326 (Oct 20); lands once CI is green on the merged candidate (D-082), then the owner's dry run; nothing applied | 1.1 live | 1.2, 1.4, 3.1 |
 | 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | ready | — | 0.1, 1.1, 1.2, 1.3 |
 
 ## Stage 2 — payments ready before referrers onboard (D-046, D-064, D-075)
@@ -36,8 +36,8 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on |
 |---|---|---|---|---|---|---|
 | 3.0 | D-079-card-validation-free-credits | [D-079-card-validation-free-credits.md](D-079-card-validation-free-credits.md) | 1 | M | ready; claimed by Instinct (Oct 19) | — | nothing that touches the credit-cycle functions (3.1-3.3 included) |
-| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | ready | 0.1 live |
-| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | ready | 3.1 live |
+| 3.1 | D-038 slice A: claim and allocation lapse, 5-claim cap | [D-038-A-lapses.md](D-038-A-lapses.md) | 1 | M | built on `agent/opencode/d038-a-lapses`, not on `main`; draft PR and independent review next | 0.1 live |
+| 3.2 | D-038 slice B: referred deadline, step back, seeker confirmation | [D-038-B-referred-deadline.md](D-038-B-referred-deadline.md) | 1 | M | on `main` unreviewed (`c53ea471`, fixed forward in #330 `7b201aab`); timer job not registered; independent review next | 3.1 live |
 | 3.3 | D-035 + D-052: the pass reason decides the credit | [D-035-pass-reason-credit.md](D-035-pass-reason-credit.md) | 1 | M | ready | 3.2 live |
 | 3.4 | D-035 + D-066(1): Send again | D-035-send-again.md | 1 | M | architect (after 3.3) | 3.3 live |
 
