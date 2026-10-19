@@ -33,8 +33,9 @@ describe("the forgot page is neutral and parses the response", () => {
     requestReset(" Asha@Gmail.com ");
     expect(await screen.findByText("Check your email.")).toBeTruthy();
     expect(screen.getByText(/If asha@gmail\.com has a SkipWait account/)).toBeTruthy();
-    // D-078 ruling 8: an older account with no password and no code sign-in gets nothing from forgot; sign-up joins it.
-    expect(screen.getByText("No email after a few minutes? Create an account with the same address; it joins your existing account.")).toBeTruthy();
+    // D-078 ruling 8, worded so the two lines agree (screenshot pass, item 4): no email means no account to reset yet.
+    expect(screen.getByText("No email after a few minutes, and nothing in spam? Create an account with the same address and we'll email you a link to set a password.")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/joins your existing account/);
     expect(document.body.textContent).not.toMatch(/1 hour|an hour/);
     expect(calls).toEqual([{ url: "/api/auth/password/forgot", body: { email: "asha@gmail.com" } }]);
   });

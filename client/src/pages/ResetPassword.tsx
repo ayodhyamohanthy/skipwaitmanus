@@ -25,6 +25,8 @@ function dropTokenFromAddressBar(): void {
  */
 export default function ResetPassword() {
   const [token] = useState(tokenFromUrl);
+  // No token at all means the page was opened without the emailed link, not that a link expired.
+  const [noLink] = useState(() => token === "");
   useEffect(dropTokenFromAddressBar, []);
   const [linkValid, setLinkValid] = useState(() => resetTokenSchema.safeParse(token).success);
   const [password, setPassword] = useState("");
@@ -54,7 +56,15 @@ export default function ResetPassword() {
         <Link href="/" className="wordmark" aria-label="SkipWait home">
           SkipWait<span className="brand-dot">.</span>
         </Link>
-        {!linkValid ? (
+        {noLink ? (
+          <section className="mt-10">
+            <h1 className="text-3xl font-semibold tracking-[-.02em]">This page needs the link from your email.</h1>
+            <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Open the newest link we emailed you to set or reset your password, or ask for one now.</p>
+            <Link href="/forgot-password" className="brand-button mt-6 w-full">
+              Set or reset your password
+            </Link>
+          </section>
+        ) : !linkValid ? (
           <section className="mt-10">
             <h1 className="text-3xl font-semibold tracking-[-.02em]">This link has expired.</h1>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">Reset links work once and expire after a while. Request a new one.</p>

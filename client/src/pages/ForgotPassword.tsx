@@ -75,7 +75,7 @@ export default function ForgotPassword() {
               If {sentTo} has a SkipWait account, we&apos;ve sent a link to set a new password. It can take a few minutes; check spam too.
             </p>
             <p className="mt-2 text-sm leading-6 text-[var(--muted-foreground)]">
-              No email after a few minutes? Create an account with the same address; it joins your existing account.
+              No email after a few minutes, and nothing in spam? Create an account with the same address and we&apos;ll email you a link to set a password.
             </p>
             <Button type="button" variant="outline" onClick={() => setSentTo("")} className="mt-6">
               Use a different email

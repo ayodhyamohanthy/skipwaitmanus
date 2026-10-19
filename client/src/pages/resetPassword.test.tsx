@@ -92,11 +92,19 @@ describe("the reset page is truthful", () => {
     expect((await screen.findByRole("alert")).textContent).toBe("Too many attempts. Try again in 2 minutes.");
   });
 
-  it("a missing token shows the expired screen without asking the server", () => {
+  // Screenshot pass, item 4: with no token there was no link to expire; say what the page needs instead.
+  it("a missing token says the page needs the emailed link and points to Forgot password, without asking the server", () => {
     const calls = stubFetch({ status: 200, body: {} });
     openWithToken(null);
-    expect(screen.getByText("This link has expired.")).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("This page needs the link from your email.");
+    expect(screen.queryByText("This link has expired.")).toBeNull();
+    expect(screen.getByRole("link", { name: "Set or reset your password" }).getAttribute("href")).toBe("/forgot-password");
     expect(calls).toHaveLength(0);
+  });
+
+  it("a malformed token still shows the expired screen", () => {
+    openWithToken("bad token!");
+    expect(screen.getByText("This link has expired.")).toBeTruthy();
   });
 
   it("the update button waits for the three rules", async () => {
