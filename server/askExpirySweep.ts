@@ -5,14 +5,17 @@
 // expireStalePendingReferralRequest the seeker's own reads already use. D-061
 // gives an ask two windows: a visible unclaimed ask is stale 7 days after its
 // first visibility (coverageVisibleAt; pre-0095 rows: creation), a waiting or
-// held ask 90 days after creation. An unclaimed ask has no referrer, or is a
-// personal-link ask still held for the employee whose link the seeker used, who
-// has not claimed, accepted or passed (D-050, server/heldAsk.ts — its hold keeps
-// the creation-based 7 days). The expiry re-checks ownership (the ask's own
-// seeker), status, claimant and age under a row lock, refunds the credit once
-// and notifies the seeker, so a concurrent read, a claim in flight or a
-// repeated sweep can never expire or refund an ask twice. Anything left over is
-// picked up by the next window.
+// held ask 90 days after creation. An unclaimed ask has no referrer, or is an
+// unclaimed assignment (server/heldAsk.ts): an ask assigned to one referrer who
+// has not claimed, accepted or passed it, whether through a personal link the
+// seeker used (D-050) or a queue allocation (a D-034 delivery or "Open referral
+// capacity"). An allocation is not a pickup. Either kind's 7 days run from
+// first visibility like any visible ask (rows without coverageVisibleAt:
+// creation). The expiry re-checks ownership (the ask's own seeker), status,
+// claimant and age under a row lock, refunds the credit once and notifies the
+// seeker, so a concurrent read, a claim in flight or a repeated sweep can never
+// expire or refund an ask twice. Anything left over is picked up by the next
+// window.
 import { and, asc, eq, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
@@ -26,7 +29,7 @@ export const ASK_EXPIRY_SWEEP_BATCH = 200;
 
 export type StaleAsk = { id: number; jobSeekerId: number };
 
-/** D-061: the three cutoffs one sweep window uses — visible asks 7 days after first visibility, waiting and held asks 90 or 7 days after creation. */
+/** D-061: the three cutoffs one sweep window uses — visible asks 7 days after first visibility, waiting asks 90 days after creation, unclaimed assignments without a first-visibility time 7 days after creation. */
 export type AskExpiryWindows = { visibleBefore: Date; waitingBefore: Date; heldBefore: Date };
 
 export type AskExpirySweepDeps = {
@@ -62,15 +65,16 @@ type StaleRow = { id: number; jobSeekerId: number; createdAt: Date };
 
 /**
  * Each query is bounded on its own; merged oldest first, the batch keeps the same bound.
- * The held personal-link query (D-050) is newer than the unassigned one: if it fails, the
- * ordinary asks still expire and refund this window, and the failure is reported, never silent.
+ * The unclaimed-assignment query (personal-link asks, D-050, and queue allocations) is newer
+ * than the unassigned one: if it fails, the ordinary asks still expire and refund this window,
+ * and the failure is reported, never silent.
  */
 export async function mergeHeldStaleAsks(unassigned: StaleRow[], loadHeld: () => Promise<StaleRow[]>, limit: number): Promise<StaleAsk[]> {
   let held: StaleRow[] = [];
   try {
     held = await loadHeld();
   } catch (error) {
-    console.error("[ask-expiry-sweep] held personal-link asks skipped this window", { name: error instanceof Error ? error.name : "unknown" });
+    console.error("[ask-expiry-sweep] unclaimed assigned asks (personal link and queue allocation) skipped this window", { name: error instanceof Error ? error.name : "unknown" });
     captureServerError(error, { job: "ask-expiry-sweep", step: "held-asks" });
   }
   return [...unassigned, ...held].sort(oldestFirst).slice(0, limit).map(({ id, jobSeekerId }) => ({ id, jobSeekerId }));

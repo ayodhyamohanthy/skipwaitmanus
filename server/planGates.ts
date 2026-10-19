@@ -16,9 +16,11 @@ import { assignedAskNotHeldCondition } from "./heldAsk";
  * a waiting or held ask has reached no referrer and holds no slot; a visible
  * unclaimed ask holds one until 7 days after its first visibility
  * (coverageVisibleAt; pre-0095 rows: creation, computed from the JS clock, never
- * DB NOW()); an assigned ask holds its slot while it is not held — claimed,
- * queue-allocated or pre-history (D-050, server/heldAsk.ts). Always scoped to
- * the one seeker it is called for.
+ * DB NOW()); an assigned ask holds its slot while it is not an unclaimed
+ * assignment — claimed or pre-history (D-050, server/heldAsk.ts). An unclaimed
+ * assignment, a personal-link ask or a queue allocation alike, keeps its slot
+ * only on the visible-ask clock above. Always scoped to the one seeker it is
+ * called for.
  */
 export function openAskCondition(userId: number, nowMs: number): SQL {
   const cutoff = new Date(nowMs - ASK_TTL_MS);
