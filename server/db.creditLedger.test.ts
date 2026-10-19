@@ -16,7 +16,7 @@ const db = fixture.tables;
 const at = (iso: string) => new Date(iso);
 const SEEKER = 7;
 const OTHER = 8;
-const wallet = (patch: Row = {}): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", balance: 2, monthlyCreditsRemaining: 4, monthlyAllowance: 10, monthlyCycleKey: "2026-09", plan: "pro", subscriptionId: "sub_pro", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-06T00:00:00Z"), subscriptionResourceVersion: 10, updatedAt: at("2026-09-06T00:00:00Z"), ...patch });
+const wallet = (patch: Row = {}): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", balance: 2, monthlyCreditsRemaining: 4, monthlyAllowance: 10, monthlyCycleKey: "2026-09", plan: "pro", subscriptionId: "sub_pro", subscriptionStatus: "active", subscriptionCurrency: "USD", subscriptionCurrentTermStart: at("2026-09-06T00:00:00Z"), subscriptionCurrentTermEnd: at("2026-10-06T00:00:00Z"), subscriptionResourceVersion: 10, paymentMethodOnFileAt: at("2026-09-01T00:00:00Z"), updatedAt: at("2026-09-06T00:00:00Z"), ...patch });
 const renewal = (patch: Row = {}) => ({ eventId: "ev_renew_oct", eventType: "subscription_renewed", subscriptionId: "sub_pro", plan: "pro" as const, status: "active", currency: "USD" as const, currentTermStart: at("2026-10-06T00:00:00Z"), currentTermEnd: at("2026-11-06T00:00:00Z"), resourceVersion: 20, ...patch });
 const purchaseRow = (): Row => ({ id: 1, userId: SEEKER, role: "job_seeker", tokenCount: 2, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: "41", idempotencyKey: "payment-credit-41", createdAt: at("2026-08-01T00:00:00Z") });
 const txns = (filter: Row = {}) => db.txns.filter(row => Object.entries(filter).every(([key, value]) => row[key] === value));
@@ -190,21 +190,23 @@ describe("reconcile and the scheduled safety net", () => {
     expect(await listWalletsDueForCreditCycle(at("2026-11-01T01:10:00Z"), 50)).toEqual([]);
   });
 
-  it("new seeker wallets open Free's month with 3 credits and a ledger row; referrer wallets keep 3 a month", async () => {
+  it("new seeker wallets open Free's month empty until a card is on file; referrer wallets keep 3 a month", async () => {
     db.wallets = [];
     db.txns = [];
-    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ plan: "free", monthlyAllowance: 3, monthlyCreditsRemaining: 3, monthlyCycleKey: "2026-10", balance: 0 });
-    expect(txns({ userId: 9, kind: "plan_grant" })).toEqual([expect.objectContaining({ tokenCount: 3, source: "monthly_allowance", sourceCycleKey: "2026-10", role: "job_seeker" })]);
-    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ monthlyCreditsRemaining: 3 });
-    expect(txns({ userId: 9 })).toHaveLength(1);
+    // 0096: a brand-new seeker has no payment method, so the month opens with 0 and no
+    // plan_grant row. server/creditCyclesPaymentMethod.test.ts covers the grant once a card lands.
+    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ plan: "free", monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10", balance: 0 });
+    expect(txns({ userId: 9, kind: "plan_grant" })).toEqual([]);
+    expect(await ensureTokenWallet(9, "job_seeker")).toMatchObject({ monthlyCreditsRemaining: 0 });
+    expect(txns({ userId: 9 })).toHaveLength(0);
     expect(await ensureTokenWallet(9, "referrer")).toMatchObject({ monthlyAllowance: 3, monthlyCreditsRemaining: 3 });
-    expect(txns({ userId: 9 })).toHaveLength(1);
+    expect(txns({ userId: 9 })).toHaveLength(0);
   });
 });
 
 describe("retired welcome grants still read, and nothing grants new ones", () => {
   it("a historic welcome grant row still reconciles in the ledger", async () => {
-    db.wallets[0] = wallet({ plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10", balance: 0 });
+    db.wallets[0] = wallet({ plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, monthlyAllowance: 0, monthlyCreditsRemaining: 0, monthlyCycleKey: "2026-10", balance: 0, paymentMethodOnFileAt: null });
     // Exactly what a pre-D-039 wallet holds: the grant row plus its original grant txn row.
     db.grants = [{ id: 1, userId: SEEKER, role: "job_seeker", source: "welcome", grantKey: "welcome:person:1", tokenCount: 3, creditsRemaining: 3, status: "active", grantedAt: at("2026-09-01T00:00:00Z"), expiresAt: null }];
     db.txns = [{ id: 1, userId: SEEKER, role: "job_seeker", tokenCount: 3, kind: "welcome_grant", source: "welcome_grant", referenceType: "credit_grant", referenceId: "1", idempotencyKey: "welcome:1", creditGrantId: 1, createdAt: at("2026-09-01T00:00:00Z") }];

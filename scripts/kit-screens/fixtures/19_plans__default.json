@@ -34,6 +34,7 @@
           "cycleKey": "2026-10",
           "subscriptionStatus": null,
           "subscriptionCurrentTermEnd": null,
+          "paymentMethodOnFile": false,
           "ledger": {
             "balance": 0,
             "buckets": {

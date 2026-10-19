@@ -3,7 +3,6 @@ import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
 import { SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
-import { planEntitlementsFor } from "../shared/planEntitlements";
 import { applyChargebeeSubscriptionEvent } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -241,7 +240,11 @@ describe("applyChargebeeSubscriptionEvent on a kit pass (0091)", () => {
     momentumIntent();
     await applyChargebeeSubscriptionEvent(momentum90);
     expect(await applyChargebeeSubscriptionEvent({ ...momentum90, eventId: "event_kit_end", eventType: "subscription_cancelled", status: "cancelled", hostedPageId: undefined, passThruContent: undefined, itemPriceId: undefined, interval: undefined, resourceVersion: 6 })).toMatchObject({ status: "applied" });
-    expect(wallets[0]).toMatchObject({ plan: "free", balance: 12, monthlyAllowance: planEntitlementsFor("free").creditsPerMonth });
+    // D-079: the pass returns them to Free, but Free's month needs a payment method on file and this
+    // wallet has none confirmed, so it opens with 0. What the pass earned — the 12 purchased credits —
+    // is untouched; /billing then asks for a card to unlock the monthly grant. This wallet is the one
+    // place the two rules meet, so it is asserted explicitly rather than through the entitlement.
+    expect(wallets[0]).toMatchObject({ plan: "free", balance: 12, monthlyAllowance: 0 });
     expect(wallets[0].subscriptionCurrentTermEnd).toEqual(passEnd);
   });
 
