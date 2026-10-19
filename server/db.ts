@@ -6,6 +6,7 @@ import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
 import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { passReasonSeekerLabel } from "../shared/passReasons";
+import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
@@ -35,8 +36,7 @@ import {
 import { FREE_MONTHLY_ALLOWANCE, currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { isBillablePlanId, isRetiredPlanId, isRetiredPlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId, type WalletPlanId } from "../shared/billingCatalog";
 import { PLAN_RETIRED_CODE } from "../shared/subscriptionManagement";
-import { ASK_TTL_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";
-import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
+import { ASK_TTL_MS, CLAIM_LAPSE_MS, CLAIM_REMINDER_MS, COVERAGE_WAIT_DAYS, COVERAGE_WAIT_MS, MAX_ACTIVE_CLAIMS, allocationLapseAtMs, claimLapseAtMs, getAskShelfLifeEndsAtMs, isAskExpired, isPostApprovalReferralStatus, referralProgressUpdateStatuses, reminderAtMs, referralStatusLabels, type ReferralProgressUpdateStatus, type ReferralStatus } from "../shared/referral";import { firstLookUntilFrom, isOpportunityExpired, ownerOpportunityPostSchema, publicOpportunityPostSchema, OPPORTUNITY_TTL_MS, type OpportunityPoster, type OwnerOpportunityPost, type PublicOpportunityPost } from "../shared/companyOpportunities";
 import { isCorporateEmailDomain } from "../shared/const";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "../shared/referralUrl";
 import { JOB_LEVELS, REFERRER_AREAS, parseJobFunction, type JobFunction } from "../shared/jobFunctions";
@@ -2091,7 +2091,18 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
     const expiresAtMs = getAskShelfLifeEndsAtMs(row);
     const detail = extra.get(row.id);
     const enrichment = detail ? enrichInboxRow({ title: detail.title, pitch: detail.pitch, targetRoleUrl: row.targetRoleUrl, attachmentCount: row.attachmentCount }) : {};
-    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
+    // D-038-A: the viewer's own claimed or allocated pending ask shows when the decision is due.
+    let decisionDueAtMs: number | null = null;
+    if (row.referrerId === userId) {
+      if (row.queueAllocationId !== null) {
+        const coverageVisibleAt = row.coverageVisibleAt instanceof Date ? row.coverageVisibleAt.getTime() : typeof row.coverageVisibleAt === "string" || typeof row.coverageVisibleAt === "number" ? Date.parse(String(row.coverageVisibleAt)) : null;
+        decisionDueAtMs = allocationLapseAtMs(coverageVisibleAt);
+      } else {
+        const updatedAt = row.updatedAt instanceof Date ? row.updatedAt.getTime() : typeof row.updatedAt === "string" || typeof row.updatedAt === "number" ? Date.parse(String(row.updatedAt)) : null;
+        if (updatedAt !== null) decisionDueAtMs = claimLapseAtMs(updatedAt);
+      }
+    }
+    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), decisionDueAt: decisionDueAtMs === null ? null : new Date(decisionDueAtMs).toISOString(), unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
   });
 }
 
@@ -2125,11 +2136,107 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
 }
 /** Caller holds the request row lock. Locking read sees claims committed before that lock,
  * even under MySQL repeatable-read; pass/reopen must not erase pickup history. */
-async function referralWasClaimedTx(tx: LedgerTx, requestId: number): Promise<boolean> {
-  const claimed = await tx.select({ id: referralTransitionEvents.id }).from(referralTransitionEvents)
-    .where(and(eq(referralTransitionEvents.referralRequestId, requestId), eq(referralTransitionEvents.action, "claim")))
+/** D-038-A: "pickup since the latest release" — true only when the most recent
+ * pickup-or-release event for this request is a claim (a claim followed by a
+ * lapse means it is no longer picked up). Reads only claim and claim_lapse
+ * actions, ordered by id descending, limit 1, under the same row lock as callers. */
+export async function referralWasClaimedTx(tx: LedgerTx, requestId: number): Promise<boolean> {
+  const latest = await tx.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action }).from(referralTransitionEvents)
+    .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse"])))
+    .orderBy(desc(referralTransitionEvents.id))
     .limit(1).for("update");
-  return claimed.length > 0;
+  return latest.length > 0 && latest[0]?.action === "claim";
+}
+
+/** D-038-A: a claim that nobody accepts or passes within 48 h returns the ask to colleagues.
+ * Re-decides under the request row lock and returns { lapsed: true } only when it actually lapsed. */
+export async function lapseClaimTx(tx: LedgerTx, requestId: number, nowMs: number): Promise<{ lapsed: boolean; reason?: string }> {
+  const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, jobSeekerId: referralRequests.jobSeekerId, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+  if (!current || current.status !== "pending" || !current.referrerId) return { lapsed: false };
+  const latest = await tx.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt }).from(referralTransitionEvents)
+    .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse"])))
+    .orderBy(desc(referralTransitionEvents.id))
+    .limit(1);
+  if (latest.length === 0 || latest[0].action !== "claim") return { lapsed: false };
+  const claimEvent = latest[0];
+  const claimEventId = Number(claimEvent.id);
+  const claimCreatedAt = claimEvent.createdAt instanceof Date ? claimEvent.createdAt.getTime() : Date.parse(String(claimEvent.createdAt));
+  if (!Number.isFinite(claimCreatedAt)) return { lapsed: false };
+  if (nowMs < claimLapseAtMs(claimCreatedAt)) return { lapsed: false };
+  const referrerId = current.referrerId;
+  const companyDomain = current.companyDomain;
+  await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "claim_lapse", operationKey: `claim-lapse:${claimEventId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't accept or pass within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, referrerId)));
+  await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.referralRequestId, requestId), eq(referrerReviewEmailLinks.referrerId, referrerId), isNull(referrerReviewEmailLinks.consumedAt)));
+  await tx.update(referralAvailabilitySlots).set({ status: "released", releasedAt: new Date() }).where(and(eq(referralAvailabilitySlots.referralRequestId, requestId), eq(referralAvailabilitySlots.referrerId, referrerId), eq(referralAvailabilitySlots.status, "allocated")));
+  await tx.insert(referralRequestPasses).values({ referralRequestId: requestId, referrerId, reason: "timing", reasonCode: "lapsed_claim" }).onDuplicateKeyUpdate({ set: { reason: "timing", reasonCode: "lapsed_claim" } });
+  await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", kind: "ask_update", refId: requestId, title: `Update on your referral request — ${companyDomain}`, body: `The verified employee who picked up your ask didn't decide within 48 hours. It's open again to other verified employees at ${companyDomain}. If nobody picks it up, your credit comes back, ${CREDIT_ENDED_CAVEAT}.`, eventKey: `claim-lapsed:${requestId}:${referrerId}`.slice(0, 120) }).onDuplicateKeyUpdate({ set: { eventKey: `claim-lapsed:${requestId}:${referrerId}`.slice(0, 120) } });
+  return { lapsed: true, reason: "lapsed_claim" };
+}
+
+/** D-038-A: an allocation nobody claims within 48 h of first visibility returns the ask to colleagues.
+ * Never reads the slot's openedAt (a database clock). */
+export async function lapseAllocationTx(tx: LedgerTx, requestId: number, nowMs: number): Promise<{ lapsed: boolean; reason?: string }> {
+  const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, jobSeekerId: referralRequests.jobSeekerId, coverageVisibleAt: referralRequests.coverageVisibleAt, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
+  if (!current || current.status !== "pending" || !current.referrerId) return { lapsed: false };
+  // No claim since the latest release.
+  if (await referralWasClaimedTx(tx, requestId)) return { lapsed: false };
+  const slot = (await tx.select({ id: referralAvailabilitySlots.id, status: referralAvailabilitySlots.status }).from(referralAvailabilitySlots).where(and(eq(referralAvailabilitySlots.referralRequestId, requestId), eq(referralAvailabilitySlots.referrerId, current.referrerId), eq(referralAvailabilitySlots.status, "allocated"))).limit(1))[0];
+  if (!slot) return { lapsed: false };
+  const slotId = Number(slot.id);
+  const coverageVisibleAt = current.coverageVisibleAt instanceof Date ? current.coverageVisibleAt.getTime() : typeof current.coverageVisibleAt === "string" || typeof current.coverageVisibleAt === "number" ? Date.parse(String(current.coverageVisibleAt)) : null;
+  if (nowMs < allocationLapseAtMs(coverageVisibleAt)) return { lapsed: false };
+  const referrerId = current.referrerId;
+  const companyDomain = current.companyDomain;
+  await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "allocation_lapse", operationKey: `allocation-lapse:${slotId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't respond within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, referrerId)));
+  await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.referralRequestId, requestId), eq(referrerReviewEmailLinks.referrerId, referrerId), isNull(referrerReviewEmailLinks.consumedAt)));
+  await tx.update(referralAvailabilitySlots).set({ status: "released", releasedAt: new Date() }).where(and(eq(referralAvailabilitySlots.referralRequestId, requestId), eq(referralAvailabilitySlots.referrerId, referrerId), eq(referralAvailabilitySlots.status, "allocated")));
+  await tx.insert(referralRequestPasses).values({ referralRequestId: requestId, referrerId, reason: "timing", reasonCode: "lapsed_allocation" }).onDuplicateKeyUpdate({ set: { reason: "timing", reasonCode: "lapsed_allocation" } });
+  await tx.insert(notifications).values({ userId: current.jobSeekerId, category: "status", kind: "ask_update", refId: requestId, title: `Update on your referral request — ${companyDomain}`, body: `The verified employee it reached didn't respond within 48 hours. It's open again to other verified employees at ${companyDomain}. If nobody picks it up, your credit comes back, ${CREDIT_ENDED_CAVEAT}.`, eventKey: `allocation-lapsed:${requestId}:${referrerId}`.slice(0, 120) }).onDuplicateKeyUpdate({ set: { eventKey: `allocation-lapsed:${requestId}:${referrerId}`.slice(0, 120) } });
+  return { lapsed: true, reason: "lapsed_allocation" };
+}
+
+/** D-038-A: candidates for the referral-timers job, bounded and oldest-first per step. */
+export type ReferralTimerCandidate = { id: number; referrerId: number; companyDomain: string; claimEventId?: number; claimCreatedAt?: number; slotId?: number; coverageVisibleAt?: number | null };
+
+export async function listReferralTimerCandidates(limit: number, nowMs: number = Date.now()): Promise<{ claimsToLapse: ReferralTimerCandidate[]; claimsToRemind: ReferralTimerCandidate[]; allocationsToLapse: ReferralTimerCandidate[]; allocationsToRemind: ReferralTimerCandidate[] }> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const rows = await db.select({ id: referralRequests.id, referrerId: referralRequests.referrerId, companyDomain: jobs.company, coverageVisibleAt: referralRequests.coverageVisibleAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(eq(referralRequests.status, "pending"), isNotNull(referralRequests.referrerId), lt(referralRequests.updatedAt, new Date(nowMs)))).orderBy(asc(referralRequests.updatedAt), asc(referralRequests.id)).limit(limit * 4);
+  const claimsToLapse: ReferralTimerCandidate[] = [];
+  const claimsToRemind: ReferralTimerCandidate[] = [];
+  const allocationsToLapse: ReferralTimerCandidate[] = [];
+  const allocationsToRemind: ReferralTimerCandidate[] = [];
+  for (const row of rows) {
+    if (!row.referrerId) continue;
+    const latest = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, row.id), inArray(referralTransitionEvents.action, ["claim", "claim_lapse"]))).orderBy(desc(referralTransitionEvents.id)).limit(1);
+    if (latest.length === 0 || latest[0].action !== "claim") continue;
+    const claimEventId = Number(latest[0].id);
+    const claimCreatedAt = latest[0].createdAt instanceof Date ? latest[0].createdAt.getTime() : Date.parse(String(latest[0].createdAt));
+    if (!Number.isFinite(claimCreatedAt)) continue;
+    const candidate: ReferralTimerCandidate = { id: row.id, referrerId: row.referrerId, companyDomain: row.companyDomain, claimEventId, claimCreatedAt };
+    const lapsesAt = claimLapseAtMs(claimCreatedAt);
+    if (nowMs >= lapsesAt) claimsToLapse.push(candidate);
+    else if (nowMs >= reminderAtMs(lapsesAt)) claimsToRemind.push(candidate);
+  }
+  // Allocations: pending asks with an allocated slot, no claim since release.
+  const allocRows = await db.select({ id: referralRequests.id, referrerId: referralRequests.referrerId, companyDomain: jobs.company, coverageVisibleAt: referralRequests.coverageVisibleAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.referrerId, referralRequests.referrerId), eq(referralAvailabilitySlots.status, "allocated"))).where(and(eq(referralRequests.status, "pending"), isNotNull(referralRequests.referrerId), isNotNull(referralAvailabilitySlots.id), lt(referralRequests.updatedAt, new Date(nowMs)))).orderBy(asc(referralRequests.updatedAt), asc(referralRequests.id)).limit(limit * 4);
+  for (const row of allocRows) {
+    if (!row.referrerId) continue;
+    if (await referralWasClaimedTxFromDb(db, row.id)) continue;
+    const coverageVisibleAt = row.coverageVisibleAt instanceof Date ? row.coverageVisibleAt.getTime() : typeof row.coverageVisibleAt === "string" || typeof row.coverageVisibleAt === "number" ? Date.parse(String(row.coverageVisibleAt)) : null;
+    const candidate: ReferralTimerCandidate = { id: row.id, referrerId: row.referrerId, companyDomain: row.companyDomain, slotId: 0, coverageVisibleAt };
+    const lapsesAt = allocationLapseAtMs(coverageVisibleAt);
+    if (nowMs >= lapsesAt) allocationsToLapse.push(candidate);
+    else if (nowMs >= reminderAtMs(lapsesAt)) allocationsToRemind.push(candidate);
+  }
+  return { claimsToLapse: claimsToLapse.slice(0, limit), claimsToRemind: claimsToRemind.slice(0, limit), allocationsToLapse: allocationsToLapse.slice(0, limit), allocationsToRemind: allocationsToRemind.slice(0, limit) };
+}
+
+/** referralWasClaimedTx using a plain db handle (non-transactional candidate listing). */
+async function referralWasClaimedTxFromDb(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, requestId: number): Promise<boolean> {
+  const latest = await db.select({ id: referralTransitionEvents.id, action: referralTransitionEvents.action }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["claim", "claim_lapse"]))).orderBy(desc(referralTransitionEvents.id)).limit(1);
+  return latest.length > 0 && latest[0]?.action === "claim";
 }
 
 /**
@@ -2821,6 +2928,18 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     if (current && firstLookExcludesViewer(current.request, userId, claimNowMs)) throw new ReferralTransitionConflict("This referral request is still in its poster's first look", { status: current.request.status, revision: current.request.revision });
     const passed = (await tx.select({id:referralRequestPasses.id}).from(referralRequestPasses).where(and(eq(referralRequestPasses.referralRequestId,requestId),eq(referralRequestPasses.referrerId,userId))).limit(1))[0];
     if (passed) throw new Error("You already passed on this referral request");
+    // D-038-A: at most MAX_ACTIVE_CLAIMS open claims per referrer. Lock the profiles row to
+    // serialize this referrer's concurrent claims; allocations do not count.
+    await tx.select({ id: profiles.id }).from(profiles).where(eq(profiles.id, userId)).limit(1).for("update");
+    const openClaims = await tx.select({ id: referralRequests.id }).from(referralRequests).where(and(eq(referralRequests.status, "pending"), eq(referralRequests.referrerId, userId))).limit(MAX_ACTIVE_CLAIMS + 1);
+    let openClaimCount = 0;
+    for (const claim of openClaims) {
+      const latest = await tx.select({ action: referralTransitionEvents.action, actorUserId: referralTransitionEvents.actorUserId }).from(referralTransitionEvents).where(and(eq(referralTransitionEvents.referralRequestId, claim.id), inArray(referralTransitionEvents.action, ["claim", "claim_lapse"]))).orderBy(desc(referralTransitionEvents.id)).limit(1);
+      if (latest.length > 0 && latest[0].action === "claim" && latest[0].actorUserId === userId) {
+        openClaimCount += 1;
+        if (openClaimCount >= MAX_ACTIVE_CLAIMS) throw new ReferralTransitionConflict("You can hold 5 asks at once. Accept or pass one of them first.", { status: "pending", revision: -1 });
+      }
+    }
     const result = await transitionReferralRequestTx(tx, { requestId, actorUserId: userId, action: "claim", operationKey: `claim:${userId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== userId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: userId }, notification: { userId: current.request.jobSeekerId, title: "Your referral request was claimed", body: "A verified employee at the target company is reviewing your request." } });
     // A claim grants no document access (D-019(e)); acceptance does, in transitionReferralRequestTx.
     return { requestId, claimed: true as const, replayed: result.replayed, revision: result.revision, jobSeekerId: current.request.jobSeekerId, companyDomain: current.company };
@@ -2833,7 +2952,7 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
 // documentAccessActive is the same rule as GET /api/documents/:id. server/referrerAskView.ts builds the response.
 export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const rows = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch, referrerId: referralRequests.referrerId, status: referralRequests.status, revision: referralRequests.revision, grantId: referralDocumentAccessGrants.id, grantRevokedAt: referralDocumentAccessGrants.revokedAt, grantExpiresAt: referralDocumentAccessGrants.expiresAt, passId: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt })
+  const rows = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch, referrerId: referralRequests.referrerId, status: referralRequests.status, revision: referralRequests.revision, updatedAt: referralRequests.updatedAt, grantId: referralDocumentAccessGrants.id, grantRevokedAt: referralDocumentAccessGrants.revokedAt, grantExpiresAt: referralDocumentAccessGrants.expiresAt, passId: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt })
     .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id))
     .leftJoin(referralDocumentAccessGrants, and(eq(referralDocumentAccessGrants.referralRequestId, referralRequests.id), eq(referralDocumentAccessGrants.referrerId, userId)))
     .leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId)))
@@ -2845,7 +2964,13 @@ export async function getClaimedCompanyReferralDetail(userId: number, requestId:
   const accepted = isAcceptingReferrer(access);
   if (row.status !== "pending" && !accepted) return undefined;
   const attachments = await db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, mimeType: referralAttachments.mimeType, fileSize: referralAttachments.fileSize }).from(referralAttachments).where(eq(referralAttachments.referralRequestId, requestId));
-  return { id: row.id, title: row.title, targetRoleUrl: row.targetRoleUrl, companyDomain: row.companyDomain, jobFunction: row.jobFunction, candidateMessage: row.candidateMessage, referrerId: row.referrerId, status: row.status, revision: row.revision, candidateName: accepted ? row.candidateName : null, documentAccessActive: isReferrerDocumentAccessActive(access), attachments };
+  // D-038-A: when the decision is due for the viewer's own claimed pending ask.
+  let decisionDueAt: string | null = null;
+  if (row.status === "pending" && row.referrerId === userId) {
+    const updatedAt = row.updatedAt instanceof Date ? row.updatedAt.getTime() : typeof row.updatedAt === "string" || typeof row.updatedAt === "number" ? Date.parse(String(row.updatedAt)) : null;
+    if (updatedAt !== null) decisionDueAt = new Date(claimLapseAtMs(updatedAt)).toISOString();
+  }
+  return { id: row.id, title: row.title, targetRoleUrl: row.targetRoleUrl, companyDomain: row.companyDomain, jobFunction: row.jobFunction, candidateMessage: row.candidateMessage, referrerId: row.referrerId, status: row.status, revision: row.revision, candidateName: accepted ? row.candidateName : null, documentAccessActive: isReferrerDocumentAccessActive(access), attachments, decisionDueAt };
 }
 
 export async function createReferralAttachment(ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {
