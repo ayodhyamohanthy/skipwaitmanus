@@ -145,7 +145,8 @@ async function identityFromWorkosJwt(bearer: string): Promise<DevIdentity | unde
   if (user.id !== sub) return undefined;
   const email = user.email.trim().toLowerCase();
   const emailVerified = user.emailVerified;
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || email.split("@")[0];
+  // S-11: never a name derived from the email; null leaves a new account unnamed.
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
   const account = await db.resolveLoginIdentity({ provider: "workos", subject: sub, openId, email, emailVerified, name, loginMethod: "workos" });
   if (!account || account.suspended) return undefined;
   if (account.sessionsValidAfter && account.sessionsValidAfter > account.createdAt && (payload.iat as number) * 1000 < account.sessionsValidAfter.getTime()) return undefined;

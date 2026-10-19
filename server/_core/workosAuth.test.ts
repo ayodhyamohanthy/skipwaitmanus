@@ -230,6 +230,25 @@ describe("canonical WorkOS callback session", () => {
     } finally { restore(); }
   });
 
+  // S-11: an email's local part next to a company name rebuilds the address (P0-referrer-exposure), so a new
+  // account takes no name from the email when WorkOS has none.
+  it("a WorkOS user with no first or last name creates an unnamed account, never one named after the email", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      for (const names of [{}, { firstName: null, lastName: null }, { firstName: "", lastName: "" }]) {
+        authenticate.mockResolvedValueOnce({ user: { id: "user_noname", email: "asha.k@corp.example", emailVerified: true, ...names } } as never);
+        const callback = await signIn(app);
+        expect(callback.status).toBe(302);
+        expect(resolveLoginIdentity.mock.calls.at(-1)![0]).toEqual(expect.objectContaining({ subject: "user_noname", name: null }));
+        const cookie = callback.headers["set-cookie"].find((value: string) => value.startsWith("app_session_id="))!.split(";")[0];
+        expect(JSON.stringify(decodeJwt(cookie.slice("app_session_id=".length)))).not.toContain("asha.k");
+      }
+      authenticate.mockResolvedValueOnce({ user: { id: "user_named", email: "asha.k@corp.example", emailVerified: true, firstName: "Asha", lastName: null } } as never);
+      await signIn(app);
+      expect(resolveLoginIdentity.mock.calls.at(-1)![0]).toEqual(expect.objectContaining({ name: "Asha" }));
+    } finally { restore(); }
+  });
+
   it("mints the session for the canonical account, not the provider openId", async () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
