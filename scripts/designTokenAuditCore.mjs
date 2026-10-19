@@ -95,7 +95,7 @@ const KIT_TOKEN = new RegExp([
   String.raw`\bfont-mono\b`,
   String.raw`brand-button`,
   String.raw`\banimate-(?:in|out)\b`,
-  String.raw`\b(?:fade|zoom|slide)-(?:in|out)\b`,
+  String.raw`(?:^|[\s\"'])(?:fade|zoom|slide)-(?:in|out)\b`,
   String.raw`\b(?:sm|md|lg):`,
 ].join("|"));
 const BANNED_EFFECT = /bg-gradient-|bg-linear-|bg-radial-|bg-conic-|backdrop-|blur-|drop-shadow|shadow-\[|animate-(?:pulse|spin|bounce|ping)|aria-disabled:opacity-|disabled:opacity-/;
