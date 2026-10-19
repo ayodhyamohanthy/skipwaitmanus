@@ -193,3 +193,19 @@ describe("Plans on live data", () => {
     expect(await screen.findByText("0 of 3")).toBeTruthy();
   });
 });
+
+describe("Plans free-credits card check (D-079)", () => {
+  it("a locked free seeker sees the Validate-your-card CTA where the no-credits error points", async () => {
+    stub({ ...free(), freeCreditsLocked: true, cardValidated: false, cycleKey: "2026-10" });
+    render(<Plans />);
+    expect(await screen.findByRole("button", { name: /Validate your card/ })).toBeTruthy();
+    expect(screen.getByText(/Validate your card to unlock your 3 free asks every month/)).toBeTruthy();
+  });
+
+  it("an unlocked free seeker does not see the validate CTA", async () => {
+    stub(free());
+    render(<Plans />);
+    await screen.findByText("YOUR BALANCE");
+    expect(screen.queryByRole("button", { name: /Validate your card/ })).toBeNull();
+  });
+});
