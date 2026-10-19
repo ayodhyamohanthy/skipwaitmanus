@@ -133,6 +133,22 @@ function dateFromChargebeeSeconds(value: unknown) {
   return Number.isSafeInteger(seconds) && seconds > 0 ? new Date(seconds * 1000) : undefined;
 }
 
+/** D-079: the payment-source events that confirm a validated card. Deletions and
+ * every other event are ignored; the caller needs every field to act, so a
+ * partial payload parses to nothing. */
+export type ParsedPaymentSourceEvent = { eventId: string; eventType: string; customerId: string; paymentSourceId: string; status: string };
+export function parsePaymentSourceEvent(payload: any): ParsedPaymentSourceEvent | undefined {
+  const eventType = typeof payload?.event_type === "string" ? payload.event_type : "";
+  if (eventType !== "payment_source_added" && eventType !== "payment_source_updated") return undefined;
+  const source = payload?.content?.payment_source;
+  const eventId = typeof payload?.id === "string" && payload.id ? payload.id : undefined;
+  const customerId = typeof source?.customer_id === "string" && source.customer_id ? source.customer_id : undefined;
+  const paymentSourceId = typeof source?.id === "string" && source.id ? source.id : undefined;
+  const status = typeof source?.status === "string" && source.status ? source.status : undefined;
+  if (!eventId || !customerId || !paymentSourceId || !status) return undefined;
+  return { eventId, eventType, customerId, paymentSourceId, status };
+}
+
 export function parseSubscriptionEvent(payload: any): ParsedSubscriptionEvent | undefined {
   const eventType = typeof payload?.event_type === "string" ? payload.event_type : "";
   if (!eventType.startsWith("subscription_") && eventType !== "payment_succeeded") return undefined;

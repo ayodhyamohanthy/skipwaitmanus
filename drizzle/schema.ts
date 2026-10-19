@@ -19,6 +19,9 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
   suspended: boolean("suspended").default(false).notNull(),
+  // D-079: the Chargebee customer created for card validation (and reusable by
+  // later provider flows). Set by the server only; never from the client.
+  chargebeeCustomerId: varchar("chargebeeCustomerId", { length: 80 }),
   sessionsValidAfter: timestamp("sessionsValidAfter").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -696,6 +699,9 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
   monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
   monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
+  // D-079: when the provider (Chargebee) confirmed a card for this wallet's
+  // owner. Written only from the verified webhook or a provider-truth re-read.
+  cardValidatedAt: timestamp("cardValidatedAt"),
   // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
   // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
   plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
