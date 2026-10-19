@@ -80,6 +80,7 @@ import { registerPaymentRoutes, findRazorpayOrdersByReceipt, paypalConfigured, r
 import { registerPaymentWebhookRoutes } from "../paymentWebhooks";
 import { registerWorkosWebhookRoutes } from "../workosWebhooks";
 import { registerPasswordAuthRoutes } from "./passwordAuthRoutes";
+import { apiTiming } from "./apiTiming";
 import { getLastReconcileError, getLastReconcileResults, isSchemaReconciled, startSchemaReconcileRecovery } from "../schemaReconcile";
 import { registerHealthRoutes } from "../healthRoutes";
 import { AssistantPlanRequiredError } from "../planGates";
@@ -151,20 +152,8 @@ async function startServer() {
     // Public control-plane bodies stay small. The two deprecated JSON document
   // routes opt into their own authenticated, bounded parser at registration.
   const smallJson = express.json({ limit: "256kb" });
-  // Timing only, no behavior change: Server-Timing header on /api responses and a log line for slow ones (path only, no query or user data).
-  app.use("/api", (req, res, next) => {
-    const started = performance.now();
-    const writeHead = res.writeHead.bind(res) as (...args: unknown[]) => typeof res;
-    res.writeHead = ((...args: unknown[]) => {
-      if (!res.headersSent) res.setHeader("Server-Timing", `app;dur=${Math.round(performance.now() - started)}`);
-      return writeHead(...args);
-    }) as typeof res.writeHead;
-    res.on("finish", () => {
-      const ms = Math.round(performance.now() - started);
-      if (ms >= 800) console.warn(`[slow-api] ${req.method} ${req.baseUrl}${req.path} ${res.statusCode} ${ms}ms`);
-    });
-    next();
-  });
+  // Server-Timing on /api answers (never on /api/auth/*) and a slow-answer log line: server/_core/apiTiming.ts.
+  app.use("/api", apiTiming);
   app.use((req, res, next) => {
     if (req.path === "/api/documents" || req.path === "/api/documents/opaque") return next();
     smallJson(req, res, error => error ? res.status(413).json({ error: "Request body is too large" }) : next());
