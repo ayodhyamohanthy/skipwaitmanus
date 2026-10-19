@@ -1,6 +1,8 @@
 # AGENTS.md - Vibecoding Operating Protocol & Architectural Guardrails
 
 > **Read [`docs/BRIEF.md`](./docs/BRIEF.md) first** — the one-page brief every AI model starts from (D-073). The full rules follow; they win any conflict with the brief.
+>
+> **Owner says `build`?** Run `node scripts/next-task.mjs --claim "<your model name · session>"` and do only the task it prints, step by step. Never choose work yourself: Claude Code sets the order in `docs/plans/assignments.json` (D-083).
 
 You are an expert senior software engineer acting as an autonomous implementation agent. Build production-grade, maintainable SkipWait software while avoiding context drift, phantom refactors, and breaking edits. Everything needed to work on this repo from a clean clone belongs here. No tribal knowledge.
 
@@ -32,6 +34,7 @@ Money rules refined by the owner on Oct 16 2026 (details in `docs/DECISIONS.md`)
 3. **Meritocracy (D-032).** If you see a better approach than a recorded decision, always recommend it with evidence. The founder takes the call: ask him, never override a decision on your own.
 4. **Where decisions live.** `docs/DECISIONS.md` is the current decisions list; keep it current when a decision is made or changed. These rules live here in `AGENTS.md`.
 5. **Green before `main` (D-082, owner, Oct 20 2026).** Push to `main` only when `main`'s latest CI is green, the full local gate passes on your commit merged with the latest `origin/main`, and GitHub CI is green on that exact commit (open a pull request first, a draft for Tier 1, and wait for every check). While `main` is red, push nothing but the fix. After landing, watch CI and both deploys to the end; if anything goes red, revert or fix your commit first. Never weaken a test or use `--no-verify`.
+6. **`build` (D-083, owner, Oct 20 2026).** When the owner says `build`, run `node scripts/next-task.mjs --claim "<model · session>"` and do only the task it prints. Claude Code keeps the order in `docs/plans/assignments.json`; nobody else reorders it.
 
 ## 0. Active program (read first): goal-focused build, formerly kit v4 fullstack (D-048, D-053)
 - **North-star goal (owner, Oct 14 2026):** SkipWait becomes the go-to, preferred **global** site for job referrals — and gets people referred **faster**. Every task, design and decision must be justified by how it moves that goal.
@@ -290,6 +293,7 @@ every endpoint here; record the active boundary and its source of truth.
 | Persistence and migrations | `drizzle/schema.ts`, `drizzle/00xx_*.sql`, `server/schemaReconcile.ts`; contract/migration first, forward-compatible boot reconciliation |
 | Container/runtime deploy | `wrangler.jsonc`, `src/worker.ts`, `.github/workflows/deploy-api.yml`; serialized rollout, canonical route + exact-SHA readiness |
 | Pages deploy | `.github/workflows/deploy-pages.yml`; same compatible source state as API, production visual verification |
+| Agent work queue (`build`) | `docs/plans/assignments.json` (Claude Code's order: packet, tier, lane, branch, dependencies, status), `scripts/next-task.mjs` (git + GitHub I/O, claims), `scripts/nextTaskCore.mjs` (pure picker: red main -> Tier 1 review/fix -> stalled claim -> next todo), `scripts/nextTaskText.mjs` (printed steps), `scripts/nextTask.test.ts`; a claim is the task branch on origin, review state is the marker commits on `agent/review/<slug>` (D-083) |
 | Sentry repair loop | `server/sentry.ts`, `client/src/lib/sentry.ts`; scrubbed event -> release-scoped issue -> regression -> verified production fix |
 
 Validation commands: `pnpm check`; `pnpm vitest run <affected tests>`;

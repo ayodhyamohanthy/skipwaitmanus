@@ -33,3 +33,24 @@ describe("the one-page brief for AI models (D-073)", () => {
     expect(head).toContain("docs/BRIEF.md");
   });
 });
+
+/**
+ * D-083: "build" means the same thing to every agent. Each agent entry doc says,
+ * near the top, to run the queue picker and do only the task it prints, so no
+ * model picks work on its own.
+ */
+const AGENT_ENTRY_DOCS = ENTRY_DOCS.filter(file => !["DESIGN.md", "PRICING.md"].includes(file));
+
+describe("the owner's `build` command (D-083)", () => {
+  it.each(AGENT_ENTRY_DOCS)("%s tells an agent what `build` means within its first lines", file => {
+    const head = readFileSync(path.join(root, file), "utf8").split("\n").slice(0, 8).join("\n");
+    expect(head).toContain("`build`");
+    expect(head).toContain("node scripts/next-task.mjs --claim");
+  });
+
+  it("the brief names the picker and the task list", () => {
+    const brief = readFileSync(path.join(root, BRIEF), "utf8");
+    expect(brief).toContain("node scripts/next-task.mjs --claim");
+    expect(brief).toContain("docs/plans/assignments.json");
+  });
+});

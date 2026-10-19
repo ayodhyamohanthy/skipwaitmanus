@@ -34,11 +34,12 @@ handles real money: a mistake reaches real users.
    unless the packet names it. Never open server/db.ts or
    server/privateReferralRoutes.ts whole (they are too large): find a
    function with `grep -n "name" <file>` and read only that line range.
-2. git fetch origin; create branch <BRANCH> from origin/main. If a
-   function the packet cites no longer matches it, stop (step 8).
-3. Claim the queue row: set its status in docs/KIT_V4_BUILD_PLAN.md §3b to
-   "in progress — <your model> — <date> — branch <BRANCH>" and land only
-   that change on main, the way step 7 lands any change.
+2. git fetch origin. If a function the packet cites no longer matches
+   it, stop (step 8).
+3. Claim it: node scripts/next-task.mjs --claim "<your model · session>"
+   pushes <BRANCH> to origin (the first push wins). Work in a worktree on
+   it. Your first commit sets its docs/KIT_V4_BUILD_PLAN.md §3b row to
+   "in progress — <your model> — <date> — branch <BRANCH>".
 4. Write the tests in packet section 7 first. Run them; they must fail for
    the reason the packet gives. Never change a test the packet gave you.
 5. Do packet section 6 one step at a time. After each step run its focused
@@ -66,52 +67,26 @@ handles real money: a mistake reaches real users.
    money, sign-in, identity or privacy.
 ```
 
-### 4a. Starting any model on the queue (no packet chosen yet)
-The owner pastes this into any coding agent to have it pick the next row by priority itself:
+### 4a. Starting any model: the owner says `build` (D-083)
+Every agent entry doc tells an agent what `build` means: run `node scripts/next-task.mjs --claim "<model · session>"` and do only the task it prints. The script reads Claude Code's order from `docs/plans/assignments.json` on `origin/main` and main's CI from GitHub, then decides:
+1. While `main` is red: only fixing it, and only one agent (a lock branch `agent/queue/fix-main-<sha>`).
+2. Tier 1 work in an open pull request: the review, or fixing the review's findings. Never by the agent that built, fixed or reviewed it; the review state is the marker commits on `agent/review/<slug>`, moved with `--verdict pass|findings --task <id> --as "<name>"` and `--fixed --task <id> --as "<name>"`.
+3. A claim with no commits for 24 hours (queue rule 2): continue it on the same branch.
+4. The first `todo` whose dependencies are done, whose lane is free and that nobody claimed.
+
+A claim is the task's branch on `origin`, an empty marker commit: the first push wins and a second agent's push is refused. Without `--claim` the script only shows the pick. Name yourself with a session tag (for example `Qwen 3 · 14:05`) so two sessions of one model count as different people for reviews.
+
+For an agent that loads no instruction file, paste:
 
 ```text
-You are working on SkipWait (github.com/ayodhyamohanthy/skipwaitmanus), a live
-product that handles real money. Pick up the next piece of work by priority.
-
-1. git fetch origin. Read docs/BRIEF.md, the newest entries in
-   docs/DECISIONS.md, the queue in docs/KIT_V4_BUILD_PLAN.md §3b and its
-   execution view docs/plans/README.md.
-2. Check main's latest CI run (gh run list --branch main --workflow CI
-   --limit 1). If it is red, that is your only task: fix it as a P0 or revert
-   the commit that broke it, and tell me.
-3. Otherwise pick exactly one row: a P0 first, then a stalled in-progress row
-   (no commits for 24 h), then the first todo row in order whose dependencies
-   are live, that has a packet in docs/plans/, and that nobody else has
-   claimed and that is not owner-blocked or parked. If none fits, stop and
-   tell me why.
-4. Tell me in two lines which row you picked and why, then follow
-   docs/DELEGATION.md section 4 for it exactly.
-5. Push to main only when everything is green (D-082): main's CI, the full
-   gate on your commit merged with origin/main, and every GitHub check on
-   that exact commit through a pull request. Tier 1 (money, sign-in,
-   identity, privacy, migrations): open a draft PR and stop for the
-   independent review; never land it yourself.
-6. After landing, watch CI and both deploys to the end, run the live check
-   and set the row to done with the SHA. If anything goes red, revert or fix
-   your commit first.
-7. If anything is unclear, a rule conflicts, or the call is mine: stop,
-   write the question in the row, push your branch and ask me. Never guess
-   about money, sign-in, identity or privacy.
+You are working on SkipWait (github.com/ayodhyamohanthy/skipwaitmanus), a
+live product that handles real money. git fetch origin, read docs/BRIEF.md,
+then run: node scripts/next-task.mjs --claim "<your model name · a session tag>"
+and do only the task it prints, exactly as it says. Never choose work
+yourself. If it prints STOP, WAIT or NOTHING TO PICK, tell me and stop.
 ```
 
-For the independent reviewer (a different session from the implementer):
-
-```text
-You are the independent reviewer for SkipWait
-(github.com/ayodhyamohanthy/skipwaitmanus). git fetch origin, read
-docs/BRIEF.md, then find the oldest docs/KIT_V4_BUILD_PLAN.md §3b row in
-review with a draft PR. Review it exactly as docs/DELEGATION.md section 6
-says, reproducing every claim yourself. Post the verdict on the PR. On a
-pass, land it only under D-082: the merged candidate's checks all green on
-that exact commit and main's own CI green; then watch CI and both deploys
-and run the live check. On findings, list each with file:line and the
-failing test to add first, and stop.
-```
+Claude Code keeps the list: a task goes in only with a ready packet (or as `architect` until it has one), and an agent changes only its own task's status, to done, in the pull request that lands it.
 
 ## 5. What the implementer returns (evidence block)
 Paste into the §3b row (keep it under 1,200 characters; details go in commit messages):
