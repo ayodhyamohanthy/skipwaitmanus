@@ -466,7 +466,7 @@ export const referralRequests = mysqlTable("referralRequests", {
   jobSeekerId: int("jobSeekerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   referrerId: int("referrerId").references(() => users.id, { onDelete: "set null" }),
   personalPitch: text("personalPitch").notNull(),
-  status: mysqlEnum("status", ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"]).default("pending").notNull(),
+  status: mysqlEnum("status", ["pending", "approved", "referred", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"]).default("pending").notNull(),
   revision: int("revision").default(0).notNull(),
   waitingForCoverage: boolean("waitingForCoverage").default(false).notNull(),
   coverageQueuedAt: timestamp("coverageQueuedAt"),
@@ -486,9 +486,19 @@ export const referralRequests = mysqlTable("referralRequests", {
   // (server/coverageDelivery.ts) until the hourly sweep delivers it.
   coverageVisibleAt: timestamp("coverageVisibleAt"),
   coverageHeldAt: timestamp("coverageHeldAt"),
+  // D-038/D-066 (migration 0096): the claim's 48-hour clock, the acceptance's
+  // 5-day clock for "Referred — submitted in our system", the one 3-day
+  // extension, and the seeker's own "I got the referral email" confirmation.
+  // Null acceptedAt on rows accepted before 0096 keeps historic acceptances
+  // out of the timer (never strand a pre-existing ask).
+  claimedAt: timestamp("claimedAt"),
+  acceptedAt: timestamp("acceptedAt"),
+  referredAt: timestamp("referredAt"),
+  referralExtendedAt: timestamp("referralExtendedAt"),
+  referralConfirmedAt: timestamp("referralConfirmedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), index("referral_requests_coverage_held_idx").on(table.coverageHeldAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), index("referral_requests_coverage_held_idx").on(table.coverageHeldAt), index("referral_requests_claim_timer_idx").on(table.status, table.claimedAt), index("referral_requests_referral_timer_idx").on(table.status, table.acceptedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
 export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   id: int("id").autoincrement().primaryKey(),
@@ -735,8 +745,8 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0089 added the kit ledger kinds, 0091 trial_grant.
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund", "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend", "trial_grant"]).notNull(),
+  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0089 added the kit ledger kinds, 0091 trial_grant, 0096 referral_release_refund.
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund", "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend", "trial_grant", "referral_release_refund"]).notNull(),
   source: varchar("source", { length: 40 }),
   sourceCycleKey: varchar("sourceCycleKey", { length: 16 }),
   referenceType: varchar("referenceType", { length: 40 }),

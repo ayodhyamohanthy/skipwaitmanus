@@ -151,6 +151,14 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   // nullable and older rows read through coalesce(coverageVisibleAt, createdAt).
   { table: "referralRequests", column: "coverageVisibleAt", definition: "TIMESTAMP NULL" },
   { table: "referralRequests", column: "coverageHeldAt", definition: "TIMESTAMP NULL" },
+  // D-038/D-066 (0096): claim (48 h), acceptance (5 days to "Referred", one
+  // 3-day extension) and the seeker's confirmation clocks. All nullable; a null
+  // acceptedAt keeps historic acceptances out of the timer.
+  { table: "referralRequests", column: "claimedAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "acceptedAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "referredAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "referralExtendedAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "referralConfirmedAt", definition: "TIMESTAMP NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -221,6 +229,9 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "referralRequests", name: "referral_requests_first_look_idx", columns: "`firstLookUntil`", nonUnique: true },
   // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
   { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
+  // D-038/D-066 (0096): the claim and referral timer sweeps scan by these two.
+  { table: "referralRequests", name: "referral_requests_claim_timer_idx", columns: "`status`,`claimedAt`", nonUnique: true },
+  { table: "referralRequests", name: "referral_requests_referral_timer_idx", columns: "`status`,`acceptedAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is

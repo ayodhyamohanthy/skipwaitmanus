@@ -10,7 +10,7 @@ import type { getDb } from "./db";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
-export type BaselineRequestRow = { id: number; companyDomain: string; status: string; referrerId: number | null; createdAt: Date | string };
+export type BaselineRequestRow = { id: number; companyDomain: string; status: string; referrerId: number | null; createdAt: Date | string; referredAt?: Date | string | null };
 export type BaselineReferrerRow = { userId: number; accountType: string | null; workEmailDomain: string | null; workEmailVerifiedAt: Date | null; paused: boolean; referralCapacity: number | null; userSuspended: boolean; personSuspended: boolean | null };
 export type BaselineTransitionRow = { requestId: number; actorUserId: number; action: string; createdAt: Date | string };
 export type BaselineWalletRow = { plan: string; trialEndsAt: Date | null; subscriptionCurrentTermEnd: Date | null };
@@ -29,7 +29,7 @@ export type FlowBaselineSource = {
 export function drizzleFlowBaselineSource(db: Db): FlowBaselineSource {
   return {
     // Statuses, timestamps and company domains only; a seeker's note never enters this query.
-    loadRequests: () => db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt })
+    loadRequests: () => db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt, referredAt: referralRequests.referredAt })
       .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
     loadPassedRequestIds: async () => (await db.select({ id: referralRequestPasses.referralRequestId }).from(referralRequestPasses)).map(row => row.id),
     // Accept and pass are the referrer's decisions; claim and review only mark activity.

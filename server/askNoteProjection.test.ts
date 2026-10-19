@@ -155,10 +155,10 @@ describe("referrer-facing reads", () => {
     expect(select?.projection?.candidateMessage).toBe(referralRequests.personalPitch);
     expect(select?.projection?.title).toBe(jobs.title);
     expect(exposesNote(select)).toBe(true);
-    expect(columnsOf(select)).toEqual(["acceptedByActorAt", "candidateMessage", "candidateName", "companyDomain", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
+    expect(columnsOf(select)).toEqual(["acceptedAt", "acceptedByActorAt", "candidateMessage", "candidateName", "claimedAt", "companyDomain", "grantExpiresAt", "grantId", "grantRevokedAt", "id", "jobFunction", "passId", "referralConfirmedAt", "referralExtendedAt", "referredAt", "referrerId", "revision", "status", "targetRoleUrl", "title"]);
     // D-019(e): the ask loads on its assignment alone (a claim writes no grant); no grant condition gates the row.
     const where = select?.where ? dialect.sqlToQuery(select.where) : undefined;
-    expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "intro_made", "interview", "offer"]);
+    expect(where?.params).toEqual([501, REFERRER, "pending", "approved", "referred", "intro_made", "interview", "offer"]);
     expect(where?.sql).not.toContain("referralDocumentAccessGrants");
     expect(detail).toMatchObject({ id: 501, title: "Product Designer", candidateMessage: NOTE, candidateName: "Avery", documentAccessActive: true });
     for (const internal of ["grantId", "grantRevokedAt", "grantExpiresAt", "passId", "acceptedByActorAt", "grantVersion", "grantRevision"]) expect(detail).not.toHaveProperty(internal);

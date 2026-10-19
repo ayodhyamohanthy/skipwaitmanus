@@ -7,7 +7,7 @@ import { ReferrerPanel, SeekerPanel } from "@/components/thread/ThreadDecisionPa
 import { ThreadMain } from "@/components/thread/ThreadMain";
 import { canMessage, companyName, isAccepted } from "@/components/thread/threadModel";
 import { usePersistFn } from "@/hooks/usePersistFn";
-import { decideReview, loadConversation, loadThread, recordProgress, sendConversationMessage, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
+import { confirmThreadReferral, decideReview, extendThreadReferral, loadConversation, loadThread, markThreadReferred, recordProgress, sendConversationMessage, stepBackThreadReferral, withdrawThreadRequest, type ThreadMessage, type ThreadRequest, type ThreadRole } from "@/lib/threadApi";
 import { trpc } from "@/lib/trpc";
 
 const errorText = (reason: unknown, fallback: string) => (reason instanceof Error ? reason.message : fallback);
@@ -129,6 +129,7 @@ export default function ReferralConversation() {
                   request={request}
                   onWithdraw={async () => { await withdrawThreadRequest(request.id, fetchToken); await reload(); }}
                   onProgress={async status => { await recordProgress(request.id, status, fetchToken); await reload(); }}
+                  onConfirmReferral={async () => { await confirmThreadReferral(request.id, fetchToken); await reload(); }}
                 />
               ) : (
                 <ReferrerPanel
@@ -141,7 +142,9 @@ export default function ReferralConversation() {
                   // employees and out of this referrer's reach, so there is
                   // nothing further to reload for this account.
                   onPass={async (reason, passReason) => { await decideReview(request.id, "declined", reason, fetchToken, passReason); setPassed(true); }}
-                  onMarkReferred={async reference => { await recordProgress(request.id, "intro_made", fetchToken, reference); await reload(); }}
+                  onMarkReferred={async reference => { await markThreadReferred(request.id, reference, fetchToken); await reload(); }}
+                  onExtend={async () => { await extendThreadReferral(request.id, fetchToken); await reload(); }}
+                  onStepBack={async () => { await stepBackThreadReferral(request.id, fetchToken); await reload(); }}
                 />
               )}
             </div>

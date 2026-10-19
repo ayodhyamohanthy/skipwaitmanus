@@ -14,6 +14,7 @@ describe("requests view model", () => {
   it("maps every live status onto the kit pill vocabulary", () => {
     expect(requestPillStatus(ask({ status: "pending" }))).toBe("Requested");
     expect(requestPillStatus(ask({ status: "approved", referrerId: 7 }))).toBe("Accepted");
+    expect(requestPillStatus(ask({ status: "referred", referrerId: 7 }))).toBe("Referred");
     expect(requestPillStatus(ask({ status: "intro_made", referrerId: 7 }))).toBe("Referred");
     expect(requestPillStatus(ask({ status: "interview", referrerId: 7 }))).toBe("Interviewing");
     expect(requestPillStatus(ask({ status: "offer", referrerId: 7 }))).toBe("Offer");
@@ -25,6 +26,7 @@ describe("requests view model", () => {
 
   it("writes the next real step, never an invented one", () => {
     expect(requestNote(ask({ status: "approved", referrerId: 7 }), now)).toBe("Message your referrer");
+    expect(requestNote(ask({ status: "referred", referrerId: 7 }), now)).toBe("Referral submitted");
     expect(requestNote(ask({ status: "approved", referrerId: 7, unreadMessageCount: 3 }), now)).toBe("3 new");
     expect(requestNote(ask({ status: "declined", referrerId: 7, referrerMessage: "Not my team" }), now)).toBe("Not my team");
     expect(requestNote(ask({ status: "pending", referrerId: 7, queueStatus: "available_for_review" }), now)).toBe("Available for review");

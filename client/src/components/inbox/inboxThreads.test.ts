@@ -9,7 +9,7 @@ const referring = (patch: Partial<ReferringRow> = {}): ReferringRow => ({ id: 2,
 
 describe("inbox thread derivation", () => {
   it("maps every live referral status onto the kit status vocabulary", () => {
-    expect(referralStatuses.map(kitStatusFor)).toEqual(["Requested", "Accepted", "Declined", "Referred", "Interviewing", "Offer", "Closed", "Withdrawn"]);
+    expect(referralStatuses.map(kitStatusFor)).toEqual(["Requested", "Accepted", "Referred", "Declined", "Referred", "Interviewing", "Offer", "Closed", "Withdrawn"]);
   });
 
   it("names companies from the server directory fields and falls back to the raw domain", () => {

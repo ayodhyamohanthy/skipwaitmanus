@@ -17,6 +17,7 @@ export function stageOf(request: Pick<ThreadRequest, "status" | "referrerId">): 
   switch (request.status) {
     case "pending": return "Requested";
     case "approved": return "Accepted";
+    case "referred": return "Referred";
     case "intro_made": return "Referred";
     case "interview": return "Interviewing";
     case "offer": return "Offer";

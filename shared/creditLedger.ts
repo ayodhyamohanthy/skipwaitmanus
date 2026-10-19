@@ -43,18 +43,19 @@ export const EXPIRING_SOON_MS = 7 * DAY_MS;
 export const LEDGER_PAGE_DEFAULT = 50;
 export const LEDGER_PAGE_MAX = 100;
 
-/** tokenTransactions.kind, in drizzle/schema.ts order (pinned by server/creditLedgerContract.test.ts): 0089's list, then 0091's. */
+/** tokenTransactions.kind, in drizzle/schema.ts order (pinned by server/creditLedgerContract.test.ts): 0089's list, then 0091's, then 0096's. */
 export const TOKEN_LEDGER_KINDS = [
   "purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward",
   "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund",
   "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend",
-  "trial_grant",
+  "trial_grant", "referral_release_refund",
 ] as const;
 export type TokenLedgerKind = (typeof TOKEN_LEDGER_KINDS)[number];
 
 /** Ledger rows that take credits out (spends) and that return a spent credit (refunds). */
 export const SPEND_KINDS: readonly TokenLedgerKind[] = ["direct_request", "promo_spend", "credit_spend"];
-export const REFUND_KINDS: readonly TokenLedgerKind[] = ["withdrawal_refund", "expiry_refund"];
+/** D-038/D-066: the credit released when an accepted referrer steps back or misses the 5-day "Referred" deadline. */
+export const REFUND_KINDS: readonly TokenLedgerKind[] = ["withdrawal_refund", "expiry_refund", "referral_release_refund"];
 /** Pending invite rewards are not credits yet; they become an invite_reward_granted row. */
 export const HIDDEN_LEDGER_KINDS: readonly TokenLedgerKind[] = ["invite_reward_pending"];
 

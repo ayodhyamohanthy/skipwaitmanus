@@ -26,6 +26,7 @@ export function requestPillStatus(request: ReferralRequest): RequestPillStatus {
   switch (request.status) {
     case "pending": return "Requested";
     case "approved": return "Accepted";
+    case "referred": return "Referred";
     case "intro_made": return "Referred";
     case "interview": return "Interviewing";
     case "offer": return "Offer";
@@ -51,6 +52,7 @@ export function requestNote(request: ReferralRequest, nowMs: number): string {
   }
   if (isPostApprovalReferralStatus(request.status) && request.unreadMessageCount > 0) return `${request.unreadMessageCount} new`;
   if (request.status === "approved") return "Message your referrer";
+  if (request.status === "referred") return "Referral submitted";
   if (request.status === "declined" && request.referrerMessage) return request.referrerMessage;
   return `Updated ${compactDate(request.updatedAt)}`;
 }

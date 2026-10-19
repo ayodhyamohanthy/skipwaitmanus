@@ -35,9 +35,9 @@ const toMs = (value: Date | string | number): number => (value instanceof Date ?
 type OutcomeCounts = { accepted: number; passed: number; expired: number; declined: number; withdrawn: number; waiting: number };
 
 function outcomeOf(request: BaselineRequestRow, wasPassed: boolean): keyof OutcomeCounts {
-  if (request.status === "approved" || request.status === "intro_made" || request.status === "interview" || request.status === "offer") return "accepted";
+  if (request.status === "approved" || request.status === "referred" || request.status === "intro_made" || request.status === "interview" || request.status === "offer") return "accepted";
   if (request.status === "withdrawn") return "withdrawn";
-  if (request.status === "closed") return "expired";
+  if (request.status === "closed") return request.referredAt == null ? "expired" : "accepted";
   if (request.status === "declined") return "declined";
   return wasPassed ? "passed" : "waiting";
 }

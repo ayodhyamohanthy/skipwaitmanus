@@ -168,10 +168,11 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(screen.getByText("Thank you — what should I prepare next?")).toBeTruthy());
   });
 
-  it("gives the accepted seeker only the coordinate note; progress opens once referred (kit v4)", async () => {
+  it("gives the accepted seeker the referral submission note and confirmation; progress opens once referred (kit v4)", async () => {
     stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [seekerApproved] }) : ok({ messages: [] })));
     render(<ReferralConversation />);
-    expect(await screen.findByText(/Use messages to coordinate/)).toBeTruthy();
+    expect(await screen.findByText("Your referrer is submitting it.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /I got the referral email/ })).toBeTruthy();
     expect(screen.queryByText("Update your progress")).toBeNull();
     expect(screen.queryByRole("button", { name: "Interviewing" })).toBeNull();
   });
@@ -222,9 +223,9 @@ describe("ReferralConversation thread", () => {
 
   it("marks the referral submitted through the referrer's Mark as referred", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.endsWith("/progress")) {
-        expect(JSON.parse(String(init?.body))).toEqual({ status: "intro_made" });
-        return ok({ progress: { status: "intro_made", changed: true } });
+      if (url.endsWith("/referred")) {
+        expect(JSON.parse(String(init?.body))).toEqual({});
+        return ok({ status: "referred", changed: true });
       }
       if (url.endsWith("/mine")) return ok({ requests: [] });
       if (url.endsWith("/preview")) return fail(404, "claimed");
@@ -235,13 +236,13 @@ describe("ReferralConversation thread", () => {
     expect(await screen.findByText("Submit through your company.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Mark as referred/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Confirm/ }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/referred", expect.objectContaining({ method: "POST" })));
   });
 
   it("sends the optional portal reference ID with Mark as referred", async () => {
     const bodies: unknown[] = [];
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-      if (url.endsWith("/progress")) { bodies.push(JSON.parse(String(init?.body))); return ok({ progress: { status: "intro_made", changed: true } }); }
+      if (url.endsWith("/referred")) { bodies.push(JSON.parse(String(init?.body))); return ok({ status: "referred", changed: true }); }
       if (url.endsWith("/mine")) return ok({ requests: [] });
       if (url.endsWith("/preview")) return fail(404, "claimed");
       return ok({ request: { ...referrerPreview, status: "approved", referrerId: 9, candidateName: "Asha R.", attachments: [] } });
@@ -253,7 +254,39 @@ describe("ReferralConversation thread", () => {
     expect(await screen.findByText(/Optional: add your portal/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText(/Reference ID/), { target: { value: " TC-4410 " } });
     fireEvent.click(screen.getByRole("button", { name: /Confirm/ }));
-    await waitFor(() => expect(bodies).toEqual([{ status: "intro_made", referenceId: "TC-4410" }]));
+    await waitFor(() => expect(bodies).toEqual([{ referenceId: "TC-4410" }]));
+  });
+
+  it("shows the accepted referrer the real deadline, one 3-day extension and a no-fault step back (D-038/D-066)", async () => {
+    const acceptedAt = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/referred-extension")) return ok({ extended: true });
+      if (url.endsWith("/step-back")) return ok({ status: "pending", creditRefunded: true });
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "claimed");
+      return ok({ request: { ...referrerPreview, status: "approved", referrerId: 9, candidateName: "Asha R.", acceptedAt, attachments: [] } });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Mark referred within 3 days")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Need 3 more days/ }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/referred-extension", expect.objectContaining({ method: "POST" })));
+    fireEvent.click(screen.getByRole("button", { name: /I can't refer this after all/ }));
+    expect(await screen.findByText("Step back from this referral?")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Step back" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/step-back", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("lets the seeker confirm they got the referral email", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.endsWith("/confirm-referral")) return ok({ status: "referred", confirmed: true, changed: true });
+      if (url.endsWith("/mine")) return ok({ requests: [seekerApproved] });
+      return ok({ messages: [] });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    fireEvent.click(await screen.findByRole("button", { name: /I got the referral email/ }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/confirm-referral", expect.objectContaining({ method: "POST" })));
   });
   it("shows a retryable error when the network fails, then recovers", async () => {
     let attempts = 0;

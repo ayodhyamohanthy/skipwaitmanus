@@ -21,7 +21,7 @@ const fixture = (overrides: Partial<FlowBaselineSource> = {}): FlowBaselineSourc
   ...overrides,
 });
 
-const request = (id: number, companyDomain: string, status: string, createdAt: number, referrerId: number | null = null) => ({ id, companyDomain, status, referrerId, createdAt: new Date(createdAt) });
+const request = (id: number, companyDomain: string, status: string, createdAt: number, referrerId: number | null = null, referredAt: number | null = null) => ({ id, companyDomain, status, referrerId, createdAt: new Date(createdAt), referredAt: referredAt === null ? null : new Date(referredAt) });
 const referrer = (userId: number, domain: string | null, overrides: Partial<{ paused: boolean; referralCapacity: number | null; verified: boolean; userSuspended: boolean; personSuspended: boolean | null }> = {}) => ({
   userId,
   accountType: "referrer",
@@ -69,6 +69,15 @@ describe("D-018 baseline aggregation", () => {
     expect(baseline.expiries).toEqual({ total: 1, last7Days: 1 });
     // 30 h and 50 h: the median averages the middle pair, p90 is nearest-rank.
     expect(baseline.decisionLatency).toEqual({ sampleSize: 2, medianHours: 40, p90Hours: 50 });
+  });
+
+  it("counts an ask closed after Referred as accepted, not expired (D-066(3))", async () => {
+    const baseline = await buildFlowBaseline(fixture({
+      loadRequests: async () => [request(1, "acme.com", "closed", Date.UTC(2026, 9, 12, 9), 11, Date.UTC(2026, 9, 13, 9))],
+      loadReferrerProfiles: async () => [referrer(11, "acme.com")],
+    }), { nowMs: NOW });
+    expect(baseline.weeks.find(week => week.weekStart === "2026-10-12")).toMatchObject({ asks: 1, accepted: 1, expired: 0 });
+    expect(baseline.expiries).toEqual({ total: 0, last7Days: 0 });
   });
 
   it("counts uncovered asks from current coverage, and only asks inside the window", async () => {

@@ -60,8 +60,8 @@ beforeEach(() => {
   tables = {
     profiles: [{ id: 1, userId: 9, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(T0 - 30 * DAY) }],
     requests: [
-      { id: 101, status: "approved", referrerId: 9 },
-      { id: 102, status: "interview", referrerId: 9 },
+      { id: 101, status: "referred", referrerId: 9, referredAt: new Date(T0 + DAY) },
+      { id: 102, status: "interview", referrerId: 9, referredAt: new Date(T0 + 5 * DAY) },
       { id: 103, status: "pending", referrerId: 9 },
     ],
     events: [
@@ -77,22 +77,34 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllEnvs(); });
 
 describe("referrer impact reply latency", () => {
-  it("counts decisions within 3 days of the referrer's own claim", async () => {
+  it("counts decisions within 2 days of the referrer's own claim", async () => {
     const summary = await getPrivateReferrerImpactSummary(9);
     expect(summary).toMatchObject({ reviewed: 3, approved: 2, introductions: 1, interviews: 1, offers: 0 });
-    expect(summary.repliedWithin3DaysPct).toBe(50);
+    expect(summary.repliedWithin2DaysPct).toBe(50);
   });
 
   it("returns null with no decisions yet", async () => {
     tables.events = tables.events.filter(e => e.action === "claim");
     const summary = await getPrivateReferrerImpactSummary(9);
-    expect(summary.repliedWithin3DaysPct).toBeNull();
+    expect(summary.repliedWithin2DaysPct).toBeNull();
+  });
+
+  it("never counts an accepted ask that was not referred (D-066(3))", async () => {
+    tables.requests = [{ id: 101, status: "approved", referrerId: 9 }];
+    const summary = await getPrivateReferrerImpactSummary(9);
+    expect(summary).toMatchObject({ reviewed: 1, approved: 0, introductions: 0, interviews: 0, offers: 0 });
+  });
+
+  it("keeps a referral that was later closed in People helped (D-066(3))", async () => {
+    tables.requests = [{ id: 104, status: "closed", referrerId: 9, referredAt: new Date(T0 + 2 * DAY) }];
+    const summary = await getPrivateReferrerImpactSummary(9);
+    expect(summary).toMatchObject({ reviewed: 1, approved: 1, introductions: 0, interviews: 0, offers: 0 });
   });
 
   it("ignores other referrers' events and unverified access", async () => {
     tables.events.push({ id: 5, referralRequestId: 101, operationKey: "claim:4", actorUserId: 4, action: "claim", fromStatus: "pending", resultingStatus: "pending", resultingRevision: 1, createdAt: new Date(T0) });
     const summary = await getPrivateReferrerImpactSummary(9);
-    expect(summary.repliedWithin3DaysPct).toBe(50);
+    expect(summary.repliedWithin2DaysPct).toBe(50);
     tables.profiles = [];
     await expect(getPrivateReferrerImpactSummary(9)).rejects.toThrow(/verify your company email/i);
   });

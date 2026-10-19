@@ -25,7 +25,7 @@ import { referralDocumentAccessGrants, referralRequests, referralTransitionEvent
  */
 
 /** Accepted and unfinished. Never the claimed-but-pending state, never closed. */
-export const REFERRER_DOCUMENT_ACCESS_STATUSES = ["approved", "intro_made", "interview", "offer"] as const;
+export const REFERRER_DOCUMENT_ACCESS_STATUSES = ["approved", "referred", "intro_made", "interview", "offer"] as const;
 const ACCESS_STATUSES: ReadonlySet<string> = new Set(REFERRER_DOCUMENT_ACCESS_STATUSES);
 
 export const DOCUMENT_GRANT_TTL_MS = 30 * 24 * 60 * 60 * 1000;

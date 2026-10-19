@@ -11,7 +11,7 @@ export const statusToneColors: Record<StatusTone, { bg: string; text: string; do
   red: { bg: "rgba(176,35,24,.12)", text: "#B91C1C", dot: "#B91C1C" },
   slate: { bg: "rgba(19,19,17,.05)", text: "#505050", dot: "#767676" },
 };
-export const referralStatusTones: Record<ReferralStatus, StatusTone> = { pending: "amber", approved: "green", declined: "red", intro_made: "blue", interview: "blue", offer: "green", closed: "slate", withdrawn: "slate" };
+export const referralStatusTones: Record<ReferralStatus, StatusTone> = { pending: "amber", approved: "green", referred: "green", declined: "red", intro_made: "blue", interview: "blue", offer: "green", closed: "slate", withdrawn: "slate" };
 export type StatusBadgeLabel = { label: string; tone: StatusTone };
 export function statusBadgeTone(label: string, tone: StatusTone): StatusBadgeLabel { return { label, tone }; }
 

@@ -11,11 +11,11 @@ import type { ReferrerImpact } from "./referrerData";
 type Props = { impact: ReferrerImpact | null; paused: boolean; pending: boolean; onToggle: () => void };
 
 export function HomeAside({ impact, paused, pending, onToggle }: Props) {
-  const reply = impact?.repliedWithin3DaysPct;
+  const reply = impact?.repliedWithin2DaysPct;
   const record: Array<[string, string]> = [
     ["Introductions", String(impact?.introductions ?? 0)],
     ["People helped", String(impact?.approved ?? 0)],
-    ["Replied within 3 days", typeof reply === "number" ? `${reply}%` : "—"],
+    ["Replied within 2 days", typeof reply === "number" ? `${reply}%` : "—"],
   ];
   return (
     <aside className="space-y-4">

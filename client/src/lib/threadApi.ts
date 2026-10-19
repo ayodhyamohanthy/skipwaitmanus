@@ -35,6 +35,10 @@ const seekerRowSchema = z.object({
   referrerName: z.string().nullish(),
   referrerTitle: z.string().nullish(),
   referrerMessage: z.string().nullish(),
+  acceptedAt: timestampSchema,
+  referredAt: timestampSchema,
+  referralExtendedAt: timestampSchema,
+  referralConfirmedAt: timestampSchema,
   createdAt: timestampSchema,
   attachmentCount: z.number().nullish(),
   heldForReferrer: z.boolean().nullish().catch(null),
@@ -70,6 +74,10 @@ const detailSchema = z.object({
     candidateName: z.string().nullish(),
     referrerId: z.number().int().nullish(),
     status: statusSchema,
+    acceptedAt: timestampSchema,
+    referredAt: timestampSchema,
+    referralExtendedAt: timestampSchema,
+    referralConfirmedAt: timestampSchema,
     attachments: z.array(attachmentSchema).nullish(),
   }),
 });
@@ -99,6 +107,11 @@ export type ThreadRequest = {
   referrerName?: string | null;
   referrerTitle?: string | null;
   referrerMessage: string | null;
+  /** D-038: the referral clocks, so the thread can show the real deadline and confirmation state. */
+  acceptedAt?: string | number | null;
+  referredAt?: string | number | null;
+  referralExtendedAt?: string | number | null;
+  referralConfirmedAt?: string | number | null;
   createdAt: string | number | null;
   attachments: readonly ThreadAttachment[];
   attachmentCount: number;
@@ -146,6 +159,7 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
       request: {
         id: own.id, title: own.title ?? null, pitch: own.pitch ?? null, candidateName: null, targetRoleUrl: own.targetRoleUrl ?? null,
         companyDomain: own.companyDomain, companyName: own.companyName ?? null, companyInitials: own.companyInitials ?? null, jobFunction: own.jobFunction ?? null, status: own.status, referrerId: own.referrerId ?? null, referrerName: own.referrerName ?? null, referrerTitle: own.referrerTitle ?? null, referrerMessage: own.referrerMessage ?? null,
+        acceptedAt: own.acceptedAt ?? null, referredAt: own.referredAt ?? null, referralExtendedAt: own.referralExtendedAt ?? null, referralConfirmedAt: own.referralConfirmedAt ?? null,
         createdAt: own.createdAt ?? null, attachments: [], attachmentCount: own.attachmentCount ?? 0, heldForReferrer: own.heldForReferrer === true, queueStatus: own.queueStatus ?? null,
       },
     };
@@ -176,7 +190,8 @@ export async function loadThread(requestId: number, getToken: TokenGetter): Prom
     request: {
       id: request.id, title: request.title ?? null, pitch: request.candidateMessage ?? null, candidateName: accepted ? request.candidateName ?? null : null,
       targetRoleUrl: request.targetRoleUrl ?? null, companyDomain: request.companyDomain, companyName: request.companyName ?? null, companyInitials: request.companyInitials ?? null, jobFunction: request.jobFunction ?? null, status: request.status, referrerId: request.referrerId ?? null,
-      referrerMessage: null, createdAt: null, attachments: accepted ? attachments : [], attachmentCount: request.attachments?.length ?? 0,
+      referrerMessage: null, acceptedAt: request.acceptedAt ?? null, referredAt: request.referredAt ?? null, referralExtendedAt: request.referralExtendedAt ?? null, referralConfirmedAt: request.referralConfirmedAt ?? null,
+      createdAt: null, attachments: accepted ? attachments : [], attachmentCount: request.attachments?.length ?? 0,
     },
   };
 }
@@ -200,6 +215,23 @@ export async function decideReview(requestId: number, decision: "approved" | "de
 
 export async function recordProgress(requestId: number, status: string, getToken: TokenGetter, referenceId?: string) {
   return authedFetch(`/api/company-referrals/${requestId}/progress`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(referenceId ? { status, referenceId } : { status }) });
+}
+
+/** D-038: "Referred — submitted in our system"; only this marks a referral. */
+export async function markThreadReferred(requestId: number, referenceId: string | undefined, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/referred`, getToken, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(referenceId ? { referenceId } : {}) });
+}
+
+export async function extendThreadReferral(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/referred-extension`, getToken, { method: "POST" });
+}
+
+export async function confirmThreadReferral(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/confirm-referral`, getToken, { method: "POST" });
+}
+
+export async function stepBackThreadReferral(requestId: number, getToken: TokenGetter) {
+  return authedFetch(`/api/company-referrals/${requestId}/step-back`, getToken, { method: "POST" });
 }
 
 export async function withdrawThreadRequest(requestId: number, getToken: TokenGetter) {

@@ -21,7 +21,7 @@ const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof val
 const count = z.number().int().nonnegative();
 
 const profileSchema = z.object({ profile: z.object({ workEmailVerifiedAt: timestamp.nullish(), referralCapacity: z.number().int().nullish() }).nullish() });
-const impactSchema = z.object({ summary: z.object({ reviewed: count, approved: count, introductions: count, interviews: count, offers: count, repliedWithin3DaysPct: z.number().min(0).max(100).nullish() }) });
+const impactSchema = z.object({ summary: z.object({ reviewed: count, approved: count, introductions: count, interviews: count, offers: count, repliedWithin2DaysPct: z.number().min(0).max(100).nullish() }) });
 const inboxRowSchema = z.object({
   id: z.number().int().positive(),
   companyDomain: z.string().min(1),

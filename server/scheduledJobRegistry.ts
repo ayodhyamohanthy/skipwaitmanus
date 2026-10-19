@@ -4,6 +4,7 @@
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
 import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
+import { createReferralTimerSweep } from "./referralTimerSweep";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { createChargebeePendingReconcile } from "./chargebeePendingReconcile";
@@ -70,5 +71,12 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createCoverageDeliverySweep(),
+  },
+  {
+    name: "referral-timer-sweep",
+    description: "D-038 clocks: lapses a claim after 48 hours, reopens an accepted ask whose 5-day referral deadline passed (releasing the credit once), and sends the 24-hour claim plus day-2/day-4 referral reminders",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createReferralTimerSweep(),
   },
 ];

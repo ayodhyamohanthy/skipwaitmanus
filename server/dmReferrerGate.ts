@@ -45,7 +45,7 @@ export type DmGateStore = {
  * (server/adminReferralApproval.ts), so "approved" with a referrer always
  * comes from that referrer's own acceptance.
  */
-const OPEN_AFTER_ACCEPTANCE: readonly ReferralStatus[] = ["approved", "intro_made", "interview", "offer"];
+const OPEN_AFTER_ACCEPTANCE: readonly ReferralStatus[] = ["approved", "referred", "intro_made", "interview", "offer"];
 const ACCEPTED_STATUS_NAMES: ReadonlySet<string> = new Set(OPEN_AFTER_ACCEPTANCE);
 
 export function isAcceptanceEvidence(event: DmGateEventRow): boolean {

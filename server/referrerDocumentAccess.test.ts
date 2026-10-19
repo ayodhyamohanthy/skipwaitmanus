@@ -24,8 +24,8 @@ const legacy: ReferrerAskAccessInput = { ...granted, grant: null };
 const adminApproved: ReferrerAskAccessInput = { ...granted, acceptedByActorAt: null };
 
 describe("accepted statuses", () => {
-  it("are exactly approved, intro_made, interview and offer; never pending or closed", () => {
-    expect([...REFERRER_DOCUMENT_ACCESS_STATUSES]).toEqual(["approved", "intro_made", "interview", "offer"]);
+  it("are exactly approved, referred, intro_made, interview and offer; never pending or closed", () => {
+    expect([...REFERRER_DOCUMENT_ACCESS_STATUSES]).toEqual(["approved", "referred", "intro_made", "interview", "offer"]);
     for (const status of REFERRER_DOCUMENT_ACCESS_STATUSES) expect(referralStatuses).toContain(status);
     for (const status of ["pending", "closed", "declined", "withdrawn", "unknown", null, undefined]) expect(isReferrerDocumentAccessStatus(status)).toBe(false);
   });

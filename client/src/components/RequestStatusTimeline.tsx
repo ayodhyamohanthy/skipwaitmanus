@@ -32,6 +32,7 @@ export function buildRequestTimeline(request: { status: ReferralStatus; referrer
   if (request.status === "declined") return [sent, claimedEntry, { label: "Declined", date: request.updatedAt, tone: "red", state: "done" }];
   const decided: TimelineEntry = { label: "Referral accepted", date: request.status === "approved" ? request.updatedAt : null, tone: "green", state: "done" };
   if (request.status === "approved") return [sent, claimedEntry, decided];
+  if (request.status === "referred") return [sent, claimedEntry, decided, { label: "Referral submitted", date: request.updatedAt, tone: "green", state: "done" }];
   const milestoneLabel: Partial<Record<ReferralStatus, string>> = { intro_made: "Introduction made", interview: "Interview recorded", offer: "Offer recorded", closed: "Request closed" };
   return [sent, claimedEntry, decided, { label: milestoneLabel[request.status] ?? "Updated", date: request.updatedAt, tone: request.status === "closed" ? "slate" : request.status === "offer" ? "green" : "blue", state: "done" }];
 }

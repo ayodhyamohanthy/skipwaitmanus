@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 import { postApprovalReferralStatuses } from "../shared/referral";
 import { dmGateQueries } from "./dmReferrerGate";
 
-const ACCEPTED = ["approved", "intro_made", "interview", "offer"];
+const ACCEPTED = ["approved", "referred", "intro_made", "interview", "offer"];
 const queries = () => dmGateQueries(drizzle.mock());
 
 describe("DM referrer gate SQL (drizzle store contract)", () => {
@@ -22,7 +22,7 @@ describe("DM referrer gate SQL (drizzle store contract)", () => {
 
   it("reads post-approval requests linking the two people in either direction", () => {
     const built = queries().acceptedRequestsBetween([11, 44], [22]).toSQL();
-    expect(built.sql).toBe("select `id`, `jobSeekerId`, `referrerId`, `status` from `referralRequests` where (`referralRequests`.`status` in (?, ?, ?, ?, ?) and ((`referralRequests`.`jobSeekerId` in (?, ?) and `referralRequests`.`referrerId` in (?)) or (`referralRequests`.`jobSeekerId` in (?) and `referralRequests`.`referrerId` in (?, ?))))");
+    expect(built.sql).toBe("select `id`, `jobSeekerId`, `referrerId`, `status` from `referralRequests` where (`referralRequests`.`status` in (?, ?, ?, ?, ?, ?) and ((`referralRequests`.`jobSeekerId` in (?, ?) and `referralRequests`.`referrerId` in (?)) or (`referralRequests`.`jobSeekerId` in (?) and `referralRequests`.`referrerId` in (?, ?))))");
     // a = [11, 44], b = [22]: (jobSeekerId IN a AND referrerId IN b) OR (jobSeekerId IN b AND referrerId IN a).
     expect(built.params).toEqual([...postApprovalReferralStatuses, 11, 44, 22, 22, 11, 44]);
     expect(postApprovalReferralStatuses).toEqual([...ACCEPTED, "closed"]);
@@ -30,7 +30,7 @@ describe("DM referrer gate SQL (drizzle store contract)", () => {
 
   it("reads transition events of closed requests that entered or left an accepted status", () => {
     expect(queries().acceptanceEvents([7, 9]).toSQL()).toEqual({
-      sql: "select `referralRequestId`, `fromStatus`, `resultingStatus` from `referralTransitionEvents` where (`referralTransitionEvents`.`referralRequestId` in (?, ?) and (`referralTransitionEvents`.`resultingStatus` in (?, ?, ?, ?) or `referralTransitionEvents`.`fromStatus` in (?, ?, ?, ?)))",
+      sql: "select `referralRequestId`, `fromStatus`, `resultingStatus` from `referralTransitionEvents` where (`referralTransitionEvents`.`referralRequestId` in (?, ?) and (`referralTransitionEvents`.`resultingStatus` in (?, ?, ?, ?, ?) or `referralTransitionEvents`.`fromStatus` in (?, ?, ?, ?, ?)))",
       params: [7, 9, ...ACCEPTED, ...ACCEPTED],
     });
   });

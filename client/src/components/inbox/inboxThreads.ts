@@ -60,6 +60,7 @@ export type InboxThread = {
 const KIT_STATUS: Record<ReferralStatus, KitStatus> = {
   pending: "Requested",
   approved: "Accepted",
+  referred: "Referred",
   intro_made: "Referred",
   interview: "Interviewing",
   offer: "Offer",

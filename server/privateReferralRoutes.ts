@@ -130,6 +130,11 @@ export type PrivateReferralRouteDeps = {
   completeWorkEmailOtpEnrollment?: (input: { receipt: string; email: string; userId: number; inviteCode?: string }) => Promise<{ workEmailDomain: string; reward: { rewarded: boolean; tokenCount?: number }; replayed: boolean }>;
   updateReferralProgress?: (userId: number, input: { requestId: number; status: ReferralProgressUpdateStatus; referenceId?: string | null }) => Promise<{ status: ReferralProgressUpdateStatus; changed: boolean }>;
   getApprovedReferralProgressStatus?: (userId: number, requestId: number) => Promise<{ status: ReferralStatus; referenceId?: string | null }>;
+  /** D-038/D-066: the referral clocks and the referrer's step back. */
+  markReferralReferred?: (userId: number, input: { requestId: number; referenceId?: string | null }) => Promise<{ requestId: number; status: string; changed: boolean; referenceId?: string | null; referredAt?: Date | null }>;
+  extendReferralDeadline?: (userId: number, requestId: number) => Promise<{ requestId: number; extended: boolean; alreadyExtended: boolean; deadlineAt: Date | null }>;
+  confirmReferralEmail?: (userId: number, requestId: number) => Promise<{ requestId: number; status: string; confirmed: boolean; changed: boolean }>;
+  stepBackFromReferral?: (userId: number, requestId: number) => Promise<{ requestId: number; status: string; changed: boolean; creditRefunded: boolean; returned?: number; creditSummary?: unknown }>;
   listReferralConversation?: (userId: number, requestId: number) => Promise<Array<{ id: number; body: string; createdAt: Date; isMine: boolean }>>;
   sendReferralConversationMessage?: (userId: number, requestId: number, body: string) => Promise<{ id: number }>;
   listPublicCompanyOpportunities: () => Promise<unknown[]>;
@@ -1229,6 +1234,91 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId, action: "company_referral.progress_updated", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
       const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
       res.status(/only available after the referral is accepted|not available to you/i.test(message) ? 403 : 409).json({ error: message, currentState });
+    }
+  });
+  // D-038/D-066: "Referred — submitted in our system". Only this action (or the
+  // seeker's confirmation) makes the ask count as a referral.
+  app.post("/api/company-referrals/:requestId/referred", async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to mark this referral" });
+      actorUserId = identity.account.id;
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!deps.markReferralReferred) return res.status(503).json({ error: "Referral updates are unavailable right now" });
+      const referenceId = normalizeReferenceId(req.body?.referenceId);
+      if (referenceId === undefined) return res.status(400).json({ error: REFERENCE_ID_ERROR });
+      const result = await deps.markReferralReferred(actorUserId, { requestId, referenceId });
+      record({ actorUserId, action: "company_referral.referred", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { changed: result.changed } });
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not mark this referral";
+      record({ actorUserId, action: "company_referral.referred", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/not found/i.test(message) ? 404 : 409).json({ error: message, currentState });
+    }
+  });
+  // D-038: the one optional "need 3 more days" extension.
+  app.post("/api/company-referrals/:requestId/referred-extension", async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to extend this referral" });
+      actorUserId = identity.account.id;
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!deps.extendReferralDeadline) return res.status(503).json({ error: "Referral updates are unavailable right now" });
+      const result = await deps.extendReferralDeadline(actorUserId, requestId);
+      record({ actorUserId, action: "company_referral.referred_extension", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { extended: result.extended } });
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not extend this referral";
+      record({ actorUserId, action: "company_referral.referred_extension", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/not found/i.test(message) ? 404 : 409).json({ error: message, currentState });
+    }
+  });
+  // D-038: the seeker's own "I got the referral email" confirmation.
+  app.post("/api/company-referrals/:requestId/confirm-referral", async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to confirm this referral" });
+      actorUserId = identity.account.id;
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!deps.confirmReferralEmail) return res.status(503).json({ error: "Referral updates are unavailable right now" });
+      const result = await deps.confirmReferralEmail(actorUserId, requestId);
+      record({ actorUserId, action: "company_referral.confirmed", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { changed: result.changed } });
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not confirm this referral";
+      record({ actorUserId, action: "company_referral.confirmed", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(409).json({ error: message, currentState });
+    }
+  });
+  // D-066(2): an accepted referrer steps back before referring; the ask returns
+  // to colleagues with the credit released. Allowed even with a blocked pair:
+  // this is the safe way out, never contact.
+  app.post("/api/company-referrals/:requestId/step-back", async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    let actorUserId: number | undefined;
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to step back from this referral" });
+      actorUserId = identity.account.id;
+      if (!Number.isInteger(requestId) || requestId <= 0) return res.status(400).json({ error: "Invalid referral request" });
+      if (!deps.stepBackFromReferral) return res.status(503).json({ error: "Referral updates are unavailable right now" });
+      const result = await deps.stepBackFromReferral(actorUserId, requestId);
+      record({ actorUserId, action: "company_referral.step_back", outcome: "success", resourceType: "referral_request", resourceId: requestId, metadata: { changed: result.changed, creditRefunded: result.creditRefunded } });
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "We could not step back from this referral";
+      record({ actorUserId, action: "company_referral.step_back", outcome: "denied", resourceType: "referral_request", resourceId: Number.isInteger(requestId) ? requestId : undefined });
+      const currentState = typeof error === "object" && error !== null && "currentState" in error ? (error as { currentState: unknown }).currentState : undefined;
+      res.status(/not found/i.test(message) ? 404 : 409).json({ error: message, currentState });
     }
   });
   app.get("/api/company-referrals/:requestId/conversation", async (req, res) => {

@@ -1,9 +1,10 @@
-export const referralStatuses = ["pending", "approved", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"] as const;
+export const referralStatuses = ["pending", "approved", "referred", "declined", "intro_made", "interview", "offer", "closed", "withdrawn"] as const;
 export type ReferralStatus = (typeof referralStatuses)[number];
 
 export const referralStatusLabels: Record<ReferralStatus, string> = {
   pending: "Request sent",
-  approved: "Approved",
+  approved: "Accepted",
+  referred: "Referred",
   declined: "Declined",
   intro_made: "Introduction made",
   interview: "Interview",
@@ -12,9 +13,10 @@ export const referralStatusLabels: Record<ReferralStatus, string> = {
   withdrawn: "Withdrawn",
 };
 
-export const referralStatusSteps: ReferralStatus[] = ["pending", "approved", "intro_made", "interview", "offer", "closed"];
+export const referralStatusSteps: ReferralStatus[] = ["pending", "approved", "referred", "intro_made", "interview", "offer", "closed"];
 
-export const postApprovalReferralStatuses = ["approved", "intro_made", "interview", "offer", "closed"] as const;
+/** D-038/D-066: "referred" means the referrer submitted it through their company's system; only then is it a referral. */
+export const postApprovalReferralStatuses = ["approved", "referred", "intro_made", "interview", "offer", "closed"] as const;
 export const referralProgressUpdateStatuses = ["intro_made", "interview", "offer", "closed"] as const;
 export type ReferralProgressUpdateStatus = (typeof referralProgressUpdateStatuses)[number];
 
@@ -46,7 +48,8 @@ export type JobSeekerReferralState = {
 export function getJobSeekerReferralState(input: { status: ReferralStatus; referrerId?: number | null }): JobSeekerReferralState {
   if (input.status === "pending" && input.referrerId) return { label: "Under review", title: "A verified employee is reviewing your request.", detail: "Their identity remains private. You will see a factual update when they make a decision.", tone: "blue" };
   if (input.status === "pending") return { label: "Privately routed", title: "Your request is available to eligible employees.", detail: "It remains private while a verified employee decides whether to claim it.", tone: "amber" };
-  if (input.status === "approved") return { label: "Referral approved", title: "A verified employee approved your referral request.", detail: "Use the next-step email draft when you are ready to continue with the hiring process.", tone: "emerald" };
+  if (input.status === "approved") return { label: "Referral accepted", title: "A verified employee accepted your referral request.", detail: "They have 5 days to submit it through their company's referral process. You can confirm here when you get their referral email.", tone: "emerald" };
+  if (input.status === "referred") return { label: "Referred", title: "The employee says they submitted your referral.", detail: "The employee marked it as referred. Keep any confirmation email; your private thread stays open.", tone: "emerald" };
   if (input.status === "intro_made") return { label: "Introduction made", title: "Your referral has moved to the next step.", detail: "Continue privately with your referral partner when there is a real update.", tone: "blue" };
   if (input.status === "interview") return { label: "Interview in progress", title: "An interview milestone was recorded.", detail: "Keep communication private and update this only when the next real step happens.", tone: "blue" };
   if (input.status === "offer") return { label: "Offer recorded", title: "An offer milestone was recorded.", detail: "This is a factual private progress update, not a public success claim.", tone: "emerald" };
