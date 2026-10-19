@@ -44,7 +44,7 @@ type Deps = {
 };
 
 /** What a recipient reads when a gift (always a retired Pro/Max gift) is claimed. */
-const GIFT_RETIRED_MESSAGE = "This gift was for a plan SkipWait no longer offers, so it cannot be added to your account. We have told our team so the person who sent it can be refunded.";
+const GIFT_RETIRED_MESSAGE = "This gift was for a plan SkipWait no longer offers, so it cannot be added to your account. This gift needs a refund review; eligible requests are queued for our team.";
 
 type ReviewResult = { status: "requires_review"; reason: string; paymentId: number; expectedAmount: number; expectedCurrency: string; paidAmount: number; paidCurrency: string };
 
@@ -198,7 +198,6 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       // the provider receipt already parked and alerted, gets the same answer without another email).
       if (result.status === "retired") {
         record({ actorUserId: identity.account.id, action: "billing.gift_claim_refused", outcome: "denied", resourceType: "gift", resourceId: parsed.data.giftId, metadata: { reason: PLAN_RETIRED_CODE, parked: result.parked } });
-        if (result.parked) void deps.alertRetiredPlanEvent?.({ reason: "gift_claim_refused", giftId: parsed.data.giftId }).catch(() => undefined);
         return res.status(409).json({ error: GIFT_RETIRED_MESSAGE, code: PLAN_RETIRED_CODE });
       }
       return res.json({ status: result.status });
@@ -302,7 +301,6 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         const reason = retired ? PLAN_RETIRED_CODE : "unsupported_plan";
         console.error(`[Chargebee] ${retired ? "retired" : "unrecognised"} plan event needs review`, { eventId: subscription.eventId, subscriptionId: subscription.subscriptionId, reason });
         record({ action: retired ? "billing.retired_plan_event" : "billing.unsupported_plan_event", outcome: "failure", resourceType: "chargebee_subscription", resourceId: subscription.subscriptionId, metadata: { eventId: subscription.eventId, eventType: subscription.eventType, reason, itemPriceId: subscription.itemPriceId } });
-        void deps.alertRetiredPlanEvent?.({ eventId: subscription.eventId, eventType: subscription.eventType, reason, subscriptionId: subscription.subscriptionId, itemPriceId: subscription.itemPriceId }).catch(() => undefined);
       }
     }
 
@@ -373,7 +371,6 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
           obligations.gift = { status: "parked", reason: PLAN_RETIRED_CODE };
           console.error("[Chargebee] claimed gift for a retired plan needs review", { eventId: gift.eventId, giftId: gift.giftId });
           record({ action: "billing.retired_plan_event", outcome: "failure", resourceType: "gift", resourceId: gift.giftId, metadata: { eventId: gift.eventId, eventType: gift.eventType, reason: "gift_claimed", subscriptionId: gift.subscriptionId } });
-          void deps.alertRetiredPlanEvent?.({ eventId: gift.eventId, eventType: gift.eventType, reason: "gift_claimed", giftId: gift.giftId, subscriptionId: gift.subscriptionId }).catch(() => undefined);
         } else if (gift.eventType === "gift_claimed" && gift.subscriptionId && gift.receiverEmail) {
           handled = true;
           obligations.gift = receipt.fulfillmentStatus === "credited" ? { status: "duplicate" } : { status: "parked", reason: PLAN_RETIRED_CODE };

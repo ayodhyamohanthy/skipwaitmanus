@@ -1117,3 +1117,26 @@ export const oauthAuthCodes = mysqlTable("oauthAuthCodes", {
   usedAt: timestamp("usedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("oauth_auth_codes_user_idx").on(table.userId), index("oauth_auth_codes_expiry_idx").on(table.expiresAt)]);
+
+const billingReviewDigest = customType<{ data: string; driverData: string }>({ dataType() { return "varchar(64) CHARACTER SET ascii COLLATE ascii_bin"; } });
+
+/** D-067 review notifications, no user cascade may erase unresolved evidence. */
+export const billingReviewOutbox = mysqlTable("billingReviewOutbox", {
+  id: int("id").autoincrement().primaryKey(),
+  obligationKey: billingReviewDigest("obligationKey").notNull(),
+  payload: text("payload"),
+  conflictDigest: billingReviewDigest("conflictDigest").notNull(),
+  envelope: text("envelope"),
+  submissionState: varchar("submissionState", { length: 20 }).default("never_submitted").notNull(),
+  updatedAt: timestamp("updatedAt", { fsp: 3 }).notNull(),
+  status: varchar("status", { length: 16 }).default("pending").notNull(),
+  attempts: int("attempts").default(0).notNull(),
+  nextAttemptAt: timestamp("nextAttemptAt", { fsp: 3 }).notNull(),
+  leaseOwner: varchar("leaseOwner", { length: 64 }),
+  leaseUntil: timestamp("leaseUntil", { fsp: 3 }),
+  firstAttemptAt: timestamp("firstAttemptAt", { fsp: 3 }),
+  acceptedAt: timestamp("acceptedAt", { fsp: 3 }),
+  providerMessageId: varchar("providerMessageId", { length: 255 }),
+  lastError: varchar("lastError", { length: 80 }),
+  createdAt: timestamp("createdAt", { fsp: 3 }).notNull(),
+}, table => [uniqueIndex("billing_review_obligation_unique").on(table.obligationKey), index("billing_review_due_idx").on(table.status, table.nextAttemptAt, table.id)]);

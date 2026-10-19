@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
+import { billingReviewOutbox, subscriptionCheckoutIntents, subscriptionEvents, tokenBalances, promoCreditGrants, tokenTransactions, notifications } from "../drizzle/schema";
 import { FREE_MONTHLY_ALLOWANCE } from "../shared/subscriptionPlans";
 import { planEntitlementsFor } from "../shared/planEntitlements";
 import { applyChargebeeSubscriptionEvent } from "./db";
@@ -14,6 +14,7 @@ type Wallet = typeof tokenBalances.$inferSelect;
 type Intent = typeof subscriptionCheckoutIntents.$inferSelect;
 type Event = typeof subscriptionEvents.$inferInsert;
 const dialect = new MySqlDialect();
+let reviewRows: Array<Record<string, unknown>> = [];
 const termStart = new Date("2026-09-01T00:00:00.000Z");
 const termEnd = new Date("2026-10-01T00:00:00.000Z"); // a Start 30-day pass
 const input = {
@@ -41,6 +42,7 @@ function matches(condition: SQL, row: object) {
 
 function fixtureDatabase() {
   const rows = (table: unknown) => {
+    if (table === billingReviewOutbox) return reviewRows;
     if (table === tokenBalances) return wallets;
     if (table === subscriptionCheckoutIntents) return intents;
     if (table === subscriptionEvents) return events;
@@ -67,7 +69,9 @@ function fixtureDatabase() {
       selected.forEach(row => Object.assign(row, patch));
       return [{ affectedRows: selected.length }];
     } }) }),
-    insert: (table: unknown) => ({ values: async (row: Record<string, unknown>) => {
+    insert: (table: unknown) => ({ values: (row: Record<string, unknown>) => {
+      if (table === billingReviewOutbox) return { onDuplicateKeyUpdate: async () => { if (!reviewRows.some(r => r.obligationKey === row.obligationKey)) reviewRows.push({ ...row }); return [{ affectedRows: 1, insertId: reviewRows.length }]; } };
+      return (async () => {
       if (table === tokenBalances) {
         walletInserts(row);
         if (wallets.some(wallet => wallet.userId === row.userId && wallet.role === row.role)) throw new Error("Duplicate wallet");
@@ -75,6 +79,7 @@ function fixtureDatabase() {
       if (table === subscriptionEvents && events.some(event => event.provider === row.provider && event.providerEventId === row.providerEventId)) throw new Error("Duplicate event");
       rows(table).push({ id: rows(table).length + 1, ...row } as never);
       return [{ affectedRows: 1, insertId: rows(table).length }];
+      })();
     } }),
   };
   return { transaction: async (callback: (transaction: typeof tx) => Promise<unknown>) => {
@@ -89,6 +94,8 @@ function fixtureDatabase() {
 }
 
 beforeEach(() => {
+  vi.stubEnv("BILLING_ENV", "test"); vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
+  reviewRows = [];
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
   vi.stubEnv("PROMO_GRANTS_ENABLED", "true");
   wallets = [{ id: 1, userId: 7, role: "job_seeker", balance: 12, monthlyCreditsRemaining: 2, monthlyAllowance: 3, monthlyCycleKey: "2026-09", plan: "free", subscriptionId: null, subscriptionStatus: null, subscriptionCurrency: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null, subscriptionResourceVersion: null, updatedAt: termStart }];
@@ -317,4 +324,14 @@ describe("applyChargebeeSubscriptionEvent on a kit pass (0091)", () => {
     expect(await applyChargebeeSubscriptionEvent({ ...momentum90, plan: undefined, itemPriceId: "skipwait_unknown-INR", interval: undefined })).toMatchObject({ status: "ignored" });
     expectUnchanged(before);
   });
+});
+
+it("persists a retired event review independently for each event id, with replay dedup", async () => {
+  const retired = { ...input, itemPriceId: "skipwait_pro_monthly-USD" };
+  await applyChargebeeSubscriptionEvent(retired);
+  await applyChargebeeSubscriptionEvent(retired);
+  await applyChargebeeSubscriptionEvent({ ...retired, eventId: "second_event" });
+  expect(reviewRows).toHaveLength(2);
+  expect(reviewRows.every(row => JSON.parse(String(row.payload)).evidence.reason === "plan_retired")).toBe(true);
+  expect(walletInserts).not.toHaveBeenCalled(); expect(walletUpdates).not.toHaveBeenCalled(); expect(promoTxns).toEqual([]);
 });
