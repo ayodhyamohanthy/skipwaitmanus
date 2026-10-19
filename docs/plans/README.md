@@ -20,7 +20,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 | Order | §3b row | Packet | Tier | Size | Packet state | Depends on | Runs beside |
 |---|---|---|---|---|---|---|---|
 | 1.1 | D-067-pro-max-removal | [D-067-packet.md](D-067-packet.md) (verification for slices 3–4 and the review) | 1 | L (sliced into commits) | done — `08d193a0`, live (independent review passed on PR #318) | — | 0.1, 1.2, 1.4 |
-| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | review — draft PR #324 (landing waits on the owner) | — | 0.1, 1.1, 1.4 |
+| 1.2 | 2 + Drift-D030-seeker-signin | [seeker-passwords.md](seeker-passwords.md) | 1 | M | review — draft PR #324 (F-R1 fixed per D-081 in `280bef88`; landing waits on the owner) | — | 0.1, 1.1, 1.4 |
 | 1.2b | D-057-session-gate (new, from the sign-in review finding S-4) | [D-057-session-gate.md](D-057-session-gate.md) | 1 | M | ready | 1.2 live | 1.3, 1.4 |
 | 1.3 | D-069-chargebee-catalog-sync | [D-069-chargebee-catalog-sync.md](D-069-chargebee-catalog-sync.md) | 1 | M | ready; claimed by Claude Code (D-072 lane 3), open to any model under queue rule 2 | 1.1 live | 1.2, 1.4, 3.1 |
 | 1.4 | D-048 (phase 2) | [D-048-phase-2.md](D-048-phase-2.md) | 2 | M | ready | — | 0.1, 1.1, 1.2, 1.3 |
