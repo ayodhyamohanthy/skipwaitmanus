@@ -6,13 +6,13 @@ import { Slot } from "@radix-ui/react-slot";
 import { LoaderCircle, type LucideIcon } from "lucide-react";
 import { forwardRef, useId, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { GoalKeycap } from "./GoalKeycap";
+import { GoalKeycap, type GoalKeycapIcon } from "./GoalKeycap";
 
 export type GoalButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, "disabled"> & {
   variant?: "primary" | "ghost" | "outline";
   size?: "md" | "sm" | "xs";
   touch?: "default" | "large";
-  keys?: ReactNode[];
+  keys?: (ReactNode | { icon: GoalKeycapIcon })[];
   busy?: boolean;
   busyLabel?: string;
   disabledReason?: string;
@@ -64,7 +64,11 @@ export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(functio
         {busy && busyLabel ? busyLabel : children}
         {keys?.length ? (
           <span aria-hidden="true" className="ml-0.5 inline-flex items-center gap-1 max-gdesk:hidden">
-            {keys.map((key, index) => <GoalKeycap key={index} onPrimary={variant === "primary" && !inert}>{key}</GoalKeycap>)}
+            {keys.map((key, index) =>
+              typeof key === "object" && key !== null && "icon" in (key as Record<string, unknown>)
+                ? <GoalKeycap key={index} icon={(key as { icon: GoalKeycapIcon }).icon} onPrimary={variant === "primary" && !inert} />
+                : <GoalKeycap key={index} onPrimary={variant === "primary" && !inert}>{key}</GoalKeycap>,
+            )}
           </span>
         ) : null}
         </>)}

@@ -28,7 +28,7 @@ export function GoalStatus({ status, label, stepper, className }: { status: Goal
   );
 }
 
-const STEPPER_TONE: Partial<Record<GoalStatusValue, string>> = { referred: "bg-g-emerald", expired: "bg-g-crimson", withdrawn: "bg-g-ink-3" };
+const STEPPER_TONE: Partial<Record<GoalStatusValue, string>> = { referred: "bg-g-emerald", expired: "bg-g-crimson", withdrawn: "bg-g-ink-3", waiting: "bg-g-amber", under_review: "bg-g-amber" };
 
 /** Four nodes joined by links; the status-carrying node takes the status tone. aria-hidden: the label carries the meaning. (my-asks.css:38-49) */
 export function GoalMiniStepper({ stage, terminal, status }: { stage: number; terminal?: "expired" | "withdrawn"; status?: GoalStatusValue }) {

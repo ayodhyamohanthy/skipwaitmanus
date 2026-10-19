@@ -72,7 +72,7 @@ function GiveReferralLink({ href, variant }: { href: string; variant: "rail" | "
       )}
     >
       <span className="text-g-meta tracking-normal underline decoration-g-control-edge underline-offset-[3px] group-hover:decoration-g-ink">Give a referral</span>
-      <span className="text-g-badge text-g-ink-3 no-underline">Work email only</span>
+      <span className="text-g-badge whitespace-nowrap text-g-ink-3 no-underline">Work email only</span>
     </a>
   );
 }
@@ -98,12 +98,12 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       className={cn(
         "g-scope grid min-h-screen",
         drawer ? "gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)_var(--g-drawer-w)]" : "gdesk:grid-cols-[var(--g-rail-w)_minmax(0,1fr)]",
-        "gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)] gdesk:[grid-template-areas:'rail_top_top','rail_main_drawer']",
+        "gdesk:grid-rows-[var(--g-topbar-h)_minmax(0,1fr)]",
         "max-gdesk:grid-rows-[56px_minmax(calc(100vh-56px-56px),auto)_56px]",
       )}
     >
       {/* Desktop rail */}
-      <nav aria-label="Primary" className="max-gdesk:hidden row-span-full flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5">
+      <nav aria-label="Primary" className="max-gdesk:hidden gdesk:row-span-2 gdesk:col-start-1 gdesk:row-start-1 flex flex-col items-center border-r border-g-hairline bg-g-surface-sunken px-2 pb-5">
         <a href="/" className="flex h-14 items-center text-[16px]/6 font-bold tracking-[-0.02em] text-g-ink">SkipWait</a>
         <div className="mt-2 flex w-full flex-col items-center gap-1">
           {items.map(item => (
@@ -128,7 +128,7 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       </nav>
 
       {/* Top bar */}
-      <header className={cn("col-span-full flex h-14 items-center gap-2 border-b border-g-hairline bg-g-surface pr-3 pl-6", "max-gdesk:gap-1 max-gdesk:pr-1 max-gdesk:pl-2.5")}>
+      <header className={cn("gdesk:col-start-2 gdesk:col-end-[-1] gdesk:row-start-1 flex h-14 items-center gap-2 border-b border-g-hairline bg-g-surface pr-3 pl-6", "max-gdesk:gap-1 max-gdesk:pr-1 max-gdesk:pl-2.5")}>
         {/* phone: avatar left, no wordmark (BRIEF.md §149) */}
         <span className="gdesk:hidden mx-0.5 flex items-center gap-2">
           <Avatar initials={account.initials} />
@@ -143,10 +143,10 @@ export function GoalShell({ active, verifiedReferrer, pageTitle, credits, accoun
       </header>
 
       {/* Main */}
-      <main className="min-w-0">{children}</main>
+      <main className="gdesk:col-start-2 gdesk:row-start-2 min-w-0">{children}</main>
 
       {/* Desktop drawer column */}
-      {drawer ? <div className="max-gdesk:hidden">{drawer}</div> : null}
+      {drawer ? <div className="max-gdesk:hidden gdesk:col-start-3 gdesk:row-start-2">{drawer}</div> : null}
 
       {/* Phone bottom bar */}
       {!hideBottomBar ? (
