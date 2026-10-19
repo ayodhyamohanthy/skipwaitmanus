@@ -221,7 +221,9 @@ describe("allocated_ask_past_window over the in-memory database", () => {
         askRow({ id: 605, referrerId: null, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(10) }),
         // Waiting for coverage: the 90-day window, even with a stray allocated slot row.
         askRow({ id: 606, referrerId: null, waitingForCoverage: true, createdAt: daysAgo(30) }),
-        // Claimed, released, then allocated again with no claim since its latest release.
+        // Claimed once, released, then allocated again: today's release rule is "no claim ever" (packet 4.1), so the
+        // sweep and withdraw never act on it and the check must not flag it daily. D-038 slice A moves both to
+        // "no claim since the latest release" together (D-076 (1)).
         askRow({ id: 607, revision: 1, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(12) }),
         // Released, allocated again and claimed after that release.
         askRow({ id: 608, revision: 1, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(12) }),
@@ -242,8 +244,9 @@ describe("allocated_ask_past_window over the in-memory database", () => {
     await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
 
     expect(sent).toHaveLength(1);
-    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 3 findings");
-    for (const id of [601, 602, 607]) expect(sent[0]!.text).toContain(`allocated_ask_past_window: ask #${id} `);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 2 findings");
+    for (const id of [601, 602]) expect(sent[0]!.text).toContain(`allocated_ask_past_window: ask #${id} `);
+    expect(sent[0]!.text).not.toContain("ask #607 ");
     for (const id of [603, 604, 605, 606, 608, 609]) expect(sent[0]!.text).not.toContain(`#${id} `);
     expect(sent[0]!.text).not.toContain("@");
     // Read-only: no ask, slot or ledger row moved.

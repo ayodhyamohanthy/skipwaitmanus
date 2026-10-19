@@ -109,9 +109,10 @@ async function listStaleCheckouts(olderThan: Date, limit: number): Promise<Stale
 /**
  * Pending asks with an allocated slot whose window (getAskShelfLifeEndsAtMs: 7 days from first visibility,
  * creation without it, 90 days from creation while waiting) ended before the cutoffs, by id, one bounded
- * page after `afterId`. Claim events and slot releases come from two plain reads, so the job decides "no
- * claim since its latest release" in JS: transitionReferralRequestTx and releaseAvailabilitySlotsTx write both
- * times from the app clock, and neither is compared with DB NOW().
+ * page after `afterId`. Claim events and slot releases come from two plain reads, so the job decides "never
+ * claimed" in JS (release times are read too, for D-038's later "no claim since the latest release" rule): both
+ * are written from the app clock by transitionReferralRequestTx and releaseAvailabilitySlotsTx, and neither is
+ * compared with DB NOW().
  */
 export async function listAllocatedPendingAsks(cutoffs: AllocatedAskCutoffs, afterId: number, limit: number): Promise<AllocatedAskRow[]> {
   const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
@@ -149,7 +150,7 @@ export async function listAllocatedPendingAsks(cutoffs: AllocatedAskCutoffs, aft
 }
 
 /**
- * P0-allocated-ask-stuck: still allocated with no claim since its latest release, and its shelf life ended more
+ * P0-allocated-ask-stuck: still allocated, never claimed, and its shelf life ended more
  * than ALLOCATED_ASK_GRACE_MS before `nowMs` (the app clock). The hourly sweep should have closed it with its
  * credit back. A claimed ask keeps its credit spent and never expires (D-021), so it is never a finding.
  */
@@ -157,8 +158,10 @@ export function isAllocatedAskPastWindow(ask: AllocatedAskRow, nowMs: number): b
   // An assigned ask created before claims became recorded events keeps today's rules (it never expires), so the
   // sweep never closes it by design: flagging it would repeat the same line in every daily email (heldAsk.ts).
   if (!ask.waitingForCoverage && ask.createdAt.getTime() < HELD_ASK_HISTORY_SINCE.getTime()) return false;
-  const claimedSinceRelease = ask.latestClaimAt !== null && (ask.latestReleaseAt === null || ask.latestClaimAt.getTime() > ask.latestReleaseAt.getTime());
-  if (claimedSinceRelease) return false;
+  // Today's release rule (packet 4.1, heldForReferrerTx) is "no claim ever": an ask claimed once keeps its credit
+  // spent and is never released, so it is never a finding. D-038 slice A moves the release rule and this check to
+  // "no claim since the latest release" together (D-076 (1)); latestReleaseAt is kept for that.
+  if (ask.latestClaimAt !== null) return false;
   const endsAt = getAskShelfLifeEndsAtMs(ask);
   return endsAt !== null && nowMs - endsAt > ALLOCATED_ASK_GRACE_MS;
 }
@@ -253,7 +256,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
       for (const ask of asks) {
         if (stuckAsks.size >= FINDINGS_PREVIEW_LIMIT || stuckAsks.has(ask.id) || !isAllocatedAskPastWindow(ask, nowMs)) continue;
         stuckAsks.add(ask.id);
-        findings.push(`allocated_ask_past_window: ask #${ask.id} is still allocated with no claim since its latest release, more than a day past its shelf life (the ask-expiry sweep has not closed it)`);
+        findings.push(`allocated_ask_past_window: ask #${ask.id} is still allocated and was never claimed, more than a day past its shelf life (the ask-expiry sweep has not closed it)`);
       }
       const last = asks[asks.length - 1];
       if (!last || asks.length < MONEY_CHECK_BATCH) break;
