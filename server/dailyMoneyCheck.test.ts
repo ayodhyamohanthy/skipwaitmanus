@@ -1,6 +1,13 @@
 // D-065 daily money check: the job reconciles, reports, and never writes.
-import { describe, expect, it, vi } from "vitest";
-import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { referralAvailabilitySlots, referralRequests, tokenTransactions } from "../drizzle/schema";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
+import { createDailyMoneyCheck, FINDINGS_EMAIL_LINE_LIMIT, MONEY_CHECK_BATCH, listAllocatedPendingAsks, type AllocatedAskRow, type DailyMoneyCheckDeps } from "./dailyMoneyCheck";
+import { DAY_MS, NOW as KIT_NOW, allocatedSlot, askRow, claimEvent, daysAgo, seedHeldAsks, store } from "./heldAsk.testkit";
+
+const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
+vi.mock("drizzle-orm/mysql2", () => ({ drizzle: mocks.drizzle }));
+vi.mock("mysql2/promise", () => ({ createPool: mocks.createPool }));
 
 const NOW = new Date("2026-10-19T02:00:00Z");
 const DAY = 24 * 60 * 60_000;
@@ -17,6 +24,7 @@ function makeDeps(overrides: Partial<DailyMoneyCheckDeps> = {}) {
     listParkedPayments: vi.fn(async () => []),
     listUnmatchedRefunds: vi.fn(async () => []),
     listStaleCheckouts: vi.fn(async () => []),
+    listAllocatedAsks: vi.fn(async () => []),
     sendEmail: vi.fn(async (input: Sent) => { sent.push(input); return true; }),
     recordActivity: vi.fn(async (row: { action: string }) => { activity.push(row as { action: string; outcome: string }); }),
     ...overrides,
@@ -125,5 +133,108 @@ describe("daily-money-check (D-065)", () => {
     expect(output.failed).toBe(1);
     expect(String(output.firstError)).toContain("1 finding(s)");
     expect(activity).toEqual([expect.objectContaining({ action: "billing.daily_money_check_alert", outcome: "failure" })]);
+  });
+});
+
+/*
+ * P0-allocated-ask-stuck (D-065: one check per money-rule slice): a pending ask that still holds an allocated
+ * availability slot, with no claim since its latest release, more than 24 hours past its shelf life
+ * (getAskShelfLifeEndsAtMs, on the app clock) is one the hourly ask-expiry sweep should have closed with its
+ * credit back. The email names the ask id only.
+ */
+describe("allocated_ask_past_window", () => {
+  const unclaimed = (id: number, over: Partial<AllocatedAskRow> = {}): AllocatedAskRow => ({ id, createdAt: new Date(NOW.getTime() - 20 * DAY), coverageVisibleAt: new Date(NOW.getTime() - 9 * DAY), waitingForCoverage: false, latestClaimAt: null, latestReleaseAt: null, ...over });
+
+  it("pages allocated asks until a short batch, so claimed asks never hide a stuck one, with cutoffs a day past each window", async () => {
+    const calls: Array<{ afterId: number; visibleBefore: number; waitingBefore: number }> = [];
+    const claimed = Array.from({ length: MONEY_CHECK_BATCH }, (_, i) => unclaimed(i + 1, { latestClaimAt: new Date(NOW.getTime() - 8 * DAY) }));
+    const { deps, sent } = makeDeps({
+      listAllocatedAsks: vi.fn(async (windows: { visibleBefore: Date; waitingBefore: Date }, afterId: number) => {
+        calls.push({ afterId, visibleBefore: windows.visibleBefore.getTime(), waitingBefore: windows.waitingBefore.getTime() });
+        return afterId === 0 ? claimed : afterId === MONEY_CHECK_BATCH ? [unclaimed(MONEY_CHECK_BATCH + 7)] : [];
+      }),
+    });
+    await runJob(deps);
+    expect(calls.map(call => call.afterId)).toEqual([0, MONEY_CHECK_BATCH]);
+    expect(calls[0]).toMatchObject({ visibleBefore: NOW.getTime() - ASK_TTL_MS - DAY, waitingBefore: NOW.getTime() - COVERAGE_WAIT_MS - DAY });
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 1 finding");
+    expect(sent[0]!.text).toContain(`allocated_ask_past_window: ask #${MONEY_CHECK_BATCH + 7}`);
+    expect(sent[0]!.text).not.toContain("ask #1 ");
+  });
+
+  it("flags only an unclaimed allocation a day past its window; within the grace, claimed and waiting asks stay quiet", async () => {
+    const { deps, sent } = makeDeps({
+      listAllocatedAsks: vi.fn(async (_windows: unknown, afterId: number) => afterId === 0 ? [
+        unclaimed(11),
+        unclaimed(12, { coverageVisibleAt: new Date(NOW.getTime() - ASK_TTL_MS - 12 * 60 * 60_000) }),
+        unclaimed(13, { latestClaimAt: new Date(NOW.getTime() - 8 * DAY) }),
+        unclaimed(14, { waitingForCoverage: true, coverageVisibleAt: null, createdAt: new Date(NOW.getTime() - 30 * DAY) }),
+        unclaimed(15, { coverageVisibleAt: null, createdAt: new Date(NOW.getTime() - 9 * DAY) }),
+      ] : []),
+    });
+    await runJob(deps);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 2 findings");
+    expect(sent[0]!.text).toContain("allocated_ask_past_window: ask #11 ");
+    expect(sent[0]!.text).toContain("allocated_ask_past_window: ask #15 ");
+    for (const id of [12, 13, 14]) expect(sent[0]!.text).not.toContain(`ask #${id} `);
+  });
+});
+
+describe("allocated_ask_past_window over the in-memory database", () => {
+  beforeEach(() => {
+    vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
+    mocks.createPool.mockResolvedValue({});
+    mocks.drizzle.mockReturnValue(store.db);
+  });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  it("flags a stuck delivered ask and a stuck older allocation, never a claimed, released, waiting, fresh or accepted one, and writes nothing", async () => {
+    const released = (requestId: number, id: number, releasedDaysAgo: number) => ({ ...allocatedSlot(requestId, id), status: "released", activeRequestKey: null, releasedAt: daysAgo(releasedDaysAgo) });
+    const claimAt = (requestId: number, id: number, atDaysAgo: number) => ({ ...claimEvent(requestId, id), createdAt: daysAgo(atDaysAgo) });
+    seedHeldAsks({
+      asks: [
+        // A D-034 delivery nobody claimed: visible 9 days ago, so its window ended 2 days ago.
+        askRow({ id: 601, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(9) }),
+        // An older "Open referral capacity" allocation (no coverageVisibleAt): the creation clock.
+        askRow({ id: 602, createdAt: daysAgo(9) }),
+        // Its window ended 12 hours ago: the sweep still has time.
+        askRow({ id: 603, createdAt: daysAgo(20), coverageVisibleAt: new Date(KIT_NOW - ASK_TTL_MS - DAY_MS / 2) }),
+        // Claimed after delivery: a pickup keeps the credit spent and the ask never expires (D-021).
+        askRow({ id: 604, revision: 1, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(10) }),
+        // Its slot was released (a pass reopened it): the sweep's unassigned path owns it.
+        askRow({ id: 605, referrerId: null, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(10) }),
+        // Waiting for coverage: the 90-day window, even with a stray allocated slot row.
+        askRow({ id: 606, referrerId: null, waitingForCoverage: true, createdAt: daysAgo(30) }),
+        // Claimed, released, then allocated again with no claim since its latest release.
+        askRow({ id: 607, revision: 1, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(12) }),
+        // Released, allocated again and claimed after that release.
+        askRow({ id: 608, revision: 1, createdAt: daysAgo(20), coverageVisibleAt: daysAgo(12) }),
+        // Accepted: no longer pending.
+        askRow({ id: 609, status: "approved", createdAt: daysAgo(20), coverageVisibleAt: daysAgo(10) }),
+      ],
+      events: [claimAt(604, 41, 9), claimAt(607, 42, 11), claimAt(608, 43, 9)],
+      slots: [
+        allocatedSlot(601, 91), allocatedSlot(602, 92), allocatedSlot(603, 93), allocatedSlot(604, 94),
+        released(605, 95, 9), allocatedSlot(606, 96),
+        released(607, 97, 10), allocatedSlot(607, 98),
+        released(608, 99, 10), allocatedSlot(608, 100),
+        allocatedSlot(609, 101),
+      ],
+    });
+    const before = { requests: structuredClone(store.rows(referralRequests)), slots: structuredClone(store.rows(referralAvailabilitySlots)), ledger: structuredClone(store.rows(tokenTransactions)) };
+    const { deps, sent } = makeDeps({ listAllocatedAsks: listAllocatedPendingAsks });
+    await createDailyMoneyCheck(deps)({ nowMs: KIT_NOW, windowKey: "2026-10-18T12:00Z" });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]!.subject).toBe("skipwait.me daily money check · 3 findings");
+    for (const id of [601, 602, 607]) expect(sent[0]!.text).toContain(`allocated_ask_past_window: ask #${id} `);
+    for (const id of [603, 604, 605, 606, 608, 609]) expect(sent[0]!.text).not.toContain(`#${id} `);
+    expect(sent[0]!.text).not.toContain("@");
+    // Read-only: no ask, slot or ledger row moved.
+    expect(store.rows(referralRequests)).toEqual(before.requests);
+    expect(store.rows(referralAvailabilitySlots)).toEqual(before.slots);
+    expect(store.rows(tokenTransactions)).toEqual(before.ledger);
   });
 });

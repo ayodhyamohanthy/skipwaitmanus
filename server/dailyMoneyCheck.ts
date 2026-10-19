@@ -4,19 +4,24 @@
 // does not reconcile: every wallet against its ledger rows (the same bucket
 // rules as the admin audit, but all wallets, not the 200 latest), one
 // purchase credit per credited payment, payments parked for review, refunds
-// no payment explains, and checkouts still pending after a day. It never
-// writes to a wallet, payment, or ledger row; the only writes are the job's
-// own run record (the runner) and one operational-activity row when an alert
-// email goes out. The email carries ids, amounts, currencies and reasons —
-// never names, emails, or request content.
-import { and, asc, count, eq, gt, inArray, lt, sql } from "drizzle-orm";
-import { operationalActivityLogs, paymentFulfillments, tokenTransactions } from "../drizzle/schema";
+// no payment explains, checkouts still pending after a day, and asks still
+// allocated to a referrer more than a day past their shelf life (a stuck
+// ask-expiry sweep, P0-allocated-ask-stuck). It never writes to a wallet,
+// payment, ledger or ask row; the only writes are the job's own run record
+// (the runner) and one operational-activity row when an alert email goes out.
+// The email carries ids, amounts, currencies and reasons — never names,
+// emails, or request content.
+import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { operationalActivityLogs, paymentFulfillments, referralAvailabilitySlots, referralRequests, referralTransitionEvents, tokenTransactions } from "../drizzle/schema";
+import { ASK_TTL_MS, COVERAGE_WAIT_MS, getAskShelfLifeEndsAtMs } from "../shared/referral";
 import { getDb, getFullCreditLedgerAudit, recordOperationalActivity } from "./db";
 import { JobRunStoreUnavailableError } from "./jobRunStore";
 import type { JobRunContext, JobRunOutput } from "./scheduledJobRunner";
 
 /** A checkout still pending after this is stale enough to list (D-065: "checkouts older than a day"). */
 export const STALE_CHECKOUT_AGE_MS = 24 * 60 * 60_000;
+/** The hourly ask-expiry sweep has had a full day to close an ask past its shelf life; later than this it is stuck. */
+export const ALLOCATED_ASK_GRACE_MS = 24 * 60 * 60_000;
 export const MONEY_CHECK_BATCH = 200;
 /** Each check lists at most this many examples; the counts stay complete. */
 export const FINDINGS_PREVIEW_LIMIT = 50;
@@ -30,6 +35,10 @@ export type PaymentCreditCount = { paymentId: number; creditRows: number; credit
 export type ParkedPaymentRow = { id: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: Date };
 export type UnmatchedRefundRow = { logId: number; resourceId: string | null; createdAt: Date };
 export type StaleCheckoutRow = { id: number; amount: number; currency: string; createdAt: Date };
+/** A pending ask holding an allocated availability slot, with its window fields and its latest claim and slot release. */
+export type AllocatedAskRow = { id: number; createdAt: Date; coverageVisibleAt: Date | null; waitingForCoverage: boolean; latestClaimAt: Date | null; latestReleaseAt: Date | null };
+/** SQL pre-filter cutoffs: each window's end plus the grace, computed from the job's clock. */
+export type AllocatedAskCutoffs = { visibleBefore: Date; waitingBefore: Date };
 
 export type DailyMoneyCheckDeps = {
   auditWallets: () => Promise<WalletAuditResult>;
@@ -38,6 +47,7 @@ export type DailyMoneyCheckDeps = {
   listParkedPayments: (limit: number) => Promise<ParkedPaymentRow[]>;
   listUnmatchedRefunds: (limit: number) => Promise<UnmatchedRefundRow[]>;
   listStaleCheckouts: (olderThan: Date, limit: number) => Promise<StaleCheckoutRow[]>;
+  listAllocatedAsks: (cutoffs: AllocatedAskCutoffs, afterId: number, limit: number) => Promise<AllocatedAskRow[]>;
   sendEmail: (input: { subject: string; text: string }) => Promise<boolean>;
   recordActivity: typeof recordOperationalActivity;
 };
@@ -92,6 +102,60 @@ async function listStaleCheckouts(olderThan: Date, limit: number): Promise<Stale
     .orderBy(asc(paymentFulfillments.id)).limit(limit);
 }
 
+/**
+ * Pending asks with an allocated slot whose window (getAskShelfLifeEndsAtMs: 7 days from first visibility,
+ * creation without it, 90 days from creation while waiting) ended before the cutoffs, by id, one bounded
+ * page after `afterId`. Claim events and slot releases come from two plain reads, so the job decides "no
+ * claim since its latest release" in JS: transitionReferralRequestTx and releaseAvailabilitySlotsTx write both
+ * times from the app clock, and neither is compared with DB NOW().
+ */
+export async function listAllocatedPendingAsks(cutoffs: AllocatedAskCutoffs, afterId: number, limit: number): Promise<AllocatedAskRow[]> {
+  const db = await getDb(); if (!db) throw new JobRunStoreUnavailableError();
+  const asks = await db.select({ id: referralRequests.id, createdAt: referralRequests.createdAt, coverageVisibleAt: referralRequests.coverageVisibleAt, waitingForCoverage: referralRequests.waitingForCoverage })
+    .from(referralRequests)
+    .innerJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated")))
+    .where(and(
+      eq(referralRequests.status, "pending"), gt(referralRequests.id, afterId),
+      or(
+        and(eq(referralRequests.waitingForCoverage, true), lt(referralRequests.createdAt, cutoffs.waitingBefore)),
+        and(eq(referralRequests.waitingForCoverage, false), or(
+          and(isNotNull(referralRequests.coverageVisibleAt), lt(referralRequests.coverageVisibleAt, cutoffs.visibleBefore)),
+          and(isNull(referralRequests.coverageVisibleAt), lt(referralRequests.createdAt, cutoffs.visibleBefore)),
+        )),
+      ),
+    ))
+    .orderBy(asc(referralRequests.id)).limit(limit);
+  if (asks.length === 0) return [];
+  const ids = asks.map(ask => ask.id);
+  const claims = await db.select({ requestId: referralTransitionEvents.referralRequestId, at: referralTransitionEvents.createdAt })
+    .from(referralTransitionEvents).where(and(inArray(referralTransitionEvents.referralRequestId, ids), eq(referralTransitionEvents.action, "claim")));
+  const releases = await db.select({ requestId: referralAvailabilitySlots.referralRequestId, at: referralAvailabilitySlots.releasedAt })
+    .from(referralAvailabilitySlots).where(and(inArray(referralAvailabilitySlots.referralRequestId, ids), eq(referralAvailabilitySlots.status, "released")));
+  const latestOf = (rows: ReadonlyArray<{ requestId: number; at: Date | null }>) => {
+    const latest = new Map<number, Date>();
+    for (const row of rows) {
+      const seen = latest.get(row.requestId);
+      if (row.at && (!seen || row.at.getTime() > seen.getTime())) latest.set(row.requestId, row.at);
+    }
+    return latest;
+  };
+  const latestClaim = latestOf(claims);
+  const latestRelease = latestOf(releases);
+  return asks.map(ask => ({ ...ask, latestClaimAt: latestClaim.get(ask.id) ?? null, latestReleaseAt: latestRelease.get(ask.id) ?? null }));
+}
+
+/**
+ * P0-allocated-ask-stuck: still allocated with no claim since its latest release, and its shelf life ended more
+ * than ALLOCATED_ASK_GRACE_MS before `nowMs` (the app clock). The hourly sweep should have closed it with its
+ * credit back. A claimed ask keeps its credit spent and never expires (D-021), so it is never a finding.
+ */
+export function isAllocatedAskPastWindow(ask: AllocatedAskRow, nowMs: number): boolean {
+  const claimedSinceRelease = ask.latestClaimAt !== null && (ask.latestReleaseAt === null || ask.latestClaimAt.getTime() > ask.latestReleaseAt.getTime());
+  if (claimedSinceRelease) return false;
+  const endsAt = getAskShelfLifeEndsAtMs(ask);
+  return endsAt !== null && nowMs - endsAt > ALLOCATED_ASK_GRACE_MS;
+}
+
 async function sendMoneyCheckEmail(input: { subject: string; text: string }): Promise<boolean> {
   try {
     const apiKey = process.env.RESEND_API_KEY;
@@ -118,6 +182,7 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
   listParkedPayments,
   listUnmatchedRefunds,
   listStaleCheckouts,
+  listAllocatedAsks: listAllocatedPendingAsks,
   sendEmail: sendMoneyCheckEmail,
   recordActivity: recordOperationalActivity,
 }) {
@@ -157,6 +222,23 @@ export function createDailyMoneyCheck(deps: DailyMoneyCheckDeps = {
 
     const stale = await deps.listStaleCheckouts(new Date(nowMs - STALE_CHECKOUT_AGE_MS), FINDINGS_PREVIEW_LIMIT);
     for (const checkout of stale) findings.push(`stale checkout: payment #${checkout.id} ${checkout.amount} ${checkout.currency} pending since ${checkout.createdAt.toISOString()}`);
+
+    // P0-allocated-ask-stuck: paged by id until a short batch, so claimed asks (which keep their slot and
+    // never expire) can never fill a page and hide a stuck one; at most FINDINGS_PREVIEW_LIMIT are listed.
+    const cutoffs: AllocatedAskCutoffs = { visibleBefore: new Date(nowMs - ASK_TTL_MS - ALLOCATED_ASK_GRACE_MS), waitingBefore: new Date(nowMs - COVERAGE_WAIT_MS - ALLOCATED_ASK_GRACE_MS) };
+    const stuckAsks = new Set<number>();
+    let askAfterId = 0;
+    while (stuckAsks.size < FINDINGS_PREVIEW_LIMIT) {
+      const asks = await deps.listAllocatedAsks(cutoffs, askAfterId, MONEY_CHECK_BATCH);
+      for (const ask of asks) {
+        if (stuckAsks.size >= FINDINGS_PREVIEW_LIMIT || stuckAsks.has(ask.id) || !isAllocatedAskPastWindow(ask, nowMs)) continue;
+        stuckAsks.add(ask.id);
+        findings.push(`allocated_ask_past_window: ask #${ask.id} is still allocated with no claim since its latest release, more than a day past its shelf life (the ask-expiry sweep has not closed it)`);
+      }
+      const last = asks[asks.length - 1];
+      if (!last || asks.length < MONEY_CHECK_BATCH) break;
+      askAfterId = last.id;
+    }
 
     const output: JobRunOutput = { processed: audit.checkedWallets + checkedPayments, failed: 0 };
     if (findings.length === 0) return output;
