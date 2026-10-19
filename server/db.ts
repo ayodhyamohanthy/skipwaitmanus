@@ -3526,6 +3526,45 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
   });
 }
 
+/** D-079: apply a provider-confirmed card to the wallet. Maps the Chargebee
+ * customer to the user (unmatched surfaces for the owner alert), stamps
+ * cardValidatedAt once, then grants the current Free month once. Only a
+ * provider "valid" status stamps; a decline or a pending check changes nothing. */
+export async function applyCardValidationEvent(input: { eventId: string; eventType: string; customerId: string; paymentSourceId: string; status: string }) {
+  if (input.status === "pending_verification") return { status: "ignored" as const, reason: "pending_verification" };
+  if (input.status !== "valid") return { status: "invalid_source" as const, reason: input.status };
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const user = (await db.select({ id: users.id }).from(users).where(eq(users.chargebeeCustomerId, input.customerId)).limit(1))[0];
+  if (!user) return { status: "unmatched" as const, reason: "no_user_for_customer" };
+  const applied = await markCardValidatedFromProvider(user.id);
+  return { status: "applied" as const, userId: user.id, granted: applied.granted };
+}
+
+/** D-079: the Chargebee customer id we created for this user, if any. */
+export async function getUserChargebeeCustomerId(userId: number): Promise<string | null> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const row = (await db.select({ chargebeeCustomerId: users.chargebeeCustomerId }).from(users).where(eq(users.id, userId)).limit(1))[0];
+  return row?.chargebeeCustomerId ?? null;
+}
+
+/** D-079: persist the Chargebee customer id once; a concurrent creator loses and re-reads. */
+export async function setUserChargebeeCustomerId(userId: number, customerId: string): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(users).set({ chargebeeCustomerId: customerId }).where(and(eq(users.id, userId), isNull(users.chargebeeCustomerId)));
+}
+
+/** D-079: stamp the seeker wallet validated (once) and grant the current Free month (once). */
+export async function markCardValidatedFromProvider(userId: number): Promise<{ granted: boolean }> {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await ensureTokenWallet(userId, "job_seeker");
+  await db.update(tokenBalances).set({ cardValidatedAt: new Date() }).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker" as const), isNull(tokenBalances.cardValidatedAt)));
+  return grantFreeCreditsOnValidation(userId);
+}
+
 /** D-079: after the provider confirms a card, grant the current Free month once, under the wallet lock. */
 export async function grantFreeCreditsOnValidation(userId: number, now: Date = new Date()) {
   const db = await getDb();
