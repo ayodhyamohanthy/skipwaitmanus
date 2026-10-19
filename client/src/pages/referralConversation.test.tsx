@@ -46,6 +46,34 @@ describe("ReferralConversation thread", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("names the company from the server directory fields on the thread", async () => {
+    stubFetch(() => ok({ requests: [{ ...seekerPending, companyDomain: "goneutrinos.com", companyName: "Go Neutrinos", companyInitials: "GN" }] }));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Product Designer")).toBeTruthy();
+    expect(screen.getByText(/Waiting for a verified Go Neutrinos referrer/)).toBeTruthy();
+    expect(document.querySelector("header .company-mark")?.textContent).toBe("GN");
+    expect(screen.queryByText(/goneutrinos\.com/)).toBeNull();
+  });
+
+  it("leads the eyebrow with the ask's job function, for the seeker and the reviewing referrer", async () => {
+    stubFetch(() => ok({ requests: [{ ...seekerPending, companyName: "Wipro", companyInitials: "W", jobFunction: "Design" }] }));
+    render(<ReferralConversation />);
+    await screen.findByText("Product Designer");
+    expect(document.querySelector("header .eyebrow")?.textContent).toBe("Design · Wipro");
+    cleanup();
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [] }) : url.endsWith("/601/preview") ? ok({ request: { ...referrerPreview, companyName: "Wipro", companyInitials: "W", jobFunction: "Data" } }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    await screen.findByText("Product Designer");
+    expect(document.querySelector("header .eyebrow")?.textContent).toBe("Data · Wipro");
+  });
+
+  it("shows the company alone when the ask has no known function", async () => {
+    stubFetch(() => ok({ requests: [{ ...seekerPending, companyName: "Wipro", companyInitials: "W", jobFunction: "Astrology" }] }));
+    render(<ReferralConversation />);
+    await screen.findByText("Product Designer");
+    expect(document.querySelector("header .eyebrow")?.textContent).toBe("Wipro");
+  });
+
   it("shows the seeker their ask with waiting state and a working withdraw", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
@@ -102,11 +130,18 @@ describe("ReferralConversation thread", () => {
     render(<ReferralConversation />);
     expect(await screen.findByText("Would you refer this person?")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Pass privately/ }));
+    // D-052: no reason is preselected, and Pass stays off until the referrer picks one.
+    const reasons = await screen.findAllByRole("radio");
+    expect(reasons).toHaveLength(7);
+    expect(reasons.filter(radio => (radio as HTMLInputElement).checked)).toHaveLength(0);
+    expect((screen.getByRole("button", { name: /^Pass$/ }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes("/one-click-review"))).toBe(false);
     fireEvent.click(await screen.findByLabelText("At capacity right now"));
     fireEvent.click(screen.getByRole("button", { name: /^Pass$/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       "/api/company-referrals/601/one-click-review",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing" }) }),
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "declined", declineReason: "timing", passReason: "at_capacity" }) }),
     ));
     expect(await screen.findByText("You passed privately.")).toBeTruthy();
   });
@@ -133,14 +168,22 @@ describe("ReferralConversation thread", () => {
     await waitFor(() => expect(screen.getByText("Thank you — what should I prepare next?")).toBeTruthy());
   });
 
-  it("lets the seeker record the next factual progress milestone", async () => {
+  it("gives the accepted seeker only the coordinate note; progress opens once referred (kit v4)", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [seekerApproved] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText(/Use messages to coordinate/)).toBeTruthy();
+    expect(screen.queryByText("Update your progress")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Interviewing" })).toBeNull();
+  });
+
+  it("lets the referred seeker record the next factual progress milestone", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith("/progress")) {
         expect(init?.method).toBe("POST");
         expect(JSON.parse(String(init?.body))).toEqual({ status: "interview" });
         return ok({ progress: { status: "interview", changed: true } });
       }
-      if (url.endsWith("/mine")) return ok({ requests: [seekerApproved] });
+      if (url.endsWith("/mine")) return ok({ requests: [{ ...seekerApproved, status: "intro_made" }] });
       return ok({ messages: [] });
     });
     stubFetch(fetchMock);
@@ -148,6 +191,33 @@ describe("ReferralConversation thread", () => {
     expect(await screen.findByText("Update your progress")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Interviewing" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("reveals the referrer's name and title to the seeker only after accept", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "approved", referrerId: 9, referrerName: "Priya Nair", referrerTitle: "Staff Designer" }] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Priya Nair · Staff Designer")).toBeTruthy();
+  });
+
+  it("keeps the referrer anonymous to the seeker while the ask is pending", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerPending, referrerName: "Priya Nair" }] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText(/Someone at/)).toBeTruthy();
+    expect(screen.queryByText(/Priya Nair/)).toBeNull();
+  });
+
+  it("shows the referred seeker the reference ID the referrer recorded", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "intro_made" }] }) : ok({ messages: [], referenceId: "TC-4410" })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Referred! Reference ID TC-4410")).toBeTruthy();
+  });
+
+  it("shows the seeker the kit's kind pass note, never the raw decline text", async () => {
+    stubFetch(url => (url.endsWith("/mine") ? ok({ requests: [{ ...seekerApproved, status: "declined", referrerMessage: "I do not think this role is the right fit for my referral." }] }) : ok({ messages: [] })));
+    render(<ReferralConversation />);
+    expect(await screen.findByText("This referrer passed.")).toBeTruthy();
+    expect(screen.getByText("It's not a judgment of you. Your slot is open again — try another verified referrer at acme.com.")).toBeTruthy();
+    expect(screen.queryByText(/right fit for my referral/)).toBeNull();
   });
 
   it("marks the referral submitted through the referrer's Mark as referred", async () => {
@@ -166,6 +236,24 @@ describe("ReferralConversation thread", () => {
     fireEvent.click(screen.getByRole("button", { name: /Mark as referred/ }));
     fireEvent.click(await screen.findByRole("button", { name: /Confirm/ }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/progress", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("sends the optional portal reference ID with Mark as referred", async () => {
+    const bodies: unknown[] = [];
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith("/progress")) { bodies.push(JSON.parse(String(init?.body))); return ok({ progress: { status: "intro_made", changed: true } }); }
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "claimed");
+      return ok({ request: { ...referrerPreview, status: "approved", referrerId: 9, candidateName: "Asha R.", attachments: [] } });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Submit through your company.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /Mark as referred/ }));
+    expect(await screen.findByText(/Optional: add your portal/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Reference ID/), { target: { value: " TC-4410 " } });
+    fireEvent.click(screen.getByRole("button", { name: /Confirm/ }));
+    await waitFor(() => expect(bodies).toEqual([{ status: "intro_made", referenceId: "TC-4410" }]));
   });
   it("shows a retryable error when the network fails, then recovers", async () => {
     let attempts = 0;
@@ -199,7 +287,22 @@ describe("ReferralConversation thread", () => {
     expect(screen.getByText(/is reviewing your request/)).toBeTruthy();
   });
 
-  it("reveals the candidate and resume only to the referrer who accepted", async () => {
+  it("offers Withdraw on a personal-link ask its employee has not acted on, with truthful waiting copy (D-050)", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes("/withdraw")) return ok({ withdrawn: true, requestId: 601, status: "withdrawn" });
+      return ok({ requests: [{ ...seekerPending, referrerId: 77, queueStatus: "available_for_review", heldForReferrer: true, createdAt: new Date(Date.now() - 2 * 86_400_000).toISOString() }] });
+    });
+    stubFetch(fetchMock);
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Nothing to do yet.")).toBeTruthy();
+    expect(screen.getByText(/Sent privately to the acme\.com employee whose link you used\. Expires in 5 days if they don't respond/)).toBeTruthy();
+    expect(screen.queryByText(/is reviewing your request/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Withdraw request/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Withdraw" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/company-referrals/601/withdraw", expect.objectContaining({ method: "POST" })));
+  });
+
+  it("gives the referrer who accepted the candidate, the resume and the note the ask was sent with", async () => {
     stubFetch(async (url: string) => {
       if (url.endsWith("/mine")) return ok({ requests: [] });
       if (url.endsWith("/preview")) return fail(404, "claimed");
@@ -208,10 +311,55 @@ describe("ReferralConversation thread", () => {
     });
     render(<ReferralConversation />);
     expect(await screen.findByText("Asha R.")).toBeTruthy();
+    // Opened straight from the claimed detail, with no preview loaded first: the
+    // ask's role title and note come from that response alone (D-019(d)).
+    expect(screen.getByText("Product Designer")).toBeTruthy();
+    expect(screen.getByText(/I have led two end-to-end redesigns/)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Resume.pdf/ }).getAttribute("href")).toBe("/api/documents/31");
     expect(screen.getByText("Rahul K.")).toBeTruthy();
     expect(screen.getByText("Referral submitted")).toBeTruthy();
     expect(screen.getByLabelText("Message")).toBeTruthy();
+  });
+
+  // D-019(e): a claimed ask stays anonymous until acceptance, and an accepted
+  // referrer whose resume access ended is told so instead of getting a dead link.
+  it("keeps a claimed but not yet accepted ask anonymous while counting its locked files", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "claimed");
+      return ok({ request: { id: 601, title: "Product Designer", targetRoleUrl: null, companyDomain: "acme.com", status: "pending", referrerId: 9, candidateMessage: "I have led two end-to-end redesigns.", attachments: [{ mimeType: "application/pdf", fileSize: 10, availability: "after_claim" }] } });
+    });
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Seeker · identity hidden")).toBeTruthy();
+    expect(screen.getByText(/I have led two end-to-end redesigns\./)).toBeTruthy();
+    expect(screen.getByText("Resume and profile shared after acceptance")).toBeTruthy();
+    expect(screen.queryByText("This thread isn't available.")).toBeNull();
+  });
+
+  it("names an accepted referrer's file whose access ended, without a dead link, and says so", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "accepted");
+      if (url.endsWith("/conversation")) return ok({ messages: [] });
+      return ok({ request: { id: 601, title: "Product Designer", targetRoleUrl: null, companyDomain: "acme.com", status: "approved", referrerId: 9, candidateName: "Asha R.", candidateMessage: "I have led two end-to-end redesigns.", attachments: [{ id: 31, fileName: "Asha_R_Resume.pdf", mimeType: "application/pdf", fileSize: 10, url: null }] } });
+    });
+    render(<ReferralConversation />);
+    expect(await screen.findByText("Asha R.")).toBeTruthy();
+    expect(screen.getByText("Asha_R_Resume.pdf")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Asha_R_Resume/ })).toBeNull();
+    expect(screen.getByText("Resume access has ended. Message the Job Seeker here if you still need it.")).toBeTruthy();
+  });
+
+  it("links an accepted referrer's file while access is active, with no access-ended line", async () => {
+    stubFetch(async (url: string) => {
+      if (url.endsWith("/mine")) return ok({ requests: [] });
+      if (url.endsWith("/preview")) return fail(404, "accepted");
+      if (url.endsWith("/conversation")) return ok({ messages: [] });
+      return ok({ request: { id: 601, title: "Product Designer", targetRoleUrl: null, companyDomain: "acme.com", status: "approved", referrerId: 9, candidateName: "Asha R.", candidateMessage: "Note.", attachments: [{ id: 31, fileName: "Asha_R_Resume.pdf", mimeType: "application/pdf", fileSize: 10, url: "/api/documents/31" }] } });
+    });
+    render(<ReferralConversation />);
+    expect((await screen.findByRole("link", { name: /Asha_R_Resume/ })).getAttribute("href")).toBe("/api/documents/31");
+    expect(screen.queryByText(/Resume access has ended/)).toBeNull();
   });
 
   it("keeps the accept dialog open with the server error when accepting fails", async () => {

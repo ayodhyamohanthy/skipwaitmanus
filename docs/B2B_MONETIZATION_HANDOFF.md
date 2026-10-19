@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-004, D-040, D-069).
+
 # B2B Monetization Layer — implementation handoff (2026-09-06)
 
 ## Status: Code complete + committed (f9efe64, 95d9fe4, 21fae16, df895fa). One deployment dependency remains (see §5).

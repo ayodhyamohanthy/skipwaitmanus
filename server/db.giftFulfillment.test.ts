@@ -1,14 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type SQL } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
-import { canonicalPeople, giftSubscriptionFulfillments, tokenBalances, users, verifiedLoginAliases } from "../drizzle/schema";
+import { canonicalPeople, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, users, verifiedLoginAliases } from "../drizzle/schema";
+import * as db from "./db";
 import {
   claimGiftSubscription,
-  fulfillGiftSubscription,
   listBuyerGifts,
   listClaimableGiftsForUser,
   recordGiftProviderEvent,
-  resolveGiftRecipient,
 } from "./db";
 
 const mocks = vi.hoisted(() => ({ drizzle: vi.fn(), createPool: vi.fn() }));
@@ -23,6 +22,7 @@ let wallets: Array<Record<string, unknown>>;
 let people: Array<Record<string, unknown>>;
 let aliasRows: Array<Record<string, unknown>>;
 let accountRows: Array<Record<string, unknown>>;
+let ledgerRows: Array<Record<string, unknown>>;
 
 function tableFor(table: unknown): Array<Record<string, unknown>> {
   if (table === giftSubscriptionFulfillments) return gifts;
@@ -30,6 +30,7 @@ function tableFor(table: unknown): Array<Record<string, unknown>> {
   if (table === canonicalPeople) return people;
   if (table === verifiedLoginAliases) return aliasRows;
   if (table === users) return accountRows;
+  if (table === tokenTransactions) return ledgerRows;
   throw new Error("Unexpected table");
 }
 
@@ -82,7 +83,7 @@ const account = (id: number, personId: number, suspended = false) => ({ id, open
 
 beforeEach(() => {
   vi.stubEnv("DATABASE_URL", "mysql://fixture:fixture@localhost/fixture");
-  gifts = []; wallets = [];
+  gifts = []; wallets = []; ledgerRows = [];
   people = [person(1, "james@user.com")];
   aliasRows = [alias(1, 1, 7, "james@user.com")];
   accountRows = [account(7, 1)];
@@ -94,80 +95,97 @@ afterEach(() => { vi.unstubAllEnvs(); });
 const scheduled = { eventId: "ev_sched", eventType: "gift_scheduled", giftId: "gift_1", status: "scheduled", receiverEmail: "james@user.com", buyerUserId: 9 };
 const claimed = { eventId: "ev_claim", eventType: "gift_claimed", giftId: "gift_1", status: "claimed", receiverEmail: "james@user.com", subscriptionId: "sub_gift_1", buyerUserId: 9 };
 
-describe("gift subscription fulfillment", () => {
+// D-067: gifts only ever sold Pro or Max, which are removed completely. Provider gift
+// events stay durable receipts, a claimed gift is parked as plan_retired, and nothing
+// ever writes a wallet or a ledger row for a gift.
+describe("gift receipts after D-067", () => {
   it("records the provider gift and replays the same delivery idempotently", async () => {
     const first = await recordGiftProviderEvent({ ...scheduled, plan: "pro", currency: "USD", amount: 700 });
     expect(first.fulfillmentStatus).toBe("pending");
     const replay = await recordGiftProviderEvent({ ...scheduled, plan: "pro", currency: "USD", amount: 700 });
     expect(replay.giftId).toBe(first.giftId);
     expect(gifts).toHaveLength(1);
+    expect(wallets).toEqual([]);
+    expect(ledgerRows).toEqual([]);
   });
 
-  it("credits the resolved recipient wallet on claim and ignores replays", async () => {
+  it("parks a claimed gift as plan_retired, on its first receipt or on a later one, and writes no wallet", async () => {
+    const parked = await recordGiftProviderEvent({ ...claimed, plan: "max", currency: "USD", amount: 1500 });
+    expect(parked).toMatchObject({ giftId: "gift_1", fulfillmentStatus: "conflict", failureReason: "plan_retired", providerStatus: "claimed", subscriptionId: "sub_gift_1" });
+    await recordGiftProviderEvent({ ...scheduled, eventId: "ev_sched_2", giftId: "gift_2" });
+    expect(gifts[1]).toMatchObject({ fulfillmentStatus: "pending", failureReason: null });
+    const later = await recordGiftProviderEvent({ ...claimed, eventId: "ev_claim_2", giftId: "gift_2" });
+    expect(later).toMatchObject({ fulfillmentStatus: "conflict", failureReason: "plan_retired" });
+    expect(wallets).toEqual([]);
+    expect(ledgerRows).toEqual([]);
+  });
+
+  it("refuses every claim of a retired-plan gift, parks it, and credits nothing; a stranger is refused outright", async () => {
+    // A gift recorded as claimed before this change, still pending.
+    gifts.push({ id: 1, giftId: "gift_1", provider: "chargebee", buyerUserId: 9, receiverEmail: "james@user.com", recipientUserId: null, role: "job_seeker", plan: "pro", currency: "USD", amount: 700, subscriptionId: "sub_gift_1", providerStatus: "claimed", fulfillmentStatus: "pending", failureReason: null, creditedAt: null });
+    await expect(claimGiftSubscription(8, "gift_1")).rejects.toThrow("This gift was sent to a different email address");
+    expect(gifts[0]).toMatchObject({ fulfillmentStatus: "pending" });
+    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1", parked: true });
+    expect(gifts[0]).toMatchObject({ fulfillmentStatus: "conflict", failureReason: "plan_retired", recipientUserId: null, creditedAt: null });
+    // A repeat claim is refused the same way, but this call parked nothing (so the route sends no second alert).
+    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1", parked: false });
+    expect(wallets).toEqual([]);
+    expect(ledgerRows).toEqual([]);
+    await expect(claimGiftSubscription(7, "gift_missing")).rejects.toThrow("We could not find this gift");
+  });
+
+  // Review round (D-067): the admin is alerted once per gift, when a call parks it. Each write
+  // says whether it was the one that moved the row to plan_retired; a replay, a credited row or a
+  // terminal row parks nothing.
+  it("reports parked only for the receipt that moved the gift to plan_retired", async () => {
+    expect(await recordGiftProviderEvent({ ...claimed, plan: "max" })).toMatchObject({ fulfillmentStatus: "conflict", parked: true });
+    expect(await recordGiftProviderEvent({ ...claimed, plan: "max" })).toMatchObject({ fulfillmentStatus: "conflict", parked: false });
+    expect(await recordGiftProviderEvent({ ...scheduled, eventId: "ev_s2", giftId: "gift_2" })).toMatchObject({ fulfillmentStatus: "pending", parked: false });
+    expect(await recordGiftProviderEvent({ ...scheduled, eventId: "ev_u2", eventType: "gift_updated", giftId: "gift_2", status: "claimed" })).toMatchObject({ fulfillmentStatus: "conflict", parked: true });
+    expect(await recordGiftProviderEvent({ ...claimed, eventId: "ev_c2", giftId: "gift_2" })).toMatchObject({ fulfillmentStatus: "conflict", parked: false });
+    expect(await recordGiftProviderEvent({ eventId: "ev_x3", eventType: "gift_expired", giftId: "gift_3", status: "expired" })).toMatchObject({ fulfillmentStatus: "expired", parked: false });
+    expect(await recordGiftProviderEvent({ ...claimed, eventId: "ev_c3", giftId: "gift_3" })).toMatchObject({ fulfillmentStatus: "expired", parked: false });
+    gifts.push({ id: 9, giftId: "gift_old", provider: "chargebee", buyerUserId: 9, receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker", plan: "pro", currency: "USD", amount: 700, subscriptionId: "sub_old", providerStatus: "claimed", fulfillmentStatus: "credited", failureReason: null, creditedAt: NOW });
+    expect(await recordGiftProviderEvent({ ...claimed, eventId: "ev_late", giftId: "gift_old" })).toMatchObject({ fulfillmentStatus: "credited", parked: false });
+    expect(wallets).toEqual([]);
+    expect(ledgerRows).toEqual([]);
+  });
+
+  it("a claim of a gift a receipt already parked, or one that expired, parks nothing", async () => {
+    await recordGiftProviderEvent({ ...claimed });
+    expect(await claimGiftSubscription(7, "gift_1")).toEqual({ status: "retired", giftId: "gift_1", parked: false });
+    await recordGiftProviderEvent({ eventId: "ev_x", eventType: "gift_expired", giftId: "gift_2", status: "expired", receiverEmail: "james@user.com" });
+    expect(await claimGiftSubscription(7, "gift_2")).toEqual({ status: "retired", giftId: "gift_2", parked: false });
+    expect(gifts[1]).toMatchObject({ fulfillmentStatus: "expired" });
+  });
+
+  it("answers a gift credited before D-067 as a duplicate and never credits it again", async () => {
+    gifts.push({ id: 1, giftId: "gift_old", provider: "chargebee", buyerUserId: 9, receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker", plan: "pro", currency: "USD", amount: 700, subscriptionId: "sub_old", providerStatus: "claimed", fulfillmentStatus: "credited", failureReason: null, creditedAt: NOW });
+    expect(await claimGiftSubscription(7, "gift_old")).toEqual({ status: "duplicate" });
+    expect(await recordGiftProviderEvent({ ...claimed, eventId: "ev_late", giftId: "gift_old" })).toMatchObject({ fulfillmentStatus: "credited" });
+    expect(wallets).toEqual([]);
+    expect(ledgerRows).toEqual([]);
+  });
+
+  it("no longer exports any path that writes a gift into a wallet", () => {
+    for (const name of ["fulfillGiftSubscription", "updateGiftPlan", "resolveGiftRecipient"]) expect(db).not.toHaveProperty(name);
+  });
+
+  it("keeps buyer receipts readable; a parked gift is no longer offered to claim", async () => {
     await recordGiftProviderEvent({ ...scheduled, plan: "pro", currency: "USD", amount: 700 });
-    const credited = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker", currentTermStart: new Date("2026-10-01T00:00:00.000Z"), currentTermEnd: new Date("2026-11-01T00:00:00.000Z") });
-    expect(credited.status).toBe("credited");
-    expect(wallets).toHaveLength(1);
-    expect(wallets[0]).toMatchObject({ userId: 7, role: "job_seeker", plan: "pro", subscriptionId: "sub_gift_1", monthlyAllowance: 10, monthlyCreditsRemaining: 10 });
-    const replay = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker" });
-    expect(replay.status).toBe("duplicate");
-    expect(wallets).toHaveLength(1);
-  });
-
-  it("leaves the gift pending when nobody owns the receiver email", async () => {
-    await recordGiftProviderEvent({ ...claimed, plan: "max", currency: "USD", amount: 1500 });
-    expect(await resolveGiftRecipient("stranger@example.com")).toEqual({ status: "unresolved" });
-    const result = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "max", currency: "USD", status: "non_renewing", receiverEmail: "stranger@example.com", recipientUserId: 999, role: "job_seeker" });
-    expect(result.status).toBe("pending");
-    expect(wallets).toHaveLength(0);
-  });
-
-  it("freezes ambiguous duplicates for review instead of crediting", async () => {
-    accountRows.push(account(8, 1));
-    aliasRows.push(alias(2, 1, 8, "james@user.com"));
-    expect(await resolveGiftRecipient("james@user.com")).toEqual({ status: "ambiguous" });
-    await recordGiftProviderEvent({ ...claimed, plan: "pro", currency: "USD", amount: 700 });
-    const result = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker" });
-    expect(result.status).toBe("pending");
-    expect(wallets).toHaveLength(0);
-  });
-
-  it("never credits a suspended person", async () => {
-    people[0].suspended = true;
-    expect(await resolveGiftRecipient("james@user.com")).toEqual({ status: "suspended" });
-    await recordGiftProviderEvent({ ...claimed, plan: "pro", currency: "USD", amount: 700 });
-    const result = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker" });
-    expect(result.status).toBe("pending");
-    expect(wallets).toHaveLength(0);
-  });
-
-  it("parks a conflicting active plan instead of overwriting", async () => {
-    wallets.push({ id: 1, userId: 7, role: "job_seeker", balance: 0, monthlyCreditsRemaining: 30, monthlyAllowance: 30, monthlyCycleKey: "2026-10", plan: "max", subscriptionId: "sub_self_max", subscriptionStatus: "active" });
-    await recordGiftProviderEvent({ ...claimed, plan: "pro", currency: "USD", amount: 700 });
-    const result = await fulfillGiftSubscription({ giftId: "gift_1", subscriptionId: "sub_gift_1", plan: "pro", currency: "USD", status: "non_renewing", receiverEmail: "james@user.com", recipientUserId: 7, role: "job_seeker" });
-    expect(result.status).toBe("conflict");
-    expect(wallets[0]).toMatchObject({ plan: "max", subscriptionId: "sub_self_max" });
-  });
-
-  it("lets the verified recipient claim their pending gift, and nobody else", async () => {
-    await recordGiftProviderEvent({ ...claimed, plan: "pro", currency: "USD", amount: 700 });
-    await expect(claimGiftSubscription(8, "gift_1")).rejects.toThrow();
-    expect(wallets).toHaveLength(0);
-    const result = await claimGiftSubscription(7, "gift_1");
-    expect(result.status).toBe("credited");
-    expect(wallets[0]).toMatchObject({ userId: 7, plan: "pro" });
-  });
-
-  it("lists buyer receipts and recipient claimables", async () => {
-    await recordGiftProviderEvent({ ...claimed, plan: "pro", currency: "USD", amount: 700 });
-    expect(await listBuyerGifts(9)).toHaveLength(1);
+    expect(await listBuyerGifts(9)).toEqual([expect.objectContaining({ giftId: "gift_1", plan: "pro", fulfillmentStatus: "pending" })]);
     expect(await listBuyerGifts(7)).toHaveLength(0);
-    expect(await listClaimableGiftsForUser(7)).toHaveLength(1);
+    await recordGiftProviderEvent({ ...claimed, eventId: "ev_claim_x" });
+    expect(await listBuyerGifts(9)).toEqual([expect.objectContaining({ giftId: "gift_1", fulfillmentStatus: "conflict" })]);
+    expect(await listClaimableGiftsForUser(7)).toHaveLength(0);
     expect(await listClaimableGiftsForUser(8)).toHaveLength(0);
   });
 
   it("marks expired and cancelled provider states terminally", async () => {
     await recordGiftProviderEvent({ eventId: "e1", eventType: "gift_expired", giftId: "gift_9", status: "expired", receiverEmail: "james@user.com", buyerUserId: 9 });
     expect(gifts[0]).toMatchObject({ fulfillmentStatus: "expired" });
+    await recordGiftProviderEvent({ ...claimed, eventId: "e2", giftId: "gift_8" });
+    await recordGiftProviderEvent({ eventId: "e3", eventType: "gift_cancelled", giftId: "gift_8", status: "cancelled" });
+    expect(gifts[1]).toMatchObject({ fulfillmentStatus: "cancelled", failureReason: "provider_cancelled" });
   });
 });

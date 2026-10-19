@@ -58,3 +58,44 @@ describe("referral operating-system routes", () => {
     expect(health.status).toBe(200); expect(activities.map(item => item.action)).toContain("admin.domain_integrity_viewed"); expect(health.body.health.funnel).toMatchObject({ requestsCreated: 5, waitingForCoverage: 2 }); expect(health.body.health.coverageGaps[0]).toMatchObject({ companyDomain: "acme.com", verifiedCoverage: 0 });
   });
 });
+
+describe("admin flow-health baseline block (D-018)", () => {
+  const app = (deps: Parameters<typeof registerPrivateReferralRoutes>[1]) => { const server = express(); server.use(express.json()); registerPrivateReferralRoutes(server, deps); return server; };
+  const identities = {
+    member: { account: { id: 3, openId: "member", role: "user" as const } },
+    admin: { account: { id: 4, openId: "admin", role: "admin" as const } },
+  };
+  const baseline = {
+    windowDays: 28,
+    generatedAt: "2026-10-16T12:00:00.000Z",
+    weeks: [{ weekStart: "2026-10-12", asks: 5, accepted: 1, passed: 1, expired: 1, declined: 1, withdrawn: 0, waiting: 1, uncovered: 2 }],
+    expiries: { total: 1, last7Days: 1 },
+    decisionLatency: { sampleSize: 2, medianHours: 40, p90Hours: 50 },
+    coverage: [{ companyDomain: "acme.com", verifiedReferrers: 2, availableReferrers: 1, pausedOrFull: 1, waitingAsks: 1 }],
+    demand: [{ companyDomain: "acme.com", waitingAsks: 1, oldestWaitingDays: 3, verifiedReferrers: 2 }],
+    externalReferrers: { activeLast7Days: 1, activeInWindow: 2, excludedOperatorDomains: ["skipwait.me"] },
+    subscribers: { paid: 3, trialing: 1, byPlan: [{ plan: "momentum", count: 2 }] },
+    dataQuality: [{ id: "asks_without_transition", label: "Asks with no state-machine record", count: 2, hint: "Audit the ask." }],
+  };
+
+  it("returns the aggregate baseline to an administrator only, and never fakes it without a database", async () => {
+    const activities: Array<{ action: string }> = [];
+    const wired = app({ resolveIdentity: async req => identities[String(req.header("x-test-user")) as keyof typeof identities], recordActivity: async input => { activities.push({ action: String((input as { action?: string }).action ?? "") }); }, getReferralFlowBaseline: async () => baseline } as Parameters<typeof registerPrivateReferralRoutes>[1]);
+
+    expect((await request(wired).get("/api/admin/flow-health")).status).toBe(403);
+    expect((await request(wired).get("/api/admin/flow-health").set("x-test-user", "member")).status).toBe(403);
+    const response = await request(wired).get("/api/admin/flow-health").set("x-test-user", "admin");
+    expect(response.status).toBe(200);
+    expect(response.header["cache-control"]).toBe("private, no-store");
+    expect(response.body.baseline).toEqual(baseline);
+    expect(response.body.health.funnel).toBeDefined();
+    expect(activities.map(item => item.action)).toContain("admin.flow_health_viewed");
+    // Counts only: no identity or address may reach the response.
+    expect(JSON.stringify(response.body.baseline)).not.toMatch(/userId|actorUserId|email|candidateName/);
+
+    const unwired = app({ resolveIdentity: async req => identities[String(req.header("x-test-user")) as keyof typeof identities], recordActivity: async () => {} } as Parameters<typeof registerPrivateReferralRoutes>[1]);
+    const withoutBaseline = await request(unwired).get("/api/admin/flow-health").set("x-test-user", "admin");
+    expect(withoutBaseline.status).toBe(200);
+    expect(withoutBaseline.body.baseline).toBeNull();
+  });
+});

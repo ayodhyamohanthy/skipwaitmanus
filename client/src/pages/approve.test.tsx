@@ -32,7 +32,7 @@ const SPEND_APPROVAL = {
   createdAt: new Date(now - 60000).toISOString(),
   expiresAt: new Date(now + DAY).toISOString(),
 };
-const CREDITS = { summary: { plan: "max", totalAvailable: 112, monthlyCreditsRemaining: 112, monthlyAllowance: 112 } };
+const CREDITS = { summary: { plan: "land_focus", totalAvailable: 112, monthlyCreditsRemaining: 112, monthlyAllowance: 120 } };
 
 function stubFetch(handler: (url: string, init?: RequestInit) => { ok: boolean; json: () => Promise<unknown> }) {
   vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => handler(String(url), init)));
@@ -77,7 +77,9 @@ describe("Approve page", () => {
     stubFetch(url => (String(url).includes("/api/assistants/approvals") ? { ok: true, json: async () => ({ approvals: [proposed] }) } : { ok: true, json: async () => CREDITS }));
     render(<Approve />);
     expect(await screen.findByText("uses 1 of your open slots · 1 credit")).toBeTruthy();
-    expect(screen.getByText(/Your assistant · 1 minute ago · 23 h left/)).toBeTruthy();
+    // Kit source line is who and when only; the 24-hour expiry is stated once, in the footnote.
+    expect(screen.getByText("Your assistant · 1 minute ago")).toBeTruthy();
+    expect(screen.queryByText(/h left/)).toBeNull();
     expect(screen.getByText("No note yet. Tap Edit to add one.")).toBeTruthy();
   });
 
@@ -128,6 +130,7 @@ describe("Approve page", () => {
     vi.stubGlobal("fetch", fetchMock);
     render(<Approve />);
     expect(await screen.findByText("All your slots are in use")).toBeTruthy();
+    expect(screen.getByText("ChatGPT saved this ask as a draft. It can be sent when a request is answered or you withdraw one.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Keep as draft" }));
     expect(await screen.findByText("Declined")).toBeTruthy();
   });

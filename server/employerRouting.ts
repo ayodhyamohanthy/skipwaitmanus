@@ -1,15 +1,6 @@
 import { getDomain } from "tldts";
-import { reviewedEmployerFromTargetRoleUrl } from "../shared/referralUrl";
+import { HOSTED_JOB_PLATFORMS as hostedJobPlatforms, reviewedEmployerFromTargetRoleUrl } from "../shared/referralUrl";
 
-const hostedJobPlatforms = [
-  "linkedin.com", "indeed.com", "glassdoor.com", "greenhouse.io", "lever.co", "ashbyhq.com",
-  "workable.com", "smartrecruiters.com", "jobvite.com", "teamtailor.com", "bamboohr.com",
-  "myworkdayjobs.com", "icims.com", "rippling.com", "recruitee.com", "breezy.hr",
-  "monster.com", "ziprecruiter.com", "naukri.com", "shine.com", "foundit.in", "wellfound.com",
-  "dice.com", "simplyhired.com", "talent.com", "jooble.org", "flexjobs.com", "jobstreet.com",
-  "stepstone.com", "seek.com.au", "bayt.com", "adzuna.com", "lensa.com", "careerbuilder.com",
-  "snagajob.com", "cutshort.io", "instahyre.com", "hirist.com", "timesjobs.com",
-];
 
 const legalSuffixes = /\b(incorporated|inc|llc|ltd|limited|corp|corporation|company|co|plc|gmbh|pte|private)\b/gi;
 
@@ -58,7 +49,7 @@ export function hostedEmployerCandidatesFromTargetUrl(targetRoleUrl: string) {
     if (isHostOrSubdomain(host, "lever.co") || isHostOrSubdomain(host, "greenhouse.io") || isHostOrSubdomain(host, "ashbyhq.com") || isHostOrSubdomain(host, "workable.com") || isHostOrSubdomain(host, "smartrecruiters.com") || isHostOrSubdomain(host, "jobvite.com") || isHostOrSubdomain(host, "recruitee.com") || isHostOrSubdomain(host, "breezy.hr")) {
       if (first) candidates.push(first);
     }
-    if (isHostOrSubdomain(host, "teamtailor.com") || isHostOrSubdomain(host, "bamboohr.com") || isHostOrSubdomain(host, "myworkdayjobs.com")) {
+    if (["teamtailor.com", "bamboohr.com", "myworkdayjobs.com", "myworkdaysite.com", "keka.com", "darwinbox.in", "darwinbox.com", "zohorecruit.com", "zohorecruit.in", "zohorecruit.eu", "taleo.net", "freshteam.com"].some(platform => isHostOrSubdomain(host, platform) && host !== platform)) {
       if (subdomain && !["jobs", "www", "careers", "wd1", "wd3", "wd5"].includes(subdomain)) candidates.push(subdomain);
     }
     if (isHostOrSubdomain(host, "icims.com") && first && first !== "jobs") candidates.push(first);

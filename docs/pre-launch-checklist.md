@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-060, D-065).
+
 # skipwait.me Pre-Launch Checklist
 
 **Purpose.** This is the operating checklist for a controlled public launch of skipwait.me. It distinguishes the **launch blockers** that must be complete before accepting real traffic and payments from the work that should follow during the first operating cycle. A completed software build is necessary but not sufficient: launch also requires correct domain ownership, live payment delivery, operational ownership, and clear user protections.

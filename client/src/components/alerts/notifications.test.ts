@@ -22,9 +22,12 @@ describe("alerts notification helpers", () => {
     expect(isToday("garbage", now)).toBe(false);
   });
 
-  it("orders unread first, then newest first", () => {
+  it("orders the feed newest first, read or unread", () => {
+    // Kit feed order: newest first whether read or not (no unread-first rule).
     const ordered = orderNotifications([item(1, 300, true), item(2, 12, false), item(3, 5, true), item(4, 10, false)]);
-    expect(ordered.map(row => row.id)).toEqual([4, 2, 3, 1]);
+    expect(ordered.map(row => row.id)).toEqual([3, 4, 2, 1]);
+    const broken = { ...item(5, 1, false), createdAt: "not-a-date" };
+    expect(orderNotifications([broken, item(6, 60, true)]).map(row => row.id)).toEqual([6, 5]);
   });
 
   it("rejects unknown categories and malformed rows at the edge", () => {

@@ -1,6 +1,7 @@
 // "Invite someone inside" side of /invite (kit v4 invite.tsx), carrying the
-// live personal invite link: copy, email and native share (clipboard
-// fallback). The link comes from /api/personal-invites/me only.
+// live personal invite link in the kit share-link row and one primary "Email
+// invite". The row's icon opens the native share sheet where the device has
+// one, and copies the link otherwise. The link comes from /api/personal-invites/me only.
 import { Check, Copy, Mail, Share2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -17,18 +18,15 @@ export function InviteLinkPanel({ fetchToken, userId }: { fetchToken: TokenSourc
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const link = invite.data ? `${origin}/verify?invite=${encodeURIComponent(invite.data)}` : "";
   const flash = () => { setCopied(true); if (timer.current) clearTimeout(timer.current); timer.current = setTimeout(() => setCopied(false), 1500); };
-  const copy = async () => {
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+  const shareOrCopy = async () => {
     if (!link) return;
+    if (canShare) {
+      try { await navigator.share({ title: "Join me on SkipWait", text: SHARE_TEXT, url: link }); } catch { /* share sheet dismissed */ }
+      return;
+    }
     try { await navigator.clipboard.writeText(link); } catch { /* clipboard unavailable: the link stays visible to copy by hand */ }
     flash();
-  };
-  const share = async () => {
-    if (!link) return;
-    try {
-      if (typeof navigator.share === "function") { await navigator.share({ title: "Join me on SkipWait", text: SHARE_TEXT, url: link }); return; }
-      await navigator.clipboard.writeText(`${SHARE_TEXT} ${link}`);
-      flash();
-    } catch { /* dismissed or clipboard unavailable */ }
   };
 
   return (
@@ -43,11 +41,9 @@ export function InviteLinkPanel({ fetchToken, userId }: { fetchToken: TokenSourc
         </>
       ) : (
         <>
-          <div className="share-link"><span className="min-w-0 truncate">{link.replace(/^https?:\/\//, "")}</span><Button variant="ghost" size="icon" aria-label="Copy invitation link" onClick={() => { void copy(); }}>{copied ? <Check /> : <Copy />}</Button></div>
+          <div className="share-link"><span className="min-w-0 truncate">{link.replace(/^https?:\/\//, "")}</span><Button variant="ghost" size="icon" aria-label={canShare ? "Share invitation link" : "Copy invitation link"} onClick={() => { void shareOrCopy(); }}>{copied ? <Check /> : canShare ? <Share2 /> : <Copy />}</Button></div>
           {copied ? <p role="status">Copied</p> : null}
           <Button asChild><a href={`mailto:?subject=${encodeURIComponent("Private referrals at your company")}&body=${encodeURIComponent(`${SHARE_TEXT} ${link}`)}`}><Mail />Email invite</a></Button>
-          <Button variant="outline" onClick={() => { void share(); }}><Share2 />Share</Button>
-          <p>One link per person. Invites are claimed privately at sign-in — your colleague&apos;s decision stays theirs.</p>
         </>
       )}
     </section>

@@ -5,6 +5,7 @@ import { Link, useLocation } from "wouter";
 import { AccountMenu } from "./AccountMenu";
 import { Button } from "@/components/kit/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { FREE_ASKS_CHIP, FREE_ASKS_PER_MONTH, REFERRER_MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 
 /**
  * Kit-exact app shell (skipwait-shell.tsx): desktop sidebar + mobile bottom
@@ -74,8 +75,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <MoreMenu onNavigate={close} />
         </nav>
         <div className="sidebar-bottom !pt-6">
-          <div className="free-promise"><ShieldCheck size={21} /><strong>Referrals are free.<br />Always.</strong></div>
-          <p>No commissions. No paid priority.<br />Just people opening doors.</p>
+          {/* D-063: the money sentence, split so the sidebar keeps its two short rows. */}
+          <div className="free-promise"><ShieldCheck size={21} /><strong>{FREE_ASKS_PER_MONTH} asks free a month.<br />More use credits.</strong></div>
+          <p>{REFERRER_MONEY_SENTENCE}</p>
           {isSignedIn ? <AccountMenu /> : <Button variant="outline" asChild><Link href="/sign-in" onClick={close}>Sign in</Link></Button>}
           <div className="global-note"><Globe2 size={14} />Built for your next move.</div>
         </div>
@@ -96,7 +98,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
         {children}
-        <footer className="app-footer"><span>SkipWait · A warmer way in.</span><Link href="/safety">Free referrals. Real expectations. <ArrowUpRight size={13} /></Link></footer>
+        <footer className="app-footer"><span>SkipWait · A warmer way in.</span><Link href="/safety">{FREE_ASKS_CHIP}. {REFERRERS_NEVER_PAID} <ArrowUpRight size={13} /></Link></footer>
       </div>
       <nav className="mobile-tabs" aria-label="Mobile navigation">
         {[...navigation, ...accountLinks].map(item => (

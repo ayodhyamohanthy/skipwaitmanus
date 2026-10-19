@@ -3,8 +3,8 @@
 // work function, monthly capacity and pause from /api/referrer-preferences.
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link } from "wouter";
-import { ArrowRight, Check, Pause, ShieldCheck } from "lucide-react";
+import { Link, useLocation } from "wouter";
+import { ArrowRight, Check, Pause } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { ActionErrorCard } from "@/components/ActionErrorCard";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
@@ -40,8 +40,12 @@ export function CapacitySettingsPanel({ isSignedIn, getToken, onSignIn }: { isSi
   );
 }
 
+/** Select value that leaves for /verify; the company is never free-form. */
+const VERIFY_ANOTHER = "verify-another";
+
 function CapacityForm({ initial, getToken }: { initial: CapacitySettings; getToken: TokenSource }) {
   const queryClient = useQueryClient();
+  const [, go] = useLocation();
   const [area, setArea] = useState(initial.areas[0] ?? "");
   const [capacity, setCapacity] = useState(initial.capacity);
   const [paused, setPaused] = useState(initial.paused);
@@ -61,20 +65,17 @@ function CapacityForm({ initial, getToken }: { initial: CapacitySettings; getTok
 
   return (
     <form className="settings-panel" onSubmit={event => { event.preventDefault(); setSaved(false); save.mutate(); }}>
-      <div className="grid gap-2 text-[12px] font-semibold">
-        <span>Company</span>
-        {initial.companyDomain ? (
-          <span className="flex h-[46px] items-center justify-between gap-3 rounded-[7px] border border-border px-3 text-[13px]">
-            <span className="min-w-0 truncate">{initial.companyDomain}</span>
-            <span className="inline-flex shrink-0 items-center gap-1.5 font-normal text-muted-foreground"><ShieldCheck className="size-3.5 text-primary" />Verified work email</span>
-          </span>
-        ) : (
-          <span className="flex min-h-[46px] flex-wrap items-center justify-between gap-2 rounded-[7px] border border-border px-3 py-2 text-[13px] font-normal text-muted-foreground">
-            No verified work email yet
-            <Link href="/verify" className="font-semibold text-primary">Verify work email</Link>
-          </span>
-        )}
-      </div>
+      <label>
+        Company
+        {/* Options are only companies verified by work email; anything else goes through /verify. */}
+        <select value={initial.companyDomain ?? ""} onChange={event => { if (event.target.value === VERIFY_ANOTHER) go("/verify"); }}>
+          {initial.companyDomain
+            ? <option value={initial.companyDomain}>{initial.companyName ?? initial.companyDomain}</option>
+            : <option value="" disabled>Select your company</option>}
+          <option value={VERIFY_ANOTHER}>{initial.companyDomain ? "Verify another company" : "Verify your company"}</option>
+        </select>
+      </label>
+      {initial.companyDomain ? null : <p className="-mt-2 text-[12px] text-muted-foreground">No verified work email yet. <Link href="/verify" className="font-semibold text-primary">Verify work email</Link></p>}
       <label>
         Work function
         <select value={area} onChange={event => edit(setArea)(event.target.value)}>

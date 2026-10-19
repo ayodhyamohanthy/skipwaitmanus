@@ -7,29 +7,40 @@ import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
 import type { CreditSummary, Receipt } from "./billingApi";
 import { kitDate, money } from "./format";
-import { hasActivePaidPlan, planLabel } from "./planCatalog";
+import { billingPlanLabel } from "@shared/billingCatalog";
+import { CREDIT_PACKS_ON_SALE } from "@shared/planCatalog";
+import { hasActivePaidPlan } from "./planCatalog";
+
+/** "8 open asks" from the caller's own slots; left out when the server did not send them. */
+function openAsks(summary: CreditSummary): string | null {
+  const cap = summary.slots?.cap;
+  if (cap === undefined) return null;
+  return cap === null ? "Unlimited open asks" : `${cap} open ask${cap === 1 ? "" : "s"}`;
+}
 
 export function CurrentPlanPanel({ summary, onCancel }: { summary: CreditSummary; onCancel: () => void }) {
   if (!hasActivePaidPlan(summary)) {
     return <Panel>
       <span className="eyebrow">CURRENT PLAN</span>
       <h2 className="mt-1 text-2xl font-semibold">Free</h2>
-      <p className="text-sm text-muted-foreground">{summary.monthlyAllowance} referral requests a month · buy credits anytime</p>
-      <Button asChild className="mt-4"><Link href="/plans">Upgrade</Link></Button>
+      <p className="text-sm text-muted-foreground">{CREDIT_PACKS_ON_SALE ? (openAsks(summary) ? `${openAsks(summary)} · buy credits anytime` : "Buy credits anytime") : (openAsks(summary) || "Free plan")}</p>
+      {CREDIT_PACKS_ON_SALE ? <Button asChild className="mt-4"><Link href="/premium?role=job_seeker">Add credits</Link></Button> : null}
     </Panel>;
   }
   const cancelling = summary.subscriptionStatus === "non_renewing";
   const termEnd = summary.subscriptionCurrentTermEnd ? kitDate(summary.subscriptionCurrentTermEnd) : null;
-  const left = Math.max(0, summary.monthlyCreditsRemaining);
+  // Kit: "Renews 6 Nov 2026 · 8 open asks · 30 credits/month", every part from the server.
+  const credits = summary.ledger && summary.ledger.creditsPerMonth > 0 ? `${summary.ledger.creditsPerMonth} credits/month` : null;
+  const renewing = [termEnd ? `Renews ${termEnd}` : null, openAsks(summary), credits].filter(Boolean).join(" · ");
   return <Panel>
     <div className="flex flex-wrap items-start justify-between gap-3"><div>
       <span className="eyebrow">CURRENT PLAN</span>
-      <h2 className="mt-1 text-2xl font-semibold">{planLabel(summary.plan)} · {summary.monthlyAllowance} requests/month</h2>
+      <h2 className="mt-1 text-2xl font-semibold">{billingPlanLabel(summary.plan)}</h2>
       <p className="text-sm text-muted-foreground">{cancelling
         ? `${termEnd ? `Ends ${termEnd}` : "Ends at the end of this paid cycle"} — you keep everything until then.`
-        : `${termEnd ? `Renews ${termEnd} · ` : ""}${left} of ${summary.monthlyAllowance} requests left this cycle`}</p>
+        : renewing || "Renews with your plan cycle"}</p>
     </div></div>
-    {!cancelling && <div className="mt-5 grid gap-2 sm:grid-cols-3"><Button variant="outline" asChild><Link href="/plans">Compare plans<ArrowRight /></Link></Button><Button variant="ghost" className="sm:col-start-3" onClick={onCancel}>Cancel plan</Button></div>}
+    {!cancelling && <div className="mt-5 grid gap-2 sm:grid-cols-3"><Button variant="outline" asChild><Link href="/plans">See plans<ArrowRight /></Link></Button><Button variant="ghost" className="sm:col-start-3" onClick={onCancel}>Cancel plan</Button></div>}
   </Panel>;
 }
 

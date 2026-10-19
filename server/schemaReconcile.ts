@@ -22,6 +22,11 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "safetyReports", createSql: `CREATE TABLE IF NOT EXISTS \`safetyReports\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`reporterUserId\` int NOT NULL, \`reason\` varchar(80) NOT NULL, \`details\` text NULL, \`referralRequestId\` int NULL, \`reportedUserId\` int NULL, \`urgent\` boolean NOT NULL DEFAULT false, \`status\` ENUM('open','under_review','resolved','dismissed') NOT NULL DEFAULT 'open', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`safetyReports_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`safety_reports_reporter_fk\` FOREIGN KEY (\`reporterUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`safety_reports_reporter_idx\`(\`reporterUserId\`), INDEX \`safety_reports_status_idx\`(\`status\`))` },
   { table: "companySuggestions", createSql: `CREATE TABLE IF NOT EXISTS \`companySuggestions\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`submitterUserId\` int NOT NULL, \`companyName\` varchar(160) NOT NULL, \`website\` varchar(512) NULL, \`role\` ENUM('seeker','employee') NOT NULL DEFAULT 'seeker', \`status\` ENUM('open','under_review','approved','dismissed') NOT NULL DEFAULT 'open', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companySuggestions_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`company_suggestions_submitter_fk\` FOREIGN KEY (\`submitterUserId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`company_suggestions_submitter_idx\`(\`submitterUserId\`), INDEX \`company_suggestions_status_idx\`(\`status\`))` },
   { table: "workItems", createSql: `CREATE TABLE IF NOT EXISTS \`workItems\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`title\` varchar(160) NOT NULL, \`kind\` ENUM('case_study','project','article','code','other') NOT NULL DEFAULT 'other', \`source\` varchar(80) NULL, \`url\` varchar(2048) NULL, \`pinned\` boolean NOT NULL DEFAULT false, \`visibleOnProfile\` boolean NOT NULL DEFAULT false, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`workItems_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`work_items_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`work_items_user_idx\`(\`userId\`))` },
+  { table: "askDrafts", createSql: `CREATE TABLE IF NOT EXISTS \`askDrafts\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`companySlug\` varchar(64) NOT NULL, \`targetRoleUrl\` varchar(2048) NOT NULL, \`note\` varchar(600) NOT NULL DEFAULT '', \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`askDrafts_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`ask_drafts_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`ask_drafts_user_unique\`(\`userId\`))` },
+  { table: "dataExports", createSql: `CREATE TABLE IF NOT EXISTS \`dataExports\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`status\` varchar(16) NOT NULL DEFAULT 'requested', \`activeKey\` varchar(40) NULL, \`fileName\` varchar(120) NULL, \`byteSize\` int NOT NULL DEFAULT 0, \`zipData\` longblob NULL, \`failureNote\` varchar(200) NULL, \`requestedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`readyAt\` timestamp NULL DEFAULT NULL, \`expiresAt\` timestamp NULL DEFAULT NULL, CONSTRAINT \`dataExports_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`data_exports_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`data_exports_active_unique\`(\`activeKey\`), INDEX \`data_exports_user_idx\`(\`userId\`, \`requestedAt\`))` },
+  { table: "moderationEvents", createSql: `CREATE TABLE IF NOT EXISTS \`moderationEvents\` (\`id\` int AUTO_INCREMENT NOT NULL, \`reportId\` int NOT NULL, \`actorKind\` varchar(12) NOT NULL, \`actorUserId\` int NULL, \`kind\` varchar(32) NOT NULL, \`note\` varchar(600) NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`moderationEvents_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`moderation_events_report_fk\` FOREIGN KEY (\`reportId\`) REFERENCES \`safetyReports\` (\`id\`) ON DELETE CASCADE, INDEX \`moderation_events_report_idx\`(\`reportId\`, \`createdAt\`))` },
+  { table: "moderationEvidence", createSql: `CREATE TABLE IF NOT EXISTS \`moderationEvidence\` (\`id\` int AUTO_INCREMENT NOT NULL, \`reportId\` int NOT NULL, \`seq\` int NOT NULL, \`sender\` varchar(10) NOT NULL, \`body\` text NOT NULL, \`sentAt\` timestamp NOT NULL, \`capturedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`moderationEvidence_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`moderation_evidence_report_fk\` FOREIGN KEY (\`reportId\`) REFERENCES \`safetyReports\` (\`id\`) ON DELETE CASCADE, INDEX \`moderation_evidence_report_idx\`(\`reportId\`, \`seq\`))` },
+  { table: "accountPreferences", createSql: `CREATE TABLE IF NOT EXISTS \`accountPreferences\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`timeZone\` varchar(64) NULL, \`dateFormat\` varchar(8) NULL, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`accountPreferences_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`account_preferences_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`account_preferences_user_unique\`(\`userId\`))` },
   { table: "seekerAlerts", createSql: `CREATE TABLE IF NOT EXISTS \`seekerAlerts\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`companyDomain\` varchar(255) NOT NULL, \`paused\` boolean NOT NULL DEFAULT false, \`notifiedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`seekerAlerts_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`seeker_alerts_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`seeker_alerts_user_domain_unique\`(\`userId\`,\`companyDomain\`), INDEX \`seeker_alerts_user_idx\`(\`userId\`), INDEX \`seeker_alerts_domain_idx\`(\`companyDomain\`))` },
   { table: "assistantConnections", createSql: `CREATE TABLE IF NOT EXISTS \`assistantConnections\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`provider\` ENUM('chatgpt','claude','custom') NOT NULL, \`appName\` varchar(160) NOT NULL, \`scopes\` text NOT NULL, \`status\` ENUM('connected','declined','expired','revoked') NOT NULL DEFAULT 'connected', \`connectedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`lastUsedAt\` timestamp NULL, \`revokedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`assistantConnections_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`assistant_connections_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`assistant_connections_user_idx\`(\`userId\`), INDEX \`assistant_connections_status_idx\`(\`status\`))` },
   { table: "assistantTokens", createSql: `CREATE TABLE IF NOT EXISTS \`assistantTokens\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`name\` varchar(160) NOT NULL, \`tokenHash\` varchar(128) NOT NULL, \`prefix\` varchar(16) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`lastUsedAt\` timestamp NULL, \`revokedAt\` timestamp NULL, CONSTRAINT \`assistantTokens_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`assistant_tokens_user_name_unique\`(\`userId\`,\`name\`), CONSTRAINT \`assistant_tokens_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`assistant_tokens_user_idx\`(\`userId\`))` },
@@ -29,13 +34,26 @@ export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
   { table: "assistantApprovals", createSql: `CREATE TABLE IF NOT EXISTS \`assistantApprovals\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`userId\` int NOT NULL, \`connectionId\` int NULL, \`kind\` ENUM('ask_send','credit_spend') NOT NULL, \`status\` ENUM('pending','approved','declined','expired') NOT NULL DEFAULT 'pending', \`provider\` varchar(80) NOT NULL, \`companyDomain\` varchar(255) NULL, \`role\` varchar(180) NULL, \`note\` text NULL, \`creditCount\` int NULL, \`slotCount\` int NULL, \`expiresAt\` timestamp NOT NULL, \`decidedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`assistantApprovals_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`assistant_approvals_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, CONSTRAINT \`assistant_approvals_connection_fk\` FOREIGN KEY (\`connectionId\`) REFERENCES \`assistantConnections\` (\`id\`) ON DELETE SET NULL, INDEX \`assistant_approvals_user_idx\`(\`userId\`), INDEX \`assistant_approvals_status_idx\`(\`status\`), INDEX \`assistant_approvals_expiry_idx\`(\`expiresAt\`))` },
   { table: "oauthClients", createSql: `CREATE TABLE IF NOT EXISTS \`oauthClients\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`clientId\` varchar(64) NOT NULL, \`clientName\` varchar(160) NOT NULL, \`redirectUris\` text NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthClients_clientId_unique\`(\`clientId\`))` },
   { table: "oauthAuthCodes", createSql: `CREATE TABLE IF NOT EXISTS \`oauthAuthCodes\` (\`id\` int AUTO_INCREMENT PRIMARY KEY, \`codeHash\` varchar(64) NOT NULL, \`clientId\` varchar(64) NOT NULL, \`userId\` int NOT NULL, \`redirectUri\` varchar(512) NOT NULL, \`codeChallenge\` varchar(64) NOT NULL, \`expiresAt\` timestamp NOT NULL, \`usedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX \`oauthAuthCodes_codeHash_unique\`(\`codeHash\`), CONSTRAINT \`oauth_auth_codes_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, INDEX \`oauth_auth_codes_user_idx\`(\`userId\`), INDEX \`oauth_auth_codes_expiry_idx\`(\`expiresAt\`))` },
+  { table: "companies", createSql: `CREATE TABLE IF NOT EXISTS \`companies\` (\`id\` int AUTO_INCREMENT NOT NULL, \`slug\` varchar(48) NOT NULL, \`name\` varchar(160) NOT NULL, \`initials\` varchar(4) NOT NULL, \`industry\` varchar(80) NOT NULL, \`location\` varchar(80) NOT NULL, \`functions\` text NOT NULL, \`blurb\` varchar(240) NOT NULL, \`status\` enum('listed','hidden') NOT NULL DEFAULT 'listed', \`sortOrder\` int NOT NULL DEFAULT 0, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companies_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`companies_slug_unique\`(\`slug\`), INDEX \`companies_status_sort_idx\`(\`status\`,\`sortOrder\`))` },
+  { table: "companyDomains", createSql: `CREATE TABLE IF NOT EXISTS \`companyDomains\` (\`id\` int AUTO_INCREMENT NOT NULL, \`companyId\` int NOT NULL, \`domain\` varchar(255) NOT NULL, \`isPrimary\` boolean NOT NULL DEFAULT false, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`companyDomains_id\` PRIMARY KEY(\`id\`), CONSTRAINT \`companyDomains_companyId_companies_id_fk\` FOREIGN KEY (\`companyId\`) REFERENCES \`companies\`(\`id\`) ON DELETE CASCADE ON UPDATE RESTRICT, UNIQUE INDEX \`company_domains_domain_unique\`(\`domain\`), INDEX \`company_domains_company_idx\`(\`companyId\`))` },
+  { table: "jobRuns", createSql: `CREATE TABLE IF NOT EXISTS \`jobRuns\` (\`id\` int AUTO_INCREMENT NOT NULL, \`jobName\` varchar(64) NOT NULL, \`windowKey\` varchar(32) NOT NULL, \`status\` enum('running','succeeded','failed') NOT NULL DEFAULT 'running', \`attempt\` int NOT NULL DEFAULT 1, \`leaseOwner\` varchar(64) NOT NULL, \`startedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`leaseExpiresAt\` timestamp NOT NULL, \`finishedAt\` timestamp NULL, \`processedCount\` int NOT NULL DEFAULT 0, \`failedCount\` int NOT NULL DEFAULT 0, \`error\` varchar(500) NULL, CONSTRAINT \`jobRuns_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`job_runs_job_window_unique\`(\`jobName\`,\`windowKey\`), INDEX \`job_runs_job_started_idx\`(\`jobName\`,\`startedAt\`))` },
+  // Kit credit ledger (0089): carried-over and welcome credit grants.
+  { table: "planCreditGrants", createSql: `CREATE TABLE IF NOT EXISTS \`planCreditGrants\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`source\` enum('carryover','welcome','trial') NOT NULL, \`grantKey\` varchar(64) NOT NULL, \`planId\` varchar(32) NULL, \`subscriptionId\` varchar(80) NULL, \`cycleKey\` varchar(16) NULL, \`tokenCount\` int NOT NULL, \`creditsRemaining\` int NOT NULL, \`status\` enum('active','exhausted','expired','revoked') NOT NULL DEFAULT 'active', \`grantedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`expiresAt\` timestamp NULL, \`closedAt\` timestamp NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`planCreditGrants_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`plan_credit_grants_grant_key_unique\`(\`grantKey\`), INDEX \`plan_credit_grants_user_status_idx\`(\`userId\`,\`role\`,\`status\`), INDEX \`plan_credit_grants_status_expiry_idx\`(\`status\`,\`expiresAt\`), CONSTRAINT \`plan_credit_grants_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  // Subscription management (0090): billing customers, receipts, cancellation feedback.
+  { table: "billingCustomers", createSql: `CREATE TABLE IF NOT EXISTS \`billingCustomers\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`provider\` varchar(32) NOT NULL DEFAULT 'chargebee', \`site\` enum('test','live') NOT NULL, \`providerCustomerId\` varchar(80) NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`billingCustomers_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`billing_customers_provider_customer_unique\`(\`provider\`,\`site\`,\`providerCustomerId\`), UNIQUE INDEX \`billing_customers_owner_unique\`(\`userId\`,\`role\`,\`provider\`,\`site\`), CONSTRAINT \`billing_customers_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  { table: "billingInvoices", createSql: `CREATE TABLE IF NOT EXISTS \`billingInvoices\` (\`id\` int AUTO_INCREMENT NOT NULL, \`provider\` varchar(32) NOT NULL DEFAULT 'chargebee', \`site\` enum('test','live') NOT NULL, \`providerInvoiceId\` varchar(80) NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`kind\` enum('subscription','credit_pack') NOT NULL, \`subscriptionId\` varchar(80) NULL, \`planId\` varchar(32) NULL, \`billingPeriod\` enum('monthly','yearly','30d','90d') NULL, \`tokenCount\` int NULL, \`amount\` int NOT NULL, \`amountRefunded\` int NOT NULL DEFAULT 0, \`currency\` varchar(3) NOT NULL, \`status\` enum('paid','refunded','partially_refunded','payment_due','not_paid','voided') NOT NULL, \`paidAt\` timestamp NULL, \`resourceVersion\` bigint NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`billingInvoices_id\` PRIMARY KEY(\`id\`), UNIQUE INDEX \`billing_invoices_provider_invoice_unique\`(\`provider\`,\`site\`,\`providerInvoiceId\`), INDEX \`billing_invoices_owner_paid_idx\`(\`userId\`,\`role\`,\`paidAt\`), CONSTRAINT \`billing_invoices_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
+  { table: "subscriptionCancellationFeedback", createSql: `CREATE TABLE IF NOT EXISTS \`subscriptionCancellationFeedback\` (\`id\` int AUTO_INCREMENT NOT NULL, \`userId\` int NOT NULL, \`role\` enum('job_seeker','referrer') NOT NULL DEFAULT 'job_seeker', \`subscriptionId\` varchar(80) NOT NULL, \`reason\` enum('got_job','too_expensive','not_using','missing_feature','other') NOT NULL, \`outcome\` enum('cancelled','paused') NOT NULL, \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT \`subscriptionCancellationFeedback_id\` PRIMARY KEY(\`id\`), INDEX \`subscription_cancellation_feedback_user_idx\`(\`userId\`,\`createdAt\`), CONSTRAINT \`subscription_cancellation_feedback_user_fk\` FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE)` },
 ];
 
 export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition: string }> = [
+  { table: "safetyReports", column: "severity", definition: "VARCHAR(8) NOT NULL DEFAULT 'normal'" },
+  { table: "safetyReports", column: "dueAt", definition: "TIMESTAMP NULL" },
   { table: "companyOpportunities", column: "compensation", definition: "TEXT NULL" },
   { table: "jobs", column: "compensation", definition: "TEXT NULL" },
   { table: "referralRequests", column: "savedAt", definition: "TIMESTAMP NULL" },
   { table: "notifications", column: "eventKey", definition: "VARCHAR(120) NULL" },
+  { table: "notifications", column: "kind", definition: "VARCHAR(32) NULL" },
+  { table: "notifications", column: "refId", definition: "INT NULL" },
   { table: "users", column: "suspended", definition: "BOOLEAN NOT NULL DEFAULT false" },
   { table: "users", column: "sessionsValidAfter", definition: "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP" },
   // B2B monetization (0037). The profiles.accountType enum widening
@@ -48,6 +66,16 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "profiles", column: "preferAreas", definition: "TEXT NULL" },
   { table: "profiles", column: "preferLevels", definition: "TEXT NULL" },
   { table: "profiles", column: "openTo", definition: "TEXT NULL" },
+  { table: "referralTransitionEvents", column: "referenceId", definition: "VARCHAR(64) NULL" },
+  { table: "referralRequestPasses", column: "reasonCode", definition: "VARCHAR(32) NULL" },
+  { table: "profiles", column: "experienceLevel", definition: "VARCHAR(40) NULL" },
+  { table: "profiles", column: "seekerGoal", definition: "VARCHAR(60) NULL" },
+  { table: "profiles", column: "searchCity", definition: "VARCHAR(120) NULL" },
+  { table: "profiles", column: "searchCountries", definition: "VARCHAR(240) NULL" },
+  { table: "profiles", column: "searchRemote", definition: "BOOLEAN NULL" },
+  { table: "profiles", column: "workAuthorization", definition: "VARCHAR(80) NULL" },
+  { table: "profiles", column: "workLinkKinds", definition: "TEXT NULL" },
+  { table: "profiles", column: "defaultResumeAttachmentId", definition: "INT NULL" },
   { table: "assistantApprovals", column: "targetRoleUrl", definition: "TEXT NULL" },
   { table: "assistantApprovals", column: "attachmentIds", definition: "TEXT NULL" },
   { table: "assistantApprovals", column: "idempotencyKey", definition: "VARCHAR(64) NULL" },
@@ -78,6 +106,51 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
   { table: "tokenTransactions", column: "balanceAfter", definition: "INT NULL" },
   { table: "tokenTransactions", column: "monthlyCreditsAfter", definition: "INT NULL" },
   { table: "companyCoverageInvitations", column: "referralRequestId", definition: "INT NULL" },
+  // Job function taxonomy (0077).
+  { table: "jobs", column: "jobFunction", definition: "VARCHAR(32) NULL" },
+  { table: "jobs", column: "jobFunctionSource", definition: "ENUM('seeker','inferred','backfill') NULL" },
+  // Kit credit ledger (0089). The kind ENUM widening is applied by the migration only.
+  { table: "tokenTransactions", column: "creditGrantId", definition: "INT NULL" },
+  // Subscription management (0090). The plan ENUM widenings are applied by the migration only.
+  { table: "tokenBalances", column: "subscriptionItemPriceId", definition: "VARCHAR(100) NULL" },
+  { table: "tokenBalances", column: "subscriptionBillingPeriod", definition: "ENUM('monthly','yearly','30d','90d') NULL" },
+  { table: "tokenBalances", column: "subscriptionAmount", definition: "INT NULL" },
+  { table: "tokenBalances", column: "pendingPlan", definition: "VARCHAR(32) NULL" },
+  { table: "tokenBalances", column: "pendingBillingPeriod", definition: "ENUM('monthly','yearly','30d','90d') NULL" },
+  { table: "tokenBalances", column: "pendingPlanEffectiveAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "subscriptionPauseAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "subscriptionResumeAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "paymentDueSince", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "paymentDueInvoiceId", definition: "VARCHAR(80) NULL" },
+  { table: "tokenBalances", column: "paymentDueAmount", definition: "INT NULL" },
+  { table: "tokenBalances", column: "paymentNextRetryAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "paymentFailureReason", definition: "VARCHAR(32) NULL" },
+  { table: "tokenBalances", column: "paymentRetryRequestedAt", definition: "TIMESTAMP NULL" },
+  { table: "subscriptionCheckoutIntents", column: "billingPeriod", definition: "ENUM('monthly','yearly','30d','90d') NOT NULL DEFAULT 'monthly'" },
+  { table: "subscriptionCheckoutIntents", column: "kind", definition: "ENUM('new','change') NOT NULL DEFAULT 'new'" },
+  { table: "subscriptionCheckoutIntents", column: "subscriptionId", definition: "VARCHAR(80) NULL" },
+  { table: "subscriptionCheckoutIntents", column: "failureReason", definition: "VARCHAR(32) NULL" },
+  { table: "subscriptionCheckoutIntents", column: "failureCode", definition: "VARCHAR(64) NULL" },
+  { table: "subscriptionCheckoutIntents", column: "failedAt", definition: "TIMESTAMP NULL" },
+  // Pricing model (0091): the one-time reverse trial window. The plan, period, grant source
+  // and ledger kind ENUM widenings are applied by the migration only.
+  { table: "tokenBalances", column: "trialStartedAt", definition: "TIMESTAMP NULL" },
+  { table: "tokenBalances", column: "trialEndsAt", definition: "TIMESTAMP NULL" },
+  // D-022 referrer-posted roles (0094). Post expiry is added defensively as NULL here;
+  // 0094 backfills each row to its pre-migration visible state (hiring-now: createdAt +
+  // 30 days; walk-ins: walkInEndsAt, malformed end-less walk-ins stay hidden) and
+  // enforces NOT NULL, and every read treats a missing expiry as "not expired" so a
+  // drifted DB never hides live posts.
+  { table: "companyOpportunities", column: "expiresAt", definition: "TIMESTAMP NULL" },
+  { table: "companyOpportunities", column: "showPosterFirstName", definition: "BOOLEAN NOT NULL DEFAULT false" },
+  { table: "referralRequests", column: "opportunityId", definition: "INT NULL" },
+  { table: "referralRequests", column: "firstLookReferrerId", definition: "INT NULL" },
+  { table: "referralRequests", column: "firstLookUntil", definition: "TIMESTAMP NULL" },
+  // D-034/D-047/D-061 (0095): first visibility starts the 7-day clock; an ask
+  // held for credit keeps coverageHeldAt until the sweep delivers it. Both are
+  // nullable and older rows read through coalesce(coverageVisibleAt, createdAt).
+  { table: "referralRequests", column: "coverageVisibleAt", definition: "TIMESTAMP NULL" },
+  { table: "referralRequests", column: "coverageHeldAt", definition: "TIMESTAMP NULL" },
 ];
 
 // Indexes for OTP lookup and idempotency/atomic-spend contracts. Applied
@@ -101,6 +174,12 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "companySuggestions", name: "company_suggestions_submitter_idx", columns: "`submitterUserId`", nonUnique: true },
   { table: "companySuggestions", name: "company_suggestions_status_idx", columns: "`status`", nonUnique: true },
   { table: "profiles", name: "profiles_handle_unique", columns: "`handle`" },
+  { table: "askDrafts", name: "ask_drafts_user_unique", columns: "`userId`" },
+  { table: "dataExports", name: "data_exports_active_unique", columns: "`activeKey`" },
+  { table: "accountPreferences", name: "account_preferences_user_unique", columns: "`userId`" },
+  { table: "moderationEvents", name: "moderation_events_report_idx", columns: "`reportId`,`createdAt`", nonUnique: true },
+  { table: "moderationEvidence", name: "moderation_evidence_report_idx", columns: "`reportId`,`seq`", nonUnique: true },
+  { table: "dataExports", name: "data_exports_user_idx", columns: "`userId`,`requestedAt`", nonUnique: true },
   { table: "seekerAlerts", name: "seeker_alerts_user_domain_unique", columns: "`userId`,`companyDomain`" },
   { table: "seekerAlerts", name: "seeker_alerts_user_idx", columns: "`userId`", nonUnique: true },
   { table: "seekerAlerts", name: "seeker_alerts_domain_idx", columns: "`companyDomain`", nonUnique: true },
@@ -117,6 +196,31 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
   { table: "oauthAuthCodes", name: "oauthAuthCodes_codeHash_unique", columns: "`codeHash`" },
   { table: "oauthAuthCodes", name: "oauth_auth_codes_user_idx", columns: "`userId`", nonUnique: true },
   { table: "oauthAuthCodes", name: "oauth_auth_codes_expiry_idx", columns: "`expiresAt`", nonUnique: true },
+  { table: "companies", name: "companies_slug_unique", columns: "`slug`" },
+  { table: "companies", name: "companies_status_sort_idx", columns: "`status`,`sortOrder`", nonUnique: true },
+  { table: "companyDomains", name: "company_domains_domain_unique", columns: "`domain`" },
+  { table: "companyDomains", name: "company_domains_company_idx", columns: "`companyId`", nonUnique: true },
+  { table: "jobs", name: "jobs_company_function_idx", columns: "`company`,`jobFunction`", nonUnique: true },
+  // Scheduled job runs (0078): the unique key is the single-flight lock.
+  { table: "jobRuns", name: "job_runs_job_window_unique", columns: "`jobName`,`windowKey`" },
+  { table: "jobRuns", name: "job_runs_job_started_idx", columns: "`jobName`,`startedAt`", nonUnique: true },
+  // Kit credit ledger (0089): the grant key is the idempotency claim.
+  { table: "planCreditGrants", name: "plan_credit_grants_grant_key_unique", columns: "`grantKey`" },
+  { table: "planCreditGrants", name: "plan_credit_grants_user_status_idx", columns: "`userId`,`role`,`status`", nonUnique: true },
+  { table: "planCreditGrants", name: "plan_credit_grants_status_expiry_idx", columns: "`status`,`expiresAt`", nonUnique: true },
+  { table: "tokenTransactions", name: "token_transactions_credit_grant_idx", columns: "`creditGrantId`", nonUnique: true },
+  { table: "tokenTransactions", name: "token_transactions_cycle_idx", columns: "`userId`,`role`,`sourceCycleKey`", nonUnique: true },
+  // Subscription management (0090).
+  { table: "subscriptionCheckoutIntents", name: "subscription_checkout_subscription_idx", columns: "`subscriptionId`", nonUnique: true },
+  { table: "billingCustomers", name: "billing_customers_provider_customer_unique", columns: "`provider`,`site`,`providerCustomerId`" },
+  { table: "billingCustomers", name: "billing_customers_owner_unique", columns: "`userId`,`role`,`provider`,`site`" },
+  { table: "billingInvoices", name: "billing_invoices_provider_invoice_unique", columns: "`provider`,`site`,`providerInvoiceId`" },
+  { table: "billingInvoices", name: "billing_invoices_owner_paid_idx", columns: "`userId`,`role`,`paidAt`", nonUnique: true },
+  { table: "subscriptionCancellationFeedback", name: "subscription_cancellation_feedback_user_idx", columns: "`userId`,`createdAt`", nonUnique: true },
+  // D-022 referrer-posted roles (0094): the first-look-release sweep scans by this clock.
+  { table: "referralRequests", name: "referral_requests_first_look_idx", columns: "`firstLookUntil`", nonUnique: true },
+  // D-047 (0095): the coverage-delivery sweep scans held asks by this clock.
+  { table: "referralRequests", name: "referral_requests_coverage_held_idx", columns: "`coverageHeldAt`", nonUnique: true },
 ];
 
 // Foreign keys the running code relies on. Unlike tables and columns, a FK is
@@ -138,11 +242,25 @@ export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; refere
   { table: "safetyReports", column: "reportedUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "companySuggestions", column: "submitterUserId", referencedTable: "users", referencedColumn: "id" },
   { table: "seekerAlerts", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "askDrafts", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "dataExports", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "accountPreferences", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "moderationEvents", column: "reportId", referencedTable: "safetyReports", referencedColumn: "id" },
+  { table: "moderationEvidence", column: "reportId", referencedTable: "safetyReports", referencedColumn: "id" },
   { table: "assistantConnections", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantTokens", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "developerApps", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantApprovals", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "assistantApprovals", column: "connectionId", referencedTable: "assistantConnections", referencedColumn: "id" },
+  { table: "companyDomains", column: "companyId", referencedTable: "companies", referencedColumn: "id" },
+  { table: "planCreditGrants", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "billingCustomers", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "billingInvoices", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  { table: "subscriptionCancellationFeedback", column: "userId", referencedTable: "users", referencedColumn: "id" },
+  // D-022 referrer-posted roles (0094): deleting a post or a person must never
+  // pin ask history, so both links null out.
+  { table: "referralRequests", column: "opportunityId", referencedTable: "companyOpportunities", referencedColumn: "id" },
+  { table: "referralRequests", column: "firstLookReferrerId", referencedTable: "users", referencedColumn: "id" },
 ];
 
 // The only DDL this module ever runs: the fixed ALTER/CREATE statements derived

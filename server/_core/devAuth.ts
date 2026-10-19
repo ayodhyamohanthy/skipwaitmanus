@@ -4,7 +4,7 @@ import type { Express, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk } from "./sdk";
+import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
 
 /**
  * Local development authentication.
@@ -119,7 +119,7 @@ export function registerDevAuthRoutes(app: Express) {
     }
     try {
       const sessionToken = await sdk.createSessionToken(openId, { name });
-      res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: 30 * 60_000 });
+      res.cookie(COOKIE_NAME, sessionToken, { ...getSessionCookieOptions(req), maxAge: SESSION_ACCESS_TTL_MS });
       res.json({ signedIn: true, account: { id: account.id, name: account.name, email: account.email, role: account.role } });
     } catch {
       // Without a database the account lookup inside createSessionToken rejects

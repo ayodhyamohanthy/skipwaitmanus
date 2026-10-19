@@ -37,6 +37,7 @@
             "pitch": "I've led two end-to-end redesigns for enterprise workflow products and would value an honest fit check for this role.",
             "targetRoleUrl": "https://careers.wipro.com/jobs/product-designer",
             "companyDomain": "wipro.com",
+            "jobFunction": "Design",
             "compensation": null,
             "status": "pending",
             "referrerId": null,
@@ -47,7 +48,9 @@
             "attachmentCount": 1,
             "queueStatus": null,
             "unreadMessageCount": 0,
-            "expiresAt": "2026-10-14T17:00:00.000Z"
+            "expiresAt": "2026-10-14T17:00:00.000Z",
+            "companyName": "Wipro",
+            "companyInitials": "W"
           }
         ],
         "expiredRequestIds": []

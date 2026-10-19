@@ -70,6 +70,15 @@ export const profiles = mysqlTable("profiles", {
   notifyNewAsk: boolean("notifyNewAsk").default(true).notNull(),
   notifyDigest: boolean("notifyDigest").default(false).notNull(),
   paused: boolean("paused").default(false).notNull(),
+  // Seeker setup answers (queue task 8). Roles live in openTo.
+  experienceLevel: varchar("experienceLevel", { length: 40 }),
+  seekerGoal: varchar("seekerGoal", { length: 60 }),
+  searchCity: varchar("searchCity", { length: 120 }),
+  searchCountries: varchar("searchCountries", { length: 240 }),
+  searchRemote: boolean("searchRemote"),
+  workAuthorization: varchar("workAuthorization", { length: 80 }),
+  workLinkKinds: text("workLinkKinds"),
+  defaultResumeAttachmentId: int("defaultResumeAttachmentId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("profiles_user_id_unique").on(table.userId), uniqueIndex("profiles_handle_unique").on(table.handle)]);
@@ -96,9 +105,42 @@ export const safetyReports = mysqlTable("safetyReports", {
   reportedUserId: int("reportedUserId").references(() => users.id, { onDelete: "set null" }),
   urgent: boolean("urgent").default(false).notNull(),
   status: mysqlEnum("status", ["open", "under_review", "resolved", "dismissed"]).default("open").notNull(),
+  severity: varchar("severity", { length: 8 }).default("normal").notNull(),
+  dueAt: timestamp("dueAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("safety_reports_reporter_idx").on(table.reporterUserId), index("safety_reports_status_idx").on(table.status)]);
+
+// Per-report case file (task 5 phase 1): reviewer notes and the audit trail. Admin-visible only.
+export const moderationEvents = mysqlTable("moderationEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  actorKind: varchar("actorKind", { length: 12 }).notNull(),
+  actorUserId: int("actorUserId"),
+  kind: varchar("kind", { length: 32 }).notNull(),
+  note: varchar("note", { length: 600 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("moderation_events_report_idx").on(table.reportId, table.createdAt)]);
+
+// Filing-time copy of the reporter's own request thread (task 5 phase 1b). Insert-only; admin-visible only.
+export const moderationEvidence = mysqlTable("moderationEvidence", {
+  id: int("id").autoincrement().primaryKey(),
+  reportId: int("reportId").notNull().references(() => safetyReports.id, { onDelete: "cascade" }),
+  seq: int("seq").notNull(),
+  sender: varchar("sender", { length: 10 }).notNull(),
+  body: text("body").notNull(),
+  sentAt: timestamp("sentAt").notNull(),
+  capturedAt: timestamp("capturedAt").defaultNow().notNull(),
+}, table => [index("moderation_evidence_report_idx").on(table.reportId, table.seq)]);
+
+// Per-account display preferences (queue task 25). NULL = use this device.
+export const accountPreferences = mysqlTable("accountPreferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  timeZone: varchar("timeZone", { length: 64 }),
+  dateFormat: varchar("dateFormat", { length: 8 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("account_preferences_user_unique").on(table.userId)]);
 
 export const companySuggestions = mysqlTable("companySuggestions", {
   id: int("id").autoincrement().primaryKey(),
@@ -110,6 +152,51 @@ export const companySuggestions = mysqlTable("companySuggestions", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("company_suggestions_submitter_idx").on(table.submitterUserId), index("company_suggestions_status_idx").on(table.status)]);
 
+// Server-owned company directory (0076). Contract: shared/companies.ts.
+// Availability is derived on read from verified referrers, never stored.
+// updatedAt is written by the app from the JS clock (invariant 5).
+export const companies = mysqlTable("companies", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 48 }).notNull(),
+  name: varchar("name", { length: 160 }).notNull(),
+  initials: varchar("initials", { length: 4 }).notNull(),
+  industry: varchar("industry", { length: 80 }).notNull(),
+  location: varchar("location", { length: 80 }).notNull(),
+  functions: text("functions").notNull(), // JSON array of function labels
+  blurb: varchar("blurb", { length: 240 }).notNull(),
+  status: mysqlEnum("status", ["listed", "hidden"]).default("listed").notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("companies_slug_unique").on(table.slug), index("companies_status_sort_idx").on(table.status, table.sortOrder)]);
+
+export const companyDomains = mysqlTable("companyDomains", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  domain: varchar("domain", { length: 255 }).notNull(), // lowercase
+  isPrimary: boolean("isPrimary").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("company_domains_domain_unique").on(table.domain), index("company_domains_company_idx").on(table.companyId)]);
+
+// Scheduled job runs (0078). Contract: shared/scheduledJobs.ts. One row per job
+// per window: the unique (jobName, windowKey) key is the single-flight lock and
+// the row is the idempotent run record. The app writes every timestamp from
+// the JS clock and compares leaseExpiresAt only with a JS time (invariant 5).
+export const jobRuns = mysqlTable("jobRuns", {
+  id: int("id").autoincrement().primaryKey(),
+  jobName: varchar("jobName", { length: 64 }).notNull(),
+  windowKey: varchar("windowKey", { length: 32 }).notNull(),
+  status: mysqlEnum("status", ["running", "succeeded", "failed"]).default("running").notNull(),
+  attempt: int("attempt").default(1).notNull(),
+  leaseOwner: varchar("leaseOwner", { length: 64 }).notNull(),
+  startedAt: timestamp("startedAt").defaultNow().notNull(),
+  leaseExpiresAt: timestamp("leaseExpiresAt").notNull(),
+  finishedAt: timestamp("finishedAt"),
+  processedCount: int("processedCount").default(0).notNull(),
+  failedCount: int("failedCount").default(0).notNull(),
+  error: varchar("error", { length: 500 }),
+}, table => [uniqueIndex("job_runs_job_window_unique").on(table.jobName, table.windowKey), index("job_runs_job_started_idx").on(table.jobName, table.startedAt)]);
+
 export const seekerAlerts = mysqlTable("seekerAlerts", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -118,6 +205,33 @@ export const seekerAlerts = mysqlTable("seekerAlerts", {
   notifiedAt: timestamp("notifiedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("seeker_alerts_user_domain_unique").on(table.userId, table.companyDomain), index("seeker_alerts_user_idx").on(table.userId), index("seeker_alerts_domain_idx").on(table.companyDomain)]);
+
+// One saved ask draft per user (queue task 11). Never sent; /ask continues it.
+export const askDrafts = mysqlTable("askDrafts", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companySlug: varchar("companySlug", { length: 64 }).notNull(),
+  targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }).notNull(),
+  note: varchar("note", { length: 600 }).notNull().default(""),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ask_drafts_user_unique").on(table.userId)]);
+
+// Async personal-data export (task 4a). zipData is dropped when the export expires.
+const exportBlob = customType<{ data: Buffer; driverData: Buffer }>({ dataType() { return "longblob"; } });
+export const dataExports = mysqlTable("dataExports", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 16 }).notNull().default("requested"),
+  activeKey: varchar("activeKey", { length: 40 }),
+  fileName: varchar("fileName", { length: 120 }),
+  byteSize: int("byteSize").notNull().default(0),
+  zipData: exportBlob("zipData"),
+  failureNote: varchar("failureNote", { length: 200 }),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  readyAt: timestamp("readyAt"),
+  expiresAt: timestamp("expiresAt"),
+}, table => [uniqueIndex("data_exports_active_unique").on(table.activeKey), index("data_exports_user_idx").on(table.userId, table.requestedAt)]);
 
 export const assistantConnections = mysqlTable("assistantConnections", {
   id: int("id").autoincrement().primaryKey(),
@@ -193,11 +307,16 @@ export const jobs = mysqlTable("jobs", {
   description: text("description").notNull(),
   targetRoleUrl: varchar("targetRoleUrl", { length: 2048 }),
   compatibilityHint: varchar("compatibilityHint", { length: 255 }),
+  // Job function taxonomy (0077): a JOB_FUNCTIONS value from shared/jobFunctions.ts
+  // (read through parseJobFunction), and how it was decided. Both NULL on rows
+  // nothing has examined yet; a NULL jobFunction with a source means "unknown".
+  jobFunction: varchar("jobFunction", { length: 32 }),
+  jobFunctionSource: mysqlEnum("jobFunctionSource", ["seeker", "inferred", "backfill"]),
   referrerId: int("referrerId").references(() => users.id, { onDelete: "set null" }),
   publishedAt: timestamp("publishedAt").defaultNow().notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location)]);
+}, table => [index("jobs_company_idx").on(table.company), index("jobs_location_idx").on(table.location), index("jobs_company_function_idx").on(table.company, table.jobFunction)]);
 
 export const companyOpportunities = mysqlTable("companyOpportunities", {
   id: int("id").autoincrement().primaryKey(),
@@ -211,6 +330,12 @@ export const companyOpportunities = mysqlTable("companyOpportunities", {
   walkInAt: timestamp("walkInAt"),
   walkInEndsAt: timestamp("walkInEndsAt"),
   isActive: boolean("isActive").default(true).notNull(),
+  // D-022 referrer-posted roles: a post is live for 30 days; the poster can
+  // renew it in one tap. Always set by the publish/renew paths (0094 backfilled
+  // existing rows to their pre-migration visible state and holds the column NOT NULL).
+  expiresAt: timestamp("expiresAt").notNull(),
+  // D-022: the poster chose to show their first name (never the last name).
+  showPosterFirstName: boolean("showPosterFirstName").default(false).notNull(),
   // Sponsored Role Engine: paid placement window + tier. NULL while organic.
   sponsoredUntil: timestamp("sponsoredUntil"),
   sponsoredTier: mysqlEnum("sponsoredTier", ["standard", "featured", "spotlight"]),
@@ -350,9 +475,20 @@ export const referralRequests = mysqlTable("referralRequests", {
   idempotencyKey: varchar("idempotencyKey", { length: 64 }),
   requestFingerprint: varchar("requestFingerprint", { length: 64 }),
   debitTransactionId: int("debitTransactionId"),
+  // D-022 referrer-posted roles: the post this ask was written from, and the
+  // posting employee's 48-hour first look (they alone see it until then).
+  opportunityId: int("opportunityId").references(() => companyOpportunities.id, { onDelete: "set null" }),
+  firstLookReferrerId: int("firstLookReferrerId").references(() => users.id, { onDelete: "set null" }),
+  firstLookUntil: timestamp("firstLookUntil"),
+  // D-034/D-047/D-061 (migration 0095): when an available referrer could first
+  // see the ask (starts the 7-day clock; null while it waits for coverage), and
+  // when coverage opened but the seeker had no credit, so the ask is held
+  // (server/coverageDelivery.ts) until the hourly sweep delivers it.
+  coverageVisibleAt: timestamp("coverageVisibleAt"),
+  coverageHeldAt: timestamp("coverageHeldAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
+}, table => [index("referral_requests_referrer_idx").on(table.referrerId), index("referral_requests_seeker_idx").on(table.jobSeekerId), index("referral_requests_status_idx").on(table.status), index("referral_requests_saved_idx").on(table.savedAt), index("referral_requests_coverage_queue_idx").on(table.waitingForCoverage, table.coverageQueuedAt), index("referral_requests_first_look_idx").on(table.firstLookUntil), index("referral_requests_coverage_held_idx").on(table.coverageHeldAt), uniqueIndex("referral_requests_seeker_idempotency_unique").on(table.jobSeekerId, table.idempotencyKey)]);
 
 export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   id: int("id").autoincrement().primaryKey(),
@@ -363,6 +499,8 @@ export const referralTransitionEvents = mysqlTable("referralTransitionEvents", {
   fromStatus: varchar("fromStatus", { length: 32 }).notNull(),
   resultingStatus: varchar("resultingStatus", { length: 32 }).notNull(),
   resultingRevision: int("resultingRevision").notNull(),
+  // Optional portal reference recorded on mark-as-referred (queue task 16).
+  referenceId: varchar("referenceId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_transition_operation_unique").on(table.referralRequestId, table.operationKey), uniqueIndex("referral_transition_revision_unique").on(table.referralRequestId, table.resultingRevision)]);
 
@@ -378,6 +516,7 @@ export const referralRequestPasses = mysqlTable("referralRequestPasses", {
   referralRequestId: int("referralRequestId").notNull().references(() => referralRequests.id, { onDelete: "cascade" }),
   referrerId: int("referrerId").notNull().references(() => users.id, { onDelete: "cascade" }),
   reason: mysqlEnum("reason", ["role_not_a_fit", "cannot_support", "timing"]).notNull(),
+  reasonCode: varchar("reasonCode", { length: 32 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("referral_request_pass_request_referrer_unique").on(table.referralRequestId, table.referrerId), index("referral_request_pass_referrer_idx").on(table.referrerId, table.createdAt)]);
 
@@ -543,6 +682,8 @@ export const notifications = mysqlTable("notifications", {
   title: varchar("title", { length: 180 }).notNull(),
   body: text("body").notNull(),
   eventKey: varchar("eventKey", { length: 120 }),
+  kind: varchar("kind", { length: 32 }),
+  refId: int("refId"),
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("notifications_user_idx").on(table.userId), uniqueIndex("notifications_event_key_unique").on(table.eventKey)]);
@@ -555,13 +696,37 @@ export const tokenBalances = mysqlTable("tokenBalances", {
   monthlyCreditsRemaining: int("monthlyCreditsRemaining").default(3).notNull(),
   monthlyAllowance: int("monthlyAllowance").default(3).notNull(),
   monthlyCycleKey: varchar("monthlyCycleKey", { length: 16 }).default("legacy").notNull(),
-  plan: mysqlEnum("plan", ["free", "pro", "max"]).default("free").notNull(),
+  // Order pinned to shared/billingCatalog.ts WALLET_PLAN_IDS (server/subscriptionManagementContract.test.ts); 0090 added the kit plans,
+  // 0091 the Oct 14 2026 plans (land_100/200/500 are reserved, never written).
+  plan: mysqlEnum("plan", ["free", "pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).default("free").notNull(),
   subscriptionId: varchar("subscriptionId", { length: 80 }),
   subscriptionStatus: varchar("subscriptionStatus", { length: 32 }),
   subscriptionCurrency: varchar("subscriptionCurrency", { length: 3 }),
   subscriptionCurrentTermStart: timestamp("subscriptionCurrentTermStart"),
   subscriptionCurrentTermEnd: timestamp("subscriptionCurrentTermEnd"),
   subscriptionResourceVersion: bigint("subscriptionResourceVersion", { mode: "number" }),
+  // Subscription management (0090, shared/subscriptionState.ts): what the subscription bills,
+  // a switch scheduled for term end, a scheduled or active pause, and the dunning state of a
+  // failed renewal. Written only from provider responses and webhook snapshots.
+  subscriptionItemPriceId: varchar("subscriptionItemPriceId", { length: 100 }),
+  // Order pinned to shared/billingCatalog.ts BILLING_PERIODS; 0091 added the 30- and 90-day passes.
+  subscriptionBillingPeriod: mysqlEnum("subscriptionBillingPeriod", ["monthly", "yearly", "30d", "90d"]),
+  subscriptionAmount: int("subscriptionAmount"),
+  pendingPlan: varchar("pendingPlan", { length: 32 }),
+  pendingBillingPeriod: mysqlEnum("pendingBillingPeriod", ["monthly", "yearly", "30d", "90d"]),
+  pendingPlanEffectiveAt: timestamp("pendingPlanEffectiveAt"),
+  subscriptionPauseAt: timestamp("subscriptionPauseAt"),
+  subscriptionResumeAt: timestamp("subscriptionResumeAt"),
+  paymentDueSince: timestamp("paymentDueSince"),
+  paymentDueInvoiceId: varchar("paymentDueInvoiceId", { length: 80 }),
+  paymentDueAmount: int("paymentDueAmount"),
+  paymentNextRetryAt: timestamp("paymentNextRetryAt"),
+  paymentFailureReason: varchar("paymentFailureReason", { length: 32 }),
+  paymentRetryRequestedAt: timestamp("paymentRetryRequestedAt"),
+  // The one-time 14-day reverse trial (0091, shared/planEntitlements.ts): set once, from the JS
+  // clock, when a Free seeker's ask starts it; the trial credits are a planCreditGrants "trial" row.
+  trialStartedAt: timestamp("trialStartedAt"),
+  trialEndsAt: timestamp("trialEndsAt"),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("token_balances_user_idx").on(table.userId), uniqueIndex("token_balances_user_role_unique").on(table.userId, table.role), uniqueIndex("token_balances_subscription_unique").on(table.subscriptionId)]);
 
@@ -570,7 +735,8 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
   tokenCount: int("tokenCount").notNull(),
-  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund"]).notNull(),
+  // Order pinned to shared/creditLedger.ts TOKEN_LEDGER_KINDS (server/creditLedgerContract.test.ts); 0089 added the kit ledger kinds, 0091 trial_grant.
+  kind: mysqlEnum("kind", ["purchase", "direct_request", "admin_adjustment", "company_coverage_reward", "personal_referral_reward", "invite_reward_pending", "invite_reward_granted", "withdrawal_refund", "promo_grant", "promo_spend", "expiry_refund", "plan_grant", "plan_credit_carryover", "plan_credit_expiry", "welcome_grant", "credit_spend", "trial_grant"]).notNull(),
   source: varchar("source", { length: 40 }),
   sourceCycleKey: varchar("sourceCycleKey", { length: 16 }),
   referenceType: varchar("referenceType", { length: 40 }),
@@ -583,8 +749,10 @@ export const tokenTransactions = mysqlTable("tokenTransactions", {
   qualifiedAt: timestamp("qualifiedAt"),
   balanceAfter: int("balanceAfter"),
   monthlyCreditsAfter: int("monthlyCreditsAfter"),
+  /** The planCreditGrants row this row grants, spends, carries into or expires (0089). */
+  creditGrantId: int("creditGrantId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("token_transactions_user_idx").on(table.userId), uniqueIndex("token_transactions_debit_reference_unique").on(table.userId, table.role, table.kind, table.referenceType, table.referenceId), uniqueIndex("token_transactions_idempotency_kind_unique").on(table.userId, table.role, table.idempotencyKey, table.kind), uniqueIndex("token_transactions_reversal_unique").on(table.reversesTransactionId)]);
+}, table => [index("token_transactions_user_idx").on(table.userId), index("token_transactions_credit_grant_idx").on(table.creditGrantId), index("token_transactions_cycle_idx").on(table.userId, table.role, table.sourceCycleKey), uniqueIndex("token_transactions_debit_reference_unique").on(table.userId, table.role, table.kind, table.referenceType, table.referenceId), uniqueIndex("token_transactions_idempotency_kind_unique").on(table.userId, table.role, table.idempotencyKey, table.kind), uniqueIndex("token_transactions_reversal_unique").on(table.reversesTransactionId)]);
 
 export const companyCoverageInvitations = mysqlTable("companyCoverageInvitations", {
   id: int("id").autoincrement().primaryKey(),
@@ -651,6 +819,32 @@ export const promoCreditGrants = mysqlTable("promoCreditGrants", {
   revokedReason: varchar("revokedReason", { length: 255 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("promo_grant_user_role_unique").on(table.userId, table.role), index("promo_grant_user_status_idx").on(table.userId, table.role, table.status)]);
+
+// Kit credit ledger (0089, shared/creditLedger.ts): the dated and one-time
+// credit buckets. "carryover" holds what a plan cycle left unspent, bound to the
+// subscription that granted it (expiresAt NULL = while subscribed, Land);
+// "welcome" is the one-time 3 credits per person; "trial" (0091) the reverse
+// trial's 5 credits, ending with the trial. grantKey is the idempotency claim:
+// one carryover per subscription cycle, one welcome and one trial per person.
+// Every change to creditsRemaining has a tokenTransactions row with creditGrantId.
+export const planCreditGrants = mysqlTable("planCreditGrants", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  // Order pinned to shared/creditLedger.ts CREDIT_GRANT_SOURCES; 0091 added "trial".
+  source: mysqlEnum("source", ["carryover", "welcome", "trial"]).notNull(),
+  grantKey: varchar("grantKey", { length: 64 }).notNull(),
+  planId: varchar("planId", { length: 32 }),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  cycleKey: varchar("cycleKey", { length: 16 }),
+  tokenCount: int("tokenCount").notNull(),
+  creditsRemaining: int("creditsRemaining").notNull(),
+  status: mysqlEnum("status", ["active", "exhausted", "expired", "revoked"]).default("active").notNull(),
+  grantedAt: timestamp("grantedAt").defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt"),
+  closedAt: timestamp("closedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("plan_credit_grants_grant_key_unique").on(table.grantKey), index("plan_credit_grants_user_status_idx").on(table.userId, table.role, table.status), index("plan_credit_grants_status_expiry_idx").on(table.status, table.expiresAt)]);
 
 export const giftSubscriptionFulfillments = mysqlTable("giftSubscriptionFulfillments", {
   id: int("id").autoincrement().primaryKey(),
@@ -735,13 +929,71 @@ export const subscriptionCheckoutIntents = mysqlTable("subscriptionCheckoutInten
   checkoutIntentId: varchar("checkoutIntentId", { length: 96 }).notNull(),
   userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
   role: mysqlEnum("role", ["job_seeker", "referrer"]).notNull(),
-  plan: mysqlEnum("plan", ["pro", "max"]).notNull(),
+  // Order pinned to shared/billingCatalog.ts INTENT_PLAN_IDS; 0090 added the kit plans, 0091 the Oct 14 2026 plans.
+  plan: mysqlEnum("plan", ["pro", "max", "start", "momentum", "land_100", "land_200", "land_500", "keep_warm", "land_focus", "land_sprint", "land_concierge"]).notNull(),
   itemPriceId: varchar("itemPriceId", { length: 100 }).notNull(),
   amount: int("amount").notNull(),
   currency: varchar("currency", { length: 3 }).notNull(),
   status: mysqlEnum("status", ["pending", "activated", "cancelled"]).default("pending").notNull(),
+  // 0090: yearly terms, plan changes of an existing subscription, and the provider's
+  // recorded payment failure (shared/billingAccount.ts PAYMENT_FAILURE_REASONS).
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly", "30d", "90d"]).default("monthly").notNull(),
+  kind: mysqlEnum("kind", ["new", "change"]).default("new").notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  failureReason: varchar("failureReason", { length: 32 }),
+  failureCode: varchar("failureCode", { length: 64 }),
+  failedAt: timestamp("failedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [uniqueIndex("subscription_checkout_hosted_page_unique").on(table.hostedPageId), uniqueIndex("subscription_checkout_intent_unique").on(table.checkoutIntentId), index("subscription_checkout_user_idx").on(table.userId)]);
+}, table => [uniqueIndex("subscription_checkout_hosted_page_unique").on(table.hostedPageId), uniqueIndex("subscription_checkout_intent_unique").on(table.checkoutIntentId), index("subscription_checkout_user_idx").on(table.userId), index("subscription_checkout_subscription_idx").on(table.subscriptionId)]);
+
+// Subscription management (0090). The Chargebee customer that holds a member's
+// payment methods, per billing site (test and live ids never cross). Bound only
+// from an owned subscription or checkout; one customer never maps to two people.
+export const billingCustomers = mysqlTable("billingCustomers", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  provider: varchar("provider", { length: 32 }).default("chargebee").notNull(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  providerCustomerId: varchar("providerCustomerId", { length: 80 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("billing_customers_provider_customer_unique").on(table.provider, table.site, table.providerCustomerId), uniqueIndex("billing_customers_owner_unique").on(table.userId, table.role, table.provider, table.site)]);
+
+// Receipts (0090): every provider invoice of a member's subscription or credit
+// pack, upserted from webhook snapshots in invoice resource_version order.
+export const billingInvoices = mysqlTable("billingInvoices", {
+  id: int("id").autoincrement().primaryKey(),
+  provider: varchar("provider", { length: 32 }).default("chargebee").notNull(),
+  site: mysqlEnum("site", ["test", "live"]).notNull(),
+  providerInvoiceId: varchar("providerInvoiceId", { length: 80 }).notNull(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  kind: mysqlEnum("kind", ["subscription", "credit_pack"]).notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }),
+  planId: varchar("planId", { length: 32 }),
+  billingPeriod: mysqlEnum("billingPeriod", ["monthly", "yearly", "30d", "90d"]),
+  tokenCount: int("tokenCount"),
+  amount: int("amount").notNull(),
+  amountRefunded: int("amountRefunded").default(0).notNull(),
+  currency: varchar("currency", { length: 3 }).notNull(),
+  status: mysqlEnum("status", ["paid", "refunded", "partially_refunded", "payment_due", "not_paid", "voided"]).notNull(),
+  paidAt: timestamp("paidAt"),
+  resourceVersion: bigint("resourceVersion", { mode: "number" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("billing_invoices_provider_invoice_unique").on(table.provider, table.site, table.providerInvoiceId), index("billing_invoices_owner_paid_idx").on(table.userId, table.role, table.paidAt)]);
+
+// Why members leave (0090): one row per confirmed cancel or pause from the kit flow.
+export const subscriptionCancellationFeedback = mysqlTable("subscriptionCancellationFeedback", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: mysqlEnum("role", ["job_seeker", "referrer"]).default("job_seeker").notNull(),
+  subscriptionId: varchar("subscriptionId", { length: 80 }).notNull(),
+  reason: mysqlEnum("reason", ["got_job", "too_expensive", "not_using", "missing_feature", "other"]).notNull(),
+  outcome: mysqlEnum("outcome", ["cancelled", "paused"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("subscription_cancellation_feedback_user_idx").on(table.userId, table.createdAt)]);
 
 export const subscriptionEvents = mysqlTable("subscriptionEvents", {
   id: int("id").autoincrement().primaryKey(),

@@ -26,11 +26,11 @@ describe("My Requests empty state", () => {
   it("keeps a Job Seeker moving with a real-data empty state, never a fabricated preview", async () => {
     renderPage();
     await waitFor(() => expect(document.querySelector('[aria-label="No referral requests"]')).toBeTruthy());
-    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeTruthy();
-    // The old illustrative preview card is gone: no fabricated activity ships.
+    // Kit v4: nothing sits under the muted empty panel (no share card), and
+    // the old illustrative preview card is gone: no fabricated activity ships.
+    expect(document.querySelector('[data-skipwait-zero-action="job_seeker"]')).toBeNull();
     expect(document.querySelector('[data-skipwait-empty-preview]')).toBeNull();
-    expect(screen.getByRole("link", { name: "Share on WhatsApp" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Share on LinkedIn" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Share on WhatsApp" })).toBeNull();
     expect(screen.queryByText("No requests yet.")).toBeNull();
     // Kit v4 first-time empty state: honest zero, two real next steps.
     expect(screen.getByRole("heading", { name: "No asks yet." })).toBeTruthy();
@@ -42,7 +42,7 @@ describe("My Requests empty state", () => {
     expect(screen.getByText("IN CONVERSATION").parentElement?.textContent).toContain("0");
   });
 
-  it("shows the approved request as a conversation row with its referrer update", async () => {
+  it("shows the approved request as a single conversation link row (kit v4: no update aside)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ requests: [{ id: 12, targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", status: "approved", referrerId: 77, referrerMessage: "I can introduce you to the hiring team.", unreadMessageCount: 2, createdAt: "2026-08-10T08:00:00.000Z", updatedAt: "2026-08-11T09:00:00.000Z", attachmentCount: 1 }] }) })));
     renderPage();
     const row = await waitFor(() => screen.getByLabelText("acme.com request, Accepted"));
@@ -51,6 +51,8 @@ describe("My Requests empty state", () => {
     expect(screen.getByText("IN CONVERSATION").parentElement?.textContent).toContain("1");
     // Referrer identity stays private: id 77 appears nowhere.
     expect(document.querySelector("main")?.textContent).not.toContain("77");
-    expect(screen.getByLabelText("Referrer update").textContent).toContain("I can introduce you to the hiring team.");
+    // The referrer's note reaches the inbox and the thread, not an extra aside here.
+    expect(screen.queryByLabelText("Referrer update")).toBeNull();
+    expect(row.closest("li")?.textContent).not.toContain("I can introduce you to the hiring team.");
   });
 });

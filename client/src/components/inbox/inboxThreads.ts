@@ -3,8 +3,8 @@
 // so the identity rules (seeker hidden until accept) are unit-testable.
 import { z } from "zod";
 import { getJobSeekerReferralState, isPostApprovalReferralStatus, referralStatuses, referralStatusLabels, type ReferralStatus } from "@shared/referral";
+import { companyIdentityFieldsSchema, companyIdentityOf, type CompanyIdentity, type CompanyIdentitySource } from "@shared/companies";
 import { readApiJson } from "@/lib/apiResponse";
-import { companySlugForJobCompany, getLaunchCompany } from "@/lib/companies";
 
 const timestamp = z.union([z.string(), z.date()]).transform(value => (typeof value === "string" ? value : value.toISOString()));
 
@@ -12,9 +12,10 @@ const askingRowSchema = z.object({
   id: z.number().int().positive(),
   title: z.string().nullish(),
   companyDomain: z.string().min(1),
+  ...companyIdentityFieldsSchema.shape,
   status: z.enum(referralStatuses),
   referrerId: z.number().int().nullable().optional().transform(value => value ?? null),
-  queueStatus: z.enum(["available_for_review", "waiting_for_coverage"]).nullish(),
+  queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
   referrerMessage: z.string().nullish(),
   unreadMessageCount: z.number().int().nonnegative().optional().transform(value => value ?? 0),
   updatedAt: timestamp,
@@ -23,9 +24,11 @@ const askingRowSchema = z.object({
 const referringRowSchema = z.object({
   id: z.number().int().positive(),
   companyDomain: z.string().min(1),
+  ...companyIdentityFieldsSchema.shape,
   status: z.enum(referralStatuses),
   unreadMessageCount: z.number().int().nonnegative().optional().transform(value => value ?? 0),
   updatedAt: timestamp,
+  jobTitle: z.string().nullish(),
 });
 
 export const askingListSchema = z.object({ requests: z.array(askingRowSchema) });
@@ -69,10 +72,9 @@ export function kitStatusFor(status: ReferralStatus): KitStatus {
   return KIT_STATUS[status];
 }
 
-export function companyIdentity(companyDomain: string): { name: string; mark: string } {
-  const launch = getLaunchCompany(companySlugForJobCompany(companyDomain) ?? "");
-  if (launch) return { name: launch.name, mark: launch.initials };
-  return { name: companyDomain, mark: companyDomain.charAt(0).toUpperCase() };
+/** The server's directory name and initials for the row; the raw domain otherwise. */
+export function companyIdentity(row: CompanyIdentitySource): CompanyIdentity {
+  return companyIdentityOf(row);
 }
 
 function unreadNote(count: number) {
@@ -89,7 +91,7 @@ export function askingStatus(row: Pick<AskingRow, "status" | "referrerId">): Kit
 }
 
 export function askingThread(row: AskingRow): InboxThread {
-  const company = companyIdentity(row.companyDomain);
+  const company = companyIdentity(row);
   const pending = row.status === "pending";
   const pill = askingStatus(row);
   const note = row.unreadMessageCount > 0
@@ -99,7 +101,7 @@ export function askingThread(row: AskingRow): InboxThread {
       : !pending && row.referrerMessage
         ? row.referrerMessage
         : pending
-          ? row.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : row.queueStatus === "available_for_review" ? "Available for review" : "Waiting for a referrer to accept"
+          ? row.queueStatus === "waiting_for_coverage" ? "Waiting for coverage" : row.queueStatus === "held_for_credit" ? "Add a credit to send it" : row.queueStatus === "available_for_review" ? "Available for review" : "Waiting for a referrer to accept"
           : getJobSeekerReferralState({ status: row.status, referrerId: row.referrerId }).label;
   return {
     key: `asking-${row.id}`,
@@ -121,12 +123,12 @@ export function askingThread(row: AskingRow): InboxThread {
 }
 
 export function referringThread(row: ReferringRow): InboxThread {
-  const company = companyIdentity(row.companyDomain);
+  const company = companyIdentity(row);
   const pending = row.status === "pending";
   const revealed = isPostApprovalReferralStatus(row.status);
   const note = row.unreadMessageCount > 0
     ? unreadNote(row.unreadMessageCount)
-    : pending ? "New ask for you to review" : referralStatusLabels[row.status];
+    : pending ? (row.jobTitle?.trim() ? `${row.jobTitle.trim()} · New ask for you to review` : "New ask for you to review") : referralStatusLabels[row.status];
   return {
     key: `referring-${row.id}`,
     side: "referring",

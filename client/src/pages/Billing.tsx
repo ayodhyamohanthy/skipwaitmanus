@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useEffect, useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link } from "wouter";
@@ -10,7 +11,7 @@ import { failureMessage, parseReceipts, parseSummary, type CreditSummary, type R
 import { CurrentPlanPanel, PaymentMethodPanel, ReceiptsPanel } from "@/components/plans/BillingPanels";
 import { CancelPlanDialog } from "@/components/plans/CancelPlanDialog";
 
-const comparePlans = <Link href="/plans" className="text-link text-sm">Compare plans<ArrowRight className="size-4" /></Link>;
+const plansAndCredits = <Link href="/plans" className="text-link text-sm">Plans &amp; credits<ArrowRight className="size-4" /></Link>;
 
 export default function Billing() {
   const { isSignedIn, getToken } = useAuth();
@@ -67,7 +68,7 @@ export default function Billing() {
   if (!isSignedIn) {
     return (
       <main data-skipwait-screen="billing-sign-in" className="page-content mx-auto max-w-3xl">
-        <Heading eyebrow="PLANS & CREDITS" title="Manage plan" aside={comparePlans} />
+        <Heading eyebrow="PLANS & CREDITS" title="Manage plan" aside={plansAndCredits} />
         <Panel>
           <p className="text-sm text-muted-foreground">Sign in to see your plan, payment history, and cancellation options.</p>
           <SignInButton><button type="button" className="brand-button mt-4 inline-flex items-center justify-center bg-primary text-sm text-primary-foreground">Sign in</button></SignInButton>
@@ -78,9 +79,9 @@ export default function Billing() {
 
   return (
     <main data-skipwait-screen="billing" className="page-content mx-auto max-w-3xl">
-      <Heading eyebrow="PLANS & CREDITS" title="Manage plan" aside={comparePlans} />
+      <Heading eyebrow="PLANS & CREDITS" title="Manage plan" aside={plansAndCredits} />
 
-      {loading ? <Panel><p role="status" className="text-sm text-muted-foreground">Loading billing…</p></Panel> : null}
+      {loading ? <Panel><LoadingNote>Loading billing…</LoadingNote></Panel> : null}
       {!loading && error ? <Panel tone="muted" className="border border-destructive/40"><div role="alert"><strong className="text-destructive">{error}</strong><p className="mt-1 text-sm">Your plan and payments are unchanged. Try again in a moment.</p></div><Button size="sm" className="mt-3" onClick={() => setReloadKey(key => key + 1)}>Try again</Button></Panel> : null}
 
       {!loading && !error && summary ? (

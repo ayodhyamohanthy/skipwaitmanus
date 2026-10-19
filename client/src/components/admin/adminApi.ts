@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { flowBaselineSchema } from "@shared/flowBaseline";
 import { readApiJson } from "@/lib/apiResponse";
 
 /** Thrown for 401/403 so admin screens can show the access gate instead of retrying. */
@@ -38,6 +39,8 @@ export const flowHealthSchema = z.object({
     funnel: z.object({ requestsCreated: z.number(), requestsClaimed: z.number(), decisionsRecorded: z.number(), waitingForCoverage: z.number() }),
     coverageGaps: z.array(z.object({ companyDomain: z.string(), waitingRequests: z.number(), verifiedCoverage: z.number() })),
   }),
+  /** D-018 aggregate baseline, a sibling of `health`; absent or null when the server did not measure it. */
+  baseline: flowBaselineSchema.nullable().optional(),
 });
 export type FlowHealth = z.infer<typeof flowHealthSchema>["health"];
 
@@ -49,6 +52,10 @@ export const safetyReportSchema = z.object({
   reportedUserId: z.number().nullable(),
   urgent: truthy,
   status: z.string(),
+  severity: z.string().optional(),
+  dueAt: z.string().nullable().optional(),
+  events: z.array(z.object({ actor: z.string(), kind: z.string(), note: z.string().nullable(), createdAt: z.string() })).optional(),
+  evidence: z.array(z.object({ sender: z.string(), body: z.string(), sentAt: z.string() })).optional(),
   createdAt: z.string(),
   updatedAt: z.string().nullable().optional(),
 });
@@ -101,4 +108,5 @@ export const adminKeys = {
   enrollments: ["admin", "approval-queue", "referrer_enrollment"] as const,
   reports: ["admin", "safety-reports"] as const,
   suggestions: ["admin", "company-suggestions"] as const,
+  companies: ["admin", "companies"] as const,
 };

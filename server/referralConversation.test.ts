@@ -31,6 +31,7 @@ describe("approved referral conversation HTTP routes", () => {
       ["outsider", { account: { id: 33, openId: "workos-outsider" } }],
     ]);
     const acceptedRequest = { jobSeekerId: 11, referrerId: 22, status: "pending" };
+    const progressInputs: Array<{ status: string; referenceId: string | null }> = [];
     const stored = [{ id: 1, body: "Thanks for reviewing this.", createdAt: new Date("2026-08-19T09:00:00.000Z"), senderId: 11 }];
     const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
     const conversationMessages = async (userId: number, requestId: number) => {
@@ -50,6 +51,7 @@ describe("approved referral conversation HTTP routes", () => {
         const { recipientId } = authorizeApprovedReferralConversation(userId, input.requestId === 601 ? acceptedRequest : undefined);
         if (input.status !== "intro_made") throw new Error("Choose a later real progress milestone");
         acceptedRequest.status = input.status;
+        progressInputs.push({ status: input.status, referenceId: input.referenceId ?? null });
         expect(recipientId).toBe(userId === 11 ? 22 : 11);
         return { status: input.status, changed: true };
       },
@@ -73,6 +75,14 @@ describe("approved referral conversation HTTP routes", () => {
     expect((await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "outsider").send({ status: "intro_made" })).status).toBe(403);
     const progressed = await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "seeker").send({ status: "intro_made" });
     expect(progressed.status).toBe(200); expect(progressed.body.progress).toEqual({ status: "intro_made", changed: true });
+    expect(progressInputs.at(-1)).toEqual({ status: "intro_made", referenceId: null });
+    for (const referenceId of ["http://evil.example/x", "<b>x</b>", "x".repeat(41), 42]) {
+      expect((await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "referrer").send({ status: "intro_made", referenceId })).status, String(referenceId)).toBe(400);
+    }
+    expect((await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "referrer").send({ status: "interview", referenceId: "TC-4410" })).status).toBe(400);
+    const withReference = await request(app).post("/api/company-referrals/601/progress").set("x-test-user", "referrer").send({ status: "intro_made", referenceId: "  TC-4410 " });
+    expect(withReference.status).toBe(200);
+    expect(progressInputs.at(-1)).toEqual({ status: "intro_made", referenceId: "TC-4410" });
     const seekerMessages = await request(app).get("/api/company-referrals/601/conversation").set("x-test-user", "seeker");
     expect(seekerMessages.status).toBe(200);
     expect(seekerMessages.headers["cache-control"]).toBe("private, no-store");

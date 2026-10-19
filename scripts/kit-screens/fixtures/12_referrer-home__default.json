@@ -13,7 +13,9 @@
       "status": 200,
       "body": {
         "verifiedCompanyAccess": true,
-        "workEmailDomain": "wipro.com"
+        "workEmailDomain": "wipro.com",
+        "companyName": "Wipro",
+        "companyInitials": "W"
       }
     },
     {
@@ -49,6 +51,7 @@
             "id": 31,
             "targetRoleUrl": null,
             "companyDomain": "wipro.com",
+            "jobFunction": "Design",
             "compensation": null,
             "status": "pending",
             "referrerId": null,
@@ -62,12 +65,15 @@
             "isClaimedByYou": false,
             "isQueueOpenAllocation": false,
             "unreadMessageCount": 0,
-            "expiresAt": "2026-10-13T16:30:00.000Z"
+            "expiresAt": "2026-10-13T16:30:00.000Z",
+            "companyName": "Wipro",
+            "companyInitials": "W"
           },
           {
             "id": 32,
             "targetRoleUrl": null,
             "companyDomain": "wipro.com",
+            "jobFunction": "Design",
             "compensation": null,
             "status": "pending",
             "referrerId": null,
@@ -81,12 +87,15 @@
             "isClaimedByYou": false,
             "isQueueOpenAllocation": false,
             "unreadMessageCount": 0,
-            "expiresAt": "2026-10-08T16:30:00.000Z"
+            "expiresAt": "2026-10-08T16:30:00.000Z",
+            "companyName": "Wipro",
+            "companyInitials": "W"
           },
           {
             "id": 33,
             "targetRoleUrl": null,
             "companyDomain": "wipro.com",
+            "jobFunction": "Design",
             "compensation": null,
             "status": "pending",
             "referrerId": null,
@@ -100,12 +109,15 @@
             "isClaimedByYou": false,
             "isQueueOpenAllocation": false,
             "unreadMessageCount": 0,
-            "expiresAt": "2026-10-11T16:30:00.000Z"
+            "expiresAt": "2026-10-11T16:30:00.000Z",
+            "companyName": "Wipro",
+            "companyInitials": "W"
           },
           {
             "id": 40,
             "targetRoleUrl": null,
             "companyDomain": "wipro.com",
+            "jobFunction": "Design",
             "compensation": null,
             "status": "approved",
             "referrerId": 11,
@@ -119,7 +131,9 @@
             "isClaimedByYou": true,
             "isQueueOpenAllocation": false,
             "unreadMessageCount": 0,
-            "expiresAt": "2026-09-27T06:00:00.000Z"
+            "expiresAt": "2026-09-27T06:00:00.000Z",
+            "companyName": "Wipro",
+            "companyInitials": "W"
           }
         ],
         "scope": "new"

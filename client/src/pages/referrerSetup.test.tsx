@@ -23,7 +23,7 @@ const PREFS = { preferAreas: [], preferLevels: [], referralCapacity: 3, referrer
 
 function stubSetup(preferences: Record<string, unknown> = PREFS) {
   vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-    if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+    if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
     if (String(url).endsWith("/referrer-preferences")) return ok({ preferences });
     return ok({});
   }));
@@ -52,10 +52,11 @@ describe("ReferrerSetup", () => {
 
   it("walks areas to ready and persists real preferences", async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (String(url).endsWith("/referrer-preferences") && init?.method === "PUT") {
         const body = JSON.parse(String(init.body));
-        expect(body).toMatchObject({ referralCapacity: 5, referrerVisibility: "named", notifyNewAsk: false });
+        expect(body).toMatchObject({ referralCapacity: 5, notifyNewAsk: false });
+        expect(body).not.toHaveProperty("referrerVisibility");
         expect(body.preferAreas).toEqual(["Design", "Product"]);
         expect(body.preferLevels).toEqual(["Mid-level", "Senior"]);
         return ok({ preferences: body });
@@ -71,40 +72,56 @@ describe("ReferrerSetup", () => {
     fireEvent.click(screen.getByRole("button", { name: "Mid-level" }));
     fireEvent.click(screen.getByRole("button", { name: "Senior" }));
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    expect(screen.getByText("asks per month · about 15 minutes")).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Monthly capacity"), { target: { value: "5" } });
-    fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
-    fireEvent.click(screen.getByRole("radio", { name: /Named on company pages/ }));
+    expect(screen.getByText("asks per month · about 25 minutes")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("switch", { name: /Email when a new ask arrives/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("You're open for asks.")).toBeTruthy();
     expect(screen.getByRole("link", { name: /Go to referrer home/ }).getAttribute("href")).toBe("/referrer-home");
+    // No handle yet: the profile opens on the handle field instead of a dead /p/ link.
+    expect(screen.getByRole("link", { name: "Share my profile" }).getAttribute("href")).toBe("/profile?focus=handle");
     expect(fetchMock).toHaveBeenCalledWith("/api/referrer-preferences", expect.objectContaining({ method: "PUT" }));
   });
 
   it("does not claim you are open for asks while new asks are paused", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (init?.method === "PUT") return ok({ preferences: { ...PREFS, ...JSON.parse(String(init.body)), paused: true } });
       return ok({ preferences: { ...PREFS, preferAreas: ["Design"], paused: true } });
     }));
     renderSetup();
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("Setup saved. New asks are paused.")).toBeTruthy();
     expect(screen.queryByText("You're open for asks.")).toBeNull();
   });
 
+  it("shares the real public profile handle on the ready step", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
+      if (String(url).endsWith("/profile/me")) return ok({ profile: { handle: "meera-iyer" } });
+      if (init?.method === "PUT") return ok({ preferences: { ...PREFS, ...JSON.parse(String(init.body)) } });
+      return ok({ preferences: { ...PREFS, preferAreas: ["Design"] } });
+    }));
+    renderSetup();
+    expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
+    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
+    expect((await screen.findByRole("link", { name: "Share my profile" })).getAttribute("href")).toBe("/p/meera-iyer");
+  });
+
   it("keeps the steps and shows the server's reason when saving fails", async () => {
     vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (init?.method === "PUT") return fail(400, { error: "Capacity is 1 to 15 asks" });
       return ok({ preferences: { ...PREFS, preferAreas: ["Design"] } });
     }));
     renderSetup();
     expect(await screen.findByText("Which roles can you judge?")).toBeTruthy();
-    for (let i = 0; i < 3; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
+    for (let i = 0; i < 2; i += 1) fireEvent.click(screen.getByRole("button", { name: /Continue/ }));
     fireEvent.click(screen.getByRole("button", { name: /Finish/ }));
     expect(await screen.findByText("Capacity is 1 to 15 asks")).toBeTruthy();
     expect(screen.getByText("When should we tell you?")).toBeTruthy();
@@ -120,7 +137,7 @@ describe("ReferrerSetup", () => {
   it("shows a retryable error, not the verify gate, when settings cannot load", async () => {
     let failing = true;
     vi.stubGlobal("fetch", vi.fn(async (url: string) => {
-      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com" });
+      if (String(url).endsWith("/access")) return ok({ verifiedCompanyAccess: true, workEmailDomain: "wipro.com", companyName: "Wipro", companyInitials: "W" });
       if (failing) throw new TypeError("Failed to fetch");
       return ok({ preferences: PREFS });
     }));
@@ -137,7 +154,7 @@ describe("ReferrerSetup", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     renderSetup();
-    expect(screen.getByRole("button", { name: "Sign in" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Sign in with work email" })).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

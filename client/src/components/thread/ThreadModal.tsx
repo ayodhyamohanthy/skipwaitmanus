@@ -12,7 +12,10 @@ export function ThreadModal({ onClose, children }: { onClose: () => void; childr
   }, [onClose]);
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <section className="app-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={event => event.stopPropagation()}>
+      {/* Never taller than the screen: on a 640–667px phone the seven pass reasons pushed the
+          Pass button below the fold with no way to scroll to it. The 105px on mobile covers the
+          backdrop padding plus the dialog's 65px clearance above the tab bar (kit.css). */}
+      <section className="app-dialog max-h-[calc(100dvh-40px)] overflow-y-auto max-md:max-h-[calc(100dvh-105px)]" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={event => event.stopPropagation()}>
         <Button variant="ghost" size="icon" className="dialog-close" aria-label="Close" onClick={onClose}><X /></Button>
         {children(titleId)}
       </section>

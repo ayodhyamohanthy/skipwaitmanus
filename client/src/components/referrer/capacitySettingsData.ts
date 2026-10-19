@@ -2,17 +2,18 @@
 // verified company (GET /api/company-referrals/access) and the live referrer
 // preferences (GET/PUT /api/referrer-preferences), validating both with Zod.
 import { z } from "zod";
+import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema } from "@shared/referrerAccess";
+import { REFERRER_AREAS } from "@shared/jobFunctions";
 import { readApiJson } from "@/lib/apiResponse";
 
 export type TokenSource = () => Promise<string | null | undefined>;
 
-/** Mirrors PREFER_AREA_OPTIONS in server/db.ts (the server filters unknown values). */
-export const WORK_FUNCTIONS = ["Engineering", "Product", "Design", "Data", "Marketing", "Operations", "Sales", "Finance", "HR"] as const;
+/** The shared referrer job areas (shared/jobFunctions.ts); PUT /api/referrer-preferences rejects anything else. */
+export const WORK_FUNCTIONS = REFERRER_AREAS;
 export const CAPACITY_MIN = 1;
 export const CAPACITY_MAX = 15;
 export const capacitySettingsKey = ["referrer-workspace", "capacity-settings"] as const;
 
-const accessSchema = z.object({ verifiedCompanyAccess: z.boolean().optional(), workEmailDomain: z.string().nullish() });
 const preferencesSchema = z.object({
   preferences: z.object({
     // The profile form (tRPC) accepts 0-20; this control's real range is the PUT contract's 1-15.
@@ -22,7 +23,8 @@ const preferencesSchema = z.object({
   }),
 });
 
-export type CapacitySettings = { companyDomain: string | null; capacity: number; areas: string[]; paused: boolean };
+/** companyName is the server company directory name for companyDomain (null outside the directory). */
+export type CapacitySettings = { companyDomain: string | null; companyName: string | null; capacity: number; areas: string[]; paused: boolean };
 export type CapacitySettingsInput = { referralCapacity: number; preferAreas: string[]; paused: boolean };
 
 const knownFunction = (value: string) => (WORK_FUNCTIONS as readonly string[]).includes(value);
@@ -43,14 +45,16 @@ function parsePreferences(payload: Record<string, unknown>) {
 
 export async function fetchCapacitySettings(getToken: TokenSource): Promise<CapacitySettings> {
   const [accessPayload, preferencesPayload] = await Promise.all([
-    authedJson("/api/company-referrals/access", getToken, "We could not check your work-email access"),
+    authedJson(REFERRER_ACCESS_PATH, getToken, "We could not check your work-email access"),
     authedJson("/api/referrer-preferences", getToken, "We could not load your referrer settings"),
   ]);
-  const access = accessSchema.safeParse(accessPayload);
+  const access = referrerAccessResponseSchema.safeParse(accessPayload);
   if (!access.success) throw new Error("We could not check your work-email access");
   const preferences = parsePreferences(preferencesPayload);
+  const verified = isVerifiedReferrer(access.data);
   return {
-    companyDomain: access.data.verifiedCompanyAccess && access.data.workEmailDomain ? access.data.workEmailDomain : null,
+    companyDomain: verified ? access.data.workEmailDomain : null,
+    companyName: verified ? access.data.companyName : null,
     capacity: preferences.referralCapacity,
     areas: preferences.preferAreas.filter(knownFunction),
     paused: preferences.paused,
@@ -63,7 +67,7 @@ export function orderAreas(primary: string, saved: readonly string[]): string[] 
   return [primary, ...saved.filter(area => area !== primary && knownFunction(area))];
 }
 
-export async function saveCapacitySettings(getToken: TokenSource, input: CapacitySettingsInput): Promise<Omit<CapacitySettings, "companyDomain">> {
+export async function saveCapacitySettings(getToken: TokenSource, input: CapacitySettingsInput): Promise<Omit<CapacitySettings, "companyDomain" | "companyName">> {
   const payload = await authedJson("/api/referrer-preferences", getToken, "We could not save your referrer settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

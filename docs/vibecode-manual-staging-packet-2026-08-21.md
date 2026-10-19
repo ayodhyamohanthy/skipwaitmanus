@@ -1,3 +1,5 @@
+> Status (Oct 18 2026): historical record — where it conflicts with docs/DECISIONS.md, the register wins (notably D-058).
+
 # SkipWait.me → VibecodeApp: Manual Staging Packet
 
 **Purpose.** Use this packet to continue the SkipWait rebuild yourself in VibecodeApp. It is designed to keep the current verified source deployment as the rollback reference until the Vibecode staging application proves functional and security parity.

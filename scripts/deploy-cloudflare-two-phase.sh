@@ -32,6 +32,15 @@ deploy(){
 }
 app_id="a0320ae6-5d50-43d5-9515-1f89bd74d069"
 deploy 1
+# Production DB cutover: after phase 1 the latest Worker version is the deployed one, so Cloudflare
+# accepts a secret edit (it refuses while a PR preview version is latest). Fails the deploy loudly.
+if [[ -n "${NEWDB_PASSWORD:-}" ]]; then
+  : "${NEWDB_HOST:?}" "${NEWDB_USER:?}"
+  enc=$(NEWDB_PASSWORD="$NEWDB_PASSWORD" node -e 'process.stdout.write(encodeURIComponent(process.env.NEWDB_PASSWORD))')
+  printf '%s' "mysql://${NEWDB_USER}:${enc}@${NEWDB_HOST}:3306/skipwait" | npx wrangler secret put DATABASE_URL >/dev/null \
+    || { echo '::error::Could not set DATABASE_URL to the new database'; exit 5; }
+  echo "DATABASE_URL set to ${NEWDB_HOST}/skipwait (value not printed)"
+fi
 # Worker-version activation plus container cold start (edge image pull + node
 # boot + first schema pass) takes 15-40 minutes to converge on live traffic;
 # every recent release flipped late, after its gate had already timed out.

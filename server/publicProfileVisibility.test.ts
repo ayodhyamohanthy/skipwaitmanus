@@ -37,6 +37,34 @@ describe("public profile visibility", () => {
     expect(Object.keys(view)).not.toContain("email");
   });
 
+  it("sends only what the kit public profile shows: no current title, bio or skills", () => {
+    const full = { ...(base as object), profileVisibility: "public", currentTitle: "Staff Designer", bio: "Private bio", skills: "Figma, Research", location: "Bengaluru" } as never;
+    for (const viewer of [undefined, 99, 5]) {
+      const view = shapePublicProfile(owner, full, items, viewer) as Record<string, unknown>;
+      for (const field of ["currentTitle", "bio", "skills"]) expect(view, `${field} for viewer ${viewer}`).not.toHaveProperty(field);
+      expect(view).toMatchObject({ headline: "Designer", location: "Bengaluru", handle: "asha-r" });
+    }
+  });
+
+  // P0-referrer-exposure: work-email sign-ups stored the address's local part as the name;
+  // beside "Verified at {domain}" it rebuilds the work email, so a verified page withholds it.
+  it("withholds a name taken from the email on a work-verified page, for every viewer", () => {
+    const verified = { ...(base as object), profileVisibility: "public", company: "quasar-ledgers.com", workEmailDomain: "quasar-ledgers.com", workEmailVerifiedAt: new Date("2026-09-01T00:00:00Z") } as never;
+    for (const [name, email] of [["zoya.quill", "zoya.quill@quasar-ledgers.com"], ["quinn", "quinn@quasar-ledgers.com"], ["Quinn", "quinn@quasar-ledgers.com"], ["zoya.quill@quasar-ledgers.com", null]] as const) {
+      for (const viewer of [undefined, 99, 5]) {
+        const view = shapePublicProfile({ id: 5, name, email }, verified, items, viewer) as Record<string, unknown>;
+        expect(view, `${name} for viewer ${viewer}`).toMatchObject({ visible: true, displayName: null, verifiedWork: { domain: "quasar-ledgers.com" } });
+        expect(view).not.toHaveProperty("email");
+      }
+    }
+    expect(shapePublicProfile({ id: 5, name: "Zoya Quill", email: "zoya.quill@quasar-ledgers.com" }, verified, items, undefined)).toMatchObject({ displayName: "Zoya Quill" });
+  });
+
+  it("leaves a page with no verified work as it was (no company address to rebuild)", () => {
+    const seeker = { ...(base as object), profileVisibility: "public" } as never;
+    expect(shapePublicProfile({ id: 5, name: "asha.r", email: "asha.r@gmail.com" }, seeker, items, undefined)).toMatchObject({ visible: true, displayName: "asha.r", verifiedWork: null });
+  });
+
   it("parses open-to roles defensively for public viewers", () => {
     const withOpenTo = (openTo: unknown) => ({ ...(base as object), profileVisibility: "public", openTo }) as never;
     expect((shapePublicProfile(owner, withOpenTo('["Product Designer", "UX Lead"]'), items, undefined) as { openTo: string[] }).openTo).toEqual(["Product Designer", "UX Lead"]);

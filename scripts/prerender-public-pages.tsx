@@ -20,10 +20,12 @@ import path from "node:path";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
-import { FREE_MONTHLY_ALLOWANCE, SUBSCRIPTION_PLANS } from "../shared/subscriptionPlans";
-import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
+import { ASK_COST_SENTENCE, CREDIT_RULE, FREE_ASKS_CHIP, REFERRER_MONEY_SENTENCE } from "../shared/moneyCopy";
+import { FREE_PLAN } from "../shared/planCatalog";
+import { LANDING_COMMITMENTS, LANDING_EMPLOYEE_STEPS, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_FAQ, LANDING_FAQ_HEADING, LANDING_GUIDES, LANDING_H1, LANDING_HERO_LEAD, LANDING_SEEKER_STEPS, LANDING_SUMMARY, type LandingStep } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
+import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
 import { breadcrumbsHtml, escapeHtml, faqJsonLd, homeLinks, renderPublicPage } from "./prerenderSeo";
 
 /** Route is declared here; its title and description come from @shared/publicRoutes. */
@@ -71,7 +73,7 @@ function stepsSection(heading: string, steps: readonly LandingStep[]) {
 export function landingSnapshot(policyLinks: ReadonlyArray<{ route: string; title: string }>): string {
   const employer = `<p><a href="${LANDING_EMPLOYER_LINK.href}">${escapeHtml(LANDING_EMPLOYER_LINK.label)}</a> — ${escapeHtml(LANDING_EMPLOYER_LINK.summary)}</p>`;
   const guides = `<h2>Guides</h2><ul>${LANDING_GUIDES.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>`;
-  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(LANDING_H1)}</h1><p>${escapeHtml(LANDING_SUMMARY)}</p><p><a href="/start">Request a private job referral</a> · <a href="/referrer">I work at a company and can help someone</a></p>${stepsSection("How job seekers use skipwait.me", LANDING_SEEKER_STEPS)}${stepsSection("How verified employees help", LANDING_EMPLOYEE_STEPS)}<h2>Private by default</h2><ul>${LANDING_COMMITMENTS.map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("")}</ul><h2>${escapeHtml(LANDING_FAQ_HEADING)}</h2><dl>${LANDING_FAQ.map(entry => `<dt>${escapeHtml(entry.question)}</dt><dd>${escapeHtml(entry.answer)}</dd>`).join("")}</dl><h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>${guides}${employer}${homeLinks(policyLinks)}</main>`;
+  return `<main data-skipwait-snapshot="landing"><h1>${escapeHtml(LANDING_H1)}</h1><p>${escapeHtml(LANDING_HERO_LEAD)}</p><p><a href="/start">Request a private job referral</a> · <a href="/referrer">I work at a company and can help someone</a></p>${stepsSection("How job seekers use skipwait.me", LANDING_SEEKER_STEPS)}${stepsSection("How verified employees help", LANDING_EMPLOYEE_STEPS)}<h2>Private by default</h2><ul>${LANDING_COMMITMENTS.map(item => `<li><strong>${escapeHtml(item.title)}</strong> ${escapeHtml(item.body)}</li>`).join("")}</ul><h2>${escapeHtml(LANDING_FAQ_HEADING)}</h2><dl>${LANDING_FAQ.map(entry => `<dt>${escapeHtml(entry.question)}</dt><dd>${escapeHtml(entry.answer)}</dd>`).join("")}</dl><h2>Explore skipwait.me</h2><ul>${LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("")}</ul>${guides}${employer}${homeLinks(policyLinks)}</main>`;
 }
 
 export type PublicSnapshot = { route: string; title: string; description: string; markup: string };
@@ -91,31 +93,38 @@ export type PublicSnapshot = { route: string; title: string; description: string
  * three unique inbound sources.
  */
 export function publicSnapshots(): PublicSnapshot[] {
-  const { pro, max } = SUBSCRIPTION_PLANS;
   return [
     {
       route: "/jobs",
-      markup: `<main data-skipwait-snapshot="jobs"><h1>Browse roles worth a referral.</h1><p>Search published roles, save the ones you like, and request a private referral from a verified employee at the company. Referrers stay anonymous.</p><p><a href="/jobs">Open the role search</a> · <a href="/start">Request a referral for a role link you already have</a> · <a href="/wall">See openings employees published themselves</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="jobs"><h1>Browse roles worth a referral.</h1><p>Search published roles, save the ones you like, and request a private referral from a verified employee at the company. Referrers stay anonymous.</p><p><a href="/jobs">Open the role search</a> · <a href="/start">Request a referral for a role link you already have</a> · <a href="/wall">See openings employees published themselves</a> · <a href="/explore">Explore companies</a></p></main>`,
+    },
+    {
+      // Kit /explore copy and the company directory's deterministic launch
+      // seed (names and approved descriptors only, the rows migration 0076
+      // inserts): no count, no availability, no role, no person, no address.
+      // The live page then renders the server directory.
+      route: "/explore",
+      markup: `<main data-skipwait-snapshot="explore"><h1>Where would you love to work next?</h1><p>Start with a company. We’ll help you make a thoughtful ask.</p><ul>${LAUNCH_COMPANY_SEED.map(company => `<li><a href="/explore/${company.slug}">${escapeHtml(company.name)}</a> — ${escapeHtml(company.blurb)}</li>`).join("")}</ul><h2>Work at one of these companies?</h2><p>Open another door. You control every request you accept. <a href="/referrer">I can refer</a></p><p><a href="/jobs">Browse roles worth a referral</a> · <a href="/start">Request a referral for a role link you already have</a></p></main>`,
     },
     {
       route: "/wall",
-      markup: `<main data-skipwait-snapshot="wall"><h1>Internal openings shared by verified employees.</h1><p>Employees who verified a company email can publish a hiring signal for their own company: hiring now, or a walk-in event. Each opening shows the company domain, the role, and any shared details — never an employee name, a candidate name, or a resume.</p><p><a href="/wall">Open the Opportunity Wall</a> · <a href="/referrer">Verify a work email to publish one</a> · <a href="/jobs">Browse roles posted through a normal job board</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="wall"><h1>Internal openings shared by verified employees.</h1><p>Employees who verified a company email can publish a hiring signal for their own company: hiring now, or a walk-in event. Each opening shows the company domain, the role, and any shared details — never an employee name, a candidate name, or a resume.</p><p><a href="/wall">Open the Opportunity Wall</a> · <a href="/referrer">Verify a work email to publish one</a> · <a href="/jobs">Browse roles posted through a normal job board</a> · <a href="/explore">Explore companies</a></p></main>`,
     },
     {
       route: "/premium",
-      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>Every account gets ${FREE_MONTHLY_ALLOWANCE} free referral requests every month. Extra credits cost $1 each (₹99 in India), never expire, and are only used when an employee accepts your request. Reviewing and accepting requests is always free for employees.</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See monthly plans</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees review for free — verify a work email</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="premium"><h1>Credits for $1 each. Never expire.</h1><p>${ASK_COST_SENTENCE} Extra credits cost $1 each (₹99 in India) and never expire. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/premium">Buy credits</a> · <a href="/plans">See plans and credits</a> · <a href="/pricing">See all prices</a> · <a href="/referrer">Employees: verify a work email to review requests</a></p></main>`,
     },
     {
       route: "/plans",
-      markup: `<main data-skipwait-snapshot="plans"><h1>Referral credits every month.</h1><p>The free plan keeps ${FREE_MONTHLY_ALLOWANCE} referral requests every month. ${escapeHtml(pro.label)} includes ${pro.monthlyAllowance} credits each month for ${escapeHtml(pro.prices.INR.display)} or ${escapeHtml(pro.prices.USD.display)}. ${escapeHtml(max.label)} includes ${max.monthlyAllowance} credits each month for ${escapeHtml(max.prices.INR.display)} or ${escapeHtml(max.prices.USD.display)}. Plans renew monthly until cancelled; access continues to the end of the paid month.</p><p><a href="/plans">Open plans</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="plans"><h1>Plans and credits.</h1><p>${FREE_PLAN.creditsPerMonth} referral requests are free every month, and up to ${FREE_PLAN.openRequests} can be open at once. More credits are sold on the credits page, and a credit you buy never expires. ${CREDIT_RULE} ${REFERRER_MONEY_SENTENCE}</p><p><a href="/plans">Open plans</a> · <a href="/premium">Buy credits</a> · <a href="/pricing">See all prices</a> · <a href="/refunds">Refunds &amp; cancellation</a></p></main>`,
     },
     {
       route: "/referrer",
-      markup: `<main data-skipwait-snapshot="referrer"><h1>Verify a work email to review private referrals.</h1><p>Employees verify a company email with a one-time code, then see private referral requests for their own company only. Review the role, the resume, and the candidate’s note together, and choose whether to help. Reviewing and accepting are always free, and your identity stays hidden from the Job Seeker unless you accept.</p><p><a href="/referrer">Verify a work email</a> · <a href="/wall">See openings shared by verified employees</a> · <a href="/support">Support</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="referrer"><h1>Verify a work email to review private referrals.</h1><p>Employees verify a company email with a one-time code, then see private referral requests for their own company only. Review the role, the resume, and the candidate’s note together, and choose whether to help. Reviewing and accepting never cost you anything, and your identity stays hidden from the Job Seeker unless you accept.</p><p><a href="/referrer">Verify a work email</a> · <a href="/wall">See openings shared by verified employees</a> · <a href="/explore">See the companies you can refer into</a> · <a href="/support">Support</a></p></main>`,
     },
     {
       route: "/employer",
-      markup: `<main data-skipwait-snapshot="employer"><h1>Hire without the noise.</h1><p>Employer accounts sponsor open roles to the top of seeker feeds, unlock anonymized opt-in talent with credits, and manage a self-serve promotion budget. The job-seeker and employee referral loop stays free.</p><p><a href="/employer">Open the employer workspace</a> · <a href="/jobs">See the seeker side of the product</a> · <a href="/pricing">See prices</a> · <a href="/contact">Contact us</a></p></main>`,
+      markup: `<main data-skipwait-snapshot="employer"><h1>Hire without the noise.</h1><p>Employer accounts feature open roles as a clearly labeled listing, unlock anonymized opt-in talent with credits, and manage a self-serve promotion budget. Employers never buy referrals: seekers get ${FREE_ASKS_CHIP} and use credits for more, and referrers are never paid.</p><p><a href="/employer">Open the employer workspace</a> · <a href="/jobs">See the seeker side of the product</a> · <a href="/pricing">See prices</a> · <a href="/contact">Contact us</a></p></main>`,
     },
   ].map(snapshot => {
     const route = publicRoute(snapshot.route);

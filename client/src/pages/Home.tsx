@@ -1,40 +1,28 @@
-import { ArrowRight, ArrowUpRight, Check, Menu, Minus, Plus, X } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, HeartHandshake, LockKeyhole, Menu, Minus, Plus, ShieldCheck, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
-import { z } from "zod";
-import { SignInButton, useAuth } from "@/_core/auth";
-import { Button, buttonVariants } from "@/components/kit/button";
+import { useAuth } from "@/_core/auth";
+import { Button } from "@/components/kit/button";
 import { applySeo, faqJsonLd } from "@/lib/seo";
-import { LAUNCH_COMPANIES } from "@/lib/companies";
+import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
+import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
+import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 import CookieConsent from "@/components/CookieConsent";
 
 const QUESTIONS = [
-  ["Are job referrals really free?", "Yes. No payments between seekers and referrers, no referral commission, and no paid priority. A referral is a voluntary introduction, not a purchase."],
+  ["What does asking for a referral cost?", `${MONEY_SENTENCE} There is no referral commission and no paid priority: a referral is a voluntary introduction, not a purchase.`],
   ["Do I need to know someone at the company?", "No existing connection is required. Explore companies with available referrers, find a relevant role, and send a thoughtful request. Each referrer chooses which requests to accept."],
   ["What does verification mean?", "Work-email verification confirms ownership of an address on an approved company domain. It does not prove current employment or imply an employer’s endorsement."],
   ["Does a referral guarantee an interview?", "No. A referral is an introduction, not a promise. Employers independently decide who to interview and hire."],
 ];
 
-/** Public aggregate from GET /api/referral-impact (server/privateReferralRoutes.ts). */
-const ReferralImpactSchema = z.object({ acceptedReferrals: z.number().nonnegative() });
-
 export default function Home() {
   const { isSignedIn } = useAuth();
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState<number | null>(0);
-  const [acceptedReferrals, setAcceptedReferrals] = useState<number | null>(null);
-
   useEffect(() => {
-    let active = true;
-    void fetch("/api/referral-impact").then(response => response.json()).then(payload => {
-      const parsed = ReferralImpactSchema.safeParse(payload);
-      if (active && parsed.success && parsed.data.acceptedReferrals > 0) setAcceptedReferrals(Math.floor(parsed.data.acceptedReferrals));
-    }).catch(() => undefined);
-    return () => { active = false; };
-  }, []);
-  useEffect(() => {
-    applySeo({ title: "Free job referrals. A warmer way in", description: "SkipWait connects job seekers with people inside the companies they want to join. Free referrals, private connections, and honest expectations.", path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
+    applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: `SkipWait connects job seekers with people inside the companies they want to join. ${MONEY_SENTENCE}`, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
   }, []);
 
   return (
@@ -48,7 +36,7 @@ export default function Home() {
           {isSignedIn ? <Link className="launch-mobile-signin" href="/requests" onClick={() => setMenu(false)}>Open app <ArrowRight size={14} /></Link> : <Link className="launch-mobile-signin" href="/sign-in" onClick={() => setMenu(false)}>Sign in <ArrowRight size={14} /></Link>}
         </nav>
         <div className="launch-header-actions">
-          {isSignedIn ? <Button asChild variant="ghost" className="launch-signin"><Link href="/requests">Open app</Link></Button> : <SignInButton className={buttonVariants({ variant: "ghost", className: "launch-signin" })}>Sign in</SignInButton>}
+          {isSignedIn ? <Button asChild variant="ghost" className="launch-signin"><Link href="/requests">Open app</Link></Button> : <Button asChild variant="ghost" className="launch-signin"><Link href="/sign-in">Sign in</Link></Button>}
           <Button asChild variant="outline"><Link href="/explore">Explore <ArrowUpRight /></Link></Button>
           <Button className="launch-menu" variant="ghost" size="icon" aria-label={menu ? "Close navigation" : "Open navigation"} onClick={() => setMenu(!menu)}>{menu ? <X /> : <Menu />}</Button>
         </div>
@@ -58,18 +46,19 @@ export default function Home() {
           <img className="launch-hero-image" src="/launch-door.jpg" alt="An open blue door with a yellow path leading through it" width={1600} height={1008} fetchPriority="high" />
           <div className="launch-hero-copy">
             <span className="launch-kicker"><span />INTRODUCING SKIPWAIT</span>
-            <h1>Free job referrals.<br />A warmer way in<span className="brand-dot">.</span></h1>
-            <p>Connect with people inside the companies you want to join.<br className="desktop-break" /> A real introduction. Not another application into the unknown.</p>
+            <h1>{LANDING_H1_LINES[0]}<br />{LANDING_H1_LINES[1]}<span className="brand-dot">.</span></h1>
+            <p>{LANDING_HERO_LEAD_PARTS[0]}<br className="desktop-break" /> {LANDING_HERO_LEAD_PARTS[1]}</p>
             <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
             <Link className="hero-secondary" href="/referrer">Already on the inside? Become a referrer <ArrowRight size={14} /></Link>
-            <div className="hero-assurances"><span><Check size={13} />Referrals are free</span><span><Check size={13} />Explore before signing in</span></div>
+            <div className="hero-assurances"><span><Check size={13} />{FREE_ASKS_CHIP}</span><span><Check size={13} />Explore before signing in</span></div>
           </div>
           <span className="hero-side-note">YOUR NEXT CHAPTER STARTS WITH A CONNECTION.</span>
         </section>
+        <section className="launch-trust-strip" aria-label="Our commitments"><span><HeartHandshake />{REFERRERS_NEVER_PAID}</span><span><LockKeyhole />Private by default.</span><span><ShieldCheck />No job guarantees.</span></section>
         <section className="launch-section launch-companies">
           <div className="section-intro"><span className="eyebrow">OPEN DOORS AT LAUNCH</span><h2>Start somewhere real.</h2><p>People at these companies have told SkipWait they are open to referral requests. Availability can change, and every person chooses each ask.</p></div>
           <div className="launch-company-row">
-            {LAUNCH_COMPANIES.map(company => <Link key={company.slug} href={`/explore/${company.slug}`}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ArrowUpRight /></Link>)}
+            {LAUNCH_COMPANY_SEED.map(company => <Link key={company.slug} href={`/explore/${company.slug}`}><span className="company-mark">{company.initials}</span><strong>{company.name}</strong><ArrowUpRight /></Link>)}
           </div>
           <Link className="text-link" href="/explore">Explore all open doors <ArrowRight /></Link>
         </section>
@@ -116,9 +105,7 @@ export default function Home() {
           <span className="eyebrow">SMALL CONNECTION. BIG NEXT STEP.</span>
           <h2>What’s on the other side?</h2>
           <Button asChild><Link href="/explore">Explore companies <ArrowUpRight /></Link></Button>
-          <p>Referrals are free. Always.</p>
-          {/* Real aggregate from /api/referral-impact; hidden at zero or when unavailable. */}
-          {acceptedReferrals ? <p>{acceptedReferrals} referral requests accepted on skipwait.me · participants stay private.</p> : null}
+          <p>{MONEY_SENTENCE}</p>
         </section>
       </main>
       <footer className="launch-footer">
@@ -130,7 +117,10 @@ export default function Home() {
           <Link href="/guidelines">Guidelines</Link>
           <Link href="/terms">Terms</Link>
           <Link href="/privacy">Privacy</Link>
-          <Link href="/safety">Safety</Link>
+          <Link href="/refunds">Refunds</Link>
+          <Link href="/cancellations">Cancellation</Link>
+          <Link href="/shipping">Shipping</Link>
+          <Link href="/contact">Contact</Link>
           <Link href="/for-companies">For companies <ArrowUpRight size={14} /></Link>
         </span>
       </footer>

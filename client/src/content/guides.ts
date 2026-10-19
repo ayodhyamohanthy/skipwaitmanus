@@ -77,7 +77,7 @@ const JOB_REFERRAL_PLATFORMS: Guide = {
       ],
       points: [
         "Free allowance for seekers, with a cap. Usually a handful of referral requests a month, and no charge at all for the employee reviewing one.",
-        "Per-referral credit, consumed on acceptance. The credit is reserved when you send a request and only spent when an employee accepts it. If a service charges on submission instead, that is the single most important thing to notice.",
+        "Per-referral credit, kept only once an employee picks up your request. The credit leaves your balance when you send a request, comes back if you withdraw before anyone picks it up or the request expires unclaimed, and stays spent once someone has picked it up, even if they pass. If a service keeps the credit when nobody ever picks up your request, that is the single most important thing to notice.",
         "Subscription for recurring volume. A monthly fee that includes a set number of credits, for people applying to many roles a month.",
         "Employer sponsorship. Companies pay to promote roles into seeker feeds. This costs a job seeker nothing, which is why it is the healthiest of the four from the seeker's side.",
       ],
@@ -108,7 +108,7 @@ const JOB_REFERRAL_PLATFORMS: Guide = {
     { question: "What is a job referral platform?", answer: "It is a service that connects a job seeker to an employee at the employer they are applying to, so that employee can pass the application on privately with their name on it." },
     { question: "Is a job referral platform the same as a job board?", answer: "No. A job board lists openings and takes your application. A referral platform routes that application to a specific person who already works at the company and lets them decide whether to pass it on." },
     { question: "Does a referral guarantee an interview?", answer: "No. The employee chooses whether to help, and the employer still runs its own process. A referral improves the chance that a human actually reads your application; it does not bypass the employer's requirements." },
-    { question: "What does a job referral platform cost a job seeker?", answer: "Most offer a free monthly allowance. Where there is a charge, it is usually per referral request, and the important detail is whether it is consumed when you send the request or only when an employee accepts it." },
+    { question: "What does a job referral platform cost a job seeker?", answer: "Most offer a free monthly allowance. Where there is a charge, it is usually per referral request, and the important detail is whether it is consumed when you send the request or only once an employee picks it up." },
   ],
 };
 
@@ -136,7 +136,7 @@ const CHOOSING_A_JOB_REFERRAL_PLATFORM: Guide = {
       heading: "Check 3: when does money actually move?",
       paragraphs: [
         "Most of these services do not charge the same way, and the difference is entirely about timing.",
-        "A credit reserved on submission and spent on acceptance behaves very differently from one spent on submission. If nobody ever accepts your requests, the second model has taken your money and given you nothing in return. Find out which one you are in, then check the refund window in writing, and check whether unused credits expire.",
+        "A credit reserved on submission and spent only once an employee picks your request up behaves very differently from one spent on submission. If nobody ever picks up your requests, the second model has taken your money and given you nothing in return. Find out which one you are in, then check the refund window in writing, and check whether unused credits expire.",
       ],
     },
     {
@@ -176,7 +176,7 @@ const CHOOSING_A_JOB_REFERRAL_PLATFORM: Guide = {
   faq: [
     { question: "What should I check before signing up for a job referral platform?", answer: "Four things: how a reviewer is tied to the employer, whether the employer sees your application before someone accepts it, when a credit is actually consumed and what the refund window is, and whether you can withdraw an unclaimed request and delete your resume." },
     { question: "How do I tell if a referral service actually has employees at the company?", answer: "Look for verification tied to the employer's email domain, such as a one-time code sent to a work address. A LinkedIn connection or a self-declared job title does not prove the person currently works there." },
-    { question: "Is it normal for a referral service to charge per request?", answer: "Yes. The detail that matters is timing: a credit reserved when you submit and only spent when an employee accepts is a different product from one spent at submission. Check the refund window before you start sending requests." },
+    { question: "Is it normal for a referral service to charge per request?", answer: "Yes. The detail that matters is timing: a credit reserved when you submit and only spent once an employee picks it up is a different product from one spent at submission. Check the refund window before you start sending requests." },
   ],
 };
 
@@ -237,7 +237,7 @@ const HOW_EMPLOYEES_REFER_CANDIDATES: Guide = {
   faq: [
     { question: "What does an employee see when someone sends them a referral request?", answer: "Usually three things: the role, the applicant's resume, and a short note about why they are applying. Not a cover letter, and not their contact details unless the employee chooses to share them." },
     { question: "Does my employer find out that I sent a referral request?", answer: "It depends on the service. In an employee-mediated model the employer sees nothing until an employee forwards the application. In a direct-submission model the employer sees it immediately. Check which one you are using before you upload a resume." },
-    { question: "What happens if the employee passes on my request?", answer: "Nothing is charged in services that spend a credit only on acceptance. A pass is usually about timing, band, location, or whether the team is hiring that role at all, rather than about the quality of your application." },
+    { question: "What happens if the employee passes on my request?", answer: "On SkipWait the credit stays spent, because an employee still gave your request their time, and the request stays open for other employees at the company. Services that spend a credit only on acceptance charge nothing for a pass. A pass is usually about timing, band, location, or whether the team is hiring that role at all, rather than about the quality of your application." },
     { question: "How long does a referral take?", answer: "It depends on a person acting. Employee-mediated review is slower than applying directly because a human has to choose to pass it on, and most of the wait is the employer's own hiring schedule rather than the platform." },
   ],
 };

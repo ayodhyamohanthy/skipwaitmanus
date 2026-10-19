@@ -1,19 +1,22 @@
 import { ArrowRight, BadgeCheck } from "lucide-react";
+import { LoadingNote } from "@/components/app-states/SystemStates";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { SignInButton, useAuth } from "@/_core/auth";
+import { useAuth } from "@/_core/auth";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { Button, buttonVariants } from "@/components/kit/button";
 import { Heading, Panel } from "@/components/kit/preview-kit";
 import { SetupWizard } from "@/components/referrer-home/SetupWizard";
-import { companyIdentity, fetchCompanyAccess, fetchReferrerPreferences, type CompanyAccess, type ReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
+import { companyIdentity, fetchCompanyAccess, fetchProfileHandle, fetchReferrerPreferences, type CompanyAccess, type ReferrerPreferences, type TokenSource } from "@/components/referrer-home/referrerData";
 
-type SetupData = { access: CompanyAccess; preferences: ReferrerPreferences | null };
+type SetupData = { access: CompanyAccess; preferences: ReferrerPreferences | null; handle: string | null };
 
 async function fetchSetup(getToken: TokenSource): Promise<SetupData> {
   const access = await fetchCompanyAccess(getToken);
-  if (!access.verified) return { access, preferences: null };
-  return { access, preferences: await fetchReferrerPreferences(getToken) };
+  if (!access.verified) return { access, preferences: null, handle: null };
+  const [preferences, handle] = await Promise.all([fetchReferrerPreferences(getToken), fetchProfileHandle(getToken)]);
+  return { access, preferences, handle };
 }
 
 export default function ReferrerSetup() {
@@ -27,7 +30,7 @@ export default function ReferrerSetup() {
     return (
       <main data-skipwait-screen="referrer-setup-sign-in" className="page-content mx-auto max-w-2xl">
         <Heading eyebrow="REFERRER SETUP" title="Set up referring" text="Sign in, verify a work email, then choose what you can judge." />
-        <SignInButton className={buttonVariants()}>Sign in</SignInButton>
+        <Link href={referrerSignInHref("/referrer-setup")} className={buttonVariants()}>Sign in with work email</Link>
       </main>
     );
   }
@@ -35,7 +38,7 @@ export default function ReferrerSetup() {
   const data = setup.data;
   return (
     <main data-skipwait-screen="referrer-setup" className="page-content mx-auto max-w-2xl">
-      {setup.isPending ? <p role="status" className="mt-10 text-center text-sm text-muted-foreground">Loading your referrer setup…</p> : setup.isError ? (
+      {setup.isPending ? <LoadingNote>Loading your referrer setup…</LoadingNote> : setup.isError ? (
         <Panel tone="muted" className="text-center">
           <h1 className="text-2xl font-semibold">We could not load your setup.</h1>
           <p role="alert" className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{setup.error.message || "Check your connection and try again."}</p>
@@ -51,7 +54,8 @@ export default function ReferrerSetup() {
       ) : (
         <SetupWizard
           initial={data.preferences}
-          companyName={data.access.domain ? companyIdentity(data.access.domain).name : "your company"}
+          companyName={data.access.domain ? companyIdentity(data.access).name : "your company"}
+          profileHandle={data.handle}
           fetchToken={fetchToken}
           onSaved={() => { void queryClient.invalidateQueries({ queryKey: ["referrer-home"] }); void queryClient.invalidateQueries({ queryKey: ["referrer-setup"] }); }}
         />

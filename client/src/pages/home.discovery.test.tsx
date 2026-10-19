@@ -34,17 +34,26 @@ describe("landing discovery and search metadata", () => {
 
   it("answers the pre-signup questions in visible copy and in FAQ structured data", () => {
     render(<Home />);
-    expect(screen.getByText("Are job referrals really free?")).toBeTruthy();
+    expect(screen.getByText("What does asking for a referral cost?")).toBeTruthy();
     const jsonLd = JSON.parse(document.getElementById("route-jsonld")?.textContent ?? "{}");
     expect(jsonLd["@type"]).toBe("FAQPage");
     expect(jsonLd.mainEntity).toHaveLength(4);
-    expect(jsonLd.mainEntity[0].name).toBe("Are job referrals really free?");
+    expect(jsonLd.mainEntity[0].name).toBe("What does asking for a referral cost?");
   });
 
-  it("links the live policy and company pages from the footer", () => {
+  it("links the kit footer set plus the payment-provider policy pages (refunds, cancellation, shipping, contact) (Help & safety lives in the header)", () => {
     render(<Home />);
-    const footer = document.querySelector("footer");
-    for (const href of ["/help", "/terms", "/privacy", "/safety", "/for-companies"]) expect(footer?.querySelector(`a[href="${href}"]`)).toBeTruthy();
+    const footer = document.querySelector("footer") as HTMLElement;
+    const footerLinks = Array.from(footer.querySelectorAll("span a")).map(link => link.getAttribute("href"));
+    expect(footerLinks).toEqual(["/help", "/guidelines", "/terms", "/privacy", "/refunds", "/cancellations", "/shipping", "/contact", "/for-companies"]);
+  });
+
+  it("sends the header Sign in to the kit sign-in page, not straight to the hosted screen", () => {
+    render(<Home />);
+    const header = screen.getByRole("banner");
+    const signIn = within(header).getAllByRole("link", { name: /^Sign in/ });
+    expect(signIn.length).toBeGreaterThanOrEqual(1);
+    for (const link of signIn) expect(link.getAttribute("href")).toBe("/sign-in");
   });
 
   it("keeps the mobile menu on the same public destinations", () => {

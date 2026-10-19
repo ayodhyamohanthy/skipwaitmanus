@@ -13,7 +13,9 @@
       "status": 200,
       "body": {
         "verifiedCompanyAccess": true,
-        "workEmailDomain": "wipro.com"
+        "workEmailDomain": "wipro.com",
+        "companyName": "Wipro",
+        "companyInitials": "W"
       }
     },
     {

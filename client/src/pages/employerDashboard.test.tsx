@@ -10,7 +10,6 @@ const { isSignedIn } = vi.hoisted(() => ({ isSignedIn: { value: true } }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: isSignedIn.value }), SignInButton: ({ children }: { children: React.ReactNode }) => children }));
 vi.mock("wouter", () => ({ Link: ({ href, children, className }: { href: string; children: React.ReactNode; className?: string }) => <a href={href} className={className}>{children}</a> }));
-vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 
 const NOW = new Date("2026-10-08T04:30:00.000Z").getTime();
 const account = { id: 1, companyName: "Acme Robotics", billingEmail: "hiring@acme.com", credits: 25, budgetMonthlyUsdCents: 50000, approvalStatus: "approved" };
@@ -82,6 +81,10 @@ describe("EmployerDashboard", () => {
     const hrefs = within(nav).getAllByRole("link").map(link => link.getAttribute("href"));
     expect(hrefs).toEqual(["/employer", "/employer/talent", "/employer/opportunities", "/employer/billing"]);
     expect(screen.getByRole("link", { name: /For companies/ }).getAttribute("href")).toBe("/for-companies");
+    // Kit header: wordmark, employer pill and the For companies link only (account lives in /settings).
+    const header = document.querySelector("header");
+    expect(header?.querySelectorAll("a, button")).toHaveLength(2);
+    expect(header?.querySelector('[aria-label*="Account" i], [aria-label*="notification" i]')).toBeNull();
   });
 
   it("shows the just-joined checklist when nothing has happened yet", async () => {

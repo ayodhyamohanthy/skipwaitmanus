@@ -21,7 +21,9 @@ describe("Not Found recovery", () => {
     expect(screen.queryByText(/Bridge/)).toBeNull();
     expect(screen.getByRole("link", { name: "Explore companies" }).getAttribute("href")).toBe("/explore");
     expect(screen.getByRole("link", { name: "Go home" }).getAttribute("href")).toBe("/");
-    expect(screen.getByRole("link", { name: "Contact support" }).getAttribute("href")).toBe("/support");
+    // Kit NotFoundComponent: wordmark, title, body and the two actions, nothing else.
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+    expect(screen.queryByText(/Contact support/)).toBeNull();
   });
 
   it("keeps the app shell's navigation around an unmatched path, as the kit does", () => {

@@ -50,6 +50,7 @@ describe("private referral HTTP routes", () => {
     const app = express();
     app.use(express.json());
     let claimedBy: number | undefined;
+    let acceptedBy: number | undefined;
     let submittedCandidateMessage = "";
     let submittedCompensation: string | undefined;
     const activity: Array<{ action: string; metadata?: Record<string, unknown> }> = [];
@@ -60,14 +61,17 @@ describe("private referral HTTP routes", () => {
       dataUrlToBuffer: () => Buffer.from("%PDF-test"), sanitizeDocumentName: value => value,
       storagePut: async () => ({ key: "private/resume.pdf" }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
       createReferralAttachment: async () => attachment,
-      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === claimedBy ? { ...attachment, referrerId: claimedBy } : undefined,
+      // db.getAccessibleReferralAttachment: the owner, or the referrer once they accepted (D-019(e)); never a claim alone.
+      getAccessibleReferralAttachment: async (userId) => userId === 1 || userId === acceptedBy ? { ...attachment, referrerId: acceptedBy } : undefined,
       saveVerifiedWorkEmail: async () => ({ workEmailDomain: "acme.com" }),
       createCompanyReferralRequest: async (_userId, input) => { submittedCandidateMessage = input.personalPitch; submittedCompensation = input.compensation; return { requestId: 501, companyDomain: "acme.com", notifiedEmployees: 1 }; },
       listJobSeekerCompanyReferrals: async () => [{ id: 501 }, { id: 500 }, { id: 499 }],
       listCompanyReferralInbox: async () => [{ id: 501, companyDomain: "acme.com" }],
       getUnclaimedCompanyReferralPreview: async (userId, requestId) => userId === 2 && requestId === 501 && !claimedBy ? { id: requestId, candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", companyDomain: "acme.com", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
       claimCompanyReferralRequest: async (userId, requestId) => { claimedBy = userId; return { requestId, claimed: true }; },
-      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, candidateName: "Avery", targetRoleUrl: "https://careers.acme.com/jobs/design", attachments: [attachment] } : undefined,
+      // Hands the route MORE than db.ts returns before acceptance (the name, the storage key): the route's allow-list is under test.
+      getClaimedCompanyReferralDetail: async (userId, requestId) => userId === claimedBy ? { id: requestId, title: "Product Designer", candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design", companyDomain: "acme.com", referrerId: userId, status: acceptedBy === userId ? "approved" : "pending", revision: acceptedBy === userId ? 3 : 2, documentAccessActive: acceptedBy === userId, attachments: [attachment] } : undefined,
+      oneClickReviewReferralRequest: async (userId, input) => { if (input.decision === "approved") { claimedBy = userId; acceptedBy = userId; } return { status: input.decision, companyDomain: "acme.com" }; },
       listPublicCompanyOpportunities: async () => [{ id: 91, companyDomain: "acme.com", kind: "hiring_now", roleTitle: "Product Designer" }],
       publishCompanyOpportunity: async (_userId, input) => ({ id: 92, companyDomain: "acme.com", ...input }),
       recordActivity: async input => { activity.push(input); },
@@ -85,11 +89,20 @@ describe("private referral HTTP routes", () => {
     expect((await request(app).get("/api/company-referrals/501").set("x-test-user", "outsider")).status).toBe(404);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "outsider")).status).toBe(404);
     const preview = await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee");
-    expect(preview.status).toBe(200); expect(preview.body.request).toMatchObject({ candidateName: "Avery", candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments[0]).toMatchObject({ availability: "after_claim", fileName: "resume.pdf" }); expect(preview.body.request.attachments[0]).not.toHaveProperty("url"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
+    expect(preview.status).toBe(200); expect(preview.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(preview.body)).not.toContain("Avery"); expect(preview.body.request).toMatchObject({ candidateMessage: "I led a measurable product design launch.", targetRoleUrl: "https://careers.acme.com/jobs/design" }); expect(preview.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 3, availability: "after_claim" }]); expect(JSON.stringify(preview.body)).not.toContain("resume.pdf"); expect(JSON.stringify(preview.body)).not.toContain("signed.example");
     expect((await request(app).post("/api/company-referrals/501/claim").set("x-test-user", "employee")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/501/preview").set("x-test-user", "employee")).status).toBe(404);
+    // D-019(e): a claim is not an acceptance. The claimed detail keeps the role and the note, but no name, file name or link.
+    const lockedDetail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
+    expect(lockedDetail.status).toBe(200); expect(lockedDetail.body.request).not.toHaveProperty("candidateName"); expect(JSON.stringify(lockedDetail.body)).not.toMatch(/Avery|resume\.pdf|\/api\/documents|signed\.example|fileKey/);
+    expect(lockedDetail.body.request).toMatchObject({ status: "pending", title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
+    expect(lockedDetail.body.request.attachments).toEqual([{ mimeType: "application/pdf", fileSize: 3, availability: "after_claim" }]);
+    expect((await request(app).get("/api/documents/77").set("x-test-user", "employee")).status).toBe(404);
+    expect((await request(app).post("/api/company-referrals/501/one-click-review").set("x-test-user", "employee").send({ decision: "approved", ethicsConfirmed: true })).status).toBe(200);
     const detail = await request(app).get("/api/company-referrals/501").set("x-test-user", "employee");
-    expect(detail.status).toBe(200); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    expect(detail.status).toBe(200); expect(detail.body.request.candidateName).toBe("Avery"); expect(detail.body.request.attachments[0].url).toBe("/api/documents/77"); expect(JSON.stringify(detail.body)).not.toContain("signed.example"); expect(detail.body.request.attachments[0]).not.toHaveProperty("fileKey");
+    // D-019(d): the referrer who accepted the ask reads it with its role title and the seeker's note attached.
+    expect(detail.body.request).toMatchObject({ status: "approved", title: "Product Designer", candidateMessage: "I led a measurable product design launch." });
     const securedDocument = await request(app).get("/api/documents/77").set("x-test-user", "employee");
     expect(securedDocument.status).toBe(307); expect(securedDocument.headers.location).toBe("https://signed.example/resume.pdf");
     expect(activity.map(item => item.action)).toEqual(expect.arrayContaining(["document.uploaded", "company_referral.created", "company_referral.claimed", "document.accessed"]));
@@ -116,14 +129,16 @@ describe("private referral HTTP routes", () => {
     });
 
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-a")).body).toMatchObject({ scope: "new", requests: [unclaimedRequest] });
-    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([unclaimedRequest]);
+    // Rows gain the directory's display identity (null outside the directory)
+    // and a normalized job function (null when the ask has none).
+    expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([{ ...unclaimedRequest, companyName: null, companyInitials: null, jobFunction: null }]);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "outsider")).body.requests).toEqual([]);
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-a")).status).toBe(200);
     expect((await request(app).get("/api/company-referrals/inbox").set("x-test-user", "employee-b")).body.requests).toEqual([]);
     expect((await request(app).post("/api/company-referrals/701/claim").set("x-test-user", "employee-b")).status).toBe(409);
   });
 
-  it("queues a no-coverage referral for manual administrator follow-up after reserving the Job Seeker credit", async () => {
+  it("saves a no-coverage referral as waiting, reserves no Job Seeker credit and queues the coverage follow-up", async () => {
     const app = express(); app.use(express.json());
     const activity: Array<{ action: string; companyDomain?: string; metadata?: Record<string, unknown> }> = [];
     registerPrivateReferralRoutes(app, {
@@ -137,7 +152,8 @@ describe("private referral HTTP routes", () => {
     const response = await request(app).post("/api/company-referrals").set("Idempotency-Key", "00000000-0000-4000-8000-000000000001").set("x-test-user", "seeker").send({ targetRoleUrl: "https://careers.acme.com/jobs/design", attachmentIds: [88] });
     expect(response.status).toBe(201);
     expect(response.body).toMatchObject({ requestId: 880, notifiedEmployees: 0, coverageStatus: "waiting_for_company_coverage", remainingTokens: 2 });
-    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: true } }));
+    // D-034: the credit is spent at first visibility, not at create, so nothing is reserved yet.
+    expect(activity).toContainEqual(expect.objectContaining({ action: "company_referral.manual_follow_up_queued", companyDomain: "acme.com", metadata: { notifiedEmployees: 0, creditReserved: false } }));
   });
 
   it("opens only exact-company referral capacity with bounded slots and no Referrer identity in the Job Seeker-facing result", async () => {
@@ -221,8 +237,8 @@ describe("private referral HTTP routes", () => {
     });
     const listed = await request(app).get("/api/opportunities");
     expect(listed.status).toBe(200); expect(listed.body.opportunities[0]).not.toHaveProperty("ownerId");
-    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "employee")).body).toEqual({ verifiedCompanyAccess: true, workEmailDomain: "acme.com" });
-    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "personal")).body).toEqual({ verifiedCompanyAccess: false, workEmailDomain: null });
+    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "employee")).body).toEqual({ verifiedCompanyAccess: true, workEmailDomain: "acme.com", companyName: null, companyInitials: null });
+    expect((await request(app).get("/api/company-referrals/access").set("x-test-user", "personal")).body).toEqual({ verifiedCompanyAccess: false, workEmailDomain: null, companyName: null, companyInitials: null });
     expect((await request(app).post("/api/opportunities").send({ kind: "hiring_now", roleTitle: "Product Designer" })).status).toBe(401);
     const personalEmailVerification = await request(app).post("/api/company-referrals/verify-work-email").set("x-test-user", "personal").send({ email: "person@gmail.com" });
     expect(personalEmailVerification.status).toBe(400); expect(personalEmailVerification.body.error).toMatch(/personal email domain/i);
@@ -321,5 +337,76 @@ describe("private referral HTTP routes", () => {
     const adminFeed = await request(app).get("/api/admin/activity?action=document&query=avery&outcome=denied").set("x-test-user", "admin");
     expect(adminFeed.status).toBe(200); expect(adminFeed.body.events).toHaveLength(1); expect(adminFeed.body.events[0].action).toBe("document.uploaded");
     expect(activityQuery).toMatchObject({ action: "document", query: "avery", outcome: "denied" });
+  });
+});
+
+describe("withdrawal activity reports only authoritative credit movement", () => {
+  function setup(creditRefunded?: boolean, failure?: string) {
+    const app = express(); app.use(express.json());
+    const wireResult = { withdrawn: true, requestId: 501, status: "withdrawn", revision: 4, creditSummary: { totalAvailable: 2 } };
+    const withdrawCompanyReferralRequest = vi.fn(async (userId: number, requestId: number) => {
+      if (userId !== 7) throw new Error("This referral request is not in your account");
+      if (failure) throw new Error(failure);
+      return { ...wireResult, requestId, ...(creditRefunded === undefined ? {} : { creditRefunded }) };
+    });
+    const recordActivity = vi.fn<NonNullable<PrivateReferralRouteDeps["recordActivity"]>>(async () => {});
+    registerPrivateReferralRoutes(app, {
+      resolveIdentity: async req => req.header("x-test-user") ? { account: { id: req.header("x-test-user") === "seeker" ? 7 : 8, openId: "test-user" } } : undefined,
+      dataUrlToBuffer: () => Buffer.from("pdf"), sanitizeDocumentName: value => value,
+      storagePut: async key => ({ key }), storageGetSignedUrl: async () => "https://signed.example/resume.pdf",
+      createReferralAttachment: async () => ({ id: 1, fileName: "resume.pdf", mimeType: "application/pdf", fileSize: 3 }),
+      getAccessibleReferralAttachment: async () => undefined, saveVerifiedWorkEmail: async () => undefined,
+      createCompanyReferralRequest: async () => ({ requestId: 501, companyDomain: "acme.com", notifiedEmployees: 0 }),
+      listCompanyReferralInbox: async () => [], claimCompanyReferralRequest: async () => ({ requestId: 501, claimed: true }),
+      getClaimedCompanyReferralDetail: async () => undefined, listPublicCompanyOpportunities: async () => [], publishCompanyOpportunity: async () => ({}),
+      withdrawCompanyReferralRequest, recordActivity,
+    });
+    const withdrawalEvents = () => recordActivity.mock.calls.map(([event]) => event).filter(event => event.action === "referral_request.withdrawn");
+    return { app, wireResult, withdrawCompanyReferralRequest, withdrawalEvents };
+  }
+
+  it.each([
+    ["free ask", false], ["previous pickup", false], ["replay", false], ["eligible refund", true],
+  ] as const)("records the operation's refund outcome for %s without changing the wire response", async (_scenario, creditRefunded) => {
+    const { app, wireResult, withdrawCompanyReferralRequest, withdrawalEvents } = setup(creditRefunded);
+    const response = await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker");
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("private, no-store");
+    expect(response.body).toEqual(wireResult);
+    expect(withdrawCompanyReferralRequest).toHaveBeenCalledWith(7, 501);
+    expect(withdrawalEvents()).toEqual([{ actorUserId: 7, action: "referral_request.withdrawn", outcome: "success", resourceType: "referral_request", resourceId: 501, metadata: { creditRefunded } }]);
+  });
+
+  it("omits unknown refund metadata for an older dependency instead of inventing a boolean", async () => {
+    const { app, wireResult, withdrawalEvents } = setup();
+    const response = await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker");
+    expect(response.status).toBe(200); expect(response.body).toEqual(wireResult);
+    expect(withdrawalEvents()).toHaveLength(1);
+    expect(withdrawalEvents()[0].metadata).toBeUndefined();
+  });
+
+  it.each([[undefined, 401], ["outsider", 404]] as const)("never records a successful withdrawal for identity %s", async (identity, status) => {
+    const { app, withdrawCompanyReferralRequest, withdrawalEvents } = setup(false);
+    const call = request(app).post("/api/company-referrals/501/withdraw");
+    if (identity) call.set("x-test-user", identity);
+    expect((await call).status).toBe(status);
+    expect(withdrawalEvents()).toEqual([]);
+    if (!identity) expect(withdrawCompanyReferralRequest).not.toHaveBeenCalled();
+  });
+
+  it.each([["not-a-number", 400], ["0", 400]] as const)("rejects invalid reference %s before the operation", async (reference, status) => {
+    const { app, withdrawCompanyReferralRequest, withdrawalEvents } = setup(false);
+    expect((await request(app).post(`/api/company-referrals/${reference}/withdraw`).set("x-test-user", "seeker")).status).toBe(status);
+    expect(withdrawCompanyReferralRequest).not.toHaveBeenCalled(); expect(withdrawalEvents()).toEqual([]);
+  });
+
+  it.each([
+    ["This request was already claimed by a verified employee and can no longer be withdrawn", 409],
+    ["This ask has already closed, so it can no longer be withdrawn", 409],
+    ["Database unavailable", 500],
+  ] as const)("does not emit a successful refund claim when the operation fails with %s", async (failure, status) => {
+    const { app, withdrawalEvents } = setup(false, failure);
+    expect((await request(app).post("/api/company-referrals/501/withdraw").set("x-test-user", "seeker")).status).toBe(status);
+    expect(withdrawalEvents()).toEqual([]);
   });
 });

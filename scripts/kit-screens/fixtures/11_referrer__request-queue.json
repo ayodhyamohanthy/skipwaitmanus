@@ -8,6 +8,18 @@
   "routes": [
     {
       "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "wipro.com",
+        "companyName": "Wipro",
+        "companyInitials": "W"
+      }
+    },
+    {
+      "method": "GET",
       "path": "/api/company-referrals/inbox",
       "match": "exact",
       "status": 200,
@@ -17,6 +29,7 @@
             "id": 31,
             "targetRoleUrl": "https://careers.wipro.com/job/product-designer-31",
             "companyDomain": "wipro.com",
+            "jobFunction": "Product",
             "compensation": null,
             "status": "pending",
             "referrerId": null,
@@ -29,7 +42,9 @@
             "inboxState": "new",
             "isClaimedByYou": false,
             "isQueueOpenAllocation": false,
-            "unreadMessageCount": 0
+            "unreadMessageCount": 0,
+            "companyName": "Wipro",
+            "companyInitials": "W"
           }
         ]
       }
@@ -59,6 +74,11 @@
         "notifications": [],
         "unreadCount": 0
       }
+    }
+  ],
+  "actions": [
+    {
+      "waitFor": "article"
     }
   ]
 }

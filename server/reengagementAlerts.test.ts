@@ -64,7 +64,8 @@ describe("private Slot Opened alerts and aggregate impact", () => {
     const rendered = JSON.stringify({ capacity, review });
     expect(capacity.companyDomain).toBe("Acmescript.com");
     expect(capacity.body).toContain("opened review capacity");
-    expect(review.body).toContain("optional and always free");
+    expect(review.body).toContain("optional and never costs you anything");
+    expect(review.body).not.toMatch(/always free/i);
     expect(rendered).not.toMatch(/senior|staff engineer|profile draft|reviewed your profile|[0-9] of [0-9]|spot|queue|rank|fast.tracked/i);
     expect(rendered).toContain("does not guarantee");
   });

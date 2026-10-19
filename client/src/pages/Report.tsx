@@ -2,11 +2,13 @@ import { ArrowLeft, ArrowRight, Ban, Check, Flag, LifeBuoy, ShieldAlert, ShieldC
 import { useState } from "react";
 import { SignInButton, useAuth } from "@/_core/auth";
 import { Link, useLocation } from "wouter";
+import { Button } from "@/components/kit/button";
+import { Panel } from "@/components/kit/preview-kit";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { readApiJson } from "@/lib/apiResponse";
 
 const REASONS = [
-  ["Asked for or offered money", "Referrals on SkipWait are always free"],
+  ["Asked for or offered money", "Referrers are never paid and never ask for money"],
   ["Harassment or inappropriate messages", ""],
   ["Fake job or scam", "Suspicious links, fees, or personal data requests"],
   ["Pretending to work at a company", ""],
@@ -25,6 +27,9 @@ export default function Report() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [reference, setReference] = useState("");
+  const [alsoBlock, setAlsoBlock] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blockError, setBlockError] = useState("");
 
   if (!isSignedIn) {
     return (
@@ -32,7 +37,7 @@ export default function Report() {
         <p className="eyebrow">Report or block</p>
         <h1 className="mt-2 text-3xl font-semibold">What&apos;s going on?</h1>
         <p className="mt-3 text-sm leading-6 text-[var(--muted-foreground)]">Reporting is confidential. Sign in so we can follow up on your report.</p>
-        <div className="mt-6"><SignInButton><button type="button" className="brand-button w-full">Sign in</button></SignInButton></div>
+        <div className="mt-6"><SignInButton><Button type="button" className="w-full">Sign in</Button></SignInButton></div>
       </main>
     );
   }
@@ -58,6 +63,15 @@ export default function Report() {
       if (!response.ok) throw new Error(payload.error || "We could not file this report");
       setReference(payload.report?.reference ?? "");
       setStep(2);
+      if (alsoBlock && requestId) {
+        try {
+          const blockResponse = await fetch("/api/blocks", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ referralRequestId: requestId }) });
+          if (!blockResponse.ok) throw new Error("filed, but the block did not go through — you can block from Settings");
+          setBlocked(true);
+        } catch (blockReason) {
+          setBlockError(blockReason instanceof Error ? blockReason.message : "Your report was filed, but the block did not go through");
+        }
+      }
     } catch (reason) { setError(reason instanceof Error ? reason.message : "We could not file this report"); }
     finally { setSubmitting(false); }
   };
@@ -79,7 +93,7 @@ export default function Report() {
               </label>
             ))}
           </div>
-          <div className="mt-8 flex justify-end"><button type="button" className="brand-button" onClick={() => setStep(1)}>Continue <ArrowRight /></button></div>
+          <div className="mt-8 flex justify-end"><Button type="button" onClick={() => setStep(1)}>Continue <ArrowRight /></Button></div>
         </section>
       ) : null}
 
@@ -88,18 +102,28 @@ export default function Report() {
           <h1 className="text-3xl font-semibold">Add details</h1>
           <p className="mt-2 text-[var(--muted-foreground)]">Optional. Anything that helps us review quickly.</p>
           <label className="mt-6 block"><span className="sr-only">Details</span>
-            <textarea value={details} maxLength={2000} onChange={event => setDetails(event.target.value)} placeholder="What happened? Include anything that helps us review quickly." rows={5} className="min-h-32 w-full rounded-2xl border border-[var(--input)] bg-[var(--background)] p-4 text-base" />
+            <textarea value={details} maxLength={2000} onChange={event => setDetails(event.target.value)} placeholder="What happened? Include anything that helps us review quickly." className="min-h-32 w-full rounded-2xl border border-[var(--input)] bg-[var(--background)] p-4 text-base" />
           </label>
-          <button type="button" aria-pressed={urgent} onClick={() => setUrgent(!urgent)} className={`mt-4 flex min-h-14 w-full items-center gap-3 rounded-2xl border p-4 text-left ${urgent ? "border-[var(--destructive)] bg-[var(--destructive)]/5" : "border-[var(--border)]"}`}>
-            <ShieldAlert className="size-5 shrink-0" />
-            <span className="flex-1"><strong className="block text-sm">I feel unsafe</strong><small className="text-[var(--muted-foreground)]">Reviewed first, within hours.</small></span>
-            {urgent ? <Check className="text-[var(--destructive)]" /> : null}
-          </button>
-          <div className="mt-4 flex items-start gap-2 rounded-2xl bg-[var(--muted)] p-4 text-sm text-[var(--muted-foreground)]"><Ban className="mt-0.5 size-4 shrink-0" />To block someone immediately, contact support from this page after filing — blocking both directions is handled by our team for now.</div>
+          <div className="mt-4 space-y-2">
+            {reportRequestId ? (
+              <button type="button" aria-pressed={alsoBlock} onClick={() => setAlsoBlock(!alsoBlock)} className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border p-4 text-left ${alsoBlock ? "border-[var(--primary)] bg-[var(--primary)]/5" : "border-[var(--border)]"}`}>
+                <Ban className="size-5 shrink-0" />
+                <span className="flex-1"><strong className="block text-sm">Also block this person</strong><small className="text-[var(--muted-foreground)]">They can&apos;t message you or appear in your inbox. They aren&apos;t told.</small></span>
+                {alsoBlock ? <Check className="text-[var(--primary)]" /> : null}
+              </button>
+            ) : (
+              <div className="flex items-start gap-2 rounded-2xl bg-[var(--muted)] p-4 text-sm text-[var(--muted-foreground)]"><Ban className="mt-0.5 size-4 shrink-0" />To block someone immediately, contact support from this page after filing — blocking both directions is handled by our team for now.</div>
+            )}
+            <button type="button" aria-pressed={urgent} onClick={() => setUrgent(!urgent)} className={`flex min-h-14 w-full items-center gap-3 rounded-2xl border p-4 text-left ${urgent ? "border-[var(--destructive)] bg-[var(--destructive)]/5" : "border-[var(--border)]"}`}>
+              <ShieldAlert className="size-5 shrink-0" />
+              <span className="flex-1"><strong className="block text-sm">I feel unsafe</strong><small className="text-[var(--muted-foreground)]">Reviewed first, within hours.</small></span>
+              {urgent ? <Check className="text-[var(--destructive)]" /> : null}
+            </button>
+          </div>
           {error ? <p role="alert" className="mt-4 text-sm font-semibold text-[var(--destructive)]">{error}</p> : null}
           <div className="mt-8 flex justify-between gap-3">
-            <button type="button" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]" onClick={() => setStep(0)}><ArrowLeft />Back</button>
-            <button type="button" disabled={submitting} onClick={() => { void submit(); }} className="brand-button">{submitting ? "Submitting…" : "Submit report"}</button>
+            <Button type="button" variant="ghost" onClick={() => setStep(0)}><ArrowLeft />Back</Button>
+            <Button type="button" disabled={submitting} onClick={() => { void submit(); }}>{submitting ? "Submitting…" : "Submit report"}</Button>
           </div>
         </section>
       ) : null}
@@ -108,21 +132,24 @@ export default function Report() {
         <section className="text-center">
           <span className="mx-auto grid size-20 place-items-center rounded-full bg-[var(--accent)]"><ShieldCheck className="size-10 text-[var(--primary)]" /></span>
           <h1 className="mt-4 text-3xl font-semibold">Thanks. We&apos;re on it.</h1>
-          <p className="mt-2 text-[var(--muted-foreground)]">Here&apos;s what happens next:</p>
-          <div className="mt-6 rounded-3xl border border-[var(--border)] p-5 text-left">
+          <p className="mt-2 text-[var(--muted-foreground)]">{blocked ? "This person is blocked. " : ""}Here&apos;s what happens next:</p>
+          <Panel className="mt-6 text-left">
             <ol className="space-y-4 text-sm">
-              {[["Now", `Report received${reference ? ` · reference ${reference}` : ""}`], [urgent ? "Within 4 hours" : "Within 48 hours", "A person on our safety team reviews it"], ["After review", "We may warn, restrict, or remove the account"], ["Then", "You get a notification with the outcome"]].map(([when, what], i) => (
+              {[["Now", `Report received${reference ? ` · reference #${reference}` : ""}`], [urgent ? "Within 4 hours" : "Within 48 hours", "A person on our safety team reviews it"], ["After review", "We may warn, restrict, or remove the account"], ["Then", "You get a notification with the outcome"]].map(([when, what], i) => (
                 <li key={when} className="flex gap-3">
                   <span className={`grid size-6 shrink-0 place-items-center rounded-full text-xs ${i === 0 ? "bg-[var(--primary)] text-[var(--primary-foreground)]" : "bg-[var(--muted)]"}`}>{i + 1}</span>
                   <span><strong className="block">{when}</strong><span className="text-[var(--muted-foreground)]">{what}</span></span>
                 </li>
               ))}
             </ol>
-          </div>
-          {urgent ? <div className="mt-4 rounded-2xl bg-[var(--muted)] p-4 text-left text-sm"><LifeBuoy className="mb-2 size-5" />If you&apos;re in immediate danger, contact local emergency services first.</div> : null}
+          </Panel>
+          {blockError ? <p role="alert" className="mt-4 text-sm font-semibold text-[var(--destructive)]">{blockError}</p> : null}
+          {urgent ? <Panel tone="muted" className="mt-4 text-left text-sm"><LifeBuoy className="mb-2 size-5" />If you&apos;re in immediate danger, contact local emergency services first.</Panel> : null}
           <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href="/support" className="brand-button border-2 border-[var(--foreground)] bg-[var(--background)] text-[var(--foreground)]">Contact support</Link>
-            <Link href="/requests" className="brand-button">Back to requests</Link>
+            {/* Blocking is self-serve only with a conversation in context; otherwise the
+                step-1 note sends people to support, so that action stays here. */}
+            <Button asChild variant="outline">{reportRequestId ? <Link href="/settings">Manage blocked people</Link> : <Link href="/support">Contact support</Link>}</Button>
+            <Button asChild><Link href="/requests">Back to requests</Link></Button>
           </div>
         </section>
       ) : null}

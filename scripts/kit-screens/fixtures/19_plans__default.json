@@ -23,7 +23,7 @@
       "body": {
         "summary": {
           "plan": "free",
-          "monthlyAllowance": 3,
+          "monthlyAllowance": 2,
           "monthlyCreditsRemaining": 0,
           "purchasedCreditsRemaining": 0,
           "promoCreditsRemaining": 0,
@@ -33,18 +33,44 @@
           "totalAvailable": 0,
           "cycleKey": "2026-10",
           "subscriptionStatus": null,
-          "subscriptionCurrentTermEnd": null
+          "subscriptionCurrentTermEnd": null,
+          "ledger": {
+            "balance": 0,
+            "buckets": {
+              "cycle": 0,
+              "carriedOver": 0,
+              "trial": 0,
+              "welcome": 0,
+              "purchased": 0,
+              "promo": 0
+            },
+            "creditsPerMonth": 2,
+            "carryover": 0,
+            "cycle": {
+              "key": "2026-10",
+              "startsAt": "2026-10-01T00:00:00.000Z",
+              "endsAt": "2026-11-01T00:00:00.000Z",
+              "granted": 2,
+              "used": 2
+            },
+            "planCreditsRemaining": 0,
+            "nextExpiry": null,
+            "planCreditsExpiringSoon": null,
+            "welcome": {
+              "granted": false,
+              "credits": 0,
+              "remaining": 0
+            }
+          },
+          "slots": {
+            "plan": "free",
+            "planLabel": "Free",
+            "open": 3,
+            "cap": 3,
+            "full": true,
+            "nextPlan": null
+          }
         }
-      }
-    },
-    {
-      "method": "GET",
-      "path": "/api/chargebee/gifts/mine",
-      "match": "exact",
-      "status": 200,
-      "body": {
-        "sent": [],
-        "claimable": []
       }
     }
   ]

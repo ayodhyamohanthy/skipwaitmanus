@@ -1,8 +1,9 @@
 import { Clock3, ExternalLink, EyeOff, FileText, Send, UserRound } from "lucide-react";
 import { Button } from "@/components/kit/button";
 import { StatusPill } from "@/components/kit/status-pill";
+import { functionEyebrow } from "@shared/jobFunctions";
 import type { ThreadMessage, ThreadRequest, ThreadRole } from "@/lib/threadApi";
-import { canMessage, companyInitials, companyName, isAccepted, seekerWaitingCopy, STAGES, stageIndex, stageOf } from "./threadModel";
+import { canMessage, companyInitials, companyName, isAccepted, referrerPendingCopy, seekerWaitingCopy, STAGES, stageIndex, stageOf } from "./threadModel";
 
 function Notice({ tone, title, text }: { tone: "muted" | "accent"; title: string; text: string }) {
   return <div className={`rounded-2xl p-4 ${tone === "accent" ? "bg-accent text-accent-foreground" : "bg-muted"}`}><strong>{title}</strong><p className="mt-1 text-sm">{text}</p></div>;
@@ -32,18 +33,20 @@ function askerLabel(role: ThreadRole, request: ThreadRequest, seeker: Props["see
 export function ThreadMain({ request, role, seekerIdentity, passed, messages, draft, setDraft, sending, sendError, onSend }: Props) {
   const stage = stageOf(request);
   const idx = stageIndex(stage);
-  const company = companyName(request.companyDomain);
+  const company = companyName(request);
   const accepted = isAccepted(request);
   const hidden = role === "referrer-pending";
   const seeker = role === "seeker";
   const composer = canMessage(role, request);
+  // An accepted referrer's file without a link: their document access has ended (D-019(e)).
+  const accessEnded = role === "referrer-claimed" && accepted && request.attachments.some(file => !file.url);
 
   return (
     <section className="min-w-0 rounded-3xl border border-border bg-card">
       <header className="flex flex-wrap items-start gap-3 border-b border-border p-5">
-        <span className="company-mark">{companyInitials(request.companyDomain)}</span>
+        <span className="company-mark">{companyInitials(request)}</span>
         <div className="min-w-0 flex-1">
-          <span className="eyebrow">{company}</span>
+          <span className="eyebrow">{functionEyebrow(request.jobFunction, company)}</span>
           <h1 className="text-2xl font-semibold">{request.title ?? "Referral request"}</h1>
           {request.targetRoleUrl ? <a href={request.targetRoleUrl} target="_blank" rel="noreferrer" className="text-link mt-1 inline-flex items-center gap-1 text-sm">Official job posting <ExternalLink className="size-3.5" /></a> : null}
         </div>
@@ -69,22 +72,26 @@ export function ThreadMain({ request, role, seekerIdentity, passed, messages, dr
               {!accepted ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><EyeOff className="size-3.5" />Resume and profile shared after acceptance</span>
               ) : role === "referrer-claimed" ? (
-                request.attachments.map(file => (
-                  <a key={file.id} href={file.url ?? `/api/documents/${file.id}`} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
-                ))
+                // A file without a link is one whose document access has ended: named, never linked to a dead page.
+                request.attachments.map(file => (file.url ? (
+                  <a key={file.id} href={file.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</a>
+                ) : (
+                  <span key={file.id} className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{file.fileName}</span>
+                )))
               ) : request.attachmentCount > 0 ? (
                 <span className="flex items-center gap-1 rounded-full bg-background px-3 py-1"><FileText className="size-3.5" />{request.attachmentCount === 1 ? "1 file shared" : `${request.attachmentCount} files shared`}</span>
               ) : null}
             </div>
+            {accessEnded ? <p className="mt-2 text-xs text-muted-foreground">Resume access has ended. Message the Job Seeker here if you still need it.</p> : null}
           </div>
         </div>
 
-        {stage === "Requested" && seeker ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4 shrink-0" />{seekerWaitingCopy(request)}</p> : null}
-        {stage === "Requested" && !seeker && !passed ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4 shrink-0" />No reply needed to pass — but a quick answer helps.</p> : null}
+        {stage === "Requested" && seeker ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" />{seekerWaitingCopy(request)}</p> : null}
+        {stage === "Requested" && !seeker && !passed ? <p className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="size-4" />{referrerPendingCopy(request)}</p> : null}
         {passed ? <Notice tone="muted" title="You passed privately." text="The request stays active for other verified employees. Your identity was never revealed." /> : null}
-        {stage === "Declined" ? <Notice tone="muted" title="This referrer passed." text={request.referrerMessage ?? `It's not a judgment of you. Your slot is open again — try another verified referrer at ${company}.`} /> : null}
+        {stage === "Declined" ? <Notice tone="muted" title="This referrer passed." text={`It's not a judgment of you. Your slot is open again — try another verified referrer at ${company}.`} /> : null}
         {stage === "Expired" ? <Notice tone="muted" title="This request expired." text="Nobody could take it within 7 days. Your slot is free — refresh your note and ask again." /> : null}
-        {stage === "Withdrawn" ? <Notice tone="muted" title="You withdrew this request." text="Your credit was returned to your balance." /> : null}
+        {stage === "Withdrawn" ? <Notice tone="muted" title="You withdrew this request." text="Its open slot is free again. The credit came back only if no verified employee had picked it up." /> : null}
 
         {accepted ? <p className="text-center text-xs text-muted-foreground">— {seeker ? "Request accepted. You can now message privately." : "Request accepted. Their name and resume are now shared."} —</p> : null}
         {messages.map(message => (

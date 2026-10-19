@@ -1,23 +1,16 @@
 // Kit v4 loading, error and empty states for the seeker Requests screen.
 // Empty copy and layout follow app/src/routes/requests.tsx; loading and error
 // keep the live screen's honest copy on kit Panel / Button surfaces.
-import { LoaderCircle, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/kit/button";
 import { Panel } from "@/components/kit/preview-kit";
-import { ZeroActivityShareCard } from "@/components/ZeroActivityShareCard";
 
 export function RequestsLoading({ slow }: { slow: boolean }) {
   return (
     <div role="status" aria-busy="true" aria-live="polite" data-skipwait-loading="true" className="mt-6">
       <Panel>
-        <div className="flex items-start gap-3">
-          <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted"><LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /></span>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold">Loading your requests…</p>
-            <p className="mt-0.5 text-xs leading-5 text-muted-foreground">Routing checks usually take a second.</p>
-          </div>
-        </div>
+        <div className="sr-only"><p>Loading your requests…</p><p>Routing checks usually take a second.</p></div>
         <div aria-hidden="true" className="mt-4 space-y-2">
           <div className="h-2.5 w-3/4 animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
           <div className="h-2.5 w-full animate-pulse rounded-full bg-muted motion-reduce:animate-none" />
@@ -51,21 +44,18 @@ export function RequestsEmpty({ tab, firstTime }: EmptyProps) {
   const active = tab === "active";
   const heading = !active ? "Nothing closed yet." : firstTime ? "No asks yet." : "No open asks.";
   return (
-    <>
-      <Panel tone="muted" className="mt-4 text-center">
-        <section aria-label={firstTime ? "No referral requests" : undefined}>
-          <Send className="mx-auto mb-3 size-8" aria-hidden="true" />
-          <h2 className="text-lg font-semibold">{heading}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Pick a company, find a verified referrer, and write one great ask.</p>
-          {active ? (
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <Button variant="outline" asChild><Link href="/onboarding">Finish setup</Link></Button>
-              <Button asChild><Link href="/explore">Explore companies</Link></Button>
-            </div>
-          ) : null}
-        </section>
-      </Panel>
-      {active && firstTime ? <div className="flex justify-center"><ZeroActivityShareCard audience="job_seeker" /></div> : null}
-    </>
+    <Panel tone="muted" className="mt-4 text-center">
+      <section aria-label={firstTime ? "No referral requests" : undefined}>
+        <Send className="mx-auto mb-3 size-8" aria-hidden="true" />
+        <h2 className="text-lg font-semibold">{heading}</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Pick a company, find a verified referrer, and write one great ask.</p>
+        {active ? (
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <Button variant="outline" asChild><Link href="/onboarding">Finish setup</Link></Button>
+            <Button asChild><Link href="/explore">Explore companies</Link></Button>
+          </div>
+        ) : null}
+      </section>
+    </Panel>
   );
 }
