@@ -1,6 +1,7 @@
 import type { Express, Response } from "express";
 import { passwordForgotRequestSchema, passwordPolicyError, passwordResetConfirmRequestSchema } from "@shared/passwordAuth";
-import { forgotLimits, requestIp, resetConfirmLimits } from "./_core/passwordLimits";
+import { clearDurableKeys } from "./_core/durableRateLimit";
+import { emailLockResetKeys, forgotLimits, requestIp, resetConfirmLimits } from "./_core/passwordLimits";
 import {
   failUnexpectedly, guardPasswordPost, passLimits, recordPasswordActivity, reportPasswordFailure, sendPasswordError, type PasswordRouteContext,
 } from "./_core/passwordResponses";
@@ -56,6 +57,12 @@ export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteCont
         if (failure.kind === "rate_limited") return sendPasswordError(res, "rate_limited", { retryAfterSeconds: failure.retryAfterSeconds });
         reportPasswordFailure("reset", failure.kind, error);
         return sendPasswordError(res, "temporarily_unavailable");
+      }
+      // S-8: the owner just proved the inbox, so wrong passwords sprayed by anyone else stop locking this email.
+      try {
+        await clearDurableKeys(emailLockResetKeys(user.email.trim().toLowerCase()), { store: ctx.store, now: ctx.now() });
+      } catch (error) {
+        reportPasswordFailure("reset", "lock_not_cleared", error);
       }
       // The password is set. Sign this browser in only when every session rule allows it; otherwise say so plainly.
       try {

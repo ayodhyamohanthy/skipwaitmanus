@@ -5,7 +5,9 @@ import express from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BadRequestException, NotFoundException, RateLimitExceededException } from "@workos-inc/node";
-import { createMemoryDurableLimitStore } from "./_core/memoryDurableLimitStore";
+import { activeDurableLock } from "./_core/durableRateLimit";
+import { createMemoryDurableLimitStore, type MemoryDurableLimitStore } from "./_core/memoryDurableLimitStore";
+import { passwordLockKeys } from "./_core/passwordLimits";
 
 type Row = Record<string, unknown> & { id: number; openId: string; email: string; sessionsValidAfter: Date };
 const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), standings: new Map<string, string>(), witnesses: new Set<string>(), recorded: [] as string[], nextId: 10 }));
@@ -44,7 +46,7 @@ function seedAccount(openId: string, overrides: Partial<Row> = {}): Row {
 }
 
 let pending: Promise<void>[] = [];
-async function buildApp() {
+async function buildApp(options: { store?: MemoryDurableLimitStore; now?: () => number } = {}) {
   vi.resetModules();
   Object.assign(process.env, { WORKOS_CLIENT_ID: "client_test", WORKOS_API_KEY: "sk_test_key", WORKOS_COOKIE_PASSWORD: "c".repeat(32), JWT_SECRET: "test-secret-at-least-32-characters-long", VITE_APP_ID: "skipwait", WORKOS_REDIRECT_URI: "https://skipwait.me/api/auth/workos/callback", PUBLIC_BASE_URL: "https://skipwait.me" });
   const { createWorkosAuthRoutesRegistrar } = await import("./_core/workosAuth");
@@ -53,7 +55,7 @@ async function buildApp() {
   app.use(express.json());
   createWorkosAuthRoutesRegistrar({
     workos: { userManagement: { listSessions: vi.fn(async () => ({ data: [] })), revokeSession: vi.fn() } } as never,
-    password: { client: wos, store: createMemoryDurableLimitStore(), defer: task => { pending.push(task()); }, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.recorded.push(workosUserId); state.witnesses.add(workosUserId); } }, emailStanding: async email => (state.standings.get(email) ?? "unknown") as never },
+    password: { client: wos, store: options.store ?? createMemoryDurableLimitStore(), now: options.now, defer: task => { pending.push(task()); }, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.recorded.push(workosUserId); state.witnesses.add(workosUserId); } }, emailStanding: async email => (state.standings.get(email) ?? "unknown") as never },
   })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./_core/workosAuth");
@@ -208,6 +210,27 @@ describe("reset password (WorkOS sets it; this browser signs in, every other ses
     expect(state.recorded).toEqual(["user_new"]);
     const after = await post(app, "/api/auth/password/sign-in", { email: EMAIL, password: "Newpassword1!" });
     expect(after.body).toEqual({ ok: true, step: "signed_in", redirectTo: "/explore" });
+  });
+
+  it("a successful reset lifts the password lock and failure count on that email (S-8)", async () => {
+    const store = createMemoryDurableLimitStore();
+    const clock = { now: Date.UTC(2026, 9, 18, 10, 0, 0) };
+    const app = await buildApp({ store, now: () => clock.now });
+    const emailLock = passwordLockKeys(EMAIL, "unused")[2];
+    const wrong = new BadRequestException({ code: "invalid_credentials", errors: [], message: "Invalid credentials", requestID: "r" });
+    const fail = async (attempt: number) => post(app, "/api/auth/password/sign-in", { email: EMAIL, password: `wrong-${attempt}` }, `198.51.100.${100 + attempt}`);
+    wos.authenticateWithPassword.mockRejectedValue(wrong);
+    // 20 wrong passwords in an hour from many networks lock the email (10 per 15-minute sign-in window).
+    for (let attempt = 0; attempt < 10; attempt++) expect((await fail(attempt)).status).toBe(401);
+    clock.now += 15 * 60_000;
+    for (let attempt = 10; attempt < 20; attempt++) expect((await fail(attempt)).status).toBe(401);
+    expect((await activeDurableLock([emailLock], { store, now: clock.now })).locked).toBe(true);
+    expect((await post(app, CONFIRM, { token: TOKEN, password: "Newpassword1!", confirm: "Newpassword1!" })).body.signedIn).toBe(true);
+    expect(await activeDurableLock([emailLock], { store, now: clock.now })).toEqual({ locked: false });
+    // The hour's failure count went too: one more wrong password no longer re-locks the email.
+    clock.now += 15 * 60_000;
+    expect((await fail(20)).status).toBe(401);
+    expect(await activeDurableLock([emailLock], { store, now: clock.now })).toEqual({ locked: false });
   });
 
   it("reset failures are honest", async () => {

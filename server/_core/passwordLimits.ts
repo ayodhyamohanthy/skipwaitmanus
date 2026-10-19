@@ -69,6 +69,14 @@ export function failureCounters(email: string, ip: string): DurableFailureCounte
   ];
 }
 
+/**
+ * What a successful reset clears for that email (S-8): its lock and its hourly failure count, so wrong passwords
+ * sprayed by someone else cannot keep the owner locked out after they proved the inbox. Per-network locks stay.
+ */
+export function emailLockResetKeys(email: string): [string, string] {
+  return [key("pw-lock-email", email), key("pw-fail-email", email)];
+}
+
 export function passwordLockKeys(email: string, ip: string): [string, string, string] {
   return [key("pw-lock-pair", `${email}|${ip}`), key("pw-lock-ip", ip), key("pw-lock-email", email)];
 }

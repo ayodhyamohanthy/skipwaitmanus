@@ -42,6 +42,10 @@ export function createMemoryDurableLimitStore(): MemoryDurableLimitStore {
             draft.set(id(key, windowStart), { hitCount: 1, expiresAt: expiresAt.getTime() });
             return 1;
           },
+          async removeKeys(keys) {
+            const wanted = new Set(keys);
+            Array.from(draft.keys()).forEach(rowId => { if (wanted.has(rowId.slice(0, rowId.lastIndexOf("|")))) draft.delete(rowId); });
+          },
           async latestExpiry(keys, now) {
             const wanted = new Set(keys);
             let latest: number | null = null;

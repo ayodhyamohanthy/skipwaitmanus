@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { activeDurableLock, claimDurableOnce, consumeDurableLimits, durableLimiterKey, isDurablyClaimed, recordDurableFailures, releaseDurableClaim } from "./durableRateLimit";
+import { activeDurableLock, claimDurableOnce, clearDurableKeys, consumeDurableLimits, durableLimiterKey, isDurablyClaimed, recordDurableFailures, releaseDurableClaim } from "./durableRateLimit";
 import { createMemoryDurableLimitStore } from "./memoryDurableLimitStore";
 
 const T0 = Date.UTC(2026, 9, 14, 10, 0, 0);
@@ -103,6 +103,23 @@ describe("durable auth limiter", () => {
     await recordDurableFailures([pair("a")], { store, now: T0 + 1 });
     expect((await activeDurableLock([pair("a").lockKey], { store, now: T0 + 2 })).locked).toBe(true);
     expect((await activeDurableLock([pair("b").lockKey], { store, now: T0 + 2 })).locked).toBe(false);
+  });
+
+  // S-8: a successful password reset clears that email's lock and failure count, so an attacker spraying wrong
+  // passwords cannot keep the real owner locked out after they proved the inbox.
+  it("clears every window of the given keys, and only those", async () => {
+    const store = createMemoryDurableLimitStore();
+    const counter = (who: string) => ({ key: durableLimiterKey("t-fail-email", who), windowMs: 60 * 60_000, threshold: 2, lockKey: durableLimiterKey("t-lock-email", who), lockMs: 15 * 60_000 });
+    for (const at of [T0, T0 + 1, T0 + 61 * 60_000, T0 + 61 * 60_000 + 1]) await recordDurableFailures([counter("a"), counter("b")], { store, now: at });
+    expect((await activeDurableLock([counter("a").lockKey], { store, now: T0 + 62 * 60_000 })).locked).toBe(true);
+    expect(await clearDurableKeys([counter("a").lockKey, counter("a").key], { store, now: T0 + 62 * 60_000 })).toBe("cleared");
+    expect(await activeDurableLock([counter("a").lockKey], { store, now: T0 + 62 * 60_000 })).toEqual({ locked: false });
+    expect((await activeDurableLock([counter("b").lockKey], { store, now: T0 + 62 * 60_000 })).locked).toBe(true);
+    await recordDurableFailures([counter("a")], { store, now: T0 + 62 * 60_000 });
+    expect((await activeDurableLock([counter("a").lockKey], { store, now: T0 + 62 * 60_000 })).locked).toBe(false);
+    expect(await clearDurableKeys([counter("a").key], { store: null })).toBe("unavailable");
+    const source = readFileSync(new URL("./durableRateLimit.ts", import.meta.url), "utf8");
+    expect(source).toContain("inArray(table.limiterKey, keys)");
   });
 
   it("fails closed: no durable store means unavailable, never unlocked", async () => {

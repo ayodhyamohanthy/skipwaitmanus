@@ -7,6 +7,8 @@ import { postPasswordAuth } from "@/lib/passwordAuthClient";
 
 export type PasswordMode = "sign_in" | "sign_up";
 
+export const LOCKED_SIGN_IN_HINT = "You can also use Forgot password, or continue with Google.";
+
 type PasswordFormProps = {
   readonly mode: PasswordMode;
   readonly email: string;
@@ -40,7 +42,8 @@ export function PasswordForm({ mode, email, onEmailChange, returnTo, onCheckEmai
     const result = creating
       ? await postPasswordAuth("/api/auth/password/sign-up", { email: normalized }, passwordStepSchema)
       : await postPasswordAuth("/api/auth/password/sign-in", { email: normalized, password, returnTo }, passwordStepSchema);
-    if (!result.ok) { setError(result.message); setBusy(false); return; }
+    // S-8: a locked sign-in is never a dead end; a reset proves the inbox and lifts the lock.
+    if (!result.ok) { setError(result.code === "rate_limited" && !creating ? `${result.message} ${LOCKED_SIGN_IN_HINT}` : result.message); setBusy(false); return; }
     // Stay busy while the browser leaves for the signed-in page, so the button cannot submit twice.
     if (result.data.step === "signed_in") { window.location.assign(result.data.redirectTo); return; }
     setBusy(false);

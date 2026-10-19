@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, eq, lt, sql } from "drizzle-orm";
+import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { workEmailOtpRateLimits } from "../../drizzle/schema";
 import { getDb } from "../db";
 
@@ -39,6 +39,8 @@ export type DurableLimitTx = {
   countHit(key: string, windowStart: Date, expiresAt: Date): Promise<number>;
   /** The latest expiry among live rows for these keys, or null. */
   latestExpiry(keys: readonly string[], now: Date): Promise<Date | null>;
+  /** Deletes every window of these keys. */
+  removeKeys(keys: readonly string[]): Promise<void>;
 };
 /** Storage seam: MySQL in production, an in-memory transactional fake in tests. */
 export type DurableLimitStore = { transaction<T>(work: (tx: DurableLimitTx) => Promise<T>): Promise<T> };
@@ -112,6 +114,10 @@ export async function mysqlDurableLimitStore(): Promise<DurableLimitStore | null
         const result = await tx.execute(sql`SELECT MAX(expiresAt) AS until FROM workEmailOtpRateLimits WHERE limiterKey IN (${sql.join(keys.map(key => sql`${key}`), sql`, `)}) AND expiresAt > ${now}`);
         const until = firstRowOf(result)?.until;
         return until instanceof Date || typeof until === "string" ? new Date(until) : null;
+      },
+      async removeKeys(keys) {
+        if (!keys.length) return;
+        await tx.delete(table).where(inArray(table.limiterKey, keys));
       },
     })),
   };
@@ -187,6 +193,14 @@ export async function isDurablyClaimed(claim: DurableClaim, options: StoreOption
   if (!store) return "unavailable";
   const now = new Date(options.now ?? Date.now());
   return store.transaction(tx => tx.exists(claim.key, claim.windowStart, now));
+}
+
+/** Removes every window of these keys (for example a lock and its failure count once the owner proved the inbox). */
+export async function clearDurableKeys(keys: readonly string[], options: StoreOption = {}): Promise<"cleared" | "unavailable"> {
+  const store = await storeFor(options);
+  if (!store) return "unavailable";
+  await store.transaction(tx => tx.removeKeys([...keys]));
+  return "cleared";
 }
 
 /** Gives a claim back when the guarded side effect failed, so the same link can be retried. */

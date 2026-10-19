@@ -112,7 +112,7 @@ describe("check-your-email, create-account and error states are explicit", () =>
 
   it.each([
     ["a wrong password", { status: 401, body: { ok: false, code: "invalid_credentials", message: PASSWORD_AUTH_COPY.invalid_credentials } }, PASSWORD_AUTH_COPY.invalid_credentials],
-    ["too many attempts", { status: 429, body: { ok: false, code: "rate_limited", message: PASSWORD_AUTH_COPY.rate_limited, retryAfterSeconds: 900 } }, "Too many attempts. Try again in 15 minutes."],
+    ["too many attempts", { status: 429, body: { ok: false, code: "rate_limited", message: PASSWORD_AUTH_COPY.rate_limited, retryAfterSeconds: 900 } }, "Too many attempts. Try again in 15 minutes. You can also use Forgot password, or continue with Google."],
     ["password sign-in switched off", { status: 503, body: { ok: false, code: "password_sign_in_unavailable", message: PASSWORD_AUTH_COPY.password_sign_in_unavailable } }, PASSWORD_AUTH_COPY.password_sign_in_unavailable],
     ["a referrer's work email", { status: 403, body: { ok: false, code: "use_work_email_code", message: PASSWORD_AUTH_COPY.use_work_email_code } }, PASSWORD_AUTH_COPY.use_work_email_code],
     ["a garbled answer", { status: 500, body: { html: true } }, PASSWORD_AUTH_COPY.temporarily_unavailable],
