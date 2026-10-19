@@ -36,15 +36,18 @@ function matchesEq(condition: SQLQuery, row: Row): boolean {
  * The open-ask predicate (server/planGates.ts openAskCondition, exact SQL pinned in openAskSlots.test.ts), evaluated row
  * by row. D-061: a waiting or held ask never holds a slot; a delivered ask counts while its 7-day visibility clock runs
  * (pre-0095 rows without coverageVisibleAt keep the creation clock); an older assigned ask keeps its slot only while it
- * predates recorded claims, was claimed or holds a queue allocation.
+ * predates recorded claims or was claimed, and, when the SQL carries the queue-allocation clause, holds an allocation.
+ * Parameters are read by position, so the allocation clause's parameter is read only when the SQL renders it.
  */
 function isOpenAsk(condition: SQLQuery, row: Row): boolean {
   const { sql, params } = dialect.sqlToQuery(condition);
   if (!sql.includes("`referralRequests`.`waitingForCoverage` = ?") || !sql.includes("`referralRequests`.`coverageVisibleAt` is null and `referralRequests`.`createdAt` > ?")) throw new Error(`Unexpected open-ask SQL: ${sql}`);
-  const [seeker, status, waiting, since, claimAction, allocatedStatus, visibilityCutoff, creationCutoff] = params;
+  const allocationClause = sql.includes("from `referralAvailabilitySlots`");
+  const [seeker, status, waiting, since, claimAction, ...rest] = params;
+  const [allocatedStatus, visibilityCutoff, creationCutoff] = allocationClause ? rest : [undefined, ...rest];
   if (row.jobSeekerId !== seeker || row.status !== status || row.waitingForCoverage !== waiting) return false;
   const claimed = tables.events.some(event => event.referralRequestId === row.id && event.action === claimAction);
-  const allocated = tables.slots.some(slot => slot.referralRequestId === row.id && slot.status === allocatedStatus);
+  const allocated = allocationClause && tables.slots.some(slot => slot.referralRequestId === row.id && slot.status === allocatedStatus);
   if (row.referrerId != null && (asMs(row.createdAt) < asMs(since) || claimed || allocated)) return true;
   return row.coverageVisibleAt != null ? asMs(row.coverageVisibleAt) > asMs(visibilityCutoff) : asMs(row.createdAt) > asMs(creationCutoff);
 }
