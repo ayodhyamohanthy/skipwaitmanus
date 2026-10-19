@@ -282,7 +282,9 @@ export function createCardValidationAlerter(dependencies: AlertDependencies = {}
       `Payment source: ${input.paymentSourceId ?? "unknown"}`,
       input.reason === "no_user_for_customer"
         ? "The Chargebee customer is not linked to any SkipWait account. In the Chargebee dashboard, find the customer by this id; if it is a real user, link the customer id on their account (or re-run validation from their credits page)."
-        : "The card did not validate. No charge settles (Chargebee voids its verification). If this repeats for the same customer, check the gateway's card-verification log in Chargebee.",
+        : input.reason === "hosted_page_creation_failed"
+          ? "A signed-in seeker asked to validate a card and SkipWait could not create Chargebee's hosted page, so free credits stay locked for them. Nothing was charged. Check the Chargebee site and API key configuration and the hosted-pages setup."
+          : "The card did not validate. No charge settles (Chargebee voids its verification). If this repeats for the same customer, check the gateway's card-verification log in Chargebee.",
     ].join("\n");
     const metadata = { eventId: input.eventId, reason: input.reason, customerId: input.customerId, paymentSourceId: input.paymentSourceId };
     try {

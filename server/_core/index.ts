@@ -279,6 +279,7 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
     applyCardValidationEvent: db.applyCardValidationEvent,
     alertCardValidationEvent: createCardValidationAlerter(),
     createCardValidationPage: createCardValidationPageForUser,
+    alertCardValidationPageError: async () => createCardValidationAlerter()({ reason: "hosted_page_creation_failed" }),
     resolveHostedPage: async input => {
       const pending = await db.listPendingChargebeePaymentIntents();
       return resolveChargebeeHostedPageForPayment({ ...input, pendingHostedPageIds: pending.flatMap(row => row.hostedPageId ? [row.hostedPageId] : []) });

@@ -73,6 +73,7 @@ A job seeker's free monthly credits (D-067's Free 3 asks/month) appear only afte
 ## 8. Edge cases and races
 - Two validation signals at once (webhook + return reconcile): the wallet lock + `planGrantRecordedTx` make the grant single.
 - Webhook arrives before the user ever opens the credits page: grant still lands (webhook path grants directly).
+- A source stuck at `pending_verification` with no terminal event: the wallet stays locked and nothing is granted; only a `valid` source (webhook or the summary-route provider re-read) validates, so there is no timeout path to build. The owner sees repeated failures via the alerter; Chargebee keeps retrying a 500.
 - Validation mid-cycle after a locked cycle opened: grant writes with the same month key; the money check reconciles because every row carries `sourceCycleKey`.
 - Wallet returns to Free from a paid plan inside the same month: the existing once-per-month key already prevents a second grant; the gate does not change that.
 - Card deleted after validation (§12 Q3 default): `cardValidatedAt` stands; the deletion event is ignored by the gate.

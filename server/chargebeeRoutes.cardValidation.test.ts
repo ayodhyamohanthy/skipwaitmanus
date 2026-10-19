@@ -36,6 +36,7 @@ beforeEach(() => {
   vi.stubEnv("CHARGEBEE_SITE", "fixture-test");
   vi.stubEnv("CHARGEBEE_API_KEY", "fixture-key");
   vi.stubEnv("CHARGEBEE_WEBHOOK_SECRET", SECRET);
+  vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "true");
 });
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
@@ -71,5 +72,51 @@ describe("card-validation webhook (D-079)", () => {
   it("without the dep wired the event is acknowledged and nothing happens", async () => {
     const response = await post(appFor({}), sourcePayload());
     expect([200, 202]).toContain(response.status);
+  });
+
+  it("ignores payment-source events byte-for-byte when the card-validation flag is off", async () => {
+    vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "false");
+    const applyCardValidationEvent = vi.fn(async () => ({ status: "applied" as const, userId: 7, granted: true }));
+    const response = await post(appFor({ applyCardValidationEvent }), sourcePayload());
+    expect(response.status).toBe(202);
+    expect(response.body).toEqual({ received: true, ignored: true });
+    expect(applyCardValidationEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe("card-validation hosted page route (D-079)", () => {
+  const identity = { account: { id: 11, email: "seeker@example.com", name: "Seeker One" }, primaryEmail: undefined };
+  const postRoute = (app: ReturnType<typeof appFor>) => request(app).post("/api/chargebee/card-validation");
+
+  it("answers 401 signed out and never touches the provider", async () => {
+    const createCardValidationPage = vi.fn();
+    const response = await postRoute(appFor({ createCardValidationPage }));
+    expect(response.status).toBe(401);
+    expect(createCardValidationPage).not.toHaveBeenCalled();
+  });
+
+  it("returns the hosted page for a signed-in seeker when the flag is on", async () => {
+    const createCardValidationPage = vi.fn(async () => ({ url: "https://hosted.example/page-1" }));
+    const response = await postRoute(appFor({ resolveIdentity: async () => identity, createCardValidationPage }));
+    expect(response.status).toBe(200);
+    expect(response.body.url).toBe("https://hosted.example/page-1");
+    expect(createCardValidationPage).toHaveBeenCalledWith(expect.objectContaining({ userId: 11, email: "seeker@example.com" }));
+  });
+
+  it("answers 503 without touching the provider when the flag is off", async () => {
+    vi.stubEnv("FREE_CREDITS_REQUIRE_CARD_VALIDATION", "false");
+    const createCardValidationPage = vi.fn(async () => ({ url: "https://hosted.example/unused" }));
+    const response = await postRoute(appFor({ resolveIdentity: async () => identity, createCardValidationPage }));
+    expect(response.status).toBe(503);
+    expect(createCardValidationPage).not.toHaveBeenCalled();
+  });
+
+  it("answers 502 and alerts the owner when hosted-page creation fails", async () => {
+    const createCardValidationPage = vi.fn(async () => { throw new Error("chargebee down"); });
+    const alertCardValidationPageError = vi.fn(async () => ({ alerted: true }));
+    const response = await postRoute(appFor({ resolveIdentity: async () => identity, createCardValidationPage, alertCardValidationPageError }));
+    expect(response.status).toBe(502);
+    expect(alertCardValidationPageError).toHaveBeenCalledTimes(1);
+    expect((alertCardValidationPageError.mock.calls[0]?.[0] as Error).message).toBe("chargebee down");
   });
 });
