@@ -1,4 +1,4 @@
-import { Check, Circle, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Check, Circle, Eye, EyeOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { passwordPolicyChecks, passwordResetConfirmSuccessSchema, resetTokenSchema, type PasswordResetConfirmSuccess } from "@shared/passwordAuth";
@@ -143,6 +143,13 @@ export default function ResetPassword() {
               {busy ? "Updating…" : "Update password"}
             </button>
           </section>
+        )}
+        {/* A way back from every state short of "Password updated" (that state has its own next step). */}
+        {done ? null : (
+          <Link href="/sign-in" className="text-link mt-8 inline-flex min-h-11 items-center gap-1 text-sm">
+            <ArrowLeft className="size-4" />
+            Back to sign in
+          </Link>
         )}
       </main>
     </div>

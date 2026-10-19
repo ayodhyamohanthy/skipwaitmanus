@@ -107,6 +107,23 @@ describe("the reset page is truthful", () => {
     expect(screen.getByText("This link has expired.")).toBeTruthy();
   });
 
+  // Screenshot pass, item 5: every state short of "Password updated" has a way back to sign in.
+  it("offers Back to sign in on the form, the expired and the no-link screens, not once the password is updated", async () => {
+    const back = () => screen.queryByRole("link", { name: /Back to sign in/ });
+    openWithToken(null);
+    expect(back()?.getAttribute("href")).toBe("/sign-in");
+    cleanup();
+    openWithToken("bad token!");
+    expect(back()?.getAttribute("href")).toBe("/sign-in");
+    cleanup();
+    stubFetch({ status: 200, body: { ok: true, signedIn: true, redirectTo: "/explore" } });
+    openWithToken(TOKEN);
+    expect(back()?.getAttribute("href")).toBe("/sign-in");
+    submitNewPassword();
+    expect(await screen.findByText("Password updated.")).toBeTruthy();
+    expect(back()).toBeNull();
+  });
+
   it("the update button waits for the three rules", async () => {
     stubFetch({ status: 200, body: { ok: true, signedIn: true, redirectTo: "/explore" } });
     openWithToken(TOKEN);
