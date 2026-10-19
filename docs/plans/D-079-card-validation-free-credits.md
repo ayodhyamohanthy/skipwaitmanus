@@ -10,7 +10,7 @@
 | Size | M |
 | Implementer | senior model only |
 | Branch | `agent/instinct/card-validation` from the latest `origin/main` |
-| Depends on | none on main; production enablement waits on the owner's Chargebee dashboard check (§12 Q1) |
+| Depends on | none on main; flag enabled in production Oct 19 (owner yes via iMessage; wrangler var FREE_CREDITS_REQUIRE_CARD_VALIDATION=true); Q1/Q-USD resolved per §12 |
 | Do not run at the same time as | D-038-A, D-038-B, D-035 (same wallet/cycle functions in `server/db.ts` + `server/creditCycles.ts`), D-065-B (same check file) |
 | Verified against | `main` `b60eda03` on 2026-10-19 |
 
