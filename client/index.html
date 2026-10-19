@@ -52,15 +52,19 @@
     <script>
       // Analytics loads only when both values were provided at build time;
       // an unset placeholder previously produced a broken request on every page.
+      // Never on /reset-password (its address bar briefly holds a single-use reset
+      // token), and never with query strings (S-10).
       (function () {
         try {
           var endpoint = "%VITE_ANALYTICS_ENDPOINT%";
           var websiteId = "%VITE_ANALYTICS_WEBSITE_ID%";
           if (!endpoint || endpoint.indexOf("%") === 0 || !websiteId || websiteId.indexOf("%") === 0) return;
+          if (location.pathname.replace(/\/+$/, "") === "/reset-password") return;
           var s = document.createElement("script");
           s.defer = true;
           s.src = endpoint + "/umami";
           s.setAttribute("data-website-id", websiteId);
+          s.setAttribute("data-exclude-search", "true");
           document.head.appendChild(s);
         } catch (e) {}
       })();
