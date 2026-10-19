@@ -5,7 +5,7 @@ import { consumeDurableLimits } from "./_core/durableRateLimit";
 import { passwordLinkEmailLimits } from "./_core/passwordLimits";
 import { reportPasswordFailure, type PasswordRouteContext } from "./_core/passwordResponses";
 import type { PasswordWorkosClient } from "./_core/passwordWorkosClient";
-import { classifyWorkosPasswordError } from "./_core/workosPasswordErrors";
+import { classifyWorkosPasswordError, workosErrorCodes } from "./_core/workosPasswordErrors";
 import { captureServerError } from "./sentry";
 
 /**
@@ -74,6 +74,8 @@ export async function startPasswordSetup(ctx: LinkContext, client: PasswordWorko
         const failure = classifyWorkosPasswordError(error, "sign_up");
         // Another sign-up may have created the user meanwhile: the link still goes to that one account.
         if (failure.kind !== "email_taken") return reportPasswordFailure("sign_up", failure.kind, error);
+        // S-12: an undocumented refusal is read as "taken"; its raw codes go to Sentry so the mapping can be pinned.
+        if (failure.unrecognized) reportPasswordFailure("sign_up", "unrecognized_refusal", error, { codes: workosErrorCodes(error).join(",") });
       }
     }
     await requestWorkosPasswordReset(ctx, client, email, "set");

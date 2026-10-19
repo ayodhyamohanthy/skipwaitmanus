@@ -87,11 +87,14 @@ export function clientContext(req: Request): { ipAddress?: string; userAgent?: s
   return { ...(ip ? { ipAddress: ip } : {}), ...(userAgent ? { userAgent } : {}) };
 }
 
-/** Console and Sentry get the operation, our classification and WorkOS's name/status/code/request id only. */
-export function reportPasswordFailure(operation: string, kind: string, error: unknown): void {
+/**
+ * Console and Sentry get the operation, our classification and WorkOS's name/status/code/request id only, plus
+ * optional machine-code details (workosErrorCodes); never an email, password, token, link or WorkOS message.
+ */
+export function reportPasswordFailure(operation: string, kind: string, error: unknown, details: Readonly<Record<string, string>> = {}): void {
   const described = describeWorkosError(error);
-  console.warn("[password-auth]", { operation, kind, ...described });
-  captureServerError(new Error(`Seeker password ${operation} failed: ${kind}`), { operation, kind, ...described });
+  console.warn("[password-auth]", { operation, kind, ...described, ...details });
+  captureServerError(new Error(`Seeker password ${operation} failed: ${kind}`), { operation, kind, ...described, ...details });
 }
 
 export function failUnexpectedly(res: Response, operation: string, error: unknown): void {

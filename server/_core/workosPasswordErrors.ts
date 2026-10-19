@@ -14,7 +14,8 @@ export type WorkosPasswordFailure =
   | { readonly kind: "invalid_credentials" }
   | { readonly kind: "invalid_code" }
   | { readonly kind: "weak_password" }
-  | { readonly kind: "email_taken" }
+  /** unrecognized: an undocumented sign-up refusal read as "taken" (S-12); its raw codes get reported. */
+  | { readonly kind: "email_taken"; readonly unrecognized?: true }
   | { readonly kind: "expired" }
   | { readonly kind: "rate_limited"; readonly retryAfterSeconds: number }
   | { readonly kind: "use_another_method" }
@@ -102,7 +103,10 @@ export function classifyWorkosPasswordError(error: unknown, operation: WorkosPas
       return TEMPORARILY_UNAVAILABLE;
     case "sign_up":
       if (has(codes, EMAIL_TAKEN) || status === 409) return { kind: "email_taken" };
-      if (isPasswordRefusal(codes) || status === 422) return { kind: "weak_password" };
+      if (isPasswordRefusal(codes)) return { kind: "weak_password" };
+      // S-12: WorkOS documents no "email already used" code, so any other refusal is read as "taken" (never as
+      // a weak password, which would tell an existing address apart) and flagged for reporting.
+      if (status >= 400 && status < 500) return { kind: "email_taken", unrecognized: true };
       return TEMPORARILY_UNAVAILABLE;
     case "reset":
       if (status === 404 || Array.from(codes).some(code => code.includes("token"))) return { kind: "expired" };
@@ -124,6 +128,12 @@ function isPasswordRefusal(codes: ReadonlySet<string>): boolean {
   const list = Array.from(codes);
   if (list.some(code => code.includes("token"))) return false;
   return has(codes, WEAK_PASSWORD) || list.some(code => code.startsWith("password_"));
+}
+
+/** The machine codes an error carries (code, error, errors[] and the 422 summary), sorted; never a message or value. */
+export function workosErrorCodes(error: unknown): string[] {
+  const shape = shapeOf(error);
+  return shape ? Array.from(codesOf(shape)).sort() : [];
 }
 
 export type SafeWorkosErrorDescription = { readonly name: string; readonly status?: number; readonly code?: string; readonly requestID?: string };

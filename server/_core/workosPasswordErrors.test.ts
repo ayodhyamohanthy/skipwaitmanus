@@ -10,7 +10,7 @@ import {
   UnauthorizedException,
   UnprocessableEntityException,
 } from "@workos-inc/node";
-import { classifyWorkosPasswordError, describeWorkosError } from "./workosPasswordErrors";
+import { classifyWorkosPasswordError, describeWorkosError, workosErrorCodes } from "./workosPasswordErrors";
 
 const EMAIL = "asha@gmail.com";
 const user = { object: "user", id: "user_01", email: EMAIL, email_verified: false };
@@ -36,10 +36,31 @@ describe("WorkOS failures map to typed codes (real SDK exceptions)", () => {
     ["password_strength_error", new BadRequestException({ code: "password_strength_error", errors: [{ code: "password_too_short", message: "Too short" }], message: "Password does not meet strength requirements.", requestID: "r" })],
     ["password_reset_error", new BadRequestException({ code: "password_reset_error", errors: [{ code: "password_breached" }], message: "Password rejected.", requestID: "r" })],
     ["errors[] password_*", new UnprocessableEntityException({ code: "invalid_request_parameters", errors: [{ code: "password_too_weak", message: "weak" }], requestID: "r" })],
-    ["a bare 422", new UnprocessableEntityException({ message: "Unprocessable entity", requestID: "r" })],
   ])("%s is weak_password when setting a password", (_label, error) => {
     expect(classifyWorkosPasswordError(error, "sign_up")).toEqual({ kind: "weak_password" });
     expect(classifyWorkosPasswordError(error, "reset")).toEqual({ kind: "weak_password" });
+  });
+
+  // S-12 (D-078 ruling 7): WorkOS documents no "email already used" code, so on sign-up any other 4xx is read as
+  // "email taken" (the link still goes to the one account) and flagged so its raw codes are reported.
+  it.each([
+    ["a bare 422", new UnprocessableEntityException({ message: "Unprocessable entity", requestID: "r" })],
+    ["an undocumented 422 code", new UnprocessableEntityException({ code: "user_creation_error", errors: [{ code: "some_new_code" }], requestID: "r" })],
+    ["an undocumented 400", new BadRequestException({ code: "brand_new_refusal", errors: [], message: `No for asha@gmail.com`, requestID: "r" })],
+  ])("%s on sign-up is an unrecognised email_taken, and on reset still a password refusal", (_label, error) => {
+    expect(classifyWorkosPasswordError(error, "sign_up")).toEqual({ kind: "email_taken", unrecognized: true });
+  });
+
+  it("a bare 422 on reset stays a password refusal; a server error on sign-up stays temporary", () => {
+    expect(classifyWorkosPasswordError(new UnprocessableEntityException({ message: "Unprocessable entity", requestID: "r" }), "reset")).toEqual({ kind: "weak_password" });
+    expect(classifyWorkosPasswordError(new GenericServerException(500, "boom", {}, "r"), "sign_up")).toEqual({ kind: "temporarily_unavailable" });
+  });
+
+  it("workosErrorCodes lists only machine codes, never a message, email or token", () => {
+    const error = new UnprocessableEntityException({ code: "user_creation_error", errors: [{ code: "some_new_code", message: "asha@gmail.com is not allowed" }], requestID: "r" });
+    expect(workosErrorCodes(error)).toEqual(["some_new_code", "user_creation_error"]);
+    expect(workosErrorCodes(new Error("asha@gmail.com"))).toEqual([]);
+    expect(workosErrorCodes(undefined)).toEqual([]);
   });
 
   it("a spent or unknown reset token is expired, never a password refusal", () => {

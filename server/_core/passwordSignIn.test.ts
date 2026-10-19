@@ -255,6 +255,19 @@ describe("seeker password sign-in", () => {
     expect(capture).not.toHaveBeenCalled();
   });
 
+  // S-12: an undocumented refusal from WorkOS on create is read as "address taken": the link still goes out, and
+  // the raw codes reach Sentry without the email.
+  it("an unrecognised refusal on create still sends the link, and reports its raw codes without the email", async () => {
+    const app = await buildApp();
+    wos.createUser.mockRejectedValueOnce(new UnprocessableEntityException({ code: "user_creation_error", errors: [{ code: "some_new_code", message: `${EMAIL} cannot be used` }], requestID: "req_new" }));
+    await post(app, SIGN_UP, { email: EMAIL });
+    await flush();
+    expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
+    expect(mail).toHaveBeenCalledTimes(1);
+    expect(capture).toHaveBeenCalledWith(expect.any(Error), expect.objectContaining({ operation: "sign_up", kind: "unrecognized_refusal", status: 422, requestID: "req_new", codes: "some_new_code,user_creation_error" }));
+    expect(JSON.stringify(capture.mock.calls)).not.toContain(EMAIL);
+  });
+
   it("a deferred sign-up failure is reported without personal data and sends nothing", async () => {
     const app = await buildApp();
     wos.listUsers.mockRejectedValueOnce(new GenericServerException(500, `Upstream failed for ${EMAIL}`, { message: `Upstream failed for ${EMAIL}` }, "req_up"));
