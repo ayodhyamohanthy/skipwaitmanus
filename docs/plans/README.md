@@ -13,7 +13,7 @@ How to hand a packet to a model: [`docs/DELEGATION.md`](../DELEGATION.md) §4. S
 ## Stage 0 — now
 | Order | §3b row | Packet | Tier | Size | Packet state | Runs beside |
 |---|---|---|---|---|---|---|
-| 0.1 | P0-allocated-ask-stuck | [P0-allocated-ask-stuck.md](P0-allocated-ask-stuck.md) | 1 | M | review — draft PR #321 | 1.1, 1.2, 1.4, F-1, T-1 |
+| 0.1 | P0-allocated-ask-stuck | [P0-allocated-ask-stuck.md](P0-allocated-ask-stuck.md) | 1 | M | done — `bc655963`, live (independent review passed on PR #321) | 1.1, 1.2, 1.4, F-1, T-1 |
 | 0.2 | Owner: switch on Cloudflare Web Analytics for skipwait.me (free, D-054); the D-056 clock starts that day | plan §6 | — | — | owner action | everything |
 
 ## Stage 1 — the D-072 lanes
