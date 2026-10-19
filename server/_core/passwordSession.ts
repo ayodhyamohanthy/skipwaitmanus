@@ -1,5 +1,6 @@
 import type { Request, Response } from "express";
 import * as db from "../db";
+import type { PasswordWitnessStore } from "../passwordWitness";
 import type { PasswordEmailStandingLookup } from "./passwordResponses";
 import type { PasswordAuthentication } from "./passwordWorkosClient";
 import { completeWorkosLogin, waitForSessionEpoch } from "./workosSession";
@@ -11,6 +12,9 @@ import { completeWorkosLogin, waitForSessionEpoch } from "./workosSession";
  *    email is refused before the canonical resolver writes an alias or audit row and before any session is
  *    revoked, so a refused sign-in leaves no trace. Referrers re-prove employment with a work-email code on every
  *    sign-in (D-030, D-049), so a password must never carry referrer access for someone who left.
+ *  - A sign-in counts a password only after its setter proved the inbox (D-078 ruling 5, S-5): without the
+ *    workos_password witness the answer is inbox_proof_required (the caller emails a link), still with no write.
+ *    A reset is that proof, so it records the witness just before the session is signed.
  *  - Resolves through completeWorkosLogin, the canonical resolver every WorkOS provider uses, so a person who
  *    signed in with Google or an email code before lands on the same account through verified-email linking.
  *    The resolved account's own work domain is checked again there (defence in depth), still before revocation.
@@ -20,6 +24,7 @@ export type PasswordLoginMode = "sign_in" | "reset";
 export type PasswordLoginRefusal = "account_review" | "account_inactive" | "use_work_email_code";
 export type PasswordLoginOutcome =
   | { readonly status: "signed_in"; readonly userId?: number }
+  | { readonly status: "inbox_proof_required" }
   | { readonly status: "refused"; readonly code: PasswordLoginRefusal };
 
 class WorkEmailPasswordRefused extends Error {
@@ -38,12 +43,14 @@ export type PasswordLoginInput = {
   readonly authentication: PasswordAuthentication;
   readonly mode: PasswordLoginMode;
   readonly emailStanding: PasswordEmailStandingLookup;
+  readonly witness: PasswordWitnessStore;
 };
 
 export async function finishPasswordLogin(req: Request, res: Response, input: PasswordLoginInput): Promise<PasswordLoginOutcome> {
   const { user, accessToken } = input.authentication;
   if (user.emailVerified !== true) throw new Error("PASSWORD_EMAIL_UNVERIFIED");
   if ((await input.emailStanding(user.email, { workosUserId: user.id })) === "referrer_work_email") return { status: "refused", code: "use_work_email_code" };
+  if (input.mode === "sign_in" && !(await input.witness.has(user.id))) return { status: "inbox_proof_required" };
   let userId: number | undefined;
   try {
     const outcome = await completeWorkosLogin(req, res, {
@@ -56,6 +63,7 @@ export async function finishPasswordLogin(req: Request, res: Response, input: Pa
         if (input.mode === "reset") {
           await db.revokeUserSessions(account.openId);
           await waitForSessionEpoch(account.openId);
+          await input.witness.record({ workosUserId: user.id });
         }
       },
     });

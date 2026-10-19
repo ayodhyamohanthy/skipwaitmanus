@@ -18,9 +18,11 @@ export function answerCheckEmail(ctx: PasswordRouteContext, client: PasswordWork
   ctx.defer(() => requestWorkosPasswordReset(ctx, client, email, "set"));
 }
 
-/** Signs in a WorkOS user whose email WorkOS has verified, or answers why not. */
-export async function respondSignedIn(ctx: PasswordRouteContext, req: Request, res: Response, authentication: PasswordAuthentication, redirectTo: string, origin: SignInOrigin): Promise<void> {
-  const outcome = await finishPasswordLogin(req, res, { authentication, mode: "sign_in", emailStanding: ctx.emailStanding });
+/** Signs in a WorkOS user whose email WorkOS has verified, or answers why not (or emails a link, D-078 ruling 5). */
+export async function respondSignedIn(ctx: PasswordRouteContext, client: PasswordWorkosClient, req: Request, res: Response, authentication: PasswordAuthentication, at: { readonly email: string; readonly redirectTo: string; readonly origin: SignInOrigin }): Promise<void> {
+  const { redirectTo, origin } = at;
+  const outcome = await finishPasswordLogin(req, res, { authentication, mode: "sign_in", emailStanding: ctx.emailStanding, witness: ctx.witness });
+  if (outcome.status === "inbox_proof_required") return answerCheckEmail(ctx, client, res, at.email, origin);
   if (outcome.status === "refused") {
     recordPasswordActivity(PASSWORD_ACTIVITY[origin], "denied", { code: outcome.code });
     return sendPasswordError(res, outcome.code);

@@ -59,7 +59,7 @@ export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteCont
       }
       // The password is set. Sign this browser in only when every session rule allows it; otherwise say so plainly.
       try {
-        const outcome = user.emailVerified === true ? await finishPasswordLogin(req, res, { authentication: { user }, mode: "reset", emailStanding: ctx.emailStanding }) : undefined;
+        const outcome = user.emailVerified === true ? await finishPasswordLogin(req, res, { authentication: { user }, mode: "reset", emailStanding: ctx.emailStanding, witness: ctx.witness }) : undefined;
         // A referrer's work email gets the work-email-code answer: no session, nobody signed out (D-078 ruling 3).
         if (outcome?.status === "refused" && outcome.code === "use_work_email_code") {
           recordPasswordActivity("auth.password_reset", "denied", { code: outcome.code });

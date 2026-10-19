@@ -79,7 +79,7 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
       if (attempt.type === "failed") return await answerFailure(ctx, client, res, attempt, at);
       // WorkOS let an unverified email through (verification not required in its dashboard): we still require it.
       if (attempt.authentication.user.emailVerified !== true) return answerCheckEmail(ctx, client, res, at.email, at.origin);
-      return await respondSignedIn(ctx, req, res, attempt.authentication, at.redirectTo, at.origin);
+      return await respondSignedIn(ctx, client, req, res, attempt.authentication, at);
     } catch (error) {
       return failUnexpectedly(res, "sign_in", error);
     }

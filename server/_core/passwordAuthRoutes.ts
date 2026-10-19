@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { sendTransactionalEmail } from "../emailDelivery";
 import { passwordEmailStanding } from "../passwordAccountLookup";
 import { registerPasswordResetRoutes } from "../passwordResetRoutes";
+import { passwordWitnessStore } from "../passwordWitness";
 import type { DurableLimitStore } from "./durableRateLimit";
 import { reportPasswordFailure, type PasswordEmailStandingLookup, type PasswordRouteContext } from "./passwordResponses";
 import { registerPasswordSignInRoutes } from "./passwordSignIn";
@@ -21,6 +22,7 @@ export type PasswordRouteOptions = {
   readonly defer?: (task: () => Promise<void>) => void;
   readonly emailStanding?: PasswordEmailStandingLookup;
   readonly sendEmail?: PasswordRouteContext["sendEmail"];
+  readonly witness?: PasswordRouteContext["witness"];
 };
 
 function runAfterResponse(task: () => Promise<void>): void {
@@ -35,6 +37,7 @@ export function registerPasswordAuthRoutes(app: Express, options: PasswordRouteO
     defer: options.defer ?? runAfterResponse,
     emailStanding: options.emailStanding ?? passwordEmailStanding,
     sendEmail: options.sendEmail ?? sendTransactionalEmail,
+    witness: options.witness ?? passwordWitnessStore,
   };
   registerPasswordSignInRoutes(app, ctx);
   registerPasswordResetRoutes(app, ctx);

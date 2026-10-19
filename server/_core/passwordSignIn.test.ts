@@ -10,7 +10,7 @@ import { createMemoryDurableLimitStore } from "./memoryDurableLimitStore";
 import type { DurableLimitStore } from "./durableRateLimit";
 
 type Row = Record<string, unknown> & { id: number; openId: string; email: string; sessionsValidAfter: Date };
-const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), subjects: new Map<number, string[]>(), standings: new Map<string, string>(), standingCalls: [] as Array<[string, string | undefined]>, nextId: 10 }));
+const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), subjects: new Map<number, string[]>(), standings: new Map<string, string>(), standingCalls: [] as Array<[string, string | undefined]>, witnesses: new Set<string>(), nextId: 10 }));
 const revokeUserSessions = vi.hoisted(() => vi.fn());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
@@ -67,7 +67,7 @@ async function buildApp(options: { store?: DurableLimitStore | null; now?: () =>
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   const store = options.store === undefined ? createMemoryDurableLimitStore() : options.store;
-  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, defer: task => { queued.push(task); }, sendEmail: mail, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
+  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, defer: task => { queued.push(task); }, sendEmail: mail, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.witnesses.add(workosUserId); } }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
     const identity = await resolveWorkosIdentity(req);
@@ -93,6 +93,8 @@ const LINK = "https://skipwait.me/reset-password?token=tok_secret";
 beforeEach(() => {
   queued = [];
   state.accounts.clear(); state.workEmailDomains.clear(); state.subjects.clear(); state.standings.clear(); state.standingCalls = []; state.nextId = 10;
+  // The usual WorkOS user here already proved the inbox for this password (D-078 ruling 5).
+  state.witnesses = new Set(["user_x"]);
   [resolveLoginIdentity, revokeUserSessions, capture, recordActivity, mail, ...Object.values(wos), ...Object.values(hosted)].forEach(fn => fn.mockReset());
   mail.mockResolvedValue({ sent: true, reason: "sent" });
   revokeUserSessions.mockImplementation(async (openId: string) => { const row = state.accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); });
@@ -169,6 +171,29 @@ describe("seeker password sign-in", () => {
     }
     expect(resolveLoginIdentity).not.toHaveBeenCalled();
     expect(wos.sendVerificationEmail).not.toHaveBeenCalled();
+  });
+
+  // D-078 ruling 5 (S-5): a password counts only after its setter proved the inbox (a reset confirm or a link
+  // sign-up). Anyone else's password for the address, set where nobody proved it, never opens a session.
+  it("a correct password whose setter never proved the inbox gets no session, only an emailed link", async () => {
+    const app = await buildApp();
+    state.witnesses.clear();
+    const res = await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD, returnTo: "/plans" });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true, step: "check_email" });
+    expect(res.headers["set-cookie"]).toBeUndefined();
+    expect(resolveLoginIdentity).not.toHaveBeenCalled();
+    expect(revokeUserSessions).not.toHaveBeenCalled();
+    await flush();
+    expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
+    expect(mail).toHaveBeenCalledWith({ to: EMAIL, subject: "Finish signing in to SkipWait", text: expect.stringContaining(LINK) });
+    expect(state.witnesses.size).toBe(0);
+    // A referrer's work email is still refused first, and is never emailed.
+    state.standings.set("asha@wipro.com", "referrer_work_email");
+    wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ id: "user_ref", email: "asha@wipro.com" })));
+    expect((await post(app, SIGN_IN, { email: "asha@wipro.com", password: PASSWORD })).body.code).toBe("use_work_email_code");
+    await flush();
+    expect(mail).toHaveBeenCalledTimes(1);
   });
 
   it("the six-digit verification routes are gone", async () => {
@@ -322,6 +347,7 @@ describe("seeker password sign-in", () => {
     expect(resolveLoginIdentity).not.toHaveBeenCalled();
     expect(revokeUserSessions).not.toHaveBeenCalled();
     // Defence in depth: should the lookup miss, the resolved account's own work domain still refuses.
+    state.witnesses.add("user_ref2");
     const referrer = seedAccount("workos_user_ref2", { email: "ravi@wipro.com" });
     state.workEmailDomains.set(referrer.id, "wipro.com");
     wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ id: "user_ref2", email: "ravi@wipro.com" })));

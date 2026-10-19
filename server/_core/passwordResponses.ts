@@ -4,6 +4,7 @@ import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { PASSWORD_AUTH_COPY, type PasswordAuthErrorCode, type PasswordStep } from "@shared/passwordAuth";
 import * as db from "../db";
 import type { TransactionalEmailInput, TransactionalEmailResult } from "../emailDelivery";
+import type { PasswordWitnessStore } from "../passwordWitness";
 import { captureServerError } from "../sentry";
 import { configuredPublicOrigin, isTrustedAuthPost } from "./authPostGuard";
 import { activeDurableLock, consumeDurableLimits, type DurableLimit, type DurableLimitStore } from "./durableRateLimit";
@@ -26,6 +27,8 @@ export type PasswordRouteContext = {
   readonly defer: (task: () => Promise<void>) => void;
   /** SkipWait's own sender (server/emailDelivery.ts) for the password links (D-078 ruling 6); never throws. */
   readonly sendEmail: (input: TransactionalEmailInput) => Promise<TransactionalEmailResult>;
+  /** Whether a password's setter proved the inbox (server/passwordWitness.ts, D-078 ruling 5). */
+  readonly witness: PasswordWitnessStore;
   /** Read-only, and throws when it cannot decide (server/passwordAccountLookup.ts); runs before any write or WorkOS call. */
   readonly emailStanding: PasswordEmailStandingLookup;
 };

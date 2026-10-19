@@ -8,7 +8,7 @@ import { BadRequestException, NotFoundException, RateLimitExceededException } fr
 import { createMemoryDurableLimitStore } from "./_core/memoryDurableLimitStore";
 
 type Row = Record<string, unknown> & { id: number; openId: string; email: string; sessionsValidAfter: Date };
-const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), standings: new Map<string, string>(), nextId: 10 }));
+const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), standings: new Map<string, string>(), witnesses: new Set<string>(), recorded: [] as string[], nextId: 10 }));
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
 const revokeUserSessions = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
@@ -53,7 +53,7 @@ async function buildApp() {
   app.use(express.json());
   createWorkosAuthRoutesRegistrar({
     workos: { userManagement: { listSessions: vi.fn(async () => ({ data: [] })), revokeSession: vi.fn() } } as never,
-    password: { client: wos, store: createMemoryDurableLimitStore(), defer: task => { pending.push(task()); }, emailStanding: async email => (state.standings.get(email) ?? "unknown") as never },
+    password: { client: wos, store: createMemoryDurableLimitStore(), defer: task => { pending.push(task()); }, witness: { has: async id => state.witnesses.has(id), record: async ({ workosUserId }) => { state.recorded.push(workosUserId); state.witnesses.add(workosUserId); } }, emailStanding: async email => (state.standings.get(email) ?? "unknown") as never },
   })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./_core/workosAuth");
@@ -70,7 +70,7 @@ const pairOf = (setCookie: string | undefined) => (setCookie ?? "").split(";")[0
 
 beforeEach(() => {
   pending = [];
-  state.accounts.clear(); state.workEmailDomains.clear(); state.standings.clear(); state.nextId = 10;
+  state.accounts.clear(); state.workEmailDomains.clear(); state.standings.clear(); state.witnesses = new Set(["user_x"]); state.recorded = []; state.nextId = 10;
   [resolveLoginIdentity, revokeUserSessions, capture, zepto, ...Object.values(wos)].forEach(fn => fn.mockReset());
   resolveLoginIdentity.mockImplementation(async (input: { openId: string; email: string }) => state.accounts.get(input.openId) ?? seedAccount(input.openId, { email: input.email }));
   revokeUserSessions.mockImplementation(async (openId: string) => { const row = state.accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); });
@@ -189,6 +189,25 @@ describe("reset password (WorkOS sets it; this browser signs in, every other ses
     const fresh = pairOf(cookieOf(res, "app_session_id"));
     expect((await request(app).get("/session-proof").set("Cookie", old)).status).toBe(401);
     expect((await request(app).get("/session-proof").set("Cookie", fresh)).status).toBe(200);
+    expect(state.recorded).toEqual(["user_x"]);
+  });
+
+  // D-078 ruling 5: the emailed link is how a new password becomes usable. Sign-in before it: a link; after it: in.
+  it("a password becomes usable only once its link is used: sign-in, then reset, then sign-in", async () => {
+    const app = await buildApp();
+    state.witnesses.clear();
+    wos.authenticateWithPassword.mockResolvedValue({ user: workosUser({ id: "user_new" }), accessToken: "not-a-jwt", refreshToken: "r" });
+    const before = await post(app, "/api/auth/password/sign-in", { email: EMAIL, password: "Newpassword1!" });
+    expect(before.body).toEqual({ ok: true, step: "check_email" });
+    expect(cookieOf(before, "app_session_id")).toBeUndefined();
+    await Promise.all(pending);
+    expect(zepto).toHaveBeenCalledTimes(1);
+    wos.resetPassword.mockResolvedValueOnce({ user: workosUser({ id: "user_new" }) });
+    const reset = await post(app, CONFIRM, { token: TOKEN, password: "Newpassword1!", confirm: "Newpassword1!" });
+    expect(reset.body).toEqual({ ok: true, signedIn: true, redirectTo: "/explore" });
+    expect(state.recorded).toEqual(["user_new"]);
+    const after = await post(app, "/api/auth/password/sign-in", { email: EMAIL, password: "Newpassword1!" });
+    expect(after.body).toEqual({ ok: true, step: "signed_in", redirectTo: "/explore" });
   });
 
   it("reset failures are honest", async () => {
@@ -218,6 +237,7 @@ describe("reset password (WorkOS sets it; this browser signs in, every other ses
     const blocked = await post(app, CONFIRM, { token: TOKEN, password: "Newpassword1!", confirm: "Newpassword1!" });
     expect(blocked.body).toEqual({ ok: true, signedIn: false, redirectTo: "/sign-in" });
     expect(cookieOf(blocked, "app_session_id")).toBeUndefined();
+    expect(state.recorded).toEqual([]);
 
     // D-078 ruling 3 (S-2): a referrer's work email is refused before the resolver and before any revocation,
     // with the work-email-code answer, so the refusal links nothing and signs nobody out.
@@ -230,6 +250,7 @@ describe("reset password (WorkOS sets it; this browser signs in, every other ses
     expect(cookieOf(workEmail, "app_session_id")).toBeUndefined();
     expect(resolveLoginIdentity).not.toHaveBeenCalled();
     expect(revokeUserSessions).not.toHaveBeenCalled();
+    expect(state.recorded).toEqual([]);
 
     expect((await request(app).get(`/api/auth/password/reset/verify?token=${TOKEN}`)).status).toBe(404);
   });
