@@ -36,10 +36,11 @@ type SeekerProps = {
   request: ThreadRequest;
   onWithdraw: () => Promise<void>;
   onProgress: (status: string) => Promise<void>;
+  onConfirmReferredEmail: () => Promise<void>;
 };
 
-export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
-  const [modal, setModal] = useState<null | "withdraw">(null);
+export function SeekerPanel({ request, onWithdraw, onProgress, onConfirmReferredEmail }: SeekerProps) {
+  const [modal, setModal] = useState<null | "withdraw" | "confirm">(null);
   const action = useAction();
   const stage = stageOf(request);
   const idx = stageIndex(stage);
@@ -80,8 +81,36 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
   if (stage === "Hired") {
     return <p className="mt-2 text-sm text-muted-foreground"><Link href="/landed" className="text-link">Open the landed journey <ArrowRight className="size-3.5" /></Link></p>;
   }
-  // Kit: progress milestones open once the referrer has submitted (Referred onward).
-  if (stage === "Accepted") return <p className="mt-2 text-sm text-muted-foreground">{COORDINATE}</p>;
+  if (stage === "Accepted") {
+    // D-038-B: the seeker can confirm they got the referral email, which stops
+    // the clock and marks the ask as referred.
+    if (request.status === "approved") {
+      return (
+        <>
+          <h2 className="mt-2 text-lg font-semibold">Did you get the referral email?</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Confirming helps your referrer and records your referral.</p>
+          <Button className="mt-4 w-full" onClick={() => { action.reset(); setModal("confirm"); }}>I got the referral email <Check /></Button>
+          {request.referredDueAt ? <p className="mt-2 text-sm text-muted-foreground">The referrer&apos;s deadline to mark Referred is {new Date(request.referredDueAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}.</p> : null}
+          {modal === "confirm" ? (
+            <ThreadModal onClose={close}>
+              {titleId => (
+                <>
+                  <h2 id={titleId} className="text-xl font-semibold">Confirm you received the referral email?</h2>
+                  <p className="mt-2 text-muted-foreground">This tells your referrer their referral was received and counts as your referral.</p>
+                  <ModalError message={action.error} />
+                  <footer className="mt-6 flex justify-end gap-2">
+                    <Button variant="ghost" onClick={close}>Cancel</Button>
+                    <Button disabled={action.busy} onClick={() => { void action.run(() => onConfirmReferredEmail(), "We could not record your confirmation").then(ok => { if (ok) setModal(null); }); }}>{action.busy ? "Confirming…" : "Confirm"}</Button>
+                  </footer>
+                </>
+              )}
+            </ThreadModal>
+          ) : null}
+        </>
+      );
+    }
+    return <p className="mt-2 text-sm text-muted-foreground">{COORDINATE}</p>;
+  }
   const next = SEEKER_MILESTONES.filter(milestone => stageIndex(milestone.stage) > idx);
   return (
     <>
@@ -104,10 +133,12 @@ type ReferrerProps = {
   onAccept: () => Promise<void>;
   onPass: (reason: string, passReason: string) => Promise<void>;
   onMarkReferred: (referenceId?: string) => Promise<void>;
+  onExtendReferredDeadline: () => Promise<void>;
+  onStepBack: () => Promise<void>;
 };
 
-export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onPass, onMarkReferred }: ReferrerProps) {
-  const [modal, setModal] = useState<null | "accept" | "pass" | "referred">(null);
+export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onPass, onMarkReferred, onExtendReferredDeadline, onStepBack }: ReferrerProps) {
+  const [modal, setModal] = useState<null | "accept" | "pass" | "referred" | "extend" | "stepback">(null);
   const [confirmed, setConfirmed] = useState(false);
   const [reference, setReference] = useState("");
   // D-052: the referrer always picks a reason actively, so nothing is selected when the pass opens.
@@ -115,7 +146,7 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
   const action = useAction();
   const stage = stageOf(request);
   const company = companyName(request);
-  const open = (next: "accept" | "pass" | "referred") => { action.reset(); setConfirmed(false); setReference(""); setReasonCode(null); setModal(next); };
+  const open = (next: "accept" | "pass" | "referred" | "extend" | "stepback") => { action.reset(); setConfirmed(false); setReference(""); setReasonCode(null); setModal(next); };
   const close = () => { setModal(null); action.reset(); };
   const submit = (run: () => Promise<void>, fallback: string) => { void action.run(run, fallback).then(ok => { if (ok) setModal(null); }); };
   const selectedReason = PASS_REASONS.find(option => option.code === reasonCode);
@@ -136,7 +167,18 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
         <>
           <h2 className="mt-2 text-lg font-semibold">Submit through your company.</h2>
           <p className="mt-1 text-sm text-muted-foreground">Then mark it here so the seeker knows.</p>
-          <Button className="mt-4 w-full" onClick={() => open("referred")}>Mark as referred <Check /></Button>
+          {request.referredDueAt ? (
+            <>
+              <p className="mt-1 text-sm text-muted-foreground">Mark as referred by {new Date(request.referredDueAt).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}.</p>
+              <Button className="mt-4 w-full" onClick={() => open("referred")}>Mark as referred <Check /></Button>
+              {!request.extensionUsed && (
+                <Button variant="outline" className="mt-2 w-full" onClick={() => open("extend")}>Need 3 more days</Button>
+              )}
+            </>
+          ) : (
+            <Button className="mt-4 w-full" onClick={() => open("referred")}>Mark as referred <Check /></Button>
+          )}
+          <Button variant="destructive" className="mt-2 w-full" onClick={() => open("stepback")}>I can't refer this after all</Button>
         </>
       ) : (
         <p className="mt-2 text-sm text-muted-foreground">{COORDINATE}</p>
@@ -190,6 +232,36 @@ export function ReferrerPanel({ request, role, passed, returnPath, onAccept, onP
               <footer className="mt-6 flex justify-end gap-2">
                 <Button variant="ghost" onClick={close}>Cancel</Button>
                 <Button disabled={action.busy} onClick={() => submit(() => onMarkReferred(reference.trim() || undefined), "We could not mark this as referred")}>Confirm <Check /></Button>
+              </footer>
+            </>
+          )}
+        </ThreadModal>
+      ) : null}
+      {modal === "extend" ? (
+        <ThreadModal onClose={close}>
+          {titleId => (
+            <>
+              <h2 id={titleId} className="text-xl font-semibold">Extend the deadline by 3 days?</h2>
+              <p className="mt-2 text-muted-foreground">This moves your Referred deadline to 8 days from acceptance. You can only do this once per acceptance.</p>
+              <ModalError message={action.error} />
+              <footer className="mt-6 flex justify-end gap-2">
+                <Button variant="ghost" onClick={close}>Cancel</Button>
+                <Button disabled={action.busy} onClick={() => submit(() => onExtendReferredDeadline(), "We could not extend the deadline")}>Extend <Check /></Button>
+              </footer>
+            </>
+          )}
+        </ThreadModal>
+      ) : null}
+      {modal === "stepback" ? (
+        <ThreadModal onClose={close}>
+          {titleId => (
+            <>
+              <h2 id={titleId} className="text-xl font-semibold">Step back from this referral?</h2>
+              <p className="mt-2 text-muted-foreground">They&apos;ll be told kindly, and the ask opens to your colleagues. No fault.</p>
+              <ModalError message={action.error} />
+              <footer className="mt-6 flex justify-end gap-2">
+                <Button variant="ghost" onClick={close}>Cancel</Button>
+                <Button variant="destructive" disabled={action.busy} onClick={() => submit(() => onStepBack(), "We could not record your step-back")}>Step back</Button>
               </footer>
             </>
           )}
