@@ -47,7 +47,7 @@ export function registerPasswordVerificationRoutes(app: Express, ctx: PasswordRo
         return sendPasswordError(res, "temporarily_unavailable");
       }
       clearPasswordTicketCookie(req, res);
-      return await respondSignedIn(req, res, authentication, ticket.returnTo, ticket.origin);
+      return await respondSignedIn(ctx, req, res, authentication, ticket.returnTo, ticket.origin);
     } catch (error) {
       return failUnexpectedly(res, "verify", error);
     }

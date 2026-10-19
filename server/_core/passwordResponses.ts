@@ -15,6 +15,7 @@ import { describeWorkosError } from "./workosPasswordErrors";
  * The routes are registered before the Express error middleware, so every failure is answered and reported here.
  */
 export type PasswordEmailStanding = "verified_seeker" | "referrer_work_email" | "unknown";
+export type PasswordEmailStandingLookup = (email: string, lookup?: { readonly workosUserId?: string }) => Promise<PasswordEmailStanding>;
 export type PasswordRouteContext = {
   readonly client: PasswordWorkosClient | null;
   /** undefined: the MySQL limiter; null: no durable store (every limited route fails closed). */
@@ -23,7 +24,8 @@ export type PasswordRouteContext = {
   readonly ticketSecret: string;
   /** Runs work after the response is sent (forgot, the sign-up reset nudge). */
   readonly defer: (task: () => Promise<void>) => void;
-  readonly emailStanding: (email: string) => Promise<PasswordEmailStanding>;
+  /** Read-only, and throws when it cannot decide (server/passwordAccountLookup.ts); runs before any write or WorkOS call. */
+  readonly emailStanding: PasswordEmailStandingLookup;
 };
 
 const STATUS: Readonly<Record<PasswordAuthErrorCode, number>> = {

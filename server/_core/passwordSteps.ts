@@ -17,8 +17,8 @@ export async function issueVerifyStep(ctx: PasswordRouteContext, req: Request, r
 }
 
 /** Signs in a WorkOS user whose email WorkOS has verified, or answers why not. */
-export async function respondSignedIn(req: Request, res: Response, authentication: PasswordAuthentication, redirectTo: string, origin: SignInOrigin): Promise<void> {
-  const outcome = await finishPasswordLogin(req, res, { authentication, mode: "sign_in" });
+export async function respondSignedIn(ctx: PasswordRouteContext, req: Request, res: Response, authentication: PasswordAuthentication, redirectTo: string, origin: SignInOrigin): Promise<void> {
+  const outcome = await finishPasswordLogin(req, res, { authentication, mode: "sign_in", emailStanding: ctx.emailStanding });
   if (outcome.status === "refused") {
     recordPasswordActivity(PASSWORD_ACTIVITY[origin], "denied", { code: outcome.code });
     return sendPasswordError(res, outcome.code);

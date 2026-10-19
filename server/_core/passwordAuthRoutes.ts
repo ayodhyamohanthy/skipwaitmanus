@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { passwordEmailStanding } from "../passwordAccountLookup";
 import { registerPasswordResetRoutes, requestWorkosPasswordReset } from "../passwordResetRoutes";
 import type { DurableLimitStore } from "./durableRateLimit";
-import { reportPasswordFailure, type PasswordEmailStanding, type PasswordRouteContext } from "./passwordResponses";
+import { reportPasswordFailure, type PasswordEmailStandingLookup, type PasswordRouteContext } from "./passwordResponses";
 import { registerPasswordSignInRoutes } from "./passwordSignIn";
 import { registerPasswordVerificationRoutes } from "./passwordVerification";
 import type { PasswordWorkosClient } from "./passwordWorkosClient";
@@ -18,7 +18,7 @@ export type PasswordRouteOptions = {
   readonly store?: DurableLimitStore | null;
   readonly now?: () => number;
   readonly defer?: (task: () => Promise<void>) => void;
-  readonly emailStanding?: (email: string) => Promise<PasswordEmailStanding>;
+  readonly emailStanding?: PasswordEmailStandingLookup;
 };
 
 function runAfterResponse(task: () => Promise<void>): void {
@@ -37,7 +37,7 @@ export function registerPasswordAuthRoutes(app: Express, options: PasswordRouteO
     defer: options.defer ?? runAfterResponse,
     emailStanding: options.emailStanding ?? passwordEmailStanding,
   };
-  registerPasswordSignInRoutes(app, ctx, requestWorkosPasswordReset);
+  registerPasswordSignInRoutes(app, ctx, (client, email) => requestWorkosPasswordReset(ctx, client, email));
   registerPasswordVerificationRoutes(app, ctx);
   registerPasswordResetRoutes(app, ctx);
 }

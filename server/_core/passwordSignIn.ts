@@ -32,7 +32,7 @@ async function authenticate(client: PasswordWorkosClient, req: Request, email: s
 }
 
 async function continueAuthenticated(ctx: PasswordRouteContext, client: PasswordWorkosClient, req: Request, res: Response, authentication: PasswordAuthentication, at: AttemptContext): Promise<void> {
-  if (authentication.user.emailVerified === true) return respondSignedIn(req, res, authentication, at.redirectTo, at.origin);
+  if (authentication.user.emailVerified === true) return respondSignedIn(ctx, req, res, authentication, at.redirectTo, at.origin);
   // WorkOS let an unverified email through (verification not required in its dashboard): we still require it.
   try {
     await client.sendVerificationEmail({ userId: authentication.user.id });
@@ -110,6 +110,9 @@ export function registerPasswordSignInRoutes(app: Express, ctx: PasswordRouteCon
       if (!(await passLimits(ctx, res, signUpLimits(body.email, ip)))) return;
       if (!(await passLock(ctx, res, passwordLockKeys(body.email, ip)))) return;
       const at: AttemptContext = { email: body.email, ip, redirectTo: signedInDestination(req, body.returnTo), origin: "sign_up" };
+      // D-078 ruling 3 (S-3): a referrer's work email never reaches WorkOS and is never emailed; it gets the same
+      // check-your-email answer as any new account (a decoy ticket), so the answer says nothing about the address.
+      if ((await ctx.emailStanding(body.email)) === "referrer_work_email") return await issueVerifyStep(ctx, req, res, { kind: "decoy", email: body.email, returnTo: at.redirectTo, origin: "sign_up" });
       let existingAccount = false;
       try {
         await client.createUser({ email: body.email, password: body.password, ...clientContext(req) });

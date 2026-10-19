@@ -28,9 +28,13 @@ function resetUrlPointsHome(url: string): boolean {
   } catch { return false; }
 }
 
-/** Asks WorkOS to email a reset link and checks where that link points. Never logs the token or the email. */
-export async function requestWorkosPasswordReset(client: PasswordWorkosClient, email: string): Promise<void> {
+/**
+ * The one place a password reset is requested, so every path (forgot, sign-up, sign-in) skips a referrer's work
+ * email before any WorkOS call (D-078 ruling 3, S-3). Checks where the link points. Never logs the token or email.
+ */
+export async function requestWorkosPasswordReset(ctx: Pick<PasswordRouteContext, "emailStanding">, client: PasswordWorkosClient, email: string): Promise<void> {
   try {
+    if ((await ctx.emailStanding(email)) === "referrer_work_email") return;
     const reset = await client.createPasswordReset({ email });
     if (!resetUrlPointsHome(reset.passwordResetUrl)) captureServerError(new Error("WorkOS password reset URL is not skipwait.me/reset-password"), { operation: "forgot", kind: "reset_url_misconfigured" });
   } catch (error) {
@@ -52,7 +56,7 @@ async function startWorkosReset(ctx: PasswordRouteContext, client: PasswordWorko
       if (standing !== "verified_seeker") return;
       await client.createUser({ email });
     }
-    await requestWorkosPasswordReset(client, email);
+    await requestWorkosPasswordReset(ctx, client, email);
   } catch (error) {
     reportPasswordFailure("forgot", classifyWorkosPasswordError(error, "forgot").kind, error);
   }
@@ -101,7 +105,12 @@ export function registerPasswordResetRoutes(app: Express, ctx: PasswordRouteCont
       }
       // The password is set. Sign this browser in only when every session rule allows it; otherwise say so plainly.
       try {
-        const outcome = user.emailVerified === true ? await finishPasswordLogin(req, res, { authentication: { user }, mode: "reset" }) : undefined;
+        const outcome = user.emailVerified === true ? await finishPasswordLogin(req, res, { authentication: { user }, mode: "reset", emailStanding: ctx.emailStanding }) : undefined;
+        // A referrer's work email gets the work-email-code answer: no session, nobody signed out (D-078 ruling 3).
+        if (outcome?.status === "refused" && outcome.code === "use_work_email_code") {
+          recordPasswordActivity("auth.password_reset", "denied", { code: outcome.code });
+          return sendPasswordError(res, "use_work_email_code");
+        }
         const signedIn = outcome?.status === "signed_in";
         recordPasswordActivity("auth.password_reset", "success", { signedIn: signedIn ? "yes" : "no" }, outcome?.status === "signed_in" ? outcome.userId : undefined);
         return sendResetDone(res, signedIn);

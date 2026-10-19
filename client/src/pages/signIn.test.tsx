@@ -2,6 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { PASSWORD_AUTH_COPY } from "@shared/passwordAuth";
 import SignIn from "./SignIn";
 
 vi.mock("wouter", () => ({
@@ -91,6 +92,23 @@ describe("SignIn", () => {
     render(<SignIn />);
     expect(screen.getByLabelText("Company email")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+  });
+
+  // D-078 ruling 4: a social sign-in with a referrer's verified work email lands here instead of a session.
+  it("says why when a social sign-in was refused for a verified work email, on the referrer side only", () => {
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=use_work_email_code" });
+    render(<SignIn />);
+    expect(screen.getByRole("status").textContent).toBe(PASSWORD_AUTH_COPY.use_work_email_code);
+    expect(screen.getByLabelText("Company email")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Continue with/ })).toBeNull();
+    cleanup();
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?reason=use_work_email_code" });
+    render(<SignIn />);
+    expect(screen.queryByRole("status")).toBeNull();
+    cleanup();
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=%3Cb%3Eanything%3C%2Fb%3E" });
+    render(<SignIn />);
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("ships no design-preview scaffolding", () => {

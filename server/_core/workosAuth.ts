@@ -17,6 +17,8 @@ import { ENV } from "./env";
 import { completeWorkosLogin, resolveWorkosOpenId } from "./workosSession";
 import { registerPasswordAuthRoutes, type PasswordRouteOptions } from "./passwordAuthRoutes";
 import { createPasswordWorkosClient } from "./passwordWorkosClient";
+import { passwordEmailStanding } from "../passwordAccountLookup";
+import { USE_WORK_EMAIL_CODE_PATH } from "@shared/passwordAuth";
 
 export { resolveWorkosOpenId };
 
@@ -222,6 +224,8 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
     const workos = deps.workos ?? new WorkOS(process.env.WORKOS_API_KEY!, { clientId });
     // Seeker email + password (D-049) uses its own WorkOS client: no SDK retries, a 10 s timeout.
     const passwordClient = deps.password?.client !== undefined ? deps.password.client : createPasswordWorkosClient({ apiKey: process.env.WORKOS_API_KEY ?? "", clientId });
+    // Read-only standing lookup shared with the password routes (server/passwordAccountLookup.ts); throws when it cannot decide.
+    const emailStanding = deps.password?.emailStanding ?? passwordEmailStanding;
     const configuredRedirectUri = process.env.WORKOS_REDIRECT_URI;
     // In production the canonical URI is fixed (skipwait.me). In dev, derive it
     // from the request host so any local port works without env edits.
@@ -303,6 +307,16 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         // is rejected here at the callback, not just the entry route.
         if (state === "skipwait-admin" || state === "skipwait-admin-bootstrap") {
           if (!adminCallbackAllowed({ email:user.email, state, configuredEmail:process.env.SKIPWAIT_ADMIN_EMAIL, bootstrapEnabled:process.env.ENABLE_ADMIN_BOOTSTRAP === "true" })) return res.status(403).send(state === "skipwait-admin-bootstrap" && process.env.ENABLE_ADMIN_BOOTSTRAP !== "true" ? "This administrator bootstrap link has expired. Start a fresh administrator sign-in." : "Administrator sign-in requires the exact configured administrator email.");
+        }
+        // D-030 / D-049 / D-078 ruling 4: a referrer's verified work email never gets a session from a social
+        // provider (referrers sign in with a work-email code on every visit). Decided by a read-only lookup before
+        // the resolver writes anything; the administrator plane keeps its own exact-email gate above.
+        if (!adminState) {
+          stage = "standing";
+          if ((await emailStanding(user.email, { workosUserId: user.id })) === "referrer_work_email") {
+            console.warn("[workos-callback]", { stage, code: "use_work_email_code" });
+            return res.set("Cache-Control", "no-store").redirect(302, USE_WORK_EMAIL_CODE_PATH);
+          }
         }
         // One identity path for every sign-in (server/_core/workosSession.ts):
         // the canonical resolver links by provider subject first and only uses

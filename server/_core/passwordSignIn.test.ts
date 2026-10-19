@@ -10,14 +10,15 @@ import { createMemoryDurableLimitStore } from "./memoryDurableLimitStore";
 import type { DurableLimitStore } from "./durableRateLimit";
 
 type Row = Record<string, unknown> & { id: number; openId: string; email: string; sessionsValidAfter: Date };
-const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), subjects: new Map<number, string[]>(), nextId: 10 }));
+const state = vi.hoisted(() => ({ accounts: new Map<string, Row>(), workEmailDomains: new Map<number, string>(), subjects: new Map<number, string[]>(), standings: new Map<string, string>(), standingCalls: [] as Array<[string, string | undefined]>, nextId: 10 }));
+const revokeUserSessions = vi.hoisted(() => vi.fn());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
 const capture = vi.hoisted(() => vi.fn());
 const recordActivity = vi.hoisted(() => vi.fn(async () => undefined));
 vi.mock("../db", () => ({
   getDb: vi.fn(async () => ({})),
   getUserByOpenId: vi.fn(async (openId: string) => state.accounts.get(openId)),
-  revokeUserSessions: vi.fn(async (openId: string) => { const row = state.accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); }),
+  revokeUserSessions,
   resolveLoginIdentity,
   listWorkosSubjectsForUser: vi.fn(async (userId: number) => state.subjects.get(userId) ?? []),
   getVerifiedWorkEmailAccess: vi.fn(async (userId: number) => (state.workEmailDomains.has(userId) ? { workEmailDomain: state.workEmailDomains.get(userId) } : undefined)),
@@ -63,7 +64,7 @@ async function buildApp(options: { store?: DurableLimitStore | null; now?: () =>
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   const store = options.store === undefined ? createMemoryDurableLimitStore() : options.store;
-  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, defer: task => { pending.push(task()); } } })(app);
+  createWorkosAuthRoutesRegistrar({ workos: { userManagement: hosted } as never, password: { client: wos, store, now: options.now, defer: task => { pending.push(task()); }, emailStanding: async (email, lookup) => { state.standingCalls.push([email, lookup?.workosUserId]); return (state.standings.get(email) ?? "unknown") as never; } } })(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
     const identity = await resolveWorkosIdentity(req);
@@ -90,8 +91,9 @@ const RESEND = "/api/auth/password/verify-email/resend";
 
 beforeEach(() => {
   pending = [];
-  state.accounts.clear(); state.workEmailDomains.clear(); state.subjects.clear(); state.nextId = 10;
-  [resolveLoginIdentity, capture, recordActivity, ...Object.values(wos), ...Object.values(hosted)].forEach(fn => fn.mockReset());
+  state.accounts.clear(); state.workEmailDomains.clear(); state.subjects.clear(); state.standings.clear(); state.standingCalls = []; state.nextId = 10;
+  [resolveLoginIdentity, revokeUserSessions, capture, recordActivity, ...Object.values(wos), ...Object.values(hosted)].forEach(fn => fn.mockReset());
+  revokeUserSessions.mockImplementation(async (openId: string) => { const row = state.accounts.get(openId); if (row) row.sessionsValidAfter = new Date(Date.now() + 1000); });
   resolveLoginIdentity.mockImplementation(async (input: { openId: string; email: string }) => state.accounts.get(input.openId) ?? seedAccount(input.openId, { email: input.email }));
   recordActivity.mockResolvedValue(undefined);
   wos.authenticateWithPassword.mockResolvedValue(authResponse());
@@ -343,22 +345,46 @@ describe("seeker password sign-in", () => {
     for (const res of [review, inactive, raced]) expect(cookieOf(res, "app_session_id")).toBeUndefined();
   });
 
-  it("a referrer's own verified work email can never sign in with a password", async () => {
+  // D-078 ruling 3 (S-2): the refusal is decided by a read-only lookup before the canonical resolver runs, so it
+  // writes no alias and no audit row and signs nobody out.
+  it("a referrer's own verified work email can never sign in with a password, and the refusal leaves no trace", async () => {
     const app = await buildApp();
-    const referrer = seedAccount("workos_user_ref", { email: "asha@wipro.com" });
-    state.workEmailDomains.set(referrer.id, "wipro.com");
     for (const email of ["asha@wipro.com", "asha@in.wipro.com"]) {
+      state.standings.set(email, "referrer_work_email");
       wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ id: "user_ref", email })));
       const refused = await post(app, SIGN_IN, { email, password: PASSWORD });
       expect(refused.status).toBe(403);
       expect(refused.body.code).toBe("use_work_email_code");
       expect(cookieOf(refused, "app_session_id")).toBeUndefined();
+      expect(state.standingCalls.at(-1)).toEqual([email, "user_ref"]);
     }
+    expect(resolveLoginIdentity).not.toHaveBeenCalled();
+    expect(revokeUserSessions).not.toHaveBeenCalled();
+    // Defence in depth: should the lookup miss, the resolved account's own work domain still refuses.
+    const referrer = seedAccount("workos_user_ref2", { email: "ravi@wipro.com" });
+    state.workEmailDomains.set(referrer.id, "wipro.com");
+    wos.authenticateWithPassword.mockResolvedValueOnce(authResponse(workosUser({ id: "user_ref2", email: "ravi@wipro.com" })));
+    expect((await post(app, SIGN_IN, { email: "ravi@wipro.com", password: PASSWORD })).body.code).toBe("use_work_email_code");
     const seeker = seedAccount("workos_user_x");
     state.workEmailDomains.set(seeker.id, "wipro.com");
     const personal = await post(app, SIGN_IN, { email: EMAIL, password: PASSWORD });
     expect(personal.status).toBe(200);
     expect(personal.body.step).toBe("signed_in");
+  });
+
+  // D-078 ruling 3 (S-3): a referrer's work email never reaches WorkOS from sign-up and is never emailed.
+  it("sign-up with a referrer's work email makes no WorkOS call and sends nothing, and looks like any other sign-up", async () => {
+    const app = await buildApp();
+    state.standings.set("asha@wipro.com", "referrer_work_email");
+    wos.authenticateWithPassword.mockRejectedValueOnce(needsVerification({ user: { object: "user", id: "user_new", email: "new@gmail.com", email_verified: false } }));
+    const fresh = await post(app, SIGN_UP, { email: "new@gmail.com", password: "Longpassword1!" });
+    const calls = Object.values(wos).map(fn => fn.mock.calls.length);
+    const referrer = await post(app, SIGN_UP, { email: "asha@wipro.com", password: "Longpassword1!" });
+    await Promise.all(pending);
+    expect(referrer.status).toBe(fresh.status);
+    expect(referrer.body).toEqual(fresh.body);
+    expect(Object.values(wos).map(fn => fn.mock.calls.length)).toEqual(calls);
+    expect(cookieOf(referrer, "app_session_id")).toBeUndefined();
   });
 
   it("password unavailability is loud and honest; returnTo is validated server-side", async () => {

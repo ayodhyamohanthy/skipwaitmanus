@@ -9,6 +9,7 @@ const authenticate = vi.fn(async () => ({ user: { id: "user_test", email: "test@
 const account = { id: 1, openId: "workos_user_test", name: "Test User", email: "test@example.com", loginMethod: "workos", role: "user", suspended: false, sessionsValidAfter: new Date(0), createdAt: new Date(0), updatedAt: new Date(0), lastSignedIn: new Date(0) };
 const accounts = vi.hoisted(() => new Map<string, Record<string, unknown>>());
 const resolveLoginIdentity = vi.hoisted(() => vi.fn());
+const standings = vi.hoisted(() => ({ byEmail: new Map<string, string>(), calls: [] as Array<[string, string | undefined]> }));
 const hosted = vi.hoisted(() => ({ list: vi.fn(async () => ({ data: [{ id: "session_live", status: "active" }] })), revoke: vi.fn(async () => {}) }));
 vi.mock("../db", () => ({
   upsertUser: vi.fn(),
@@ -51,7 +52,7 @@ async function buildApp(env: Record<string, string | undefined>) {
   Object.entries(env).forEach(([key, value]) => { if (value === undefined) delete process.env[key]; else process.env[key] = value; });
   const { createWorkosAuthRoutesRegistrar } = await import("./workosAuth");
   const app = express();
-  registrarFactory.registrar = createWorkosAuthRoutesRegistrar({ workos: undefined });
+  registrarFactory.registrar = createWorkosAuthRoutesRegistrar({ workos: undefined, password: { emailStanding: async (email, lookup) => { standings.calls.push([email, lookup?.workosUserId]); return (standings.byEmail.get(email.trim().toLowerCase()) ?? "unknown") as never; } } });
   registrarFactory.registrar(app);
   app.get("/session-proof", async (req, res) => {
     const { resolveWorkosIdentity } = await import("./workosAuth");
@@ -195,9 +196,13 @@ describe("state-bound authentication return", () => {
   it("retains the admin destination and exact-email check", async () => {
     const { app, restore } = await buildApp(baseEnv);
     try {
+      // The administrator plane keeps its own exact-email gate; it is not a seeker sign-in, so a founder whose
+      // admin address is also a verified work email still reaches /admin.
+      standings.byEmail.set(baseEnv.SKIPWAIT_ADMIN_EMAIL, "referrer_work_email");
       authenticate.mockResolvedValueOnce({ user: { id: "user_admin", email: baseEnv.SKIPWAIT_ADMIN_EMAIL, firstName: "Admin", lastName: "User" } });
       const allowed = await request(app).get("/api/auth/workos/callback").query({ code: "provider-code", state: "skipwait-admin", returnTo: "/premium" });
       expect(allowed.headers.location).toBe("/admin/users");
+      standings.byEmail.clear();
       expect((await request(app).get("/api/auth/workos/callback").query({ code: "provider-code", state: "skipwait-admin" })).status).toBe(403);
     } finally { restore(); }
   });
@@ -247,6 +252,36 @@ describe("canonical WorkOS callback session", () => {
       await signIn(app);
       expect(resolveLoginIdentity.mock.calls.at(-1)![0]).toEqual(expect.objectContaining({ name: "Asha" }));
     } finally { restore(); }
+  });
+
+  // D-078 ruling 4 (S-4, minimal part): a referrer's verified work email never gets a session from a social
+  // provider; the callback sends them to the work-email code instead, before the resolver writes anything.
+  it("refuses a referrer's verified work email with the work-email-code step and no session", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      standings.byEmail.set("asha@wipro.com", "referrer_work_email");
+      authenticate.mockResolvedValueOnce({ user: { id: "user_ref", email: "Asha@Wipro.com", emailVerified: true, firstName: "Asha", lastName: "K" } } as never);
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe("/sign-in?intent=referrer&reason=use_work_email_code");
+      expect(callback.headers["cache-control"]).toBe("no-store");
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => /^(app_session_id|workos_session)=[^;]/.test(value))).toBe(false);
+      expect(resolveLoginIdentity).not.toHaveBeenCalled();
+      expect(standings.calls.at(-1)).toEqual(["Asha@Wipro.com", "user_ref"]);
+    } finally { standings.byEmail.clear(); standings.calls = []; restore(); }
+  });
+
+  it("a standing lookup failure fails closed: no session", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      standings.byEmail.set("test@example.com", "throw");
+      const original = standings.byEmail.get.bind(standings.byEmail);
+      vi.spyOn(standings.byEmail, "get").mockImplementation(key => { if (original(key) === "throw") throw new Error("Database unavailable"); return original(key); });
+      const callback = await signIn(app);
+      expect(callback.status).toBe(502);
+      expect(resolveLoginIdentity).not.toHaveBeenCalled();
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(false);
+    } finally { vi.restoreAllMocks(); standings.byEmail.clear(); standings.calls = []; restore(); }
   });
 
   it("mints the session for the canonical account, not the provider openId", async () => {

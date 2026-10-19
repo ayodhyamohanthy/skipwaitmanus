@@ -7,6 +7,7 @@ import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
+import { PASSWORD_AUTH_COPY, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
 
 type Intent = "seeker" | "referrer";
 
@@ -28,6 +29,8 @@ export default function SignIn() {
   const referrerReturnTo = typeof window !== "undefined" ? safeReturnTo(new URLSearchParams(window.location.search).get("returnTo"), INTENT_RETURN_TO.referrer) : INTENT_RETURN_TO.referrer;
   // Where a seeker lands: the page that sent them here when it is same-site and not an auth page, else the job search.
   const seekerReturnTo = typeof window !== "undefined" ? safeSignInReturnTo(new URLSearchParams(window.location.search).get("returnTo"), window.location.origin) ?? INTENT_RETURN_TO.seeker : INTENT_RETURN_TO.seeker;
+  // A social sign-in with a verified work email is refused and sent here (D-078 ruling 4); say why, on the referrer side only.
+  const workEmailRefused = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("reason") === USE_WORK_EMAIL_CODE_REASON;
   return <main data-skipwait-screen="sign-in" className="auth-page">
     <section className="auth-story" aria-label="SkipWait introduction">
       <Link className="wordmark auth-wordmark" href="/">SkipWait<span className="brand-dot">.</span></Link>
@@ -46,7 +49,7 @@ export default function SignIn() {
       <div className="auth-context"><span>{intent === "seeker" ? "Explore companies and send a thoughtful request." : "Choose who you help and keep your identity private."}</span><Check /></div>
       {intent === "referrer"
         // FOUNDER-LOCKED (Oct 16 2026, D-049): referrers sign in with a work-email OTP only. No social, no personal email, no password.
-        ? <div className="auth-form" data-testid="referrer-work-email-otp"><ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
+        ? <div className="auth-form" data-testid="referrer-work-email-otp">{workEmailRefused ? <p role="status" className="auth-new">{PASSWORD_AUTH_COPY.use_work_email_code}</p> : null}<ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
         // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a password
         // (D-049). SeekerSignIn renders its own "New to SkipWait? Create a free account" line under the form.
         : <SeekerSignIn returnTo={seekerReturnTo} />}

@@ -95,6 +95,13 @@ export const PASSWORD_AUTH_COPY: Readonly<Record<PasswordAuthErrorCode, string>>
   temporarily_unavailable: "We couldn't reach the sign-in service. Try again in a moment.",
 };
 
+/**
+ * Where a social sign-in with a referrer's verified work email lands instead of a session (D-078 ruling 4): the
+ * referrer side of /sign-in, which shows PASSWORD_AUTH_COPY.use_work_email_code. Referrers sign in with a code only.
+ */
+export const USE_WORK_EMAIL_CODE_REASON = "use_work_email_code";
+export const USE_WORK_EMAIL_CODE_PATH = `/sign-in?intent=referrer&reason=${USE_WORK_EMAIL_CODE_REASON}`;
+
 /** Kit rules for setting a password (sign-up and reset only, never sign-in); the server enforces the same three. */
 export function passwordPolicyChecks(password: string, confirm: string): ReadonlyArray<{ readonly label: string; readonly passed: boolean }> {
   return [

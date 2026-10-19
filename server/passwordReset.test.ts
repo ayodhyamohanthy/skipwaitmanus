@@ -132,6 +132,19 @@ describe("forgot password (WorkOS sends the reset)", () => {
   });
 });
 
+describe("every reset path skips a referrer's work email (D-078 ruling 3, S-3)", () => {
+  it("requestWorkosPasswordReset makes no WorkOS call and sends nothing for a referrer's work email", async () => {
+    await buildApp();
+    const { requestWorkosPasswordReset } = await import("./passwordResetRoutes");
+    const ctx = { emailStanding: async (email: string) => (email === "asha@wipro.com" ? "referrer_work_email" : "unknown") as never };
+    await requestWorkosPasswordReset(ctx as never, wos, "asha@wipro.com");
+    expect(wos.createPasswordReset).not.toHaveBeenCalled();
+    expect(zepto).not.toHaveBeenCalled();
+    await requestWorkosPasswordReset(ctx as never, wos, EMAIL);
+    expect(wos.createPasswordReset).toHaveBeenCalledWith({ email: EMAIL });
+  });
+});
+
 describe("reset password (WorkOS sets it; this browser signs in, every other session out)", () => {
   it("sets the password in WorkOS, signs this browser in and every other session out", async () => {
     const app = await buildApp();
@@ -175,12 +188,17 @@ describe("reset password (WorkOS sets it; this browser signs in, every other ses
     expect(blocked.body).toEqual({ ok: true, signedIn: false, redirectTo: "/sign-in" });
     expect(cookieOf(blocked, "app_session_id")).toBeUndefined();
 
-    const referrer = seedAccount("workos_user_ref", { email: "asha@wipro.com" });
-    state.workEmailDomains.set(referrer.id, "wipro.com");
+    // D-078 ruling 3 (S-2): a referrer's work email is refused before the resolver and before any revocation,
+    // with the work-email-code answer, so the refusal links nothing and signs nobody out.
+    resolveLoginIdentity.mockClear(); revokeUserSessions.mockClear();
+    state.standings.set("asha@wipro.com", "referrer_work_email");
     wos.resetPassword.mockResolvedValueOnce({ user: workosUser({ id: "user_ref", email: "asha@wipro.com" }) });
     const workEmail = await post(app, CONFIRM, { token: TOKEN, password: "Newpassword1!", confirm: "Newpassword1!" });
-    expect(workEmail.body).toEqual({ ok: true, signedIn: false, redirectTo: "/sign-in" });
+    expect(workEmail.status).toBe(403);
+    expect(workEmail.body.code).toBe("use_work_email_code");
     expect(cookieOf(workEmail, "app_session_id")).toBeUndefined();
+    expect(resolveLoginIdentity).not.toHaveBeenCalled();
+    expect(revokeUserSessions).not.toHaveBeenCalled();
 
     expect((await request(app).get(`/api/auth/password/reset/verify?token=${TOKEN}`)).status).toBe(404);
   });

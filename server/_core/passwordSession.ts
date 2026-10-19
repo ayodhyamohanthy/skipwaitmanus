@@ -1,15 +1,19 @@
 import type { Request, Response } from "express";
 import * as db from "../db";
+import type { PasswordEmailStandingLookup } from "./passwordResponses";
 import type { PasswordAuthentication } from "./passwordWorkosClient";
 import { completeWorkosLogin, waitForSessionEpoch } from "./workosSession";
 
 /**
  * The only way a WorkOS password user becomes a SkipWait session (D-049).
  *  - Refuses an unverified email: identity rule, never create or link an account on an address nobody proved.
+ *  - Decides every refusal it can with read-only lookups first (D-078 ruling 3, S-2): a referrer's verified work
+ *    email is refused before the canonical resolver writes an alias or audit row and before any session is
+ *    revoked, so a refused sign-in leaves no trace. Referrers re-prove employment with a work-email code on every
+ *    sign-in (D-030, D-049), so a password must never carry referrer access for someone who left.
  *  - Resolves through completeWorkosLogin, the canonical resolver every WorkOS provider uses, so a person who
  *    signed in with Google or an email code before lands on the same account through verified-email linking.
- *  - Refuses a referrer's own verified work email: referrers re-prove employment with a work-email code on
- *    every sign-in (D-030, D-049), so a password must never carry referrer access for someone who left.
+ *    The resolved account's own work domain is checked again there (defence in depth), still before revocation.
  *  - On reset, signs every other session out before this browser's new one is signed.
  */
 export type PasswordLoginMode = "sign_in" | "reset";
@@ -30,9 +34,16 @@ export function isOwnWorkEmailDomain(email: string, workEmailDomain: string | nu
   return domain === verified || domain.endsWith(`.${verified}`);
 }
 
-export async function finishPasswordLogin(req: Request, res: Response, input: { readonly authentication: PasswordAuthentication; readonly mode: PasswordLoginMode }): Promise<PasswordLoginOutcome> {
+export type PasswordLoginInput = {
+  readonly authentication: PasswordAuthentication;
+  readonly mode: PasswordLoginMode;
+  readonly emailStanding: PasswordEmailStandingLookup;
+};
+
+export async function finishPasswordLogin(req: Request, res: Response, input: PasswordLoginInput): Promise<PasswordLoginOutcome> {
   const { user, accessToken } = input.authentication;
   if (user.emailVerified !== true) throw new Error("PASSWORD_EMAIL_UNVERIFIED");
+  if ((await input.emailStanding(user.email, { workosUserId: user.id })) === "referrer_work_email") return { status: "refused", code: "use_work_email_code" };
   let userId: number | undefined;
   try {
     const outcome = await completeWorkosLogin(req, res, {
@@ -40,12 +51,12 @@ export async function finishPasswordLogin(req: Request, res: Response, input: { 
       ...(accessToken ? { accessToken } : {}),
       beforeSession: async account => {
         userId = account.id;
+        const access = await db.getVerifiedWorkEmailAccess(account.id);
+        if (isOwnWorkEmailDomain(user.email, access?.workEmailDomain)) throw new WorkEmailPasswordRefused();
         if (input.mode === "reset") {
           await db.revokeUserSessions(account.openId);
           await waitForSessionEpoch(account.openId);
         }
-        const access = await db.getVerifiedWorkEmailAccess(account.id);
-        if (isOwnWorkEmailDomain(user.email, access?.workEmailDomain)) throw new WorkEmailPasswordRefused();
       },
     });
     if (outcome.status === "blocked") return { status: "refused", code: outcome.code === "IDENTITY_REVIEW_REQUIRED" ? "account_review" : "account_inactive" };
