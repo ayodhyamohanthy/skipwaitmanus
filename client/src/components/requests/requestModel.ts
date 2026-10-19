@@ -14,8 +14,8 @@ export type RequestPillStatus = "Requested" | "Accepted" | "Referred" | "Intervi
 const CLOSED_STATUSES: readonly ReferralStatus[] = ["declined", "closed", "withdrawn"];
 
 export const isClosedRequest = (request: ReferralRequest) => CLOSED_STATUSES.includes(request.status);
-/** Pending and unclaimed: no referrer yet, or a personal-link ask its employee has not acted on (D-050). */
-export const canWithdrawRequest = (request: ReferralRequest) => request.status === "pending" && (!request.referrerId || request.heldForReferrer === true);
+/** Pending and unclaimed: no referrer yet, a personal-link ask its employee has not acted on (D-050), or any assigned ask nobody claimed (P0-allocated-ask-stuck). */
+export const canWithdrawRequest = (request: ReferralRequest) => request.status === "pending" && (request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true);
 
 /**
  * Maps a live status onto the kit pill. An unclaimed ask that lapses is closed

@@ -46,8 +46,9 @@ export function SeekerPanel({ request, onWithdraw, onProgress }: SeekerProps) {
   const close = () => { setModal(null); action.reset(); };
 
   if (stage === "Requested") {
-    // Unclaimed: no referrer yet, or a personal-link ask its employee has not acted on (D-050). The server re-decides.
-    const canWithdraw = request.referrerId === null || request.heldForReferrer === true;
+    // Unclaimed: no referrer yet, a personal-link ask its employee has not acted on (D-050), or any assigned ask
+    // nobody claimed, such as a D-034 delivery (P0-allocated-ask-stuck). The server re-decides.
+    const canWithdraw = request.referrerId === null || request.heldForReferrer === true || request.unclaimedAssignment === true;
     // D-061: a waiting or held ask never reached a verified employee, so withdrawing it returns nothing — nothing was spent.
     const awaitingCoverage = request.queueStatus === "waiting_for_coverage" || request.queueStatus === "held_for_credit";
     return (
