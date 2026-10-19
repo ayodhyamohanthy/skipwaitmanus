@@ -66,7 +66,8 @@ describe("desired catalog", () => {
     for (const entry of desiredCatalog()) {
       const resolved = resolveItemPrice(entry.spec.id);
       expect(resolved, entry.spec.id).toEqual(entry.price);
-      expect(resolved?.kind === "plan" ? resolved.legacy : false).toBe(false);
+      // D-067 retired Pro/Max, so the price book no longer carries a legacy flag.
+      expect(resolved?.itemPriceId).toBe(entry.spec.id);
       expect(entry.spec.currencyCode).toBe(entry.price.currency);
       expect(entry.spec.price).toBe(entry.price.amount);
       // Creating exactly this spec flips /api/plans/catalog to available.
@@ -106,8 +107,12 @@ describe("planCatalogSync", () => {
     // Items in the order their first price needs them: pack items first, then plan items.
     expect(ids(dryRun.toCreate, "item")).toEqual(["skipwait_pack_2", "skipwait_pack_25", "skipwait_pack_60", "skipwait_pack_150", "skipwait_pack_5", "skipwait_start", "skipwait_momentum", "skipwait_land_focus", "skipwait_land_sprint", "skipwait_keep_warm"]);
     for (const action of dryRun.toCreate) {
-      if (action.kind === "item") expect(action.params.itemFamilyId).toBe("skipwait");
-      expect(action.params.name).toBe(action.params.id);
+      // Items and prices are named after their ids; the family keeps its human name ("SkipWait").
+      if (action.kind === "item") {
+        expect(action.params.itemFamilyId).toBe("skipwait");
+        expect(action.params.name).toBe(action.params.id);
+      }
+      if (action.kind === "item_price") expect(action.params.name).toBe(action.params.id);
     }
     // Prices: packs, then 30-day passes, then the yearly Keep warm, then 90-day passes (the likeliest provider refusal last).
     const terms = dryRun.toCreate.flatMap(action => (action.kind === "item_price" ? [action.params.itemType === "charge" ? "pack" : action.params.periodUnit === "year" ? "yearly" : action.params.period === 3 ? "90d" : "30d"] : []));
