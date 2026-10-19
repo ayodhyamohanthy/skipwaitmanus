@@ -19,7 +19,7 @@ Hard rule: never invent user counts, testimonials, outcomes, or fake activity. L
 - `app/AGENTS.md` — architecture rules. `app/roadmap.md` — what is designed.
 
 ## 3. Design system (do not change without approval)
-- Kit v4 is no longer binding (D-048): the goal-UI key screens were approved on Oct 18 (D-071, `design/goal-ui/pick/`); rollout goes phase 2 (DESIGN.md, tokens, primitives) then surface by surface, and until a surface is moved over its live tokens stay.
+- Kit v4 is no longer binding (D-048): the goal-UI key screens were approved on Oct 18 (D-071, `design/goal-ui/pick/`); phase 2 shipped Oct 19 (`DESIGN.md`, tokens in `client/src/index.css`, primitives in `client/src/components/goal/`, token audit); phase 3 moves surface by surface, and until a surface is moved over its live tokens stay.
 - Colors: white #FFFFFF, ink #141414, electric blue #0000FF, invitation yellow #FFFC52.
 - Fonts: Instrument Sans (UI), IBM Plex Mono (labels/captions).
 - Signature motif: the "door" (opening a door = a referral). Keep it.

@@ -56,6 +56,7 @@ i18n with RTL support (Arabic) — language preferences only until supply exists
 
 ## 7. Navigation (kit v4 — changes only through the owner's design review, D-048)
 Sidebar: Explore, Requests, Inbox, Refer (→ `/referrer-home`) · "Your space": Profile, My work, Plans & credits · More: Help & safety, For companies. Admin is reachable only by direct URL `/admin`. Alerts bell in the top bar. Wallet merged into Plans.
+The goal navigation in `DESIGN.md` (Find, My asks, Inbox, plus Referral queue for verified referrers) ships per surface in D-048 phase 3; the live sidebar above stays until each surface moves.
 
 ## 8. Accessibility
 Every control named, every field labelled, mobile tap targets ≥ 44 px, visible focus, reduced-motion respected, contrast AA in both themes. Run axe in CI.
