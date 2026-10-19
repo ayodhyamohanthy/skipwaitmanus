@@ -18,6 +18,10 @@ export const creditSummarySchema = z.object({
   totalAvailable: z.number(),
   subscriptionStatus: nullableString,
   subscriptionCurrentTermEnd: nullableString,
+  // D-079: lock state for the free-credits card check. Absent on older payloads reads as unlocked.
+  cycleKey: z.string().optional(),
+  cardValidated: z.boolean().optional(),
+  freeCreditsLocked: z.boolean().optional(),
   // Kit ledger block (shared/creditLedger.ts): balance by bucket, cycle usage, expiries.
   // Missing or malformed reads as "not loaded" (null), never as invented numbers.
   ledger: creditsLedgerSchema.nullish().catch(null).transform(value => value ?? null),
