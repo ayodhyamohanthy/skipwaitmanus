@@ -18,7 +18,7 @@ import { completeWorkosLogin, resolveWorkosOpenId } from "./workosSession";
 import { registerPasswordAuthRoutes, type PasswordRouteOptions } from "./passwordAuthRoutes";
 import { createPasswordWorkosClient } from "./passwordWorkosClient";
 import { passwordEmailStanding } from "../passwordAccountLookup";
-import { USE_WORK_EMAIL_CODE_PATH } from "@shared/passwordAuth";
+import { USE_PASSWORD_SIGN_IN_PATH, USE_WORK_EMAIL_CODE_PATH } from "@shared/passwordAuth";
 
 export { resolveWorkosOpenId };
 
@@ -215,6 +215,14 @@ async function resolveWorkosIdentityUncached(req: Request, dependencies: Identit
 }
 
 /** Social sign-ins verified live against the WorkOS authorize endpoint on Oct 14 2026 (LinkedIn and Slack re-verified Oct 16 2026: both 302 to the provider). Apple is not enabled in the dashboard (404), so it is not offered. */
+/**
+ * WorkOS authentication methods a seeker callback refuses (security review F1). The callback exists for the social
+ * providers above; a password, magic code or passkey finished on WorkOS's hosted page would skip SkipWait's own
+ * password checks (the workos_password witness, D-078 ruling 5). A refusal list rather than an exact provider match,
+ * so an unconfirmed method name for LinkedIn or Slack can never lock those sign-ins out.
+ */
+export const CALLBACK_REFUSED_METHODS: ReadonlySet<string> = new Set(["Password", "MagicAuth", "Passkey"]);
+
 export const SOCIAL_PROVIDERS: Record<string, "GoogleOAuth" | "MicrosoftOAuth" | "GitHubOAuth" | "LinkedInOAuth" | "SlackOAuth"> = { google: "GoogleOAuth", microsoft: "MicrosoftOAuth", github: "GitHubOAuth", linkedin: "LinkedInOAuth", slack: "SlackOAuth" };
 
 export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; password?: PasswordRouteOptions } = {}) {
@@ -312,6 +320,11 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         // provider (referrers sign in with a work-email code on every visit). Decided by a read-only lookup before
         // the resolver writes anything; the administrator plane keeps its own exact-email gate above.
         if (!adminState) {
+          // Review F1: only a social provider's sign-in finishes here; a password goes through /api/auth/password.
+          if (typeof auth.authenticationMethod === "string" && CALLBACK_REFUSED_METHODS.has(auth.authenticationMethod)) {
+            console.warn("[workos-callback]", { stage, code: "method_refused", method: auth.authenticationMethod });
+            return res.set("Cache-Control", "no-store").redirect(302, USE_PASSWORD_SIGN_IN_PATH);
+          }
           stage = "standing";
           if ((await emailStanding(user.email, { workosUserId: user.id })) === "referrer_work_email") {
             console.warn("[workos-callback]", { stage, code: "use_work_email_code" });

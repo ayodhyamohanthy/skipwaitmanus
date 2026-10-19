@@ -7,7 +7,7 @@ import { SeekerSignIn } from "@/components/SeekerSignIn";
 import { safeReturnTo } from "@/lib/referrerSignIn";
 import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
-import { PASSWORD_AUTH_COPY, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
+import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY, USE_PASSWORD_SIGN_IN_REASON, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
 
 type Intent = "seeker" | "referrer";
 
@@ -30,7 +30,10 @@ export default function SignIn() {
   // Where a seeker lands: the page that sent them here when it is same-site and not an auth page, else the job search.
   const seekerReturnTo = typeof window !== "undefined" ? safeSignInReturnTo(new URLSearchParams(window.location.search).get("returnTo"), window.location.origin) ?? INTENT_RETURN_TO.seeker : INTENT_RETURN_TO.seeker;
   // A social sign-in with a verified work email is refused and sent here (D-078 ruling 4); say why, on the referrer side only.
-  const workEmailRefused = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("reason") === USE_WORK_EMAIL_CODE_REASON;
+  const reason = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("reason") : null;
+  const workEmailRefused = reason === USE_WORK_EMAIL_CODE_REASON;
+  // A password finished on WorkOS's hosted page is refused at the callback (review F1); say where it works.
+  const passwordElsewhere = reason === USE_PASSWORD_SIGN_IN_REASON;
   return <main data-skipwait-screen="sign-in" className="auth-page">
     <section className="auth-story" aria-label="SkipWait introduction">
       <Link className="wordmark auth-wordmark" href="/">SkipWait<span className="brand-dot">.</span></Link>
@@ -52,7 +55,7 @@ export default function SignIn() {
         ? <div className="auth-form" data-testid="referrer-work-email-otp">{workEmailRefused ? <p role="status" className="auth-new">{PASSWORD_AUTH_COPY.use_work_email_code}</p> : null}<ReferrerOtpSignIn onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
         // Job seekers: every sign-in stays on skipwait.me. Social buttons go straight to the provider; email uses a password
         // (D-049). SeekerSignIn renders its own "New to SkipWait? Create a free account" line under the form.
-        : <SeekerSignIn returnTo={seekerReturnTo} />}
+        : <>{passwordElsewhere ? <p role="status" className="auth-new">{USE_PASSWORD_SIGN_IN_COPY}</p> : null}<SeekerSignIn returnTo={seekerReturnTo} /></>}
       {intent === "referrer" ? <p className="auth-new">Work email only. We never use personal email, passwords or social logins for referrers.</p> : null}
       <p className="auth-terms">By continuing, you agree to the <Link href="/terms" className={legalLink}>Terms</Link> and acknowledge the <Link href="/privacy" className={legalLink}>Privacy Policy</Link>. {MONEY_SENTENCE_SHORT} A referral never guarantees an interview.</p>
     </div></section>

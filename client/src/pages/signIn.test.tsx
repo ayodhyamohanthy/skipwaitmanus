@@ -2,7 +2,7 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PASSWORD_AUTH_COPY } from "@shared/passwordAuth";
+import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY } from "@shared/passwordAuth";
 import SignIn from "./SignIn";
 
 vi.mock("wouter", () => ({
@@ -107,6 +107,18 @@ describe("SignIn", () => {
     expect(screen.queryByRole("status")).toBeNull();
     cleanup();
     vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=%3Cb%3Eanything%3C%2Fb%3E" });
+    render(<SignIn />);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  // Review F1: a password finished on WorkOS's hosted page is refused at the callback and sent here instead.
+  it("tells a seeker refused at the callback to sign in with their password here", () => {
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?reason=use_password_sign_in" });
+    render(<SignIn />);
+    expect(screen.getByRole("status").textContent).toBe(USE_PASSWORD_SIGN_IN_COPY);
+    expect(screen.getByRole("button", { name: /Continue with email/ })).toBeTruthy();
+    cleanup();
+    vi.stubGlobal("location", { ...window.location, assign: vi.fn(), search: "?intent=referrer&reason=use_password_sign_in" });
     render(<SignIn />);
     expect(screen.queryByRole("status")).toBeNull();
   });

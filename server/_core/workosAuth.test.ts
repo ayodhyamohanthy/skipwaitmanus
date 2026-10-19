@@ -271,6 +271,36 @@ describe("canonical WorkOS callback session", () => {
     } finally { standings.byEmail.clear(); standings.calls = []; restore(); }
   });
 
+  // Review F1 (callback half): with Email + Password on in WorkOS, someone could finish the hosted AuthKit page with
+  // a password and come back through this callback, skipping the workos_password witness (D-078 ruling 5). A
+  // seeker callback only accepts a social provider's sign-in; a password, magic code or passkey is sent to
+  // SkipWait's own password sign-in instead, before the resolver writes anything.
+  it.each(["Password", "MagicAuth", "Passkey"])("refuses a %s sign-in that comes back through the callback", async method => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      authenticate.mockResolvedValueOnce({ user: { id: "user_pw", email: "asha@gmail.com", emailVerified: true, firstName: "Asha", lastName: "K" }, authenticationMethod: method } as never);
+      const callback = await signIn(app);
+      expect(callback.status).toBe(302);
+      expect(callback.headers.location).toBe("/sign-in?reason=use_password_sign_in");
+      expect(callback.headers["cache-control"]).toBe("no-store");
+      expect((callback.headers["set-cookie"] ?? []).some((value: string) => /^(app_session_id|workos_session)=[^;]/.test(value))).toBe(false);
+      expect(resolveLoginIdentity).not.toHaveBeenCalled();
+    } finally { standings.calls = []; restore(); }
+  });
+
+  it("a social provider's sign-in still signs in through the callback", async () => {
+    const { app, restore } = await buildApp(baseEnv);
+    try {
+      for (const method of ["GoogleOAuth", "LinkedInOAuth", "SlackOAuth", undefined]) {
+        authenticate.mockResolvedValueOnce({ user: { id: "user_test", email: "test@example.com", emailVerified: true, firstName: "Test", lastName: "User" }, ...(method ? { authenticationMethod: method } : {}) } as never);
+        const callback = await signIn(app);
+        expect(callback.status, String(method)).toBe(302);
+        expect(callback.headers.location, String(method)).toBe("/premium");
+        expect((callback.headers["set-cookie"] ?? []).some((value: string) => value.startsWith("app_session_id="))).toBe(true);
+      }
+    } finally { standings.calls = []; restore(); }
+  });
+
   it("a standing lookup failure fails closed: no session", async () => {
     const { app, restore } = await buildApp(baseEnv);
     try {

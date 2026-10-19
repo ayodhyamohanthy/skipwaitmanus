@@ -98,6 +98,14 @@ export const PASSWORD_AUTH_COPY: Readonly<Record<PasswordAuthErrorCode, string>>
 export const USE_WORK_EMAIL_CODE_REASON = "use_work_email_code";
 export const USE_WORK_EMAIL_CODE_PATH = `/sign-in?intent=referrer&reason=${USE_WORK_EMAIL_CODE_REASON}`;
 
+/**
+ * Where a password, magic code or passkey finished on WorkOS's hosted page lands instead of a session (security
+ * review F1): seeker passwords count only through SkipWait's own password sign-in, which checks the witness.
+ */
+export const USE_PASSWORD_SIGN_IN_REASON = "use_password_sign_in";
+export const USE_PASSWORD_SIGN_IN_PATH = `/sign-in?reason=${USE_PASSWORD_SIGN_IN_REASON}`;
+export const USE_PASSWORD_SIGN_IN_COPY = "To sign in with your email and password, use Continue with email on this page.";
+
 /** Kit rules for setting a password (sign-up and reset only, never sign-in); the server enforces the same three. */
 export function passwordPolicyChecks(password: string, confirm: string): ReadonlyArray<{ readonly label: string; readonly passed: boolean }> {
   return [
