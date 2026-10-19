@@ -43,7 +43,7 @@ export function GoalMiniStepper({ stage, terminal, status }: { stage: number; te
             <span
               className={cn(
                 "shrink-0 rounded-full",
-                isStatus ? cn("size-(--g-dot)", STEPPER_TONE[terminal ?? status ?? ""] ?? "bg-g-ink") : reached ? "size-1.5 bg-g-ink-2" : "size-1.5 border border-g-control-edge",
+                isStatus ? cn("size-(--g-dot)", (terminal || status ? STEPPER_TONE[(terminal ?? status) as GoalStatusValue] : undefined) ?? "bg-g-ink") : reached ? "size-1.5 bg-g-ink-2" : "size-1.5 border border-g-control-edge",
               )}
             />
           </span>

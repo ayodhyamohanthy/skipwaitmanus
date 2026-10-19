@@ -64,11 +64,12 @@ export const GoalButton = forwardRef<HTMLButtonElement, GoalButtonProps>(functio
         {busy && busyLabel ? busyLabel : children}
         {keys?.length ? (
           <span aria-hidden="true" className="ml-0.5 inline-flex items-center gap-1 max-gdesk:hidden">
-            {keys.map((key, index) =>
-              typeof key === "object" && key !== null && "icon" in (key as Record<string, unknown>)
-                ? <GoalKeycap key={index} icon={(key as { icon: GoalKeycapIcon }).icon} onPrimary={variant === "primary" && !inert} />
-                : <GoalKeycap key={index} onPrimary={variant === "primary" && !inert}>{key}</GoalKeycap>,
-            )}
+            {keys.map((key, index) => {
+              if (typeof key === "object" && key !== null && "icon" in (key as Record<string, unknown>)) {
+                return <GoalKeycap key={index} icon={(key as { icon: GoalKeycapIcon }).icon} onPrimary={variant === "primary" && !inert} />;
+              }
+              return <GoalKeycap key={index} onPrimary={variant === "primary" && !inert}>{key as ReactNode}</GoalKeycap>;
+            })}
           </span>
         ) : null}
         </>)}
