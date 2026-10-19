@@ -54,7 +54,7 @@ import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDR
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
-import { openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
+import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
@@ -3523,6 +3523,18 @@ export async function grantAdminTokenAdjustment(adminUserId: number, input: { re
     await tx.insert(tokenTransactions).values({ userId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, kind: "admin_adjustment", source: "admin_recovery", referenceType: "admin_token_adjustment", referenceId: String(Number(adjustment[0].insertId)), idempotencyKey: `admin-adjustment-${Number(adjustment[0].insertId)}`, balanceAfter: wallet[0].balance });
     await tx.insert(notifications).values({ kind: "credits_added", userId: input.recipientUserId, category: "system", title: "Token credit added", body: `${input.tokenCount} referral token${input.tokenCount === 1 ? " was" : "s were"} added after a support review.` });
     return { adjustmentId: Number(adjustment[0].insertId), recipientUserId: input.recipientUserId, role: input.role, tokenCount: input.tokenCount, newBalance: wallet[0].balance };
+  });
+}
+
+/** D-079: after the provider confirms a card, grant the current Free month once, under the wallet lock. */
+export async function grantFreeCreditsOnValidation(userId: number, now: Date = new Date()) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const locked = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker" as const))).limit(1).for("update"))[0];
+    if (!locked || !locked.cardValidatedAt) return { granted: false };
+    const result = await grantFreeCycleOnValidationTx(tx, { wallet: locked, now });
+    return { granted: result.granted };
   });
 }
 
