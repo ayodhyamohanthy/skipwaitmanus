@@ -44,7 +44,7 @@ Notes:
 
 ## 3. Card payment loop (credit pack)
 
-Referrers never pay (D-055): once the D-067 branch is live, a checkout with
+Referrers never pay (D-055; live since `08d193a0`): a checkout with
 `role: "referrer"` on any route answers 403 ("Referrers never pay on
 SkipWait. Nothing has been charged.") before any provider call or intent, and
 the referrer pages show no pay button. QA every purchase as the seeker.
@@ -87,11 +87,10 @@ pass becomes real only from the verified webhook. The server path exists:
 `interval`, `currency`, `billingCountry`, `role`; `server/kitCheckout.ts`). A
 plan whose Chargebee item price does not exist yet answers
 `409 not_available_yet` and opens no page. The `/plans` buttons for passes
-come with queue task 1 (D-046, D-053). Once the D-067 branch
-(`agent/claude/pro-max-removal`, not yet live) ships, `/plans` sends no plan
-checkout at all, and a legacy Pro/Max body (`{plan: "pro" | "max"}`) is refused
-with 410 `plan_retired` ("Nothing has been charged") before any provider call
-or intent; until then production `/plans` still sends that body. It is not QA'd.
+come with queue task 1 (D-046, D-053). Since D-067 (live in `08d193a0`),
+`/plans` sends no plan checkout at all, and a legacy Pro/Max body
+(`{plan: "pro" | "max"}`) is refused with 410 `plan_retired` ("Nothing has
+been charged") before any provider call or intent. It is not QA'd.
 Cancel schedules end-of-term. With
 `PROMO_GRANTS_ENABLED=true` only, first activation also earns the 5 promo
 credits (same rule as packs, granted once per account).
@@ -99,8 +98,8 @@ credits (same rule as packs, granted once per account).
 ## 5b. Gift subscriptions (retired)
 
 Retired with the legacy monthly plans (D-067): the gift checkout could only sell
-those removed plans, stays gated off (503; once the D-067 branch is live it
-answers 503 whatever `GIFT_CHECKOUT_ENABLED` says, and that key is gone;
+those removed plans, stays gated off (503 whatever any env says, and the
+`GIFT_CHECKOUT_ENABLED` key is gone;
 `docs/BUGFREE_GATE.md` 4.9) and has no QA loop. No current plan or pack can
 be gifted.
 

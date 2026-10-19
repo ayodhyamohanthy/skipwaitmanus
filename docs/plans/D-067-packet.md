@@ -2,7 +2,7 @@
 
 > Read `docs/BRIEF.md` first, then this packet. The bullet-by-bullet verification of the original inventory is the appendix [`D-067-appendix-verification.md`](D-067-appendix-verification.md): open only the section a step names.
 >
-> **Status on Oct 18 (night): all four slices are committed on `origin/agent/claude/pro-max-removal` and the gate is green.** Slices 3–4 landed after this packet was written (it was drafted at `10d48fe`, when only slices 1–2 were pushed), so read §4 as the review checklist rather than a to-do list: the branch was compared against C1–C7, the money and DM review found no defect, and `pnpm check`, the full suite (401 files, 3,259 tests passed / 16 skipped) and `pnpm build` are green on `cb3fff47`. What is left is the pixel pass, the merge to `main` and the live check — the row in `docs/KIT_V4_BUILD_PLAN.md` §3b carries the evidence. The original working inventory stays at [`D-067-pro-max-removal.md`](D-067-pro-max-removal.md).
+> **Status on Oct 19: done — `08d193a0`, live.** All four slices landed through draft PR #318 after an independent review (DELEGATION §6 plus §7 below); the row in `docs/KIT_V4_BUILD_PLAN.md` §3b carries the evidence. Owner checks still open: a signed-in legacy `{plan:"pro"}` body answers 410 and a referrer checkout answers 403 (QA account). The original working inventory stays at [`D-067-pro-max-removal.md`](D-067-pro-max-removal.md).
 
 | Field | Value |
 |---|---|
