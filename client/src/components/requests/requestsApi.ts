@@ -33,7 +33,7 @@ const referralRequestSchema = z.object({
   heldForReferrer: z.boolean().optional().catch(undefined),
   // P0-allocated-ask-stuck: an ask assigned to one referrer who has not claimed it, through a personal link or a
   // queue allocation (a D-034 delivery), still counts as unclaimed. Optional so a payload from before the flag parses.
-  unclaimedAssignment: z.boolean().optional(),
+  unclaimedAssignment: z.boolean().optional().catch(undefined),
   referrerMessage: z.string().nullish().transform(value => value ?? null),
   unreadMessageCount: z.coerce.number().int().min(0).catch(0),
   createdAt: z.string(),

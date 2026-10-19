@@ -38,7 +38,7 @@ const seekerRowSchema = z.object({
   createdAt: timestampSchema,
   attachmentCount: z.number().nullish(),
   heldForReferrer: z.boolean().nullish().catch(null),
-  unclaimedAssignment: z.boolean().optional(),
+  unclaimedAssignment: z.boolean().optional().catch(undefined),
   // D-034/D-047: which coverage state the ask is in (server-computed); drives the waiting/held seeker copy.
   queueStatus: z.enum(["available_for_review", "waiting_for_coverage", "held_for_credit"]).nullish(),
 });

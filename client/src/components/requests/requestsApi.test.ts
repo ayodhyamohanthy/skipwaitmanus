@@ -20,4 +20,10 @@ describe("the Requests list parser", () => {
     const { requests } = await fetchMyRequests(getToken);
     expect(requests.map(request => [request.id, request.heldForReferrer])).toEqual([[12, undefined], [13, true]]);
   });
+
+  it("reads a malformed unclaimed-assignment flag as unset instead of dropping the whole list (P0-allocated-ask-stuck)", async () => {
+    stubMine({ requests: [{ ...row, unclaimedAssignment: "yes" }, { ...row, id: 13, unclaimedAssignment: true }, { ...row, id: 14 }] });
+    const { requests } = await fetchMyRequests(getToken);
+    expect(requests.map(request => [request.id, request.unclaimedAssignment])).toEqual([[12, undefined], [13, true], [14, undefined]]);
+  });
 });
